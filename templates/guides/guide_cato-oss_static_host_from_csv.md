@@ -51,7 +51,7 @@ locals {
 	static_host_csv = csvdecode(file("${path.module}/${var.csv_file_path}"))
 }
 
-resource "cato-oss_static_host" "host_csv" {
+resource "cato_static_host" "host_csv" {
     for_each = { for static_host in local.static_host_csv : static_host.ip => static_host }
     site_id = var.site_id
     name = each.value.name

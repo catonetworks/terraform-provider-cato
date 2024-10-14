@@ -1,6 +1,6 @@
 // network range of type VLAN
-resource "cato-oss_network_range" "vlan100" {
-  site_id    = cato-oss_socket_site.site1.id
+resource "cato_network_range" "vlan100" {
+  site_id    = cato_socket_site.site1.id
   name       = "VLAN100"
   range_type = "VLAN"
   subnet     = "192.168.100.0/24"
@@ -9,8 +9,8 @@ resource "cato-oss_network_range" "vlan100" {
 }
 
 // network range of type VLAN with DHCP RANGE
-resource "cato-oss_network_range" "vlan200" {
-  site_id    = cato-oss_socket_site.site1.id
+resource "cato_network_range" "vlan200" {
+  site_id    = cato_socket_site.site1.id
   name       = "VLAN200"
   range_type = "VLAN"
   subnet     = "192.168.200.0/24"
@@ -23,8 +23,8 @@ resource "cato-oss_network_range" "vlan200" {
 }
 
 // routed network 
-resource "cato-oss_network_range" "routed250" {
-  site_id    = cato-oss_socket_site.site1.id
+resource "cato_network_range" "routed250" {
+  site_id    = cato_socket_site.site1.id
   name       = "routed250"
   range_type = "Routed"
   subnet     = "192.168.250.0/24"

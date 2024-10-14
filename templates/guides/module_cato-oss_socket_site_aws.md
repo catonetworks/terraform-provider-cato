@@ -5,9 +5,9 @@ description: |-
   Provides an combined example of creating a virtual socket site in Cato Management Application, and templates for creating a VPC and deploying a virtual socket instance in AWS.
 ---
 
-# Example AWS Module (cato-oss_socket_site)
+# Example AWS Module (cato_socket_site)
 
-The `cato-oss_socket_site` resource contains the configuration parameters necessary to 
+The `cato_socket_site` resource contains the configuration parameters necessary to 
 add a socket site to the Cato cloud 
 ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)).
 Documentation for the underlying API used in this resource can be found at
@@ -356,8 +356,8 @@ In your current project working folder, a `2-vSocket` subfolder, and add a `main
 ```hcl
 terraform {
   required_providers {
-    cato-oss = {
-      source = "benekpy/cato-oss"
+    cato = {
+      source = "Cato-Networks/cato"
     }
   }
   required_version = ">= 0.13"
@@ -486,13 +486,13 @@ provider "aws" {
   region = var.region
 }
 
-provider "cato-oss" {
+provider "cato" {
   baseurl    = "https://api.catonetworks.com/api/v1/graphql2"
   token      = var.cato_token
   account_id = var.account_id
 }
 
-resource "cato-oss_socket_site" "aws-site" {
+resource "cato_socket_site" "aws-site" {
   connection_type = "SOCKET_AWS1500"
   description     = var.site_description
   name            = var.project_name
@@ -504,8 +504,8 @@ resource "cato-oss_socket_site" "aws-site" {
   site_type     = var.site_type
 }
 
-data "cato-oss_accountSnapshotSite" "aws-site" {
-  id = cato-oss_socket_site.aws-site.id
+data "cato_accountSnapshotSite" "aws-site" {
+  id = cato_socket_site.aws-site.id
 }
 
 ## Lookup data from region and VPC
@@ -526,7 +526,7 @@ resource "aws_instance" "vSocket" {
   availability_zone = data.aws_availability_zones.available.names[0]
   key_name          = var.key_pair
   instance_type     = var.instance_type
-  user_data         = base64encode(data.cato-oss_accountSnapshotSite.aws-site.info.sockets[0].serial)
+  user_data         = base64encode(data.cato_accountSnapshotSite.aws-site.info.sockets[0].serial)
   # Network Interfaces
   # MGMTENI
   network_interface {
@@ -802,8 +802,8 @@ In your current project working folder, add a `main.tf` file with the following 
 ```hcl
 terraform {
   required_providers {
-    cato-oss = {
-      source = "benekpy/cato-oss"
+    cato = {
+      source = "Cato-Networks/cato"
     }
   }
   required_version = ">= 0.13"

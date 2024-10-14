@@ -46,7 +46,7 @@ locals {
 	network_range_csv = csvdecode(file("${path.module}/${var.csv_file_path}"))
 }
 
-resource "cato-oss_network_range" "networks" {
+resource "cato_network_range" "networks" {
     for_each = { for network_range in local.network_range_csv : network_range.subnet => network_range }
     site_id = each.value.site_id
     name = each.value.name

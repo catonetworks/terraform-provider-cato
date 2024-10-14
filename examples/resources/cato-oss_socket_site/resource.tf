@@ -1,5 +1,5 @@
 // socket site for AWS
-resource "cato-oss_socket_site" "aws_site" {
+resource "cato_socket_site" "aws_site" {
   name            = "aws_site"
   description     = "site description"
   site_type       = "DATACENTER"
@@ -17,7 +17,7 @@ resource "cato-oss_socket_site" "aws_site" {
 }
 
 // socket site x1500 with DHCP settings
-resource "cato-oss_socket_site" "branch_site" {
+resource "cato_socket_site" "branch_site" {
   name            = "branch_site"
   description     = "site description"
   site_type       = "BRANCH"

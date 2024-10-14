@@ -6,7 +6,7 @@ description: |-
   
 ---
 
-# cato-oss Provider
+# cato Provider
 
 The Cato Open Source Software provider is used to interact with resources supported by Cato Networks. The provider needs to be configured with the proper API credentials before it can be used.
 
@@ -20,20 +20,20 @@ Use the navigation to the left to read about the available resources.
 # Configuration based authentication
 terraform {
   required_providers {
-    cato-oss = {
-      source = "registry.terraform.io/cato-networks/cato-oss"
+    cato = {
+      source = "registry.terraform.io/Cato-Networks/cato"
       version = "~> 0.3.0"
     }
   }
 }
 
-provider "cato-oss" {
+provider "cato" {
     baseurl = "https://api.catonetworks.com/api/v1/graphql2"
     token = "xxxxxxx"
     account_id = "xxxxxxx"
 }
 
-resource "cato-oss_socket_site" "site1" {
+resource "cato_socket_site" "site1" {
     name = "site1"
     description = "site1 AWS Datacenter"
     site_type = "DATACENTER"
@@ -46,8 +46,8 @@ resource "cato-oss_socket_site" "site1" {
     }
 }
 
-resource "cato-oss_static_host" "host" {
-    site_id = cato-oss_socket_site.site1.id
+resource "cato_static_host" "host" {
+    site_id = cato_socket_site.site1.id
     name = "test-terraform"
     ip = "192.168.25.24"
 }

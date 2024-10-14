@@ -5,9 +5,9 @@ description: |-
   Provides an combined example of creating a virtual socket site in Cato Management Application, and templates for creating an Resource Group with underlying network resources and deploying a virtual socket instance in Azure.
 ---
 
-# Example Azure Module (cato-oss_socket_site)
+# Example Azure Module (cato_socket_site)
 
-The `cato-oss_socket_site` resource contains the configuration parameters necessary to 
+The `cato_socket_site` resource contains the configuration parameters necessary to 
 add a socket site to the Cato cloud 
 ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)).
 Documentation for the underlying API used in this resource can be found at
@@ -384,7 +384,7 @@ In your current project working folder, a `2-vSocket` subfolder, and add a `main
 terraform {
   required_providers {
     cato = {
-      source = "cato-networks/cato-oss"
+      source = "Cato-Networks/cato"
     }
   }
   required_version = ">= 0.13"
@@ -479,13 +479,13 @@ provider "azurerm" {
 	features {}
 }
 
-provider "cato-oss" {
+provider "cato" {
     baseurl = "https://api.catonetworks.com/api/v1/graphql2"
     token = var.cato_token
     account_id = var.account_id
 }
 
-resource "cato-oss_socket_site" "azure-site" {
+resource "cato_socket_site" "azure-site" {
     connection_type  = "SOCKET_AZ1500"
     description = var.site_description
     name = var.project_name
@@ -501,8 +501,8 @@ resource "cato-oss_socket_site" "azure-site" {
     site_type = var.site_type
 }
 
-data "cato-oss_accountSnapshotSite" "azure-site" {
-	id = cato-oss_socket_site.azure-site.id
+data "cato_accountSnapshotSite" "azure-site" {
+	id = cato_socket_site.azure-site.id
 }
 
 ## Create vSocket Virtual Machine
@@ -563,7 +563,7 @@ resource "azurerm_virtual_machine_extension" "vSocket-custom-script" {
   virtual_machine_id         = azurerm_virtual_machine.vSocket.id
   settings = <<SETTINGS
  {
-  "commandToExecute": "${"echo '${data.cato-oss_accountSnapshotSite.azure-site.info.sockets[0].serial}' > /cato/serial.txt"};${join(";", var.commands)}"
+  "commandToExecute": "${"echo '${data.cato_accountSnapshotSite.azure-site.info.sockets[0].serial}' > /cato/serial.txt"};${join(";", var.commands)}"
  }
 SETTINGS
   depends_on = [
@@ -823,7 +823,7 @@ In your current project working folder, add a `main.tf` file with the following 
 terraform {
   required_providers {
     cato = {
-      source = "cato-networks/cato-oss"
+      source = "Cato-Networks/cato"
     }
   }
   required_version = ">= 0.13"

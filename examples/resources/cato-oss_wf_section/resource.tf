@@ -1,5 +1,5 @@
 // internet firewall section last in policy
-resource "cato-oss_wf_section" "wf_section_1" {
+resource "cato_wf_section" "wf_section_1" {
   at = {
     position = "LAST_IN_POLICY"
   }
@@ -9,10 +9,10 @@ resource "cato-oss_wf_section" "wf_section_1" {
 }
 
 // internet firewall section after "wf_section_1" previously created
-resource "cato-oss_wf_section" "wf_section_2" {
+resource "cato_wf_section" "wf_section_2" {
   at = {
     position = "AFTER_SECTION"
-    ref      = cato-oss_wf_section.wf_section_1.section.id
+    ref      = cato_wf_section.wf_section_1.section.id
   }
   section = {
     name = "tf section 2"
@@ -21,7 +21,7 @@ resource "cato-oss_wf_section" "wf_section_2" {
 
 
 // internet firewall rule using section id
-resource "cato-oss_wf_section" "wf_section_1" {
+resource "cato_wf_section" "wf_section_1" {
   at = {
     position = "LAST_IN_POLICY"
   }
@@ -30,10 +30,10 @@ resource "cato-oss_wf_section" "wf_section_1" {
   }
 }
 
-resource "cato-oss_wf_rule" "wf_rule_1" {
+resource "cato_wf_rule" "wf_rule_1" {
   at = {
     position = "FIRST_IN_SECTION"
-    ref      = cato-oss_wf_section.wf_section_1.section.id
+    ref      = cato_wf_section.wf_section_1.section.id
   }
   rule = {
     name        = "test"

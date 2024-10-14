@@ -1,5 +1,5 @@
 // internet firewall allowing all & logs
-resource "cato-oss_if_rule" "allow_all_and_log" {
+resource "cato_if_rule" "allow_all_and_log" {
   at = {
     position = "LAST_IN_POLICY"
   }
@@ -16,7 +16,7 @@ resource "cato-oss_if_rule" "allow_all_and_log" {
 }
 
 // block all remote users except "Marketing" using category domain "test.com"
-resource "cato-oss_if_rule" "block_test_com_for_remote_users" {
+resource "cato_if_rule" "block_test_com_for_remote_users" {
   at = {
     position = "FIRST_IN_POLICY"
   }

@@ -1,5 +1,5 @@
 // wan firewall allowing all & logs
-resource "cato-oss_wf_rule" "allow_all_and_log" {
+resource "cato_wf_rule" "allow_all_and_log" {
   at = {
     position = "LAST_IN_POLICY"
   }
@@ -17,7 +17,7 @@ resource "cato-oss_wf_rule" "allow_all_and_log" {
 }
 
 // all SMBV3 for all domain users to the site named Datacenter
-resource "cato-oss_wf_rule" "allow_smbv3_to_dc" {
+resource "cato_wf_rule" "allow_smbv3_to_dc" {
   at = {
     position = "LAST_IN_POLICY"
   }
