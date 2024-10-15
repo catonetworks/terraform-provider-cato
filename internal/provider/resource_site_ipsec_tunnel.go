@@ -3,7 +3,7 @@ package provider
 // import (
 // 	"context"
 
-// 	"github.com/cato-networks/terraform-provider-cato/internal/utils"
+// 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 // 	"github.com/hashicorp/terraform-plugin-framework/resource"
 // 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 // 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -11,7 +11,7 @@ package provider
 // 	"github.com/hashicorp/terraform-plugin-framework/types"
 // 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 // 	"github.com/hashicorp/terraform-plugin-log/tflog"
-// 	cato_models "github.com/cato-networks/cato-go-sdk/models"
+// 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 // )
 
 // var (

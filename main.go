@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/cato-networks/terraform-provider-cato/internal/provider"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
@@ -20,7 +20,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/Cato-Networks/cato",
+		Address: "registry.terraform.io/catonetworks/cato",
 		Debug:   debug,
 	}
 

@@ -384,7 +384,7 @@ In your current project working folder, a `2-vSocket` subfolder, and add a `main
 terraform {
   required_providers {
     cato = {
-      source = "Cato-Networks/cato"
+      source = "catonetworks/cato"
     }
   }
   required_version = ">= 0.13"
@@ -823,7 +823,7 @@ In your current project working folder, add a `main.tf` file with the following 
 terraform {
   required_providers {
     cato = {
-      source = "Cato-Networks/cato"
+      source = "catonetworks/cato"
     }
   }
   required_version = ">= 0.13"

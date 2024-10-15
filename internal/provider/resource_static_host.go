@@ -3,8 +3,8 @@ package provider
 import (
 	"context"
 
-	cato_models "github.com/cato-networks/cato-go-sdk/models"
-	"github.com/cato-networks/terraform-provider-cato/internal/utils"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"

@@ -1,9 +1,9 @@
-module github.com/cato-networks/terraform-provider-cato
+module github.com/catonetworks/terraform-provider-cato
 
 go 1.23.1
 
 require (
-	github.com/cato-networks/cato-go-sdk v0.0.0-20241009223931-b94e098f905c
+	github.com/catonetworks/cato-go-sdk v0.0.0-20241015230615-03dcc9948e06
 	github.com/hashicorp/terraform-plugin-framework v1.12.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.13.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0

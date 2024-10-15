@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	cato "github.com/cato-networks/cato-go-sdk"
+	cato "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
