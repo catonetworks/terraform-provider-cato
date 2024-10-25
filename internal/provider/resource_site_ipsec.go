@@ -38,6 +38,7 @@ type SiteIpsecIkeV2 struct {
 	NativeNetworkRange   types.String `tfsdk:"native_network_range"`
 	NativeNetworkRangeId types.String `tfsdk:"native_network_range_id"`
 	SiteLocation         types.Object `tfsdk:"site_location"`
+	IPSec                types.Object `tfsdk:"ipsec"`
 }
 
 type AddIpsecSiteLocationInput struct {
@@ -115,6 +116,156 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					// },
 				},
 			},
+			"ipsec": schema.SingleNestedAttribute{
+				Description: "IPSec Configuration",
+				Required:    true,
+				Attributes: map[string]schema.Attribute{
+					"primary": schema.SingleNestedAttribute{
+						Description: "primary",
+						Required:    true,
+						Attributes: map[string]schema.Attribute{
+							"destination_type": schema.StringAttribute{
+								Description: "destinationtype",
+								Required:    false,
+								Optional:    true,
+							},
+							"public_cato_ip_id": schema.StringAttribute{
+								Description: "publiccatoipid",
+								Required:    false,
+								Optional:    true,
+							},
+							"pop_location_id": schema.StringAttribute{
+								Description: "poplocationid",
+								Required:    false,
+								Optional:    true,
+							},
+							"tunnels": schema.ListNestedAttribute{
+								Description: "tunnels",
+								Required:    false,
+								Optional:    true,
+								NestedObject: schema.NestedAttributeObject{
+									Attributes: map[string]schema.Attribute{
+										"public_site_ip": schema.StringAttribute{
+											Description: "publicsiteip",
+											Required:    false,
+											Optional:    true,
+										},
+										"private_cato_ip": schema.StringAttribute{
+											Description: "privatecatoip",
+											Optional:    true,
+										},
+										"private_site_ip": schema.StringAttribute{
+											Description: "privatesiteip",
+											Optional:    true,
+										},
+										"psk": schema.StringAttribute{
+											Description: "psk",
+											Required:    true,
+										},
+										"last_mile_bw": schema.SingleNestedAttribute{
+											Description: "lastmilebw",
+											Required:    false,
+											Optional:    true,
+											Attributes: map[string]schema.Attribute{
+												"downstream": schema.Int64Attribute{
+													Description: "Downstream",
+													Required:    true,
+												},
+												"upstream": schema.Int64Attribute{
+													Description: "upstream",
+													Required:    true,
+												},
+												"downstream_mbps_precision": schema.Float64Attribute{
+													Description: "downstreamMbpsPrecision",
+													Required:    false,
+													Optional:    true,
+												},
+												"upstream_mbps_precision": schema.Float64Attribute{
+													Description: "upstreamMbpsPrecision",
+													Required:    false,
+													Optional:    true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					"secondary": schema.SingleNestedAttribute{
+						Description: "secondary",
+						Optional:    true,
+						Attributes: map[string]schema.Attribute{
+							"destination_type": schema.StringAttribute{
+								Description: "destinationtype",
+								Required:    false,
+								Optional:    true,
+							},
+							"public_cato_ip_id": schema.StringAttribute{
+								Description: "publiccatoipid",
+								Required:    false,
+								Optional:    true,
+							},
+							"pop_location_id": schema.StringAttribute{
+								Description: "poplocationid",
+								Required:    false,
+								Optional:    true,
+							},
+							"tunnels": schema.ListNestedAttribute{
+								Description: "tunnels",
+								Required:    false,
+								Optional:    true,
+								NestedObject: schema.NestedAttributeObject{
+									Attributes: map[string]schema.Attribute{
+										"public_site_ip": schema.StringAttribute{
+											Description: "publicsiteip",
+											Required:    false,
+											Optional:    true,
+										},
+										"private_cato_ip": schema.StringAttribute{
+											Description: "privatecatoip",
+											Optional:    true,
+										},
+										"private_site_ip": schema.StringAttribute{
+											Description: "privatesiteip",
+											Optional:    true,
+										},
+										"psk": schema.StringAttribute{
+											Description: "psk",
+											Required:    true,
+										},
+										"last_mile_bw": schema.SingleNestedAttribute{
+											Description: "lastmilebw",
+											Required:    false,
+											Optional:    true,
+											Attributes: map[string]schema.Attribute{
+												"downstream": schema.Int64Attribute{
+													Description: "Downstream",
+													Required:    true,
+												},
+												"upstream": schema.Int64Attribute{
+													Description: "upstream",
+													Required:    true,
+												},
+												"downstream_mbps_precision": schema.Float64Attribute{
+													Description: "downstreamMbpsPrecision",
+													Required:    false,
+													Optional:    true,
+												},
+												"upstream_mbps_precision": schema.Float64Attribute{
+													Description: "upstreamMbpsPrecision",
+													Required:    false,
+													Optional:    true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -138,6 +289,8 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 
 	// setting input
 	input := cato_models.AddIpsecIkeV2SiteInput{}
+	input_ipsec := &cato_models.AddIpsecIkeV2SiteTunnelsInput{}
+	varSiteId := ""
 
 	// setting input site location
 	if !plan.SiteLocation.IsNull() {
@@ -193,6 +346,120 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		if splitName[2] == "Native Range" {
 			networkRangeEntity = item.Entity
 		}
+	}
+
+	if !plan.IPSec.IsNull() {
+		planIPSec := AddIpsecIkeV2SiteTunnelsInput{}
+		diags = plan.IPSec.As(ctx, &planIPSec, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+
+		// setting primary
+		if !planIPSec.Primary.IsNull() {
+			input_ipsec.Primary = &cato_models.AddIpsecIkeV2TunnelsInput{}
+			primaryInput := &AddIpsecIkeV2TunnelsInput{}
+			diags = planIPSec.Primary.As(ctx, &primaryInput, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+
+			input_ipsec.Primary.DestinationType = (*cato_models.DestinationType)(primaryInput.DestinationType.ValueStringPointer())
+			input_ipsec.Primary.PopLocationID = primaryInput.PopLocationID.ValueStringPointer()
+			input_ipsec.Primary.PublicCatoIPID = primaryInput.PublicCatoIPID.ValueStringPointer()
+
+			// setting tunnels
+			if !primaryInput.Tunnels.IsNull() {
+				elementsTunnels := make([]types.Object, 0, len(primaryInput.Tunnels.Elements()))
+				diags = primaryInput.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
+				resp.Diagnostics.Append(diags...)
+
+				var itemTunnels AddIpsecIkeV2TunnelInput
+				for _, item := range elementsTunnels {
+					diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
+
+					// setting lastMileBw
+					var itemTunnelLastMileBw LastMileBwInput
+					diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
+
+					// append tunnels
+					input_ipsec.Primary.Tunnels = append(input_ipsec.Primary.Tunnels, &cato_models.AddIpsecIkeV2TunnelInput{
+						LastMileBw: &cato_models.LastMileBwInput{
+							Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
+							Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
+						},
+						PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
+						PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
+						Psk:           itemTunnels.Psk.ValueString(),
+						PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
+					})
+				}
+			}
+
+			// setting secondary
+			if !planIPSec.Secondary.IsNull() {
+				input_ipsec.Secondary = &cato_models.AddIpsecIkeV2TunnelsInput{}
+				secondaryInput := &AddIpsecIkeV2TunnelsInput{}
+				diags = planIPSec.Secondary.As(ctx, &secondaryInput, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
+
+				input_ipsec.Secondary.DestinationType = (*cato_models.DestinationType)(secondaryInput.DestinationType.ValueStringPointer())
+				input_ipsec.Secondary.PopLocationID = secondaryInput.PopLocationID.ValueStringPointer()
+				input_ipsec.Secondary.PublicCatoIPID = secondaryInput.PublicCatoIPID.ValueStringPointer()
+
+				// setting tunnels
+				if !secondaryInput.Tunnels.IsNull() {
+					elementsTunnels := make([]types.Object, 0, len(secondaryInput.Tunnels.Elements()))
+					diags = primaryInput.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
+					resp.Diagnostics.Append(diags...)
+
+					var itemTunnels AddIpsecIkeV2TunnelInput
+					for _, item := range elementsTunnels {
+						diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
+						resp.Diagnostics.Append(diags...)
+
+						// setting lastMileBw
+						var itemTunnelLastMileBw LastMileBwInput
+						diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
+						resp.Diagnostics.Append(diags...)
+
+						// append tunnels
+						input_ipsec.Secondary.Tunnels = append(input_ipsec.Secondary.Tunnels, &cato_models.AddIpsecIkeV2TunnelInput{
+							LastMileBw: &cato_models.LastMileBwInput{
+								Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
+								Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
+							},
+							PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
+							PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
+							Psk:           itemTunnels.Psk.ValueString(),
+							PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
+						})
+					}
+				}
+
+			}
+		}
+	}
+
+	tflog.Debug(ctx, "site_ipsec_tunnel create", map[string]interface{}{
+		"input_ipsec": utils.InterfaceToJSONString(input_ipsec),
+	})
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	varSiteId = ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()
+
+	tflog.Info(ctx, "site_id create", map[string]interface{}{
+		"varSiteId": utils.InterfaceToJSONString(varSiteId),
+	})
+
+	_, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, varSiteId, *input_ipsec, r.client.AccountId)
+	if err_ipsec != nil {
+		resp.Diagnostics.AddError(
+			"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
+			err_ipsec.Error(),
+		)
+		return
 	}
 
 	diags = resp.State.Set(ctx, plan)
