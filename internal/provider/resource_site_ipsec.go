@@ -120,6 +120,13 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Description: "IPSec Configuration",
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
+					"site_id": schema.StringAttribute{
+						Description: "Site Identifier for Ipsec Site",
+						Computed:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
 					"primary": schema.SingleNestedAttribute{
 						Description: "primary",
 						Required:    true,
@@ -437,6 +444,9 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 
 			}
 		}
+
+		diags = plan.IPSec.As(ctx, &planIPSec, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
 	}
 
 	tflog.Debug(ctx, "site_ipsec_tunnel create", map[string]interface{}{
@@ -472,6 +482,7 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), types.StringValue(ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()))
 	// overiding state with native network range id
 	resp.State.SetAttribute(ctx, path.Empty().AtName("native_network_range_id"), networkRangeEntity.ID)
+	resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("site_id"), varSiteId)
 }
 
 func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
