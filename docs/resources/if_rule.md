@@ -41,7 +41,7 @@ resource "cato_if_rule" "block_test_com_for_remote_users" {
     action            = "BLOCK"
     connection_origin = "REMOTE"
     destination = {
-      Domain = [
+      domain = [
         "test.com"
       ]
     }
