@@ -511,8 +511,16 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	tunnelPrimaryData := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
-	tunnelSecondaryData := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
+	tunnelPrimaryData := ""
+	tunnelSecondaryData := ""
+
+	if len(tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()) > 0 {
+		tunnelPrimaryData = tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
+	}
+
+	if len(tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()) > 0 {
+		tunnelSecondaryData = tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
+	}
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
