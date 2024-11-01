@@ -502,10 +502,6 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 
 	varSiteId = ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()
 
-	tflog.Info(ctx, "site_id create", map[string]interface{}{
-		"varSiteId": utils.InterfaceToJSONString(varSiteId),
-	})
-
 	tunnelData, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, varSiteId, *input_ipsec, r.client.AccountId)
 	if err_ipsec != nil {
 		resp.Diagnostics.AddError(
@@ -515,24 +511,8 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	tflog.Info(ctx, "SiteAddIpsecIkeV2SiteTunnels: ", map[string]interface{}{
-		"SiteAddIpsecIkeV2SiteTunnels": utils.InterfaceToJSONString(tunnelData),
-	})
-
-	tflog.Info(ctx, "SiteAddIpsecIkeV2SiteTunnels: ", map[string]interface{}{
-		"SiteAddIpsecIkeV2SiteTunnels/tunnelIdAddIpsecIkeV2SiteTunnelPayload": utils.InterfaceToJSONString(tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()),
-	})
-
 	tunnelPrimaryData := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
 	tunnelSecondaryData := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
-
-	tflog.Info(ctx, "tunnelPrimaryData: ", map[string]interface{}{
-		"tunnelPrimaryData/tunnelPrimaryData": utils.InterfaceToJSONString(tunnelPrimaryData),
-	})
-
-	tflog.Info(ctx, "tunnelSecondaryData: ", map[string]interface{}{
-		"tunnelSecondaryData/tunnelSecondaryData": utils.InterfaceToJSONString(tunnelSecondaryData),
-	})
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
