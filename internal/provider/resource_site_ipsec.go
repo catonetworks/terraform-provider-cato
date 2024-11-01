@@ -152,6 +152,13 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Optional:    true,
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
+										"tunnel_id": schema.StringAttribute{
+											Description: "tunnel ID",
+											Computed:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(),
+											},
+										},
 										"public_site_ip": schema.StringAttribute{
 											Description: "publicsiteip",
 											Required:    false,
@@ -224,6 +231,13 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Optional:    true,
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
+										"tunnel_id": schema.StringAttribute{
+											Description: "tunnel ID",
+											Computed:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(),
+											},
+										},
 										"public_site_ip": schema.StringAttribute{
 											Description: "publicsiteip",
 											Required:    false,
@@ -463,7 +477,7 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		"varSiteId": utils.InterfaceToJSONString(varSiteId),
 	})
 
-	_, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, varSiteId, *input_ipsec, r.client.AccountId)
+	tunnelData, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, varSiteId, *input_ipsec, r.client.AccountId)
 	if err_ipsec != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
@@ -472,10 +486,36 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	tflog.Info(ctx, "SiteAddIpsecIkeV2SiteTunnels: ", map[string]interface{}{
+		"SiteAddIpsecIkeV2SiteTunnels": utils.InterfaceToJSONString(tunnelData),
+	})
+
+	tflog.Info(ctx, "SiteAddIpsecIkeV2SiteTunnels: ", map[string]interface{}{
+		"SiteAddIpsecIkeV2SiteTunnels/tunnelIdAddIpsecIkeV2SiteTunnelPayload": utils.InterfaceToJSONString(tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()),
+	})
+
+	tunnelPrimaryData := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
+	tunnelSecondaryData := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()[0].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String()
+
+	tflog.Info(ctx, "tunnelPrimaryData: ", map[string]interface{}{
+		"tunnelPrimaryData/tunnelPrimaryData": utils.InterfaceToJSONString(tunnelPrimaryData),
+	})
+
+	tflog.Info(ctx, "tunnelSecondaryData: ", map[string]interface{}{
+		"tunnelSecondaryData/tunnelSecondaryData": utils.InterfaceToJSONString(tunnelSecondaryData),
+	})
+
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if input_ipsec.Primary != nil {
+		resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(0).AtName("tunnel_id"), tunnelPrimaryData)
+	}
+	if input_ipsec.Secondary != nil {
+		resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("secondary").AtName("tunnels").AtListIndex(0).AtName("tunnel_id"), tunnelSecondaryData)
 	}
 
 	// overiding state with socket site id
@@ -532,6 +572,8 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		SiteLocation: &cato_models.UpdateSiteLocationInput{},
 	}
 
+	input_ipsec := cato_models.UpdateIpsecIkeV2SiteTunnelsInput{}
+
 	inputUpdateNetworkRange := cato_models.UpdateNetworkRangeInput{}
 
 	// setting input site location
@@ -575,6 +617,102 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 			err.Error(),
 		)
 		return
+	}
+
+	planIPSec := AddIpsecIkeV2SiteTunnelsInput{}
+	diags = plan.IPSec.As(ctx, &planIPSec, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+	varSiteId := planIPSec.SiteId.ValueString()
+
+	if !plan.IPSec.IsNull() {
+		if !planIPSec.Primary.IsNull() {
+			input_ipsec.Primary = &cato_models.UpdateIpsecIkeV2TunnelsInput{}
+			planIPSecPrimary := AddIpsecIkeV2TunnelsInput{}
+			diags = planIPSec.Primary.As(ctx, &planIPSecPrimary, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+			input_ipsec.Primary.DestinationType = (*cato_models.DestinationType)(planIPSecPrimary.DestinationType.ValueStringPointer())
+			input_ipsec.Primary.PopLocationID = planIPSecPrimary.PopLocationID.ValueStringPointer()
+			input_ipsec.Primary.PublicCatoIPID = planIPSecPrimary.PublicCatoIPID.ValueStringPointer()
+
+			if !planIPSecPrimary.Tunnels.IsNull() {
+				elementsTunnels := make([]types.Object, 0, len(planIPSecPrimary.Tunnels.Elements()))
+				diags = planIPSecPrimary.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
+				resp.Diagnostics.Append(diags...)
+
+				var itemTunnels AddIpsecIkeV2TunnelInput
+				for _, item := range elementsTunnels {
+					diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
+
+					// setting lastMileBw
+					var itemTunnelLastMileBw LastMileBwInput
+					diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
+
+					// append tunnels
+					input_ipsec.Primary.Tunnels = append(input_ipsec.Primary.Tunnels, &cato_models.UpdateIpsecIkeV2TunnelInput{
+						LastMileBw: &cato_models.LastMileBwInput{
+							Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
+							Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
+						},
+						PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
+						PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
+						Psk:           itemTunnels.Psk.ValueStringPointer(),
+						PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
+						TunnelID:      cato_models.IPSecV2InterfaceID(itemTunnels.TunnelID.ValueString()),
+					})
+				}
+			}
+		}
+
+		if !planIPSec.Secondary.IsNull() {
+			input_ipsec.Secondary = &cato_models.UpdateIpsecIkeV2TunnelsInput{}
+			planIPSecSecondary := AddIpsecIkeV2TunnelsInput{}
+			diags = planIPSec.Secondary.As(ctx, &planIPSecSecondary, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+			input_ipsec.Secondary.DestinationType = (*cato_models.DestinationType)(planIPSecSecondary.DestinationType.ValueStringPointer())
+			input_ipsec.Secondary.PopLocationID = planIPSecSecondary.PopLocationID.ValueStringPointer()
+			input_ipsec.Secondary.PublicCatoIPID = planIPSecSecondary.PublicCatoIPID.ValueStringPointer()
+
+			if !planIPSecSecondary.Tunnels.IsNull() {
+				elementsTunnels := make([]types.Object, 0, len(planIPSecSecondary.Tunnels.Elements()))
+				diags = planIPSecSecondary.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
+				resp.Diagnostics.Append(diags...)
+
+				var itemTunnels AddIpsecIkeV2TunnelInput
+				for _, item := range elementsTunnels {
+					diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
+
+					// setting lastMileBw
+					var itemTunnelLastMileBw LastMileBwInput
+					diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
+
+					// append tunnels
+					input_ipsec.Secondary.Tunnels = append(input_ipsec.Secondary.Tunnels, &cato_models.UpdateIpsecIkeV2TunnelInput{
+						LastMileBw: &cato_models.LastMileBwInput{
+							Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
+							Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
+						},
+						PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
+						PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
+						Psk:           itemTunnels.Psk.ValueStringPointer(),
+						PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
+						TunnelID:      cato_models.IPSecV2InterfaceID(itemTunnels.TunnelID.ValueString()),
+					})
+				}
+			}
+		}
+
+		_, err_ipsec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, varSiteId, input_ipsec, r.client.AccountId)
+		if err_ipsec != nil {
+			resp.Diagnostics.AddError(
+				"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
+				err_ipsec.Error(),
+			)
+			return
+		}
 	}
 
 	diags = resp.State.Set(ctx, plan)

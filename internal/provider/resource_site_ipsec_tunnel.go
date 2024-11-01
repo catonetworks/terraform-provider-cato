@@ -39,6 +39,7 @@ type AddIpsecIkeV2TunnelsInput struct {
 }
 
 type AddIpsecIkeV2TunnelInput struct {
+	TunnelID      types.String `tfsdk:"tunnel_id"`
 	PublicSiteIP  types.String `tfsdk:"public_site_ip"`
 	PrivateCatoIP types.String `tfsdk:"private_cato_ip"`
 	PrivateSiteIP types.String `tfsdk:"private_site_ip"`
