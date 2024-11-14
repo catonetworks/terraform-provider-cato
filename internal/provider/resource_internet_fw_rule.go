@@ -2294,6 +2294,10 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 			if !trackingInput.Alert.IsNull() {
 
+				input.Rule.Tracking = &cato_models.PolicyTrackingInput{
+					Alert: &cato_models.PolicyRuleTrackingAlertInput{},
+				}
+
 				trackingAlertInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert{}
 				diags = trackingInput.Alert.As(ctx, &trackingAlertInput, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
