@@ -47,6 +47,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 			"interface_id": schema.StringAttribute{
 				Description: "Network Interface ID",
 				Computed:    true,
+				Optional:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
