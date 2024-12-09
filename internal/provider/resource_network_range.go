@@ -165,21 +165,25 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		Type: "site",
 	}
 
-	networkInterface, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
-		return
-	}
-
 	lanInterface := cato_go_sdk.EntityLookup_EntityLookup_Items_Entity{}
-	for _, item := range networkInterface.EntityLookup.GetItems() {
-		splitName := strings.Split(*item.Entity.Name, " \\ ")
-		if splitName[1] == "LAN 01" {
-			lanInterface = item.Entity
+	if plan.InterfaceId.IsNull() {
+		networkInterface, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Catov2 API EntityLookup error",
+				err.Error(),
+			)
+			return
 		}
+
+		for _, item := range networkInterface.EntityLookup.GetItems() {
+			splitName := strings.Split(*item.Entity.Name, " \\ ")
+			if splitName[1] == "LAN 01" {
+				lanInterface = item.Entity
+			}
+		}
+	} else {
+		lanInterface.ID = plan.InterfaceId.ValueString()
 	}
 
 	tflog.Debug(ctx, "network range create", map[string]interface{}{
