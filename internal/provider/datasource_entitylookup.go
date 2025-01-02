@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -11,9 +10,9 @@ import (
 )
 
 type EntityLookup struct {
-	Type      types.String `tfsdk:"type"`
-	EntityIDs types.List   `tfsdk:"entity_ids"`
-	Items     types.List   `tfsdk:"items"`
+	Type  types.String `tfsdk:"type"`
+	Names types.List   `tfsdk:"names"`
+	Items types.List   `tfsdk:"items"`
 }
 
 type EntityLookupItem struct {
@@ -40,9 +39,9 @@ func (d *entityLookupDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 				Description: "Entity type",
 				Required:    true,
 			},
-			"entity_ids": schema.ListAttribute{
-				ElementType: types.Int64Type,
-				Description: "IDs filter",
+			"names": schema.ListAttribute{
+				ElementType: types.StringType,
+				Description: "Names filter",
 				Required:    false,
 				Optional:    true,
 			},
@@ -93,19 +92,17 @@ func (d *entityLookupDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	filterByID := !entityLookup.EntityIDs.IsNull() && entityLookup.EntityIDs.Elements() != nil
-	entityIDs := make(map[string]struct{})
-	if filterByID {
-		for _, id := range entityLookup.EntityIDs.Elements() {
-			fmt.Printf("Adding ID to map: %s\n", id.String())
-			entityIDs[id.String()] = struct{}{}
+	filterByName := !entityLookup.Names.IsNull() && entityLookup.Names.Elements() != nil
+	namesMap := make(map[string]struct{})
+	if filterByName {
+		for _, value := range entityLookup.Names.Elements() {
+			namesMap[value.String()] = struct{}{}
 		}
 	}
 
 	var objects []attr.Value
 	for _, item := range result.GetEntityLookup().GetItems() {
-		fmt.Printf("Entity ID: %s\n", item.Entity.ID)
-		if !filterByID || contains(entityIDs, item.Entity.ID) {
+		if !filterByName || contains(namesMap, *item.Entity.Name) {
 			obj, diags := types.ObjectValue(
 				map[string]attr.Type{
 					"id":   types.StringType,
