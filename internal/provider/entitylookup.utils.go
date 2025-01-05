@@ -1,9 +1,11 @@
 package provider
 
-import "strings"
+import (
+	"strings"
+)
 
-func contains(idMap map[string]struct{}, id string) bool {
-	_, exists := idMap[id]
+func contains(nameToIdMap map[string]struct{}, name string) bool {
+	_, exists := nameToIdMap[name]
 	return exists
 }
 

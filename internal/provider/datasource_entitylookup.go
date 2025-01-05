@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -102,7 +103,9 @@ func (d *entityLookupDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 	var objects []attr.Value
 	for _, item := range result.GetEntityLookup().GetItems() {
-		if !filterByName || contains(namesMap, *item.Entity.Name) {
+		itemName := extractValue(entityType, *item.Entity.Name)
+		wrappedItemName := fmt.Sprintf("\"%s\"", itemName)
+		if !filterByName || contains(namesMap, wrappedItemName) {
 			obj, diags := types.ObjectValue(
 				map[string]attr.Type{
 					"id":   types.StringType,
@@ -110,7 +113,7 @@ func (d *entityLookupDataSource) Read(ctx context.Context, req datasource.ReadRe
 				},
 				map[string]attr.Value{
 					"id":   types.StringValue(item.Entity.ID),
-					"name": types.StringValue(extractValue(entityType, *item.Entity.Name)),
+					"name": types.StringValue(itemName),
 				},
 			)
 			if diags.HasError() {
