@@ -2,12 +2,12 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"strings"
 )
 
 type EntityLookup struct {
@@ -97,15 +97,20 @@ func (d *entityLookupDataSource) Read(ctx context.Context, req datasource.ReadRe
 	namesMap := make(map[string]struct{})
 	if filterByName {
 		for _, value := range entityLookup.Names.Elements() {
-			namesMap[value.String()] = struct{}{}
+			// Trim any quotes if present
+			valueStr := strings.Trim(value.String(), "\"")
+			namesMap[valueStr] = struct{}{}
 		}
 	}
 
 	var objects []attr.Value
 	for _, item := range result.GetEntityLookup().GetItems() {
-		itemName := extractValue(entityType, *item.Entity.Name)
-		wrappedItemName := fmt.Sprintf("\"%s\"", itemName)
-		if !filterByName || contains(namesMap, wrappedItemName) {
+		itemName, err := extractValue(entityType, item)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API EntityLookup error", err.Error())
+			return
+		}
+		if !filterByName || contains(namesMap, itemName) {
 			obj, diags := types.ObjectValue(
 				map[string]attr.Type{
 					"id":   types.StringType,

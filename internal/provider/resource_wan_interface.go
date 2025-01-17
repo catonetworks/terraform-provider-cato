@@ -111,8 +111,8 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		DestType: "CATO",
 		Name:     plan.Name.ValueStringPointer(),
 		Bandwidth: &cato_models.SocketInterfaceBandwidthInput{
-			UpstreamBandwidth:   *plan.UpstreamBandwidth.ValueInt64Pointer(),
-			DownstreamBandwidth: *plan.DownstreamBandwidth.ValueInt64Pointer(),
+			UpstreamBandwidth:   plan.UpstreamBandwidth.ValueInt64Pointer(),
+			DownstreamBandwidth: plan.DownstreamBandwidth.ValueInt64Pointer(),
 		},
 		Wan: &cato_models.SocketInterfaceWanInput{
 			Role:       (cato_models.SocketInterfaceRole)(plan.Role.ValueString()),
@@ -157,8 +157,8 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		DestType: "CATO",
 		Name:     plan.Name.ValueStringPointer(),
 		Bandwidth: &cato_models.SocketInterfaceBandwidthInput{
-			UpstreamBandwidth:   *plan.UpstreamBandwidth.ValueInt64Pointer(),
-			DownstreamBandwidth: *plan.DownstreamBandwidth.ValueInt64Pointer(),
+			UpstreamBandwidth:   plan.UpstreamBandwidth.ValueInt64Pointer(),
+			DownstreamBandwidth: plan.DownstreamBandwidth.ValueInt64Pointer(),
 		},
 		Wan: &cato_models.SocketInterfaceWanInput{
 			Role:       (cato_models.SocketInterfaceRole)(plan.Role.ValueString()),
@@ -228,12 +228,13 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 		input := cato_models.UpdateSocketInterfaceInput{}
 
 		if (c >= 1) && (state.Role == types.StringValue("wan_1")) {
+			bandwidth := int64(10)
 			input = cato_models.UpdateSocketInterfaceInput{
 				DestType: "CATO",
 				Name:     state.InterfaceID.ValueStringPointer(),
 				Bandwidth: &cato_models.SocketInterfaceBandwidthInput{
-					UpstreamBandwidth:   10,
-					DownstreamBandwidth: 10,
+					UpstreamBandwidth:   &bandwidth,
+					DownstreamBandwidth: &bandwidth,
 				},
 				Wan: &cato_models.SocketInterfaceWanInput{
 					Role:       (cato_models.SocketInterfaceRole)("wan_1"),

@@ -410,7 +410,7 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 				// setting tunnels
 				if !secondaryInput.Tunnels.IsNull() {
 					elementsTunnels := make([]types.Object, 0, len(secondaryInput.Tunnels.Elements()))
-					diags = primaryInput.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
+					diags = secondaryInput.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
 					resp.Diagnostics.Append(diags...)
 
 					var itemTunnels AddIpsecIkeV2TunnelInput
