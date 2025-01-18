@@ -157,7 +157,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewAccountSnapshotSiteDataSource,
-		EntityLookupDataSource,
+		AllocatedIpDataSource,
 		// NewInternetFwPolicyDataSource,
 	}
 }
