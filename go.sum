@@ -10,6 +10,8 @@ github.com/catonetworks/cato-go-sdk v0.0.6-0.20250106182024-6fee0516d5ae h1:uKxZ
 github.com/catonetworks/cato-go-sdk v0.0.6-0.20250106182024-6fee0516d5ae/go.mod h1:mzyXViLRvDIUtXE1q+XekcGJaas/Ku/aoqUIIjjdaKg=
 github.com/catonetworks/cato-go-sdk v0.0.6 h1:aMn4dGiyKiB+B+1Subekh8zb2aSK3mMUY2HE3lKhqpg=
 github.com/catonetworks/cato-go-sdk v0.0.6/go.mod h1:mzyXViLRvDIUtXE1q+XekcGJaas/Ku/aoqUIIjjdaKg=
+github.com/catonetworks/cato-go-sdk v0.0.7 h1:xDYV41gNVf1vkanQVJyInqbgPtqurtIjOPtJe1LfabY=
+github.com/catonetworks/cato-go-sdk v0.0.7/go.mod h1:BKwPLBEKXv4YpYQ2WjKWEwyVU7UsL3Fk1YQR+vq0XBU=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
