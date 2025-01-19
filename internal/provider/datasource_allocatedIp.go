@@ -2,13 +2,14 @@ package provider
 
 import (
 	"context"
+	"strings"
+
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/spf13/cast"
-	"strings"
 )
 
 type AllocatedIpLookup struct {
@@ -19,8 +20,8 @@ type AllocatedIpLookup struct {
 type AllocatedIp struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
-	Location    types.String `tfsdk:"location"`
-	CountryCode types.String `tfsdk:"cc"`
+	PopLocation types.String `tfsdk:"pop_location"`
+	CountryCode types.String `tfsdk:"country_code"`
 }
 
 func AllocatedIpDataSource() datasource.DataSource {
@@ -57,11 +58,11 @@ func (d *allocatedIpDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 							Description: "Name",
 							Computed:    true,
 						},
-						"location": schema.StringAttribute{
+						"pop_location": schema.StringAttribute{
 							Description: "Pop Location",
 							Computed:    true,
 						},
-						"cc": schema.StringAttribute{
+						"country_code": schema.StringAttribute{
 							Description: "Country code",
 							Computed:    true,
 						},
@@ -109,10 +110,10 @@ func (d *allocatedIpDataSource) Read(ctx context.Context, req datasource.ReadReq
 	}
 
 	attrTypes := map[string]attr.Type{
-		"id":       types.StringType,
-		"name":     types.StringType,
-		"location": types.StringType,
-		"cc":       types.StringType,
+		"id":           types.StringType,
+		"name":         types.StringType,
+		"pop_location": types.StringType,
+		"country_code": types.StringType,
 	}
 	var objects []attr.Value
 
@@ -120,15 +121,15 @@ func (d *allocatedIpDataSource) Read(ctx context.Context, req datasource.ReadReq
 		helperFields := item.GetHelperFields()
 		ip := cast.ToString(helperFields["allocatedIp"])
 		if !filterByName || contains(namesMap, ip) {
-			location := cast.ToString(helperFields["popLocation"])
-			cc := cast.ToString(helperFields["countryCode"])
+			popLocation := cast.ToString(helperFields["popLocation"])
+			countryCode := cast.ToString(helperFields["countryCode"])
 			obj, diags := types.ObjectValue(
 				attrTypes,
 				map[string]attr.Value{
-					"id":       types.StringValue(item.GetEntity().GetID()),
-					"name":     types.StringValue(ip),
-					"location": types.StringValue(location),
-					"cc":       types.StringValue(cc),
+					"id":           types.StringValue(item.GetEntity().GetID()),
+					"name":         types.StringValue(ip),
+					"pop_location": types.StringValue(popLocation),
+					"country_code": types.StringValue(countryCode),
 				},
 			)
 			if diags.HasError() {
