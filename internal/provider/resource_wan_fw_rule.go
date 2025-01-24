@@ -2983,7 +2983,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 			}
 
 			// setting service custom
-			if !serviceInput.Standard.IsNull() {
+			if !serviceInput.Custom.IsNull() {
 				elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 				diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 				resp.Diagnostics.Append(diags...)
@@ -4186,7 +4186,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 					}
 
 					// setting service custom
-					if !serviceInput.Standard.IsNull() {
+					if !serviceInput.Custom.IsNull() {
 						elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 						diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 						resp.Diagnostics.Append(diags...)
@@ -5378,7 +5378,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 
 		// setting service custom
-		if !serviceInput.Standard.IsNull() {
+		if !serviceInput.Custom.IsNull() {
 			elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 			diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 			resp.Diagnostics.Append(diags...)
@@ -6578,7 +6578,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 				}
 
 				// setting service custom
-				if !serviceInput.Standard.IsNull() {
+				if !serviceInput.Custom.IsNull() {
 					elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 					diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 					resp.Diagnostics.Append(diags...)

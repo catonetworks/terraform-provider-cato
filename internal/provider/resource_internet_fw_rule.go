@@ -2226,7 +2226,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			}
 
 			// setting service custom
-			if !serviceInput.Standard.IsNull() {
+			if !serviceInput.Custom.IsNull() {
 				elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 				diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 				resp.Diagnostics.Append(diags...)
@@ -3155,7 +3155,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 					}
 
 					// setting service custom
-					if !serviceInput.Standard.IsNull() {
+					if !serviceInput.Custom.IsNull() {
 						elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 						diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 						resp.Diagnostics.Append(diags...)
@@ -4071,7 +4071,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		}
 
 		// setting service custom
-		if !serviceInput.Standard.IsNull() {
+		if !serviceInput.Custom.IsNull() {
 			elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 			diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 			resp.Diagnostics.Append(diags...)
@@ -4997,7 +4997,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 				}
 
 				// setting service custom
-				if !serviceInput.Standard.IsNull() {
+				if !serviceInput.Custom.IsNull() {
 					elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 					diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 					resp.Diagnostics.Append(diags...)
