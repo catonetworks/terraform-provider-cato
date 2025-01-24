@@ -2274,6 +2274,10 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 			input.Rule.Tracking = &cato_models.PolicyTrackingInput{
 				Event: &cato_models.PolicyRuleTrackingEventInput{},
+				Alert: &cato_models.PolicyRuleTrackingAlertInput{
+					Enabled:   false,
+					Frequency: "DAILY",
+				},
 			}
 
 			trackingInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking{}
