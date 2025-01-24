@@ -8,6 +8,12 @@ github.com/bufbuild/protocompile v0.4.0 h1:LbFKd2XowZvQ/kajzguUp2DC9UEIQhIq77fZZ
 github.com/bufbuild/protocompile v0.4.0/go.mod h1:3v93+mbWn/v3xzN+31nwkJfrEpAUwp+BagBSZWx+TP8=
 github.com/catonetworks/cato-go-sdk v0.0.8 h1:HhQMVdnFDKnqZcw+nXbRzROLCvJPLpH6UaSwvnsxk7s=
 github.com/catonetworks/cato-go-sdk v0.0.8/go.mod h1:BKwPLBEKXv4YpYQ2WjKWEwyVU7UsL3Fk1YQR+vq0XBU=
+github.com/catonetworks/cato-go-sdk v0.0.9-0.20250123224422-e535c59a2e16 h1:H40vIkSx8cyS0k2eWDotyy6exDIM0474TnloDjxzdO0=
+github.com/catonetworks/cato-go-sdk v0.0.9-0.20250123224422-e535c59a2e16/go.mod h1:BKwPLBEKXv4YpYQ2WjKWEwyVU7UsL3Fk1YQR+vq0XBU=
+github.com/catonetworks/cato-go-sdk v0.0.9-0.20250124002614-48aadbdbc3f9 h1:iSep+tMr0kN/uv9NHzUp7kgq2rYA3UZSUktZX9VdD8w=
+github.com/catonetworks/cato-go-sdk v0.0.9-0.20250124002614-48aadbdbc3f9/go.mod h1:BKwPLBEKXv4YpYQ2WjKWEwyVU7UsL3Fk1YQR+vq0XBU=
+github.com/catonetworks/cato-go-sdk v0.0.9 h1:5ra/Bwyhdgbkd9+RZPzPAzchtGokp7rfJ/S8Szet9xo=
+github.com/catonetworks/cato-go-sdk v0.0.9/go.mod h1:BKwPLBEKXv4YpYQ2WjKWEwyVU7UsL3Fk1YQR+vq0XBU=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

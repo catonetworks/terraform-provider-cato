@@ -2283,20 +2283,20 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 				return
 			}
 
-			// setting tracking event
-			trackingEventInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event{}
-			diags = trackingInput.Event.As(ctx, &trackingEventInput, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
+			if !trackingInput.Event.IsNull() {
+				// setting tracking event
+				trackingEventInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event{}
+				diags = trackingInput.Event.As(ctx, &trackingEventInput, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				input.Rule.Tracking.Event.Enabled = trackingEventInput.Enabled.ValueBool()
 			}
-			input.Rule.Tracking.Event.Enabled = trackingEventInput.Enabled.ValueBool()
 
 			if !trackingInput.Alert.IsNull() {
 
-				input.Rule.Tracking = &cato_models.PolicyTrackingInput{
-					Alert: &cato_models.PolicyRuleTrackingAlertInput{},
-				}
+				input.Rule.Tracking.Alert = &cato_models.PolicyRuleTrackingAlertInput{}
 
 				trackingAlertInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert{}
 				diags = trackingInput.Alert.As(ctx, &trackingAlertInput, basetypes.ObjectAsOptions{})
