@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &internetFwRuleResource{}
-	_ resource.ResourceWithConfigure = &internetFwRuleResource{}
+	_ resource.Resource                = &internetFwRuleResource{}
+	_ resource.ResourceWithConfigure   = &internetFwRuleResource{}
+	_ resource.ResourceWithImportState = &internetFwRuleResource{}
 )
 
 func NewInternetFwRuleResource() resource.Resource {
@@ -1529,6 +1530,11 @@ func (r *internetFwRuleResource) Configure(_ context.Context, req resource.Confi
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *internetFwRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
 func (r *internetFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -3304,6 +3310,10 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 			ruleExist = true
 
 			// Need to refresh STATE
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("rule").AtName("id"),
+				ruleListItem.GetRule().ID)
 		}
 	}
 

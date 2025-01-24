@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &socketSiteResource{}
-	_ resource.ResourceWithConfigure = &socketSiteResource{}
+	_ resource.Resource                = &socketSiteResource{}
+	_ resource.ResourceWithConfigure   = &socketSiteResource{}
+	_ resource.ResourceWithImportState = &socketSiteResource{}
 )
 
 func NewSocketSiteResource() resource.Resource {
@@ -144,6 +145,11 @@ func (r *socketSiteResource) Configure(_ context.Context, req resource.Configure
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *socketSiteResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -280,6 +286,17 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 			err.Error(),
 		)
 		return
+	}
+
+	// read in the ipsec site entries
+	for _, v := range querySiteResult.EntityLookup.Items {
+		if v.Entity.ID == state.Id.ValueString() {
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("id"),
+				v.Entity.ID,
+			)
+		}
 	}
 
 	// check if site exist before refreshing

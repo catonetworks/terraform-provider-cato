@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &internetFwSectionResource{}
-	_ resource.ResourceWithConfigure = &internetFwSectionResource{}
+	_ resource.Resource                = &internetFwSectionResource{}
+	_ resource.ResourceWithConfigure   = &internetFwSectionResource{}
+	_ resource.ResourceWithImportState = &internetFwSectionResource{}
 )
 
 func NewInternetFwSectionResource() resource.Resource {
@@ -82,6 +83,11 @@ func (r *internetFwSectionResource) Configure(_ context.Context, req resource.Co
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *internetFwSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
 func (r *internetFwSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -189,6 +195,11 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 			sectionExist = true
 
 			// Need to refresh STATE
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("section").AtName("id"),
+				sectionListItem.GetSection().ID,
+			)
 		}
 	}
 
