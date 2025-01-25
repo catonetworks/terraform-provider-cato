@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &siteIpsecResource{}
-	_ resource.ResourceWithConfigure = &siteIpsecResource{}
+	_ resource.Resource                = &siteIpsecResource{}
+	_ resource.ResourceWithConfigure   = &siteIpsecResource{}
+	_ resource.ResourceWithImportState = &siteIpsecResource{}
 )
 
 func NewSiteIpsecResource() resource.Resource {
@@ -280,6 +281,11 @@ func (r *siteIpsecResource) Configure(_ context.Context, req resource.ConfigureR
 	r.client = req.ProviderData.(*catoClientData)
 }
 
+func (r *siteIpsecResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
 func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 
 	var plan SiteIpsecIkeV2
@@ -519,6 +525,17 @@ func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, 
 			err.Error(),
 		)
 		return
+	}
+
+	// read in the ipsec site entries
+	for _, v := range querySiteResult.EntityLookup.Items {
+		if v.Entity.ID == state.ID.ValueString() {
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("id"),
+				v.Entity.ID,
+			)
+		}
 	}
 
 	// check if site exist before refreshing

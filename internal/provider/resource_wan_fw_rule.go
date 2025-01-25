@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &wanFwRuleResource{}
-	_ resource.ResourceWithConfigure = &wanFwRuleResource{}
+	_ resource.Resource                = &wanFwRuleResource{}
+	_ resource.ResourceWithConfigure   = &wanFwRuleResource{}
+	_ resource.ResourceWithImportState = &wanFwRuleResource{}
 )
 
 func NewWanFwRuleResource() resource.Resource {
@@ -2010,6 +2011,11 @@ func (r *wanFwRuleResource) Configure(_ context.Context, req resource.ConfigureR
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *wanFwRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
 func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -4336,6 +4342,10 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 			ruleExist = true
 
 			// Need to refresh STATE
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("rule").AtName("id"),
+				ruleListItem.GetRule().ID)
 		}
 	}
 

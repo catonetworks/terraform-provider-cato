@@ -7,6 +7,7 @@ import (
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -17,8 +18,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &networkRangeResource{}
-	_ resource.ResourceWithConfigure = &networkRangeResource{}
+	_ resource.Resource                = &networkRangeResource{}
+	_ resource.ResourceWithConfigure   = &networkRangeResource{}
+	_ resource.ResourceWithImportState = &networkRangeResource{}
 )
 
 func NewNetworkRangeResource() resource.Resource {
@@ -120,6 +122,11 @@ func (r *networkRangeResource) Configure(_ context.Context, req resource.Configu
 	r.client = req.ProviderData.(*catoClientData)
 }
 
+func (r *networkRangeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("Id"), req, resp)
+}
+
 func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 
 	var plan NetworkRange
@@ -211,6 +218,37 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 }
 
 func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state NetworkRange
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API EntityLookup error",
+			err.Error(),
+		)
+		return
+	}
+
+	for _, v := range querySiteResult.EntityLookup.Items {
+		if v.Entity.ID == state.SiteId.ValueString() {
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("section").AtName("id"),
+				v.Entity.ID,
+			)
+		}
+	}
+
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
