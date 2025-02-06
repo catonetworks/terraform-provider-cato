@@ -21,8 +21,7 @@ Use the navigation to the left to read about the available resources.
 terraform {
   required_providers {
     cato = {
-      source = "registry.terraform.io/catonetworks/cato"
-      version = "~> 0.3.0"
+      source = "catonetworks/cato"
     }
   }
 }
