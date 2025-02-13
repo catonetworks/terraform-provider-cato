@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"net/http"
 	"os"
 
 	cato "github.com/catonetworks/cato-go-sdk"
@@ -140,7 +139,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	}
 
 	// newer client:
-	catoClient, _ := cato.New(baseurl, token, *http.DefaultClient, "User-Agent", "cato-terraform-"+p.version)
+	catoClient, _ := cato.New(baseurl, token, nil, "User-Agent", "cato-terraform-"+p.version)
 
 	dataSourceData := &catoClientData{
 		BaseURL:   baseurl,
