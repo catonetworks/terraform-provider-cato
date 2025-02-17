@@ -172,5 +172,6 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewSiteIpsecResource,
 		NewStaticHostResource,
 		NewNetworkRangeResource,
+		NewBgpPeerResource,
 	}
 }
