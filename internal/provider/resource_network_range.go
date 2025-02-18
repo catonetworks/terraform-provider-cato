@@ -173,7 +173,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	lanInterface := cato_go_sdk.EntityLookup_EntityLookup_Items_Entity{}
-	if plan.InterfaceId.IsNull() {
+	if plan.InterfaceId.IsNull() || plan.InterfaceId.IsUnknown() {
 		networkInterface, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
 		if err != nil {
 			resp.Diagnostics.AddError(
