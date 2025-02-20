@@ -30,6 +30,7 @@ resource "cato_if_rule" "block_test_com_for_remote_users" {
         "test.com"
       ]
     }
+    source = {}
     tracking = {
       event = {
         enabled = true

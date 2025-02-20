@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &internetFwRuleResource{}
-	_ resource.ResourceWithConfigure = &internetFwRuleResource{}
+	_ resource.Resource                = &internetFwRuleResource{}
+	_ resource.ResourceWithConfigure   = &internetFwRuleResource{}
+	_ resource.ResourceWithImportState = &internetFwRuleResource{}
 )
 
 func NewInternetFwRuleResource() resource.Resource {
@@ -1531,6 +1532,11 @@ func (r *internetFwRuleResource) Configure(_ context.Context, req resource.Confi
 	r.client = req.ProviderData.(*catoClientData)
 }
 
+func (r *internetFwRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
+}
+
 func (r *internetFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 
 	var plan InternetFirewallRule
@@ -2220,7 +2226,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			}
 
 			// setting service custom
-			if !serviceInput.Standard.IsNull() {
+			if !serviceInput.Custom.IsNull() {
 				elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 				diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 				resp.Diagnostics.Append(diags...)
@@ -2274,6 +2280,10 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 			input.Rule.Tracking = &cato_models.PolicyTrackingInput{
 				Event: &cato_models.PolicyRuleTrackingEventInput{},
+				Alert: &cato_models.PolicyRuleTrackingAlertInput{
+					Enabled:   false,
+					Frequency: "DAILY",
+				},
 			}
 
 			trackingInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking{}
@@ -2283,20 +2293,20 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 				return
 			}
 
-			// setting tracking event
-			trackingEventInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event{}
-			diags = trackingInput.Event.As(ctx, &trackingEventInput, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
+			if !trackingInput.Event.IsNull() {
+				// setting tracking event
+				trackingEventInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event{}
+				diags = trackingInput.Event.As(ctx, &trackingEventInput, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				input.Rule.Tracking.Event.Enabled = trackingEventInput.Enabled.ValueBool()
 			}
-			input.Rule.Tracking.Event.Enabled = trackingEventInput.Enabled.ValueBool()
 
 			if !trackingInput.Alert.IsNull() {
 
-				input.Rule.Tracking = &cato_models.PolicyTrackingInput{
-					Alert: &cato_models.PolicyRuleTrackingAlertInput{},
-				}
+				input.Rule.Tracking.Alert = &cato_models.PolicyRuleTrackingAlertInput{}
 
 				trackingAlertInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert{}
 				diags = trackingInput.Alert.As(ctx, &trackingAlertInput, basetypes.ObjectAsOptions{})
@@ -3145,7 +3155,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 					}
 
 					// setting service custom
-					if !serviceInput.Standard.IsNull() {
+					if !serviceInput.Custom.IsNull() {
 						elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 						diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 						resp.Diagnostics.Append(diags...)
@@ -3300,6 +3310,10 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 			ruleExist = true
 
 			// Need to refresh STATE
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("rule").AtName("id"),
+				ruleListItem.GetRule().ID)
 		}
 	}
 
@@ -4057,7 +4071,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		}
 
 		// setting service custom
-		if !serviceInput.Standard.IsNull() {
+		if !serviceInput.Custom.IsNull() {
 			elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 			diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 			resp.Diagnostics.Append(diags...)
@@ -4983,7 +4997,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 				}
 
 				// setting service custom
-				if !serviceInput.Standard.IsNull() {
+				if !serviceInput.Custom.IsNull() {
 					elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 					diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
 					resp.Diagnostics.Append(diags...)

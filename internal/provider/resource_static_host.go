@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &staticHostResource{}
-	_ resource.ResourceWithConfigure = &staticHostResource{}
+	_ resource.Resource                = &staticHostResource{}
+	_ resource.ResourceWithConfigure   = &staticHostResource{}
+	_ resource.ResourceWithImportState = &staticHostResource{}
 )
 
 func NewStaticHostResource() resource.Resource {
@@ -70,6 +71,11 @@ func (r *staticHostResource) Configure(_ context.Context, req resource.Configure
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *staticHostResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -148,6 +154,17 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 			err.Error(),
 		)
 		return
+	}
+
+	// read in the ipsec site entries
+	for _, v := range queryHostResult.EntityLookup.Items {
+		if v.Entity.ID == state.Id.ValueString() {
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("id"),
+				v.Entity.ID,
+			)
+		}
 	}
 
 	if len(queryHostResult.EntityLookup.GetItems()) != 1 {

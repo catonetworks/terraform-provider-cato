@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &wanFwSectionResource{}
-	_ resource.ResourceWithConfigure = &wanFwSectionResource{}
+	_ resource.Resource                = &wanFwSectionResource{}
+	_ resource.ResourceWithConfigure   = &wanFwSectionResource{}
+	_ resource.ResourceWithImportState = &wanFwSectionResource{}
 )
 
 func NewWanFwSectionResource() resource.Resource {
@@ -82,6 +83,11 @@ func (r *wanFwSectionResource) Configure(_ context.Context, req resource.Configu
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *wanFwSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
 func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -191,6 +197,11 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 			sectionExist = true
 
 			// Need to refresh STATE
+			resp.State.SetAttribute(
+				ctx,
+				path.Root("section").AtName("id"),
+				sectionListItem.GetSection().ID,
+			)
 		}
 	}
 

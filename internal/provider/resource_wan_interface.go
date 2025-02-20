@@ -228,13 +228,13 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 		input := cato_models.UpdateSocketInterfaceInput{}
 
 		if (c >= 1) && (state.Role == types.StringValue("wan_1")) {
-			defaultBw := int64(10)
+			bandwidth := int64(10)
 			input = cato_models.UpdateSocketInterfaceInput{
 				DestType: "CATO",
 				Name:     state.InterfaceID.ValueStringPointer(),
 				Bandwidth: &cato_models.SocketInterfaceBandwidthInput{
-					UpstreamBandwidth:   &defaultBw,
-					DownstreamBandwidth: &defaultBw,
+					UpstreamBandwidth:   &bandwidth,
+					DownstreamBandwidth: &bandwidth,
 				},
 				Wan: &cato_models.SocketInterfaceWanInput{
 					Role:       (cato_models.SocketInterfaceRole)("wan_1"),
