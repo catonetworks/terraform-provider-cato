@@ -4,7 +4,6 @@ import (
 	"context"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -29,7 +28,7 @@ type bgpPeerResource struct {
 
 type BgpPeer struct {
 	ID                     types.String `tfsdk:"id"`
-	Site                   types.Object `tfsdk:"site"`
+	SiteId                 types.String `tfsdk:"site_id"`
 	Name                   types.String `tfsdk:"name"`
 	PeerAsn                types.Int64  `tfsdk:"peer_asn"`
 	CatoAsn                types.Int64  `tfsdk:"cato_asn"`
@@ -81,11 +80,9 @@ func bgpPeerSchemaAttr() map[string]schema.Attribute {
 				stringplanmodifier.UseStateForUnknown(),
 			},
 		},
-		"site": schema.SingleNestedAttribute{
-			Description: "Information about the site where the BGP peer is being added",
-			Optional:    true,
-			Computed:    true,
-			Attributes:  utils.ObjectRefSchemaAttr(),
+		"site_id": schema.StringAttribute{
+			Description: "Site Id",
+			Required:    true,
 		},
 		"name": schema.StringAttribute{
 			Description: "Name of the BGP configuration entity",
@@ -259,20 +256,6 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Validations
-	if plan.Site.IsNull() || plan.Site.IsUnknown() {
-		resp.Diagnostics.AddError("missing field", "site is a mandatory field on creation")
-		return
-	}
-
-	// Mandatory fields
-	var site *utils.ObjectRefOutput
-	site, diags = utils.TransformObjRefToInput(ctx, plan.Site, "site")
-	resp.Diagnostics.Append(diags...)
-	if diags.HasError() {
-		return
-	}
-
 	input := cato_models.AddBgpPeerInput{
 		Name:          plan.Name.ValueString(),
 		PeerAsn:       scalars.Asn32(plan.PeerAsn.String()),
@@ -280,8 +263,8 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 		PeerIP:        plan.PeerIp.ValueString(),
 		DefaultAction: cato_models.BgpDefaultAction(plan.DefaultAction.ValueString()),
 		Site: &cato_models.SiteRefInput{
-			By:    cato_models.ObjectRefBy(site.By),
-			Input: site.Input,
+			By:    cato_models.ObjectRefByID,
+			Input: plan.SiteId.ValueString(),
 		},
 	}
 
@@ -375,8 +358,6 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 
 	bgpPeer := addBgpPeerPayload.GetSite().GetAddBgpPeer().GetBgpPeer()
 	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), bgpPeer.GetID())
-	resp.State.SetAttribute(ctx, path.Root("site").AtName("id"), bgpPeer.GetSiteRefSite().GetID())
-	resp.State.SetAttribute(ctx, path.Root("site").AtName("name"), bgpPeer.GetSiteRefSite().GetName())
 }
 
 func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

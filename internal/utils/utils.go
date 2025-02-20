@@ -1,45 +1,13 @@
 package utils
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"reflect"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-type ObjectRef struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
-}
-
-func ObjectRefSchemaAttr() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		"name": schema.StringAttribute{
-			Description: "",
-			Optional:    true,
-			Computed:    true,
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.UseStateForUnknown(),
-			},
-		},
-		"id": schema.StringAttribute{
-			Description: "",
-			Optional:    true,
-			Computed:    true,
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.UseStateForUnknown(),
-			},
-		},
-	}
-}
 
 type ObjectRefOutput struct {
 	By    string `json:"By"`
@@ -73,24 +41,6 @@ func TransformObjectRefInput(input interface{}) (ObjectRefOutput, error) {
 	}
 
 	return ObjectRefOutput{}, fmt.Errorf("No attribute of types.String found")
-}
-
-func TransformObjRefToInput(ctx context.Context, fieldValue basetypes.ObjectValue, fieldName string) (*ObjectRefOutput, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	var objRefInput ObjectRef
-	diags.Append(fieldValue.As(ctx, &objRefInput, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return nil, diags
-	}
-
-	objRefOutput, err := TransformObjectRefInput(objRefInput)
-	if err != nil {
-		diags.AddError(fmt.Sprintf("%s field", fieldName), err.Error())
-		return nil, diags
-	}
-
-	return &objRefOutput, diags
 }
 
 func ToMap(s interface{}) map[string]interface{} {
