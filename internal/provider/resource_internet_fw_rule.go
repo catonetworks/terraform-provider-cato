@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -3305,30 +3307,91 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 
 	ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
 	ruleExist := false
-	for _, ruleListItem := range ruleList {
-		if ruleListItem.GetRule().ID == rule.ID.ValueString() {
-			ruleExist = true
-
-			// Need to refresh STATE
-			resp.State.SetAttribute(
-				ctx,
-				path.Root("rule").AtName("id"),
-				ruleListItem.GetRule().ID)
-		}
-	}
-
-	// remove resource if it doesn't exist anymore
-	if !ruleExist {
-		tflog.Warn(ctx, "internet firewall rule not found, resource removed")
-		resp.State.RemoveResource(ctx)
-		return
-	}
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	curRule := &cato.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	// curRule := &r.client.catov2.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+
+	for _, ruleListItem := range ruleList {
+		if ruleListItem.GetRule().ID == rule.ID.ValueString() {
+			ruleExist = true
+			curRule = ruleListItem.GetRule()
+		}
+	}
+
+	if !ruleExist {
+		tflog.Warn(ctx, "internet firewall rule not found, resource removed")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	// Set state attributes
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("id"), curRule.ID)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("name"), curRule.Name)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("description"), curRule.Description)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("enabled"), curRule.Enabled)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("id"), curRule.Section.ID)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("name"), curRule.Section.Name)
+
+	sourceIps := []string{}
+	for _, sourceIp := range curRule.Source.IP {
+		sourceIps = append(sourceIps, sourceIp)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("ip"), sourceIps)
+
+	// hosts := []map[string]interface{}{}
+	hosts := []attr.Value{}
+	for _, host := range curRule.Source.Host {
+		tflog.Warn(ctx, "Source host name: "+host.Name)
+		// elements := []attr.Value{types.StringValue("one"), types.StringValue("two")}
+		// listValue, diags := types.ListValue(types.StringType, elements)
+		elementTypes := map[string]attr.Type{
+			"id":   types.StringType,
+			"host": types.Int64Type,
+		}
+		elements := map[string]attr.Value{
+			"id":   types.StringValue(host.ID),
+			"host": types.StringValue(host.Name),
+		}
+		curHost, _ := types.ObjectValue(elementTypes, elements)
+		// curHost := map[string]interface{}{
+		// 	"id":   host.ID,
+		// 	"name": host.Name,
+		// }
+		hosts = append(hosts, curHost)
+		hostsListType, _ := types.ListValue(types.ObjectType(map[string]attr.Type{
+			"id":   types.StringType,
+			"host": types.StringType,
+		}))
+		hostsList, _ := types.ListValue(hostsListType, hosts)
+
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("host"), hosts)
+
+	// 	sourceList := []map[string]interface{}{}
+
+	// 	// Extract IPs
+	// 	if ipList, ok := source["ip"].([]string); ok {
+	// 		sourceList = append(sourceList, map[string]interface{}{
+	// 			"ip": ipList,
+	// 		})
+	// 	}
+
+	// 	// Extract Hosts
+	// 	if hosts, ok := source["host"].([]map[string]interface{}); ok {
+	// 		sourceList = append(sourceList, map[string]interface{}{
+	// 			"host": hosts,
+	// 		})
+	// 	}
+
+	// 	// Set "source" in Terraform state
+	// 	resp.State.SetAttribute(ctx, path.Root("source"), sourceList)
+	// }
 }
 
 func (r *internetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
