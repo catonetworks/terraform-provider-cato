@@ -667,6 +667,63 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Required:    false,
 								Optional:    true,
 							},
+							// "containers": schema.ListNestedAttribute{
+							// 	Description: "Globaly defined containers, FQDN and IP objects",
+							// 	Required:    false,
+							// 	Optional:    true,
+							// 	NestedObject: schema.NestedAttributeObject{
+							// 		Attributes: map[string]schema.Attribute{
+							// 			"fqdnContainer": schema.ListNestedAttribute{
+							// 				Description: "Globaly defined container for FQDN ",
+							// 				Required:    false,
+							// 				Optional:    true,
+							// 				NestedObject: schema.NestedAttributeObject{
+							// 					Attributes: map[string]schema.Attribute{
+							// 						"name": schema.StringAttribute{
+							// 							Description: "",
+							// 							Required:    false,
+							// 							Optional:    true,
+							// 							Validators: []validator.String{
+							// 								stringvalidator.ConflictsWith(path.Expressions{
+							// 									path.MatchRelative().AtParent().AtName("id"),
+							// 								}...),
+							// 							},
+							// 						},
+							// 						"id": schema.StringAttribute{
+							// 							Description: "",
+							// 							Required:    false,
+							// 							Optional:    true,
+							// 						},
+							// 					},
+							// 				},
+							// 			},
+							// 			"ipAddressRangeContainer": schema.ListNestedAttribute{
+							// 				Description: "Globaly defined container for FQDN ",
+							// 				Required:    false,
+							// 				Optional:    true,
+							// 				NestedObject: schema.NestedAttributeObject{
+							// 					Attributes: map[string]schema.Attribute{
+							// 						"name": schema.StringAttribute{
+							// 							Description: "",
+							// 							Required:    false,
+							// 							Optional:    true,
+							// 							Validators: []validator.String{
+							// 								stringvalidator.ConflictsWith(path.Expressions{
+							// 									path.MatchRelative().AtParent().AtName("id"),
+							// 								}...),
+							// 							},
+							// 						},
+							// 						"id": schema.StringAttribute{
+							// 							Description: "",
+							// 							Required:    false,
+							// 							Optional:    true,
+							// 						},
+							// 					},
+							// 				},
+							// 			},
+							// 		},
+							// 	},
+							// },
 						},
 					},
 					"service": schema.SingleNestedAttribute{
@@ -3334,64 +3391,467 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("id"), curRule.ID)
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("name"), curRule.Name)
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("description"), curRule.Description)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("index"), curRule.Index)
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("enabled"), curRule.Enabled)
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("id"), curRule.Section.ID)
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("name"), curRule.Section.Name)
 
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("action"), curRule.Action)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("connection_origin"), curRule.ConnectionOrigin)
+
+	////////////// rule.source ///////////////
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("subnet"), curRule.Source.Subnet)
+
+	// rule.source.ip[]
 	sourceIps := []string{}
 	for _, sourceIp := range curRule.Source.IP {
 		sourceIps = append(sourceIps, sourceIp)
 	}
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("ip"), sourceIps)
 
-	// hosts := []map[string]interface{}{}
-	hosts := []attr.Value{}
+	// rule.source.host[]
+	var hosts []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Host
 	for _, host := range curRule.Source.Host {
-		tflog.Warn(ctx, "Source host name: "+host.Name)
-		// elements := []attr.Value{types.StringValue("one"), types.StringValue("two")}
-		// listValue, diags := types.ListValue(types.StringType, elements)
-		elementTypes := map[string]attr.Type{
-			"id":   types.StringType,
-			"host": types.Int64Type,
-		}
-		elements := map[string]attr.Value{
-			"id":   types.StringValue(host.ID),
-			"host": types.StringValue(host.Name),
-		}
-		curHost, _ := types.ObjectValue(elementTypes, elements)
-		// curHost := map[string]interface{}{
-		// 	"id":   host.ID,
-		// 	"name": host.Name,
-		// }
+		curHost := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Host{}
+		state.Rule.As(ctx, &curHost, basetypes.ObjectAsOptions{})
+		curHost.Name = basetypes.NewStringValue(host.Name)
+		curHost.ID = basetypes.NewStringValue(host.ID)
 		hosts = append(hosts, curHost)
-		hostsListType, _ := types.ListValue(types.ObjectType(map[string]attr.Type{
-			"id":   types.StringType,
-			"host": types.StringType,
-		}))
-		hostsList, _ := types.ListValue(hostsListType, hosts)
-
 	}
 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("host"), hosts)
 
-	// 	sourceList := []map[string]interface{}{}
+	// rule.source.site[]
+	var sites []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Site
+	for _, site := range curRule.Source.Site {
+		curSite := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Site{}
+		state.Rule.As(ctx, &curSite, basetypes.ObjectAsOptions{})
+		curSite.Name = basetypes.NewStringValue(site.Name)
+		curSite.ID = basetypes.NewStringValue(site.ID)
+		sites = append(sites, curSite)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("site"), sites)
 
-	// 	// Extract IPs
-	// 	if ipList, ok := source["ip"].([]string); ok {
-	// 		sourceList = append(sourceList, map[string]interface{}{
-	// 			"ip": ipList,
-	// 		})
-	// 	}
+	// rule.source.ip_range[]
+	var ipRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_IPRange
+	for _, ipRange := range curRule.Source.IPRange {
+		curIpRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_IPRange{}
+		state.Rule.As(ctx, &curIpRange, basetypes.ObjectAsOptions{})
+		curIpRange.To = basetypes.NewStringValue(ipRange.To)
+		curIpRange.From = basetypes.NewStringValue(ipRange.From)
+		ipRanges = append(ipRanges, curIpRange)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("ip_range"), ipRanges)
 
-	// 	// Extract Hosts
-	// 	if hosts, ok := source["host"].([]map[string]interface{}); ok {
-	// 		sourceList = append(sourceList, map[string]interface{}{
-	// 			"host": hosts,
-	// 		})
-	// 	}
+	// rule.source.global_ip_range[]
+	var globalIpRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_GlobalIPRange
+	for _, ipRange := range curRule.Source.GlobalIPRange {
+		curGlobalIpRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_GlobalIPRange{}
+		state.Rule.As(ctx, &curGlobalIpRange, basetypes.ObjectAsOptions{})
+		curGlobalIpRange.Name = basetypes.NewStringValue(ipRange.Name)
+		curGlobalIpRange.ID = basetypes.NewStringValue(ipRange.ID)
+		globalIpRanges = append(globalIpRanges, curGlobalIpRange)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("global_ip_range"), globalIpRanges)
 
-	// 	// Set "source" in Terraform state
-	// 	resp.State.SetAttribute(ctx, path.Root("source"), sourceList)
+	// rule.source.network_interface[]
+	var networkInterfaces []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_NetworkInterface
+	for _, networkInterface := range curRule.Source.NetworkInterface {
+		curNetworkInterface := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_NetworkInterface{}
+		state.Rule.As(ctx, &curNetworkInterface, basetypes.ObjectAsOptions{})
+		curNetworkInterface.Name = basetypes.NewStringValue(networkInterface.Name)
+		curNetworkInterface.ID = basetypes.NewStringValue(networkInterface.ID)
+		networkInterfaces = append(networkInterfaces, curNetworkInterface)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("network_interface"), networkInterfaces)
+
+	// rule.source.site_network_subnet[]
+	var siteNetworkSubnets []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet
+	for _, siteNetworkSubnet := range curRule.Source.SiteNetworkSubnet {
+		curSiteNetworkSubnet := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet{}
+		state.Rule.As(ctx, &curSiteNetworkSubnet, basetypes.ObjectAsOptions{})
+		curSiteNetworkSubnet.Name = basetypes.NewStringValue(siteNetworkSubnet.Name)
+		curSiteNetworkSubnet.ID = basetypes.NewStringValue(siteNetworkSubnet.ID)
+		siteNetworkSubnets = append(siteNetworkSubnets, curSiteNetworkSubnet)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("site_network_subnet"), siteNetworkSubnets)
+
+	// rule.source.floating_subnet[]
+	var floatingSubnets []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_FloatingSubnet
+	for _, floatingSubnet := range curRule.Source.FloatingSubnet {
+		curFloatingSubnet := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_FloatingSubnet{}
+		state.Rule.As(ctx, &curFloatingSubnet, basetypes.ObjectAsOptions{})
+		curFloatingSubnet.Name = basetypes.NewStringValue(floatingSubnet.Name)
+		curFloatingSubnet.ID = basetypes.NewStringValue(floatingSubnet.ID)
+		floatingSubnets = append(floatingSubnets, curFloatingSubnet)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("floating_subnet"), floatingSubnets)
+
+	// rule.source.user[]
+	var users []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_User
+	for _, user := range curRule.Source.User {
+		curUser := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_User{}
+		state.Rule.As(ctx, &curUser, basetypes.ObjectAsOptions{})
+		curUser.Name = basetypes.NewStringValue(user.Name)
+		curUser.ID = basetypes.NewStringValue(user.ID)
+		users = append(users, curUser)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("user"), users)
+
+	// rule.source.users_group[]
+	var usersGroups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup
+	for _, usersGroup := range curRule.Source.UsersGroup {
+		curUsersGroups := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup{}
+		state.Rule.As(ctx, &curUsersGroups, basetypes.ObjectAsOptions{})
+		curUsersGroups.Name = basetypes.NewStringValue(usersGroup.Name)
+		curUsersGroups.ID = basetypes.NewStringValue(usersGroup.ID)
+		usersGroups = append(usersGroups, curUsersGroups)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("users_group"), usersGroups)
+
+	// rule.source.group[]
+	var groups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Group
+	for _, group := range curRule.Source.Group {
+		curGroup := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Group{}
+		state.Rule.As(ctx, &curGroup, basetypes.ObjectAsOptions{})
+		curGroup.Name = basetypes.NewStringValue(group.Name)
+		curGroup.ID = basetypes.NewStringValue(group.ID)
+		groups = append(groups, curGroup)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("group"), groups)
+
+	// rule.source.system_group[]
+	var systemGroups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SystemGroup
+	for _, systemGroup := range curRule.Source.SystemGroup {
+		curSystemGroup := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SystemGroup{}
+		state.Rule.As(ctx, &curSystemGroup, basetypes.ObjectAsOptions{})
+		curSystemGroup.Name = basetypes.NewStringValue(systemGroup.Name)
+		curSystemGroup.ID = basetypes.NewStringValue(systemGroup.ID)
+		systemGroups = append(systemGroups, curSystemGroup)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("system_group"), systemGroups)
+	////////////// end rule.source ///////////////
+
+	// rule.country[]
+	var countries []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country
+	for _, country := range curRule.Country {
+		curCountry := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country{}
+		state.Rule.As(ctx, &curCountry, basetypes.ObjectAsOptions{})
+		curCountry.Name = basetypes.NewStringValue(country.Name)
+		curCountry.ID = basetypes.NewStringValue(country.ID)
+		countries = append(countries, curCountry)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("country"), countries)
+
+	// rule.device[]
+	var devices []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device
+	for _, device := range curRule.Device {
+		curDevice := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device{}
+		state.Rule.As(ctx, &curDevice, basetypes.ObjectAsOptions{})
+		curDevice.Name = basetypes.NewStringValue(device.Name)
+		curDevice.ID = basetypes.NewStringValue(device.ID)
+		devices = append(devices, curDevice)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("device"), devices)
+
+	// rule.device_os
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("device_os"), curRule.DeviceOs)
+
+	////////////// rule.destination ///////////////
+	// rule.destination.application[]
+	var applications []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Application
+	for _, application := range curRule.Destination.Application {
+		curApplication := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Application{}
+		state.Rule.As(ctx, &curApplication, basetypes.ObjectAsOptions{})
+		curApplication.Name = basetypes.NewStringValue(application.Name)
+		curApplication.ID = basetypes.NewStringValue(application.ID)
+		applications = append(applications, curApplication)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("application"), applications)
+
+	// rule.destination.custom_app[]
+	var customApps []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomApp
+	for _, customApp := range curRule.Destination.CustomApp {
+		curCustomApp := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomApp{}
+		state.Rule.As(ctx, &curCustomApp, basetypes.ObjectAsOptions{})
+		curCustomApp.Name = basetypes.NewStringValue(customApp.Name)
+		curCustomApp.ID = basetypes.NewStringValue(customApp.ID)
+		customApps = append(customApps, curCustomApp)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("custom_app"), customApps)
+
+	// rule.destination.app_category[]
+	var appCategories []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_AppCategory
+	for _, appCategory := range curRule.Destination.AppCategory {
+		curAppCategory := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_AppCategory{}
+		state.Rule.As(ctx, &curAppCategory, basetypes.ObjectAsOptions{})
+		curAppCategory.Name = basetypes.NewStringValue(appCategory.Name)
+		curAppCategory.ID = basetypes.NewStringValue(appCategory.ID)
+		appCategories = append(appCategories, curAppCategory)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("app_category"), appCategories)
+
+	// rule.destination.custom_category[]
+	var customCategories []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomCategory
+	for _, customCategory := range curRule.Destination.CustomCategory {
+		curCustomCategory := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomCategory{}
+		state.Rule.As(ctx, &curCustomCategory, basetypes.ObjectAsOptions{})
+		curCustomCategory.Name = basetypes.NewStringValue(customCategory.Name)
+		curCustomCategory.ID = basetypes.NewStringValue(customCategory.ID)
+		customCategories = append(customCategories, curCustomCategory)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("custom_category"), customCategories)
+
+	// rule.destination.sanctioned_apps_category[]
+	var sanctionedAppsCategories []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_SanctionedAppsCategory
+	for _, sanctionedAppsCategory := range curRule.Destination.SanctionedAppsCategory {
+		curSanctionedAppsCategory := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_SanctionedAppsCategory{}
+		state.Rule.As(ctx, &curSanctionedAppsCategory, basetypes.ObjectAsOptions{})
+		curSanctionedAppsCategory.Name = basetypes.NewStringValue(sanctionedAppsCategory.Name)
+		curSanctionedAppsCategory.ID = basetypes.NewStringValue(sanctionedAppsCategory.ID)
+		sanctionedAppsCategories = append(sanctionedAppsCategories, curSanctionedAppsCategory)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("sanctioned_apps_category"), sanctionedAppsCategories)
+
+	// rule.destination.country[]
+	var destCountries []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Country
+	for _, destCountry := range curRule.Destination.Country {
+		curDestCountry := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Country{}
+		state.Rule.As(ctx, &curDestCountry, basetypes.ObjectAsOptions{})
+		curDestCountry.Name = basetypes.NewStringValue(destCountry.Name)
+		curDestCountry.ID = basetypes.NewStringValue(destCountry.ID)
+		destCountries = append(destCountries, curDestCountry)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("country"), destCountries)
+
+	// rule.destination.domain[]
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("domain"), curRule.Destination.Domain)
+
+	// rule.destination.fqdn[]
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("fqdn"), curRule.Destination.Fqdn)
+
+	// rule.destination.ip[]
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("ip"), curRule.Destination.IP)
+
+	// rule.destination.subnet[]
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("subnet"), curRule.Destination.Subnet)
+
+	// rule.destination.ip_range[]
+	var destIpRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange
+	for _, destIpRange := range curRule.Destination.IPRange {
+		curDestIpRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange{}
+		state.Rule.As(ctx, &curDestIpRange, basetypes.ObjectAsOptions{})
+		curDestIpRange.To = basetypes.NewStringValue(destIpRange.To)
+		curDestIpRange.From = basetypes.NewStringValue(destIpRange.From)
+		destIpRanges = append(destIpRanges, curDestIpRange)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("ip_range"), destIpRanges)
+
+	// rule.destination.global_ip_range[]
+	var destGlobalIPRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_GlobalIPRange
+	for _, destGlobalIPRange := range curRule.Destination.GlobalIPRange {
+		curDestGlobalIPRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_GlobalIPRange{}
+		state.Rule.As(ctx, &curDestGlobalIPRange, basetypes.ObjectAsOptions{})
+		curDestGlobalIPRange.Name = basetypes.NewStringValue(destGlobalIPRange.Name)
+		curDestGlobalIPRange.ID = basetypes.NewStringValue(destGlobalIPRange.ID)
+		destGlobalIPRanges = append(destGlobalIPRanges, curDestGlobalIPRange)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("global_ip_range"), destGlobalIPRanges)
+	////////////// end rule.destination ///////////////
+
+	// rule.destination.remote_asn[]
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("remote_asn"), curRule.Destination.RemoteAsn)
+
+	// ////////////// rule.containers ///////////////
+	// // rule.containers.containers.fqdnContainer[]
+	// var fqdnContainers []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_fqdnContainer
+	// for _, fqdnContainer := range curRule.Containers.FqdnContainer {
+	// 	curFqdnContainer := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_fqdnContainer{}
+	// 	state.Rule.As(ctx, &curFqdnContainer, basetypes.ObjectAsOptions{})
+	// 	curFqdnContainer.Name = basetypes.NewStringValue(fqdnContainer.Name)
+	// 	curFqdnContainer.ID = basetypes.NewStringValue(fqdnContainer.ID)
+	// 	fqdnContainers = append(fqdnContainers, curFqdnContainer)
 	// }
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("containers").AtName("fqdnContainer"), fqdnContainers)
+
+	// // rule.containers.containers.ipAddressRangeContainer[]
+	// var ipAddressContainers []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_ipAddressContainer
+	// for _, ipAddressContainer := range curRule.Containers.IpAddressContainer {
+	// 	curIpAddressContainer := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_ipAddressContainer{}
+	// 	state.Rule.As(ctx, &curIpAddressContainer, basetypes.ObjectAsOptions{})
+	// 	curIpAddressContainer.Name = basetypes.NewStringValue(ipAddressContainer.Name)
+	// 	curIpAddressContainer.ID = basetypes.NewStringValue(ipAddressContainer.ID)
+	// 	ipAddressContainers = append(ipAddressContainers, curIpAddressContainer)
+	// }
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("containers").AtName("ipAddressRangeContainer"), ipAddressContainers)
+	// ////////////// end rule.containers ///////////////////
+
+	////////////// end rule.service ///////////////
+	// rule.service.standard[]
+	var standardServices []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard
+	for _, standardService := range curRule.Service.Standard {
+		curStandardService := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard{}
+		state.Rule.As(ctx, &curStandardService, basetypes.ObjectAsOptions{})
+		curStandardService.Name = basetypes.NewStringValue(standardService.Name)
+		curStandardService.ID = basetypes.NewStringValue(standardService.ID)
+		standardServices = append(standardServices, curStandardService)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("service").AtName("standard"), standardServices)
+
+	// rule.service.custom[]
+	// TODO: Broken, rule.service.custom does not write to state, need to figure out why //
+	var customServices []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
+	for _, customService := range curRule.Service.Custom {
+		curCustomService := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{}
+		state.Rule.As(ctx, &curCustomService, basetypes.ObjectAsOptions{})
+		// rule.service.custom.protocol
+		curCustomService.Protocol = basetypes.NewStringValue(customService.Protocol.String())
+		// rule.service.custom.port[]
+		if customService.Port != nil {
+			var customServicePorts []attr.Value
+			for _, port := range customService.Port {
+				customServicePorts = append(customServicePorts, types.StringValue(string(port)))
+			}
+			listValue, err := basetypes.NewListValue(types.StringType, customServicePorts)
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to create ListValue", fmt.Sprintf("%s", err))
+				return
+			}
+			curCustomService.Port = listValue
+		}
+		// rule.service.custom.portRange{}
+		// if customService.PortRange != nil {
+		// 	// Define the Terraform object schema
+		// 	portRangeType := map[string]attr.Type{
+		// 		"from": types.StringType,
+		// 		"to":   types.StringType,
+		// 	}
+
+		// 	// Ensure "from" and "to" values are set correctly
+		// 	var fromValue, toValue attr.Value
+		// 	if customService.PortRange.From != "" {
+		// 		fromValue = types.StringValue(string(customService.PortRange.From))
+		// 	} else {
+		// 		fromValue = types.StringNull()
+		// 	}
+
+		// 	if customService.PortRange.To != "" {
+		// 		toValue = types.StringValue(string(customService.PortRange.To))
+		// 	} else {
+		// 		toValue = types.StringNull()
+		// 	}
+
+		// 	// Convert struct values into Terraform framework attributes
+		// 	portRangeValue := map[string]attr.Value{
+		// 		"from": fromValue,
+		// 		"to":   toValue,
+		// 	}
+
+		// 	// Correctly create the ObjectValue with defined attributes
+		// 	curCustomService.PortRange, diags = types.ObjectValue(portRangeType, portRangeValue)
+		// 	resp.Diagnostics.Append(diags...)
+
+		// 	if resp.Diagnostics.HasError() {
+		// 		return
+		// 	}
+		// }
+		// customServices = append(customServices, curCustomService)
+
+		// if customService.PortRange != nil {
+		// 	customServicePortRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
+		// 	state.Rule.As(ctx, &customServicePortRange, basetypes.ObjectAsOptions{})
+		// 	customServicePortRange.From = types.StringValue(string(customService.PortRange.From))
+		// 	customServicePortRange.To = types.StringValue(string(customService.PortRange.To))
+		// 	portRangeType := map[string]attr.Type{
+		// 		"from": types.StringType,
+		// 		"to":   types.StringType,
+		// 	}
+		// 	portRangeValue := map[string]attr.Value{
+		// 		"from": customServicePortRange.From,
+		// 		"to":   customServicePortRange.To,
+		// 	}
+		// 	curCustomService.PortRange, diags = types.ObjectValue(portRangeType, portRangeValue)
+		// 	resp.Diagnostics.Append(diags...)
+		// 	if resp.Diagnostics.HasError() {
+		// 		return
+		// 	}
+		// }
+		// customServices = append(customServices, curCustomService)
+	}
+	if err := resp.State.SetAttribute(ctx, path.Root("rule").AtName("service").AtName("custom"), customServices); err != nil {
+		resp.Diagnostics.AddError("Error setting rule.service.custom", fmt.Sprintf("%s", err))
+		return
+	}
+
+	////////////// end rule.service ///////////////
+
+	// rule.action
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("action"), curRule.Action)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("event").AtName("enabled"), curRule.Tracking.Event.Enabled)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("enabled"), curRule.Tracking.Alert.Enabled)
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("frequency"), curRule.Tracking.Alert.Frequency)
+
+	// rule.tracking.alert.subscription_group{}
+	var alertSubscriptionGroups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
+	for _, alertSubscriptionGroup := range curRule.Tracking.Alert.SubscriptionGroup {
+		curAlertSubscriptionGroup := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup{}
+		state.Rule.As(ctx, &curAlertSubscriptionGroup, basetypes.ObjectAsOptions{})
+		curAlertSubscriptionGroup.Name = basetypes.NewStringValue(alertSubscriptionGroup.Name)
+		curAlertSubscriptionGroup.ID = basetypes.NewStringValue(alertSubscriptionGroup.ID)
+		alertSubscriptionGroups = append(alertSubscriptionGroups, curAlertSubscriptionGroup)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("subscription_group"), alertSubscriptionGroups)
+
+	// rule.tracking.alert.webhook{}
+	var alertWebHooks []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook
+	for _, alertWebHook := range curRule.Tracking.Alert.Webhook {
+		curAlertWebHook := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook{}
+		state.Rule.As(ctx, &curAlertWebHook, basetypes.ObjectAsOptions{})
+		curAlertWebHook.Name = basetypes.NewStringValue(alertWebHook.Name)
+		curAlertWebHook.ID = basetypes.NewStringValue(alertWebHook.ID)
+		alertWebHooks = append(alertWebHooks, curAlertWebHook)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("webhooks"), alertWebHooks)
+
+	// rule.tracking.alert.mailing_list{}
+	var alertMailingLists []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList
+	for _, alertMailingList := range curRule.Tracking.Alert.MailingList {
+		curAlertMailingList := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList{}
+		state.Rule.As(ctx, &curAlertMailingList, basetypes.ObjectAsOptions{})
+		curAlertMailingList.Name = basetypes.NewStringValue(alertMailingList.Name)
+		curAlertMailingList.ID = basetypes.NewStringValue(alertMailingList.ID)
+		alertMailingLists = append(alertMailingLists, curAlertMailingList)
+	}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("mailing_list"), alertMailingLists)
+
+	// rule.schedule.active_on{}
+	resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("active_on"), curRule.Schedule.ActiveOn)
+	// rule.schedule.custom_timeframe{}
+	if curRule.Schedule.CustomTimeframePolicySchedule != nil {
+		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_timeframe").AtName("from"), curRule.Schedule.CustomTimeframePolicySchedule.From)
+		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_timeframe").AtName("to"), curRule.Schedule.CustomTimeframePolicySchedule.To)
+	}
+	// rule.schedule.custom_recurring{}
+	if curRule.Schedule.CustomRecurringPolicySchedule != nil {
+		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("from"), curRule.Schedule.CustomRecurringPolicySchedule.From)
+		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("to"), curRule.Schedule.CustomRecurringPolicySchedule.To)
+		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("days"), curRule.Schedule.CustomRecurringPolicySchedule.Days)
+	}
+
+	////////////// rule.exceptions[] ///////////////
+	// var ruleExceptions []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	// for _, ruleException := range curRule.Tracking.Alert.MailingList {
+	// 	curRuleException := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions{}
+	// 	state.Rule.As(ctx, &curRuleException, basetypes.ObjectAsOptions{})
+	// 	curRuleException.Name = basetypes.NewStringValue(ruleException.Name)
+	// 	ruleExceptions = append(ruleExceptions, curRuleException)
+	// }
+	// // Write the exceptions list to state at the path: rule.exceptions
+	// if err := resp.State.SetAttribute(ctx, path.Root("rule").AtName("exceptions"), ruleExceptions); err != nil {
+	// 	resp.Diagnostics.AddError("Error setting rule.exceptions", fmt.Sprintf("%s", err))
+	// 	return
+	// }
+	////////////// end rule.exceptions ///////////////
+
 }
 
 func (r *internetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
