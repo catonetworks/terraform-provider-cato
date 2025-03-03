@@ -125,10 +125,10 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Description: "Site timezone (can be retrieve from entityLookup)",
 						Required:    true,
 					},
-					// "city": schema.StringAttribute{
-					// 	Description: "Optionnal city",
-					// 	Optional:    true,
-					// },
+					"city": schema.StringAttribute{
+						Description: "Optionnal city",
+						Optional:    true,
+					},
 					"address": schema.StringAttribute{
 						Description: "Optionnal address",
 						Optional:    true,
@@ -173,7 +173,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.Append(diags...)
 
 		input.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
-		// input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
+		input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
 		input.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueString()
 		input.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		input.SiteLocation.Timezone = siteLocationInput.Timezone.ValueString()
@@ -342,6 +342,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 		inputSiteGeneral.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
+		inputSiteGeneral.SiteLocation.CityName = siteLocationInput.City.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
 	}
