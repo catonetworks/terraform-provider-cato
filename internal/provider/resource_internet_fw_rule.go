@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -837,6 +838,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													Computed:    true,
 													Validators: []validator.String{
 														stringvalidator.ConflictsWith(path.Expressions{
 															path.MatchRelative().AtParent().AtName("id"),
@@ -861,6 +863,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													Computed:    true,
 													Validators: []validator.String{
 														stringvalidator.ConflictsWith(path.Expressions{
 															path.MatchRelative().AtParent().AtName("id"),
@@ -885,6 +888,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													Computed:    true,
 													Validators: []validator.String{
 														stringvalidator.ConflictsWith(path.Expressions{
 															path.MatchRelative().AtParent().AtName("id"),
@@ -1106,6 +1110,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														Computed:    true,
 														Validators: []validator.String{
 															stringvalidator.ConflictsWith(path.Expressions{
 																path.MatchRelative().AtParent().AtName("id"),
@@ -1130,6 +1135,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														Computed:    true,
 														Validators: []validator.String{
 															stringvalidator.ConflictsWith(path.Expressions{
 																path.MatchRelative().AtParent().AtName("id"),
@@ -3705,78 +3711,61 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		state.Rule.As(ctx, &curCustomService, basetypes.ObjectAsOptions{})
 		// rule.service.custom.protocol
 		curCustomService.Protocol = basetypes.NewStringValue(customService.Protocol.String())
+
 		// rule.service.custom.port[]
 		if customService.Port != nil {
-			var customServicePorts []attr.Value
+			customServicePorts := []string{}
 			for _, port := range customService.Port {
-				customServicePorts = append(customServicePorts, types.StringValue(string(port)))
+				customServicePorts = append(customServicePorts, string(port))
 			}
-			listValue, err := basetypes.NewListValue(types.StringType, customServicePorts)
-			if err != nil {
-				resp.Diagnostics.AddError("Failed to create ListValue", fmt.Sprintf("%s", err))
+			curCustomService.Port, diags = types.ListValueFrom(ctx, types.StringType, customServicePorts)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
 				return
 			}
-			curCustomService.Port = listValue
+		} else {
+			curCustomService.Port, diags = types.ListValueFrom(ctx, types.StringType, []string{})
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
 		}
-		// rule.service.custom.portRange{}
-		// if customService.PortRange != nil {
-		// 	// Define the Terraform object schema
-		// 	portRangeType := map[string]attr.Type{
-		// 		"from": types.StringType,
-		// 		"to":   types.StringType,
-		// 	}
 
-		// 	// Ensure "from" and "to" values are set correctly
-		// 	var fromValue, toValue attr.Value
-		// 	if customService.PortRange.From != "" {
-		// 		fromValue = types.StringValue(string(customService.PortRange.From))
-		// 	} else {
-		// 		fromValue = types.StringNull()
-		// 	}
+		if customService.PortRange != nil {
+			customServicePortRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
+			// Populate from state if needed
+			state.Rule.As(ctx, customServicePortRange, basetypes.ObjectAsOptions{})
+			// Override with values from customService.PortRange
+			customServicePortRange.From = types.StringValue(string(customService.PortRange.From))
+			customServicePortRange.To = types.StringValue(string(customService.PortRange.To))
 
-		// 	if customService.PortRange.To != "" {
-		// 		toValue = types.StringValue(string(customService.PortRange.To))
-		// 	} else {
-		// 		toValue = types.StringNull()
-		// 	}
+			// Convert the struct to a types.Object
+			curCustomService.PortRange, diags = types.ObjectValue(
+				map[string]attr.Type{
+					"from": types.StringType,
+					"to":   types.StringType,
+				},
+				map[string]attr.Value{
+					"from": customServicePortRange.From,
+					"to":   customServicePortRange.To,
+				},
+			)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		} else {
+			curCustomService.PortRange = types.ObjectNull(
+				map[string]attr.Type{
+					"from": types.StringType,
+					"to":   types.StringType,
+				},
+			)
+		}
 
-		// 	// Convert struct values into Terraform framework attributes
-		// 	portRangeValue := map[string]attr.Value{
-		// 		"from": fromValue,
-		// 		"to":   toValue,
-		// 	}
-
-		// 	// Correctly create the ObjectValue with defined attributes
-		// 	curCustomService.PortRange, diags = types.ObjectValue(portRangeType, portRangeValue)
-		// 	resp.Diagnostics.Append(diags...)
-
-		// 	if resp.Diagnostics.HasError() {
-		// 		return
-		// 	}
-		// }
-		// customServices = append(customServices, curCustomService)
-
-		// if customService.PortRange != nil {
-		// 	customServicePortRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
-		// 	state.Rule.As(ctx, &customServicePortRange, basetypes.ObjectAsOptions{})
-		// 	customServicePortRange.From = types.StringValue(string(customService.PortRange.From))
-		// 	customServicePortRange.To = types.StringValue(string(customService.PortRange.To))
-		// 	portRangeType := map[string]attr.Type{
-		// 		"from": types.StringType,
-		// 		"to":   types.StringType,
-		// 	}
-		// 	portRangeValue := map[string]attr.Value{
-		// 		"from": customServicePortRange.From,
-		// 		"to":   customServicePortRange.To,
-		// 	}
-		// 	curCustomService.PortRange, diags = types.ObjectValue(portRangeType, portRangeValue)
-		// 	resp.Diagnostics.Append(diags...)
-		// 	if resp.Diagnostics.HasError() {
-		// 		return
-		// 	}
-		// }
-		// customServices = append(customServices, curCustomService)
+		customServices = append(customServices, curCustomService)
 	}
+
 	if err := resp.State.SetAttribute(ctx, path.Root("rule").AtName("service").AtName("custom"), customServices); err != nil {
 		resp.Diagnostics.AddError("Error setting rule.service.custom", fmt.Sprintf("%s", err))
 		return
@@ -3837,19 +3826,224 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("days"), curRule.Schedule.CustomRecurringPolicySchedule.Days)
 	}
 
-	////////////// rule.exceptions[] ///////////////
-	// var ruleExceptions []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
-	// for _, ruleException := range curRule.Tracking.Alert.MailingList {
-	// 	curRuleException := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions{}
-	// 	state.Rule.As(ctx, &curRuleException, basetypes.ObjectAsOptions{})
-	// 	curRuleException.Name = basetypes.NewStringValue(ruleException.Name)
-	// 	ruleExceptions = append(ruleExceptions, curRuleException)
-	// }
-	// // Write the exceptions list to state at the path: rule.exceptions
-	// if err := resp.State.SetAttribute(ctx, path.Root("rule").AtName("exceptions"), ruleExceptions); err != nil {
-	// 	resp.Diagnostics.AddError("Error setting rule.exceptions", fmt.Sprintf("%s", err))
-	// 	return
-	// }
+	// // rule.exceptions[]
+	var ruleExceptions []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	for _, ruleException := range curRule.Exceptions {
+		curException := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions{}
+		state.Rule.As(ctx, &curException, basetypes.ObjectAsOptions{})
+
+		curException.Name = basetypes.NewStringValue(string(ruleException.Name))
+		curException.ConnectionOrigin = basetypes.NewStringValue(ruleException.ConnectionOrigin.String())
+
+		// rule.exceptions.source{}
+		curSource := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source{}
+		state.Rule.As(ctx, &curSource, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		curSource.IP = parseStringList(ctx, ruleException.Source.IP)
+		curSource.Host = parseNameIDList(ruleException.Source.Host)
+		curSource.Site = parseNameIDList(ruleException.Source.Site)
+		curSource.Site = parseNameIDList(ruleException.Source.Site)
+		curSource.Subnet = parseStringList(ctx, ruleException.Source.Subnet)
+		curSource.IPRange = parseFromToList(ruleException.Source.IPRange)
+		curSource.GlobalIPRange = parseNameIDList(ruleException.Source.GlobalIPRange)
+		curSource.NetworkInterface = parseNameIDList(ruleException.Source.NetworkInterface)
+		curSource.SiteNetworkSubnet = parseNameIDList(ruleException.Source.SiteNetworkSubnet)
+		curSource.FloatingSubnet = parseNameIDList(ruleException.Source.FloatingSubnet)
+		curSource.User = parseNameIDList(ruleException.Source.User)
+		curSource.UsersGroup = parseNameIDList(ruleException.Source.UsersGroup)
+		curSource.Group = parseNameIDList(ruleException.Source.Group)
+		curSource.SystemGroup = parseNameIDList(ruleException.Source.SystemGroup)
+
+		sourceObj, sourceDiags := types.ObjectValue(
+			map[string]attr.Type{
+				"ip":                  types.ListType{ElemType: types.StringType},
+				"host":                types.ListType{ElemType: NameIDObjectType},
+				"site":                types.ListType{ElemType: NameIDObjectType},
+				"subnet":              types.ListType{ElemType: types.StringType},
+				"ip_range":            types.ListType{ElemType: FromToObjectType},
+				"global_ip_range":     types.ListType{ElemType: NameIDObjectType},
+				"network_interface":   types.ListType{ElemType: NameIDObjectType},
+				"site_network_subnet": types.ListType{ElemType: NameIDObjectType},
+				"floating_subnet":     types.ListType{ElemType: NameIDObjectType},
+				"user":                types.ListType{ElemType: NameIDObjectType},
+				"users_group":         types.ListType{ElemType: NameIDObjectType},
+				"group":               types.ListType{ElemType: NameIDObjectType},
+				"system_group":        types.ListType{ElemType: NameIDObjectType},
+			},
+			map[string]attr.Value{
+				"ip":                  curSource.IP,
+				"host":                curSource.Host,
+				"site":                curSource.Site,
+				"subnet":              curSource.Subnet,
+				"ip_range":            curSource.IPRange,
+				"global_ip_range":     curSource.GlobalIPRange,
+				"network_interface":   curSource.NetworkInterface,
+				"site_network_subnet": curSource.SiteNetworkSubnet,
+				"floating_subnet":     curSource.FloatingSubnet,
+				"user":                curSource.User,
+				"users_group":         curSource.UsersGroup,
+				"group":               curSource.Group,
+				"system_group":        curSource.SystemGroup,
+			},
+		)
+
+		resp.Diagnostics.Append(sourceDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		curException.Source = sourceObj
+
+		// rule.exceptions.country{}
+		curException.Country = parseNameIDList(ruleException.Country)
+
+		// rule.exceptions.Device{}
+		curException.Device = parseStringList(ctx, ruleException.Device)
+
+		// rule.exceptions.DeviceOs{}
+		curException.DeviceOs = parseStringList(ctx, ruleException.DeviceOs)
+
+		// rule.exceptions.destination{}
+		curExceptionDestination := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination{}
+		state.Rule.As(ctx, &curExceptionDestination, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		curExceptionDestination.Application = parseNameIDList(ruleException.Destination.Application)
+		curExceptionDestination.CustomApp = parseNameIDList(ruleException.Destination.CustomApp)
+		curExceptionDestination.AppCategory = parseNameIDList(ruleException.Destination.AppCategory)
+		curExceptionDestination.CustomCategory = parseNameIDList(ruleException.Destination.CustomCategory)
+		curExceptionDestination.SanctionedAppsCategory = parseNameIDList(ruleException.Destination.SanctionedAppsCategory)
+		curExceptionDestination.Country = parseNameIDList(ruleException.Destination.Country)
+		curExceptionDestination.Domain = parseStringList(ctx, ruleException.Destination.Domain)
+		curExceptionDestination.Fqdn = parseStringList(ctx, ruleException.Destination.Fqdn)
+		curExceptionDestination.IP = parseStringList(ctx, ruleException.Destination.IP)
+		curExceptionDestination.Subnet = parseStringList(ctx, ruleException.Destination.Subnet)
+		curExceptionDestination.IPRange = parseFromToList(ruleException.Destination.IPRange)
+		curExceptionDestination.GlobalIPRange = parseNameIDList(ruleException.Destination.GlobalIPRange)
+		curExceptionDestination.RemoteAsn = parseStringList(ctx, ruleException.Destination.RemoteAsn)
+
+		destObj, destDiags := types.ObjectValue(
+			map[string]attr.Type{
+				"application":              types.ListType{ElemType: NameIDObjectType},
+				"custom_app":               types.ListType{ElemType: NameIDObjectType},
+				"app_category":             types.ListType{ElemType: NameIDObjectType},
+				"custom_category":          types.ListType{ElemType: NameIDObjectType},
+				"sanctioned_apps_category": types.ListType{ElemType: NameIDObjectType},
+				"country":                  types.ListType{ElemType: NameIDObjectType},
+				"domain":                   types.ListType{ElemType: types.StringType},
+				"fqdn":                     types.ListType{ElemType: types.StringType},
+				"ip":                       types.ListType{ElemType: types.StringType},
+				"subnet":                   types.ListType{ElemType: types.StringType},
+				"ip_range":                 types.ListType{ElemType: FromToObjectType},
+				"global_ip_range":          types.ListType{ElemType: NameIDObjectType},
+				"remote_asn":               types.ListType{ElemType: types.StringType},
+			},
+			map[string]attr.Value{
+				"application":              curExceptionDestination.Application,
+				"custom_app":               curExceptionDestination.CustomApp,
+				"app_category":             curExceptionDestination.AppCategory,
+				"custom_category":          curExceptionDestination.CustomCategory,
+				"sanctioned_apps_category": curExceptionDestination.SanctionedAppsCategory,
+				"country":                  curExceptionDestination.Country,
+				"domain":                   curExceptionDestination.Domain,
+				"fqdn":                     curExceptionDestination.Fqdn,
+				"ip":                       curExceptionDestination.IP,
+				"subnet":                   curExceptionDestination.Subnet,
+				"ip_range":                 curExceptionDestination.IPRange,
+				"global_ip_range":          curExceptionDestination.GlobalIPRange,
+				"remote_asn":               curExceptionDestination.RemoteAsn,
+			},
+		)
+		resp.Diagnostics.Append(destDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		curException.Destination = destObj
+
+		// rule.exceptions.service{}
+		var CustomServiceAttrTypes = map[string]attr.Type{
+			"port":       types.ListType{ElemType: types.StringType},
+			"port_range": types.ObjectType{AttrTypes: FromToAttrTypes},
+			"protocol":   types.StringType,
+		}
+		var customServices []attr.Value
+		if len(ruleException.Service.Custom) > 0 {
+			customServices = make([]attr.Value, len(ruleException.Service.Custom))
+			for i, ruleExceptionCustomService := range ruleException.Service.Custom {
+				ports := parseStringList(ctx, ruleExceptionCustomService.Port)
+				var portRange types.Object
+				if ruleExceptionCustomService.PortRangeCustomService != nil {
+					portRangeObj, portRangeDiags := types.ObjectValue(
+						FromToAttrTypes,
+						map[string]attr.Value{
+							"from": basetypes.NewStringValue(string(ruleExceptionCustomService.PortRangeCustomService.From)),
+							"to":   basetypes.NewStringValue(string(ruleExceptionCustomService.PortRangeCustomService.To)),
+						},
+					)
+					resp.Diagnostics.Append(portRangeDiags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+					portRange = portRangeObj
+				} else {
+					portRange = types.ObjectNull(FromToAttrTypes)
+				}
+
+				// Create custom service object
+				customServiceObj, customDiags := types.ObjectValue(
+					CustomServiceAttrTypes,
+					map[string]attr.Value{
+						"port":       ports,
+						"port_range": portRange,
+						"protocol":   basetypes.NewStringValue(ruleExceptionCustomService.Protocol.String()),
+					},
+				)
+				resp.Diagnostics.Append(customDiags...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				customServices[i] = customServiceObj
+			}
+		}
+
+		// Create custom services list
+		var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
+		customList, customListDiags := types.ListValue(CustomServiceObjectType, customServices)
+		resp.Diagnostics.Append(customListDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		standardList := parseNameIDList(ruleException.Service.Standard)
+		// Create service object
+		serviceObj, serviceDiags := types.ObjectValue(
+			map[string]attr.Type{
+				"standard": types.ListType{ElemType: NameIDObjectType},
+				"custom":   types.ListType{ElemType: CustomServiceObjectType},
+			},
+			map[string]attr.Value{
+				"standard": standardList,
+				"custom":   customList,
+			},
+		)
+		resp.Diagnostics.Append(serviceDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		curException.Service = serviceObj
+
+		ruleExceptions = append(ruleExceptions, curException)
+	}
+
+	// Set the exceptions to state
+	if err := resp.State.SetAttribute(ctx, path.Root("rule").AtName("exceptions"), ruleExceptions); err != nil {
+		resp.Diagnostics.AddError("Error setting rule.exceptions", fmt.Sprintf("%s", err))
+		return
+	}
 	////////////// end rule.exceptions ///////////////
 
 }
@@ -5705,4 +5899,162 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 		)
 		return
 	}
+}
+
+func convertStringSlice(input []string) []string {
+	var result []string
+	for _, v := range input {
+		result = append(result, v)
+	}
+	return result
+}
+
+// Define a reusable type map for name/id pairs
+var NameIDAttrTypes = map[string]attr.Type{
+	"name": types.StringType,
+	"id":   types.StringType,
+}
+
+// ObjectType wrapper for ListValue
+var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
+
+func parseNameIDList(items interface{}) types.List {
+
+	// Get the reflect.Value of the input
+	itemsValue := reflect.ValueOf(items)
+
+	// Handle nil or empty input
+	if items == nil || itemsValue.Len() == 0 {
+		return types.ListNull(NameIDObjectType)
+	}
+
+	// Ensure it's a slice or array
+	if itemsValue.Kind() != reflect.Slice && itemsValue.Kind() != reflect.Array {
+		return types.ListNull(NameIDObjectType)
+	}
+
+	values := make([]attr.Value, itemsValue.Len())
+	for i := 0; i < itemsValue.Len(); i++ {
+		item := itemsValue.Index(i)
+
+		// Handle pointer elements
+		if item.Kind() == reflect.Ptr {
+			item = item.Elem()
+		}
+
+		// Get Name and ID fields
+		nameField := item.FieldByName("Name")
+		idField := item.FieldByName("ID")
+
+		if !nameField.IsValid() || !idField.IsValid() {
+			return types.ListNull(NameIDObjectType)
+		}
+
+		// Create object value
+		obj, _ := types.ObjectValue(
+			NameIDAttrTypes,
+			map[string]attr.Value{
+				"name": basetypes.NewStringValue(nameField.String()),
+				"id":   basetypes.NewStringValue(idField.String()),
+			},
+		)
+		values[i] = obj
+	}
+
+	// Convert to List
+	list, _ := types.ListValue(NameIDObjectType, values)
+	return list
+}
+
+var FromToAttrTypes = map[string]attr.Type{
+	"from": types.StringType,
+	"to":   types.StringType,
+}
+
+var FromToObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
+
+func parseFromToList(items interface{}) types.List {
+	// Get the reflect.Value of the input
+	itemsValue := reflect.ValueOf(items)
+
+	// Handle nil or empty input
+	if items == nil || itemsValue.Len() == 0 {
+		return types.ListNull(FromToObjectType)
+	}
+
+	// Ensure it's a slice or array
+	if itemsValue.Kind() != reflect.Slice && itemsValue.Kind() != reflect.Array {
+		return types.ListNull(FromToObjectType)
+	}
+
+	values := make([]attr.Value, itemsValue.Len())
+	for i := 0; i < itemsValue.Len(); i++ {
+		item := itemsValue.Index(i)
+
+		// Handle pointer elements
+		if item.Kind() == reflect.Ptr {
+			item = item.Elem()
+		}
+
+		// Get From and To fields
+		fromField := item.FieldByName("From")
+		toField := item.FieldByName("To")
+
+		if !fromField.IsValid() || !toField.IsValid() {
+			return types.ListNull(FromToObjectType)
+		}
+
+		// Create object value
+		obj, _ := types.ObjectValue(
+			FromToAttrTypes,
+			map[string]attr.Value{
+				"from": basetypes.NewStringValue(fromField.String()),
+				"to":   basetypes.NewStringValue(toField.String()),
+			},
+		)
+		values[i] = obj
+	}
+
+	// Convert to List
+	list, _ := types.ListValue(FromToObjectType, values)
+	return list
+}
+
+func parseStringList(ctx context.Context, input interface{}) types.List {
+	// Get the reflect.Value of the input
+	inputValue := reflect.ValueOf(input)
+
+	// Handle nil or empty input
+	if input == nil || inputValue.Len() == 0 {
+		return types.ListNull(types.StringType)
+	}
+
+	// Ensure it's a slice or array
+	if inputValue.Kind() != reflect.Slice && inputValue.Kind() != reflect.Array {
+		return types.ListNull(types.StringType)
+	}
+
+	// Convert to []string
+	stringSlice := make([]string, inputValue.Len())
+	for i := 0; i < inputValue.Len(); i++ {
+		item := inputValue.Index(i)
+
+		// Handle interface{} or string values
+		switch v := item.Interface().(type) {
+		case string:
+			stringSlice[i] = v
+		case *string:
+			if v != nil {
+				stringSlice[i] = *v
+			} else {
+				stringSlice[i] = "" // or handle nil differently if needed
+			}
+		default:
+			return types.ListNull(types.StringType)
+		}
+	}
+
+	// Convert []string to types.List
+	list, _ := types.ListValueFrom(ctx, types.StringType, stringSlice)
+	return list
 }
