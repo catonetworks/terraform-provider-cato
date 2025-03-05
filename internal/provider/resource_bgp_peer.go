@@ -2,9 +2,12 @@ package provider
 
 import (
 	"context"
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -15,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strconv"
 )
 
@@ -75,7 +79,6 @@ func bgpPeerSchemaAttr() map[string]schema.Attribute {
 		"id": schema.StringAttribute{
 			Description: "Unique identifier for the BGP peer.",
 			Computed:    true,
-			Optional:    true,
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),
 			},
@@ -230,6 +233,140 @@ func bgpPeerSchemaAttr() map[string]schema.Attribute {
 	}
 }
 
+func convertSummaryRoutes(input []*cato_go_sdk.Site_Site_BgpPeer_SummaryRoute) types.List {
+	var summaryRoutes []attr.Value
+	for _, summaryRoute := range input {
+		var communities []attr.Value
+		for _, community := range summaryRoute.Community {
+			from, _ := strconv.ParseInt(string(community.From), 10, 64)
+			to, _ := strconv.ParseInt(string(community.To), 10, 64)
+			communityInput, _ := types.ObjectValue(
+				map[string]attr.Type{
+					"from": types.Int64Type,
+					"to":   types.Int64Type,
+				},
+				map[string]attr.Value{
+					"from": types.Int64Value(from),
+					"to":   types.Int64Value(to),
+				},
+			)
+			communities = append(communities, communityInput)
+		}
+
+		communityList, _ := types.ListValue(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"from": types.Int64Type,
+				"to":   types.Int64Type,
+			},
+		}, communities)
+
+		summaryRouteInput, _ := types.ObjectValue(
+			map[string]attr.Type{
+				"route": types.StringType,
+				"community": types.ListType{ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"from": types.Int64Type,
+						"to":   types.Int64Type,
+					},
+				}},
+			},
+			map[string]attr.Value{
+				"route":     types.StringValue(summaryRoute.Route),
+				"community": communityList,
+			},
+		)
+		summaryRoutes = append(summaryRoutes, summaryRouteInput)
+	}
+
+	listVal, _ := types.ListValue(types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"route": types.StringType,
+			"community": types.ListType{ElemType: types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"from": types.Int64Type,
+					"to":   types.Int64Type,
+				},
+			}},
+		},
+	}, summaryRoutes)
+
+	return listVal
+}
+
+func convertBfdSettings(input *cato_go_sdk.Site_Site_BgpPeer_BfdSettingsBgpPeer) types.Object {
+	if input == nil {
+		return types.ObjectNull(map[string]attr.Type{
+			"transmit_interval": types.Int64Type,
+			"receive_interval":  types.Int64Type,
+			"multiplier":        types.Int64Type,
+		})
+	}
+
+	bfdSettings, _ := types.ObjectValue(
+		map[string]attr.Type{
+			"transmit_interval": types.Int64Type,
+			"receive_interval":  types.Int64Type,
+			"multiplier":        types.Int64Type,
+		},
+		map[string]attr.Value{
+			"transmit_interval": types.Int64Value(input.TransmitInterval),
+			"receive_interval":  types.Int64Value(input.ReceiveInterval),
+			"multiplier":        types.Int64Value(input.Multiplier),
+		},
+	)
+	return bfdSettings
+}
+
+func convertTracking(input *cato_go_sdk.Site_Site_BgpPeer_TrackingBgpPeer) types.Object {
+	if input == nil {
+		return types.ObjectNull(map[string]attr.Type{
+			"enabled":         types.BoolType,
+			"alert_frequency": types.StringType,
+			"subscription_id": types.StringType,
+		})
+	}
+
+	tracking, _ := types.ObjectValue(
+		map[string]attr.Type{
+			"enabled":         types.BoolType,
+			"alert_frequency": types.StringType,
+			"subscription_id": types.StringType,
+		},
+		map[string]attr.Value{
+			"enabled":         types.BoolValue(input.Enabled),
+			"alert_frequency": types.StringValue(input.AlertFrequency.String()),
+			"subscription_id": types.StringValue(*input.SubscriptionID),
+		},
+	)
+	return tracking
+}
+
+func ConvertToBgpPeer(input cato_go_sdk.Site_Site_BgpPeer) BgpPeer {
+	peerAsnInt64, _ := strconv.ParseInt(string(input.PeerAsn), 10, 64)
+	catoAsnInt64, _ := strconv.ParseInt(string(input.CatoAsn), 10, 64)
+	return BgpPeer{
+		ID:                     types.StringValue(input.ID),
+		SiteId:                 types.StringValue(input.Site.ID),
+		Name:                   types.StringValue(input.Name),
+		PeerAsn:                types.Int64Value(peerAsnInt64),
+		CatoAsn:                types.Int64Value(catoAsnInt64), // Convert Asn16 to int64
+		PeerIp:                 types.StringValue(input.PeerIP),
+		AdvertiseDefaultRoute:  types.BoolValue(input.AdvertiseDefaultRoute),
+		AdvertiseAllRoutes:     types.BoolValue(input.AdvertiseAllRoutes),
+		AdvertiseSummaryRoutes: types.BoolValue(input.AdvertiseSummaryRoutes),
+		SummaryRoute:           convertSummaryRoutes(input.SummaryRoute),
+		DefaultAction:          types.StringValue(string(input.DefaultAction)), // Assuming BgpDefaultAction is string
+		PerformNat:             types.BoolValue(input.PerformNat),
+		Md5AuthKey:             utils.ConvertOptionalString(input.Md5AuthKey),
+		Metric:                 types.Int64Value(input.Metric),
+		HoldTime:               types.Int64Value(input.HoldTime),
+		KeepaliveInterval:      types.Int64Value(input.KeepaliveInterval),
+		BfdEnabled:             types.BoolValue(input.BfdEnabled),
+		BfdSettings:            convertBfdSettings(input.BfdSettingsBgpPeer),
+		Tracking:               convertTracking(input.TrackingBgpPeer),
+	}
+}
+
 func (r *bgpPeerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: bgpPeerSchemaAttr(),
@@ -246,6 +383,10 @@ func (r *bgpPeerResource) Configure(_ context.Context, req resource.ConfigureReq
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *bgpPeerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -361,6 +502,41 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 }
 
 func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+
+	var state BgpPeer
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	bgpPeerRefInput := cato_models.BgpPeerRefInput{
+		By:    cato_models.ObjectRefByID,
+		Input: state.ID.ValueString(),
+	}
+	result, err := r.client.catov2.SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Cato API error in SiteBgpPeer",
+			err.Error(),
+		)
+		return
+	}
+
+	if result == nil || result.GetSite() == nil || result.GetSite().GetBgpPeer() == nil {
+		tflog.Warn(ctx, "BGP peer resource wasn't found, resource removed")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	bgpPeer := result.GetSite().GetBgpPeer()
+	bgpPeerInput := ConvertToBgpPeer(*bgpPeer)
+
+	diags = resp.State.Set(ctx, &bgpPeerInput)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
