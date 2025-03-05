@@ -32,7 +32,7 @@ ip,name,mac_address
 variable "site_id" {
     description = "Site ID"
     type        = number
-    default	    = 12345
+    default	  = 12345
 }
 
 variable "csv_file_path" {
