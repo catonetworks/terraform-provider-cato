@@ -275,6 +275,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											// Default:     defaults.String(nil),
 											Validators: []validator.String{
 												stringvalidator.ConflictsWith(path.Expressions{
 													path.MatchRelative().AtParent().AtName("id"),
@@ -285,6 +286,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Computed:    true,
 										},
 									},
 								},
@@ -838,7 +840,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													Description: "",
 													Required:    false,
 													Optional:    true,
-													Computed:    true,
 													Validators: []validator.String{
 														stringvalidator.ConflictsWith(path.Expressions{
 															path.MatchRelative().AtParent().AtName("id"),
@@ -863,7 +864,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													Description: "",
 													Required:    false,
 													Optional:    true,
-													Computed:    true,
 													Validators: []validator.String{
 														stringvalidator.ConflictsWith(path.Expressions{
 															path.MatchRelative().AtParent().AtName("id"),
@@ -888,7 +888,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													Description: "",
 													Required:    false,
 													Optional:    true,
-													Computed:    true,
 													Validators: []validator.String{
 														stringvalidator.ConflictsWith(path.Expressions{
 															path.MatchRelative().AtParent().AtName("id"),
@@ -1110,7 +1109,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "",
 														Required:    false,
 														Optional:    true,
-														Computed:    true,
 														Validators: []validator.String{
 															stringvalidator.ConflictsWith(path.Expressions{
 																path.MatchRelative().AtParent().AtName("id"),
@@ -1135,7 +1133,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "",
 														Required:    false,
 														Optional:    true,
-														Computed:    true,
 														Validators: []validator.String{
 															stringvalidator.ConflictsWith(path.Expressions{
 																path.MatchRelative().AtParent().AtName("id"),
