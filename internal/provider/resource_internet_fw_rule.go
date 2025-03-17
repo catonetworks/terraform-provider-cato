@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"runtime"
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -12,6 +13,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -3339,6 +3341,70 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
+	// var state InternetFirewallRule
+	// diags := req.State.Get(ctx, &state)
+	// resp.Diagnostics.Append(diags...)
+	// if resp.Diagnostics.HasError() {
+	// 	return
+	// }
+
+	// // body, err := r.client.catov2.Policy(ctx, &cato_models.InternetFirewallPolicyInput{}, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+	// queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
+	// body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
+	// if err != nil {
+	// 	resp.Diagnostics.AddError(
+	// 		"Catov2 API PolicyInternetFirewall error",
+	// 		err.Error(),
+	// 	)
+	// 	return
+	// }
+
+	// //retrieve rule ID
+	// curRule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	// diags = state.Rule.As(ctx, &curRule, basetypes.ObjectAsOptions{})
+	// resp.Diagnostics.Append(diags...)
+	// if resp.Diagnostics.HasError() {
+	// 	return
+	// }
+
+	// ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
+	// ruleExist := false
+
+	// diags = resp.State.Set(ctx, &state)
+	// resp.Diagnostics.Append(diags...)
+	// if resp.Diagnostics.HasError() {
+	// 	return
+	// }
+
+	// ruleAPIResponse := &cato.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	// // ruleAPIResponse := &r.client.catov2.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+
+	// for _, ruleListItem := range ruleList {
+	// 	if ruleListItem.GetRule().ID == string(ruleAPIResponse.ID) {
+	// 		ruleExist = true
+	// 		ruleAPIResponse = ruleListItem.GetRule()
+	// 	}
+	// }
+
+	// if !ruleExist {
+	// 	tflog.Warn(ctx, "internet firewall rule not found, resource removed")
+	// 	resp.State.RemoveResource(ctx)
+	// 	return
+	// }
+
+	// // state = hydrateStateFromAPIResponse(ctx, ruleAPIResponse, state)
+
+	// // Set the rule to state
+	// if err := resp.State.SetAttribute(ctx, path.Root("rule"), curRule); err != nil {
+	// 	resp.Diagnostics.AddError("Error setting rule to state", fmt.Sprintf("%s", err))
+	// 	return
+	// }
+	// diags = resp.State.Set(ctx, &state)
+	// resp.Diagnostics.Append(diags...)
+	// if resp.Diagnostics.HasError() {
+	// 	return
+	// }
+
 	var state InternetFirewallRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -3358,687 +3424,42 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	//retrieve rule ID
-	rule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
-	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
+	curStateRule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	diags = state.Rule.As(ctx, &curStateRule, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	ruleAPIResponse := &cato.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
 	ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
 	ruleExist := false
-
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	curRule := &cato.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
-	// curRule := &r.client.catov2.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
-
 	for _, ruleListItem := range ruleList {
-		if ruleListItem.GetRule().ID == rule.ID.ValueString() {
+		if ruleListItem.GetRule().ID == curStateRule.ID.ValueString() {
 			ruleExist = true
-			curRule = ruleListItem.GetRule()
+			ruleAPIResponse = ruleListItem.GetRule()
 		}
 	}
 
+	// remove resource if it doesn't exist anymore
 	if !ruleExist {
 		tflog.Warn(ctx, "internet firewall rule not found, resource removed")
 		resp.State.RemoveResource(ctx)
 		return
 	}
 
-	// Set state attributes
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("id"), curRule.ID)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("name"), curRule.Name)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("description"), curRule.Description)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("index"), curRule.Index)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("enabled"), curRule.Enabled)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("id"), curRule.Section.ID)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("name"), curRule.Section.Name)
-
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("action"), curRule.Action)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("connection_origin"), curRule.ConnectionOrigin)
-
-	////////////// rule.source ///////////////
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("subnet"), curRule.Source.Subnet)
-
-	// rule.source.ip[]
-	sourceIps := []string{}
-	for _, sourceIp := range curRule.Source.IP {
-		sourceIps = append(sourceIps, sourceIp)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("ip"), sourceIps)
-
-	// rule.source.host[]
-	var hosts []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Host
-	for _, host := range curRule.Source.Host {
-		curHost := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Host{}
-		state.Rule.As(ctx, &curHost, basetypes.ObjectAsOptions{})
-		curHost.Name = basetypes.NewStringValue(host.Name)
-		curHost.ID = basetypes.NewStringValue(host.ID)
-		hosts = append(hosts, curHost)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("host"), hosts)
-
-	// rule.source.site[]
-	var sites []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Site
-	for _, site := range curRule.Source.Site {
-		curSite := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Site{}
-		state.Rule.As(ctx, &curSite, basetypes.ObjectAsOptions{})
-		curSite.Name = basetypes.NewStringValue(site.Name)
-		curSite.ID = basetypes.NewStringValue(site.ID)
-		sites = append(sites, curSite)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("site"), sites)
-
-	// rule.source.ip_range[]
-	var ipRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_IPRange
-	for _, ipRange := range curRule.Source.IPRange {
-		curIpRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_IPRange{}
-		state.Rule.As(ctx, &curIpRange, basetypes.ObjectAsOptions{})
-		curIpRange.To = basetypes.NewStringValue(ipRange.To)
-		curIpRange.From = basetypes.NewStringValue(ipRange.From)
-		ipRanges = append(ipRanges, curIpRange)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("ip_range"), ipRanges)
-
-	// rule.source.global_ip_range[]
-	var globalIpRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_GlobalIPRange
-	for _, ipRange := range curRule.Source.GlobalIPRange {
-		curGlobalIpRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_GlobalIPRange{}
-		state.Rule.As(ctx, &curGlobalIpRange, basetypes.ObjectAsOptions{})
-		curGlobalIpRange.Name = basetypes.NewStringValue(ipRange.Name)
-		curGlobalIpRange.ID = basetypes.NewStringValue(ipRange.ID)
-		globalIpRanges = append(globalIpRanges, curGlobalIpRange)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("global_ip_range"), globalIpRanges)
-
-	// rule.source.network_interface[]
-	var networkInterfaces []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_NetworkInterface
-	for _, networkInterface := range curRule.Source.NetworkInterface {
-		curNetworkInterface := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_NetworkInterface{}
-		state.Rule.As(ctx, &curNetworkInterface, basetypes.ObjectAsOptions{})
-		curNetworkInterface.Name = basetypes.NewStringValue(networkInterface.Name)
-		curNetworkInterface.ID = basetypes.NewStringValue(networkInterface.ID)
-		networkInterfaces = append(networkInterfaces, curNetworkInterface)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("network_interface"), networkInterfaces)
-
-	// rule.source.site_network_subnet[]
-	var siteNetworkSubnets []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet
-	for _, siteNetworkSubnet := range curRule.Source.SiteNetworkSubnet {
-		curSiteNetworkSubnet := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet{}
-		state.Rule.As(ctx, &curSiteNetworkSubnet, basetypes.ObjectAsOptions{})
-		curSiteNetworkSubnet.Name = basetypes.NewStringValue(siteNetworkSubnet.Name)
-		curSiteNetworkSubnet.ID = basetypes.NewStringValue(siteNetworkSubnet.ID)
-		siteNetworkSubnets = append(siteNetworkSubnets, curSiteNetworkSubnet)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("site_network_subnet"), siteNetworkSubnets)
-
-	// rule.source.floating_subnet[]
-	var floatingSubnets []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_FloatingSubnet
-	for _, floatingSubnet := range curRule.Source.FloatingSubnet {
-		curFloatingSubnet := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_FloatingSubnet{}
-		state.Rule.As(ctx, &curFloatingSubnet, basetypes.ObjectAsOptions{})
-		curFloatingSubnet.Name = basetypes.NewStringValue(floatingSubnet.Name)
-		curFloatingSubnet.ID = basetypes.NewStringValue(floatingSubnet.ID)
-		floatingSubnets = append(floatingSubnets, curFloatingSubnet)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("floating_subnet"), floatingSubnets)
-
-	// rule.source.user[]
-	var users []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_User
-	for _, user := range curRule.Source.User {
-		curUser := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_User{}
-		state.Rule.As(ctx, &curUser, basetypes.ObjectAsOptions{})
-		curUser.Name = basetypes.NewStringValue(user.Name)
-		curUser.ID = basetypes.NewStringValue(user.ID)
-		users = append(users, curUser)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("user"), users)
-
-	// rule.source.users_group[]
-	var usersGroups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup
-	for _, usersGroup := range curRule.Source.UsersGroup {
-		curUsersGroups := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup{}
-		state.Rule.As(ctx, &curUsersGroups, basetypes.ObjectAsOptions{})
-		curUsersGroups.Name = basetypes.NewStringValue(usersGroup.Name)
-		curUsersGroups.ID = basetypes.NewStringValue(usersGroup.ID)
-		usersGroups = append(usersGroups, curUsersGroups)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("users_group"), usersGroups)
-
-	// rule.source.group[]
-	var groups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Group
-	for _, group := range curRule.Source.Group {
-		curGroup := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Group{}
-		state.Rule.As(ctx, &curGroup, basetypes.ObjectAsOptions{})
-		curGroup.Name = basetypes.NewStringValue(group.Name)
-		curGroup.ID = basetypes.NewStringValue(group.ID)
-		groups = append(groups, curGroup)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("group"), groups)
-
-	// rule.source.system_group[]
-	var systemGroups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SystemGroup
-	for _, systemGroup := range curRule.Source.SystemGroup {
-		curSystemGroup := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SystemGroup{}
-		state.Rule.As(ctx, &curSystemGroup, basetypes.ObjectAsOptions{})
-		curSystemGroup.Name = basetypes.NewStringValue(systemGroup.Name)
-		curSystemGroup.ID = basetypes.NewStringValue(systemGroup.ID)
-		systemGroups = append(systemGroups, curSystemGroup)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("source").AtName("system_group"), systemGroups)
-	////////////// end rule.source ///////////////
-
-	// rule.country[]
-	var countries []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country
-	for _, country := range curRule.Country {
-		curCountry := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country{}
-		state.Rule.As(ctx, &curCountry, basetypes.ObjectAsOptions{})
-		curCountry.Name = basetypes.NewStringValue(country.Name)
-		curCountry.ID = basetypes.NewStringValue(country.ID)
-		countries = append(countries, curCountry)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("country"), countries)
-
-	// rule.device[]
-	var devices []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device
-	for _, device := range curRule.Device {
-		curDevice := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device{}
-		state.Rule.As(ctx, &curDevice, basetypes.ObjectAsOptions{})
-		curDevice.Name = basetypes.NewStringValue(device.Name)
-		curDevice.ID = basetypes.NewStringValue(device.ID)
-		devices = append(devices, curDevice)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("device"), devices)
-
-	// rule.device_os
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("device_os"), curRule.DeviceOs)
-
-	////////////// rule.destination ///////////////
-	// rule.destination.application[]
-	var applications []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Application
-	for _, application := range curRule.Destination.Application {
-		curApplication := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Application{}
-		state.Rule.As(ctx, &curApplication, basetypes.ObjectAsOptions{})
-		curApplication.Name = basetypes.NewStringValue(application.Name)
-		curApplication.ID = basetypes.NewStringValue(application.ID)
-		applications = append(applications, curApplication)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("application"), applications)
-
-	// rule.destination.custom_app[]
-	var customApps []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomApp
-	for _, customApp := range curRule.Destination.CustomApp {
-		curCustomApp := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomApp{}
-		state.Rule.As(ctx, &curCustomApp, basetypes.ObjectAsOptions{})
-		curCustomApp.Name = basetypes.NewStringValue(customApp.Name)
-		curCustomApp.ID = basetypes.NewStringValue(customApp.ID)
-		customApps = append(customApps, curCustomApp)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("custom_app"), customApps)
-
-	// rule.destination.app_category[]
-	var appCategories []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_AppCategory
-	for _, appCategory := range curRule.Destination.AppCategory {
-		curAppCategory := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_AppCategory{}
-		state.Rule.As(ctx, &curAppCategory, basetypes.ObjectAsOptions{})
-		curAppCategory.Name = basetypes.NewStringValue(appCategory.Name)
-		curAppCategory.ID = basetypes.NewStringValue(appCategory.ID)
-		appCategories = append(appCategories, curAppCategory)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("app_category"), appCategories)
-
-	// rule.destination.custom_category[]
-	var customCategories []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomCategory
-	for _, customCategory := range curRule.Destination.CustomCategory {
-		curCustomCategory := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomCategory{}
-		state.Rule.As(ctx, &curCustomCategory, basetypes.ObjectAsOptions{})
-		curCustomCategory.Name = basetypes.NewStringValue(customCategory.Name)
-		curCustomCategory.ID = basetypes.NewStringValue(customCategory.ID)
-		customCategories = append(customCategories, curCustomCategory)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("custom_category"), customCategories)
-
-	// rule.destination.sanctioned_apps_category[]
-	var sanctionedAppsCategories []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_SanctionedAppsCategory
-	for _, sanctionedAppsCategory := range curRule.Destination.SanctionedAppsCategory {
-		curSanctionedAppsCategory := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_SanctionedAppsCategory{}
-		state.Rule.As(ctx, &curSanctionedAppsCategory, basetypes.ObjectAsOptions{})
-		curSanctionedAppsCategory.Name = basetypes.NewStringValue(sanctionedAppsCategory.Name)
-		curSanctionedAppsCategory.ID = basetypes.NewStringValue(sanctionedAppsCategory.ID)
-		sanctionedAppsCategories = append(sanctionedAppsCategories, curSanctionedAppsCategory)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("sanctioned_apps_category"), sanctionedAppsCategories)
-
-	// rule.destination.country[]
-	var destCountries []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Country
-	for _, destCountry := range curRule.Destination.Country {
-		curDestCountry := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Country{}
-		state.Rule.As(ctx, &curDestCountry, basetypes.ObjectAsOptions{})
-		curDestCountry.Name = basetypes.NewStringValue(destCountry.Name)
-		curDestCountry.ID = basetypes.NewStringValue(destCountry.ID)
-		destCountries = append(destCountries, curDestCountry)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("country"), destCountries)
-
-	// rule.destination.domain[]
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("domain"), curRule.Destination.Domain)
-
-	// rule.destination.fqdn[]
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("fqdn"), curRule.Destination.Fqdn)
-
-	// rule.destination.ip[]
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("ip"), curRule.Destination.IP)
-
-	// rule.destination.subnet[]
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("subnet"), curRule.Destination.Subnet)
-
-	// rule.destination.ip_range[]
-	var destIpRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange
-	for _, destIpRange := range curRule.Destination.IPRange {
-		curDestIpRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange{}
-		state.Rule.As(ctx, &curDestIpRange, basetypes.ObjectAsOptions{})
-		curDestIpRange.To = basetypes.NewStringValue(destIpRange.To)
-		curDestIpRange.From = basetypes.NewStringValue(destIpRange.From)
-		destIpRanges = append(destIpRanges, curDestIpRange)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("ip_range"), destIpRanges)
-
-	// rule.destination.global_ip_range[]
-	var destGlobalIPRanges []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_GlobalIPRange
-	for _, destGlobalIPRange := range curRule.Destination.GlobalIPRange {
-		curDestGlobalIPRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_GlobalIPRange{}
-		state.Rule.As(ctx, &curDestGlobalIPRange, basetypes.ObjectAsOptions{})
-		curDestGlobalIPRange.Name = basetypes.NewStringValue(destGlobalIPRange.Name)
-		curDestGlobalIPRange.ID = basetypes.NewStringValue(destGlobalIPRange.ID)
-		destGlobalIPRanges = append(destGlobalIPRanges, curDestGlobalIPRange)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("global_ip_range"), destGlobalIPRanges)
-	////////////// end rule.destination ///////////////
-
-	// rule.destination.remote_asn[]
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("destination").AtName("remote_asn"), curRule.Destination.RemoteAsn)
-
-	// ////////////// rule.containers ///////////////
-	// // rule.containers.containers.fqdnContainer[]
-	// var fqdnContainers []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_fqdnContainer
-	// for _, fqdnContainer := range curRule.Containers.FqdnContainer {
-	// 	curFqdnContainer := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_fqdnContainer{}
-	// 	state.Rule.As(ctx, &curFqdnContainer, basetypes.ObjectAsOptions{})
-	// 	curFqdnContainer.Name = basetypes.NewStringValue(fqdnContainer.Name)
-	// 	curFqdnContainer.ID = basetypes.NewStringValue(fqdnContainer.ID)
-	// 	fqdnContainers = append(fqdnContainers, curFqdnContainer)
-	// }
-	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("containers").AtName("fqdnContainer"), fqdnContainers)
-
-	// // rule.containers.containers.ipAddressRangeContainer[]
-	// var ipAddressContainers []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_ipAddressContainer
-	// for _, ipAddressContainer := range curRule.Containers.IpAddressContainer {
-	// 	curIpAddressContainer := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_ipAddressContainer{}
-	// 	state.Rule.As(ctx, &curIpAddressContainer, basetypes.ObjectAsOptions{})
-	// 	curIpAddressContainer.Name = basetypes.NewStringValue(ipAddressContainer.Name)
-	// 	curIpAddressContainer.ID = basetypes.NewStringValue(ipAddressContainer.ID)
-	// 	ipAddressContainers = append(ipAddressContainers, curIpAddressContainer)
-	// }
-	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("containers").AtName("ipAddressRangeContainer"), ipAddressContainers)
-	// ////////////// end rule.containers ///////////////////
-
-	////////////// end rule.service ///////////////
-	// rule.service.standard[]
-	var standardServices []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard
-	for _, standardService := range curRule.Service.Standard {
-		curStandardService := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard{}
-		state.Rule.As(ctx, &curStandardService, basetypes.ObjectAsOptions{})
-		curStandardService.Name = basetypes.NewStringValue(standardService.Name)
-		curStandardService.ID = basetypes.NewStringValue(standardService.ID)
-		standardServices = append(standardServices, curStandardService)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("service").AtName("standard"), standardServices)
-
-	// rule.service.custom[]
-	// TODO: Broken, rule.service.custom does not write to state, need to figure out why //
-	var customServices []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
-	for _, customService := range curRule.Service.Custom {
-		curCustomService := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{}
-		state.Rule.As(ctx, &curCustomService, basetypes.ObjectAsOptions{})
-		// rule.service.custom.protocol
-		curCustomService.Protocol = basetypes.NewStringValue(customService.Protocol.String())
-
-		// rule.service.custom.port[]
-		if customService.Port != nil {
-			customServicePorts := []string{}
-			for _, port := range customService.Port {
-				customServicePorts = append(customServicePorts, string(port))
-			}
-			curCustomService.Port, diags = types.ListValueFrom(ctx, types.StringType, customServicePorts)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		} else {
-			curCustomService.Port, diags = types.ListValueFrom(ctx, types.StringType, []string{})
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		}
-
-		if customService.PortRange != nil {
-			customServicePortRange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
-			// Populate from state if needed
-			state.Rule.As(ctx, customServicePortRange, basetypes.ObjectAsOptions{})
-			// Override with values from customService.PortRange
-			customServicePortRange.From = types.StringValue(string(customService.PortRange.From))
-			customServicePortRange.To = types.StringValue(string(customService.PortRange.To))
-
-			// Convert the struct to a types.Object
-			curCustomService.PortRange, diags = types.ObjectValue(
-				map[string]attr.Type{
-					"from": types.StringType,
-					"to":   types.StringType,
-				},
-				map[string]attr.Value{
-					"from": customServicePortRange.From,
-					"to":   customServicePortRange.To,
-				},
-			)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		} else {
-			curCustomService.PortRange = types.ObjectNull(
-				map[string]attr.Type{
-					"from": types.StringType,
-					"to":   types.StringType,
-				},
-			)
-		}
-
-		customServices = append(customServices, curCustomService)
-	}
-
-	if err := resp.State.SetAttribute(ctx, path.Root("rule").AtName("service").AtName("custom"), customServices); err != nil {
-		resp.Diagnostics.AddError("Error setting rule.service.custom", fmt.Sprintf("%s", err))
+	state, diags1 := hydrateStateFromAPIResponse(ctx, ruleAPIResponse, state)
+	// diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags1...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	////////////// end rule.service ///////////////
+	resp.State.SetAttribute(ctx, path.Root("rule"), state.Rule)
 
-	// rule.action
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("action"), curRule.Action)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("event").AtName("enabled"), curRule.Tracking.Event.Enabled)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("enabled"), curRule.Tracking.Alert.Enabled)
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("frequency"), curRule.Tracking.Alert.Frequency)
-
-	// rule.tracking.alert.subscription_group{}
-	var alertSubscriptionGroups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
-	for _, alertSubscriptionGroup := range curRule.Tracking.Alert.SubscriptionGroup {
-		curAlertSubscriptionGroup := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup{}
-		state.Rule.As(ctx, &curAlertSubscriptionGroup, basetypes.ObjectAsOptions{})
-		curAlertSubscriptionGroup.Name = basetypes.NewStringValue(alertSubscriptionGroup.Name)
-		curAlertSubscriptionGroup.ID = basetypes.NewStringValue(alertSubscriptionGroup.ID)
-		alertSubscriptionGroups = append(alertSubscriptionGroups, curAlertSubscriptionGroup)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("subscription_group"), alertSubscriptionGroups)
-
-	// rule.tracking.alert.webhook{}
-	var alertWebHooks []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook
-	for _, alertWebHook := range curRule.Tracking.Alert.Webhook {
-		curAlertWebHook := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook{}
-		state.Rule.As(ctx, &curAlertWebHook, basetypes.ObjectAsOptions{})
-		curAlertWebHook.Name = basetypes.NewStringValue(alertWebHook.Name)
-		curAlertWebHook.ID = basetypes.NewStringValue(alertWebHook.ID)
-		alertWebHooks = append(alertWebHooks, curAlertWebHook)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("webhooks"), alertWebHooks)
-
-	// rule.tracking.alert.mailing_list{}
-	var alertMailingLists []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList
-	for _, alertMailingList := range curRule.Tracking.Alert.MailingList {
-		curAlertMailingList := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList{}
-		state.Rule.As(ctx, &curAlertMailingList, basetypes.ObjectAsOptions{})
-		curAlertMailingList.Name = basetypes.NewStringValue(alertMailingList.Name)
-		curAlertMailingList.ID = basetypes.NewStringValue(alertMailingList.ID)
-		alertMailingLists = append(alertMailingLists, curAlertMailingList)
-	}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("mailing_list"), alertMailingLists)
-
-	// rule.schedule.active_on{}
-	resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("active_on"), curRule.Schedule.ActiveOn)
-	// rule.schedule.custom_timeframe{}
-	if curRule.Schedule.CustomTimeframePolicySchedule != nil {
-		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_timeframe").AtName("from"), curRule.Schedule.CustomTimeframePolicySchedule.From)
-		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_timeframe").AtName("to"), curRule.Schedule.CustomTimeframePolicySchedule.To)
-	}
-	// rule.schedule.custom_recurring{}
-	if curRule.Schedule.CustomRecurringPolicySchedule != nil {
-		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("from"), curRule.Schedule.CustomRecurringPolicySchedule.From)
-		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("to"), curRule.Schedule.CustomRecurringPolicySchedule.To)
-		resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("days"), curRule.Schedule.CustomRecurringPolicySchedule.Days)
-	}
-
-	// // rule.exceptions[]
-	var ruleExceptions []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
-	for _, ruleException := range curRule.Exceptions {
-		curException := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions{}
-		state.Rule.As(ctx, &curException, basetypes.ObjectAsOptions{})
-
-		curException.Name = basetypes.NewStringValue(string(ruleException.Name))
-		curException.ConnectionOrigin = basetypes.NewStringValue(ruleException.ConnectionOrigin.String())
-
-		// rule.exceptions.source{}
-		curSource := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source{}
-		state.Rule.As(ctx, &curSource, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		curSource.IP = parseStringList(ctx, ruleException.Source.IP)
-		curSource.Host = parseNameIDList(ruleException.Source.Host)
-		curSource.Site = parseNameIDList(ruleException.Source.Site)
-		curSource.Site = parseNameIDList(ruleException.Source.Site)
-		curSource.Subnet = parseStringList(ctx, ruleException.Source.Subnet)
-		curSource.IPRange = parseFromToList(ruleException.Source.IPRange)
-		curSource.GlobalIPRange = parseNameIDList(ruleException.Source.GlobalIPRange)
-		curSource.NetworkInterface = parseNameIDList(ruleException.Source.NetworkInterface)
-		curSource.SiteNetworkSubnet = parseNameIDList(ruleException.Source.SiteNetworkSubnet)
-		curSource.FloatingSubnet = parseNameIDList(ruleException.Source.FloatingSubnet)
-		curSource.User = parseNameIDList(ruleException.Source.User)
-		curSource.UsersGroup = parseNameIDList(ruleException.Source.UsersGroup)
-		curSource.Group = parseNameIDList(ruleException.Source.Group)
-		curSource.SystemGroup = parseNameIDList(ruleException.Source.SystemGroup)
-
-		sourceObj, sourceDiags := types.ObjectValue(
-			map[string]attr.Type{
-				"ip":                  types.ListType{ElemType: types.StringType},
-				"host":                types.ListType{ElemType: NameIDObjectType},
-				"site":                types.ListType{ElemType: NameIDObjectType},
-				"subnet":              types.ListType{ElemType: types.StringType},
-				"ip_range":            types.ListType{ElemType: FromToObjectType},
-				"global_ip_range":     types.ListType{ElemType: NameIDObjectType},
-				"network_interface":   types.ListType{ElemType: NameIDObjectType},
-				"site_network_subnet": types.ListType{ElemType: NameIDObjectType},
-				"floating_subnet":     types.ListType{ElemType: NameIDObjectType},
-				"user":                types.ListType{ElemType: NameIDObjectType},
-				"users_group":         types.ListType{ElemType: NameIDObjectType},
-				"group":               types.ListType{ElemType: NameIDObjectType},
-				"system_group":        types.ListType{ElemType: NameIDObjectType},
-			},
-			map[string]attr.Value{
-				"ip":                  curSource.IP,
-				"host":                curSource.Host,
-				"site":                curSource.Site,
-				"subnet":              curSource.Subnet,
-				"ip_range":            curSource.IPRange,
-				"global_ip_range":     curSource.GlobalIPRange,
-				"network_interface":   curSource.NetworkInterface,
-				"site_network_subnet": curSource.SiteNetworkSubnet,
-				"floating_subnet":     curSource.FloatingSubnet,
-				"user":                curSource.User,
-				"users_group":         curSource.UsersGroup,
-				"group":               curSource.Group,
-				"system_group":        curSource.SystemGroup,
-			},
-		)
-
-		resp.Diagnostics.Append(sourceDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		curException.Source = sourceObj
-
-		// rule.exceptions.country{}
-		curException.Country = parseNameIDList(ruleException.Country)
-
-		// rule.exceptions.Device{}
-		curException.Device = parseStringList(ctx, ruleException.Device)
-
-		// rule.exceptions.DeviceOs{}
-		curException.DeviceOs = parseStringList(ctx, ruleException.DeviceOs)
-
-		// rule.exceptions.destination{}
-		curExceptionDestination := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination{}
-		state.Rule.As(ctx, &curExceptionDestination, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		curExceptionDestination.Application = parseNameIDList(ruleException.Destination.Application)
-		curExceptionDestination.CustomApp = parseNameIDList(ruleException.Destination.CustomApp)
-		curExceptionDestination.AppCategory = parseNameIDList(ruleException.Destination.AppCategory)
-		curExceptionDestination.CustomCategory = parseNameIDList(ruleException.Destination.CustomCategory)
-		curExceptionDestination.SanctionedAppsCategory = parseNameIDList(ruleException.Destination.SanctionedAppsCategory)
-		curExceptionDestination.Country = parseNameIDList(ruleException.Destination.Country)
-		curExceptionDestination.Domain = parseStringList(ctx, ruleException.Destination.Domain)
-		curExceptionDestination.Fqdn = parseStringList(ctx, ruleException.Destination.Fqdn)
-		curExceptionDestination.IP = parseStringList(ctx, ruleException.Destination.IP)
-		curExceptionDestination.Subnet = parseStringList(ctx, ruleException.Destination.Subnet)
-		curExceptionDestination.IPRange = parseFromToList(ruleException.Destination.IPRange)
-		curExceptionDestination.GlobalIPRange = parseNameIDList(ruleException.Destination.GlobalIPRange)
-		curExceptionDestination.RemoteAsn = parseStringList(ctx, ruleException.Destination.RemoteAsn)
-
-		destObj, destDiags := types.ObjectValue(
-			map[string]attr.Type{
-				"application":              types.ListType{ElemType: NameIDObjectType},
-				"custom_app":               types.ListType{ElemType: NameIDObjectType},
-				"app_category":             types.ListType{ElemType: NameIDObjectType},
-				"custom_category":          types.ListType{ElemType: NameIDObjectType},
-				"sanctioned_apps_category": types.ListType{ElemType: NameIDObjectType},
-				"country":                  types.ListType{ElemType: NameIDObjectType},
-				"domain":                   types.ListType{ElemType: types.StringType},
-				"fqdn":                     types.ListType{ElemType: types.StringType},
-				"ip":                       types.ListType{ElemType: types.StringType},
-				"subnet":                   types.ListType{ElemType: types.StringType},
-				"ip_range":                 types.ListType{ElemType: FromToObjectType},
-				"global_ip_range":          types.ListType{ElemType: NameIDObjectType},
-				"remote_asn":               types.ListType{ElemType: types.StringType},
-			},
-			map[string]attr.Value{
-				"application":              curExceptionDestination.Application,
-				"custom_app":               curExceptionDestination.CustomApp,
-				"app_category":             curExceptionDestination.AppCategory,
-				"custom_category":          curExceptionDestination.CustomCategory,
-				"sanctioned_apps_category": curExceptionDestination.SanctionedAppsCategory,
-				"country":                  curExceptionDestination.Country,
-				"domain":                   curExceptionDestination.Domain,
-				"fqdn":                     curExceptionDestination.Fqdn,
-				"ip":                       curExceptionDestination.IP,
-				"subnet":                   curExceptionDestination.Subnet,
-				"ip_range":                 curExceptionDestination.IPRange,
-				"global_ip_range":          curExceptionDestination.GlobalIPRange,
-				"remote_asn":               curExceptionDestination.RemoteAsn,
-			},
-		)
-		resp.Diagnostics.Append(destDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		curException.Destination = destObj
-
-		// rule.exceptions.service{}
-		var CustomServiceAttrTypes = map[string]attr.Type{
-			"port":       types.ListType{ElemType: types.StringType},
-			"port_range": types.ObjectType{AttrTypes: FromToAttrTypes},
-			"protocol":   types.StringType,
-		}
-		var customServices []attr.Value
-		if len(ruleException.Service.Custom) > 0 {
-			customServices = make([]attr.Value, len(ruleException.Service.Custom))
-			for i, ruleExceptionCustomService := range ruleException.Service.Custom {
-				ports := parseStringList(ctx, ruleExceptionCustomService.Port)
-				var portRange types.Object
-				if ruleExceptionCustomService.PortRangeCustomService != nil {
-					portRangeObj, portRangeDiags := types.ObjectValue(
-						FromToAttrTypes,
-						map[string]attr.Value{
-							"from": basetypes.NewStringValue(string(ruleExceptionCustomService.PortRangeCustomService.From)),
-							"to":   basetypes.NewStringValue(string(ruleExceptionCustomService.PortRangeCustomService.To)),
-						},
-					)
-					resp.Diagnostics.Append(portRangeDiags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-					portRange = portRangeObj
-				} else {
-					portRange = types.ObjectNull(FromToAttrTypes)
-				}
-
-				// Create custom service object
-				customServiceObj, customDiags := types.ObjectValue(
-					CustomServiceAttrTypes,
-					map[string]attr.Value{
-						"port":       ports,
-						"port_range": portRange,
-						"protocol":   basetypes.NewStringValue(ruleExceptionCustomService.Protocol.String()),
-					},
-				)
-				resp.Diagnostics.Append(customDiags...)
-				if resp.Diagnostics.HasError() {
-					return
-				}
-				customServices[i] = customServiceObj
-			}
-		}
-
-		// Create custom services list
-		var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
-		customList, customListDiags := types.ListValue(CustomServiceObjectType, customServices)
-		resp.Diagnostics.Append(customListDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		standardList := parseNameIDList(ruleException.Service.Standard)
-		// Create service object
-		serviceObj, serviceDiags := types.ObjectValue(
-			map[string]attr.Type{
-				"standard": types.ListType{ElemType: NameIDObjectType},
-				"custom":   types.ListType{ElemType: CustomServiceObjectType},
-			},
-			map[string]attr.Value{
-				"standard": standardList,
-				"custom":   customList,
-			},
-		)
-		resp.Diagnostics.Append(serviceDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		curException.Service = serviceObj
-
-		ruleExceptions = append(ruleExceptions, curException)
-	}
-
-	// Set the exceptions to state
-	if err := resp.State.SetAttribute(ctx, path.Root("rule").AtName("exceptions"), ruleExceptions); err != nil {
-		resp.Diagnostics.AddError("Error setting rule.exceptions", fmt.Sprintf("%s", err))
+	// diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	////////////// end rule.exceptions ///////////////
@@ -5898,6 +5319,969 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 }
 
+// General Purpose Functions:
+func hydrateStateFromAPIResponse(ctx context.Context, ruleResponse *cato.Policy_Policy_InternetFirewall_Policy_Rules_Rule, state InternetFirewallRule) (InternetFirewallRule, diag.Diagnostics) {
+	diags := make(diag.Diagnostics, 0)
+	curRuleObj := createNullCurRule(ctx)
+	curRule := curRuleObj.Attributes()
+	// Set state attributes
+	// state.Rule.ID = basetypes.NewStringValue(curRule.ID)
+	curRule["name"] = basetypes.NewStringValue(ruleResponse.Name)
+	curRule["description"] = basetypes.NewStringValue(ruleResponse.Description)
+	curRule["enabled"] = basetypes.NewBoolValue(ruleResponse.Enabled)
+	curRule["action"] = basetypes.NewStringValue(ruleResponse.Action.String())
+
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("index"), curRule.Index)
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("id"), curRule.Section.ID)
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("section").AtName("name"), curRule.Section.Name)
+
+	// //////////// rule.source ///////////////
+	curRuleSourceObj, diagstmp := types.ObjectValue(
+		map[string]attr.Type{
+			"ip":                  types.ListType{ElemType: types.StringType},
+			"host":                types.ListType{ElemType: NameIDObjectType},
+			"site":                types.ListType{ElemType: NameIDObjectType},
+			"subnet":              types.ListType{ElemType: types.StringType},
+			"ip_range":            types.ListType{ElemType: FromToObjectType},
+			"global_ip_range":     types.ListType{ElemType: NameIDObjectType},
+			"network_interface":   types.ListType{ElemType: NameIDObjectType},
+			"site_network_subnet": types.ListType{ElemType: NameIDObjectType},
+			"floating_subnet":     types.ListType{ElemType: NameIDObjectType},
+			"user":                types.ListType{ElemType: NameIDObjectType},
+			"users_group":         types.ListType{ElemType: NameIDObjectType},
+			"group":               types.ListType{ElemType: NameIDObjectType},
+			"system_group":        types.ListType{ElemType: NameIDObjectType},
+		},
+		map[string]attr.Value{
+			"ip":                  types.ListNull(types.StringType),
+			"host":                types.ListNull(NameIDObjectType),
+			"site":                types.ListNull(NameIDObjectType),
+			"subnet":              types.ListNull(types.StringType),
+			"ip_range":            types.ListNull(FromToObjectType),
+			"global_ip_range":     types.ListNull(NameIDObjectType),
+			"network_interface":   types.ListNull(NameIDObjectType),
+			"site_network_subnet": types.ListNull(NameIDObjectType),
+			"floating_subnet":     types.ListNull(NameIDObjectType),
+			"user":                types.ListNull(NameIDObjectType),
+			"users_group":         types.ListNull(NameIDObjectType),
+			"group":               types.ListNull(NameIDObjectType),
+			"system_group":        types.ListNull(NameIDObjectType),
+		},
+	)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleSourceObj")
+	// }
+	diags = append(diags, diagstmp...)
+	// Initialize source object attributes
+	curRuleSourceObjAttrs := curRuleSourceObj.Attributes()
+
+	// rule.source.subnet[]
+	curSourceSubnets := []string{}
+	for _, sourceSubnet := range ruleResponse.Source.Subnet {
+		curSourceSubnets = append(curSourceSubnets, sourceSubnet)
+	}
+	curSourceSubnetList, diagstmp := types.ListValueFrom(ctx, types.StringType, curSourceSubnets)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceSubnets")
+	// }
+	diags = append(diags, diagstmp...)
+	curRuleSourceObjAttrs["subnet"] = curSourceSubnetList
+
+	// rule.source.ip[]
+	curSourceSourceIps := []string{}
+	for _, sourceIp := range ruleResponse.Source.IP {
+		curSourceSourceIps = append(curSourceSourceIps, sourceIp)
+	}
+	curSourceSourceIpList, diagstmp := types.ListValueFrom(ctx, types.StringType, curSourceSubnets)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceSourceIps")
+	// }
+	diags = append(diags, diagstmp...)
+	curRuleSourceObjAttrs["ip"] = curSourceSourceIpList
+
+	// rule.source.host[]
+	var curSourceHosts []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.Host - "+fmt.Sprintf("%v", ruleResponse.Source.Host))
+	for _, host := range ruleResponse.Source.Host {
+		curSourceHostObj := parseNameIDList(ctx, host)
+		curSourceHosts = append(curSourceHosts, curSourceHostObj)
+	}
+	curSourceHostValues := make([]attr.Value, len(curSourceHosts))
+	for i, v := range curSourceHosts {
+		curSourceHostValues[i] = v
+	}
+	curRuleSourceObjAttrs["host"], diagstmp = types.ListValue(NameIDObjectType, curSourceHostValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceHosts")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// // rule.source.site[]
+	tflog.Warn(ctx, "ruleResponse.Source.Site - "+fmt.Sprintf("%v", ruleResponse.Source.Site))
+	var curSourceSites []types.List
+	for _, site := range ruleResponse.Source.Site {
+		curSourceSiteObj := parseNameIDList(ctx, site)
+		curSourceSites = append(curSourceSites, curSourceSiteObj)
+	}
+	curSourceSiteValues := make([]attr.Value, len(curSourceSites))
+	for i, v := range curSourceSites {
+		curSourceSiteValues[i] = v
+	}
+	curRuleSourceObjAttrs["site"], diagstmp = types.ListValue(NameIDObjectType, curSourceSiteValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceSites")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.ip_range[]
+	var curSourceIPRanges []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.IPRange - "+fmt.Sprintf("%v", ruleResponse.Source.IPRange))
+	for _, iprange := range ruleResponse.Source.IPRange {
+		curSourceIPRangeObj := parseNameIDList(ctx, iprange)
+		curSourceIPRanges = append(curSourceIPRanges, curSourceIPRangeObj)
+	}
+	curSourceIPRangeValues := make([]attr.Value, len(curSourceIPRanges))
+	for i, v := range curSourceIPRanges {
+		curSourceIPRangeValues[i] = v
+	}
+	curRuleSourceObjAttrs["ip_range"], diagstmp = types.ListValue(NameIDObjectType, curSourceIPRangeValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceIPRanges")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.global_ip_range[]
+	var curSourceGlobalIPRanges []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.GlobalIPRange - "+fmt.Sprintf("%v", ruleResponse.Source.GlobalIPRange))
+	for _, globaliprange := range ruleResponse.Source.GlobalIPRange {
+		curSourceGlobalIPRangeObj := parseFromToList(globaliprange)
+		curSourceGlobalIPRanges = append(curSourceGlobalIPRanges, curSourceGlobalIPRangeObj)
+	}
+	curSourceGlobalIPRangeValues := make([]attr.Value, len(curSourceGlobalIPRanges))
+	for i, v := range curSourceGlobalIPRanges {
+		curSourceGlobalIPRangeValues[i] = v
+	}
+	curRuleSourceObjAttrs["global_ip_range"], diagstmp = types.ListValue(NameIDObjectType, curSourceGlobalIPRangeValues)
+	if diagstmp.HasError() {
+		diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceGlobalIPRanges")
+	}
+	diags = append(diags, diagstmp...)
+
+	// rule.source.network_interface[]
+	var curSourceNetworkInterfaces []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.NetworkInterface - "+fmt.Sprintf("%v", ruleResponse.Source.NetworkInterface))
+	for _, networkInterface := range ruleResponse.Source.NetworkInterface {
+		curSourceNetworkInterfaceObj := parseNameIDList(ctx, networkInterface)
+		curSourceNetworkInterfaces = append(curSourceNetworkInterfaces, curSourceNetworkInterfaceObj)
+	}
+	curSourceNetworkInterfaceValues := make([]attr.Value, len(curSourceNetworkInterfaces))
+	for i, v := range curSourceNetworkInterfaces {
+		curSourceNetworkInterfaceValues[i] = v
+	}
+	curRuleSourceObjAttrs["network_interface"], diagstmp = types.ListValue(NameIDObjectType, curSourceNetworkInterfaceValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceNetworkInterfaces")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.site_network_subnet[]
+	var curSourceNetworkSubnets []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.SiteNetworkSubnet - "+fmt.Sprintf("%v", ruleResponse.Source.SiteNetworkSubnet))
+	for _, networkSubnet := range ruleResponse.Source.SiteNetworkSubnet {
+		curSourceNetworkSubnetObj := parseNameIDList(ctx, networkSubnet)
+		curSourceNetworkSubnets = append(curSourceNetworkSubnets, curSourceNetworkSubnetObj)
+	}
+	curSourceNetworkSubnetValues := make([]attr.Value, len(curSourceNetworkSubnets))
+	for i, v := range curSourceNetworkSubnets {
+		curSourceNetworkSubnetValues[i] = v
+	}
+	curRuleSourceObjAttrs["site_network_subnet"], diagstmp = types.ListValue(NameIDObjectType, curSourceNetworkSubnetValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceNetworkSubnets")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.floating_subnet[]
+	var curSourceFloatingSubnets []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.FloatingSubnet - "+fmt.Sprintf("%v", ruleResponse.Source.FloatingSubnet))
+	for _, floatingSubnet := range ruleResponse.Source.FloatingSubnet {
+		curSourceFloatingSubnetObj := parseNameIDList(ctx, floatingSubnet)
+		curSourceFloatingSubnets = append(curSourceFloatingSubnets, curSourceFloatingSubnetObj)
+	}
+	curSourceFloatingSubnetValues := make([]attr.Value, len(curSourceFloatingSubnets))
+	for i, v := range curSourceFloatingSubnets {
+		curSourceFloatingSubnetValues[i] = v
+	}
+	curRuleSourceObjAttrs["floating_subnet"], diagstmp = types.ListValue(NameIDObjectType, curSourceFloatingSubnetValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceFloatingSubnets")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.user[]
+	var curSourceUsers []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.User - "+fmt.Sprintf("%v", ruleResponse.Source.User))
+	for _, user := range ruleResponse.Source.User {
+		curSourceUserObj := parseNameIDList(ctx, user)
+		curSourceUsers = append(curSourceUsers, curSourceUserObj)
+	}
+	curSourceUserValues := make([]attr.Value, len(curSourceUsers))
+	for i, v := range curSourceUsers {
+		curSourceUserValues[i] = v
+	}
+	curRuleSourceObjAttrs["user"], diagstmp = types.ListValue(NameIDObjectType, curSourceUserValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceUsers")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.users_group[]
+	var curSourceUsersGroups []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.UserGroup - "+fmt.Sprintf("%v", ruleResponse.Source.UsersGroup))
+	for _, usersGroup := range ruleResponse.Source.UsersGroup {
+		curSourceUsersGroupObj := parseNameIDList(ctx, usersGroup)
+		curSourceUsersGroups = append(curSourceUsersGroups, curSourceUsersGroupObj)
+	}
+	curSourceUsersGroupValues := make([]attr.Value, len(curSourceUsersGroups))
+	for i, v := range curSourceUsersGroups {
+		curSourceUsersGroupValues[i] = v
+	}
+	curRuleSourceObjAttrs["users_group"], diagstmp = types.ListValue(NameIDObjectType, curSourceUsersGroupValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceUsersGroups")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.group[]
+	var curSourceGroups []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.Group - "+fmt.Sprintf("%v", ruleResponse.Source.Group))
+	for _, group := range ruleResponse.Source.Group {
+		curSourceGroupObj := parseNameIDList(ctx, group)
+		curSourceGroups = append(curSourceGroups, curSourceGroupObj)
+	}
+	curSourceGroupValues := make([]attr.Value, len(curSourceGroups))
+	for i, v := range curSourceGroups {
+		curSourceGroupValues[i] = v
+	}
+	curRuleSourceObjAttrs["group"], diagstmp = types.ListValue(NameIDObjectType, curSourceGroupValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceGroups")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.source.system_group[]
+	var curSourceSystemGroups []types.List
+	tflog.Warn(ctx, "ruleResponse.Source.SystemGroup - "+fmt.Sprintf("%v", ruleResponse.Source.SystemGroup))
+	for _, systemGroup := range ruleResponse.Source.SystemGroup {
+		curSourceSystemGroupObj := parseNameIDList(ctx, systemGroup)
+		curSourceSystemGroups = append(curSourceSystemGroups, curSourceSystemGroupObj)
+	}
+	curSourceSystemGroupValues := make([]attr.Value, len(curSourceSystemGroups))
+	for i, v := range curSourceSystemGroups {
+		curSourceSystemGroupValues[i] = v
+	}
+	curRuleSourceObjAttrs["system_group"], diagstmp = types.ListValue(NameIDObjectType, curSourceSystemGroupValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curSourceSystemGroups")
+	// }
+	diags = append(diags, diagstmp...)
+
+	curRule["source"] = curRuleSourceObj
+	////////////// end rule.source ///////////////
+
+	// rule.country[]
+	var curCountries []types.List
+	tflog.Warn(ctx, "ruleResponse.Country - "+fmt.Sprintf("%v", ruleResponse.Country))
+	for _, country := range ruleResponse.Country {
+		curSourceCountryObj := parseNameIDList(ctx, country)
+		curCountries = append(curCountries, curSourceCountryObj)
+	}
+	curCountryValues := make([]attr.Value, len(curCountries))
+	for i, v := range curCountries {
+		curCountryValues[i] = v
+	}
+	curRule["country"], diagstmp = types.ListValue(NameIDObjectType, curCountryValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curCountries")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.device[]
+	var curDevices []types.List
+	tflog.Warn(ctx, "ruleResponse.Device - "+fmt.Sprintf("%v", ruleResponse.Device))
+	for _, device := range ruleResponse.Device {
+		curDeviceObj := parseNameIDList(ctx, device)
+		curDevices = append(curDevices, curDeviceObj)
+	}
+	curDeviceValues := make([]attr.Value, len(curDevices))
+	for i, v := range curDevices {
+		curDeviceValues[i] = v
+	}
+	curRule["device"], diagstmp = types.ListValue(NameIDObjectType, curDeviceValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDevices")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.device_os
+	curRule["deviceOs"], diagstmp = types.ListValueFrom(ctx, types.StringType, ruleResponse.DeviceOs)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.deviceOs")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// //////////// rule.destination ///////////////
+	curRuleDestObj, diagstmp := types.ObjectValue(
+		map[string]attr.Type{
+			"application":              types.ListType{ElemType: NameIDObjectType},
+			"custom_app":               types.ListType{ElemType: NameIDObjectType},
+			"app_category":             types.ListType{ElemType: NameIDObjectType},
+			"custom_category":          types.ListType{ElemType: NameIDObjectType},
+			"sanctioned_apps_category": types.ListType{ElemType: NameIDObjectType},
+			"country":                  types.ListType{ElemType: NameIDObjectType},
+			"domain":                   types.ListType{ElemType: types.StringType},
+			"fqdn":                     types.ListType{ElemType: types.StringType},
+			"ip":                       types.ListType{ElemType: types.StringType},
+			"subnet":                   types.ListType{ElemType: types.StringType},
+			"ip_range":                 types.ListType{ElemType: FromToObjectType},
+			"global_ip_range":          types.ListType{ElemType: NameIDObjectType},
+			"remote_asn":               types.ListType{ElemType: types.StringType},
+		},
+		map[string]attr.Value{
+			"application":              types.ListNull(NameIDObjectType),
+			"custom_app":               types.ListNull(NameIDObjectType),
+			"app_category":             types.ListNull(NameIDObjectType),
+			"custom_category":          types.ListNull(NameIDObjectType),
+			"sanctioned_apps_category": types.ListNull(NameIDObjectType),
+			"country":                  types.ListNull(NameIDObjectType),
+			"domain":                   types.ListNull(types.StringType),
+			"fqdn":                     types.ListNull(types.StringType),
+			"ip":                       types.ListNull(types.StringType),
+			"subnet":                   types.ListNull(types.StringType),
+			"ip_range":                 types.ListNull(FromToObjectType),
+			"global_ip_range":          types.ListNull(NameIDObjectType),
+			"remote_asn":               types.ListNull(types.StringType),
+		},
+	)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleDestObj")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// Initialize source object attributes
+	curRuleDestObjAttrs := curRuleDestObj.Attributes()
+
+	// rule.destination.application[]
+	var curDestApplications []types.List
+	tflog.Warn(ctx, "ruleResponse.Destination.Application - "+fmt.Sprintf("%v", ruleResponse.Destination.Application))
+	for _, application := range ruleResponse.Destination.Application {
+		curDestApplicationObj := parseNameIDList(ctx, application)
+		curDestApplications = append(curDestApplications, curDestApplicationObj)
+	}
+	curDestApplicationValues := make([]attr.Value, len(curDestApplications))
+	for i, v := range curDestApplications {
+		curDestApplicationValues[i] = v
+	}
+	curRuleDestObjAttrs["application"], diagstmp = types.ListValue(NameIDObjectType, curDestApplicationValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestApplications")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.custom_app[]
+	var curDestCustomApps []types.List
+	tflog.Warn(ctx, "ruleResponse.Destination.CustomApp - "+fmt.Sprintf("%v", ruleResponse.Destination.CustomApp))
+	for _, customApp := range ruleResponse.Destination.CustomApp {
+		curDestCustomAppObj := parseNameIDList(ctx, customApp)
+		curDestCustomApps = append(curDestCustomApps, curDestCustomAppObj)
+	}
+	curDestCustomAppValues := make([]attr.Value, len(curDestCustomApps))
+	for i, v := range curDestCustomApps {
+		curDestCustomAppValues[i] = v
+	}
+	curRuleDestObjAttrs["custom_app"], diagstmp = types.ListValue(NameIDObjectType, curDestCustomAppValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestCustomApps")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.app_category[]
+	var curDestAppCategories []types.List
+	tflog.Warn(ctx, "ruleResponse.Destination.CustomApp - "+fmt.Sprintf("%v", ruleResponse.Destination.AppCategory))
+	for _, appCategory := range ruleResponse.Destination.AppCategory {
+		curDestAppCategoryObj := parseNameIDList(ctx, appCategory)
+		curDestAppCategories = append(curDestAppCategories, curDestAppCategoryObj)
+	}
+	curDestAppCategoryValues := make([]attr.Value, len(curDestAppCategories))
+	for i, v := range curDestAppCategories {
+		curDestAppCategoryValues[i] = v
+	}
+	curRuleDestObjAttrs["app_category"], diagstmp = types.ListValue(NameIDObjectType, curDestAppCategoryValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestAppCategories")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.custom_category[]
+	var curDestCustomCategories []types.List
+	tflog.Warn(ctx, "ruleResponse.Destination.CustomCategory - "+fmt.Sprintf("%v", ruleResponse.Destination.CustomCategory))
+	for _, customCategory := range ruleResponse.Destination.CustomCategory {
+		curDestCustomCategoryObj := parseNameIDList(ctx, customCategory)
+		curDestCustomCategories = append(curDestCustomCategories, curDestCustomCategoryObj)
+	}
+	curDestCustomCategoryValues := make([]attr.Value, len(curDestCustomCategories))
+	for i, v := range curDestCustomCategories {
+		curDestCustomCategoryValues[i] = v
+	}
+	curRuleDestObjAttrs["custom_category"], diagstmp = types.ListValue(NameIDObjectType, curDestCustomCategoryValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestCustomCategories")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.sanctioned_apps_category[]
+	var curDestSanctionedAppsCategories []types.List
+	tflog.Warn(ctx, "ruleResponse.Destination.SanctionedAppsCategory - "+fmt.Sprintf("%v", ruleResponse.Destination.SanctionedAppsCategory))
+	for _, sanctionedAppsCategory := range ruleResponse.Destination.SanctionedAppsCategory {
+		curDestSanctionedAppsCategoryObj := parseNameIDList(ctx, sanctionedAppsCategory)
+		curDestSanctionedAppsCategories = append(curDestSanctionedAppsCategories, curDestSanctionedAppsCategoryObj)
+	}
+	curDestSanctionedAppsCategoryValues := make([]attr.Value, len(curDestSanctionedAppsCategories))
+	for i, v := range curDestSanctionedAppsCategories {
+		curDestSanctionedAppsCategoryValues[i] = v
+	}
+	curRuleDestObjAttrs["sanctioned_apps_category"], diagstmp = types.ListValue(NameIDObjectType, curDestSanctionedAppsCategoryValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestSanctionedAppsCategories")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.country[]
+	var curDestCountries []types.List
+	tflog.Warn(ctx, "ruleResponse.Destination.Country - "+fmt.Sprintf("%v", ruleResponse.Destination.Country))
+	for _, country := range ruleResponse.Destination.Country {
+		curDestCountryObj := parseNameIDList(ctx, country)
+		curDestCountries = append(curDestCountries, curDestCountryObj)
+	}
+	curDestCountryValues := make([]attr.Value, len(curDestCountries))
+	for i, v := range curDestCountries {
+		curDestCountryValues[i] = v
+	}
+	curRuleDestObjAttrs["country"], diagstmp = types.ListValue(NameIDObjectType, curDestCountryValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestCountries")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.domain[]
+	curRuleDestObjAttrs["domain"], diagstmp = types.ListValueFrom(ctx, types.StringType, ruleResponse.Destination.Domain)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleDestObjAttrs.domain")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.fqdn[]
+	curRuleDestObjAttrs["fqdn"], diagstmp = types.ListValueFrom(ctx, types.StringType, ruleResponse.Destination.Fqdn)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleDestObjAttrs.fqdn")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.ip[]
+	curRuleDestObjAttrs["ip"], diagstmp = types.ListValueFrom(ctx, types.StringType, ruleResponse.Destination.IP)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleDestObjAttrs.ip")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// rule.destination.subnet[]
+	curRuleDestObjAttrs["subnet"], diagstmp = types.ListValueFrom(ctx, types.StringType, ruleResponse.Destination.Subnet)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleDestObjAttrs.subnet")
+	// }
+	diags = append(diags, diagstmp...)
+
+	// // rule.destination.ip_range[]
+	// var curDestIPRanges []types.List
+	// tflog.Warn(ctx, "ruleResponse.Destination.IPRange - "+fmt.Sprintf("%v", ruleResponse.Destination.IPRange))
+	// for _, ipRange := range ruleResponse.Destination.IPRange {
+	// 	curDestIPRangeObj := parseNameIDList(ctx, ipRange)
+	// 	curDestIPRanges = append(curDestIPRanges, curDestIPRangeObj)
+	// }
+	// curDestIPRangeValues := make([]attr.Value, len(curDestIPRanges))
+	// for i, v := range curDestIPRanges {
+	// 	curDestIPRangeValues[i] = v
+	// }
+	// curRuleDestObjAttrs["ip_range"], diagstmp = types.ListValue(NameIDObjectType, curDestIPRangeValues)
+	// // if diagstmp.HasError() {
+	// // 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestIPRanges")
+	// // }
+	// diags = append(diags, diagstmp...)
+
+	// // rule.destination.global_ip_range[]
+	// var curDestGlobalIPRanges []types.List
+	// tflog.Warn(ctx, "ruleResponse.Destination.GlobalIPRange - "+fmt.Sprintf("%v", ruleResponse.Destination.GlobalIPRange))
+	// for _, globalIPRange := range ruleResponse.Destination.GlobalIPRange {
+	// 	curDestGlobalIPRangeObj := parseNameIDList(ctx, globalIPRange)
+	// 	curDestGlobalIPRanges = append(curDestGlobalIPRanges, curDestGlobalIPRangeObj)
+	// }
+	// curDestGlobalIPRangeValues := make([]attr.Value, len(curDestGlobalIPRanges))
+	// for i, v := range curDestGlobalIPRanges {
+	// 	curDestGlobalIPRangeValues[i] = v
+	// }
+	// curRuleDestObjAttrs["global_ip_range"], diagstmp = types.ListValue(NameIDObjectType, curDestGlobalIPRangeValues)
+	// // if diagstmp.HasError() {
+	// // 	diagstmp = addDebugLineNumber(diagstmp, "rule.curDestGlobalIPRanges")
+	// // }
+	// diags = append(diags, diagstmp...)
+
+	// rule.destination.remote_asn[]
+	remoteAsnValues := make([]attr.Value, len(ruleResponse.Destination.RemoteAsn))
+	for i, asn := range ruleResponse.Destination.RemoteAsn {
+		remoteAsnValues[i] = basetypes.NewStringValue(string(asn))
+	}
+	curRuleDestObjAttrs["remote_asn"], diagstmp = types.ListValue(types.StringType, remoteAsnValues)
+	// if diagstmp.HasError() {
+	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.remoteAsnValues")
+	// }
+	diags = append(diags, diagstmp...)
+
+	curRule["destination"] = curRuleDestObj
+	////////////// end rule.destination ///////////////
+
+	// ////////////// rule.containers ///////////////
+	// // rule.containers.containers.fqdnContainer[]
+	// var fqdnContainers []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_fqdnContainer
+	// for _, fqdnContainer := range curRule.Containers.FqdnContainer {
+	// 	curFqdnContainer := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_fqdnContainer{}
+	// 	state.Rule.As(ctx, &curFqdnContainer, basetypes.ObjectAsOptions{})
+	// 	curFqdnContainer.Name = basetypes.NewStringValue(fqdnContainer.Name)
+	// 	curFqdnContainer.ID = basetypes.NewStringValue(fqdnContainer.ID)
+	// 	fqdnContainers = append(fqdnContainers, curFqdnContainer)
+	// }
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("containers").AtName("fqdnContainer"), fqdnContainers)
+
+	// // rule.containers.containers.ipAddressRangeContainer[]
+	// var ipAddressContainers []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_ipAddressContainer
+	// for _, ipAddressContainer := range curRule.Containers.IpAddressContainer {
+	// 	curIpAddressContainer := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Containers_ipAddressContainer{}
+	// 	state.Rule.As(ctx, &curIpAddressContainer, basetypes.ObjectAsOptions{})
+	// 	curIpAddressContainer.Name = basetypes.NewStringValue(ipAddressContainer.Name)
+	// 	curIpAddressContainer.ID = basetypes.NewStringValue(ipAddressContainer.ID)
+	// 	ipAddressContainers = append(ipAddressContainers, curIpAddressContainer)
+	// }
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("containers").AtName("ipAddressRangeContainer"), ipAddressContainers)
+	// ////////////// end rule.containers ///////////////////
+
+	// // //////////// end rule.service ///////////////
+	// curRuleServiceObj, diagstmp := types.ObjectValue(
+	// 	map[string]attr.Type{
+	// 		"standard": types.ListType{ElemType: NameIDObjectType},
+	// 		"custom":   types.ListType{ElemType: NameIDObjectType},
+	// 	},
+	// 	map[string]attr.Value{
+	// 		"standard": types.ListNull(NameIDObjectType),
+	// 		"custom":   types.ListNull(NameIDObjectType),
+	// 	},
+	// )
+	// // if diagstmp.HasError() {
+	// // 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleServiceObj")
+	// // }
+	// diags = append(diags, diagstmp...)
+	// curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
+
+	// var curRuleStandardServices []types.List
+	// tflog.Warn(ctx, "ruleResponse.Service.Standard - "+fmt.Sprintf("%v", ruleResponse.Service.Standard))
+	// for _, curRuleStandardService := range ruleResponse.Service.Standard {
+	// 	curRuleStandardServiceObj := parseNameIDList(ctx, curRuleStandardService)
+	// 	curRuleStandardServices = append(curRuleStandardServices, curRuleStandardServiceObj)
+	// }
+	// curRuleStandardServiceValues := make([]attr.Value, len(curRuleStandardServices))
+	// for i, v := range curRuleStandardServices {
+	// 	curRuleStandardServiceValues[i] = v
+	// }
+	// curRuleServiceObjAttrs["standard"], diagstmp = types.ListValue(NameIDObjectType, curRuleStandardServiceValues)
+	// // if diagstmp.HasError() {
+	// // 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleStandardServices")
+	// // }
+	// diags = append(diags, diagstmp...)
+
+	// // rule.service.custom[]
+	// var curRuleCustomServices []attr.Value
+	// for _, curRuleCustomService := range ruleResponse.Service.Custom {
+	// 	curRuleCustomServiceObj, diagstmp := types.ObjectValue(
+	// 		map[string]attr.Type{
+	// 			"port": types.ListType{ElemType: basetypes.StringType{}},
+	// 			"port_range": types.ObjectType{AttrTypes: map[string]attr.Type{
+	// 				"from": basetypes.StringType{},
+	// 				"to":   basetypes.StringType{},
+	// 			}},
+	// 			"protocol": basetypes.StringType{},
+	// 		},
+	// 		map[string]attr.Value{
+	// 			"port": types.ListNull(basetypes.StringType{}),
+	// 			"port_range": types.ObjectNull(map[string]attr.Type{
+	// 				"from": basetypes.StringType{},
+	// 				"to":   basetypes.StringType{},
+	// 			}),
+	// 			"protocol": types.StringNull(),
+	// 		},
+	// 	)
+	// 	// if diagstmp.HasError() {
+	// 	// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleCustomServices")
+	// 	// }
+	// 	diags = append(diags, diagstmp...)
+
+	// 	curRuleSourceObjAttrs := curRuleCustomServiceObj.Attributes()
+	// 	curRuleSourceObjAttrs["protocol"] = basetypes.NewStringValue(curRuleCustomService.Protocol.String())
+
+	// 	// rule.service.custom.port[]
+	// 	if curRuleCustomService.Port != nil {
+	// 		customServicePorts := []string{}
+	// 		for _, port := range curRuleCustomService.Port {
+	// 			customServicePorts = append(customServicePorts, string(port))
+	// 		}
+	// 		curRuleSourceObjAttrs["port"], diagstmp = types.ListValueFrom(ctx, basetypes.StringType{}, customServicePorts)
+	// 		// if diagstmp.HasError() {
+	// 		// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleCustomService.port")
+	// 		// }
+	// 		diags = append(diags, diagstmp...)
+	// 	}
+
+	// 	if curRuleCustomService.PortRange != nil {
+	// 		curRuleSourceObjAttrs["port_range"], diagstmp = types.ObjectValue(
+	// 			map[string]attr.Type{
+	// 				"from": basetypes.StringType{},
+	// 				"to":   basetypes.StringType{},
+	// 			},
+	// 			map[string]attr.Value{
+	// 				"from": basetypes.NewStringValue(string(curRuleCustomService.PortRange.From)),
+	// 				"to":   basetypes.NewStringValue(string(curRuleCustomService.PortRange.To)),
+	// 			},
+	// 		)
+	// 		// if diagstmp.HasError() {
+	// 		// 	diagstmp = addDebugLineNumber(diagstmp, "rule.curRuleCustomService.portRange")
+	// 		// }
+	// 		diags = append(diags, diagstmp...)
+	// 	}
+
+	// 	curRuleCustomServices = append(curRuleCustomServices, curRuleCustomServiceObj)
+	// }
+	// curRuleServiceObjAttrs["custom"], diagstmp = types.ListValue(NameIDObjectType, curRuleCustomServices)
+	// // if diagstmp.HasError() {
+	// // 	diagstmp = addDebugLineNumber(diagstmp, "rule.custom_service")
+	// // }
+	// diags = append(diags, diagstmp...)
+	// ////////////// end rule.service ///////////////
+
+	// rule.action
+	curRule["action"] = basetypes.NewStringValue(ruleResponse.Action.String())
+
+	// rule.tracking
+	// curRuleTrackingObj, destDiags := types.ObjectValue(
+	// 	map[string]attr.Type{
+	// 		"event": types.ListType{ElemType: NameIDObjectType},
+	// 		"alert": types.ListType{ElemType: NameIDObjectType},
+	// 	},
+	// 	map[string]attr.Value{
+	// 		"event": types.ListNull(NameIDObjectType),
+	// 		"alert": types.ListNull(NameIDObjectType),
+	// 	},
+	// )
+	// resp.Diagnostics.Append(destDiags...)
+	// if resp.Diagnostics.HasError() {
+	// 	return curRule
+	// }
+	// curRuleTrackingObjAttrs := curRuleTrackingObj.Attributes()
+
+	// curRuleTrackingObjAttrs["event"], _ = types.ListValueFrom(ctx, NameIDObjectType, ruleResponse.Tracking.Event.Enabled)
+	// curRuleAlertObj, destDiags := types.ObjectValue(
+	// 	AlertAttrTypes,
+	// 	map[string]attr.Value{
+	// 		"event": types.ObjectNull(EnabledAttrTypes),
+	// 		"alert": types.ListNull(AlertObjectType),
+	// 	},
+	// )
+	// resp.Diagnostics.Append(destDiags...)
+	// if resp.Diagnostics.HasError() {
+	// 	return curRule
+	// }
+	// curRuleTrackingObjAttrs := curRuleTrackingObj.Attributes()
+
+	// // curRuleTrackingObjAttrs["alert"], _ = types.ListValueFrom(ctx, NameIDObjectType, ruleResponse.Tracking.Alert)
+
+	// // resp.State.SetAttribute(ctx, path.Root("rule").AtName("action"), curRule.Action)
+	// // resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("event").AtName("enabled"), curRule.Tracking.Event.Enabled)
+	// // resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("enabled"), curRule.Tracking.Alert.Enabled)
+	// // resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("frequency"), curRule.Tracking.Alert.Frequency)
+
+	// // rule.tracking.alert.subscription_group{}
+	// var alertSubscriptionGroups []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
+	// for _, alertSubscriptionGroup := range curRule.Tracking.Alert.SubscriptionGroup {
+	// 	curAlertSubscriptionGroup := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup{}
+	// 	state.Rule.As(ctx, &curAlertSubscriptionGroup, basetypes.ObjectAsOptions{})
+	// 	curAlertSubscriptionGroup.Name = basetypes.NewStringValue(alertSubscriptionGroup.Name)
+	// 	curAlertSubscriptionGroup.ID = basetypes.NewStringValue(alertSubscriptionGroup.ID)
+	// 	alertSubscriptionGroups = append(alertSubscriptionGroups, curAlertSubscriptionGroup)
+	// }
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("subscription_group"), alertSubscriptionGroups)
+
+	// // rule.tracking.alert.webhook{}
+	// var alertWebHooks []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook
+	// for _, alertWebHook := range curRule.Tracking.Alert.Webhook {
+	// 	curAlertWebHook := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook{}
+	// 	state.Rule.As(ctx, &curAlertWebHook, basetypes.ObjectAsOptions{})
+	// 	curAlertWebHook.Name = basetypes.NewStringValue(alertWebHook.Name)
+	// 	curAlertWebHook.ID = basetypes.NewStringValue(alertWebHook.ID)
+	// 	alertWebHooks = append(alertWebHooks, curAlertWebHook)
+	// }
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("webhooks"), alertWebHooks)
+
+	// // rule.tracking.alert.mailing_list{}
+	// var alertMailingLists []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList
+	// for _, alertMailingList := range curRule.Tracking.Alert.MailingList {
+	// 	curAlertMailingList := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList{}
+	// 	state.Rule.As(ctx, &curAlertMailingList, basetypes.ObjectAsOptions{})
+	// 	curAlertMailingList.Name = basetypes.NewStringValue(alertMailingList.Name)
+	// 	curAlertMailingList.ID = basetypes.NewStringValue(alertMailingList.ID)
+	// 	alertMailingLists = append(alertMailingLists, curAlertMailingList)
+	// }
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking").AtName("alert").AtName("mailing_list"), alertMailingLists)
+
+	// // rule.schedule.active_on{}
+	// resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("active_on"), curRule.Schedule.ActiveOn)
+	// // rule.schedule.custom_timeframe{}
+	// if curRule.Schedule.CustomTimeframePolicySchedule != nil {
+	// 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_timeframe").AtName("from"), curRule.Schedule.CustomTimeframePolicySchedule.From)
+	// 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_timeframe").AtName("to"), curRule.Schedule.CustomTimeframePolicySchedule.To)
+	// }
+	// // rule.schedule.custom_recurring{}
+	// if curRule.Schedule.CustomRecurringPolicySchedule != nil {
+	// 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("from"), curRule.Schedule.CustomRecurringPolicySchedule.From)
+	// 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("to"), curRule.Schedule.CustomRecurringPolicySchedule.To)
+	// 	resp.State.SetAttribute(ctx, path.Root("rule").AtName("schedule").AtName("custom_recurring").AtName("days"), curRule.Schedule.CustomRecurringPolicySchedule.Days)
+	// }
+
+	// // // rule.exceptions[]
+	// var ruleExceptions []*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	// for _, ruleException := range curRule.Exceptions {
+	// 	curException := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions{}
+	// 	state.Rule.As(ctx, &curException, basetypes.ObjectAsOptions{})
+
+	// 	curException.Name = basetypes.NewStringValue(string(ruleException.Name))
+	// 	curException.ConnectionOrigin = basetypes.NewStringValue(ruleException.ConnectionOrigin.String())
+
+	// 	// rule.exceptions.source{}
+	// 	curSource := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source{}
+	// 	state.Rule.As(ctx, &curSource, basetypes.ObjectAsOptions{})
+	// 	resp.Diagnostics.Append(diags...)
+	// 	if resp.Diagnostics.HasError() {
+	// 		return
+	// 	}
+	// 	curSource.IP = parseStringList(ctx, ruleException.Source.IP)
+	// 	curSource.Host = parseNameIDList(ctx, ruleException.Source.Host)
+	// 	curSource.Site = parseNameIDList(ctx, ruleException.Source.Site)
+	// 	curSource.Site = parseNameIDList(ctx, ruleException.Source.Site)
+	// 	curSource.Subnet = parseStringList(ctx, ruleException.Source.Subnet)
+	// 	curSource.IPRange = parseFromToList(ruleException.Source.IPRange)
+	// 	curSource.GlobalIPRange = parseNameIDList(ctx, ruleException.Source.GlobalIPRange)
+	// 	curSource.NetworkInterface = parseNameIDList(ctx, ruleException.Source.NetworkInterface)
+	// 	curSource.SiteNetworkSubnet = parseNameIDList(ctx, ruleException.Source.SiteNetworkSubnet)
+	// 	curSource.FloatingSubnet = parseNameIDList(ctx, ruleException.Source.FloatingSubnet)
+	// 	curSource.User = parseNameIDList(ctx, ruleException.Source.User)
+	// 	curSource.UsersGroup = parseNameIDList(ctx, ruleException.Source.UsersGroup)
+	// 	curSource.Group = parseNameIDList(ctx, ruleException.Source.Group)
+	// 	curSource.SystemGroup = parseNameIDList(ctx, ruleException.Source.SystemGroup)
+
+	// 	sourceObj, sourceDiags := types.ObjectValue(
+	// 		map[string]attr.Type{
+	// 			"ip":                  types.ListType{ElemType: types.StringType},
+	// 			"host":                types.ListType{ElemType: NameIDObjectType},
+	// 			"site":                types.ListType{ElemType: NameIDObjectType},
+	// 			"subnet":              types.ListType{ElemType: types.StringType},
+	// 			"ip_range":            types.ListType{ElemType: FromToObjectType},
+	// 			"global_ip_range":     types.ListType{ElemType: NameIDObjectType},
+	// 			"network_interface":   types.ListType{ElemType: NameIDObjectType},
+	// 			"site_network_subnet": types.ListType{ElemType: NameIDObjectType},
+	// 			"floating_subnet":     types.ListType{ElemType: NameIDObjectType},
+	// 			"user":                types.ListType{ElemType: NameIDObjectType},
+	// 			"users_group":         types.ListType{ElemType: NameIDObjectType},
+	// 			"group":               types.ListType{ElemType: NameIDObjectType},
+	// 			"system_group":        types.ListType{ElemType: NameIDObjectType},
+	// 		},
+	// 		map[string]attr.Value{
+	// 			"ip":                  curSource.IP,
+	// 			"host":                curSource.Host,
+	// 			"site":                curSource.Site,
+	// 			"subnet":              curSource.Subnet,
+	// 			"ip_range":            curSource.IPRange,
+	// 			"global_ip_range":     curSource.GlobalIPRange,
+	// 			"network_interface":   curSource.NetworkInterface,
+	// 			"site_network_subnet": curSource.SiteNetworkSubnet,
+	// 			"floating_subnet":     curSource.FloatingSubnet,
+	// 			"user":                curSource.User,
+	// 			"users_group":         curSource.UsersGroup,
+	// 			"group":               curSource.Group,
+	// 			"system_group":        curSource.SystemGroup,
+	// 		},
+	// 	)
+
+	// 	resp.Diagnostics.Append(sourceDiags...)
+	// 	if resp.Diagnostics.HasError() {
+	// 		return
+	// 	}
+	// 	curException.Source = sourceObj
+
+	// 	// rule.exceptions.country{}
+	// 	curException.Country = parseNameIDList(ctx, ruleException.Country)
+
+	// 	// rule.exceptions.Device{}
+	// 	curException.Device = parseStringList(ctx, ruleException.Device)
+
+	// 	// rule.exceptions.DeviceOs{}
+	// 	curException.DeviceOs = parseStringList(ctx, ruleException.DeviceOs)
+
+	// 	// rule.exceptions.destination{}
+	// 	curExceptionDestination := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination{}
+	// 	state.Rule.As(ctx, &curExceptionDestination, basetypes.ObjectAsOptions{})
+	// 	resp.Diagnostics.Append(diags...)
+	// 	if resp.Diagnostics.HasError() {
+	// 		return
+	// 	}
+	// 	curExceptionDestination.Application = parseNameIDList(ctx, ruleException.Destination.Application)
+	// 	curExceptionDestination.CustomApp = parseNameIDList(ctx, ruleException.Destination.CustomApp)
+	// 	curExceptionDestination.AppCategory = parseNameIDList(ctx, ruleException.Destination.AppCategory)
+	// 	curExceptionDestination.CustomCategory = parseNameIDList(ctx, ruleException.Destination.CustomCategory)
+	// 	curExceptionDestination.SanctionedAppsCategory = parseNameIDList(ctx, ruleException.Destination.SanctionedAppsCategory)
+	// 	curExceptionDestination.Country = parseNameIDList(ctx, ruleException.Destination.Country)
+	// 	curExceptionDestination.Domain = parseStringList(ctx, ruleException.Destination.Domain)
+	// 	curExceptionDestination.Fqdn = parseStringList(ctx, ruleException.Destination.Fqdn)
+	// 	curExceptionDestination.IP = parseStringList(ctx, ruleException.Destination.IP)
+	// 	curExceptionDestination.Subnet = parseStringList(ctx, ruleException.Destination.Subnet)
+	// 	curExceptionDestination.IPRange = parseFromToList(ruleException.Destination.IPRange)
+	// 	curExceptionDestination.GlobalIPRange = parseNameIDList(ctx, ruleException.Destination.GlobalIPRange)
+	// 	curExceptionDestination.RemoteAsn = parseStringList(ctx, ruleException.Destination.RemoteAsn)
+
+	// 	destObj, destDiags := types.ObjectValue(
+	// 		map[string]attr.Type{
+	// 			"application":              types.ListType{ElemType: NameIDObjectType},
+	// 			"custom_app":               types.ListType{ElemType: NameIDObjectType},
+	// 			"app_category":             types.ListType{ElemType: NameIDObjectType},
+	// 			"custom_category":          types.ListType{ElemType: NameIDObjectType},
+	// 			"sanctioned_apps_category": types.ListType{ElemType: NameIDObjectType},
+	// 			"country":                  types.ListType{ElemType: NameIDObjectType},
+	// 			"domain":                   types.ListType{ElemType: types.StringType},
+	// 			"fqdn":                     types.ListType{ElemType: types.StringType},
+	// 			"ip":                       types.ListType{ElemType: types.StringType},
+	// 			"subnet":                   types.ListType{ElemType: types.StringType},
+	// 			"ip_range":                 types.ListType{ElemType: FromToObjectType},
+	// 			"global_ip_range":          types.ListType{ElemType: NameIDObjectType},
+	// 			"remote_asn":               types.ListType{ElemType: types.StringType},
+	// 		},
+	// 		map[string]attr.Value{
+	// 			"application":              curExceptionDestination.Application,
+	// 			"custom_app":               curExceptionDestination.CustomApp,
+	// 			"app_category":             curExceptionDestination.AppCategory,
+	// 			"custom_category":          curExceptionDestination.CustomCategory,
+	// 			"sanctioned_apps_category": curExceptionDestination.SanctionedAppsCategory,
+	// 			"country":                  curExceptionDestination.Country,
+	// 			"domain":                   curExceptionDestination.Domain,
+	// 			"fqdn":                     curExceptionDestination.Fqdn,
+	// 			"ip":                       curExceptionDestination.IP,
+	// 			"subnet":                   curExceptionDestination.Subnet,
+	// 			"ip_range":                 curExceptionDestination.IPRange,
+	// 			"global_ip_range":          curExceptionDestination.GlobalIPRange,
+	// 			"remote_asn":               curExceptionDestination.RemoteAsn,
+	// 		},
+	// 	)
+	// 	resp.Diagnostics.Append(destDiags...)
+	// 	if resp.Diagnostics.HasError() {
+	// 		return
+	// 	}
+	// 	curException.Destination = destObj
+
+	// 	// rule.exceptions.service{}
+	// 	var CustomServiceAttrTypes = map[string]attr.Type{
+	// 		"port":       types.ListType{ElemType: types.StringType},
+	// 		"port_range": types.ObjectType{AttrTypes: FromToAttrTypes},
+	// 		"protocol":   types.StringType,
+	// 	}
+	// 	var customServices []attr.Value
+	// 	if len(ruleException.Service.Custom) > 0 {
+	// 		customServices = make([]attr.Value, len(ruleException.Service.Custom))
+	// 		for i, ruleExceptionCustomService := range ruleException.Service.Custom {
+	// 			ports := parseStringList(ctx, ruleExceptionCustomService.Port)
+	// 			var portRange types.Object
+	// 			if ruleExceptionCustomService.PortRangeCustomService != nil {
+	// 				portRangeObj, portRangeDiags := types.ObjectValue(
+	// 					FromToAttrTypes,
+	// 					map[string]attr.Value{
+	// 						"from": basetypes.NewStringValue(string(ruleExceptionCustomService.PortRangeCustomService.From)),
+	// 						"to":   basetypes.NewStringValue(string(ruleExceptionCustomService.PortRangeCustomService.To)),
+	// 					},
+	// 				)
+	// 				resp.Diagnostics.Append(portRangeDiags...)
+	// 				if resp.Diagnostics.HasError() {
+	// 					return
+	// 				}
+	// 				portRange = portRangeObj
+	// 			} else {
+	// 				portRange = types.ObjectNull(FromToAttrTypes)
+	// 			}
+
+	// 			// Create custom service object
+	// 			customServiceObj, customDiags := types.ObjectValue(
+	// 				CustomServiceAttrTypes,
+	// 				map[string]attr.Value{
+	// 					"port":       ports,
+	// 					"port_range": portRange,
+	// 					"protocol":   basetypes.NewStringValue(ruleExceptionCustomService.Protocol.String()),
+	// 				},
+	// 			)
+	// 			resp.Diagnostics.Append(customDiags...)
+	// 			if resp.Diagnostics.HasError() {
+	// 				return
+	// 			}
+	// 			customServices[i] = customServiceObj
+	// 		}
+	// 	}
+
+	// 	// Create custom services list
+	// 	var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
+	// 	customList, customListDiags := types.ListValue(CustomServiceObjectType, customServices)
+	// 	resp.Diagnostics.Append(customListDiags...)
+	// 	if resp.Diagnostics.HasError() {
+	// 		return
+	// 	}
+
+	// 	standardList := parseNameIDList(ctx, ruleException.Service.Standard)
+	// 	// Create service object
+	// 	serviceObj, serviceDiags := types.ObjectValue(
+	// 		map[string]attr.Type{
+	// 			"standard": types.ListType{ElemType: NameIDObjectType},
+	// 			"custom":   types.ListType{ElemType: CustomServiceObjectType},
+	// 		},
+	// 		map[string]attr.Value{
+	// 			"standard": standardList,
+	// 			"custom":   customList,
+	// 		},
+	// 	)
+	// 	resp.Diagnostics.Append(serviceDiags...)
+	// 	if resp.Diagnostics.HasError() {
+	// 		return
+	// 	}
+	// 	curException.Service = serviceObj
+
+	// 	ruleExceptions = append(ruleExceptions, curException)
+	// }
+	// curRuleObject, _ := types.ObjectValue(CurRuleType.AttrTypes, curRule)
+
+	diagstmpstate := state.Rule.As(ctx, curRule, basetypes.ObjectAsOptions{})
+	diags = append(diags, diagstmpstate...)
+	// state.Rule = curRuleObj
+	return state, diags
+}
+
 func convertStringSlice(input []string) []string {
 	var result []string
 	for _, v := range input {
@@ -5906,7 +6290,14 @@ func convertStringSlice(input []string) []string {
 	return result
 }
 
+// Define a reusable object types
+
 // Define a reusable type map for name/id pairs
+var EnabledAttrTypes = map[string]attr.Type{
+	"enabled": types.BoolType,
+}
+var EnabledObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
+
 var NameIDAttrTypes = map[string]attr.Type{
 	"name": types.StringType,
 	"id":   types.StringType,
@@ -5915,23 +6306,36 @@ var NameIDAttrTypes = map[string]attr.Type{
 // ObjectType wrapper for ListValue
 var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
 
-func parseNameIDList(items interface{}) types.List {
+// Define a reusable type map for name/id pairs
+var AlertAttrTypes = map[string]attr.Type{
+	"enabled":           types.BoolType,
+	"frequency":         types.StringType,
+	"subscriptionGroup": types.ListType{ElemType: NameIDObjectType},
+	"webhook":           types.ListType{ElemType: NameIDObjectType},
+	"mailingList":       types.ListType{ElemType: NameIDObjectType},
+}
 
+// ObjectType wrapper for ListValue
+var AlertObjectType = types.ObjectType{AttrTypes: AlertAttrTypes}
+
+func parseNameIDList(ctx context.Context, items interface{}) types.List {
+	tflog.Warn(ctx, "parseNameIDList() - "+fmt.Sprintf("%v", items))
+	diags := make(diag.Diagnostics, 0)
 	// Get the reflect.Value of the input
 	itemsValue := reflect.ValueOf(items)
 
 	// Handle nil or empty input
-	if items == nil || itemsValue.Len() == 0 {
+	rt := reflect.TypeOf(items)
+	if items == nil || (rt.Kind() != reflect.Array && rt.Kind() != reflect.Slice) {
 		return types.ListNull(NameIDObjectType)
-	}
-
-	// Ensure it's a slice or array
-	if itemsValue.Kind() != reflect.Slice && itemsValue.Kind() != reflect.Array {
-		return types.ListNull(NameIDObjectType)
+	} else {
+		if itemsValue.Len() == 0 {
+			return types.ListNull(NameIDObjectType)
+		}
 	}
 
 	values := make([]attr.Value, itemsValue.Len())
-	for i := 0; i < itemsValue.Len(); i++ {
+	for i := range itemsValue.Len() {
 		item := itemsValue.Index(i)
 
 		// Handle pointer elements
@@ -5948,18 +6352,27 @@ func parseNameIDList(items interface{}) types.List {
 		}
 
 		// Create object value
-		obj, _ := types.ObjectValue(
+		obj, diagstmp := types.ObjectValue(
 			NameIDAttrTypes,
 			map[string]attr.Value{
 				"name": basetypes.NewStringValue(nameField.String()),
 				"id":   basetypes.NewStringValue(idField.String()),
 			},
 		)
+		if diagstmp.HasError() {
+			diagstmp = addDebugLineNumber(diagstmp, "parseNameIDListLoop")
+		}
+		diags = append(diags, diagstmp...)
 		values[i] = obj
 	}
 
 	// Convert to List
-	list, _ := types.ListValue(NameIDObjectType, values)
+	list, diagstmp := types.ListValue(NameIDObjectType, values)
+	if diagstmp.HasError() {
+		diagstmp = addDebugLineNumber(diagstmp, "parseNameIDList")
+	}
+	diags = append(diags, diagstmp...)
+
 	return list
 }
 
@@ -5970,22 +6383,82 @@ var FromToAttrTypes = map[string]attr.Type{
 
 var FromToObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
 
+var GenericObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{},
+}
+
+// CurRuleType defines the type structure for "rule"
+var CurRuleType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"id":               types.StringType,
+		"name":             types.StringType,
+		"description":      types.StringType,
+		"index":            types.Int64Type,
+		"section":          GenericObjectType,
+		"enabled":          types.BoolType,
+		"source":           GenericObjectType,
+		"connectionOrigin": types.StringType,
+		"country":          types.ListType{ElemType: NameIDObjectType},
+		"device":           types.ListType{ElemType: NameIDObjectType},
+		"deviceOS":         types.ListType{ElemType: types.StringType},
+		"deviceAttributes": GenericObjectType,
+		"destination":      GenericObjectType,
+		"service":          GenericObjectType,
+		"action":           types.StringType,
+		"tracking":         GenericObjectType,
+		"schedule":         GenericObjectType,
+		"exceptions":       types.ListType{ElemType: GenericObjectType},
+	},
+}
+
+// Function to create a null curRule object
+func createNullCurRule(ctx context.Context) types.Object {
+	diags := make(diag.Diagnostics, 0)
+	nullValues := map[string]attr.Value{
+		"id":               types.StringNull(),
+		"name":             types.StringNull(),
+		"description":      types.StringNull(),
+		"index":            types.Int64Null(),
+		"section":          types.ObjectNull(GenericObjectType.AttrTypes),
+		"enabled":          types.BoolNull(),
+		"source":           types.ObjectNull(GenericObjectType.AttrTypes),
+		"connectionOrigin": types.StringNull(),
+		"country":          types.ListNull(NameIDObjectType),
+		"device":           types.ListNull(NameIDObjectType),
+		"deviceOS":         types.ListNull(types.StringType),
+		"deviceAttributes": types.ObjectNull(GenericObjectType.AttrTypes),
+		"destination":      types.ObjectNull(GenericObjectType.AttrTypes),
+		"service":          types.ObjectNull(GenericObjectType.AttrTypes),
+		"action":           types.StringNull(),
+		"tracking":         types.ObjectNull(GenericObjectType.AttrTypes),
+		"schedule":         types.ObjectNull(GenericObjectType.AttrTypes),
+		"exceptions":       types.ListNull(GenericObjectType),
+	}
+	curRule, diagstmp := types.ObjectValue(CurRuleType.AttrTypes, nullValues)
+	if diagstmp.HasError() {
+		diagstmp = addDebugLineNumber(diagstmp, "createNullCurRule")
+	}
+	diags = append(diags, diagstmp...)
+	return curRule
+}
+
 func parseFromToList(items interface{}) types.List {
+	diags := make(diag.Diagnostics, 0)
 	// Get the reflect.Value of the input
 	itemsValue := reflect.ValueOf(items)
 
 	// Handle nil or empty input
-	if items == nil || itemsValue.Len() == 0 {
-		return types.ListNull(FromToObjectType)
-	}
-
-	// Ensure it's a slice or array
-	if itemsValue.Kind() != reflect.Slice && itemsValue.Kind() != reflect.Array {
-		return types.ListNull(FromToObjectType)
+	rt := reflect.TypeOf(items)
+	if items == nil || (rt.Kind() != reflect.Array && rt.Kind() != reflect.Slice) {
+		return types.ListNull(NameIDObjectType)
+	} else {
+		if itemsValue.Len() == 0 {
+			return types.ListNull(NameIDObjectType)
+		}
 	}
 
 	values := make([]attr.Value, itemsValue.Len())
-	for i := 0; i < itemsValue.Len(); i++ {
+	for i := range itemsValue.Len() {
 		item := itemsValue.Index(i)
 
 		// Handle pointer elements
@@ -6013,11 +6486,17 @@ func parseFromToList(items interface{}) types.List {
 	}
 
 	// Convert to List
-	list, _ := types.ListValue(FromToObjectType, values)
+	list, diagstmp := types.ListValue(FromToObjectType, values)
+	if diagstmp.HasError() {
+		diagstmp = addDebugLineNumber(diagstmp, "parseFromToList")
+	}
+	diags = append(diags, diagstmp...)
 	return list
 }
 
 func parseStringList(ctx context.Context, input interface{}) types.List {
+	diags := make(diag.Diagnostics, 0)
+
 	// Get the reflect.Value of the input
 	inputValue := reflect.ValueOf(input)
 
@@ -6027,13 +6506,14 @@ func parseStringList(ctx context.Context, input interface{}) types.List {
 	}
 
 	// Ensure it's a slice or array
-	if inputValue.Kind() != reflect.Slice && inputValue.Kind() != reflect.Array {
+	rt := reflect.TypeOf(inputValue)
+	if rt.Kind() != reflect.Array && rt.Kind() != reflect.Slice {
 		return types.ListNull(types.StringType)
 	}
 
 	// Convert to []string
 	stringSlice := make([]string, inputValue.Len())
-	for i := 0; i < inputValue.Len(); i++ {
+	for i := range inputValue.Len() {
 		item := inputValue.Index(i)
 
 		// Handle interface{} or string values
@@ -6052,6 +6532,18 @@ func parseStringList(ctx context.Context, input interface{}) types.List {
 	}
 
 	// Convert []string to types.List
-	list, _ := types.ListValueFrom(ctx, types.StringType, stringSlice)
+	list, diagstmp := types.ListValueFrom(ctx, types.StringType, stringSlice)
+	if diagstmp.HasError() {
+		diagstmp = addDebugLineNumber(diagstmp, "parseStringList")
+	}
+	diags = append(diags, diagstmp...)
 	return list
+}
+
+func addDebugLineNumber(diags diag.Diagnostics, message string) diag.Diagnostics {
+	_, file, line, _ := runtime.Caller(1)
+	return append(diags, diag.NewErrorDiagnostic(
+		message,
+		fmt.Sprintf("Occurred in %s:%d", file, line),
+	))
 }
