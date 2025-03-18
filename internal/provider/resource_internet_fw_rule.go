@@ -5238,11 +5238,13 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		resp.Diagnostics.Append(diags...)
 	}
 
-	// // Rule -> Source -> IPRange
-	// if currentRule.Source.IPRange != nil {
-	// 	sourceInput.IPRange, diags = types.ListValueFrom(ctx, sourceInput.IPRange.ElementType(ctx), parseFromToList(ctx, currentRule.Source.IPRange, resp))
-	// 	resp.Diagnostics.Append(diags...)
-	// }
+	// Rule -> Source -> IPRange
+	if currentRule.Source.IPRange != nil {
+		if len(currentRule.Source.IPRange) > 0 {
+			sourceInput.IPRange, diags = types.ListValueFrom(ctx, sourceInput.IPRange.ElementType(ctx), parseFromToList(ctx, currentRule.Source.IPRange, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
 	// Rule -> Source -> GlobalIPRange
 	if currentRule.Source.GlobalIPRange != nil {
@@ -5343,30 +5345,6 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 }
 
-// func parseNameId(t []any) []any {
-// 	slice := make([]attr.Value, 0)
-// 	typ := map[string]attr.Type{
-// 		"id":   types.StringType,
-// 		"name": types.StringType,
-// 	}
-
-// 	for _, v := range t {
-// 		val := map[string]attr.Value{
-// 			"id":   basetypes.NewStringValue(v.id),
-// 			"name": basetypes.NewStringValue(v.name),
-// 		}
-// 		x, _ := basetypes.NewObjectValue(typ, val)
-
-// 		// x := attr.Value{
-// 		// 	"id":   types.StringValue(v.id),
-// 		// 	"name": types.StringValue(v.name),
-// 		// }
-// 		slice = append(slice, x)
-// 	}
-
-// 	return slice
-// }
-
 var FromToAttrTypes = map[string]attr.Type{
 	"from": types.StringType,
 	"to":   types.StringType,
@@ -5438,6 +5416,7 @@ func parseNameIDList(ctx context.Context, items interface{}, resp *resource.Read
 }
 
 func parseFromToList(ctx context.Context, items interface{}, resp *resource.ReadResponse) types.List {
+	tflog.Warn(ctx, "parseFromToList() - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 	// Get the reflect.Value of the input
 	itemsValue := reflect.ValueOf(items)
@@ -5461,29 +5440,32 @@ func parseFromToList(ctx context.Context, items interface{}, resp *resource.Read
 			item = item.Elem()
 		}
 
-		// Get From and To fields
+		// Get Name and ID fields
 		fromField := item.FieldByName("From")
 		toField := item.FieldByName("To")
 
 		if !fromField.IsValid() || !toField.IsValid() {
-			return types.ListNull(FromToObjectType)
+			return types.ListNull(NameIDObjectType)
 		}
 
 		// Create object value
-		obj, _ := types.ObjectValue(
-			FromToAttrTypes,
+		obj, diagstmp := types.ObjectValue(
+			NameIDAttrTypes,
 			map[string]attr.Value{
 				"from": basetypes.NewStringValue(fromField.String()),
 				"to":   basetypes.NewStringValue(toField.String()),
 			},
 		)
+
+		diags = append(diags, diagstmp...)
 		values[i] = obj
 	}
 
 	// Convert to List
-	list, diagstmp := types.ListValue(FromToObjectType, values)
+	list, diagstmp := types.ListValue(NameIDObjectType, values)
 
 	diags = append(diags, diagstmp...)
 	resp.Diagnostics.Append(diags...)
+
 	return list
 }
