@@ -5216,26 +5216,34 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 	// Rule -> Source -> IP
 	if currentRule.Source.IP != nil {
-		sourceInput.IP, diags = types.ListValueFrom(ctx, sourceInput.IP.ElementType(ctx), currentRule.Source.IP)
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.IP) > 0 {
+			sourceInput.IP, diags = types.ListValueFrom(ctx, sourceInput.IP.ElementType(ctx), currentRule.Source.IP)
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> Subnet
 	if currentRule.Source.Subnet != nil {
-		sourceInput.Subnet, diags = types.ListValueFrom(ctx, sourceInput.Subnet.ElementType(ctx), currentRule.Source.Subnet)
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.Subnet) > 0 {
+			sourceInput.Subnet, diags = types.ListValueFrom(ctx, sourceInput.Subnet.ElementType(ctx), currentRule.Source.Subnet)
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> Host
 	if currentRule.Source.Host != nil {
-		sourceInput.Host, diags = types.ListValueFrom(ctx, sourceInput.Host.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Host, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.Host) > 0 {
+			sourceInput.Host, diags = types.ListValueFrom(ctx, sourceInput.Host.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Host, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> Site
 	if currentRule.Source.Site != nil {
-		sourceInput.Site, diags = types.ListValueFrom(ctx, sourceInput.Site.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Site, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.Site) > 0 {
+			sourceInput.Site, diags = types.ListValueFrom(ctx, sourceInput.Site.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Site, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> IPRange
@@ -5248,50 +5256,66 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 	// Rule -> Source -> GlobalIPRange
 	if currentRule.Source.GlobalIPRange != nil {
-		sourceInput.GlobalIPRange, diags = types.ListValueFrom(ctx, sourceInput.GlobalIPRange.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.GlobalIPRange, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.GlobalIPRange) > 0 {
+			sourceInput.GlobalIPRange, diags = types.ListValueFrom(ctx, sourceInput.GlobalIPRange.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.GlobalIPRange, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> NetworkInterface
 	if currentRule.Source.NetworkInterface != nil {
-		sourceInput.NetworkInterface, diags = types.ListValueFrom(ctx, sourceInput.NetworkInterface.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.NetworkInterface, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.NetworkInterface) > 0 {
+			sourceInput.NetworkInterface, diags = types.ListValueFrom(ctx, sourceInput.NetworkInterface.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.NetworkInterface, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> SiteNetworkSubnet
 	if currentRule.Source.SiteNetworkSubnet != nil {
-		sourceInput.SiteNetworkSubnet, diags = types.ListValueFrom(ctx, sourceInput.SiteNetworkSubnet.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.SiteNetworkSubnet, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.SiteNetworkSubnet) > 0 {
+			sourceInput.SiteNetworkSubnet, diags = types.ListValueFrom(ctx, sourceInput.SiteNetworkSubnet.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.SiteNetworkSubnet, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> FloatingSubnet
 	if currentRule.Source.FloatingSubnet != nil {
-		sourceInput.FloatingSubnet, diags = types.ListValueFrom(ctx, sourceInput.FloatingSubnet.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.FloatingSubnet, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.FloatingSubnet) > 0 {
+			sourceInput.FloatingSubnet, diags = types.ListValueFrom(ctx, sourceInput.FloatingSubnet.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.FloatingSubnet, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> User
 	if currentRule.Source.User != nil {
-		sourceInput.User, diags = types.ListValueFrom(ctx, sourceInput.User.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.User, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.User) > 0 {
+			sourceInput.User, diags = types.ListValueFrom(ctx, sourceInput.User.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.User, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> UsersGroup
 	if currentRule.Source.UsersGroup != nil {
-		sourceInput.UsersGroup, diags = types.ListValueFrom(ctx, sourceInput.UsersGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.UsersGroup, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.UsersGroup) > 0 {
+			sourceInput.UsersGroup, diags = types.ListValueFrom(ctx, sourceInput.UsersGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.UsersGroup, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> Group
 	if currentRule.Source.Group != nil {
-		sourceInput.Group, diags = types.ListValueFrom(ctx, sourceInput.Group.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Group, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.Group) > 0 {
+			sourceInput.Group, diags = types.ListValueFrom(ctx, sourceInput.Group.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Group, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source -> SystemGroup
 	if currentRule.Source.SystemGroup != nil {
-		sourceInput.SystemGroup, diags = types.ListValueFrom(ctx, sourceInput.SystemGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.SystemGroup, resp))
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Source.SystemGroup) > 0 {
+			sourceInput.SystemGroup, diags = types.ListValueFrom(ctx, sourceInput.SystemGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.SystemGroup, resp))
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Source
@@ -5316,14 +5340,18 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 	// // Rule -> Destination -> IP
 	if currentRule.Destination.IP != nil {
-		destInput.IP, diags = basetypes.NewListValueFrom(ctx, destInput.IP.ElementType(ctx), currentRule.Destination.IP)
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Destination.IP) > 0 {
+			destInput.IP, diags = basetypes.NewListValueFrom(ctx, destInput.IP.ElementType(ctx), currentRule.Destination.IP)
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Destination -> Subnet
 	if currentRule.Destination.Subnet != nil {
-		destInput.Subnet, diags = basetypes.NewListValueFrom(ctx, destInput.Subnet.ElementType(ctx), currentRule.Destination.Subnet)
-		resp.Diagnostics.Append(diags...)
+		if len(currentRule.Destination.Subnet) > 0 {
+			destInput.Subnet, diags = basetypes.NewListValueFrom(ctx, destInput.Subnet.ElementType(ctx), currentRule.Destination.Subnet)
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	// Rule -> Destination -> Domain
@@ -5331,9 +5359,100 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		"count": len(currentRule.Destination.Domain),
 	})
 
+	// Rule -> Destination -> Domain
 	if currentRule.Destination.Domain != nil {
-		destInput.Domain, diags = types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Domain)
+		if len(currentRule.Destination.Domain) > 0 {
+			destInput.Domain, diags = types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Domain)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> Fqdn
+	if currentRule.Destination.Fqdn != nil {
+		if len(currentRule.Destination.Fqdn) > 0 {
+			destInput.Fqdn, diags = types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Fqdn)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> RemoteAsn
+	if currentRule.Destination.RemoteAsn != nil {
+		if len(currentRule.Destination.RemoteAsn) > 0 {
+			destInput.RemoteAsn, diags = types.ListValueFrom(ctx, types.StringType, currentRule.Destination.RemoteAsn)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> Application
+	if currentRule.Destination.Application != nil {
+		if len(currentRule.Destination.Application) > 0 {
+			destInput.Application, diags = types.ListValueFrom(ctx, destInput.Application.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.Application, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> CustomApp
+	if currentRule.Destination.CustomApp != nil {
+		if len(currentRule.Destination.CustomApp) > 0 {
+			destInput.CustomApp, diags = types.ListValueFrom(ctx, destInput.CustomApp.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.CustomApp, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> IPRange
+	if currentRule.Destination.IPRange != nil {
+		if len(currentRule.Destination.IPRange) > 0 {
+			destInput.IPRange, diags = types.ListValueFrom(ctx, destInput.IPRange.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.IPRange, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> GlobalIPRange
+	if currentRule.Destination.GlobalIPRange != nil {
+		if len(currentRule.Destination.GlobalIPRange) > 0 {
+			destInput.GlobalIPRange, diags = types.ListValueFrom(ctx, destInput.GlobalIPRange.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.GlobalIPRange, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> AppCategory
+	if currentRule.Destination.AppCategory != nil {
+		if len(currentRule.Destination.AppCategory) > 0 {
+			destInput.GlobalIPRange, diags = types.ListValueFrom(ctx, destInput.AppCategory.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.AppCategory, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> CustomCategory
+	if currentRule.Destination.CustomCategory != nil {
+		if len(currentRule.Destination.CustomCategory) > 0 {
+			destInput.CustomCategory, diags = types.ListValueFrom(ctx, destInput.CustomCategory.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.CustomCategory, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> SanctionedAppsCategory
+	if currentRule.Destination.SanctionedAppsCategory != nil {
+		if len(currentRule.Destination.SanctionedAppsCategory) > 0 {
+			destInput.SanctionedAppsCategory, diags = types.ListValueFrom(ctx, destInput.SanctionedAppsCategory.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.SanctionedAppsCategory, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Destination -> Country
+	if currentRule.Destination.Country != nil {
+		if len(currentRule.Destination.Country) > 0 {
+			destInput.Country, diags = types.ListValueFrom(ctx, destInput.Country.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.Country, resp))
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Service
+	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
+		var serviceInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service
+		diags = ruleInput.Service.As(ctx, &serviceInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
+
 	}
 
 	// Rule -> Destination
