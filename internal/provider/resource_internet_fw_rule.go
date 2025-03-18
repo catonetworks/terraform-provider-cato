@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -26,12 +29,17 @@ var (
 	_ resource.ResourceWithImportState = &internetFwRuleResource{}
 )
 
-func NewInternetFwRuleResource() resource.Resource {
-	return &internetFwRuleResource{}
+var NameIDAttrTypes = map[string]attr.Type{
+	"name": types.StringType,
+	"id":   types.StringType,
 }
 
 type internetFwRuleResource struct {
 	client *catoClientData
+}
+
+func NewInternetFwRuleResource() resource.Resource {
+	return &internetFwRuleResource{}
 }
 
 func (r *internetFwRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -399,11 +407,11 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "",
 									Required:    false,
 									Optional:    true,
-									Validators: []validator.String{
-										stringvalidator.ConflictsWith(path.Expressions{
-											path.MatchRelative().AtParent().AtName("id"),
-										}...),
-									},
+									// Validators: []validator.String{
+									// 	stringvalidator.ConflictsWith(path.Expressions{
+									// 		path.MatchRelative().AtParent().AtName("id"),
+									// 	}...),
+									// },
 								},
 								"id": schema.StringAttribute{
 									Description: "",
@@ -3305,9 +3313,11 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 
 	ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
 	ruleExist := false
+	currentRule := &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
 	for _, ruleListItem := range ruleList {
 		if ruleListItem.GetRule().ID == rule.ID.ValueString() {
 			ruleExist = true
+			currentRule = ruleListItem.GetRule()
 
 			// Need to refresh STATE
 			resp.State.SetAttribute(
@@ -3324,11 +3334,8 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	hydrateIfwRuleState(ctx, state, currentRule, req, resp, diags)
+
 }
 
 func (r *internetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -5182,4 +5189,137 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 		)
 		return
 	}
+}
+
+func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule, req resource.ReadRequest, resp *resource.ReadResponse, diags diag.Diagnostics) {
+
+	ruleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	sourceInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source{}
+
+	diags = state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	ruleInput.Name = types.StringValue(currentRule.Name)
+	ruleInput.Description = types.StringValue(currentRule.Description)
+	ruleInput.Action = types.StringValue(currentRule.Action.String())
+	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
+
+	diags = ruleInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+	ruleInput.Source, diags = types.ObjectValueFrom(ctx, ruleInput.Source.AttributeTypes(ctx), sourceInput)
+	resp.Diagnostics.Append(diags...)
+
+	if !sourceInput.IP.IsNull() {
+		diags = sourceInput.IP.ElementsAs(ctx, currentRule.Source.IP, false)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	if !sourceInput.Subnet.IsNull() {
+		diags = sourceInput.Subnet.ElementsAs(ctx, currentRule.Source.Subnet, false)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> Host
+	if currentRule.Source.Host != nil {
+		list, diags := types.ListValue(sourceInput.Host.ElementType(ctx), sourceInput.Host.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.Host, diags = types.ListValueFrom(ctx, sourceInput.Host.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> Site
+	if currentRule.Source.Site != nil {
+		list, diags := types.ListValue(sourceInput.Site.ElementType(ctx), sourceInput.Site.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.Site, diags = types.ListValueFrom(ctx, sourceInput.Site.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> IPRange
+	if currentRule.Source.IPRange != nil {
+		list, diags := types.ListValue(sourceInput.IPRange.ElementType(ctx), sourceInput.IPRange.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.IPRange, diags = types.ListValueFrom(ctx, sourceInput.IPRange.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> GlobalIPRange
+	if currentRule.Source.GlobalIPRange != nil {
+		list, diags := types.ListValue(sourceInput.GlobalIPRange.ElementType(ctx), sourceInput.GlobalIPRange.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.GlobalIPRange, diags = types.ListValueFrom(ctx, sourceInput.GlobalIPRange.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> NetworkInterface
+	if currentRule.Source.NetworkInterface != nil {
+		list, diags := types.ListValue(sourceInput.NetworkInterface.ElementType(ctx), sourceInput.NetworkInterface.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.NetworkInterface, diags = types.ListValueFrom(ctx, sourceInput.NetworkInterface.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> SiteNetworkSubnet
+	if currentRule.Source.SiteNetworkSubnet != nil {
+		list, diags := types.ListValue(sourceInput.SiteNetworkSubnet.ElementType(ctx), sourceInput.SiteNetworkSubnet.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.SiteNetworkSubnet, diags = types.ListValueFrom(ctx, sourceInput.SiteNetworkSubnet.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> FloatingSubnet
+	if currentRule.Source.FloatingSubnet != nil {
+		list, diags := types.ListValue(sourceInput.FloatingSubnet.ElementType(ctx), sourceInput.FloatingSubnet.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.FloatingSubnet, diags = types.ListValueFrom(ctx, sourceInput.FloatingSubnet.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> User
+	if currentRule.Source.User != nil {
+		list, diags := types.ListValue(sourceInput.User.ElementType(ctx), sourceInput.User.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.User, diags = types.ListValueFrom(ctx, sourceInput.User.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> UsersGroup
+	if currentRule.Source.UsersGroup != nil {
+		list, diags := types.ListValue(sourceInput.UsersGroup.ElementType(ctx), sourceInput.UsersGroup.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.UsersGroup, diags = types.ListValueFrom(ctx, sourceInput.UsersGroup.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> Group
+	if currentRule.Source.Group != nil {
+		list, diags := types.ListValue(sourceInput.Group.ElementType(ctx), sourceInput.Group.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.Group, diags = types.ListValueFrom(ctx, sourceInput.Group.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source -> SystemGroup
+	if currentRule.Source.SystemGroup != nil {
+		list, diags := types.ListValue(sourceInput.SystemGroup.ElementType(ctx), sourceInput.SystemGroup.Elements())
+		resp.Diagnostics.Append(diags...)
+		sourceInput.SystemGroup, diags = types.ListValueFrom(ctx, sourceInput.SystemGroup.ElementType(ctx), list)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Source
+	ruleInput.Source, diags = types.ObjectValueFrom(ctx, ruleInput.Source.AttributeTypes(ctx), sourceInput)
+	resp.Diagnostics.Append(diags...)
+
+	// Rule -> Country
+	countryList, diags := types.ListValue(ruleInput.Country.ElementType(ctx), ruleInput.Country.Elements())
+	ruleInput.Country, diags = types.ListValueFrom(ctx, ruleInput.Country.ElementType(ctx), countryList)
+	resp.Diagnostics.Append(diags...)
+
+	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
+	resp.Diagnostics.Append(diags...)
+
 }
