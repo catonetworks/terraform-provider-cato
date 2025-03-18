@@ -5453,6 +5453,15 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		diags = ruleInput.Service.As(ctx, &serviceInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
+		// Rule -> Service -> Standard
+
+		elementsServiceStandardInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard{}
+		diags = serviceInput.Standard.ElementsAs(ctx, &elementsServiceStandardInput, false)
+		resp.Diagnostics.Append(diags...)
+		serviceInput.Standard, diags = types.ListValueFrom(ctx, serviceInput.Standard.ElementType(ctx), parseNameIDList(ctx, currentRule.Service.Standard, resp))
+		resp.Diagnostics.Append(diags...)
+
+		// Rule -> Service -> Custom
 	}
 
 	// Rule -> Destination
