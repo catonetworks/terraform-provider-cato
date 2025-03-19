@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/fatih/structs"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -2241,6 +2243,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 				var itemServiceCustomInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
 				for _, item := range elementsServiceCustomInput {
 					diags = item.As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
 
 					customInput := &cato_models.CustomServiceInput{
 						Protocol: cato_models.IPProtocol(itemServiceCustomInput.Protocol.ValueString()),
@@ -2264,6 +2267,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 					if !itemServiceCustomInput.PortRange.IsNull() {
 						var itemPortRange Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange
 						diags = itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})
+						resp.Diagnostics.Append(diags...)
 
 						inputPortRange := cato_models.PortRangeInput{
 							From: cato_scalars.Port(itemPortRange.From.ValueString()),
@@ -5400,12 +5404,12 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	}
 
 	// Rule -> Destination -> IPRange
-	if currentRule.Destination.IPRange != nil {
-		if len(currentRule.Destination.IPRange) > 0 {
-			destInput.IPRange, diags = types.ListValueFrom(ctx, destInput.IPRange.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.IPRange, resp))
-			resp.Diagnostics.Append(diags...)
-		}
-	}
+	// if currentRule.Destination.IPRange != nil {
+	// 	if len(currentRule.Destination.IPRange) > 0 {
+	// 		destInput.IPRange, diags = types.ListValueFrom(ctx, destInput.IPRange.ElementType(ctx), parseFromToList(ctx, currentRule.Destination.IPRange, resp))
+	// 		resp.Diagnostics.Append(diags...)
+	// 	}
+	// }
 
 	// Rule -> Destination -> GlobalIPRange
 	if currentRule.Destination.GlobalIPRange != nil {
@@ -5454,14 +5458,65 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		resp.Diagnostics.Append(diags...)
 
 		// Rule -> Service -> Standard
-
-		elementsServiceStandardInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard{}
-		diags = serviceInput.Standard.ElementsAs(ctx, &elementsServiceStandardInput, false)
-		resp.Diagnostics.Append(diags...)
-		serviceInput.Standard, diags = types.ListValueFrom(ctx, serviceInput.Standard.ElementType(ctx), parseNameIDList(ctx, currentRule.Service.Standard, resp))
-		resp.Diagnostics.Append(diags...)
+		if currentRule.Service.Standard != nil {
+			if len(currentRule.Service.Standard) > 0 {
+				serviceInput.Standard, diags = types.ListValueFrom(ctx, serviceInput.Standard.ElementType(ctx), parseNameIDList(ctx, currentRule.Service.Standard, resp))
+				resp.Diagnostics.Append(diags...)
+			}
+		}
 
 		// Rule -> Service -> Custom
+		elementsServiceCustomInput := []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{}
+		diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
+		resp.Diagnostics.Append(diags...)
+		tflog.Info(ctx, "currentRule.Service.Custom", map[string]interface{}{
+			"currentRule.Service.Custom": currentRule.Service.Custom,
+			"elementsServiceCustomInput": elementsServiceCustomInput,
+		})
+
+		for _, customServiceElementsList := range currentRule.Service.Custom {
+			custServiceInternal := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{}
+			diags = ruleInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+
+			custServiceInternal.Protocol = basetypes.NewStringValue(customServiceElementsList.Protocol.String())
+
+			// Rule -> Service -> Custom -> Port
+			if len(customServiceElementsList.Port) > 0 {
+				var elementsServiceCustomPortInput []string
+				for _, v := range customServiceElementsList.Port {
+					elementsServiceCustomPortInput = append(elementsServiceCustomPortInput, string(v))
+				}
+
+				custServiceInternal.Port, diags = basetypes.NewListValueFrom(ctx, types.StringType, elementsServiceCustomPortInput)
+				resp.Diagnostics.Append(diags...)
+			} else {
+				custServiceInternal.Port = basetypes.NewListNull(types.StringType)
+			}
+
+			// Rule -> Service -> Custom -> PortRange
+			if string(*customServiceElementsList.PortRange.GetFrom()) != "" && string(*customServiceElementsList.PortRange.GetTo()) != "" {
+				custServiceInternalPortrange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
+
+				custServiceInternalPortrange.From = basetypes.NewStringValue(string(*customServiceElementsList.PortRange.GetFrom()))
+				custServiceInternalPortrange.To = basetypes.NewStringValue(string(*customServiceElementsList.PortRange.GetTo()))
+
+				custServiceInternal.PortRange, diags = basetypes.NewObjectValueFrom(ctx, mapAttributeTypes(ctx, custServiceInternalPortrange, resp), custServiceInternalPortrange)
+				resp.Diagnostics.Append(diags...)
+
+			} else {
+				custServiceInternalPortrange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
+				custServiceInternal.PortRange = basetypes.NewObjectNull(mapAttributeTypes(ctx, custServiceInternalPortrange, resp))
+			}
+
+			elementsServiceCustomInput = append(elementsServiceCustomInput, custServiceInternal)
+		}
+
+		serviceInput.Custom, diags = basetypes.NewListValueFrom(ctx, serviceInput.Custom.ElementType(ctx), elementsServiceCustomInput)
+		resp.Diagnostics.Append(diags...)
+
+		ruleInput.Service, diags = types.ObjectValueFrom(ctx, ruleInput.Service.AttributeTypes(ctx), serviceInput)
+		resp.Diagnostics.Append(diags...)
 	}
 
 	// Rule -> Destination
@@ -5487,6 +5542,66 @@ var NameIDAttrTypes = map[string]attr.Type{
 
 // ObjectType wrapper for ListValue
 var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
+
+func mapObjectList(ctx context.Context, srcItemObjList any, resp *resource.ReadResponse) []types.Object {
+	vals := reflect.ValueOf(srcItemObjList)
+	var objList []types.Object
+	for i := range vals.Len() {
+		objList = append(objList, mapStructFields(ctx, vals.Index(i), resp))
+	}
+
+	return objList
+}
+
+func mapStructFields(ctx context.Context, srcItemObj any, resp *resource.ReadResponse) types.Object {
+	vals := reflect.ValueOf(srcItemObj)
+	names := structs.Names(srcItemObj)
+	tflog.Info(ctx, "pointer val: ",
+		map[string]interface{}{
+			"pointer_val": vals,
+		})
+	attrTypes := map[string]attr.Type{}
+	attrValues := map[string]attr.Value{}
+
+	// for i := range vals.NumField() {
+	// 	attrTypes[vals.Type().Field(i).Name] = types.StringType
+	// 	attrValues[vals.Type().Field(i).Name] = basetypes.NewStringValue(vals.Field(i).String())
+	// }
+
+	for _, v := range names {
+		attrTypes[v] = types.StringType
+		attrValues[v] = basetypes.NewStringValue(vals.FieldByName(v).String())
+	}
+
+	newObj, diags := basetypes.NewObjectValueFrom(ctx, attrTypes, attrValues)
+	resp.Diagnostics.Append(diags...)
+
+	return newObj
+}
+
+func mapAttributeTypes(ctx context.Context, srcItemObj any, resp *resource.ReadResponse) map[string]attr.Type {
+	attrTypes := map[string]attr.Type{}
+
+	names := structs.Names(srcItemObj)
+	for _, v := range names {
+		attrTypes[strings.ToLower(v)] = types.StringType
+	}
+
+	return attrTypes
+}
+
+// func mapAttributeValues(ctx context.Context, srcItemObj any, resp *resource.ReadResponse) map[string]attr.Value {
+// 	attrTypes := map[string]attr.Value{}
+
+// 	names := structs.Names(srcItemObj)
+// 	rt := reflect.TypeOf(srcItemObj)
+// 	for _, v := range names {
+// 		fv, _ := rt.FieldByName(v)
+// 		attrTypes[v] = basetypes.NewStringValue(fv.String())
+// 	}
+
+// 	return attrTypes
+// }
 
 func parseNameIDList(ctx context.Context, items interface{}, resp *resource.ReadResponse) types.List {
 	tflog.Warn(ctx, "parseNameIDList() - "+fmt.Sprintf("%v", items))
@@ -5552,10 +5667,10 @@ func parseFromToList(ctx context.Context, items interface{}, resp *resource.Read
 	// Handle nil or empty input
 	rt := reflect.TypeOf(items)
 	if items == nil || (rt.Kind() != reflect.Array && rt.Kind() != reflect.Slice) {
-		return types.ListNull(NameIDObjectType)
+		return types.ListNull(FromToObjectType)
 	} else {
 		if itemsValue.Len() == 0 {
-			return types.ListNull(NameIDObjectType)
+			return types.ListNull(FromToObjectType)
 		}
 	}
 
@@ -5573,12 +5688,12 @@ func parseFromToList(ctx context.Context, items interface{}, resp *resource.Read
 		toField := item.FieldByName("To")
 
 		if !fromField.IsValid() || !toField.IsValid() {
-			return types.ListNull(NameIDObjectType)
+			return types.ListNull(FromToObjectType)
 		}
 
 		// Create object value
 		obj, diagstmp := types.ObjectValue(
-			NameIDAttrTypes,
+			FromToAttrTypes,
 			map[string]attr.Value{
 				"from": basetypes.NewStringValue(fromField.String()),
 				"to":   basetypes.NewStringValue(toField.String()),
@@ -5590,7 +5705,7 @@ func parseFromToList(ctx context.Context, items interface{}, resp *resource.Read
 	}
 
 	// Convert to List
-	list, diagstmp := types.ListValue(NameIDObjectType, values)
+	list, diagstmp := types.ListValue(FromToObjectType, values)
 
 	diags = append(diags, diagstmp...)
 	resp.Diagnostics.Append(diags...)
