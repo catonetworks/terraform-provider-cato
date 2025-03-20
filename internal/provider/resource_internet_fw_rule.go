@@ -12,6 +12,7 @@ import (
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/fatih/structs"
+	"github.com/gobeam/stringy"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -4089,6 +4090,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 			var itemServiceCustomInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
 			for _, item := range elementsServiceCustomInput {
 				diags = item.As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
 
 				customInput := &cato_models.CustomServiceInput{
 					Protocol: cato_models.IPProtocol(itemServiceCustomInput.Protocol.ValueString()),
@@ -5519,9 +5521,59 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		resp.Diagnostics.Append(diags...)
 	}
 
+	// Rule -> Tracking
+	var trackingInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
+	diags = ruleInput.Tracking.As(ctx, &trackingInput, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+
+	// Rule -> Tracking -> Event
+	trackingEventInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event{}
+	diags = trackingInput.Event.As(ctx, &trackingEventInput, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+
+	trackingEventInput.Enabled = basetypes.NewBoolValue(currentRule.Tracking.Event.Enabled)
+	// trackingEventInput.Enabled = basetypes.NewBoolValue(currentRule.Tracking.Event.Enabled)
+	// trackingInput.Event, diags = types.ObjectValueFrom(ctx, trackingInput.Event.AttributeTypes(ctx), trackingEventInput)
+	// resp.Diagnostics.Append(diags...)
+
+	// Rule -> Tracking -> Alert
+	trackingAlertInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert{}
+	diags = trackingInput.Alert.As(ctx, &trackingAlertInput, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+
+	trackingAlertInput.Enabled = basetypes.NewBoolValue(currentRule.Tracking.Alert.Enabled)
+	trackingAlertInput.Frequency = basetypes.NewStringValue(currentRule.Tracking.Alert.Frequency.String())
+	if len(currentRule.Tracking.Alert.SubscriptionGroup) > 0 {
+		trackingAlertInput.SubscriptionGroup, diags = types.ListValueFrom(ctx, trackingAlertInput.SubscriptionGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Tracking.Alert.SubscriptionGroup, resp))
+		resp.Diagnostics.Append(diags...)
+	}
+	trackingInput.Event, diags = types.ObjectValueFrom(ctx, trackingInput.Event.AttributeTypes(ctx), trackingEventInput)
+	resp.Diagnostics.Append(diags...)
+	trackingInput.Alert, diags = types.ObjectValueFrom(ctx, trackingInput.Alert.AttributeTypes(ctx), trackingAlertInput)
+	resp.Diagnostics.Append(diags...)
+
 	// Rule -> Destination
 	ruleInput.Destination, diags = types.ObjectValueFrom(ctx, ruleInput.Destination.AttributeTypes(ctx), destInput)
 	resp.Diagnostics.Append(diags...)
+
+	// Rule -> Tracking
+	ruleInput.Tracking, diags = types.ObjectValueFrom(ctx, ruleInput.Tracking.AttributeTypes(ctx), trackingInput)
+	resp.Diagnostics.Append(diags...)
+
+	// diags = resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking"), trackingInput)
+	// resp.Diagnostics.Append(diags...)
+
+	tflog.Error(ctx, "ruleInput.Tracking", map[string]interface{}{
+		"trackingInput.Alert":       trackingInput.Alert, // empty
+		"trackingInput.Event":       trackingInput.Event, // empty
+		"trackingEventInput":        trackingEventInput,  // contains event
+		"trackingAlertInput":        trackingAlertInput,  // contains alert
+		"trackingInput.Output":      trackingInput,       // events and alerts
+		"ruleInput.Tracking.Output": ruleInput.Tracking,  // empty
+	})
+
+	// var trackingTest Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
+	// trackingInput.Alert = trackingAlertInput
 
 	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
 	resp.Diagnostics.Append(diags...)
@@ -5583,11 +5635,43 @@ func mapAttributeTypes(ctx context.Context, srcItemObj any, resp *resource.ReadR
 	attrTypes := map[string]attr.Type{}
 
 	names := structs.Names(srcItemObj)
+	vals := structs.Map(srcItemObj)
 	for _, v := range names {
-		attrTypes[strings.ToLower(v)] = types.StringType
+		intV := stringy.New(v).SnakeCase().ToLower()
+
+		attrTypes[strings.ToLower(intV)] = convertGoTypeToTfType(ctx, vals[v])
 	}
 
 	return attrTypes
+}
+
+func convertGoTypeToTfType(ctx context.Context, srcItemObj any) attr.Type {
+	srcItemObjType := reflect.TypeOf(srcItemObj).String()
+	tflog.Error(ctx, "srcItemObjType", map[string]interface{}{
+		"srcItemObjType": srcItemObjType,
+	})
+	switch srcItemObjType {
+	case "string":
+		return types.StringType
+	case "basetypes.StringValue":
+		return types.StringType
+	case "bool":
+		return types.BoolType
+	case "basetypes.BoolValue":
+		return types.BoolType
+	case "int":
+		return types.Int32Type
+	case "int64":
+		return types.Int64Type
+	case "float":
+		return types.Float32Type
+	case "float64":
+		return types.Float64Type
+	case "basetypes.ObjectValue":
+		return types.ObjectType{}
+	}
+
+	return types.StringType
 }
 
 // func mapAttributeValues(ctx context.Context, srcItemObj any, resp *resource.ReadResponse) map[string]attr.Value {
