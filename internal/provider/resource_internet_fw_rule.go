@@ -5485,12 +5485,12 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 			// Rule -> Service -> Custom -> Port
 			if len(customServiceElementsList.Port) > 0 {
-				var elementsServiceCustomPortInput []string
+				var elementsServiceCustomPortInput []attr.Value
 				for _, v := range customServiceElementsList.Port {
-					elementsServiceCustomPortInput = append(elementsServiceCustomPortInput, string(v))
+					elementsServiceCustomPortInput = append(elementsServiceCustomPortInput, basetypes.NewStringValue(string(v)))
 				}
 
-				custServiceInternal.Port, diags = basetypes.NewListValueFrom(ctx, types.StringType, elementsServiceCustomPortInput)
+				custServiceInternal.Port, diags = basetypes.NewListValue(types.StringType, elementsServiceCustomPortInput)
 				resp.Diagnostics.Append(diags...)
 			} else {
 				custServiceInternal.Port = basetypes.NewListNull(types.StringType)
@@ -5511,7 +5511,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 				custServiceInternal.PortRange = basetypes.NewObjectNull(mapAttributeTypes(ctx, custServiceInternalPortrange, resp))
 			}
 
-			elementsServiceCustomInput = append(elementsServiceCustomInput, custServiceInternal)
+			//elementsServiceCustomInput = append(elementsServiceCustomInput, custServiceInternal)
 		}
 
 		serviceInput.Custom, diags = basetypes.NewListValueFrom(ctx, serviceInput.Custom.ElementType(ctx), elementsServiceCustomInput)
@@ -5543,37 +5543,417 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 	trackingAlertInput.Enabled = basetypes.NewBoolValue(currentRule.Tracking.Alert.Enabled)
 	trackingAlertInput.Frequency = basetypes.NewStringValue(currentRule.Tracking.Alert.Frequency.String())
+
+	// Rule -> Tracking -> Alert -> SubscriptionGroup
 	if len(currentRule.Tracking.Alert.SubscriptionGroup) > 0 {
 		trackingAlertInput.SubscriptionGroup, diags = types.ListValueFrom(ctx, trackingAlertInput.SubscriptionGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Tracking.Alert.SubscriptionGroup, resp))
 		resp.Diagnostics.Append(diags...)
 	}
+
+	// Rule -> Tracking -> Alert -> Webhook
+	if len(currentRule.Tracking.Alert.Webhook) > 0 {
+		trackingAlertInput.Webhook, diags = types.ListValueFrom(ctx, trackingAlertInput.Webhook.ElementType(ctx), parseNameIDList(ctx, currentRule.Tracking.Alert.Webhook, resp))
+		resp.Diagnostics.Append(diags...)
+	}
+
+	// Rule -> Tracking -> Alert -> MailingList
+	if len(currentRule.Tracking.Alert.MailingList) > 0 {
+		trackingAlertInput.MailingList, diags = types.ListValueFrom(ctx, trackingAlertInput.MailingList.ElementType(ctx), parseNameIDList(ctx, currentRule.Tracking.Alert.MailingList, resp))
+		resp.Diagnostics.Append(diags...)
+	}
+
 	trackingInput.Event, diags = types.ObjectValueFrom(ctx, trackingInput.Event.AttributeTypes(ctx), trackingEventInput)
 	resp.Diagnostics.Append(diags...)
 	trackingInput.Alert, diags = types.ObjectValueFrom(ctx, trackingInput.Alert.AttributeTypes(ctx), trackingAlertInput)
-	resp.Diagnostics.Append(diags...)
-
-	// Rule -> Destination
-	ruleInput.Destination, diags = types.ObjectValueFrom(ctx, ruleInput.Destination.AttributeTypes(ctx), destInput)
 	resp.Diagnostics.Append(diags...)
 
 	// Rule -> Tracking
 	ruleInput.Tracking, diags = types.ObjectValueFrom(ctx, ruleInput.Tracking.AttributeTypes(ctx), trackingInput)
 	resp.Diagnostics.Append(diags...)
 
-	// diags = resp.State.SetAttribute(ctx, path.Root("rule").AtName("tracking"), trackingInput)
-	// resp.Diagnostics.Append(diags...)
+	// Rule -> Destination
+	ruleInput.Destination, diags = types.ObjectValueFrom(ctx, ruleInput.Destination.AttributeTypes(ctx), destInput)
+	resp.Diagnostics.Append(diags...)
 
-	tflog.Error(ctx, "ruleInput.Tracking", map[string]interface{}{
-		"trackingInput.Alert":       trackingInput.Alert, // empty
-		"trackingInput.Event":       trackingInput.Event, // empty
-		"trackingEventInput":        trackingEventInput,  // contains event
-		"trackingAlertInput":        trackingAlertInput,  // contains alert
-		"trackingInput.Output":      trackingInput,       // events and alerts
-		"ruleInput.Tracking.Output": ruleInput.Tracking,  // empty
-	})
+	// Rule -> Schedule
+	scheduleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Schedule{}
+	diags = ruleInput.Schedule.As(ctx, &scheduleInput, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
 
-	// var trackingTest Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
-	// trackingInput.Alert = trackingAlertInput
+	scheduleInput.ActiveOn = basetypes.NewStringValue(currentRule.Schedule.ActiveOn.String())
+
+	// Rule -> Schedule -> CustomTimeframe
+	if currentRule.Schedule.GetCustomTimeframePolicySchedule() != nil {
+		if currentRule.Schedule.GetCustomTimeframePolicySchedule().From != "" && currentRule.Schedule.GetCustomTimeframePolicySchedule().To != "" {
+			customeTimeFrameInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Schedule_CustomTimeframe{}
+			diags = scheduleInput.CustomTimeframe.As(ctx, &customeTimeFrameInput, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+			customeTimeFrameInput.From = basetypes.NewStringValue(currentRule.Schedule.CustomTimeframePolicySchedule.From)
+			customeTimeFrameInput.To = basetypes.NewStringValue(currentRule.Schedule.CustomTimeframePolicySchedule.To)
+			scheduleInput.CustomTimeframe, diags = types.ObjectValueFrom(ctx, scheduleInput.CustomTimeframe.AttributeTypes(ctx), customeTimeFrameInput)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Schedule -> CustomRecurring
+	if currentRule.Schedule.GetCustomRecurringPolicySchedule() != nil {
+		if currentRule.Schedule.GetCustomRecurringPolicySchedule().From != "" && currentRule.Schedule.GetCustomRecurringPolicySchedule().To != "" {
+			customRecurringInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Schedule_CustomRecurring{}
+			diags = scheduleInput.CustomRecurring.As(ctx, &customRecurringInput, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+			customRecurringInput.From = basetypes.NewStringValue(string(currentRule.Schedule.CustomRecurringPolicySchedule.From))
+			customRecurringInput.To = basetypes.NewStringValue(string(currentRule.Schedule.CustomRecurringPolicySchedule.To))
+			scheduleInput.CustomRecurring, diags = types.ObjectValueFrom(ctx, scheduleInput.CustomRecurring.AttributeTypes(ctx), customRecurringInput)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Schedule
+	ruleInput.Schedule, diags = types.ObjectValueFrom(ctx, ruleInput.Schedule.AttributeTypes(ctx), scheduleInput)
+	resp.Diagnostics.Append(diags...)
+
+	// Rule -> Exceptions
+
+	// if currentRule.Exceptions != nil && len(currentRule.Exceptions) > 0 {
+	// 	elementsExceptionsInput := make([]types.Object, 0, len(currentRule.Exceptions))
+	// 	diags = ruleInput.Exceptions.ElementsAs(ctx, &elementsExceptionsInput, false)
+	// 	elementsExceptionsInputType := ruleInput.Exceptions.ElementType(ctx)
+	// 	resp.Diagnostics.Append(diags...)
+
+	// 	for _, item := range currentRule.Exceptions {
+	// 		var itemExceptionsInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	// 		itemExceptionsInput.ConnectionOrigin = basetypes.NewStringValue(item.ConnectionOrigin.String())
+	// 		itemExceptionsInput.
+	// 	}
+	// }
+
+	if currentRule.Exceptions != nil {
+		if len(currentRule.Exceptions) > 0 {
+			elementsExceptionsInput := make([]types.Object, 0, len(currentRule.GetExceptions()))
+			diags = ruleInput.Exceptions.ElementsAs(ctx, &elementsExceptionsInput, false)
+			resp.Diagnostics.Append(diags...)
+
+			// elementsExceptionsInputType := ruleInput.Exceptions.ElementType(ctx)
+
+			var itemExceptionsInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+			diags = elementsExceptionsInput[0].As(ctx, &itemExceptionsInput, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+
+			// for key, exceptItem := range currentRule.Exceptions {
+			// 	var exceptionInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+			// 	exceptionInput.Name = basetypes.NewStringValue(exceptItem.Name)
+
+			// 	if exceptItem.ConnectionOrigin.String() != "" {
+			// 		exceptionInput.ConnectionOrigin = basetypes.NewStringValue(exceptItem.ConnectionOrigin.String())
+			// 	} else {
+			// 		exceptionInput.ConnectionOrigin = basetypes.NewStringValue("ANY")
+			// 	}
+
+			// 	// PICKUP FROM HERE!!!!
+
+			// 	diags = elementsExceptionsInput[key].As(ctx, &exceptionInput, basetypes.ObjectAsOptions{})
+			// 	resp.Diagnostics.Append(diags...)
+			// }
+			for _, item := range currentRule.Exceptions {
+				itemExceptionsInput.Name = basetypes.NewStringValue((item.Name))
+				itemExceptionsInput.ConnectionOrigin = basetypes.NewStringValue(item.ConnectionOrigin.String())
+
+				// Rule -> Exceptions -> Source
+				itemExceptionsSourceInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source{}
+				diags = itemExceptionsInput.Source.As(ctx, &itemExceptionsSourceInput, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
+				// itemExceptionsSourceInputType := itemExceptionsInput.Source.AttributeTypes(ctx)
+
+				// Rule -> Exceptions -> Source -> IP
+				if item.Source.IP != nil {
+					itemExceptionsSourceInput.IP, diags = basetypes.NewListValueFrom(ctx, types.StringType, item.Source.IP)
+					resp.Diagnostics.Append(diags...)
+				}
+
+				// Rule -> Exceptions -> Source -> Subnet
+				if item.Source.Subnet != nil {
+					itemExceptionsSourceInput.Subnet, diags = basetypes.NewListValueFrom(ctx, types.StringType, item.Source.Subnet)
+					resp.Diagnostics.Append(diags...)
+				}
+
+				// Rule -> Exceptions -> Source -> Host
+				if item.Source.Host != nil {
+					itemExceptionsSourceInput.Host, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.Host.ElementType(ctx), item.Source.Host)
+					resp.Diagnostics.Append(diags...)
+				}
+
+				// // Rule -> Exceptions -> Source -> Site
+				if item.Source.Site != nil {
+					itemExceptionsSourceInput.Site, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.Site.ElementType(ctx), parseNameIDList(ctx, item.Source.Site, resp))
+					resp.Diagnostics.Append(diags...)
+				}
+
+				// Rule -> Exceptions -> Source -> IPRange
+				if item.Source.IPRange != nil {
+					if item.Source.IPRange != nil {
+						itemExceptionsSourceInput.IPRange, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.IPRange.ElementType(ctx), parseFromToList(ctx, item.Source.IPRange, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> GlobalIPRange
+				if item.Source.GlobalIPRange != nil {
+					if item.Source.GlobalIPRange != nil {
+						itemExceptionsSourceInput.GlobalIPRange, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.GlobalIPRange.ElementType(ctx), parseNameIDList(ctx, item.Source.GlobalIPRange, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> NetworkInterface
+				if item.Source.NetworkInterface != nil {
+					if item.Source.NetworkInterface != nil {
+						itemExceptionsSourceInput.NetworkInterface, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.NetworkInterface.ElementType(ctx), parseNameIDList(ctx, item.Source.NetworkInterface, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> SiteNetworkSubnet
+				if item.Source.SiteNetworkSubnet != nil {
+					if item.Source.SiteNetworkSubnet != nil {
+						itemExceptionsSourceInput.SiteNetworkSubnet, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.SiteNetworkSubnet.ElementType(ctx), parseNameIDList(ctx, item.Source.SiteNetworkSubnet, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> FloatingSubnet
+				if item.Source.FloatingSubnet != nil {
+					if item.Source.FloatingSubnet != nil {
+						itemExceptionsSourceInput.FloatingSubnet, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.FloatingSubnet.ElementType(ctx), parseNameIDList(ctx, item.Source.FloatingSubnet, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> User
+				if item.Source.User != nil {
+					if item.Source.User != nil {
+						itemExceptionsSourceInput.User, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.User.ElementType(ctx), parseNameIDList(ctx, item.Source.User, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> UsersGroup
+				if item.Source.UsersGroup != nil {
+					if item.Source.UsersGroup != nil {
+						itemExceptionsSourceInput.UsersGroup, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.UsersGroup.ElementType(ctx), parseNameIDList(ctx, item.Source.UsersGroup, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> Group
+				if item.Source.Group != nil {
+					if item.Source.Group != nil {
+						itemExceptionsSourceInput.Group, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.Group.ElementType(ctx), parseNameIDList(ctx, item.Source.Group, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Source -> SystemGroup
+				if item.Source.SystemGroup != nil {
+					if item.Source.SystemGroup != nil {
+						itemExceptionsSourceInput.SystemGroup, diags = basetypes.NewListValueFrom(ctx, itemExceptionsSourceInput.SystemGroup.ElementType(ctx), parseNameIDList(ctx, item.Source.SystemGroup, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Country
+				if item.Country != nil {
+					if len(item.Country) > 0 {
+						itemExceptionsInput.Country, diags = basetypes.NewListValueFrom(ctx, itemExceptionsInput.Country.ElementType(ctx), parseNameIDList(ctx, item.Country, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Device
+				if item.Device != nil {
+					if len(item.Device) > 0 {
+						itemExceptionsInput.Device, diags = basetypes.NewListValueFrom(ctx, itemExceptionsInput.Device.ElementType(ctx), parseNameIDList(ctx, item.Device, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> DeviceOS
+				if item.DeviceOs != nil {
+					if len(item.DeviceOs) > 0 {
+						var strtmp []string
+						for _, strtmpVal := range item.DeviceOs {
+							strtmp = append(strtmp, strtmpVal.String())
+						}
+						itemExceptionsInput.DeviceOs, diags = basetypes.NewListValueFrom(ctx, itemExceptionsInput.DeviceOs.ElementType(ctx), strtmp)
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination
+				itemExceptionsDestinationInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination{}
+				diags = itemExceptionsInput.Destination.As(ctx, &itemExceptionsDestinationInput, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
+
+				// Rule -> Exceptions -> Destination -> IP
+				if item.Destination.IP != nil {
+					if len(item.Destination.IP) > 0 {
+						itemExceptionsDestinationInput.IP, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.IP.ElementType((ctx)), item.Destination.IP)
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> Subnet
+				if item.Destination.Subnet != nil {
+					if len(item.Destination.Subnet) > 0 {
+						itemExceptionsDestinationInput.Subnet, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.Subnet.ElementType((ctx)), item.Destination.Subnet)
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> Domain
+				if item.Destination.Domain != nil {
+					if len(item.Destination.Domain) > 0 {
+						itemExceptionsDestinationInput.Domain, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.Domain.ElementType((ctx)), item.Destination.Domain)
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> Fqdn
+				if item.Destination.Fqdn != nil {
+					if len(item.Destination.Fqdn) > 0 {
+						itemExceptionsDestinationInput.Fqdn, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.Fqdn.ElementType((ctx)), item.Destination.Fqdn)
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> RemoteAsn
+				if item.Destination.RemoteAsn != nil {
+					if len(item.Destination.RemoteAsn) > 0 {
+						var strtmp []string
+						for _, strtmpVal := range item.Destination.RemoteAsn {
+							strtmp = append(strtmp, string(strtmpVal))
+						}
+						itemExceptionsDestinationInput.RemoteAsn, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.RemoteAsn.ElementType((ctx)), item.Destination.RemoteAsn)
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> Application
+				if item.Destination.Application != nil {
+					if len(item.Destination.Application) > 0 {
+						itemExceptionsDestinationInput.Application, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.Application.ElementType((ctx)), parseNameIDList(ctx, item.Destination.Application, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> CustomApp
+				if item.Destination.CustomApp != nil {
+					if len(item.Destination.CustomApp) > 0 {
+						itemExceptionsDestinationInput.CustomApp, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.CustomApp.ElementType((ctx)), parseNameIDList(ctx, item.Destination.CustomApp, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> IPRange
+				if item.Destination.IPRange != nil {
+					if len(item.Destination.IPRange) > 0 {
+						itemExceptionsDestinationInput.IPRange, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.IPRange.ElementType((ctx)), parseFromToList(ctx, item.Destination.IPRange, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> GlobalIPRange
+				if item.Destination.GlobalIPRange != nil {
+					if len(item.Destination.GlobalIPRange) > 0 {
+						itemExceptionsDestinationInput.GlobalIPRange, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.GlobalIPRange.ElementType((ctx)), parseNameIDList(ctx, item.Destination.GlobalIPRange, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> AppCategory
+				if item.Destination.AppCategory != nil {
+					if len(item.Destination.AppCategory) > 0 {
+						itemExceptionsDestinationInput.AppCategory, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.AppCategory.ElementType((ctx)), parseNameIDList(ctx, item.Destination.AppCategory, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> CustomCategory
+				if item.Destination.CustomCategory != nil {
+					if len(item.Destination.CustomCategory) > 0 {
+						itemExceptionsDestinationInput.CustomCategory, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.CustomCategory.ElementType((ctx)), parseNameIDList(ctx, item.Destination.CustomCategory, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> SanctionedAppsCategory
+				if item.Destination.SanctionedAppsCategory != nil {
+					if len(item.Destination.SanctionedAppsCategory) > 0 {
+						itemExceptionsDestinationInput.SanctionedAppsCategory, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.SanctionedAppsCategory.ElementType((ctx)), parseNameIDList(ctx, item.Destination.SanctionedAppsCategory, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Destination -> Country
+				if item.Destination.Country != nil {
+					if len(item.Destination.Country) > 0 {
+						itemExceptionsDestinationInput.Country, diags = basetypes.NewListValueFrom(ctx, itemExceptionsDestinationInput.Country.ElementType((ctx)), parseNameIDList(ctx, item.Destination.Country, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Service
+				serviceInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service{}
+				diags = itemExceptionsInput.Service.As(ctx, &serviceInput, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
+
+				// Rule -> Exceptions -> Service -> Standard
+				if item.Service.Standard != nil {
+					if len(item.Service.Standard) > 0 {
+						serviceInput.Standard, diags = basetypes.NewListValueFrom(ctx, serviceInput.Standard.ElementType((ctx)), parseNameIDList(ctx, item.Service.Standard, resp))
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+
+				// Rule -> Exceptions -> Service -> Custom
+				if item.Service.Custom != nil {
+					if len(item.Service.Custom) > 0 {
+
+						elementsExceptionsServiceCustomInput := make([]types.Object, 0, len(item.Service.Custom))
+						diags = serviceInput.Custom.ElementsAs(ctx, &elementsExceptionsServiceCustomInput, false)
+						resp.Diagnostics.Append(diags...)
+
+						var itemServiceCustomInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
+						diags = elementsExceptionsServiceCustomInput[0].As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})
+						resp.Diagnostics.Append(diags...)
+						for _, elementsServiceCustomInput := range item.Service.Custom {
+
+							// Rule -> Exceptions -> Service -> Custom -> Port
+							if len(elementsServiceCustomInput.Port) > 0 {
+								var elementsServiceCustomPortInput []attr.Value
+								for _, v := range elementsServiceCustomInput.Port {
+									elementsServiceCustomPortInput = append(elementsServiceCustomPortInput, basetypes.NewStringValue(string(v)))
+								}
+								itemServiceCustomInput.Port, diags = basetypes.NewListValue(types.StringType, elementsServiceCustomPortInput)
+								resp.Diagnostics.Append(diags...)
+							}
+							// Rule -> Exceptions -> Service -> Custom -> PortRange
+							if elementsServiceCustomInput.PortRangeCustomService != nil {
+								itemServiceCustomInput.PortRange, diags = basetypes.NewObjectValueFrom(ctx, itemServiceCustomInput.PortRange.AttributeTypes(ctx), elementsServiceCustomInput.PortRangeCustomService)
+								resp.Diagnostics.Append(diags...)
+							}
+
+							itemServiceCustomInput.Protocol = basetypes.NewStringValue(string(*elementsServiceCustomInput.GetProtocol()))
+
+							resp.Diagnostics.Append(diags...)
+						}
+
+						serviceInput.Custom, diags = basetypes.NewListValueFrom(ctx, serviceInput.Custom.ElementType((ctx)), elementsExceptionsServiceCustomInput)
+						resp.Diagnostics.Append(diags...)
+					}
+				}
+			}
+		}
+	}
 
 	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
 	resp.Diagnostics.Append(diags...)
