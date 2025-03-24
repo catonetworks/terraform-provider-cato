@@ -4114,6 +4114,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 				if !itemServiceCustomInput.PortRange.IsNull() {
 					var itemPortRange Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange
 					diags = itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
 
 					inputPortRange := cato_models.PortRangeInput{
 						From: cato_scalars.Port(itemPortRange.From.ValueString()),
@@ -5017,6 +5018,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 					var itemServiceCustomInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
 					for _, item := range elementsServiceCustomInput {
 						diags = item.As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})
+						resp.Diagnostics.Append(diags...)
 
 						customInput := &cato_models.CustomServiceInput{
 							Protocol: cato_models.IPProtocol(itemServiceCustomInput.Protocol.ValueString()),
@@ -5040,6 +5042,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 						if !itemServiceCustomInput.PortRange.IsNull() {
 							var itemPortRange Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange
 							diags = itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})
+							resp.Diagnostics.Append(diags...)
 
 							inputPortRange := cato_models.PortRangeInput{
 								From: cato_scalars.Port(itemPortRange.From.ValueString()),
