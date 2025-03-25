@@ -3330,7 +3330,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	hydrateIfwRuleState(ctx, state, currentRule, req, resp, diags)
+	hydrateIfwRuleState(ctx, state, currentRule, resp, diags)
 
 }
 

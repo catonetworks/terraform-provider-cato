@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule, req resource.ReadRequest, resp *resource.ReadResponse, diags diag.Diagnostics) {
+func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule, resp *resource.ReadResponse, diags diag.Diagnostics) {
 
 	ruleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
 	sourceInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source{}
