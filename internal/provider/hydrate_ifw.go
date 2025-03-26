@@ -36,17 +36,12 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	ruleInput.Description = types.StringValue(currentRule.Description)
 	// Rule -> Action
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
+	// // Rule -> Index
+	// ruleInput.Index = types.StringValue(currentRule.Index.String())
 	// Rule -> ConnectionOrigin
 	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
 
-	// diags = ruleInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})
-	// resp.Diagnostics.Append(diags...)
-
-	// ruleInput.Source, diags = types.ObjectValueFrom(ctx, ruleInput.Source.AttributeTypes(ctx), sourceInput)
-	// resp.Diagnostics.Append(diags...)
-
-	// //////////// rule.source ///////////////
-
+	// //////////// Rule -> Source ///////////////
 	curRuleSourceObj, diags := types.ObjectValue(
 		map[string]attr.Type{
 			"ip":                  types.ListType{ElemType: types.StringType},
@@ -82,238 +77,324 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	resp.Diagnostics.Append(diags...)
 	curRuleSourceObjAttrs := curRuleSourceObj.Attributes()
 
-	// // rule.source.subnet[]
-	curSourceSubnets := []string{}
-	for _, sourceSubnet := range currentRule.Source.Subnet {
-		curSourceSubnets = append(curSourceSubnets, sourceSubnet)
+	// // Rule -> Source -> IP
+	if currentRule.Source.IP != nil {
+		if len(currentRule.Source.IP) > 0 {
+			tflog.Info(ctx, "ruleResponse.Source.IP - "+fmt.Sprintf("%v", currentRule.Source.IP))
+			curSourceSourceIpList, diagstmp := types.ListValueFrom(ctx, types.StringType, currentRule.Source.IP)
+			diags = append(diags, diagstmp...)
+			curRuleSourceObjAttrs["ip"] = curSourceSourceIpList
+		}
 	}
-	curSourceSubnetList, diagstmp := types.ListValueFrom(ctx, types.StringType, curSourceSubnets)
-	diags = append(diags, diagstmp...)
-	curRuleSourceObjAttrs["subnet"] = curSourceSubnetList
 
-	curSourceSourceIps := []string{}
-	for _, sourceIp := range currentRule.Source.IP {
-		curSourceSourceIps = append(curSourceSourceIps, sourceIp)
+	// Rule -> Source -> Subnet
+	if currentRule.Source.Subnet != nil {
+		if len(currentRule.Source.Subnet) > 0 {
+			tflog.Info(ctx, "ruleResponse.Source.Subnet - "+fmt.Sprintf("%v", currentRule.Source.Subnet))
+			curRuleSourceSubnetList, diagstmp := types.ListValueFrom(ctx, types.StringType, currentRule.Source.Subnet)
+			resp.Diagnostics.Append(diagstmp...)
+			curRuleSourceObjAttrs["subnet"] = curRuleSourceSubnetList
+		}
 	}
-	curSourceSourceIpList, diagstmp := types.ListValueFrom(ctx, types.StringType, curSourceSubnets)
-	diags = append(diags, diagstmp...)
-	curRuleSourceObjAttrs["ip"] = curSourceSourceIpList
 
-	// rule.source.host[]
-	var curSourceHosts []types.Object
-	tflog.Warn(ctx, "ruleResponse.Source.Host - "+fmt.Sprintf("%v", currentRule.Source.Host))
-	for _, host := range currentRule.Source.Host {
-		curSourceHostObj := parseNameID(ctx, host)
-		curSourceHosts = append(curSourceHosts, curSourceHostObj)
+	// Rule -> Source -> Host
+	if currentRule.Source.Host != nil {
+		if len(currentRule.Source.Host) > 0 {
+			var curSourceHosts []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.Host - "+fmt.Sprintf("%v", currentRule.Source.Host))
+			for _, item := range currentRule.Source.Host {
+				curSourceHosts = append(curSourceHosts, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["host"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceHosts)
+			resp.Diagnostics.Append(diags...)
+		}
 	}
-	curSourceHostValues := make([]attr.Value, len(curSourceHosts))
-	for i, v := range curSourceHosts {
-		curSourceHostValues[i] = v
-	}
-	curRuleSourceObjAttrs["host"], diagstmp = types.ListValue(NameIDObjectType, curSourceHostValues)
-	diags = append(diags, diagstmp...)
 
-	// sourceInput.Subnet = curSourceSubnetList
+	// Rule -> Source -> Site
+	if currentRule.Source.Site != nil {
+		if len(currentRule.Source.Site) > 0 {
+			var curSourceSites []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.Site - "+fmt.Sprintf("%v", currentRule.Source.Site))
+			for _, item := range currentRule.Source.Site {
+				curSourceSites = append(curSourceSites, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["site"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceSites)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> IPRange
+	if currentRule.Source.IPRange != nil {
+		if len(currentRule.Source.IPRange) > 0 {
+			var curSourceIPRanges []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.IPRange - "+fmt.Sprintf("%v", currentRule.Source.IPRange))
+			for _, item := range currentRule.Source.IPRange {
+				curSourceIPRanges = append(curSourceIPRanges, parseFromTo(ctx, item))
+			}
+			curRuleSourceObjAttrs["ip_range"], diags = types.ListValueFrom(ctx, FromToObjectType, curSourceIPRanges)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> GlobalIPRange
+	if currentRule.Source.GlobalIPRange != nil {
+		if len(currentRule.Source.GlobalIPRange) > 0 {
+			var curSourceGlobalIPRanges []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.GlobalIPRange - "+fmt.Sprintf("%v", currentRule.Source.GlobalIPRange))
+			for _, item := range currentRule.Source.GlobalIPRange {
+				curSourceGlobalIPRanges = append(curSourceGlobalIPRanges, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["global_ip_range"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceGlobalIPRanges)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> NetworkInterface
+	if currentRule.Source.NetworkInterface != nil {
+		if len(currentRule.Source.NetworkInterface) > 0 {
+			var curSourceNetworkInterfaces []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.NetworkInterface - "+fmt.Sprintf("%v", currentRule.Source.NetworkInterface))
+			for _, item := range currentRule.Source.NetworkInterface {
+				curSourceNetworkInterfaces = append(curSourceNetworkInterfaces, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["network_interface"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceNetworkInterfaces)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> SiteNetworkSubnet
+	if currentRule.Source.SiteNetworkSubnet != nil {
+		if len(currentRule.Source.SiteNetworkSubnet) > 0 {
+			var curSourceSiteNetworkSubnets []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.SiteNetworkSubnet - "+fmt.Sprintf("%v", currentRule.Source.SiteNetworkSubnet))
+			for _, item := range currentRule.Source.SiteNetworkSubnet {
+				curSourceSiteNetworkSubnets = append(curSourceSiteNetworkSubnets, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["site_network_subnet"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceSiteNetworkSubnets)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> FloatingSubnet
+	if currentRule.Source.FloatingSubnet != nil {
+		if len(currentRule.Source.FloatingSubnet) > 0 {
+			var curSourceFloatingSubnets []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.FloatingSubnet - "+fmt.Sprintf("%v", currentRule.Source.FloatingSubnet))
+			for _, item := range currentRule.Source.FloatingSubnet {
+				curSourceFloatingSubnets = append(curSourceFloatingSubnets, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["floating_subnet"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceFloatingSubnets)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> User
+	if currentRule.Source.User != nil {
+		if len(currentRule.Source.User) > 0 {
+			var curSourceUsers []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.User - "+fmt.Sprintf("%v", currentRule.Source.User))
+			for _, item := range currentRule.Source.User {
+				curSourceUsers = append(curSourceUsers, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["user"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceUsers)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> UsersGroup
+	if currentRule.Source.UsersGroup != nil {
+		if len(currentRule.Source.UsersGroup) > 0 {
+			var curSourceUsersGroups []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.UsersGroup - "+fmt.Sprintf("%v", currentRule.Source.UsersGroup))
+			for _, item := range currentRule.Source.UsersGroup {
+				curSourceUsersGroups = append(curSourceUsersGroups, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["users_group"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceUsersGroups)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> Group
+	if currentRule.Source.Group != nil {
+		if len(currentRule.Source.Group) > 0 {
+			var curSourceGroups []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.Group - "+fmt.Sprintf("%v", currentRule.Source.Group))
+			for _, item := range currentRule.Source.Group {
+				curSourceGroups = append(curSourceGroups, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["group"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceGroups)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
+	// Rule -> Source -> SystemGroup
+	if currentRule.Source.SystemGroup != nil {
+		if len(currentRule.Source.SystemGroup) > 0 {
+			var curSourceSystemGroups []types.Object
+			tflog.Info(ctx, "ruleResponse.Source.SystemGroup - "+fmt.Sprintf("%v", currentRule.Source.SystemGroup))
+			for _, item := range currentRule.Source.SystemGroup {
+				curSourceSystemGroups = append(curSourceSystemGroups, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["system_group"], diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceSystemGroups)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
+
 	curRuleSourceObj, diags = types.ObjectValue(curRuleSourceObj.AttributeTypes(ctx), curRuleSourceObjAttrs)
 	resp.Diagnostics.Append(diags...)
 	ruleInput.Source = curRuleSourceObj
-
 	////////////// end rule.source ///////////////
 
-	// // Rule -> Source -> IP
-	// if currentRule.Source.IP != nil {
-	// 	if len(currentRule.Source.IP) > 0 {
-	// 		sourceInput.IP, diags = types.ListValueFrom(ctx, sourceInput.IP.ElementType(ctx), currentRule.Source.IP)
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Country
+	if currentRule.Country != nil {
+		if len(currentRule.Country) > 0 {
+			var curSourceCountries []types.Object
+			tflog.Info(ctx, "ruleResponse.Country - "+fmt.Sprintf("%v", currentRule.Country))
+			for _, item := range currentRule.Country {
+				curSourceCountries = append(curSourceCountries, parseNameID(ctx, item))
+			}
+			ruleInput.Country, diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceCountries)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Source -> Subnet
-	// if currentRule.Source.Subnet != nil {
-	// 	if len(currentRule.Source.Subnet) > 0 {
-	// 		sourceInput.Subnet, diags = types.ListValueFrom(ctx, sourceInput.Subnet.ElementType(ctx), currentRule.Source.Subnet)
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Device
+	if currentRule.Device != nil {
+		if len(currentRule.Device) > 0 {
+			var curSourceDevices []types.Object
+			tflog.Info(ctx, "ruleResponse.Device - "+fmt.Sprintf("%v", currentRule.Device))
+			for _, item := range currentRule.Device {
+				curSourceDevices = append(curSourceDevices, parseNameID(ctx, item))
+			}
+			ruleInput.Device, diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceDevices)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Source -> Host
-	// if currentRule.Source.Host != nil {
-	// 	if len(currentRule.Source.Host) > 0 {
-	// 		sourceInput.Host, diags = types.ListValueFrom(ctx, sourceInput.Host.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Host, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> DeviceOS
+	ruleInput.DeviceOs, diags = types.ListValueFrom(ctx, types.StringType, currentRule.DeviceOs)
+	resp.Diagnostics.Append(diags...)
 
-	// // Rule -> Source -> Site
-	// if currentRule.Source.Site != nil {
-	// 	if len(currentRule.Source.Site) > 0 {
-	// 		sourceInput.Site, diags = types.ListValueFrom(ctx, sourceInput.Site.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Site, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	//////////// Rule -> Destination ///////////////
+	curRuleDestinationObj, diags := types.ObjectValue(
+		map[string]attr.Type{
+			"application":              types.ListType{ElemType: NameIDObjectType},
+			"custom_app":               types.ListType{ElemType: NameIDObjectType},
+			"app_category":             types.ListType{ElemType: NameIDObjectType},
+			"custom_category":          types.ListType{ElemType: NameIDObjectType},
+			"sanctioned_apps_category": types.ListType{ElemType: NameIDObjectType},
+			"country":                  types.ListType{ElemType: NameIDObjectType},
+			"domain":                   types.ListType{ElemType: types.StringType},
+			"fqdn":                     types.ListType{ElemType: types.StringType},
+			"ip":                       types.ListType{ElemType: types.StringType},
+			"subnet":                   types.ListType{ElemType: types.StringType},
+			"ip_range":                 types.ListType{ElemType: FromToObjectType},
+			"global_ip_range":          types.ListType{ElemType: NameIDObjectType},
+			"remote_asn":               types.ListType{ElemType: types.StringType},
+		},
+		map[string]attr.Value{
+			"application":              types.ListNull(NameIDObjectType),
+			"custom_app":               types.ListNull(NameIDObjectType),
+			"app_category":             types.ListNull(NameIDObjectType),
+			"custom_category":          types.ListNull(NameIDObjectType),
+			"sanctioned_apps_category": types.ListNull(NameIDObjectType),
+			"country":                  types.ListNull(NameIDObjectType),
+			"domain":                   types.ListNull(types.StringType),
+			"fqdn":                     types.ListNull(types.StringType),
+			"ip":                       types.ListNull(types.StringType),
+			"subnet":                   types.ListNull(types.StringType),
+			"ip_range":                 types.ListNull(FromToObjectType),
+			"global_ip_range":          types.ListNull(NameIDObjectType),
+			"remote_asn":               types.ListNull(types.StringType),
+		},
+	)
+	resp.Diagnostics.Append(diags...)
+	curRuleDestinationObjAttrs := curRuleDestinationObj.Attributes()
 
-	// // Rule -> Source -> IPRange
-	// if currentRule.Source.IPRange != nil {
-	// 	if len(currentRule.Source.IPRange) > 0 {
-	// 		sourceInput.IPRange, diags = types.ListValueFrom(ctx, sourceInput.IPRange.ElementType(ctx), parseFromToList(ctx, currentRule.Source.IPRange, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// // Rule -> Destination -> IP
+	tflog.Info(ctx, "ruleResponse.Destination.IP - "+fmt.Sprintf("%v", currentRule.Destination.IP))
+	if currentRule.Destination.IP != nil {
+		if len(currentRule.Destination.IP) > 0 {
+			tflog.Info(ctx, "ruleResponse.Destination.IP - "+fmt.Sprintf("%v", currentRule.Destination.IP))
+			curDestIpList, diagstmp := types.ListValueFrom(ctx, types.StringType, currentRule.Destination.IP)
+			diags = append(diags, diagstmp...)
+			curRuleDestinationObjAttrs["ip"] = curDestIpList
+		}
+	}
 
-	// // Rule -> Source -> GlobalIPRange
-	// if currentRule.Source.GlobalIPRange != nil {
-	// 	if len(currentRule.Source.GlobalIPRange) > 0 {
-	// 		sourceInput.GlobalIPRange, diags = types.ListValueFrom(ctx, sourceInput.GlobalIPRange.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.GlobalIPRange, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> Subnet
+	if currentRule.Destination.Subnet != nil {
+		if len(currentRule.Destination.Subnet) > 0 {
+			tflog.Info(ctx, "ruleResponse.Destination.Subnet - "+fmt.Sprintf("%v", currentRule.Destination.Subnet))
+			curDestSubnetList, diagstmp := types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Subnet)
+			diags = append(diags, diagstmp...)
+			curRuleDestinationObjAttrs["subnet"] = curDestSubnetList
+		}
+	}
 
-	// // Rule -> Source -> NetworkInterface
-	// if currentRule.Source.NetworkInterface != nil {
-	// 	if len(currentRule.Source.NetworkInterface) > 0 {
-	// 		sourceInput.NetworkInterface, diags = types.ListValueFrom(ctx, sourceInput.NetworkInterface.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.NetworkInterface, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> Domain
+	if currentRule.Destination.Domain != nil {
+		if len(currentRule.Destination.Domain) > 0 {
+			tflog.Info(ctx, "ruleResponse.Destination.Domain - "+fmt.Sprintf("%v", currentRule.Destination.Domain))
+			curDestDomainList, diagstmp := types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Domain)
+			diags = append(diags, diagstmp...)
+			curRuleDestinationObjAttrs["domain"] = curDestDomainList
+		}
+	}
 
-	// // Rule -> Source -> SiteNetworkSubnet
-	// if currentRule.Source.SiteNetworkSubnet != nil {
-	// 	if len(currentRule.Source.SiteNetworkSubnet) > 0 {
-	// 		sourceInput.SiteNetworkSubnet, diags = types.ListValueFrom(ctx, sourceInput.SiteNetworkSubnet.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.SiteNetworkSubnet, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> Fqdn
+	if currentRule.Destination.Fqdn != nil {
+		if len(currentRule.Destination.Fqdn) > 0 {
+			tflog.Info(ctx, "ruleResponse.Destination.Fqdn - "+fmt.Sprintf("%v", currentRule.Destination.Fqdn))
+			curDestFqdnList, diagstmp := types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Fqdn)
+			diags = append(diags, diagstmp...)
+			curRuleDestinationObjAttrs["fqdn"] = curDestFqdnList
+		}
+	}
 
-	// // Rule -> Source -> FloatingSubnet
-	// if currentRule.Source.FloatingSubnet != nil {
-	// 	if len(currentRule.Source.FloatingSubnet) > 0 {
-	// 		sourceInput.FloatingSubnet, diags = types.ListValueFrom(ctx, sourceInput.FloatingSubnet.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.FloatingSubnet, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> RemoteAsn
+	if currentRule.Destination.RemoteAsn != nil {
+		if len(currentRule.Destination.RemoteAsn) > 0 {
+			tflog.Info(ctx, "ruleResponse.Destination.RemoteAsn - "+fmt.Sprintf("%v", currentRule.Destination.RemoteAsn))
+			curDestRemoteAsnList, diagstmp := types.ListValueFrom(ctx, types.StringType, currentRule.Destination.RemoteAsn)
+			diags = append(diags, diagstmp...)
+			curRuleDestinationObjAttrs["remote_asn"] = curDestRemoteAsnList
+		}
+	}
 
-	// // Rule -> Source -> User
-	// if currentRule.Source.User != nil {
-	// 	if len(currentRule.Source.User) > 0 {
-	// 		sourceInput.User, diags = types.ListValueFrom(ctx, sourceInput.User.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.User, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> Application
+	if currentRule.Destination.Application != nil {
+		if len(currentRule.Destination.Application) > 0 {
+			var curDestApplications []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.Application - "+fmt.Sprintf("%v", currentRule.Destination.Application))
+			for _, item := range currentRule.Destination.Application {
+				curDestApplications = append(curDestApplications, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["application"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestApplications)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Source -> UsersGroup
-	// if currentRule.Source.UsersGroup != nil {
-	// 	if len(currentRule.Source.UsersGroup) > 0 {
-	// 		sourceInput.UsersGroup, diags = types.ListValueFrom(ctx, sourceInput.UsersGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.UsersGroup, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Source -> Group
-	// if currentRule.Source.Group != nil {
-	// 	if len(currentRule.Source.Group) > 0 {
-	// 		sourceInput.Group, diags = types.ListValueFrom(ctx, sourceInput.Group.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.Group, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Source -> SystemGroup
-	// if currentRule.Source.SystemGroup != nil {
-	// 	if len(currentRule.Source.SystemGroup) > 0 {
-	// 		sourceInput.SystemGroup, diags = types.ListValueFrom(ctx, sourceInput.SystemGroup.ElementType(ctx), parseNameIDList(ctx, currentRule.Source.SystemGroup, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// curRule["source"] = curRuleSourceObj
-
-	// Rule -> Source
-	// ruleInput.Source, diags = types.ObjectValueFrom(ctx, ruleInput.Source.AttributeTypes(ctx), sourceInput)
-	// resp.Diagnostics.Append(diags...)
-
-	// // Rule -> Country
-	// ruleInput.Country, diags = basetypes.NewListValueFrom(ctx, ruleInput.Country.ElementType(ctx), parseNameIDList(ctx, currentRule.Country, resp))
-	// resp.Diagnostics.Append(diags...)
-
-	// // // Rule -> Device
-	// ruleInput.Device, diags = basetypes.NewListValueFrom(ctx, ruleInput.Device.ElementType(ctx), parseNameIDList(ctx, currentRule.Device, resp))
-	// resp.Diagnostics.Append(diags...)
-
-	// // Rule -> DeviceOS
-	// ruleInput.DeviceOs, diags = types.ListValueFrom(ctx, ruleInput.DeviceOs.ElementType(ctx), currentRule.DeviceOs)
-	// resp.Diagnostics.Append(diags...)
-
-	// // Rule -> Destination
-	// diags = ruleInput.Destination.As(ctx, &destInput, basetypes.ObjectAsOptions{})
-	// resp.Diagnostics.Append(diags...)
-
-	// // // Rule -> Destination -> IP
-	// if currentRule.Destination.IP != nil {
-	// 	if len(currentRule.Destination.IP) > 0 {
-	// 		destInput.IP, diags = basetypes.NewListValueFrom(ctx, destInput.IP.ElementType(ctx), currentRule.Destination.IP)
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Destination -> Subnet
-	// if currentRule.Destination.Subnet != nil {
-	// 	if len(currentRule.Destination.Subnet) > 0 {
-	// 		destInput.Subnet, diags = basetypes.NewListValueFrom(ctx, destInput.Subnet.ElementType(ctx), currentRule.Destination.Subnet)
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Destination -> Domain
-	// tflog.Info(ctx, "destInput.Domain", map[string]interface{}{
-	// 	"count": len(currentRule.Destination.Domain),
-	// })
-
-	// // Rule -> Destination -> Domain
-	// if currentRule.Destination.Domain != nil {
-	// 	if len(currentRule.Destination.Domain) > 0 {
-	// 		destInput.Domain, diags = types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Domain)
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Destination -> Fqdn
-	// if currentRule.Destination.Fqdn != nil {
-	// 	if len(currentRule.Destination.Fqdn) > 0 {
-	// 		destInput.Fqdn, diags = types.ListValueFrom(ctx, types.StringType, currentRule.Destination.Fqdn)
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Destination -> RemoteAsn
-	// if currentRule.Destination.RemoteAsn != nil {
-	// 	if len(currentRule.Destination.RemoteAsn) > 0 {
-	// 		destInput.RemoteAsn, diags = types.ListValueFrom(ctx, types.StringType, currentRule.Destination.RemoteAsn)
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Destination -> Application
-	// if currentRule.Destination.Application != nil {
-	// 	if len(currentRule.Destination.Application) > 0 {
-	// 		destInput.Application, diags = types.ListValueFrom(ctx, destInput.Application.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.Application, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
-
-	// // Rule -> Destination -> CustomApp
-	// if currentRule.Destination.CustomApp != nil {
-	// 	if len(currentRule.Destination.CustomApp) > 0 {
-	// 		destInput.CustomApp, diags = types.ListValueFrom(ctx, destInput.CustomApp.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.CustomApp, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> CustomApp
+	if currentRule.Destination.CustomApp != nil {
+		if len(currentRule.Destination.CustomApp) > 0 {
+			var curDestCustomApps []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.CustomApp - "+fmt.Sprintf("%v", currentRule.Destination.CustomApp))
+			for _, item := range currentRule.Destination.CustomApp {
+				curDestCustomApps = append(curDestCustomApps, parseNameID(ctx, item))
+			}
+			curRuleSourceObjAttrs["custom_app"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestCustomApps)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
 	// // Rule -> Destination -> IPRange
-	// // if currentRule.Destination.IPRange != nil {
-	// // 	if len(currentRule.Destination.IPRange) > 0 {
-	// // 		destInput.IPRange, diags = types.ListValueFrom(ctx, destInput.IPRange.ElementType(ctx), parseFromToList(ctx, currentRule.Destination.IPRange, resp))
-	// // 		resp.Diagnostics.Append(diags...)
-	// // 	}
-	// // }
+	// if currentRule.Destination.IPRange != nil {
+	// 	if len(currentRule.Destination.IPRange) > 0 {
+	// 		destInput.IPRange, diags = types.ListValueFrom(ctx, destInput.IPRange.ElementType(ctx), parseFromToList(ctx, currentRule.Destination.IPRange, resp))
+	// 		resp.Diagnostics.Append(diags...)
+	// 	}
+	// }
 
 	// // Rule -> Destination -> GlobalIPRange
 	// if currentRule.Destination.GlobalIPRange != nil {
@@ -354,6 +435,11 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	// 		resp.Diagnostics.Append(diags...)
 	// 	}
 	// }
+
+	curRuleDestinationObj, diags = types.ObjectValue(curRuleDestinationObj.AttributeTypes(ctx), curRuleDestinationObjAttrs)
+	resp.Diagnostics.Append(diags...)
+	ruleInput.Destination = curRuleDestinationObj
+	////////////// end Rule -> Source ///////////////
 
 	// // Rule -> Service
 	// if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
@@ -1014,6 +1100,7 @@ func parseNameID(ctx context.Context, item interface{}) types.Object {
 	idField := itemValue.FieldByName("ID")
 
 	if !nameField.IsValid() || !idField.IsValid() {
+		tflog.Warn(ctx, "parseNameID() nameField.IsValid() - "+fmt.Sprintf("%v", nameField))
 		return types.ObjectNull(NameIDAttrTypes)
 	}
 
@@ -1025,116 +1112,57 @@ func parseNameID(ctx context.Context, item interface{}) types.Object {
 			"id":   basetypes.NewStringValue(idField.String()),
 		},
 	)
+	tflog.Warn(ctx, "parseNameID() obj - "+fmt.Sprintf("%v", obj))
 	diags = append(diags, diagstmp...)
 	return obj
 }
 
-// func parseNameIDList2(ctx context.Context, items interface{}, resp *resource.ReadResponse) types.List {
-// 	tflog.Warn(ctx, "parseNameIDList() - "+fmt.Sprintf("%v", items))
-// 	diags := make(diag.Diagnostics, 0)
-// 	// Get the reflect.Value of the input
-// 	itemsValue := reflect.ValueOf(items)
-
-// 	// Handle nil or empty input
-// 	rt := reflect.TypeOf(items)
-// 	if items == nil || (rt.Kind() != reflect.Array && rt.Kind() != reflect.Slice) {
-// 		return types.ListNull(NameIDObjectType)
-// 	} else {
-// 		if itemsValue.Len() == 0 {
-// 			return types.ListNull(NameIDObjectType)
-// 		}
-// 	}
-
-// 	values := make([]attr.Value, itemsValue.Len())
-// 	for i := range itemsValue.Len() {
-// 		item := itemsValue.Index(i)
-
-// 		// Handle pointer elements
-// 		if item.Kind() == reflect.Ptr {
-// 			item = item.Elem()
-// 		}
-
-// 		// Get Name and ID fields
-// 		nameField := item.FieldByName("Name")
-// 		idField := item.FieldByName("ID")
-
-// 		if !nameField.IsValid() || !idField.IsValid() {
-// 			return types.ListNull(NameIDObjectType)
-// 		}
-
-// 		// Create object value
-// 		obj, diagstmp := types.ObjectValue(
-// 			NameIDAttrTypes,
-// 			map[string]attr.Value{
-// 				"name": basetypes.NewStringValue(nameField.String()),
-// 				"id":   basetypes.NewStringValue(idField.String()),
-// 			},
-// 		)
-
-// 		diags = append(diags, diagstmp...)
-// 		values[i] = obj
-// 	}
-
-// 	// Convert to List
-// 	list, diagstmp := types.ListValue(NameIDObjectType, values)
-
-// 	diags = append(diags, diagstmp...)
-// 	resp.Diagnostics.Append(diags...)
-
-// 	return list
-// }
-
-func parseFromToList(ctx context.Context, items interface{}, resp *resource.ReadResponse) types.List {
-	tflog.Warn(ctx, "parseFromToList() - "+fmt.Sprintf("%v", items))
+func parseFromTo(ctx context.Context, item interface{}) types.Object {
+	tflog.Warn(ctx, "parseFromTo() - "+fmt.Sprintf("%v", item))
 	diags := make(diag.Diagnostics, 0)
+
 	// Get the reflect.Value of the input
-	itemsValue := reflect.ValueOf(items)
+	itemValue := reflect.ValueOf(item)
 
-	// Handle nil or empty input
-	rt := reflect.TypeOf(items)
-	if items == nil || (rt.Kind() != reflect.Array && rt.Kind() != reflect.Slice) {
-		return types.ListNull(FromToObjectType)
-	} else {
-		if itemsValue.Len() == 0 {
-			return types.ListNull(FromToObjectType)
+	// Handle nil or invalid input (must be a struct, not a slice/array)
+	if item == nil || itemValue.Kind() != reflect.Struct {
+		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			itemValue = itemValue.Elem()
+			if itemValue.Kind() != reflect.Struct {
+				return types.ObjectNull(FromToAttrTypes)
+			}
+		} else {
+			return types.ObjectNull(FromToAttrTypes)
 		}
 	}
 
-	values := make([]attr.Value, itemsValue.Len())
-	for i := range itemsValue.Len() {
-		item := itemsValue.Index(i)
-
-		// Handle pointer elements
-		if item.Kind() == reflect.Ptr {
-			item = item.Elem()
+	// Handle pointer to struct
+	if itemValue.Kind() == reflect.Ptr {
+		if itemValue.IsNil() {
+			return types.ObjectNull(FromToAttrTypes)
 		}
-
-		// Get Name and ID fields
-		fromField := item.FieldByName("From")
-		toField := item.FieldByName("To")
-
-		if !fromField.IsValid() || !toField.IsValid() {
-			return types.ListNull(FromToObjectType)
-		}
-
-		// Create object value
-		obj, diagstmp := types.ObjectValue(
-			FromToAttrTypes,
-			map[string]attr.Value{
-				"from": basetypes.NewStringValue(fromField.String()),
-				"to":   basetypes.NewStringValue(toField.String()),
-			},
-		)
-
-		diags = append(diags, diagstmp...)
-		values[i] = obj
+		itemValue = itemValue.Elem()
 	}
 
-	// Convert to List
-	list, diagstmp := types.ListValue(FromToObjectType, values)
+	// Get Name and ID fields
+	fromField := itemValue.FieldByName("From")
+	toField := itemValue.FieldByName("To")
 
+	if !fromField.IsValid() || !toField.IsValid() {
+		tflog.Warn(ctx, "parseFromTo() fromField.IsValid() - "+fmt.Sprintf("%v", fromField))
+		tflog.Warn(ctx, "parseFromTo() toField.IsValid() - "+fmt.Sprintf("%v", toField))
+		return types.ObjectNull(FromToAttrTypes)
+	}
+
+	// Create object value
+	obj, diagstmp := types.ObjectValue(
+		FromToAttrTypes,
+		map[string]attr.Value{
+			"from": basetypes.NewStringValue(fromField.String()),
+			"to":   basetypes.NewStringValue(toField.String()),
+		},
+	)
+	tflog.Warn(ctx, "parseFromTo() obj - "+fmt.Sprintf("%v", obj))
 	diags = append(diags, diagstmp...)
-	resp.Diagnostics.Append(diags...)
-
-	return list
+	return obj
 }
