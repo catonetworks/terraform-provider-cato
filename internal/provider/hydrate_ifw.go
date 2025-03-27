@@ -370,7 +370,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			for _, item := range currentRule.Destination.Application {
 				curDestApplications = append(curDestApplications, parseNameID(ctx, item))
 			}
-			curRuleSourceObjAttrs["application"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestApplications)
+			curRuleDestinationObjAttrs["application"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestApplications)
 			resp.Diagnostics.Append(diags...)
 		}
 	}
@@ -383,133 +383,187 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			for _, item := range currentRule.Destination.CustomApp {
 				curDestCustomApps = append(curDestCustomApps, parseNameID(ctx, item))
 			}
-			curRuleSourceObjAttrs["custom_app"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestCustomApps)
+			curRuleDestinationObjAttrs["custom_app"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestCustomApps)
 			resp.Diagnostics.Append(diags...)
 		}
 	}
 
-	// // Rule -> Destination -> IPRange
-	// if currentRule.Destination.IPRange != nil {
-	// 	if len(currentRule.Destination.IPRange) > 0 {
-	// 		destInput.IPRange, diags = types.ListValueFrom(ctx, destInput.IPRange.ElementType(ctx), parseFromToList(ctx, currentRule.Destination.IPRange, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> IPRange
+	if currentRule.Destination.IPRange != nil {
+		if len(currentRule.Destination.IPRange) > 0 {
+			var curDestinationIPRanges []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.IPRange - "+fmt.Sprintf("%v", currentRule.Destination.IPRange))
+			for _, item := range currentRule.Destination.IPRange {
+				curDestinationIPRanges = append(curDestinationIPRanges, parseFromTo(ctx, item))
+			}
+			curRuleDestinationObjAttrs["ip_range"], diags = types.ListValueFrom(ctx, FromToObjectType, curDestinationIPRanges)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Destination -> GlobalIPRange
-	// if currentRule.Destination.GlobalIPRange != nil {
-	// 	if len(currentRule.Destination.GlobalIPRange) > 0 {
-	// 		destInput.GlobalIPRange, diags = types.ListValueFrom(ctx, destInput.GlobalIPRange.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.GlobalIPRange, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> GlobalIPRange
+	if currentRule.Destination.GlobalIPRange != nil {
+		if len(currentRule.Destination.GlobalIPRange) > 0 {
+			var curDestinationGlobalIPRanges []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.GlobalIPRange - "+fmt.Sprintf("%v", currentRule.Destination.GlobalIPRange))
+			for _, item := range currentRule.Destination.GlobalIPRange {
+				curDestinationGlobalIPRanges = append(curDestinationGlobalIPRanges, parseNameID(ctx, item))
+			}
+			curRuleDestinationObjAttrs["global_ip_range"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestinationGlobalIPRanges)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Destination -> AppCategory
-	// if currentRule.Destination.AppCategory != nil {
-	// 	if len(currentRule.Destination.AppCategory) > 0 {
-	// 		destInput.GlobalIPRange, diags = types.ListValueFrom(ctx, destInput.AppCategory.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.AppCategory, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> AppCategory
+	if currentRule.Destination.AppCategory != nil {
+		if len(currentRule.Destination.AppCategory) > 0 {
+			var curDestinationAppCategories []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.AppCategory - "+fmt.Sprintf("%v", currentRule.Destination.AppCategory))
+			for _, item := range currentRule.Destination.AppCategory {
+				curDestinationAppCategories = append(curDestinationAppCategories, parseNameID(ctx, item))
+			}
+			curRuleDestinationObjAttrs["app_category"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestinationAppCategories)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Destination -> CustomCategory
-	// if currentRule.Destination.CustomCategory != nil {
-	// 	if len(currentRule.Destination.CustomCategory) > 0 {
-	// 		destInput.CustomCategory, diags = types.ListValueFrom(ctx, destInput.CustomCategory.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.CustomCategory, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> CustomCategory
+	if currentRule.Destination.CustomCategory != nil {
+		if len(currentRule.Destination.CustomCategory) > 0 {
+			var curDestinationCustomCategories []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.CustomCategory - "+fmt.Sprintf("%v", currentRule.Destination.CustomCategory))
+			for _, item := range currentRule.Destination.CustomCategory {
+				curDestinationCustomCategories = append(curDestinationCustomCategories, parseNameID(ctx, item))
+			}
+			curRuleDestinationObjAttrs["custom_category"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestinationCustomCategories)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Destination -> SanctionedAppsCategory
-	// if currentRule.Destination.SanctionedAppsCategory != nil {
-	// 	if len(currentRule.Destination.SanctionedAppsCategory) > 0 {
-	// 		destInput.SanctionedAppsCategory, diags = types.ListValueFrom(ctx, destInput.SanctionedAppsCategory.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.SanctionedAppsCategory, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> SanctionedAppsCategory
+	if currentRule.Destination.SanctionedAppsCategory != nil {
+		if len(currentRule.Destination.SanctionedAppsCategory) > 0 {
+			var curDestinationSanctionedAppsCategories []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.SanctionedAppsCategory - "+fmt.Sprintf("%v", currentRule.Destination.SanctionedAppsCategory))
+			for _, item := range currentRule.Destination.SanctionedAppsCategory {
+				curDestinationSanctionedAppsCategories = append(curDestinationSanctionedAppsCategories, parseNameID(ctx, item))
+			}
+			curRuleDestinationObjAttrs["sanctioned_apps_category"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestinationSanctionedAppsCategories)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
-	// // Rule -> Destination -> Country
-	// if currentRule.Destination.Country != nil {
-	// 	if len(currentRule.Destination.Country) > 0 {
-	// 		destInput.Country, diags = types.ListValueFrom(ctx, destInput.Country.ElementType(ctx), parseNameIDList(ctx, currentRule.Destination.Country, resp))
-	// 		resp.Diagnostics.Append(diags...)
-	// 	}
-	// }
+	// Rule -> Destination -> Country
+	if currentRule.Destination.Country != nil {
+		if len(currentRule.Destination.Country) > 0 {
+			var curDestinationCountries []types.Object
+			tflog.Info(ctx, "ruleResponse.Destination.Country - "+fmt.Sprintf("%v", currentRule.Destination.Country))
+			for _, item := range currentRule.Destination.Country {
+				curDestinationCountries = append(curDestinationCountries, parseNameID(ctx, item))
+			}
+			curRuleDestinationObjAttrs["country"], diags = types.ListValueFrom(ctx, NameIDObjectType, curDestinationCountries)
+			resp.Diagnostics.Append(diags...)
+		}
+	}
 
 	curRuleDestinationObj, diags = types.ObjectValue(curRuleDestinationObj.AttributeTypes(ctx), curRuleDestinationObjAttrs)
 	resp.Diagnostics.Append(diags...)
 	ruleInput.Destination = curRuleDestinationObj
 	////////////// end Rule -> Source ///////////////
 
-	// // Rule -> Service
-	// if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
-	// 	var serviceInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service
-	// 	diags = ruleInput.Service.As(ctx, &serviceInput, basetypes.ObjectAsOptions{})
-	// 	resp.Diagnostics.Append(diags...)
+	// Rule -> Service
+	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
+		var serviceInput *Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service
+		diags = ruleInput.Service.As(ctx, &serviceInput, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
 
-	// 	// Rule -> Service -> Standard
-	// 	if currentRule.Service.Standard != nil {
-	// 		if len(currentRule.Service.Standard) > 0 {
-	// 			serviceInput.Standard, diags = types.ListValueFrom(ctx, serviceInput.Standard.ElementType(ctx), parseNameIDList(ctx, currentRule.Service.Standard, resp))
-	// 			resp.Diagnostics.Append(diags...)
-	// 		}
-	// 	}
+		// Initialize Service object with null values
+		curRuleServiceObj, diags := types.ObjectValue(
+			map[string]attr.Type{
+				"standard": types.ListType{ElemType: NameIDObjectType},
+				"custom":   types.ListType{ElemType: CustomServiceObjectType},
+			},
+			map[string]attr.Value{
+				"standard": types.ListNull(NameIDObjectType),
+				"custom":   types.ListNull(CustomServiceObjectType),
+			},
+		)
+		resp.Diagnostics.Append(diags...)
+		curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
 
-	// 	// Rule -> Service -> Custom
-	// 	// elementsServiceCustomInput := []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{}
-	// 	// diags = serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)
-	// 	// resp.Diagnostics.Append(diags...)
-	// 	// tflog.Info(ctx, "currentRule.Service.Custom", map[string]interface{}{
-	// 	// 	"currentRule.Service.Custom": currentRule.Service.Custom,
-	// 	// 	"elementsServiceCustomInput": elementsServiceCustomInput,
-	// 	// })
+		// Rule -> Service -> Standard
+		if currentRule.Service.Standard != nil {
+			if len(currentRule.Service.Standard) > 0 {
+				var curRuleStandardServices []types.Object
+				tflog.Info(ctx, "ruleResponse.Service.Standard - "+fmt.Sprintf("%v", currentRule.Service.Standard))
+				for _, item := range currentRule.Service.Standard {
+					curRuleStandardServices = append(curRuleStandardServices, parseNameID(ctx, item))
+				}
+				curRuleServiceObjAttrs["standard"], diags = types.ListValueFrom(ctx, NameIDObjectType, curRuleStandardServices)
+				resp.Diagnostics.Append(diags...)
+			}
+		}
 
-	// 	// for _, customServiceElementsList := range currentRule.Service.Custom {
-	// 	// 	custServiceInternal := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{}
-	// 	// 	diags = ruleInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})
-	// 	// 	resp.Diagnostics.Append(diags...)
+		// Rule -> Service -> Custom
+		if currentRule.Service.Custom != nil {
+			if len(currentRule.Service.Custom) > 0 {
+				var curRuleCustomServices []types.Object
+				tflog.Info(ctx, "ruleResponse.Service.Custom - "+fmt.Sprintf("%v", currentRule.Service.Custom))
+				for _, item := range currentRule.Service.Custom {
+					curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item))
+				}
+				curRuleServiceObjAttrs["custom"], diags = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
+				resp.Diagnostics.Append(diags...)
+			}
+		}
 
-	// 	// 	custServiceInternal.Protocol = basetypes.NewStringValue(customServiceElementsList.Protocol.String())
+		// for _, customServiceElementsList := range currentRule.Service.Custom {
+		// 	custServiceInternal := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{}
+		// 	diags = ruleInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})
+		// 	resp.Diagnostics.Append(diags...)
 
-	// 	// 	// Rule -> Service -> Custom -> Port
+		// 	custServiceInternal.Protocol = basetypes.NewStringValue(customServiceElementsList.Protocol.String())
 
-	// 	// 	// if !customServiceElementsList.Port.IsNull() {
-	// 	// 	// if len(customServiceElementsList.Port) > 0 {
-	// 	// 	// 	var elementsServiceCustomPortInput []attr.Value
-	// 	// 	// 	for _, v := range customServiceElementsList.Port {
-	// 	// 	// 		elementsServiceCustomPortInput = append(elementsServiceCustomPortInput, basetypes.NewStringValue(string(v)))
-	// 	// 	// 	}
+		// 	// Rule -> Service -> Custom -> Port
 
-	// 	// 	// 	custServiceInternal.Port, diags = basetypes.NewListValue(types.StringType, elementsServiceCustomPortInput)
-	// 	// 	// 	resp.Diagnostics.Append(diags...)
-	// 	// 	// } else {
-	// 	// 	// 	custServiceInternal.Port = basetypes.NewListNull(types.StringType)
-	// 	// 	// }
+		// 	// if !customServiceElementsList.Port.IsNull() {
+		// 	// if len(customServiceElementsList.Port) > 0 {
+		// 	// 	var elementsServiceCustomPortInput []attr.Value
+		// 	// 	for _, v := range customServiceElementsList.Port {
+		// 	// 		elementsServiceCustomPortInput = append(elementsServiceCustomPortInput, basetypes.NewStringValue(string(v)))
+		// 	// 	}
 
-	// 	// 	// Rule -> Service -> Custom -> PortRange
-	// 	// 	if string(*customServiceElementsList.PortRange.GetFrom()) != "" && string(*customServiceElementsList.PortRange.GetTo()) != "" {
-	// 	// 		custServiceInternalPortrange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
+		// 	// 	custServiceInternal.Port, diags = basetypes.NewListValue(types.StringType, elementsServiceCustomPortInput)
+		// 	// 	resp.Diagnostics.Append(diags...)
+		// 	// } else {
+		// 	// 	custServiceInternal.Port = basetypes.NewListNull(types.StringType)
+		// 	// }
 
-	// 	// 		custServiceInternalPortrange.From = basetypes.NewStringValue(string(*customServiceElementsList.PortRange.GetFrom()))
-	// 	// 		custServiceInternalPortrange.To = basetypes.NewStringValue(string(*customServiceElementsList.PortRange.GetTo()))
+		// 	// Rule -> Service -> Custom -> PortRange
+		// 	if string(*customServiceElementsList.PortRange.GetFrom()) != "" && string(*customServiceElementsList.PortRange.GetTo()) != "" {
+		// 		custServiceInternalPortrange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
 
-	// 	// 		custServiceInternal.PortRange, diags = basetypes.NewObjectValueFrom(ctx, mapAttributeTypes(ctx, custServiceInternalPortrange, resp), custServiceInternalPortrange)
-	// 	// 		resp.Diagnostics.Append(diags...)
+		// 		custServiceInternalPortrange.From = basetypes.NewStringValue(string(*customServiceElementsList.PortRange.GetFrom()))
+		// 		custServiceInternalPortrange.To = basetypes.NewStringValue(string(*customServiceElementsList.PortRange.GetTo()))
 
-	// 	// 	} else {
-	// 	// 		custServiceInternalPortrange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
-	// 	// 		custServiceInternal.PortRange = basetypes.NewObjectNull(mapAttributeTypes(ctx, custServiceInternalPortrange, resp))
-	// 	// 	}
+		// 		custServiceInternal.PortRange, diags = basetypes.NewObjectValueFrom(ctx, mapAttributeTypes(ctx, custServiceInternalPortrange, resp), custServiceInternalPortrange)
+		// 		resp.Diagnostics.Append(diags...)
 
-	// 	// 	//elementsServiceCustomInput = append(elementsServiceCustomInput, custServiceInternal)
-	// 	// }
+		// 	} else {
+		// 		custServiceInternalPortrange := &Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange{}
+		// 		custServiceInternal.PortRange = basetypes.NewObjectNull(mapAttributeTypes(ctx, custServiceInternalPortrange, resp))
+		// 	}
 
-	// 	// serviceInput.Custom, diags = basetypes.NewListValueFrom(ctx, serviceInput.Custom.ElementType(ctx), elementsServiceCustomInput)
-	// 	// resp.Diagnostics.Append(diags...)
+		// 	//elementsServiceCustomInput = append(elementsServiceCustomInput, custServiceInternal)
+		// }
 
-	// 	ruleInput.Service, diags = types.ObjectValueFrom(ctx, ruleInput.Service.AttributeTypes(ctx), serviceInput)
-	// 	resp.Diagnostics.Append(diags...)
-	// }
+		// serviceInput.Custom, diags = basetypes.NewListValueFrom(ctx, serviceInput.Custom.ElementType(ctx), elementsServiceCustomInput)
+		// resp.Diagnostics.Append(diags...)
+
+		curRuleServiceObj, diags = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
+		resp.Diagnostics.Append(diags...)
+		ruleInput.Service = curRuleServiceObj
+	}
 
 	// // Rule -> Tracking
 	// var trackingInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
@@ -961,20 +1015,28 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 }
 
-var FromToAttrTypes = map[string]attr.Type{
-	"from": types.StringType,
-	"to":   types.StringType,
+// ObjectType wrapper for ListValue
+var ServiceObjectType = types.ObjectType{AttrTypes: ServiceAttrTypes}
+var ServiceAttrTypes = map[string]attr.Type{
+	"standard": types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"custom":   types.ListType{ElemType: types.ObjectType{AttrTypes: CustomServiceAttrTypes}},
 }
-
-var FromToObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
-
+var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
+var CustomServiceAttrTypes = map[string]attr.Type{
+	"port":       types.ListType{ElemType: types.StringType},
+	"port_range": FromToObjectType,
+	"protocol":   types.StringType,
+}
+var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
 var NameIDAttrTypes = map[string]attr.Type{
 	"name": types.StringType,
 	"id":   types.StringType,
 }
-
-// ObjectType wrapper for ListValue
-var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
+var FromToObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
+var FromToAttrTypes = map[string]attr.Type{
+	"from": types.StringType,
+	"to":   types.StringType,
+}
 
 func mapObjectList(ctx context.Context, srcItemObjList any, resp *resource.ReadResponse) []types.Object {
 	vals := reflect.ValueOf(srcItemObjList)
@@ -1124,15 +1186,20 @@ func parseFromTo(ctx context.Context, item interface{}) types.Object {
 	// Get the reflect.Value of the input
 	itemValue := reflect.ValueOf(item)
 
-	// Handle nil or invalid input (must be a struct, not a slice/array)
+	// Handle nil or invalid input
+	tflog.Warn(ctx, "parseFromTo() itemValue.Kind()- "+fmt.Sprintf("%v", itemValue.Kind()))
 	if item == nil || itemValue.Kind() != reflect.Struct {
 		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
+			// Keep dereferencing until we get to a struct or can't anymore
+			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+				itemValue = itemValue.Elem()
+			}
 			if itemValue.Kind() != reflect.Struct {
-				return types.ObjectNull(FromToAttrTypes)
+				return types.ObjectNull(CustomServiceAttrTypes)
 			}
 		} else {
-			return types.ObjectNull(FromToAttrTypes)
+			return types.ObjectNull(CustomServiceAttrTypes)
 		}
 	}
 
@@ -1163,6 +1230,116 @@ func parseFromTo(ctx context.Context, item interface{}) types.Object {
 		},
 	)
 	tflog.Warn(ctx, "parseFromTo() obj - "+fmt.Sprintf("%v", obj))
+	diags = append(diags, diagstmp...)
+	return obj
+}
+
+func parseCustomService(ctx context.Context, item interface{}) types.Object {
+	tflog.Warn(ctx, "parseCustomService() - "+fmt.Sprintf("%v", item))
+	diags := make(diag.Diagnostics, 0)
+
+	// Get the reflect.Value of the input
+	itemValue := reflect.ValueOf(item)
+
+	// Handle nil or invalid input
+	if item == nil || itemValue.Kind() != reflect.Struct {
+		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			itemValue = itemValue.Elem()
+			// Keep dereferencing until we get to a struct or can't anymore
+			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+				itemValue = itemValue.Elem()
+			}
+			if itemValue.Kind() != reflect.Struct {
+				return types.ObjectNull(CustomServiceAttrTypes)
+			}
+		} else {
+			return types.ObjectNull(CustomServiceAttrTypes)
+		}
+	}
+
+	// Handle pointer to struct
+	if itemValue.Kind() == reflect.Ptr {
+		tflog.Warn(ctx, "parseCustomService() itemValue.Kind()- "+fmt.Sprintf("%v", itemValue))
+		if itemValue.IsNil() {
+			return types.ObjectNull(CustomServiceAttrTypes)
+		}
+		itemValue = itemValue.Elem()
+		tflog.Warn(ctx, "parseCustomService() itemValue.Elem()- "+fmt.Sprintf("%v", itemValue))
+	}
+
+	// Get fields
+	portField := itemValue.FieldByName("Port")
+	protocolField := itemValue.FieldByName("Protocol")
+	portRangeField := itemValue.FieldByName("PortRange")
+
+	tflog.Warn(ctx, "parseCustomService() protocolField- "+fmt.Sprintf("%v", protocolField))
+	// Handle port field (allowing null)
+	var portList types.List
+	if portField.IsValid() && portField.Kind() == reflect.Slice {
+		ports := make([]attr.Value, portField.Len())
+		for i := range portField.Len() {
+			portValue := portField.Index(i)
+			var portStr string
+			switch portValue.Kind() {
+			case reflect.String:
+				portStr = portValue.String()
+			case reflect.Int, reflect.Int64:
+				portStr = fmt.Sprintf("%d", portValue.Int())
+			default:
+				tflog.Warn(ctx, "parseCustomService() unsupported port type - "+fmt.Sprintf("%v", portValue.Kind()))
+				portStr = fmt.Sprintf("%v", portValue.Interface())
+			}
+			ports[i] = types.StringValue(portStr)
+		}
+		var diagsTmp diag.Diagnostics
+		portList, diagsTmp = types.ListValue(types.StringType, ports)
+		diags = append(diags, diagsTmp...)
+	} else {
+		portList = types.ListNull(types.StringType) // Explicit null handling
+	}
+
+	// Handle protocol
+	var protocolVal types.String
+	if protocolField.IsValid() {
+		protocolVal = types.StringValue(protocolField.String())
+	} else {
+		protocolVal = types.StringNull()
+	}
+
+	// Handle port_range
+	var portRangeVal types.Object
+	if portRangeField.Kind() == reflect.Ptr {
+		if portRangeField.IsNil() {
+			portRangeVal = types.ObjectNull(FromToAttrTypes)
+		}
+		portRangeField = portRangeField.Elem()
+	}
+	if portRangeField.IsValid() {
+		from := portRangeField.FieldByName("From")
+		to := portRangeField.FieldByName("To")
+		var diagsTmp diag.Diagnostics
+		portRangeVal, diagsTmp = types.ObjectValue(
+			FromToAttrTypes,
+			map[string]attr.Value{
+				"from": types.StringValue(from.String()),
+				"to":   types.StringValue(to.String()),
+			},
+		)
+		diags = append(diags, diagsTmp...)
+	} else {
+		portRangeVal = types.ObjectNull(FromToAttrTypes)
+	}
+
+	// Create final custom service object
+	obj, diagstmp := types.ObjectValue(
+		CustomServiceAttrTypes,
+		map[string]attr.Value{
+			"port":       portList,
+			"port_range": portRangeVal,
+			"protocol":   protocolVal,
+		},
+	)
+	tflog.Warn(ctx, "parseCustomService() obj - "+fmt.Sprintf("%v", obj))
 	diags = append(diags, diagstmp...)
 	return obj
 }
