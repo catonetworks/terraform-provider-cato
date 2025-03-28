@@ -1,6 +1,9 @@
 package provider
 
-import "github.com/hashicorp/terraform-plugin-framework/types"
+import (
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
 
 type InternetFirewallRule struct {
 	Rule types.Object `tfsdk:"rule" json:"rule,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule
@@ -258,3 +261,117 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions struct {
 }
 
 type OperatingSystem types.String
+
+// Generic object types used to write back to state
+
+var ServiceObjectType = types.ObjectType{AttrTypes: ServiceAttrTypes}
+var ServiceAttrTypes = map[string]attr.Type{
+	"standard": types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"custom":   types.ListType{ElemType: types.ObjectType{AttrTypes: CustomServiceAttrTypes}},
+}
+var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
+var CustomServiceAttrTypes = map[string]attr.Type{
+	"port":       types.ListType{ElemType: types.StringType},
+	"port_range": FromToObjectType,
+	"protocol":   types.StringType,
+}
+var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
+var NameIDAttrTypes = map[string]attr.Type{
+	"name": types.StringType,
+	"id":   types.StringType,
+}
+var FromToObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
+var FromToAttrTypes = map[string]attr.Type{
+	"from": types.StringType,
+	"to":   types.StringType,
+}
+var FromToDaysObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
+var FromToDaysAttrTypes = map[string]attr.Type{
+	"from": types.StringType,
+	"to":   types.StringType,
+	"days": types.ListType{ElemType: types.StringType},
+}
+
+// Rule -> Tracking
+var TrackingObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
+var TrackingAttrTypes = map[string]attr.Type{
+	"event": types.ObjectType{AttrTypes: TrackingEventAttrTypes},
+	"alert": types.ObjectType{AttrTypes: TrackingAlertAttrTypes},
+}
+
+var TrackingEventObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
+var TrackingEventAttrTypes = map[string]attr.Type{
+	"enabled": types.BoolType,
+}
+var TrackingAlertObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
+var TrackingAlertAttrTypes = map[string]attr.Type{
+	"enabled":            types.BoolType,
+	"frequency":          types.StringType,
+	"subscription_group": types.ListType{ElemType: NameIDObjectType},
+	"webhook":            types.ListType{ElemType: NameIDObjectType},
+	"mailing_list":       types.ListType{ElemType: NameIDObjectType},
+}
+
+var ScheduleObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
+var ScheduleAttrTypes = map[string]attr.Type{
+	"active_on":        types.StringType,
+	"custom_timeframe": types.ObjectType{AttrTypes: FromToAttrTypes},
+	"custom_recurring": types.ObjectType{AttrTypes: FromToDaysAttrTypes},
+}
+
+var SourceObjectType = types.ObjectType{AttrTypes: SourceAttrTypes}
+var SourceAttrTypes = map[string]attr.Type{
+	"ip":                  types.ListType{ElemType: types.StringType},
+	"host":                types.ListType{ElemType: NameIDObjectType},
+	"site":                types.ListType{ElemType: NameIDObjectType},
+	"subnet":              types.ListType{ElemType: types.StringType},
+	"ip_range":            types.ListType{ElemType: FromToObjectType},
+	"global_ip_range":     types.ListType{ElemType: NameIDObjectType},
+	"network_interface":   types.ListType{ElemType: NameIDObjectType},
+	"site_network_subnet": types.ListType{ElemType: NameIDObjectType},
+	"floating_subnet":     types.ListType{ElemType: NameIDObjectType},
+	"user":                types.ListType{ElemType: NameIDObjectType},
+	"users_group":         types.ListType{ElemType: NameIDObjectType},
+	"group":               types.ListType{ElemType: NameIDObjectType},
+	"system_group":        types.ListType{ElemType: NameIDObjectType},
+}
+
+var DestObjectType = types.ObjectType{AttrTypes: DestAttrTypes}
+var DestAttrTypes = map[string]attr.Type{
+	"application":              types.ListType{ElemType: NameIDObjectType},
+	"custom_app":               types.ListType{ElemType: NameIDObjectType},
+	"app_category":             types.ListType{ElemType: NameIDObjectType},
+	"custom_category":          types.ListType{ElemType: NameIDObjectType},
+	"sanctioned_apps_category": types.ListType{ElemType: NameIDObjectType},
+	"country":                  types.ListType{ElemType: NameIDObjectType},
+	"domain":                   types.ListType{ElemType: types.StringType},
+	"fqdn":                     types.ListType{ElemType: types.StringType},
+	"ip":                       types.ListType{ElemType: types.StringType},
+	"subnet":                   types.ListType{ElemType: types.StringType},
+	"ip_range":                 types.ListType{ElemType: FromToObjectType},
+	"global_ip_range":          types.ListType{ElemType: NameIDObjectType},
+	"remote_asn":               types.ListType{ElemType: types.StringType},
+}
+
+var ExceptionObjectType = types.ObjectType{AttrTypes: ExceptionAttrTypes}
+var ExceptionAttrTypes = map[string]attr.Type{
+	"name":              types.StringType,
+	"source":            types.ObjectType{AttrTypes: SourceAttrTypes},
+	"country":           types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device":            types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device_attributes": types.ObjectType{AttrTypes: DeviceAttrAttrTypes},
+	"device_os":         types.ListType{ElemType: types.StringType},
+	"destination":       types.ObjectType{AttrTypes: DestAttrTypes},
+	"service":           types.ObjectType{AttrTypes: ServiceAttrTypes},
+	"connection_origin": types.StringType,
+}
+
+var DeviceAttrObjectType = types.ObjectType{AttrTypes: DeviceAttrAttrTypes}
+var DeviceAttrAttrTypes = map[string]attr.Type{
+	"category":     types.ListType{ElemType: types.StringType},
+	"type":         types.ListType{ElemType: types.StringType},
+	"model":        types.ListType{ElemType: types.StringType},
+	"manufacturer": types.ListType{ElemType: types.StringType},
+	"os":           types.ListType{ElemType: types.StringType},
+	"osVersion":    types.ListType{ElemType: types.StringType},
+}
