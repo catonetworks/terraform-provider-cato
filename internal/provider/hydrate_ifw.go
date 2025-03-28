@@ -234,6 +234,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			"mailing_list":       parseNameIDList(ctx, currentRule.Tracking.Alert.MailingList),
 		},
 	)
+	resp.Diagnostics.Append(diags...)
 	curRuleTrackingObjAttrs["alert"] = trackingAlertValue
 	tflog.Warn(ctx, "Updated tracking object: "+fmt.Sprintf("%v", curRuleTrackingObj))
 
@@ -256,27 +257,27 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	////////////// end Rule -> Schedule ///////////////
 
 	// ////////////// start Rule -> Exceptions ///////////////
-	// curRuleExceptionsObj, diags := types.ListValue(
-	// 	types.ObjectType{AttrTypes: ExceptionAttrTypes},
-	// 	[]attr.Value{
-	// 		types.ObjectValueMust( // Single exception object with all null values
-	// 			ExceptionAttrTypes,
-	// 			map[string]attr.Value{
-	// 				"name":              types.StringNull(),
-	// 				"source":            types.ObjectNull(SourceAttrTypes),
-	// 				"country":           types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
-	// 				"device":            types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
-	// 				"device_attributes": types.ObjectNull(DeviceAttrAttrTypes),
-	// 				"device_os":         types.ListNull(types.StringType),
-	// 				"destination":       types.ObjectNull(DestAttrTypes),
-	// 				"service":           types.ObjectNull(ServiceAttrTypes),
-	// 				"connection_origin": types.StringNull(),
-	// 			},
-	// 		),
-	// 	},
-	// )
-	// resp.Diagnostics.Append(diags...)
-	// ruleInput.Exceptions = curRuleExceptionsObj
+	curRuleExceptionsObj, diags := types.ListValue(
+		types.ObjectType{AttrTypes: ExceptionAttrTypes},
+		[]attr.Value{
+			types.ObjectValueMust( // Single exception object with all null values
+				ExceptionAttrTypes,
+				map[string]attr.Value{
+					"name":    types.StringNull(),
+					"source":  types.ObjectNull(SourceAttrTypes),
+					"country": types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
+					"device":  types.ListNull(types.StringType),
+					// "device_attributes": types.ObjectNull(DeviceAttrAttrTypes),
+					"device_os":         types.ListNull(types.StringType),
+					"destination":       types.ObjectNull(DestAttrTypes),
+					"service":           types.ObjectNull(ServiceAttrTypes),
+					"connection_origin": types.StringNull(),
+				},
+			),
+		},
+	)
+	resp.Diagnostics.Append(diags...)
+	ruleInput.Exceptions = curRuleExceptionsObj
 
 	// Rule -> Exceptions
 
