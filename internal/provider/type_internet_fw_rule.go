@@ -358,7 +358,7 @@ var ExceptionAttrTypes = map[string]attr.Type{
 	"name":    types.StringType,
 	"source":  types.ObjectType{AttrTypes: SourceAttrTypes},
 	"country": types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
-	"device":  types.ListType{ElemType: types.StringType},
+	"device":  types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	// "device_attributes": types.ObjectType{AttrTypes: DeviceAttrAttrTypes},
 	"device_os":         types.ListType{ElemType: types.StringType},
 	"destination":       types.ObjectType{AttrTypes: DestAttrTypes},

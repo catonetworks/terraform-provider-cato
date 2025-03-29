@@ -1208,13 +1208,30 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										},
 									},
 								},
-								"device": schema.ListAttribute{
-									ElementType: types.StringType,
-									Description: "Source Device Profile matching criteria for the exception.",
-									Optional:    true,
+								"device": schema.ListNestedAttribute{
+									Description: "Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
 									Required:    false,
-								},
-								"device_os": schema.ListAttribute{
+									Optional:    true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"name": schema.StringAttribute{
+												Description: "",
+												Required:    false,
+												Optional:    true,
+												Validators: []validator.String{
+													stringvalidator.ConflictsWith(path.Expressions{
+														path.MatchRelative().AtParent().AtName("id"),
+													}...),
+												},
+											},
+											"id": schema.StringAttribute{
+												Description: "",
+												Required:    false,
+												Optional:    true,
+											},
+										},
+									},
+								}, "device_os": schema.ListAttribute{
 									ElementType: types.StringType,
 									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
