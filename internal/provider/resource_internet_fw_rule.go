@@ -3282,17 +3282,49 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	// // Read rule and hydrate response to state
+	// queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
+	// body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
+	// if err != nil {
+	// 	resp.Diagnostics.AddError(
+	// 		"Catov2 API PolicyInternetFirewall error",
+	// 		err.Error(),
+	// 	)
+	// 	return
+	// }
+
+	// ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
+	// currentRule := &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	// for _, ruleListItem := range ruleList {
+	// 	if ruleListItem.GetRule().ID == policyChange.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID {
+	// 		currentRule = ruleListItem.GetRule()
+
+	// 		// Need to refresh STATE
+	// 		resp.State.SetAttribute(
+	// 			ctx,
+	// 			path.Root("rule").AtName("id"),
+	// 			ruleListItem.GetRule().ID)
+	// 	}
+	// }
+	// ruleInput := hydrateIfwRuleState(ctx, plan, currentRule)
+	// ruleInput.ID = types.StringValue(currentRule.ID)
+	// diagstmp := plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+	// resp.Diagnostics.Append(diagstmp...)
+	// diags = resp.State.Set(ctx, plan)
+
+	// Original state set
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 	// overiding state with rule id
 	resp.State.SetAttribute(
 		ctx,
 		path.Root("rule").AtName("id"),
 		policyChange.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID)
+
+	resp.Diagnostics.Append(diags...)
 }
 
 func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -3304,7 +3336,6 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	// body, err := r.client.catov2.Policy(ctx, &cato_models.InternetFirewallPolicyInput{}, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
 	body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
 	if err != nil {
@@ -3346,8 +3377,9 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	hydrateIfwRuleState(ctx, state, currentRule, req, resp, diags)
-
+	ruleInput := hydrateIfwRuleState(ctx, state, currentRule)
+	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
+	resp.Diagnostics.Append(diags...)
 }
 
 func (r *internetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

@@ -12,28 +12,29 @@ import (
 	"github.com/gobeam/stringy"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule, req resource.ReadRequest, resp *resource.ReadResponse, diags diag.Diagnostics) {
+func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule) Policy_Policy_InternetFirewall_Policy_Rules_Rule {
 	ruleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
-	diags = state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	diags := make(diag.Diagnostics, 0)
+	diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+	diags = append(diags, diagstmp...)
+	if diags.HasError() {
+		return ruleInput
 	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
 	ruleInput.Description = types.StringValue(currentRule.Description)
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
+	ruleInput.ID = types.StringValue(currentRule.ID)
 	// ruleInput.Index = types.StringValue(currentRule.Index.String())
 	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
 
 	// //////////// Rule -> Source ///////////////
-	curRuleSourceObj, diags := types.ObjectValue(
+	curRuleSourceObj, diagstmp := types.ObjectValue(
 		SourceAttrTypes,
 		map[string]attr.Value{
 			"ip":                  parseList(ctx, types.StringType, currentRule.Source.IP),
@@ -51,7 +52,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			"system_group":        parseNameIDList(ctx, currentRule.Source.SystemGroup),
 		},
 	)
-	resp.Diagnostics.Append(diags...)
+	diags = append(diags, diagstmp...)
 	ruleInput.Source = curRuleSourceObj
 	////////////// end rule.source ///////////////
 
@@ -63,8 +64,8 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			for _, item := range currentRule.Country {
 				curSourceCountries = append(curSourceCountries, parseNameID(ctx, item))
 			}
-			ruleInput.Country, diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceCountries)
-			resp.Diagnostics.Append(diags...)
+			ruleInput.Country, diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curSourceCountries)
+			diags = append(diags, diagstmp...)
 		}
 	}
 
@@ -76,17 +77,17 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			for _, item := range currentRule.Device {
 				curSourceDevices = append(curSourceDevices, parseNameID(ctx, item))
 			}
-			ruleInput.Device, diags = types.ListValueFrom(ctx, NameIDObjectType, curSourceDevices)
-			resp.Diagnostics.Append(diags...)
+			ruleInput.Device, diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curSourceDevices)
+			diags = append(diags, diagstmp...)
 		}
 	}
 
 	// Rule -> DeviceOS
-	ruleInput.DeviceOs, diags = types.ListValueFrom(ctx, types.StringType, currentRule.DeviceOs)
-	resp.Diagnostics.Append(diags...)
+	ruleInput.DeviceOs, diagstmp = types.ListValueFrom(ctx, types.StringType, currentRule.DeviceOs)
+	diags = append(diags, diagstmp...)
 
 	//////////// Rule -> Destination ///////////////
-	curRuleDestinationObj, diags := types.ObjectValue(
+	curRuleDestinationObj, diagstmp := types.ObjectValue(
 		DestAttrTypes,
 		map[string]attr.Value{
 			"application":              parseNameIDList(ctx, currentRule.Destination.Application),
@@ -104,21 +105,21 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			"remote_asn":               parseList(ctx, types.StringType, currentRule.Destination.RemoteAsn),
 		},
 	)
-	resp.Diagnostics.Append(diags...)
+	diags = append(diags, diagstmp...)
 	ruleInput.Destination = curRuleDestinationObj
 	////////////// end Rule -> Destination ///////////////
 
 	////////////// start Rule -> Service ///////////////
 	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
 		// Initialize Service object with null values
-		curRuleServiceObj, diags := types.ObjectValue(
+		curRuleServiceObj, diagstmp := types.ObjectValue(
 			ServiceAttrTypes,
 			map[string]attr.Value{
 				"standard": types.ListNull(NameIDObjectType),
 				"custom":   types.ListNull(CustomServiceObjectType),
 			},
 		)
-		resp.Diagnostics.Append(diags...)
+		diags = append(diags, diagstmp...)
 		curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
 
 		// Rule -> Service -> Standard
@@ -128,8 +129,8 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			for _, item := range currentRule.Service.Standard {
 				curRuleStandardServices = append(curRuleStandardServices, parseNameID(ctx, item))
 			}
-			curRuleServiceObjAttrs["standard"], diags = types.ListValueFrom(ctx, NameIDObjectType, curRuleStandardServices)
-			resp.Diagnostics.Append(diags...)
+			curRuleServiceObjAttrs["standard"], diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curRuleStandardServices)
+			diags = append(diags, diagstmp...)
 		}
 
 		// Rule -> Service -> Custom
@@ -139,25 +140,25 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			for _, item := range currentRule.Service.Custom {
 				curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item))
 			}
-			curRuleServiceObjAttrs["custom"], diags = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
-			resp.Diagnostics.Append(diags...)
+			curRuleServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
+			diags = append(diags, diagstmp...)
 		}
 
-		curRuleServiceObj, diags = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
-		resp.Diagnostics.Append(diags...)
+		curRuleServiceObj, diagstmp = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
+		diags = append(diags, diagstmp...)
 		ruleInput.Service = curRuleServiceObj
 	}
 	////////////// end Rule -> Service ///////////////
 
 	////////////// start Rule -> Tracking ///////////////
-	curRuleTrackingObj, diags := types.ObjectValue(
+	curRuleTrackingObj, diagstmp := types.ObjectValue(
 		TrackingAttrTypes,
 		map[string]attr.Value{
 			"event": types.ObjectNull(TrackingEventAttrTypes),
 			"alert": types.ObjectNull(TrackingAlertAttrTypes),
 		},
 	)
-	resp.Diagnostics.Append(diags...)
+	diags = append(diags, diagstmp...)
 	curRuleTrackingObjAttrs := curRuleTrackingObj.Attributes()
 
 	// Rule -> Tracking -> Event
@@ -170,7 +171,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	curRuleTrackingObjAttrs["event"] = trackingEventValue
 
 	// Rule -> Tracking -> Alert
-	trackingAlertValue, diags := types.ObjectValue(
+	trackingAlertValue, diagstmp := types.ObjectValue(
 		TrackingAlertAttrTypes,
 		map[string]attr.Value{
 			"enabled":            types.BoolValue(currentRule.Tracking.Alert.Enabled),
@@ -180,17 +181,17 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			"mailing_list":       parseNameIDList(ctx, currentRule.Tracking.Alert.MailingList),
 		},
 	)
-	resp.Diagnostics.Append(diags...)
+	diags = append(diags, diagstmp...)
 	curRuleTrackingObjAttrs["alert"] = trackingAlertValue
 	tflog.Warn(ctx, "Updated tracking object: "+fmt.Sprintf("%v", curRuleTrackingObj))
 
-	curRuleTrackingObj, diags = types.ObjectValue(curRuleTrackingObj.AttributeTypes(ctx), curRuleTrackingObjAttrs)
-	resp.Diagnostics.Append(diags...)
+	curRuleTrackingObj, diagstmp = types.ObjectValue(curRuleTrackingObj.AttributeTypes(ctx), curRuleTrackingObjAttrs)
+	diags = append(diags, diagstmp...)
 	ruleInput.Tracking = curRuleTrackingObj
 	////////////// end Rule -> Tracking ///////////////
 
 	////////////// start Rule -> Schedule ///////////////
-	curRuleScheduleObj, diags := types.ObjectValue(
+	curRuleScheduleObj, diagstmp := types.ObjectValue(
 		ScheduleAttrTypes,
 		map[string]attr.Value{
 			"active_on":        types.StringValue(currentRule.Schedule.ActiveOn.String()),
@@ -198,12 +199,12 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			"custom_recurring": parseFromToDays(ctx, currentRule.Schedule.CustomRecurringPolicySchedule),
 		},
 	)
-	resp.Diagnostics.Append(diags...)
+	diags = append(diags, diagstmp...)
 	ruleInput.Schedule = curRuleScheduleObj
 	////////////// end Rule -> Schedule ///////////////
 
 	// ////////////// start Rule -> Exceptions ///////////////
-	curRuleExceptionsObj, diags := types.ListValue(
+	curRuleExceptionsObj, diagstmp := types.ListValue(
 		types.ObjectType{AttrTypes: ExceptionAttrTypes},
 		[]attr.Value{
 			types.ObjectValueMust( // Single exception object with all null values
@@ -222,7 +223,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			),
 		},
 	)
-	resp.Diagnostics.Append(diags...)
+	diags = append(diags, diagstmp...)
 	exceptions := []attr.Value{}
 
 	// Rule -> Exceptions -> Source
@@ -270,14 +271,14 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 			////////////// start Rule -> Service ///////////////
 			// Initialize Service object with null values
-			curRuleServiceObj, diags := types.ObjectValue(
+			curRuleServiceObj, diagstmp := types.ObjectValue(
 				ServiceAttrTypes,
 				map[string]attr.Value{
 					"standard": types.ListNull(NameIDObjectType),
 					"custom":   types.ListNull(CustomServiceObjectType),
 				},
 			)
-			resp.Diagnostics.Append(diags...)
+			diags = append(diags, diagstmp...)
 			curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
 			if len(ruleException.Service.Custom) > 0 || len(ruleException.Service.Standard) > 0 {
 
@@ -289,8 +290,8 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 						for _, item := range currentRule.Service.Standard {
 							curRuleStandardServices = append(curRuleStandardServices, parseNameID(ctx, item))
 						}
-						curRuleServiceObjAttrs["standard"], diags = types.ListValueFrom(ctx, NameIDObjectType, curRuleStandardServices)
-						resp.Diagnostics.Append(diags...)
+						curRuleServiceObjAttrs["standard"], diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curRuleStandardServices)
+						diags = append(diags, diagstmp...)
 					}
 				}
 
@@ -302,19 +303,19 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 						for _, item := range currentRule.Service.Custom {
 							curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item))
 						}
-						curRuleServiceObjAttrs["custom"], diags = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
-						resp.Diagnostics.Append(diags...)
+						curRuleServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
+						diags = append(diags, diagstmp...)
 					}
 				}
 
-				curRuleServiceObj, diags = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
-				resp.Diagnostics.Append(diags...)
+				curRuleServiceObj, diagstmp = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
+				diags = append(diags, diagstmp...)
 				ruleInput.Service = curRuleServiceObj
 			}
 			////////////// end Rule -> Service ///////////////
 
 			// Initialize Exception object with populated values
-			curException, diags := types.ObjectValue(
+			curException, diagstmp := types.ObjectValue(
 				ExceptionAttrTypes,
 				map[string]attr.Value{
 					"name":              types.StringValue(ruleException.Name),
@@ -327,17 +328,16 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 					"connection_origin": types.StringValue(ruleException.ConnectionOrigin.String()),
 				},
 			)
-			resp.Diagnostics.Append(diags...)
+			diags = append(diags, diagstmp...)
 			exceptions = append(exceptions, curException)
 		}
-		curRuleExceptionsObj, diags = types.ListValue(types.ObjectType{AttrTypes: ExceptionAttrTypes}, exceptions)
-		resp.Diagnostics.Append(diags...)
+		curRuleExceptionsObj, diagstmp = types.ListValue(types.ObjectType{AttrTypes: ExceptionAttrTypes}, exceptions)
+		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
 	}
 	////////////// end Rule -> Exceptions ///////////////
 
-	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
-	resp.Diagnostics.Append(diags...)
+	return ruleInput
 
 }
 
