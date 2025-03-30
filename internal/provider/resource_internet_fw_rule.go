@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -80,6 +81,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Description of the rule",
 						Required:    false,
 						Optional:    true,
+						Computed:    true,
 					},
 					"index": schema.Int64Attribute{
 						Description: "",
@@ -117,6 +119,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								ElementType: types.StringType,
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 							},
 							"host": schema.ListNestedAttribute{
 								Description: "Hosts and servers defined for your account",
@@ -133,11 +136,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -157,11 +168,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -171,6 +190,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Subnets and network ranges defined for the LAN interfaces of a site",
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 							},
 							"ip_range": schema.ListNestedAttribute{
 								Description: "Multiple separate IP addresses or an IP range",
@@ -206,11 +226,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -230,11 +258,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -254,11 +290,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -278,11 +322,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -302,11 +354,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -326,11 +386,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -350,11 +418,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -374,11 +450,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -389,6 +473,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 						Optional:    true,
 						Required:    false,
+						Computed:    true,
 					},
 					"country": schema.ListNestedAttribute{
 						Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
@@ -405,11 +490,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									// 		path.MatchRelative().AtParent().AtName("id"),
 									// 	}...),
 									// },
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 								},
 								"id": schema.StringAttribute{
 									Description: "",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 								},
 							},
 						},
@@ -429,11 +522,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											path.MatchRelative().AtParent().AtName("id"),
 										}...),
 									},
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 								},
 								"id": schema.StringAttribute{
 									Description: "",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 								},
 							},
 						},
@@ -443,6 +544,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 						Optional:    true,
 						Required:    false,
+						Computed:    true,
 					},
 					"destination": schema.SingleNestedAttribute{
 						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
@@ -464,11 +566,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -488,11 +598,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -512,11 +630,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -536,11 +662,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -560,11 +694,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -584,11 +726,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -598,24 +748,28 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.",
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 							},
 							"fqdn": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.",
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 							},
 							"ip": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "IPv4 addresses",
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 							},
 							"subnet": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "Network subnets in CIDR notation",
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 							},
 							"ip_range": schema.ListNestedAttribute{
 								Description: "A range of IPs. Every IP within the range will be matched",
@@ -651,11 +805,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -665,6 +827,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Remote Autonomous System Number (ASN)",
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 							},
 						},
 					},
@@ -688,11 +851,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -708,6 +879,10 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "List of TCP/UDP port",
 											Optional:    true,
 											Required:    false,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // avoids plan drift
+											},
+											Computed: true,
 										},
 										"port_range": schema.SingleNestedAttribute{
 											Description: "TCP/UDP port ranges",
@@ -744,6 +919,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Tracking information when the rule is matched, such as events and notifications",
 						Required:    false,
 						Optional:    true,
+						Computed:    true,
 						Attributes: map[string]schema.Attribute{
 							"event": schema.SingleNestedAttribute{
 								Description: "When enabled, create an event each time the rule is matched",
@@ -760,6 +936,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "When enabled, send an alert each time the rule is matched",
 								Required:    false,
 								Optional:    true,
+								Computed:    true,
 								Attributes: map[string]schema.Attribute{
 									"enabled": schema.BoolAttribute{
 										Description: "",
@@ -784,11 +961,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 															path.MatchRelative().AtParent().AtName("id"),
 														}...),
 													},
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 											},
 										},
@@ -808,11 +993,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 															path.MatchRelative().AtParent().AtName("id"),
 														}...),
 													},
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 											},
 										},
@@ -832,11 +1025,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 															path.MatchRelative().AtParent().AtName("id"),
 														}...),
 													},
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 											},
 										},
@@ -848,6 +1049,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 					"schedule": schema.SingleNestedAttribute{
 						Description: "The time period specifying when the rule is enabled, otherwise it is disabled.",
 						Optional:    true,
+						Computed:    true,
 						Attributes: map[string]schema.Attribute{
 							"active_on": schema.StringAttribute{
 								Description: "Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
@@ -932,11 +1134,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -956,11 +1166,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -970,6 +1188,10 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
@@ -1005,11 +1227,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1029,11 +1259,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1053,11 +1291,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1077,11 +1323,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1101,11 +1355,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1125,11 +1387,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1149,11 +1419,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1173,11 +1451,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1199,11 +1485,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														path.MatchRelative().AtParent().AtName("id"),
 													}...),
 												},
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
 											},
 											"id": schema.StringAttribute{
 												Description: "",
 												Required:    false,
 												Optional:    true,
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
 											},
 										},
 									},
@@ -1223,11 +1517,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														path.MatchRelative().AtParent().AtName("id"),
 													}...),
 												},
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
 											},
 											"id": schema.StringAttribute{
 												Description: "",
 												Required:    false,
 												Optional:    true,
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
 											},
 										},
 									},
@@ -1236,6 +1538,10 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
 									Required:    false,
+									PlanModifiers: []planmodifier.List{
+										listplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 								},
 								"destination": schema.SingleNestedAttribute{
 									Description: "Destination service matching criteria for the exception.",
@@ -1257,11 +1563,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1281,11 +1595,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1305,11 +1627,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1329,11 +1659,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1353,11 +1691,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1377,11 +1723,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1403,12 +1757,20 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
@@ -1444,11 +1806,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1458,6 +1828,10 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -1480,11 +1854,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1500,6 +1882,10 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "",
 														Optional:    true,
 														Required:    false,
+														PlanModifiers: []planmodifier.List{
+															listplanmodifier.UseStateForUnknown(), // avoids plan drift
+														},
+														Computed: true,
 													},
 													"port_range": schema.SingleNestedAttribute{
 														Description: "",
@@ -1595,19 +1981,19 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			resp.Diagnostics.Append(diags...)
 
 			// setting source IP
-			if !sourceInput.IP.IsNull() {
+			if !sourceInput.IP.IsUnknown() && !sourceInput.IP.IsNull() {
 				diags = sourceInput.IP.ElementsAs(ctx, &input.Rule.Source.IP, false)
 				resp.Diagnostics.Append(diags...)
 			}
 
 			// setting source subnet
-			if !sourceInput.Subnet.IsNull() {
+			if !sourceInput.Subnet.IsUnknown() && !sourceInput.Subnet.IsNull() {
 				diags = sourceInput.Subnet.ElementsAs(ctx, &input.Rule.Source.Subnet, false)
 				resp.Diagnostics.Append(diags...)
 			}
 
 			// setting source host
-			if !sourceInput.Host.IsNull() {
+			if !sourceInput.Host.IsUnknown() && !sourceInput.Host.IsNull() {
 				elementsSourceHostInput := make([]types.Object, 0, len(sourceInput.Host.Elements()))
 				diags = sourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)
 				resp.Diagnostics.Append(diags...)
@@ -1634,7 +2020,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			}
 
 			// setting source site
-			if !sourceInput.Site.IsNull() {
+			if !sourceInput.Site.IsUnknown() && !sourceInput.Site.IsNull() {
 				elementsSourceSiteInput := make([]types.Object, 0, len(sourceInput.Site.Elements()))
 				diags = sourceInput.Site.ElementsAs(ctx, &elementsSourceSiteInput, false)
 				resp.Diagnostics.Append(diags...)
@@ -1661,7 +2047,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			}
 
 			// setting source ip range
-			if !sourceInput.IPRange.IsNull() {
+			if !sourceInput.IPRange.IsUnknown() && !sourceInput.IPRange.IsNull() {
 				elementsSourceIPRangeInput := make([]types.Object, 0, len(sourceInput.IPRange.Elements()))
 				diags = sourceInput.IPRange.ElementsAs(ctx, &elementsSourceIPRangeInput, false)
 				resp.Diagnostics.Append(diags...)
@@ -1950,7 +2336,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		}
 
 		// setting device OS
-		if !ruleInput.DeviceOs.IsNull() {
+		if !ruleInput.DeviceOs.IsUnknown() && !ruleInput.DeviceOs.IsNull() {
 			diags = ruleInput.DeviceOs.ElementsAs(ctx, &input.Rule.DeviceOs, false)
 			resp.Diagnostics.Append(diags...)
 			if resp.Diagnostics.HasError() {
@@ -1966,37 +2352,37 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			resp.Diagnostics.Append(diags...)
 
 			// setting destination IP
-			if !destinationInput.IP.IsNull() {
+			if !destinationInput.IP.IsUnknown() && !destinationInput.IP.IsNull() {
 				diags = destinationInput.IP.ElementsAs(ctx, &input.Rule.Destination.IP, false)
 				resp.Diagnostics.Append(diags...)
 			}
 
 			// setting destination subnet
-			if !destinationInput.Subnet.IsNull() {
+			if !destinationInput.Subnet.IsUnknown() && !destinationInput.Subnet.IsNull() {
 				diags = destinationInput.Subnet.ElementsAs(ctx, &input.Rule.Destination.Subnet, false)
 				resp.Diagnostics.Append(diags...)
 			}
 
 			// setting destination domain
-			if !destinationInput.Domain.IsNull() {
+			if !destinationInput.Domain.IsUnknown() && !destinationInput.Domain.IsNull() {
 				diags = destinationInput.Domain.ElementsAs(ctx, &input.Rule.Destination.Domain, false)
 				resp.Diagnostics.Append(diags...)
 			}
 
 			// setting destination fqdn
-			if !destinationInput.Fqdn.IsNull() {
+			if !destinationInput.Fqdn.IsUnknown() && !destinationInput.Fqdn.IsNull() {
 				diags = destinationInput.Fqdn.ElementsAs(ctx, &input.Rule.Destination.Fqdn, false)
 				resp.Diagnostics.Append(diags...)
 			}
 
 			// setting destination remote asn
-			if !destinationInput.RemoteAsn.IsNull() {
+			if !destinationInput.RemoteAsn.IsUnknown() && !destinationInput.RemoteAsn.IsNull() {
 				diags = destinationInput.RemoteAsn.ElementsAs(ctx, &input.Rule.Destination.RemoteAsn, false)
 				resp.Diagnostics.Append(diags...)
 			}
 
 			// setting destination application
-			if !destinationInput.Application.IsNull() {
+			if !destinationInput.Application.IsUnknown() && !destinationInput.Application.IsNull() {
 				elementsDestinationApplicationInput := make([]types.Object, 0, len(destinationInput.Application.Elements()))
 				diags = destinationInput.Application.ElementsAs(ctx, &elementsDestinationApplicationInput, false)
 				resp.Diagnostics.Append(diags...)
@@ -2262,6 +2648,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 					}
 
 					// setting service custom port
+					tflog.Info(ctx, "itemServiceCustomInput.Port - "+fmt.Sprintf("%v", itemServiceCustomInput.Port))
 					if !itemServiceCustomInput.Port.IsNull() {
 						elementsPort := make([]types.String, 0, len(itemServiceCustomInput.Port.Elements()))
 						diags = itemServiceCustomInput.Port.ElementsAs(ctx, &elementsPort, false)
@@ -2296,7 +2683,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		}
 
 		// setting tracking
-		if !ruleInput.Tracking.IsNull() {
+		if !ruleInput.Tracking.IsUnknown() && !ruleInput.Tracking.IsNull() {
 
 			input.Rule.Tracking = &cato_models.PolicyTrackingInput{
 				Event: &cato_models.PolicyRuleTrackingEventInput{},
@@ -2313,7 +2700,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 				return
 			}
 
-			if !trackingInput.Event.IsNull() {
+			if !trackingInput.Event.IsUnknown() && !trackingInput.Event.IsNull() {
 				// setting tracking event
 				trackingEventInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event{}
 				diags = trackingInput.Event.As(ctx, &trackingEventInput, basetypes.ObjectAsOptions{})
@@ -2324,7 +2711,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 				input.Rule.Tracking.Event.Enabled = trackingEventInput.Enabled.ValueBool()
 			}
 
-			if !trackingInput.Alert.IsNull() {
+			if !trackingInput.Alert.IsUnknown() && !trackingInput.Alert.IsNull() {
 
 				input.Rule.Tracking.Alert = &cato_models.PolicyRuleTrackingAlertInput{}
 
@@ -2436,7 +2823,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			ActiveOn: (cato_models.PolicyActiveOnEnum)("ALWAYS"),
 		}
 
-		if !ruleInput.Schedule.IsNull() {
+		if !ruleInput.Schedule.IsUnknown() && !ruleInput.Schedule.IsNull() {
 
 			scheduleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Schedule{}
 			diags = ruleInput.Schedule.As(ctx, &scheduleInput, basetypes.ObjectAsOptions{})
@@ -2505,7 +2892,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 				exceptionInput.Name = itemExceptionsInput.Name.ValueString()
 
 				// setting exception connection origin
-				if !itemExceptionsInput.ConnectionOrigin.IsNull() {
+				if !itemExceptionsInput.ConnectionOrigin.IsUnknown() && !itemExceptionsInput.ConnectionOrigin.IsNull() {
 					exceptionInput.ConnectionOrigin = cato_models.ConnectionOriginEnum(itemExceptionsInput.ConnectionOrigin.ValueString())
 				} else {
 					exceptionInput.ConnectionOrigin = cato_models.ConnectionOriginEnum("ANY")
@@ -2526,7 +2913,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 					}
 
 					// setting source subnet
-					if !sourceInput.Subnet.IsNull() {
+					if !sourceInput.Subnet.IsUnknown() && !sourceInput.Subnet.IsNull() {
 						diags = sourceInput.Subnet.ElementsAs(ctx, &exceptionInput.Source.Subnet, false)
 						resp.Diagnostics.Append(diags...)
 					}
@@ -2879,7 +3266,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 				}
 
 				// setting device OS
-				if !itemExceptionsInput.DeviceOs.IsNull() {
+				if !itemExceptionsInput.DeviceOs.IsUnknown() && !itemExceptionsInput.DeviceOs.IsNull() {
 					diags = itemExceptionsInput.DeviceOs.ElementsAs(ctx, &exceptionInput.DeviceOs, false)
 					resp.Diagnostics.Append(diags...)
 					if resp.Diagnostics.HasError() {
@@ -2896,31 +3283,31 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 					resp.Diagnostics.Append(diags...)
 
 					// setting destination IP
-					if !destinationInput.IP.IsNull() {
+					if !destinationInput.IP.IsUnknown() && !destinationInput.IP.IsNull() {
 						diags = destinationInput.IP.ElementsAs(ctx, &exceptionInput.Destination.IP, false)
 						resp.Diagnostics.Append(diags...)
 					}
 
 					// setting destination subnet
-					if !destinationInput.Subnet.IsNull() {
+					if !destinationInput.Subnet.IsUnknown() && !destinationInput.Subnet.IsNull() {
 						diags = destinationInput.Subnet.ElementsAs(ctx, &exceptionInput.Destination.Subnet, false)
 						resp.Diagnostics.Append(diags...)
 					}
 
 					// setting destination domain
-					if !destinationInput.Domain.IsNull() {
+					if !destinationInput.Domain.IsUnknown() && !destinationInput.Domain.IsNull() {
 						diags = destinationInput.Domain.ElementsAs(ctx, &exceptionInput.Destination.Domain, false)
 						resp.Diagnostics.Append(diags...)
 					}
 
 					// setting destination fqdn
-					if !destinationInput.Fqdn.IsNull() {
+					if !destinationInput.Fqdn.IsUnknown() && !destinationInput.Fqdn.IsNull() {
 						diags = destinationInput.Fqdn.ElementsAs(ctx, &exceptionInput.Destination.Fqdn, false)
 						resp.Diagnostics.Append(diags...)
 					}
 
 					// setting destination remote asn
-					if !destinationInput.RemoteAsn.IsNull() {
+					if !destinationInput.RemoteAsn.IsUnknown() && !destinationInput.RemoteAsn.IsNull() {
 						diags = destinationInput.RemoteAsn.ElementsAs(ctx, &exceptionInput.Destination.RemoteAsn, false)
 						resp.Diagnostics.Append(diags...)
 					}
@@ -3192,17 +3579,22 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 							}
 
 							// setting service custom port
-							if !itemServiceCustomInput.Port.IsNull() {
-								elementsPort := make([]types.String, 0, len(itemServiceCustomInput.Port.Elements()))
+							tflog.Info(ctx, "exception.itemServiceCustomInput.Port - "+fmt.Sprintf("%v", itemServiceCustomInput.Port))
+							if !itemServiceCustomInput.Port.IsUnknown() && !itemServiceCustomInput.Port.IsNull() {
+								tflog.Info(ctx, "Port is known and not null")
+
+								var elementsPort []types.String
 								diags = itemServiceCustomInput.Port.ElementsAs(ctx, &elementsPort, false)
 								resp.Diagnostics.Append(diags...)
 
-								inputPort := []cato_scalars.Port{}
+								inputPort := make([]cato_scalars.Port, 0, len(elementsPort))
 								for _, item := range elementsPort {
 									inputPort = append(inputPort, cato_scalars.Port(item.ValueString()))
 								}
-
 								customInput.Port = inputPort
+
+							} else {
+								tflog.Info(ctx, "Port is either unknown or null; skipping assignment")
 							}
 
 							// setting service custom port range
@@ -3231,10 +3623,12 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 		// settings other rule attributes
 		input.Rule.Name = ruleInput.Name.ValueString()
-		input.Rule.Description = ruleInput.Description.ValueString()
+		if !ruleInput.Description.IsNull() && !ruleInput.Description.IsUnknown() {
+			input.Rule.Description = ruleInput.Description.ValueString()
+		}
 		input.Rule.Enabled = ruleInput.Enabled.ValueBool()
 		input.Rule.Action = cato_models.InternetFirewallActionEnum(ruleInput.Action.ValueString())
-		if !ruleInput.ConnectionOrigin.IsNull() {
+		if !ruleInput.ConnectionOrigin.IsNull() && !ruleInput.ConnectionOrigin.IsUnknown() {
 			input.Rule.ConnectionOrigin = cato_models.ConnectionOriginEnum(ruleInput.ConnectionOrigin.ValueString())
 		} else {
 			input.Rule.ConnectionOrigin = "ANY"
@@ -3282,48 +3676,42 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	// // Read rule and hydrate response to state
-	// queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	// body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
-	// if err != nil {
-	// 	resp.Diagnostics.AddError(
-	// 		"Catov2 API PolicyInternetFirewall error",
-	// 		err.Error(),
-	// 	)
-	// 	return
-	// }
+	// Read rule and hydrate response to state
+	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
+	body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicyInternetFirewall error",
+			err.Error(),
+		)
+		return
+	}
 
-	// ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
-	// currentRule := &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
-	// for _, ruleListItem := range ruleList {
-	// 	if ruleListItem.GetRule().ID == policyChange.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID {
-	// 		currentRule = ruleListItem.GetRule()
+	ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
+	currentRule := &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	// Get current rule from response by ID
+	for _, ruleListItem := range ruleList {
+		if ruleListItem.GetRule().ID == policyChange.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID {
+			currentRule = ruleListItem.GetRule()
+			break
+		}
+	}
+	// Hydrate ruleInput from api respoonse
+	ruleInput := hydrateIfwRuleState(ctx, plan, currentRule)
+	ruleInput.ID = types.StringValue(currentRule.ID)
+	ruleObject, diags := types.ObjectValueFrom(ctx, InternetFirewallRuleRuleAttrTypes, ruleInput)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Assign ruleObject to state
+	plan.Rule = ruleObject
 
-	// 		// Need to refresh STATE
-	// 		resp.State.SetAttribute(
-	// 			ctx,
-	// 			path.Root("rule").AtName("id"),
-	// 			ruleListItem.GetRule().ID)
-	// 	}
-	// }
-	// ruleInput := hydrateIfwRuleState(ctx, plan, currentRule)
-	// ruleInput.ID = types.StringValue(currentRule.ID)
-	// diagstmp := plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
-	// resp.Diagnostics.Append(diagstmp...)
-	// diags = resp.State.Set(ctx, plan)
-
-	// Original state set
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// overiding state with rule id
-	resp.State.SetAttribute(
-		ctx,
-		path.Root("rule").AtName("id"),
-		policyChange.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID)
-
 	resp.Diagnostics.Append(diags...)
 }
 
@@ -4395,19 +4783,19 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 				resp.Diagnostics.Append(diags...)
 
 				// setting source IP
-				if !sourceInput.IP.IsNull() {
+				if !sourceInput.IP.IsUnknown() && !sourceInput.IP.IsNull() {
 					diags = sourceInput.IP.ElementsAs(ctx, &exceptionInput.Source.IP, false)
 					resp.Diagnostics.Append(diags...)
 				}
 
 				// setting source subnet
-				if !sourceInput.Subnet.IsNull() {
+				if !sourceInput.Subnet.IsUnknown() && !sourceInput.Subnet.IsNull() {
 					diags = sourceInput.Subnet.ElementsAs(ctx, &exceptionInput.Source.Subnet, false)
 					resp.Diagnostics.Append(diags...)
 				}
 
 				// setting source host
-				if !sourceInput.Host.IsNull() {
+				if !sourceInput.Host.IsUnknown() && !sourceInput.Host.IsNull() {
 					elementsSourceHostInput := make([]types.Object, 0, len(sourceInput.Host.Elements()))
 					diags = sourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)
 					resp.Diagnostics.Append(diags...)

@@ -233,8 +233,9 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionSourceObj, diags := types.ObjectValue(
 				SourceAttrTypes,
 				map[string]attr.Value{
-					"ip":                  parseList(ctx, types.StringType, ruleException.Source.IP),
-					"subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet),
+					"ip": parseList(ctx, types.StringType, ruleException.Source.IP),
+					// "subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet),
+					"subnet":              types.ListNull(types.StringType),
 					"host":                parseNameIDList(ctx, ruleException.Source.Host),
 					"site":                parseNameIDList(ctx, ruleException.Source.Site),
 					"ip_range":            parseFromToList(ctx, ruleException.Source.IPRange),
@@ -271,7 +272,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 			////////////// start Rule -> Service ///////////////
 			// Initialize Service object with null values
-			curRuleServiceObj, diagstmp := types.ObjectValue(
+			curExceptionServiceObj, diagstmp := types.ObjectValue(
 				ServiceAttrTypes,
 				map[string]attr.Value{
 					"standard": types.ListNull(NameIDObjectType),
@@ -279,38 +280,36 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 				},
 			)
 			diags = append(diags, diagstmp...)
-			curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
+			curExceptionServiceObjAttrs := curExceptionServiceObj.Attributes()
 			if len(ruleException.Service.Custom) > 0 || len(ruleException.Service.Standard) > 0 {
-
 				// Rule -> Service -> Standard
-				if currentRule.Service.Standard != nil {
-					if len(currentRule.Service.Standard) > 0 {
-						var curRuleStandardServices []types.Object
-						tflog.Info(ctx, "ruleResponse.Service.Standard - "+fmt.Sprintf("%v", currentRule.Service.Standard))
-						for _, item := range currentRule.Service.Standard {
-							curRuleStandardServices = append(curRuleStandardServices, parseNameID(ctx, item))
+				if ruleException.Service.Standard != nil {
+					if len(ruleException.Service.Standard) > 0 {
+						var curExceptionStandardServices []types.Object
+						tflog.Info(ctx, "ruleException.Service.Standard - "+fmt.Sprintf("%v", ruleException.Service.Standard))
+						for _, item := range ruleException.Service.Standard {
+							curExceptionStandardServices = append(curExceptionStandardServices, parseNameID(ctx, item))
 						}
-						curRuleServiceObjAttrs["standard"], diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curRuleStandardServices)
+						curExceptionServiceObjAttrs["standard"], diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curExceptionStandardServices)
 						diags = append(diags, diagstmp...)
 					}
 				}
 
 				// Rule -> Service -> Custom
-				if currentRule.Service.Custom != nil {
-					if len(currentRule.Service.Custom) > 0 {
-						var curRuleCustomServices []types.Object
-						tflog.Info(ctx, "ruleResponse.Service.Custom - "+fmt.Sprintf("%v", currentRule.Service.Custom))
-						for _, item := range currentRule.Service.Custom {
-							curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item))
+				if ruleException.Service.Custom != nil {
+					if len(ruleException.Service.Custom) > 0 {
+						var curExceptionCustomServices []types.Object
+						tflog.Info(ctx, "ruleException.Service.Custom - "+fmt.Sprintf("%v", ruleException.Service.Custom))
+						for _, item := range ruleException.Service.Custom {
+							curExceptionCustomServices = append(curExceptionCustomServices, parseCustomService(ctx, item))
 						}
-						curRuleServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
+						curExceptionServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curExceptionCustomServices)
 						diags = append(diags, diagstmp...)
 					}
 				}
 
-				curRuleServiceObj, diagstmp = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
+				curExceptionServiceObj, diagstmp = types.ObjectValue(curExceptionServiceObj.AttributeTypes(ctx), curExceptionServiceObjAttrs)
 				diags = append(diags, diagstmp...)
-				ruleInput.Service = curRuleServiceObj
 			}
 			////////////// end Rule -> Service ///////////////
 
@@ -324,8 +323,17 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 					"device":            parseNameIDList(ctx, ruleException.Device),
 					"device_os":         parseList(ctx, types.StringType, ruleException.DeviceOs),
 					"destination":       curExceptionDestObj,
-					"service":           curRuleServiceObj,
+					"service":           curExceptionServiceObj,
 					"connection_origin": types.StringValue(ruleException.ConnectionOrigin.String()),
+
+					// "name":              types.StringNull(),
+					// "source":            types.ObjectNull(SourceAttrTypes),
+					// "country":           types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
+					// "device":            types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
+					// "device_os": types.ListNull(types.StringType),
+					// "destination":       types.ObjectNull(DestAttrTypes),
+					// "service":           types.ObjectNull(ServiceAttrTypes),
+					// "connection_origin": types.StringNull(),
 				},
 			)
 			diags = append(diags, diagstmp...)
@@ -418,13 +426,17 @@ func convertGoTypeToTfType(ctx context.Context, srcItemObj any) attr.Type {
 func parseList[T any](ctx context.Context, elemType attr.Type, items []T) types.List {
 	tflog.Warn(ctx, "parseList() - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
-	// Handle nil or empty list
-	if items == nil || len(items) == 0 {
-		tflog.Info(ctx, "toListValue() - nil or empty input list")
+
+	if items == nil {
+		tflog.Info(ctx, "parseList() - nil")
 		return types.ListNull(elemType)
 	}
+	if len(items) == 0 {
+		tflog.Info(ctx, "parseList() - empty input list")
+		return types.ListValueMust(elemType, []attr.Value{})
+	}
 
-	tflog.Info(ctx, "toListValue() - "+fmt.Sprintf("%v", items))
+	tflog.Info(ctx, "parseList() - "+fmt.Sprintf("%v", items))
 
 	// Convert to types.List using ListValueFrom
 	listValue, listDiags := types.ListValueFrom(ctx, elemType, items)
@@ -694,7 +706,9 @@ func parseCustomService(ctx context.Context, item interface{}) types.Object {
 	protocolField := itemValue.FieldByName("Protocol")
 	portRangeField := itemValue.FieldByName("PortRange")
 
-	tflog.Warn(ctx, "parseCustomService() protocolField- "+fmt.Sprintf("%v", protocolField))
+	tflog.Warn(ctx, "parseCustomService() portField - "+fmt.Sprintf("%v", portField))
+	tflog.Warn(ctx, "parseCustomService() protocolField - "+fmt.Sprintf("%v", protocolField))
+	tflog.Warn(ctx, "parseCustomService() portRangeField - "+fmt.Sprintf("%v", portRangeField))
 	// Handle port field (allowing null)
 	var portList types.List
 	if portField.IsValid() && portField.Kind() == reflect.Slice {
@@ -712,6 +726,7 @@ func parseCustomService(ctx context.Context, item interface{}) types.Object {
 				portStr = fmt.Sprintf("%v", portValue.Interface())
 			}
 			ports[i] = types.StringValue(portStr)
+			// ports[i] = types.StringNull()
 		}
 		var diagsTmp diag.Diagnostics
 		portList, diagsTmp = types.ListValue(types.StringType, ports)

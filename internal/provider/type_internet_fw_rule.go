@@ -263,6 +263,38 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions struct {
 type OperatingSystem types.String
 
 // Generic object types used to write back to state
+var InternetFirewallRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleAttrTypes}
+var InternetFirewallRuleAttrTypes = map[string]attr.Type{
+	"rule": InternetFirewallRuleRuleObjectType,
+	"at":   PositionObjectType,
+}
+
+var PositionObjectType = types.ObjectType{AttrTypes: PositionAttrTypes}
+var PositionAttrTypes = map[string]attr.Type{
+	"position": types.StringType,
+	"ref":      types.StringType,
+}
+
+var InternetFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleRuleAttrTypes}
+var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
+	"id":                types.StringType,
+	"name":              types.StringType,
+	"description":       types.StringType,
+	"index":             types.Int64Type,
+	"enabled":           types.BoolType,
+	"section":           NameIDObjectType,
+	"source":            SourceObjectType,
+	"connection_origin": types.StringType,
+	"country":           types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device":            types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device_os":         types.ListType{ElemType: types.StringType},
+	"destination":       types.ObjectType{AttrTypes: DestAttrTypes},
+	"service":           types.ObjectType{AttrTypes: ServiceAttrTypes},
+	"action":            types.StringType,
+	"tracking":          TrackingObjectType,
+	"schedule":          ScheduleObjectType,
+	"exceptions":        types.ListType{ElemType: types.ObjectType{AttrTypes: ExceptionAttrTypes}},
+}
 
 var ServiceObjectType = types.ObjectType{AttrTypes: ServiceAttrTypes}
 var ServiceAttrTypes = map[string]attr.Type{
@@ -312,7 +344,7 @@ var TrackingAlertAttrTypes = map[string]attr.Type{
 	"mailing_list":       types.ListType{ElemType: NameIDObjectType},
 }
 
-var ScheduleObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
+var ScheduleObjectType = types.ObjectType{AttrTypes: ScheduleAttrTypes}
 var ScheduleAttrTypes = map[string]attr.Type{
 	"active_on":        types.StringType,
 	"custom_timeframe": types.ObjectType{AttrTypes: FromToAttrTypes},
