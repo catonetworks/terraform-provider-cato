@@ -9,6 +9,7 @@ import (
 	"github.com/catonetworks/cato-go-sdk/scalars"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -49,14 +50,17 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 		Description: "The `cato_if_rule` resource contains the configuration parameters necessary to add rule to the Internet Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413273486865-What-is-the-Cato-Internet-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
-				Description: "Position of the rule in the policy",
+				Description: "Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionInput)",
 				Required:    true,
 				Optional:    false,
 				Attributes: map[string]schema.Attribute{
 					"position": schema.StringAttribute{
-						Description: "Position relative to a policy, a section or another rule",
+						Description: "Position relative to a policy, a section or another rule (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionEnum)",
 						Required:    true,
 						Optional:    false,
+						Validators: []validator.String{
+							stringvalidator.OneOf("AFTER_RULE", "BEFORE_RULE", "FIRST_IN_POLICY", "FIRST_IN_SECTION", "LAST_IN_POLICY", "LAST_IN_SECTION"),
+						},
 					},
 					"ref": schema.StringAttribute{
 						Description: "The identifier of the object (e.g. a rule, a section) relative to which the position of the added rule is defined",
@@ -66,11 +70,11 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				},
 			},
 			"rule": schema.SingleNestedAttribute{
-				Description: "Parameters for the rule you are adding",
+				Description: "Parameters for the rule you are adding (https://api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput)",
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
-						Description: "ID of the  rule",
+						Description: "ID of the rule",
 						Computed:    true,
 						Optional:    false,
 						PlanModifiers: []planmodifier.String{
@@ -113,7 +117,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"source": schema.SingleNestedAttribute{
-						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
+						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput)",
 						Required:    true,
 						Optional:    false,
 						Attributes: map[string]schema.Attribute{
@@ -477,6 +481,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
+						Validators: []validator.String{
+							stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+						},
 						Computed: true,
 					},
 					"country": schema.ListNestedAttribute{
@@ -550,7 +557,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Required:    false,
 					},
 					"destination": schema.SingleNestedAttribute{
-						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
+						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput)",
 						Optional:    false,
 						Required:    true,
 						Attributes: map[string]schema.Attribute{
@@ -629,6 +636,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
+												stringvalidator.OneOf("Advertisements", "AI Media Generators", "Alcohol and Tobacco", "Anonymizers", "Authentication Services", "Beauty", "Botnets", "Business Information", "Business Operations AI", "Business Systems", "CDN", "Chat and IM", "Cheating", "Code Assistants", "Compromised", "Computers and Technology", "Conversational AI", "Criminal Activity", "Cults", "Database", "DNS over HTTPS", "Education", "Email", "Entertainment", "ERP And CRM", "File Sharing", "Finance", "Gambling", "Games", "General", "Generative AI Tools", "Government", "Greeting Cards", "Hacking", "Health and Medicine", "Healthcare AI", "Hiring", "Illegal Drugs", "Industrial Protocols", "Information Security", "Internet Conferencing", "Keyloggers", "Leisure and Recreation", "Malware", "Media Streams", "Military", "Network Protocol", "Network Utilities", "News", "Nudity", "Office Programs And Services", "Online Storage", "P2P", "Parked domains", "PDF Converters", "Personal Sites", "Phishing", "Politics", "Porn", "Productivity", "Questionable", "Real Estate", "Religion", "Remote Access", "Search Engines and Portals", "Sex education", "Shopping", "Social", "Software Downloads", "Software Updates", "SPAM", "Sports", "Spyware", "Tasteless", "Translation", "Travel AI Assistance", "Travel", "Uncategorized", "Undefined", "Vehicles", "Violence and Hate", "Voip Video", "Weapons", "Web Hosting", "Web Posting", "Writing Assistants"),
 												stringvalidator.ConflictsWith(path.Expressions{
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
@@ -642,6 +650,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.String{
+												stringvalidator.OneOf("advertisements", "ai_tools", "anonymizers", "authentication_services", "beauty", "botnets", "business_systems", "business", "cdn", "chat_and_im", "cheating", "computers_and_technology", "criminal_activity", "cults", "database", "dns_over_https", "drugs", "education", "email", "entertainment", "erp_and_crm", "file_sharing", "finance", "food_drinks_tobacco", "gambling", "games", "gen_ai_business_operations", "gen_ai_code_assistants", "gen_ai_conversational_ai", "gen_ai_healthcare", "gen_ai_media_generators", "gen_ai_productivity", "gen_ai_travel_assistance", "gen_ai_writing_assistants", "general", "government", "greeting_cards", "hacking", "health_and_medicine", "hiring", "information_security", "internet_conferencing", "keyloggers", "leisure_and_recreation", "media_streams", "military", "network_protocol", "network_utilities", "news", "nudity", "office_programs_and_services", "online_storage", "ot_protocols", "p2p", "parked_domains", "pdf_converters", "personal_sites", "politics", "porn", "questionable", "real_estate", "religion", "remote_access", "search_engines_and_portals", "sex_education", "shopping", "social", "software_downloads", "software_updates", "spam", "sports", "spyware", "suspected_malware", "suspected_phishing", "suspected_unwanted", "tasteless", "translation", "travel", "uncategorized", "undefined", "vehicles", "violence", "voip_video", "weapons", "web_hosting", "web_posting"),
+											},
 											PlanModifiers: []planmodifier.String{
 												stringplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
@@ -790,7 +801,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 							},
 							"global_ip_range": schema.ListNestedAttribute{
-								Description: "Globally defined IP range, IP and subnet objects",
+								Description: "Globally defined IP range, IP and subnet objects.",
 								Required:    false,
 								Optional:    true,
 								NestedObject: schema.NestedAttributeObject{
@@ -908,6 +919,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 					"action": schema.StringAttribute{
 						Description: "The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
 						Required:    true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT", "RBI"),
+						},
 					},
 					"tracking": schema.SingleNestedAttribute{
 						Description: "Tracking information when the rule is matched, such as events and notifications",
@@ -950,6 +964,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Description: "Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
 										Optional:    true,
 										Required:    false,
+										Validators: []validator.String{
+											stringvalidator.OneOf("DAILY", "HOURLY", "IMMEDIATE", "WEEKLY"),
+										},
 										PlanModifiers: []planmodifier.String{
 											stringplanmodifier.UseStateForUnknown(), // Avoid drift
 										},
@@ -1076,6 +1093,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								PlanModifiers: []planmodifier.String{
 									stringplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
+								Validators: []validator.String{
+									stringvalidator.OneOf("ALWAYS", "CUSTOM_RECURRING", "CUSTOM_TIMEFRAME", "WORKING_HOURS"),
+								},
 							},
 							"custom_timeframe": schema.SingleNestedAttribute{
 								Description: "Input of data for a custom one-time time range that a rule is active",
@@ -1120,6 +1140,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Description: "(https://api.catonetworks.com/documentation/#definition-DayOfWeek)",
 										Required:    false,
 										Optional:    true,
+										Validators: []validator.List{
+											listvalidator.ValueStringsAre(stringvalidator.OneOf("SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY")),
+										},
 									},
 								},
 							},
@@ -1560,13 +1583,17 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 									},
-								}, "device_os": schema.ListAttribute{
+								},
+								"device_os": schema.ListAttribute{
 									ElementType: types.StringType,
 									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
 									Required:    false,
 									PlanModifiers: []planmodifier.List{
 										listplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Validators: []validator.List{
+										listvalidator.ValueStringsAre(stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS")),
 									},
 									Computed: true,
 								},
@@ -1650,6 +1677,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
+															stringvalidator.OneOf("Advertisements", "AI Media Generators", "Alcohol and Tobacco", "Anonymizers", "Authentication Services", "Beauty", "Botnets", "Business Information", "Business Operations AI", "Business Systems", "CDN", "Chat and IM", "Cheating", "Code Assistants", "Compromised", "Computers and Technology", "Conversational AI", "Criminal Activity", "Cults", "Database", "DNS over HTTPS", "Education", "Email", "Entertainment", "ERP And CRM", "File Sharing", "Finance", "Gambling", "Games", "General", "Generative AI Tools", "Government", "Greeting Cards", "Hacking", "Health and Medicine", "Healthcare AI", "Hiring", "Illegal Drugs", "Industrial Protocols", "Information Security", "Internet Conferencing", "Keyloggers", "Leisure and Recreation", "Malware", "Media Streams", "Military", "Network Protocol", "Network Utilities", "News", "Nudity", "Office Programs And Services", "Online Storage", "P2P", "Parked domains", "PDF Converters", "Personal Sites", "Phishing", "Politics", "Porn", "Productivity", "Questionable", "Real Estate", "Religion", "Remote Access", "Search Engines and Portals", "Sex education", "Shopping", "Social", "Software Downloads", "Software Updates", "SPAM", "Sports", "Spyware", "Tasteless", "Translation", "Travel AI Assistance", "Travel", "Uncategorized", "Undefined", "Vehicles", "Violence and Hate", "Voip Video", "Weapons", "Web Hosting", "Web Posting", "Writing Assistants"),
 															stringvalidator.ConflictsWith(path.Expressions{
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
@@ -1663,6 +1691,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														Validators: []validator.String{
+															stringvalidator.OneOf("advertisements", "ai_tools", "anonymizers", "authentication_services", "beauty", "botnets", "business_systems", "business", "cdn", "chat_and_im", "cheating", "computers_and_technology", "criminal_activity", "cults", "database", "dns_over_https", "drugs", "education", "email", "entertainment", "erp_and_crm", "file_sharing", "finance", "food_drinks_tobacco", "gambling", "games", "gen_ai_business_operations", "gen_ai_code_assistants", "gen_ai_conversational_ai", "gen_ai_healthcare", "gen_ai_media_generators", "gen_ai_productivity", "gen_ai_travel_assistance", "gen_ai_writing_assistants", "general", "government", "greeting_cards", "hacking", "health_and_medicine", "hiring", "information_security", "internet_conferencing", "keyloggers", "leisure_and_recreation", "media_streams", "military", "network_protocol", "network_utilities", "news", "nudity", "office_programs_and_services", "online_storage", "ot_protocols", "p2p", "parked_domains", "pdf_converters", "personal_sites", "politics", "porn", "questionable", "real_estate", "religion", "remote_access", "search_engines_and_portals", "sex_education", "shopping", "social", "software_downloads", "software_updates", "spam", "sports", "spyware", "suspected_malware", "suspected_phishing", "suspected_unwanted", "tasteless", "translation", "travel", "uncategorized", "undefined", "vehicles", "violence", "voip_video", "weapons", "web_hosting", "web_posting"),
+														},
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
@@ -1942,9 +1973,12 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 								},
 								"connection_origin": schema.StringAttribute{
-									Description: "Connection origin matching criteria for the exception.",
+									Description: "Connection origin matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 									Optional:    true,
 									Required:    false,
+									Validators: []validator.String{
+										stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+									},
 								},
 							},
 						},
