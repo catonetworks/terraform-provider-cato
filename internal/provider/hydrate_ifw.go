@@ -27,7 +27,11 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		return ruleInput
 	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
-	ruleInput.Description = types.StringValue(currentRule.Description)
+	if currentRule.Description == "" {
+		ruleInput.Description = types.StringNull()
+	} else {
+		ruleInput.Description = types.StringValue(currentRule.Description)
+	}
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
 	ruleInput.ID = types.StringValue(currentRule.ID)
 	// ruleInput.Index = types.StringValue(currentRule.Index.String())
@@ -83,8 +87,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	}
 
 	// Rule -> DeviceOS
-	ruleInput.DeviceOs, diagstmp = types.ListValueFrom(ctx, types.StringType, currentRule.DeviceOs)
-	diags = append(diags, diagstmp...)
+	ruleInput.DeviceOs = parseList(ctx, types.StringType, currentRule.DeviceOs)
 
 	//////////// Rule -> Destination ///////////////
 	curRuleDestinationObj, diagstmp := types.ObjectValue(
@@ -427,14 +430,18 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T) types.
 	tflog.Warn(ctx, "parseList() - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
-	if items == nil {
-		tflog.Info(ctx, "parseList() - nil")
+	// if stateItems != nil && len(stateItems) > 0 {
+	// 	tflog.Info(ctx, "parseList() - empty input list found in state, returning empty array")
+	// 	return types.ListValueMust(elemType, []attr.Value{})
+	// } else
+	if items == nil || len(items) == 0 {
+		tflog.Info(ctx, "parseList() - nil or empty input list, returning null")
 		return types.ListNull(elemType)
 	}
-	if len(items) == 0 {
-		tflog.Info(ctx, "parseList() - empty input list")
-		return types.ListValueMust(elemType, []attr.Value{})
-	}
+	// if len(items) == 0 {
+	// 	tflog.Info(ctx, "parseList() - empty input list")
+	// 	return types.ListValueMust(elemType, []attr.Value{})
+	// }
 
 	tflog.Info(ctx, "parseList() - "+fmt.Sprintf("%v", items))
 
