@@ -41,6 +41,7 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 
 		hydrateApiReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
 		hydrateApiReturn.create.At.Ref = positionInput.Ref.ValueStringPointer()
+
 	}
 
 	// setting rule
