@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
@@ -620,7 +619,6 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 					}
 
 					// setting service custom port
-					tflog.Info(ctx, "itemServiceCustomInput.Port - "+fmt.Sprintf("%v", itemServiceCustomInput.Port))
 					if !itemServiceCustomInput.Port.IsNull() {
 						elementsPort := make([]types.String, 0, len(itemServiceCustomInput.Port.Elements()))
 						diags = append(diags, itemServiceCustomInput.Port.ElementsAs(ctx, &elementsPort, false)...)
@@ -817,7 +815,7 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 		}
 
 		// settings exceptions
-		if !ruleInput.Exceptions.IsNull() {
+		if !ruleInput.Exceptions.IsNull() && !ruleInput.Exceptions.IsUnknown() {
 			elementsExceptionsInput := make([]types.Object, 0, len(ruleInput.Exceptions.Elements()))
 			diags = append(diags, ruleInput.Exceptions.ElementsAs(ctx, &elementsExceptionsInput, false)...)
 
@@ -1372,10 +1370,7 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 							}
 
 							// setting service custom port
-							tflog.Info(ctx, "exception.itemServiceCustomInput.Port - "+fmt.Sprintf("%v", itemServiceCustomInput.Port))
 							if !itemServiceCustomInput.Port.IsUnknown() && !itemServiceCustomInput.Port.IsNull() {
-								tflog.Info(ctx, "Port is known and not null")
-
 								var elementsPort []types.String
 								diags = append(diags, itemServiceCustomInput.Port.ElementsAs(ctx, &elementsPort, false)...)
 
@@ -1392,7 +1387,7 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 							// setting service custom port range
 							if !itemServiceCustomInput.PortRange.IsNull() {
 								var itemPortRange Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange
-								diags = itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})
+								diags = append(diags, itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
 								inputPortRange := cato_models.PortRangeInput{
 									From: cato_scalars.Port(itemPortRange.From.ValueString()),
