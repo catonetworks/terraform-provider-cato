@@ -24,8 +24,8 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule struct {
 	Section          types.Object `tfsdk:"section" json:"section,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Section
 	Source           types.Object `tfsdk:"source" json:"source,omitempty"`   //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source
 	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connection_origin,omitempty"`
-	Country          types.List   `tfsdk:"country" json:"country,omitempty"` //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country
-	Device           types.List   `tfsdk:"device" json:"device,omitempty"`   //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device
+	Country          types.Set    `tfsdk:"country" json:"country,omitempty"` //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country
+	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`   //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device
 	DeviceOs         types.List   `tfsdk:"device_os" json:"device_os,omitempty"`
 	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination
 	Service          types.Object `tfsdk:"service" json:"service,omitempty"`         //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service
@@ -51,18 +51,18 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Section struct {
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination struct {
-	Application            types.List `tfsdk:"application" json:"application,omitempty"`                           //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Application
-	CustomApp              types.List `tfsdk:"custom_app" json:"custom_app,omitempty"`                             //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomApp
-	AppCategory            types.List `tfsdk:"app_category" json:"app_category,omitempty"`                         //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_AppCategory
-	CustomCategory         types.List `tfsdk:"custom_category" json:"custom_category,omitempty"`                   //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomCategory
-	SanctionedAppsCategory types.List `tfsdk:"sanctioned_apps_category" json:"sanctioned_apps_category,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_SanctionedAppsCategory
-	Country                types.List `tfsdk:"country" json:"country,omitempty"`                                   //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Country
+	Application            types.Set  `tfsdk:"application" json:"application,omitempty"`                           //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Application
+	CustomApp              types.Set  `tfsdk:"custom_app" json:"custom_app,omitempty"`                             //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomApp
+	AppCategory            types.Set  `tfsdk:"app_category" json:"app_category,omitempty"`                         //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_AppCategory
+	CustomCategory         types.Set  `tfsdk:"custom_category" json:"custom_category,omitempty"`                   //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_CustomCategory
+	SanctionedAppsCategory types.Set  `tfsdk:"sanctioned_apps_category" json:"sanctioned_apps_category,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_SanctionedAppsCategory
+	Country                types.Set  `tfsdk:"country" json:"country,omitempty"`                                   //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_Country
 	Domain                 types.List `tfsdk:"domain" json:"domain,omitempty"`
 	Fqdn                   types.List `tfsdk:"fqdn" json:"fqdn,omitempty"`
 	IP                     types.List `tfsdk:"ip" json:"ip,omitempty"`
 	Subnet                 types.List `tfsdk:"subnet" json:"subnet,omitempty"`
 	IPRange                types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`               //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange
-	GlobalIPRange          types.List `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_GlobalIPRange
+	GlobalIPRange          types.Set  `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_GlobalIPRange
 	RemoteAsn              types.List `tfsdk:"remote_asn" json:"remote_asn,omitempty"`
 }
 
@@ -108,18 +108,18 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_GlobalIPRange 
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source struct {
 	IP                types.List `tfsdk:"ip" json:"ip,omitempty"`
-	Host              types.List `tfsdk:"host" json:"host,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Host
-	Site              types.List `tfsdk:"site" json:"site,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Site
+	Host              types.Set  `tfsdk:"host" json:"host,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Host
+	Site              types.Set  `tfsdk:"site" json:"site,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Site
 	Subnet            types.List `tfsdk:"subnet" json:"subnet,omitempty"`
 	IPRange           types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`                       //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_IPRange
-	GlobalIPRange     types.List `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"`         //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_GlobalIPRange
-	NetworkInterface  types.List `tfsdk:"network_interface" json:"network_interface,omitempty"`     //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_NetworkInterface
-	SiteNetworkSubnet types.List `tfsdk:"site_network_subnet" json:"site_network_subnet,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet
-	FloatingSubnet    types.List `tfsdk:"floating_subnet" json:"floating_subnet,omitempty"`         //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_FloatingSubnet
-	User              types.List `tfsdk:"user" json:"user,omitempty"`                               //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_User
-	UsersGroup        types.List `tfsdk:"users_group" json:"users_group,omitempty"`                 //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup
-	Group             types.List `tfsdk:"group" json:"group,omitempty"`                             //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Group
-	SystemGroup       types.List `tfsdk:"system_group" json:"system_group,omitempty"`               //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SystemGroup
+	GlobalIPRange     types.Set  `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"`         //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_GlobalIPRange
+	NetworkInterface  types.Set  `tfsdk:"network_interface" json:"network_interface,omitempty"`     //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_NetworkInterface
+	SiteNetworkSubnet types.Set  `tfsdk:"site_network_subnet" json:"site_network_subnet,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet
+	FloatingSubnet    types.Set  `tfsdk:"floating_subnet" json:"floating_subnet,omitempty"`         //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_FloatingSubnet
+	User              types.Set  `tfsdk:"user" json:"user,omitempty"`                               //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_User
+	UsersGroup        types.Set  `tfsdk:"users_group" json:"users_group,omitempty"`                 //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup
+	Group             types.Set  `tfsdk:"group" json:"group,omitempty"`                             //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Group
+	SystemGroup       types.Set  `tfsdk:"system_group" json:"system_group,omitempty"`               //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_SystemGroup
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_Host struct {
@@ -178,7 +178,7 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_FloatingSubnet stru
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service struct {
-	Standard types.List `tfsdk:"standard" json:"standard,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard
+	Standard types.Set  `tfsdk:"standard" json:"standard,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard
 	Custom   types.List `tfsdk:"custom" json:"custom,omitempty"`     //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
 }
 
@@ -210,9 +210,9 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event struct {
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert struct {
 	Enabled           types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
 	Frequency         types.String `tfsdk:"frequency" json:"frequency,omitempty"`
-	SubscriptionGroup types.List   `tfsdk:"subscription_group" json:"subscription_group,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
-	Webhook           types.List   `tfsdk:"webhook" json:"webhook,omitempty"`                       //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook
-	MailingList       types.List   `tfsdk:"mailing_list" json:"mailing_list,omitempty"`             //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList
+	SubscriptionGroup types.Set    `tfsdk:"subscription_group" json:"subscription_group,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
+	Webhook           types.Set    `tfsdk:"webhook" json:"webhook,omitempty"`                       //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook
+	MailingList       types.Set    `tfsdk:"mailing_list" json:"mailing_list,omitempty"`             //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup struct {
@@ -253,8 +253,8 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions struct {
 	Name             types.String `tfsdk:"name" json:"name,omitempty"` ///////
 	Source           types.Object `tfsdk:"source" json:"source,omitempty"`
 	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connection_origin,omitempty"` ///////
-	Country          types.List   `tfsdk:"country" json:"country,omitempty"`
-	Device           types.List   `tfsdk:"device" json:"device,omitempty"`
+	Country          types.Set    `tfsdk:"country" json:"country,omitempty"`
+	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`
 	DeviceOs         types.List   `tfsdk:"device_os" json:"device_os,omitempty"`
 	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"`
 	Service          types.Object `tfsdk:"service" json:"service,omitempty"`
@@ -285,8 +285,8 @@ var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"section":           NameIDObjectType,
 	"source":            SourceObjectType,
 	"connection_origin": types.StringType,
-	"country":           types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
-	"device":            types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"country":           types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device":            types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device_os":         types.ListType{ElemType: types.StringType},
 	"destination":       types.ObjectType{AttrTypes: DestAttrTypes},
 	"service":           types.ObjectType{AttrTypes: ServiceAttrTypes},
@@ -298,7 +298,7 @@ var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
 
 var ServiceObjectType = types.ObjectType{AttrTypes: ServiceAttrTypes}
 var ServiceAttrTypes = map[string]attr.Type{
-	"standard": types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"standard": types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"custom":   types.ListType{ElemType: types.ObjectType{AttrTypes: CustomServiceAttrTypes}},
 }
 var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
@@ -339,9 +339,9 @@ var TrackingAlertObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
 var TrackingAlertAttrTypes = map[string]attr.Type{
 	"enabled":            types.BoolType,
 	"frequency":          types.StringType,
-	"subscription_group": types.ListType{ElemType: NameIDObjectType},
-	"webhook":            types.ListType{ElemType: NameIDObjectType},
-	"mailing_list":       types.ListType{ElemType: NameIDObjectType},
+	"subscription_group": types.SetType{ElemType: NameIDObjectType},
+	"webhook":            types.SetType{ElemType: NameIDObjectType},
+	"mailing_list":       types.SetType{ElemType: NameIDObjectType},
 }
 
 var ScheduleObjectType = types.ObjectType{AttrTypes: ScheduleAttrTypes}
@@ -354,34 +354,34 @@ var ScheduleAttrTypes = map[string]attr.Type{
 var SourceObjectType = types.ObjectType{AttrTypes: SourceAttrTypes}
 var SourceAttrTypes = map[string]attr.Type{
 	"ip":                  types.ListType{ElemType: types.StringType},
-	"host":                types.ListType{ElemType: NameIDObjectType},
-	"site":                types.ListType{ElemType: NameIDObjectType},
+	"host":                types.SetType{ElemType: NameIDObjectType},
+	"site":                types.SetType{ElemType: NameIDObjectType},
 	"subnet":              types.ListType{ElemType: types.StringType},
 	"ip_range":            types.ListType{ElemType: FromToObjectType},
-	"global_ip_range":     types.ListType{ElemType: NameIDObjectType},
-	"network_interface":   types.ListType{ElemType: NameIDObjectType},
-	"site_network_subnet": types.ListType{ElemType: NameIDObjectType},
-	"floating_subnet":     types.ListType{ElemType: NameIDObjectType},
-	"user":                types.ListType{ElemType: NameIDObjectType},
-	"users_group":         types.ListType{ElemType: NameIDObjectType},
-	"group":               types.ListType{ElemType: NameIDObjectType},
-	"system_group":        types.ListType{ElemType: NameIDObjectType},
+	"global_ip_range":     types.SetType{ElemType: NameIDObjectType},
+	"network_interface":   types.SetType{ElemType: NameIDObjectType},
+	"site_network_subnet": types.SetType{ElemType: NameIDObjectType},
+	"floating_subnet":     types.SetType{ElemType: NameIDObjectType},
+	"user":                types.SetType{ElemType: NameIDObjectType},
+	"users_group":         types.SetType{ElemType: NameIDObjectType},
+	"group":               types.SetType{ElemType: NameIDObjectType},
+	"system_group":        types.SetType{ElemType: NameIDObjectType},
 }
 
 var DestObjectType = types.ObjectType{AttrTypes: DestAttrTypes}
 var DestAttrTypes = map[string]attr.Type{
-	"application":              types.ListType{ElemType: NameIDObjectType},
-	"custom_app":               types.ListType{ElemType: NameIDObjectType},
-	"app_category":             types.ListType{ElemType: NameIDObjectType},
-	"custom_category":          types.ListType{ElemType: NameIDObjectType},
-	"sanctioned_apps_category": types.ListType{ElemType: NameIDObjectType},
-	"country":                  types.ListType{ElemType: NameIDObjectType},
+	"application":              types.SetType{ElemType: NameIDObjectType},
+	"custom_app":               types.SetType{ElemType: NameIDObjectType},
+	"app_category":             types.SetType{ElemType: NameIDObjectType},
+	"custom_category":          types.SetType{ElemType: NameIDObjectType},
+	"sanctioned_apps_category": types.SetType{ElemType: NameIDObjectType},
+	"country":                  types.SetType{ElemType: NameIDObjectType},
 	"domain":                   types.ListType{ElemType: types.StringType},
 	"fqdn":                     types.ListType{ElemType: types.StringType},
 	"ip":                       types.ListType{ElemType: types.StringType},
 	"subnet":                   types.ListType{ElemType: types.StringType},
 	"ip_range":                 types.ListType{ElemType: FromToObjectType},
-	"global_ip_range":          types.ListType{ElemType: NameIDObjectType},
+	"global_ip_range":          types.SetType{ElemType: NameIDObjectType},
 	"remote_asn":               types.ListType{ElemType: types.StringType},
 }
 
@@ -389,8 +389,8 @@ var ExceptionObjectType = types.ObjectType{AttrTypes: ExceptionAttrTypes}
 var ExceptionAttrTypes = map[string]attr.Type{
 	"name":    types.StringType,
 	"source":  types.ObjectType{AttrTypes: SourceAttrTypes},
-	"country": types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
-	"device":  types.ListType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"country": types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device":  types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	// "device_attributes": types.ObjectType{AttrTypes: DeviceAttrAttrTypes},
 	"device_os":         types.ListType{ElemType: types.StringType},
 	"destination":       types.ObjectType{AttrTypes: DestAttrTypes},

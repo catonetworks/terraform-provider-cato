@@ -61,30 +61,9 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	////////////// end rule.source ///////////////
 
 	// Rule -> Country
-	if currentRule.Country != nil {
-		if len(currentRule.Country) > 0 {
-			var curSourceCountries []types.Object
-			tflog.Info(ctx, "ruleResponse.Country - "+fmt.Sprintf("%v", currentRule.Country))
-			for _, item := range currentRule.Country {
-				curSourceCountries = append(curSourceCountries, parseNameID(ctx, item))
-			}
-			ruleInput.Country, diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curSourceCountries)
-			diags = append(diags, diagstmp...)
-		}
-	}
-
+	ruleInput.Country = parseNameIDList(ctx, currentRule.Country)
 	// Rule -> Device
-	if currentRule.Device != nil {
-		if len(currentRule.Device) > 0 {
-			var curSourceDevices []types.Object
-			tflog.Info(ctx, "ruleResponse.Device - "+fmt.Sprintf("%v", currentRule.Device))
-			for _, item := range currentRule.Device {
-				curSourceDevices = append(curSourceDevices, parseNameID(ctx, item))
-			}
-			ruleInput.Device, diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curSourceDevices)
-			diags = append(diags, diagstmp...)
-		}
-	}
+	ruleInput.Device = parseNameIDList(ctx, currentRule.Device)
 
 	// Rule -> DeviceOS
 	ruleInput.DeviceOs = parseList(ctx, types.StringType, currentRule.DeviceOs)
@@ -118,7 +97,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		curRuleServiceObj, diagstmp := types.ObjectValue(
 			ServiceAttrTypes,
 			map[string]attr.Value{
-				"standard": types.ListNull(NameIDObjectType),
+				"standard": types.SetNull(NameIDObjectType),
 				"custom":   types.ListNull(CustomServiceObjectType),
 			},
 		)
@@ -126,15 +105,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
 
 		// Rule -> Service -> Standard
-		if len(currentRule.Service.Standard) > 0 {
-			var curRuleStandardServices []types.Object
-			tflog.Info(ctx, "ruleResponse.Service.Standard - "+fmt.Sprintf("%v", currentRule.Service.Standard))
-			for _, item := range currentRule.Service.Standard {
-				curRuleStandardServices = append(curRuleStandardServices, parseNameID(ctx, item))
-			}
-			curRuleServiceObjAttrs["standard"], diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curRuleStandardServices)
-			diags = append(diags, diagstmp...)
-		}
+		curRuleServiceObjAttrs["standard"] = parseNameIDList(ctx, currentRule.Service.Standard)
 
 		// Rule -> Service -> Custom
 		if len(currentRule.Service.Custom) > 0 {
@@ -207,6 +178,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	////////////// end Rule -> Schedule ///////////////
 
 	// ////////////// start Rule -> Exceptions ///////////////
+	// TODO set to set not list
 	curRuleExceptionsObj, diagstmp := types.ListValue(
 		types.ObjectType{AttrTypes: ExceptionAttrTypes},
 		[]attr.Value{
@@ -215,8 +187,8 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 				map[string]attr.Value{
 					"name":    types.StringNull(),
 					"source":  types.ObjectNull(SourceAttrTypes),
-					"country": types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
-					"device":  types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
+					"country": types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
+					"device":  types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
 					// "device_attributes": types.ObjectNull(DeviceAttrAttrTypes),
 					"device_os":         types.ListNull(types.StringType),
 					"destination":       types.ObjectNull(DestAttrTypes),
@@ -278,7 +250,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionServiceObj, diagstmp := types.ObjectValue(
 				ServiceAttrTypes,
 				map[string]attr.Value{
-					"standard": types.ListNull(NameIDObjectType),
+					"standard": types.SetNull(NameIDObjectType),
 					"custom":   types.ListNull(CustomServiceObjectType),
 				},
 			)
@@ -286,17 +258,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionServiceObjAttrs := curExceptionServiceObj.Attributes()
 			if len(ruleException.Service.Custom) > 0 || len(ruleException.Service.Standard) > 0 {
 				// Rule -> Service -> Standard
-				if ruleException.Service.Standard != nil {
-					if len(ruleException.Service.Standard) > 0 {
-						var curExceptionStandardServices []types.Object
-						tflog.Info(ctx, "ruleException.Service.Standard - "+fmt.Sprintf("%v", ruleException.Service.Standard))
-						for _, item := range ruleException.Service.Standard {
-							curExceptionStandardServices = append(curExceptionStandardServices, parseNameID(ctx, item))
-						}
-						curExceptionServiceObjAttrs["standard"], diagstmp = types.ListValueFrom(ctx, NameIDObjectType, curExceptionStandardServices)
-						diags = append(diags, diagstmp...)
-					}
-				}
+				curExceptionServiceObjAttrs["standard"] = parseNameIDList(ctx, ruleException.Service.Standard)
 
 				// Rule -> Service -> Custom
 				if ruleException.Service.Custom != nil {
@@ -328,15 +290,6 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 					"destination":       curExceptionDestObj,
 					"service":           curExceptionServiceObj,
 					"connection_origin": types.StringValue(ruleException.ConnectionOrigin.String()),
-
-					// "name":              types.StringNull(),
-					// "source":            types.ObjectNull(SourceAttrTypes),
-					// "country":           types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
-					// "device":            types.ListNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
-					// "device_os": types.ListNull(types.StringType),
-					// "destination":       types.ObjectNull(DestAttrTypes),
-					// "service":           types.ObjectNull(ServiceAttrTypes),
-					// "connection_origin": types.StringNull(),
 				},
 			)
 			diags = append(diags, diagstmp...)
@@ -344,6 +297,8 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		}
 		curRuleExceptionsObj, diagstmp = types.ListValue(types.ObjectType{AttrTypes: ExceptionAttrTypes}, exceptions)
 		diags = append(diags, diagstmp...)
+		ruleInput.Exceptions = curRuleExceptionsObj
+	} else {
 		ruleInput.Exceptions = curRuleExceptionsObj
 	}
 	////////////// end Rule -> Exceptions ///////////////
@@ -451,14 +406,14 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T) types.
 	return listValue
 }
 
-func parseNameIDList[T any](ctx context.Context, items []T) types.List {
+func parseNameIDList[T any](ctx context.Context, items []T) types.Set {
 	tflog.Warn(ctx, "parseNameIDList() - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
 	// Handle nil or empty list
 	if items == nil || len(items) == 0 {
 		tflog.Warn(ctx, "parseNameIDList() - nil or empty input list")
-		return types.ListNull(NameIDObjectType)
+		return types.SetNull(NameIDObjectType)
 	}
 
 	// Process each item into an attr.Value
@@ -472,10 +427,10 @@ func parseNameIDList[T any](ctx context.Context, items []T) types.List {
 		}
 	}
 
-	// Convert to types.List using ListValueFrom
-	listValue, diagstmp := types.ListValueFrom(ctx, NameIDObjectType, nameIDValues)
+	// Convert to types.List using SetValueFrom
+	setValue, diagstmp := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
 	diags = append(diags, diagstmp...)
-	return listValue
+	return setValue
 }
 
 func parseNameID(ctx context.Context, item interface{}) types.Object {

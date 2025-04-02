@@ -363,7 +363,7 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 		}
 
 		// setting destination
-		if !ruleInput.Destination.IsNull() {
+		if !ruleInput.Destination.IsUnknown() && !ruleInput.Destination.IsNull() {
 
 			ruleDestinationInput := &cato_models.InternetFirewallDestinationInput{}
 			ruleDestinationUpdateInput := &cato_models.InternetFirewallDestinationUpdateInput{}
@@ -485,7 +485,7 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 			}
 
 			// setting destination app category
-			if !destinationInput.AppCategory.IsNull() {
+			if !destinationInput.AppCategory.IsUnknown() && !destinationInput.AppCategory.IsNull() {
 				elementsDestinationAppCategoryInput := make([]types.Object, 0, len(destinationInput.AppCategory.Elements()))
 				diags = append(diags, destinationInput.AppCategory.ElementsAs(ctx, &elementsDestinationAppCategoryInput, false)...)
 
