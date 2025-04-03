@@ -8,6 +8,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -130,6 +131,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Hosts and servers defined for your account",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -162,6 +166,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Site defined for the account",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -219,6 +226,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Globally defined IP range, IP and subnet objects",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -251,6 +261,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Network range defined for a site",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -283,6 +296,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "GlobalRange + InterfaceSubnet",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -315,6 +331,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -347,6 +366,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Individual users defined for the account",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -379,6 +401,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Group of users",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -411,6 +436,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Groups defined for your account",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -443,6 +471,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Predefined Cato groups",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -489,6 +520,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
+						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
@@ -521,6 +555,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
+						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
@@ -564,6 +601,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Applications for the rule (pre-defined)",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -596,6 +636,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Custom (user-defined) applications",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -628,6 +671,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Cato category of applications which are dynamically updated by Cato",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -650,9 +696,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
-												// stringvalidator.ConflictsWith(path.Expressions{
-												// 	path.MatchRelative().AtParent().AtName("name"),
-												// }...),
+												stringvalidator.ConflictsWith(path.Expressions{
+													path.MatchRelative().AtParent().AtName("name"),
+												}...),
 												stringvalidator.OneOf("advertisements", "ai_tools", "anonymizers", "authentication_services", "beauty", "botnets", "business_systems", "business", "cdn", "chat_and_im", "cheating", "computers_and_technology", "criminal_activity", "cults", "database", "dns_over_https", "drugs", "education", "email", "entertainment", "erp_and_crm", "file_sharing", "finance", "food_drinks_tobacco", "gambling", "games", "gen_ai_business_operations", "gen_ai_code_assistants", "gen_ai_conversational_ai", "gen_ai_healthcare", "gen_ai_media_generators", "gen_ai_productivity", "gen_ai_travel_assistance", "gen_ai_writing_assistants", "general", "government", "greeting_cards", "hacking", "health_and_medicine", "hiring", "information_security", "internet_conferencing", "keyloggers", "leisure_and_recreation", "media_streams", "military", "network_protocol", "network_utilities", "news", "nudity", "office_programs_and_services", "online_storage", "ot_protocols", "p2p", "parked_domains", "pdf_converters", "personal_sites", "politics", "porn", "questionable", "real_estate", "religion", "remote_access", "search_engines_and_portals", "sex_education", "shopping", "social", "software_downloads", "software_updates", "spam", "sports", "spyware", "suspected_malware", "suspected_phishing", "suspected_unwanted", "tasteless", "translation", "travel", "uncategorized", "undefined", "vehicles", "violence", "voip_video", "weapons", "web_hosting", "web_posting"),
 											},
 											PlanModifiers: []planmodifier.String{
@@ -667,6 +713,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -699,6 +748,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -731,6 +783,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Countries",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -806,6 +861,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Globally defined IP range, IP and subnet objects.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -851,6 +909,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Standard Service to which this Internet Firewall rule applies",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -979,9 +1040,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Description: "Returns data for the Subscription Group that receives the alert",
 										Required:    false,
 										Optional:    true,
-										// PlanModifiers: []planmodifier.List{
-										// 	listplanmodifier.UseStateForUnknown(), // Avoid drift
-										// },
+										Validators: []validator.Set{
+											setvalidator.SizeAtLeast(1),
+										},
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
@@ -996,16 +1057,21 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													PlanModifiers: []planmodifier.String{
 														stringplanmodifier.UseStateForUnknown(), // Avoid drift
 													},
-													// Computed: true,
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													Validators: []validator.String{
+														stringvalidator.ConflictsWith(path.Expressions{
+															path.MatchRelative().AtParent().AtName("name"),
+														}...),
+													},
 													PlanModifiers: []planmodifier.String{
 														stringplanmodifier.UseStateForUnknown(), // Avoid drift
 													},
-													// Computed: true,
+													Computed: true,
 												},
 											},
 										},
@@ -1014,6 +1080,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Description: "Returns data for the Webhook that receives the alert",
 										Required:    false,
 										Optional:    true,
+										Validators: []validator.Set{
+											setvalidator.SizeAtLeast(1),
+										},
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
@@ -1028,16 +1097,21 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													PlanModifiers: []planmodifier.String{
 														stringplanmodifier.UseStateForUnknown(), // Avoid drift
 													},
-													// Computed: true,
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													Validators: []validator.String{
+														stringvalidator.ConflictsWith(path.Expressions{
+															path.MatchRelative().AtParent().AtName("name"),
+														}...),
+													},
 													PlanModifiers: []planmodifier.String{
 														stringplanmodifier.UseStateForUnknown(), // Avoid drift
 													},
-													// Computed: true,
+													Computed: true,
 												},
 											},
 										},
@@ -1046,6 +1120,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Description: "Returns data for the Mailing List that receives the alert",
 										Required:    false,
 										Optional:    true,
+										Validators: []validator.Set{
+											setvalidator.SizeAtLeast(1),
+										},
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
@@ -1060,16 +1137,21 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													PlanModifiers: []planmodifier.String{
 														stringplanmodifier.UseStateForUnknown(), // Avoid drift
 													},
-													// Computed: true,
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													Validators: []validator.String{
+														stringvalidator.ConflictsWith(path.Expressions{
+															path.MatchRelative().AtParent().AtName("name"),
+														}...),
+													},
 													PlanModifiers: []planmodifier.String{
 														stringplanmodifier.UseStateForUnknown(), // Avoid drift
 													},
-													// Computed: true,
+													Computed: true,
 												},
 											},
 										},
@@ -1179,6 +1261,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										"host": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1211,6 +1296,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1272,6 +1360,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1304,6 +1395,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1336,6 +1430,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1368,6 +1465,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1400,6 +1500,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1432,6 +1535,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1464,6 +1570,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1496,6 +1605,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1530,6 +1642,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "Source country matching criteria for the exception.",
 									Required:    false,
 									Optional:    true,
+									Validators: []validator.Set{
+										setvalidator.SizeAtLeast(1),
+									},
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"name": schema.StringAttribute{
@@ -1562,6 +1677,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
 									Required:    false,
 									Optional:    true,
+									Validators: []validator.Set{
+										setvalidator.SizeAtLeast(1),
+									},
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"name": schema.StringAttribute{
@@ -1612,6 +1730,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1644,6 +1765,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1676,6 +1800,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1712,6 +1839,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1744,6 +1874,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1776,6 +1909,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1859,6 +1995,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{

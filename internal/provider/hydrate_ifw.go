@@ -209,9 +209,8 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionSourceObj, diags := types.ObjectValue(
 				SourceAttrTypes,
 				map[string]attr.Value{
-					"ip": parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
-					// "subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet),
-					"subnet":              types.ListNull(types.StringType),
+					"ip":                  parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
+					"subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet"),
 					"host":                parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host"),
 					"site":                parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site"),
 					"ip_range":            parseFromToList(ctx, ruleException.Source.IPRange, "rule.exception.source.ip_range"),

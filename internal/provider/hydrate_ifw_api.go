@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
@@ -739,6 +740,7 @@ func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hyd
 				}
 
 				// setting tracking alert mailing list
+				tflog.Warn(ctx, "hydrateIfwApiRuleState() trackingAlertInput.MailingList "+fmt.Sprintf("%v", trackingAlertInput.MailingList))
 				if !trackingAlertInput.MailingList.IsNull() {
 					elementsAlertMailingListInput := make([]types.Object, 0, len(trackingAlertInput.MailingList.Elements()))
 					diags = append(diags, trackingAlertInput.MailingList.ElementsAs(ctx, &elementsAlertMailingListInput, false)...)
