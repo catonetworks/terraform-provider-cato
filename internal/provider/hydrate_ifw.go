@@ -179,7 +179,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 	// ////////////// start Rule -> Exceptions ///////////////
 	// TODO set to set not list
-	curRuleExceptionsObj, diagstmp := types.ListValue(
+	curRuleExceptionsObj, diagstmp := types.SetValue(
 		types.ObjectType{AttrTypes: ExceptionAttrTypes},
 		[]attr.Value{
 			types.ObjectValueMust( // Single exception object with all null values
@@ -202,6 +202,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	exceptions := []attr.Value{}
 
 	// Rule -> Exceptions -> Source
+	tflog.Warn(ctx, "hydrateIFRuleState() currentRule.Exceptions - "+fmt.Sprintf("%v", currentRule.Exceptions))
 	if currentRule.Exceptions != nil && len(currentRule.Exceptions) > 0 {
 		for _, ruleException := range currentRule.Exceptions {
 			// Rule -> Exceptions -> Source
@@ -295,11 +296,11 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			diags = append(diags, diagstmp...)
 			exceptions = append(exceptions, curException)
 		}
-		curRuleExceptionsObj, diagstmp = types.ListValue(types.ObjectType{AttrTypes: ExceptionAttrTypes}, exceptions)
+		curRuleExceptionsObj, diagstmp = types.SetValue(types.ObjectType{AttrTypes: ExceptionAttrTypes}, exceptions)
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
 	} else {
-		ruleInput.Exceptions = curRuleExceptionsObj
+		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: ExceptionAttrTypes})
 	}
 	////////////// end Rule -> Exceptions ///////////////
 

@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -1149,13 +1150,13 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 							},
 						},
 					},
-					"exceptions": schema.ListNestedAttribute{
+					"exceptions": schema.SetNestedAttribute{
 						Description: "The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules.",
 						Required:    false,
 						Optional:    true,
 						Computed:    true,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(), // Avoid drift
+						PlanModifiers: []planmodifier.Set{
+							setplanmodifier.UseStateForUnknown(), // Avoid drift
 						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -1166,8 +1167,8 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 								"source": schema.SingleNestedAttribute{
 									Description: "Source traffic matching criteria for the exception.",
-									Required:    false,
-									Optional:    true,
+									Required:    true,
+									Optional:    false,
 									Attributes: map[string]schema.Attribute{
 										"ip": schema.ListAttribute{
 											Description: "",
@@ -1604,8 +1605,8 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 								"destination": schema.SingleNestedAttribute{
 									Description: "Destination service matching criteria for the exception.",
-									Optional:    true,
-									Required:    false,
+									Required:    true,
+									Optional:    false,
 									Attributes: map[string]schema.Attribute{
 										"application": schema.SetNestedAttribute{
 											Description: "",
@@ -1900,8 +1901,8 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 								"service": schema.SingleNestedAttribute{
 									Description: "Destination service matching criteria for the exception.",
-									Required:    false,
-									Optional:    true,
+									Required:    true,
+									Optional:    false,
 									Attributes: map[string]schema.Attribute{
 										"standard": schema.SetNestedAttribute{
 											Required: false,
