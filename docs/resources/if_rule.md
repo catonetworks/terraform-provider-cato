@@ -45,6 +45,7 @@ resource "cato_if_rule" "block_test_com_for_remote_users" {
         "test.com"
       ]
     }
+    source = {}
     tracking = {
       event = {
         enabled = true
@@ -71,15 +72,15 @@ resource "cato_if_rule" "block_test_com_for_remote_users" {
 
 ### Required
 
-- `at` (Attributes) Position of the rule in the policy (see [below for nested schema](#nestedatt--at))
-- `rule` (Attributes) Parameters for the rule you are adding (see [below for nested schema](#nestedatt--rule))
+- `at` (Attributes) Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionInput) (see [below for nested schema](#nestedatt--at))
+- `rule` (Attributes) Parameters for the rule you are adding (https://api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput) (see [below for nested schema](#nestedatt--rule))
 
 <a id="nestedatt--at"></a>
 ### Nested Schema for `at`
 
 Required:
 
-- `position` (String) Position relative to a policy, a section or another rule
+- `position` (String) Position relative to a policy, a section or another rule (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionEnum)
 
 Optional:
 
@@ -92,55 +93,46 @@ Optional:
 Required:
 
 - `action` (String) The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)
+- `destination` (Attributes) Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput) (see [below for nested schema](#nestedatt--rule--destination))
 - `enabled` (Boolean) Attribute to define rule status (enabled or disabled)
 - `name` (String) Name of the rule
+- `source` (Attributes) Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput) (see [below for nested schema](#nestedatt--rule--source))
+- `tracking` (Attributes) Tracking information when the rule is matched, such as events and notifications (see [below for nested schema](#nestedatt--rule--tracking))
 
 Optional:
 
 - `connection_origin` (String) Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
-- `country` (Attributes List) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--country))
+- `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--country))
 - `description` (String) Description of the rule
-- `destination` (Attributes) Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--destination))
-- `device` (Attributes List) Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
+- `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
 - `device_os` (List of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)
-- `exceptions` (Attributes List) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--rule--exceptions))
+- `exceptions` (Attributes Set) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--rule--exceptions))
 - `index` (Number)
 - `schedule` (Attributes) The time period specifying when the rule is enabled, otherwise it is disabled. (see [below for nested schema](#nestedatt--rule--schedule))
 - `section` (Attributes) (see [below for nested schema](#nestedatt--rule--section))
 - `service` (Attributes) Destination service traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--service))
-- `source` (Attributes) Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--source))
-- `tracking` (Attributes) Tracking information when the rule is matched, such as events and notifications (see [below for nested schema](#nestedatt--rule--tracking))
 
 Read-Only:
 
-- `id` (String) ID of the  rule
-
-<a id="nestedatt--rule--country"></a>
-### Nested Schema for `rule.country`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
+- `id` (String) ID of the rule
 
 <a id="nestedatt--rule--destination"></a>
 ### Nested Schema for `rule.destination`
 
 Optional:
 
-- `app_category` (Attributes List) Cato category of applications which are dynamically updated by Cato (see [below for nested schema](#nestedatt--rule--destination--app_category))
-- `application` (Attributes List) Applications for the rule (pre-defined) (see [below for nested schema](#nestedatt--rule--destination--application))
-- `country` (Attributes List) Countries (see [below for nested schema](#nestedatt--rule--destination--country))
-- `custom_app` (Attributes List) Custom (user-defined) applications (see [below for nested schema](#nestedatt--rule--destination--custom_app))
-- `custom_category` (Attributes List) Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc. (see [below for nested schema](#nestedatt--rule--destination--custom_category))
+- `app_category` (Attributes Set) Cato category of applications which are dynamically updated by Cato (see [below for nested schema](#nestedatt--rule--destination--app_category))
+- `application` (Attributes Set) Applications for the rule (pre-defined) (see [below for nested schema](#nestedatt--rule--destination--application))
+- `country` (Attributes Set) Countries (see [below for nested schema](#nestedatt--rule--destination--country))
+- `custom_app` (Attributes Set) Custom (user-defined) applications (see [below for nested schema](#nestedatt--rule--destination--custom_app))
+- `custom_category` (Attributes Set) Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc. (see [below for nested schema](#nestedatt--rule--destination--custom_category))
 - `domain` (List of String) A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.
 - `fqdn` (List of String) An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.
-- `global_ip_range` (Attributes List) Globally defined IP range, IP and subnet objects (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
+- `global_ip_range` (Attributes Set) Globally defined IP range, IP and subnet objects. (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
 - `ip` (List of String) IPv4 addresses
 - `ip_range` (Attributes List) A range of IPs. Every IP within the range will be matched (see [below for nested schema](#nestedatt--rule--destination--ip_range))
 - `remote_asn` (List of String) Remote Autonomous System Number (ASN)
-- `sanctioned_apps_category` (Attributes List) Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization. (see [below for nested schema](#nestedatt--rule--destination--sanctioned_apps_category))
+- `sanctioned_apps_category` (Attributes Set) Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization. (see [below for nested schema](#nestedatt--rule--destination--sanctioned_apps_category))
 - `subnet` (List of String) Network subnets in CIDR notation
 
 <a id="nestedatt--rule--destination--app_category"></a>
@@ -216,383 +208,24 @@ Optional:
 
 
 
-<a id="nestedatt--rule--device"></a>
-### Nested Schema for `rule.device`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions"></a>
-### Nested Schema for `rule.exceptions`
-
-Optional:
-
-- `connection_origin` (String) Connection origin matching criteria for the exception.
-- `country` (Attributes List) Source country matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--country))
-- `destination` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--destination))
-- `device` (List of String) Source Device Profile matching criteria for the exception.
-- `device_os` (List of String) Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)
-- `name` (String) A unique name of the rule exception.
-- `service` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--service))
-- `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
-
-<a id="nestedatt--rule--exceptions--country"></a>
-### Nested Schema for `rule.exceptions.country`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination"></a>
-### Nested Schema for `rule.exceptions.destination`
-
-Optional:
-
-- `app_category` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--app_category))
-- `application` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--application))
-- `country` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--country))
-- `custom_app` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_app))
-- `custom_category` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_category))
-- `domain` (List of String)
-- `fqdn` (List of String)
-- `global_ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--global_ip_range))
-- `ip` (List of String)
-- `ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--ip_range))
-- `remote_asn` (List of String)
-- `sanctioned_apps_category` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--sanctioned_apps_category))
-- `subnet` (List of String)
-
-<a id="nestedatt--rule--exceptions--destination--app_category"></a>
-### Nested Schema for `rule.exceptions.destination.app_category`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination--application"></a>
-### Nested Schema for `rule.exceptions.destination.application`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination--country"></a>
-### Nested Schema for `rule.exceptions.destination.country`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination--custom_app"></a>
-### Nested Schema for `rule.exceptions.destination.custom_app`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination--custom_category"></a>
-### Nested Schema for `rule.exceptions.destination.custom_category`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination--global_ip_range"></a>
-### Nested Schema for `rule.exceptions.destination.global_ip_range`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination--ip_range"></a>
-### Nested Schema for `rule.exceptions.destination.ip_range`
-
-Required:
-
-- `from` (String)
-- `to` (String)
-
-
-<a id="nestedatt--rule--exceptions--destination--sanctioned_apps_category"></a>
-### Nested Schema for `rule.exceptions.destination.sanctioned_apps_category`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-
-<a id="nestedatt--rule--exceptions--service"></a>
-### Nested Schema for `rule.exceptions.service`
-
-Optional:
-
-- `custom` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--service--custom))
-- `standard` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--service--standard))
-
-<a id="nestedatt--rule--exceptions--service--custom"></a>
-### Nested Schema for `rule.exceptions.service.custom`
-
-Optional:
-
-- `port` (List of String)
-- `port_range` (Attributes) (see [below for nested schema](#nestedatt--rule--exceptions--service--custom--port_range))
-- `protocol` (String)
-
-<a id="nestedatt--rule--exceptions--service--custom--port_range"></a>
-### Nested Schema for `rule.exceptions.service.custom.port_range`
-
-Required:
-
-- `from` (String)
-- `to` (String)
-
-
-
-<a id="nestedatt--rule--exceptions--service--standard"></a>
-### Nested Schema for `rule.exceptions.service.standard`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-
-<a id="nestedatt--rule--exceptions--source"></a>
-### Nested Schema for `rule.exceptions.source`
-
-Optional:
-
-- `floating_subnet` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--floating_subnet))
-- `global_ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--global_ip_range))
-- `group` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--group))
-- `host` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--host))
-- `ip` (List of String)
-- `ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--ip_range))
-- `network_interface` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--network_interface))
-- `site` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--site))
-- `site_network_subnet` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--site_network_subnet))
-- `subnet` (List of String)
-- `system_group` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
-- `user` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
-- `users_group` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
-
-<a id="nestedatt--rule--exceptions--source--floating_subnet"></a>
-### Nested Schema for `rule.exceptions.source.floating_subnet`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--global_ip_range"></a>
-### Nested Schema for `rule.exceptions.source.global_ip_range`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--group"></a>
-### Nested Schema for `rule.exceptions.source.group`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--host"></a>
-### Nested Schema for `rule.exceptions.source.host`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--ip_range"></a>
-### Nested Schema for `rule.exceptions.source.ip_range`
-
-Required:
-
-- `from` (String)
-- `to` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--network_interface"></a>
-### Nested Schema for `rule.exceptions.source.network_interface`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--site"></a>
-### Nested Schema for `rule.exceptions.source.site`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--site_network_subnet"></a>
-### Nested Schema for `rule.exceptions.source.site_network_subnet`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--system_group"></a>
-### Nested Schema for `rule.exceptions.source.system_group`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--user"></a>
-### Nested Schema for `rule.exceptions.source.user`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--source--users_group"></a>
-### Nested Schema for `rule.exceptions.source.users_group`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-
-
-<a id="nestedatt--rule--schedule"></a>
-### Nested Schema for `rule.schedule`
-
-Required:
-
-- `active_on` (String) Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)
-
-Optional:
-
-- `custom_recurring` (Attributes) Input of data for a custom recurring time range that a rule is active (see [below for nested schema](#nestedatt--rule--schedule--custom_recurring))
-- `custom_timeframe` (Attributes) Input of data for a custom one-time time range that a rule is active (see [below for nested schema](#nestedatt--rule--schedule--custom_timeframe))
-
-<a id="nestedatt--rule--schedule--custom_recurring"></a>
-### Nested Schema for `rule.schedule.custom_recurring`
-
-Required:
-
-- `days` (List of String) (https://api.catonetworks.com/documentation/#definition-DayOfWeek)
-- `from` (String)
-- `to` (String)
-
-
-<a id="nestedatt--rule--schedule--custom_timeframe"></a>
-### Nested Schema for `rule.schedule.custom_timeframe`
-
-Required:
-
-- `from` (String)
-- `to` (String)
-
-
-
-<a id="nestedatt--rule--section"></a>
-### Nested Schema for `rule.section`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--service"></a>
-### Nested Schema for `rule.service`
-
-Optional:
-
-- `custom` (Attributes List) Custom Service defined by a combination of L4 ports and an IP Protocol (see [below for nested schema](#nestedatt--rule--service--custom))
-- `standard` (Attributes List) Standard Service to which this Internet Firewall rule applies (see [below for nested schema](#nestedatt--rule--service--standard))
-
-<a id="nestedatt--rule--service--custom"></a>
-### Nested Schema for `rule.service.custom`
-
-Optional:
-
-- `port` (List of String) List of TCP/UDP port
-- `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--rule--service--custom--port_range))
-- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
-
-<a id="nestedatt--rule--service--custom--port_range"></a>
-### Nested Schema for `rule.service.custom.port_range`
-
-Required:
-
-- `from` (String)
-- `to` (String)
-
-
-
-<a id="nestedatt--rule--service--standard"></a>
-### Nested Schema for `rule.service.standard`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-
 <a id="nestedatt--rule--source"></a>
 ### Nested Schema for `rule.source`
 
 Optional:
 
-- `floating_subnet` (Attributes List) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. (see [below for nested schema](#nestedatt--rule--source--floating_subnet))
-- `global_ip_range` (Attributes List) Globally defined IP range, IP and subnet objects (see [below for nested schema](#nestedatt--rule--source--global_ip_range))
-- `group` (Attributes List) Groups defined for your account (see [below for nested schema](#nestedatt--rule--source--group))
-- `host` (Attributes List) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--source--host))
+- `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. (see [below for nested schema](#nestedatt--rule--source--floating_subnet))
+- `global_ip_range` (Attributes Set) Globally defined IP range, IP and subnet objects (see [below for nested schema](#nestedatt--rule--source--global_ip_range))
+- `group` (Attributes Set) Groups defined for your account (see [below for nested schema](#nestedatt--rule--source--group))
+- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--source--host))
 - `ip` (List of String) Pv4 address list
 - `ip_range` (Attributes List) Multiple separate IP addresses or an IP range (see [below for nested schema](#nestedatt--rule--source--ip_range))
-- `network_interface` (Attributes List) Network range defined for a site (see [below for nested schema](#nestedatt--rule--source--network_interface))
-- `site` (Attributes List) Site defined for the account (see [below for nested schema](#nestedatt--rule--source--site))
-- `site_network_subnet` (Attributes List) GlobalRange + InterfaceSubnet (see [below for nested schema](#nestedatt--rule--source--site_network_subnet))
+- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--rule--source--network_interface))
+- `site` (Attributes Set) Site defined for the account (see [below for nested schema](#nestedatt--rule--source--site))
+- `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet (see [below for nested schema](#nestedatt--rule--source--site_network_subnet))
 - `subnet` (List of String) Subnets and network ranges defined for the LAN interfaces of a site
-- `system_group` (Attributes List) Predefined Cato groups (see [below for nested schema](#nestedatt--rule--source--system_group))
-- `user` (Attributes List) Individual users defined for the account (see [below for nested schema](#nestedatt--rule--source--user))
-- `users_group` (Attributes List) Group of users (see [below for nested schema](#nestedatt--rule--source--users_group))
+- `system_group` (Attributes Set) Predefined Cato groups (see [below for nested schema](#nestedatt--rule--source--system_group))
+- `user` (Attributes Set) Individual users defined for the account (see [below for nested schema](#nestedatt--rule--source--user))
+- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--rule--source--users_group))
 
 <a id="nestedatt--rule--source--floating_subnet"></a>
 ### Nested Schema for `rule.source.floating_subnet`
@@ -708,7 +341,7 @@ Optional:
 <a id="nestedatt--rule--tracking--event"></a>
 ### Nested Schema for `rule.tracking.event`
 
-Required:
+Optional:
 
 - `enabled` (Boolean)
 
@@ -716,16 +349,13 @@ Required:
 <a id="nestedatt--rule--tracking--alert"></a>
 ### Nested Schema for `rule.tracking.alert`
 
-Required:
+Optional:
 
 - `enabled` (Boolean)
 - `frequency` (String) Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
-
-Optional:
-
-- `mailing_list` (Attributes List) Returns data for the Mailing List that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--mailing_list))
-- `subscription_group` (Attributes List) Returns data for the Subscription Group that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--subscription_group))
-- `webhook` (Attributes List) Returns data for the Webhook that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--webhook))
+- `mailing_list` (Attributes Set) Returns data for the Mailing List that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--mailing_list))
+- `subscription_group` (Attributes Set) Returns data for the Subscription Group that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--subscription_group))
+- `webhook` (Attributes Set) Returns data for the Webhook that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--webhook))
 
 <a id="nestedatt--rule--tracking--alert--mailing_list"></a>
 ### Nested Schema for `rule.tracking.alert.mailing_list`
@@ -747,6 +377,384 @@ Optional:
 
 <a id="nestedatt--rule--tracking--alert--webhook"></a>
 ### Nested Schema for `rule.tracking.alert.webhook`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+
+<a id="nestedatt--rule--country"></a>
+### Nested Schema for `rule.country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--device"></a>
+### Nested Schema for `rule.device`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions"></a>
+### Nested Schema for `rule.exceptions`
+
+Required:
+
+- `destination` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--destination))
+- `service` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--service))
+- `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
+
+Optional:
+
+- `connection_origin` (String) Connection origin matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
+- `country` (Attributes Set) Source country matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--country))
+- `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--device))
+- `device_os` (List of String) Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)
+- `name` (String) A unique name of the rule exception.
+
+<a id="nestedatt--rule--exceptions--destination"></a>
+### Nested Schema for `rule.exceptions.destination`
+
+Optional:
+
+- `app_category` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--app_category))
+- `application` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--application))
+- `country` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--country))
+- `custom_app` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_app))
+- `custom_category` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_category))
+- `domain` (List of String)
+- `fqdn` (List of String)
+- `global_ip_range` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--global_ip_range))
+- `ip` (List of String)
+- `ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--ip_range))
+- `remote_asn` (List of String)
+- `sanctioned_apps_category` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--sanctioned_apps_category))
+- `subnet` (List of String)
+
+<a id="nestedatt--rule--exceptions--destination--app_category"></a>
+### Nested Schema for `rule.exceptions.destination.app_category`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--destination--application"></a>
+### Nested Schema for `rule.exceptions.destination.application`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--destination--country"></a>
+### Nested Schema for `rule.exceptions.destination.country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--destination--custom_app"></a>
+### Nested Schema for `rule.exceptions.destination.custom_app`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--destination--custom_category"></a>
+### Nested Schema for `rule.exceptions.destination.custom_category`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--destination--global_ip_range"></a>
+### Nested Schema for `rule.exceptions.destination.global_ip_range`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--destination--ip_range"></a>
+### Nested Schema for `rule.exceptions.destination.ip_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+<a id="nestedatt--rule--exceptions--destination--sanctioned_apps_category"></a>
+### Nested Schema for `rule.exceptions.destination.sanctioned_apps_category`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--exceptions--service"></a>
+### Nested Schema for `rule.exceptions.service`
+
+Optional:
+
+- `custom` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--service--custom))
+- `standard` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--service--standard))
+
+<a id="nestedatt--rule--exceptions--service--custom"></a>
+### Nested Schema for `rule.exceptions.service.custom`
+
+Optional:
+
+- `port` (List of String)
+- `port_range` (Attributes) (see [below for nested schema](#nestedatt--rule--exceptions--service--custom--port_range))
+- `protocol` (String)
+
+<a id="nestedatt--rule--exceptions--service--custom--port_range"></a>
+### Nested Schema for `rule.exceptions.service.custom.port_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+
+<a id="nestedatt--rule--exceptions--service--standard"></a>
+### Nested Schema for `rule.exceptions.service.standard`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--exceptions--source"></a>
+### Nested Schema for `rule.exceptions.source`
+
+Optional:
+
+- `floating_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--floating_subnet))
+- `global_ip_range` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--global_ip_range))
+- `group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--group))
+- `host` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--host))
+- `ip` (List of String)
+- `ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--ip_range))
+- `network_interface` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--network_interface))
+- `site` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site))
+- `site_network_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site_network_subnet))
+- `subnet` (List of String)
+- `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
+- `user` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
+- `users_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
+
+<a id="nestedatt--rule--exceptions--source--floating_subnet"></a>
+### Nested Schema for `rule.exceptions.source.floating_subnet`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--global_ip_range"></a>
+### Nested Schema for `rule.exceptions.source.global_ip_range`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--group"></a>
+### Nested Schema for `rule.exceptions.source.group`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--host"></a>
+### Nested Schema for `rule.exceptions.source.host`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--ip_range"></a>
+### Nested Schema for `rule.exceptions.source.ip_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--network_interface"></a>
+### Nested Schema for `rule.exceptions.source.network_interface`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--site"></a>
+### Nested Schema for `rule.exceptions.source.site`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--site_network_subnet"></a>
+### Nested Schema for `rule.exceptions.source.site_network_subnet`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--system_group"></a>
+### Nested Schema for `rule.exceptions.source.system_group`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--user"></a>
+### Nested Schema for `rule.exceptions.source.user`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--source--users_group"></a>
+### Nested Schema for `rule.exceptions.source.users_group`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--exceptions--country"></a>
+### Nested Schema for `rule.exceptions.country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--exceptions--device"></a>
+### Nested Schema for `rule.exceptions.device`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--schedule"></a>
+### Nested Schema for `rule.schedule`
+
+Optional:
+
+- `active_on` (String) Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)
+- `custom_recurring` (Attributes) Input of data for a custom recurring time range that a rule is active (see [below for nested schema](#nestedatt--rule--schedule--custom_recurring))
+- `custom_timeframe` (Attributes) Input of data for a custom one-time time range that a rule is active (see [below for nested schema](#nestedatt--rule--schedule--custom_timeframe))
+
+<a id="nestedatt--rule--schedule--custom_recurring"></a>
+### Nested Schema for `rule.schedule.custom_recurring`
+
+Optional:
+
+- `days` (List of String) (https://api.catonetworks.com/documentation/#definition-DayOfWeek)
+- `from` (String)
+- `to` (String)
+
+
+<a id="nestedatt--rule--schedule--custom_timeframe"></a>
+### Nested Schema for `rule.schedule.custom_timeframe`
+
+Optional:
+
+- `from` (String)
+- `to` (String)
+
+
+
+<a id="nestedatt--rule--section"></a>
+### Nested Schema for `rule.section`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--service"></a>
+### Nested Schema for `rule.service`
+
+Optional:
+
+- `custom` (Attributes List) Custom Service defined by a combination of L4 ports and an IP Protocol (see [below for nested schema](#nestedatt--rule--service--custom))
+- `standard` (Attributes Set) Standard Service to which this Internet Firewall rule applies (see [below for nested schema](#nestedatt--rule--service--standard))
+
+<a id="nestedatt--rule--service--custom"></a>
+### Nested Schema for `rule.service.custom`
+
+Optional:
+
+- `port` (List of String) List of TCP/UDP port
+- `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--rule--service--custom--port_range))
+- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
+
+<a id="nestedatt--rule--service--custom--port_range"></a>
+### Nested Schema for `rule.service.custom.port_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+
+<a id="nestedatt--rule--service--standard"></a>
+### Nested Schema for `rule.service.standard`
 
 Optional:
 

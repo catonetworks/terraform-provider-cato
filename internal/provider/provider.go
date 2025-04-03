@@ -157,6 +157,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 	return []func() datasource.DataSource{
 		NewAccountSnapshotSiteDataSource,
 		AllocatedIpDataSource,
+		SiteLocationDataSource,
 		// NewInternetFwPolicyDataSource,
 	}
 }
