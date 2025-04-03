@@ -41,19 +41,19 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	curRuleSourceObj, diagstmp := types.ObjectValue(
 		SourceAttrTypes,
 		map[string]attr.Value{
-			"ip":                  parseList(ctx, types.StringType, currentRule.Source.IP),
-			"host":                parseNameIDList(ctx, currentRule.Source.Host),
-			"site":                parseNameIDList(ctx, currentRule.Source.Site),
-			"subnet":              parseList(ctx, types.StringType, currentRule.Source.Subnet),
-			"ip_range":            parseFromToList(ctx, currentRule.Source.IPRange),
-			"global_ip_range":     parseNameIDList(ctx, currentRule.Source.GlobalIPRange),
-			"network_interface":   parseNameIDList(ctx, currentRule.Source.NetworkInterface),
-			"site_network_subnet": parseNameIDList(ctx, currentRule.Source.SiteNetworkSubnet),
-			"floating_subnet":     parseNameIDList(ctx, currentRule.Source.FloatingSubnet),
-			"user":                parseNameIDList(ctx, currentRule.Source.User),
-			"users_group":         parseNameIDList(ctx, currentRule.Source.UsersGroup),
-			"group":               parseNameIDList(ctx, currentRule.Source.Group),
-			"system_group":        parseNameIDList(ctx, currentRule.Source.SystemGroup),
+			"ip":                  parseList(ctx, types.StringType, currentRule.Source.IP, "rule.source.ip"),
+			"host":                parseNameIDList(ctx, currentRule.Source.Host, "rule.source.host"),
+			"site":                parseNameIDList(ctx, currentRule.Source.Site, "rule.source.site"),
+			"subnet":              parseList(ctx, types.StringType, currentRule.Source.Subnet, "rule.source.subnet"),
+			"ip_range":            parseFromToList(ctx, currentRule.Source.IPRange, "rule.source.ip_range"),
+			"global_ip_range":     parseNameIDList(ctx, currentRule.Source.GlobalIPRange, "rule.source.global_ip_range"),
+			"network_interface":   parseNameIDList(ctx, currentRule.Source.NetworkInterface, "rule.source.network_interface"),
+			"site_network_subnet": parseNameIDList(ctx, currentRule.Source.SiteNetworkSubnet, "rule.source.site_network_subnet"),
+			"floating_subnet":     parseNameIDList(ctx, currentRule.Source.FloatingSubnet, "rule.source.floating_subnet"),
+			"user":                parseNameIDList(ctx, currentRule.Source.User, "rule.source.user"),
+			"users_group":         parseNameIDList(ctx, currentRule.Source.UsersGroup, "rule.source.users_group"),
+			"group":               parseNameIDList(ctx, currentRule.Source.Group, "rule.source.group"),
+			"system_group":        parseNameIDList(ctx, currentRule.Source.SystemGroup, "rule.source.system_group"),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -61,30 +61,30 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	////////////// end rule.source ///////////////
 
 	// Rule -> Country
-	ruleInput.Country = parseNameIDList(ctx, currentRule.Country)
+	ruleInput.Country = parseNameIDList(ctx, currentRule.Country, "rule.country")
 	// Rule -> Device
-	ruleInput.Device = parseNameIDList(ctx, currentRule.Device)
+	ruleInput.Device = parseNameIDList(ctx, currentRule.Device, "rule.device")
 
 	// Rule -> DeviceOS
-	ruleInput.DeviceOs = parseList(ctx, types.StringType, currentRule.DeviceOs)
+	ruleInput.DeviceOs = parseList(ctx, types.StringType, currentRule.DeviceOs, "rule.source.device_os")
 
 	//////////// Rule -> Destination ///////////////
 	curRuleDestinationObj, diagstmp := types.ObjectValue(
 		DestAttrTypes,
 		map[string]attr.Value{
-			"application":              parseNameIDList(ctx, currentRule.Destination.Application),
-			"custom_app":               parseNameIDList(ctx, currentRule.Destination.CustomApp),
-			"app_category":             parseNameIDList(ctx, currentRule.Destination.AppCategory),
-			"custom_category":          parseNameIDList(ctx, currentRule.Destination.CustomCategory),
-			"sanctioned_apps_category": parseNameIDList(ctx, currentRule.Destination.SanctionedAppsCategory),
-			"country":                  parseNameIDList(ctx, currentRule.Destination.Country),
-			"domain":                   parseList(ctx, types.StringType, currentRule.Destination.Domain),
-			"fqdn":                     parseList(ctx, types.StringType, currentRule.Destination.Fqdn),
-			"ip":                       parseList(ctx, types.StringType, currentRule.Destination.IP),
-			"subnet":                   parseList(ctx, types.StringType, currentRule.Destination.Subnet),
-			"ip_range":                 parseFromToList(ctx, currentRule.Destination.IPRange),
-			"global_ip_range":          parseNameIDList(ctx, currentRule.Destination.GlobalIPRange),
-			"remote_asn":               parseList(ctx, types.StringType, currentRule.Destination.RemoteAsn),
+			"application":              parseNameIDList(ctx, currentRule.Destination.Application, "rule.destination.application"),
+			"custom_app":               parseNameIDList(ctx, currentRule.Destination.CustomApp, "rule.destination.custom_app"),
+			"app_category":             parseNameIDList(ctx, currentRule.Destination.AppCategory, "rule.destination.app_category"),
+			"custom_category":          parseNameIDList(ctx, currentRule.Destination.CustomCategory, "rule.destination.custom_category"),
+			"sanctioned_apps_category": parseNameIDList(ctx, currentRule.Destination.SanctionedAppsCategory, "rule.destination.sanctioned_apps_category"),
+			"country":                  parseNameIDList(ctx, currentRule.Destination.Country, "rule.destination.country"),
+			"domain":                   parseList(ctx, types.StringType, currentRule.Destination.Domain, "rule.destination.domain"),
+			"fqdn":                     parseList(ctx, types.StringType, currentRule.Destination.Fqdn, "rule.destination.fqdn"),
+			"ip":                       parseList(ctx, types.StringType, currentRule.Destination.IP, "rule.destination.ip"),
+			"subnet":                   parseList(ctx, types.StringType, currentRule.Destination.Subnet, "rule.destination.subnet"),
+			"ip_range":                 parseFromToList(ctx, currentRule.Destination.IPRange, "rule.destination.ip_range"),
+			"global_ip_range":          parseNameIDList(ctx, currentRule.Destination.GlobalIPRange, "rule.destination.global_ip_range"),
+			"remote_asn":               parseList(ctx, types.StringType, currentRule.Destination.RemoteAsn, "rule.destination.remote_asn"),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -105,14 +105,14 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
 
 		// Rule -> Service -> Standard
-		curRuleServiceObjAttrs["standard"] = parseNameIDList(ctx, currentRule.Service.Standard)
+		curRuleServiceObjAttrs["standard"] = parseNameIDList(ctx, currentRule.Service.Standard, "rule.service.standard")
 
 		// Rule -> Service -> Custom
 		if len(currentRule.Service.Custom) > 0 {
 			var curRuleCustomServices []types.Object
 			tflog.Info(ctx, "ruleResponse.Service.Custom - "+fmt.Sprintf("%v", currentRule.Service.Custom))
 			for _, item := range currentRule.Service.Custom {
-				curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item))
+				curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item, "rule.service.custom"))
 			}
 			curRuleServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
 			diags = append(diags, diagstmp...)
@@ -150,9 +150,9 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		map[string]attr.Value{
 			"enabled":            types.BoolValue(currentRule.Tracking.Alert.Enabled),
 			"frequency":          types.StringValue(currentRule.Tracking.Alert.Frequency.String()),
-			"subscription_group": parseNameIDList(ctx, currentRule.Tracking.Alert.SubscriptionGroup),
-			"webhook":            parseNameIDList(ctx, currentRule.Tracking.Alert.Webhook),
-			"mailing_list":       parseNameIDList(ctx, currentRule.Tracking.Alert.MailingList),
+			"subscription_group": parseNameIDList(ctx, currentRule.Tracking.Alert.SubscriptionGroup, "rule.tracking.alert.subscription_group"),
+			"webhook":            parseNameIDList(ctx, currentRule.Tracking.Alert.Webhook, "rule.tracking.alert.webhook"),
+			"mailing_list":       parseNameIDList(ctx, currentRule.Tracking.Alert.MailingList, "rule.tracking.alert.mailing_list"),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -169,8 +169,8 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		ScheduleAttrTypes,
 		map[string]attr.Value{
 			"active_on":        types.StringValue(currentRule.Schedule.ActiveOn.String()),
-			"custom_timeframe": parseFromTo(ctx, currentRule.Schedule.CustomTimeframePolicySchedule),
-			"custom_recurring": parseFromToDays(ctx, currentRule.Schedule.CustomRecurringPolicySchedule),
+			"custom_timeframe": parseFromTo(ctx, currentRule.Schedule.CustomTimeframePolicySchedule, "rule.schedule.custom_timeframe"),
+			"custom_recurring": parseFromToDays(ctx, currentRule.Schedule.CustomRecurringPolicySchedule, "rule.schedule.custom_recurring"),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -208,20 +208,20 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionSourceObj, diags := types.ObjectValue(
 				SourceAttrTypes,
 				map[string]attr.Value{
-					"ip": parseList(ctx, types.StringType, ruleException.Source.IP),
+					"ip": parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
 					// "subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet),
 					"subnet":              types.ListNull(types.StringType),
-					"host":                parseNameIDList(ctx, ruleException.Source.Host),
-					"site":                parseNameIDList(ctx, ruleException.Source.Site),
-					"ip_range":            parseFromToList(ctx, ruleException.Source.IPRange),
-					"global_ip_range":     parseNameIDList(ctx, ruleException.Source.GlobalIPRange),
-					"network_interface":   parseNameIDList(ctx, ruleException.Source.NetworkInterface),
-					"site_network_subnet": parseNameIDList(ctx, ruleException.Source.SiteNetworkSubnet),
-					"floating_subnet":     parseNameIDList(ctx, ruleException.Source.FloatingSubnet),
-					"user":                parseNameIDList(ctx, ruleException.Source.User),
-					"users_group":         parseNameIDList(ctx, ruleException.Source.UsersGroup),
-					"group":               parseNameIDList(ctx, ruleException.Source.Group),
-					"system_group":        parseNameIDList(ctx, ruleException.Source.SystemGroup),
+					"host":                parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host"),
+					"site":                parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site"),
+					"ip_range":            parseFromToList(ctx, ruleException.Source.IPRange, "rule.exception.source.ip_range"),
+					"global_ip_range":     parseNameIDList(ctx, ruleException.Source.GlobalIPRange, "rule.exception.source.global_ip_range"),
+					"network_interface":   parseNameIDList(ctx, ruleException.Source.NetworkInterface, "rule.exception.source.network_interface"),
+					"site_network_subnet": parseNameIDList(ctx, ruleException.Source.SiteNetworkSubnet, "rule.exception.source.site_network_subnet"),
+					"floating_subnet":     parseNameIDList(ctx, ruleException.Source.FloatingSubnet, "rule.exception.source.floating_subnet"),
+					"user":                parseNameIDList(ctx, ruleException.Source.User, "rule.exception.source.user"),
+					"users_group":         parseNameIDList(ctx, ruleException.Source.UsersGroup, "rule.exception.source.users_group"),
+					"group":               parseNameIDList(ctx, ruleException.Source.Group, "rule.exception.source.group"),
+					"system_group":        parseNameIDList(ctx, ruleException.Source.SystemGroup, "rule.exception.source.system_group"),
 				},
 			)
 
@@ -229,19 +229,19 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionDestObj, diags := types.ObjectValue(
 				DestAttrTypes,
 				map[string]attr.Value{
-					"application":              parseNameIDList(ctx, ruleException.Destination.Application),
-					"custom_app":               parseNameIDList(ctx, ruleException.Destination.CustomApp),
-					"app_category":             parseNameIDList(ctx, ruleException.Destination.AppCategory),
-					"custom_category":          parseNameIDList(ctx, ruleException.Destination.CustomCategory),
-					"sanctioned_apps_category": parseNameIDList(ctx, ruleException.Destination.SanctionedAppsCategory),
-					"country":                  parseNameIDList(ctx, ruleException.Destination.Country),
-					"domain":                   parseList(ctx, types.StringType, ruleException.Destination.Domain),
-					"fqdn":                     parseList(ctx, types.StringType, ruleException.Destination.Fqdn),
-					"ip":                       parseList(ctx, types.StringType, ruleException.Destination.IP),
-					"subnet":                   parseList(ctx, types.StringType, ruleException.Destination.Subnet),
-					"ip_range":                 parseFromToList(ctx, ruleException.Destination.IPRange),
-					"global_ip_range":          parseNameIDList(ctx, ruleException.Destination.GlobalIPRange),
-					"remote_asn":               parseList(ctx, types.StringType, ruleException.Destination.RemoteAsn),
+					"application":              parseNameIDList(ctx, ruleException.Destination.Application, "rule.exception.destination.application"),
+					"custom_app":               parseNameIDList(ctx, ruleException.Destination.CustomApp, "rule.exception.destination.custom_app"),
+					"app_category":             parseNameIDList(ctx, ruleException.Destination.AppCategory, "rule.exception.destination.app_category"),
+					"custom_category":          parseNameIDList(ctx, ruleException.Destination.CustomCategory, "rule.exception.destination.custom_category"),
+					"sanctioned_apps_category": parseNameIDList(ctx, ruleException.Destination.SanctionedAppsCategory, "rule.exception.destination.sanctioned_apps_category"),
+					"country":                  parseNameIDList(ctx, ruleException.Destination.Country, "rule.exception.destination.country"),
+					"domain":                   parseList(ctx, types.StringType, ruleException.Destination.Domain, "rule.exception.destination.domain"),
+					"fqdn":                     parseList(ctx, types.StringType, ruleException.Destination.Fqdn, "rule.exception.destination.fqdn"),
+					"ip":                       parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
+					"subnet":                   parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
+					"ip_range":                 parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range"),
+					"global_ip_range":          parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.exception.destination.global_ip_range"),
+					"remote_asn":               parseList(ctx, types.StringType, ruleException.Destination.RemoteAsn, "rule.exception.destination.remote_asn"),
 				},
 			)
 
@@ -258,7 +258,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionServiceObjAttrs := curExceptionServiceObj.Attributes()
 			if len(ruleException.Service.Custom) > 0 || len(ruleException.Service.Standard) > 0 {
 				// Rule -> Service -> Standard
-				curExceptionServiceObjAttrs["standard"] = parseNameIDList(ctx, ruleException.Service.Standard)
+				curExceptionServiceObjAttrs["standard"] = parseNameIDList(ctx, ruleException.Service.Standard, "rule.exception.service.standard")
 
 				// Rule -> Service -> Custom
 				if ruleException.Service.Custom != nil {
@@ -266,7 +266,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 						var curExceptionCustomServices []types.Object
 						tflog.Info(ctx, "ruleException.Service.Custom - "+fmt.Sprintf("%v", ruleException.Service.Custom))
 						for _, item := range ruleException.Service.Custom {
-							curExceptionCustomServices = append(curExceptionCustomServices, parseCustomService(ctx, item))
+							curExceptionCustomServices = append(curExceptionCustomServices, parseCustomService(ctx, item, "rule.exception.service.custom"))
 						}
 						curExceptionServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curExceptionCustomServices)
 						diags = append(diags, diagstmp...)
@@ -284,9 +284,9 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 				map[string]attr.Value{
 					"name":              types.StringValue(ruleException.Name),
 					"source":            curExceptionSourceObj,
-					"country":           parseNameIDList(ctx, ruleException.Country),
-					"device":            parseNameIDList(ctx, ruleException.Device),
-					"device_os":         parseList(ctx, types.StringType, ruleException.DeviceOs),
+					"country":           parseNameIDList(ctx, ruleException.Country, "rule.exception.country"),
+					"device":            parseNameIDList(ctx, ruleException.Device, "rule.exception.device"),
+					"device_os":         parseList(ctx, types.StringType, ruleException.DeviceOs, "rule.exception.device_os"),
 					"destination":       curExceptionDestObj,
 					"service":           curExceptionServiceObj,
 					"connection_origin": types.StringValue(ruleException.ConnectionOrigin.String()),
@@ -381,8 +381,8 @@ func convertGoTypeToTfType(ctx context.Context, srcItemObj any) attr.Type {
 	return types.StringType
 }
 
-func parseList[T any](ctx context.Context, elemType attr.Type, items []T) types.List {
-	tflog.Warn(ctx, "parseList() - "+fmt.Sprintf("%v", items))
+func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrName string) types.List {
+	tflog.Warn(ctx, "parseList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
 	// if stateItems != nil && len(stateItems) > 0 {
@@ -406,8 +406,8 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T) types.
 	return listValue
 }
 
-func parseNameIDList[T any](ctx context.Context, items []T) types.Set {
-	tflog.Warn(ctx, "parseNameIDList() - "+fmt.Sprintf("%v", items))
+func parseNameIDList[T any](ctx context.Context, items []T, attrName string) types.Set {
+	tflog.Warn(ctx, "parseNameIDList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
 	// Handle nil or empty list
@@ -419,7 +419,7 @@ func parseNameIDList[T any](ctx context.Context, items []T) types.Set {
 	// Process each item into an attr.Value
 	nameIDValues := make([]attr.Value, 0, len(items))
 	for i, item := range items {
-		obj := parseNameID(ctx, item)
+		obj := parseNameID(ctx, item, attrName)
 		if !obj.IsNull() && !obj.IsUnknown() { // Include only non-null/unknown values, adjust as needed
 			nameIDValues = append(nameIDValues, obj)
 		} else {
@@ -433,8 +433,8 @@ func parseNameIDList[T any](ctx context.Context, items []T) types.Set {
 	return setValue
 }
 
-func parseNameID(ctx context.Context, item interface{}) types.Object {
-	tflog.Warn(ctx, "parseNameID() - "+fmt.Sprintf("%v", item))
+func parseNameID(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Warn(ctx, "parseNameID() "+attrName+" - "+fmt.Sprintf("%v", item))
 	diags := make(diag.Diagnostics, 0)
 
 	// Get the reflect.Value of the input
@@ -482,8 +482,8 @@ func parseNameID(ctx context.Context, item interface{}) types.Object {
 	return obj
 }
 
-func parseFromToList[T any](ctx context.Context, items []T) types.List {
-	tflog.Warn(ctx, "parseFromToList() - "+fmt.Sprintf("%v", items))
+func parseFromToList[T any](ctx context.Context, items []T, attrName string) types.List {
+	tflog.Warn(ctx, "parseFromToList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
 	// Handle nil or empty list
@@ -494,7 +494,7 @@ func parseFromToList[T any](ctx context.Context, items []T) types.List {
 	// Process each item into an attr.Value
 	fromToValues := make([]attr.Value, 0, len(items))
 	for i, item := range items {
-		obj := parseFromTo(ctx, item)
+		obj := parseFromTo(ctx, item, attrName)
 		if !obj.IsNull() && !obj.IsUnknown() { // Include only non-null/unknown values, adjust as needed
 			fromToValues = append(fromToValues, obj)
 		} else {
@@ -508,8 +508,8 @@ func parseFromToList[T any](ctx context.Context, items []T) types.List {
 	return listValue
 }
 
-func parseFromTo(ctx context.Context, item interface{}) types.Object {
-	tflog.Warn(ctx, "parseFromTo() - "+fmt.Sprintf("%v", item))
+func parseFromTo(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Warn(ctx, "parseFromTo() "+attrName+" - "+fmt.Sprintf("%v", item))
 	diags := make(diag.Diagnostics, 0)
 
 	if item == nil {
@@ -568,8 +568,8 @@ func parseFromTo(ctx context.Context, item interface{}) types.Object {
 	return obj
 }
 
-func parseFromToDays(ctx context.Context, item interface{}) types.Object {
-	tflog.Warn(ctx, "parseFromToDays() - "+fmt.Sprintf("%v", item))
+func parseFromToDays(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Warn(ctx, "parseFromToDays() "+attrName+" - "+fmt.Sprintf("%v", item))
 	diags := make(diag.Diagnostics, 0)
 
 	if item == nil {
@@ -622,7 +622,7 @@ func parseFromToDays(ctx context.Context, item interface{}) types.Object {
 		map[string]attr.Value{
 			"from": basetypes.NewStringValue(fromField.String()),
 			"to":   basetypes.NewStringValue(toField.String()),
-			"days": parseList(ctx, types.StringType, daysField.Interface().([]cato_models.DayOfWeek)),
+			"days": parseList(ctx, types.StringType, daysField.Interface().([]cato_models.DayOfWeek), "rule.schedule.custom_recurring.days"),
 		},
 	)
 	tflog.Warn(ctx, "parseFromToDays() obj - "+fmt.Sprintf("%v", obj))
@@ -630,8 +630,8 @@ func parseFromToDays(ctx context.Context, item interface{}) types.Object {
 	return obj
 }
 
-func parseCustomService(ctx context.Context, item interface{}) types.Object {
-	tflog.Warn(ctx, "parseCustomService() - "+fmt.Sprintf("%v", item))
+func parseCustomService(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Warn(ctx, "parseCustomService() "+attrName+" - "+fmt.Sprintf("%v", item))
 	diags := make(diag.Diagnostics, 0)
 
 	// Get the reflect.Value of the input
