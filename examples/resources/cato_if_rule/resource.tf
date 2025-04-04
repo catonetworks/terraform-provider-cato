@@ -51,6 +51,15 @@ resource "cato_if_rule" "block_test_com_for_remote_users" {
   }
 }
 
+resource "cato_if_section" "if_section" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "IFW Section"
+  }
+}
+
 resource "cato_if_rule" "kitchen_sink" {
   depends_on = [ cato_if_section.if_section ]
   at = {
@@ -58,7 +67,7 @@ resource "cato_if_rule" "kitchen_sink" {
     ref=cato_if_section.if_section.section.id
   }
   rule = {
-    name        = "Internet Firewall Min - test3"
+    name        = "Internet Firewall Kitchen Sink"
     action            = "ALLOW"
     connection_origin = "REMOTE"
     country = [
@@ -265,10 +274,6 @@ resource "cato_if_rule" "kitchen_sink" {
         to   = "03:03:00"
       }
     }
-#     # section = {
-#     #   id   = "db9d857c-9bfd-4395-b583-f2e70345ee8d"
-#     #   name = "IFW QA Section test"
-#     # }
     service = {
       custom = [
         {
@@ -296,7 +301,6 @@ resource "cato_if_rule" "kitchen_sink" {
       floating_subnet = [
         {
           id = "1474041"
-          # name = "test subnet"
         },
       ]
       group = [
@@ -320,7 +324,6 @@ resource "cato_if_rule" "kitchen_sink" {
       ]
       network_interface = [
         {
-          # name = "Test IPSec \\ Default"
           id = "124986"
         },
       ]
@@ -332,10 +335,8 @@ resource "cato_if_rule" "kitchen_sink" {
       site_network_subnet = [
         {
           id = "TjE0Nzk5MTc="
-          # name = "Test IPSec \\ Default \\ Native Range"
         },
       ]
-      # subnet = []
       system_group = [
         {
           name = "All Floating Ranges"
@@ -358,8 +359,7 @@ resource "cato_if_rule" "kitchen_sink" {
         frequency = "WEEKLY"
         mailing_list = [
           {
-            # name = "All Admins"
-            id = "-100"
+            name = "All Admins"
           }
         ]
       }

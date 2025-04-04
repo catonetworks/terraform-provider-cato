@@ -14,6 +14,24 @@ The `cato_socket_site` resource contains the configuration parameters necessary 
 
 ```terraform
 // socket site for AWS
+data "cato_siteLocation" "ny" {
+  filters = [{
+    field = "city"
+    search = "New York"
+    operation = "startsWith"
+  },
+  {
+    field = "state_name"
+    search = "New York"
+    operation = "exact"
+  },
+ {
+    field = "country_name"
+    search = "United"
+    operation = "contains"
+  }]
+}
+
 resource "cato_socket_site" "aws_site" {
   name            = "aws_site"
   description     = "site description"
@@ -26,9 +44,10 @@ resource "cato_socket_site" "aws_site" {
   }
 
   site_location = {
-    country_code = "FR"
-    timezone     = "Europe/Paris"
-  }
+    country_code = data.cato_siteLocation.ny.locations[1].country_code
+    state_code = data.cato_siteLocation.ny.locations[1].state_code
+    timezone = data.cato_siteLocation.ny.locations[1].timezone
+ }
 }
 
 // socket site x1500 with DHCP settings
