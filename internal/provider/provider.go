@@ -139,7 +139,9 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	}
 
 	// newer client:
-	catoClient, _ := cato.New(baseurl, token, nil, "User-Agent", "cato-terraform-"+p.version)
+	headers := map[string]string{}
+	headers["User-Agent"] = "cato-terraform-" + p.version
+	catoClient, _ := cato.New(baseurl, token, accountId, nil, headers)
 
 	dataSourceData := &catoClientData{
 		BaseURL:   baseurl,
@@ -158,6 +160,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		NewAccountSnapshotSiteDataSource,
 		AllocatedIpDataSource,
 		SiteLocationDataSource,
+		NetworkInterfacesDataSource,
 		// NewInternetFwPolicyDataSource,
 	}
 }
