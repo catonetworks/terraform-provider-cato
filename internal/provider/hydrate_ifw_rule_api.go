@@ -89,8 +89,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.Host = ruleSourceInput.Host
 				}
+				ruleSourceUpdateInput.Host = ruleSourceInput.Host
 			}
 
 			// setting source site
@@ -111,8 +111,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.Site = ruleSourceInput.Site
 				}
+				ruleSourceUpdateInput.Site = ruleSourceInput.Site
 			}
 
 			// setting source ip range
@@ -128,8 +128,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						From: itemSourceIPRangeInput.From.ValueString(),
 						To:   itemSourceIPRangeInput.To.ValueString(),
 					})
-					ruleSourceUpdateInput.IPRange = ruleSourceInput.IPRange
 				}
+				ruleSourceUpdateInput.IPRange = ruleSourceInput.IPRange
 			}
 
 			// setting source global ip range
@@ -150,8 +150,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.GlobalIPRange = ruleSourceInput.GlobalIPRange
 				}
+				ruleSourceUpdateInput.GlobalIPRange = ruleSourceInput.GlobalIPRange
 			}
 
 			// setting source network interface
@@ -172,8 +172,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.NetworkInterface = ruleSourceInput.NetworkInterface
 				}
+				ruleSourceUpdateInput.NetworkInterface = ruleSourceInput.NetworkInterface
 			}
 
 			// setting source site network subnet
@@ -194,8 +194,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.SiteNetworkSubnet = ruleSourceInput.SiteNetworkSubnet
 				}
+				ruleSourceUpdateInput.SiteNetworkSubnet = ruleSourceInput.SiteNetworkSubnet
 			}
 
 			// setting source floating subnet
@@ -216,8 +216,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.FloatingSubnet = ruleSourceInput.FloatingSubnet
 				}
+				ruleSourceUpdateInput.FloatingSubnet = ruleSourceInput.FloatingSubnet
 			}
 
 			// setting source user
@@ -238,8 +238,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.User = ruleSourceInput.User
 				}
+				ruleSourceUpdateInput.User = ruleSourceInput.User
 			}
 
 			// setting source users group
@@ -260,8 +260,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.UsersGroup = ruleSourceInput.UsersGroup
 				}
+				ruleSourceUpdateInput.UsersGroup = ruleSourceInput.UsersGroup
 			}
 
 			// setting source group
@@ -282,8 +282,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.Group = ruleSourceInput.Group
 				}
+				ruleSourceUpdateInput.Group = ruleSourceInput.Group
 			}
 
 			// setting source system group
@@ -304,8 +304,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleSourceUpdateInput.SystemGroup = ruleSourceInput.SystemGroup
 				}
+				ruleSourceUpdateInput.SystemGroup = ruleSourceInput.SystemGroup
 			}
 			rootAddRule.Source = ruleSourceInput
 			rootUpdateRule.Source = ruleSourceUpdateInput
@@ -329,8 +329,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 					Input: ObjectRefOutput.Input,
 				})
-				rootUpdateRule.Country = rootAddRule.Country
 			}
+			rootUpdateRule.Country = rootAddRule.Country
 		}
 
 		// setting device
@@ -351,9 +351,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 					Input: ObjectRefOutput.Input,
 				})
-
-				rootUpdateRule.Device = rootAddRule.Device
 			}
+			rootUpdateRule.Device = rootAddRule.Device
 		}
 
 		// setting device OS
@@ -419,8 +418,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleDestinationUpdateInput.Application = ruleDestinationInput.Application
 				}
+				ruleDestinationUpdateInput.Application = ruleDestinationInput.Application
 			}
 
 			// setting destination custom app
@@ -441,8 +440,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleDestinationUpdateInput.CustomApp = ruleDestinationInput.CustomApp
 				}
+				ruleDestinationUpdateInput.CustomApp = ruleDestinationInput.CustomApp
 			}
 
 			// setting destination ip range
@@ -458,8 +457,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						From: itemDestinationIPRangeInput.From.ValueString(),
 						To:   itemDestinationIPRangeInput.To.ValueString(),
 					})
-					ruleDestinationUpdateInput.IPRange = ruleDestinationInput.IPRange
 				}
+				ruleDestinationUpdateInput.IPRange = ruleDestinationInput.IPRange
 			}
 
 			// setting destination global ip range
@@ -480,8 +479,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleDestinationUpdateInput.GlobalIPRange = ruleDestinationInput.GlobalIPRange
 				}
+				ruleDestinationUpdateInput.GlobalIPRange = ruleDestinationInput.GlobalIPRange
 			}
 
 			// setting destination app category
@@ -502,8 +501,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleDestinationUpdateInput.AppCategory = ruleDestinationInput.AppCategory
 				}
+				ruleDestinationUpdateInput.AppCategory = ruleDestinationInput.AppCategory
 			}
 
 			// setting destination custom app category
@@ -524,8 +523,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleDestinationUpdateInput.CustomCategory = ruleDestinationInput.CustomCategory
 				}
+				ruleDestinationUpdateInput.CustomCategory = ruleDestinationInput.CustomCategory
 			}
 
 			// setting destination sanctionned apps category
@@ -546,8 +545,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleDestinationUpdateInput.SanctionedAppsCategory = ruleDestinationInput.SanctionedAppsCategory
 				}
+				ruleDestinationUpdateInput.SanctionedAppsCategory = ruleDestinationInput.SanctionedAppsCategory
 			}
 
 			// setting destination country
@@ -568,8 +567,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-					ruleDestinationUpdateInput.Country = ruleDestinationInput.Country
 				}
+				ruleDestinationUpdateInput.Country = ruleDestinationInput.Country
 			}
 			rootAddRule.Destination = ruleDestinationInput
 			rootUpdateRule.Destination = ruleDestinationUpdateInput
@@ -601,9 +600,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
-
-					ruleServiceUpdateInput.Standard = ruleServiceInput.Standard
 				}
+				ruleServiceUpdateInput.Standard = ruleServiceInput.Standard
 			}
 
 			// setting service custom
@@ -711,8 +709,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 							By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 							Input: ObjectRefOutput.Input,
 						})
-						rootUpdateRule.Tracking.Alert.SubscriptionGroup = rootAddRule.Tracking.Alert.SubscriptionGroup
 					}
+					rootUpdateRule.Tracking.Alert.SubscriptionGroup = rootAddRule.Tracking.Alert.SubscriptionGroup
 				}
 
 				// setting tracking alert webhook
@@ -734,8 +732,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
-							rootUpdateRule.Tracking.Alert.Webhook = rootAddRule.Tracking.Alert.Webhook
 						}
+						rootUpdateRule.Tracking.Alert.Webhook = rootAddRule.Tracking.Alert.Webhook
 					}
 				}
 
@@ -758,8 +756,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 							By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 							Input: ObjectRefOutput.Input,
 						})
-						rootUpdateRule.Tracking.Alert.MailingList = rootAddRule.Tracking.Alert.MailingList
 					}
+					rootUpdateRule.Tracking.Alert.MailingList = rootAddRule.Tracking.Alert.MailingList
 				}
 			}
 		}
