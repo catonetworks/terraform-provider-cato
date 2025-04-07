@@ -1218,7 +1218,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules.",
 						Required:    false,
 						Optional:    true,
-						Computed:    true,
+						// Computed:    true,
 						PlanModifiers: []planmodifier.Set{
 							setplanmodifier.UseStateForUnknown(), // Avoid drift
 						},
@@ -1228,6 +1228,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "A unique name of the rule exception.",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 								},
 								"source": schema.SingleNestedAttribute{
 									Description: "Source traffic matching criteria for the exception.",
@@ -1239,10 +1242,16 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											ElementType: types.StringType,
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"host": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1278,6 +1287,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1317,12 +1329,18 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
@@ -1342,6 +1360,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1377,6 +1398,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1412,6 +1436,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1447,6 +1474,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1517,6 +1547,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1552,6 +1585,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1587,6 +1623,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1624,6 +1663,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "Source country matching criteria for the exception.",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.Set{
+										setplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Validators: []validator.Set{
 										setvalidator.SizeAtLeast(1),
 									},
@@ -1659,6 +1701,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.Set{
+										setplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Validators: []validator.Set{
 										setvalidator.SizeAtLeast(1),
 									},
@@ -1712,6 +1757,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1747,6 +1795,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1782,6 +1833,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1821,6 +1875,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1856,6 +1913,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1891,6 +1951,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -1927,12 +1990,18 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"fqdn": schema.ListAttribute{
 											ElementType: types.StringType,
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"ip": schema.ListAttribute{
 											ElementType: types.StringType,
@@ -1958,17 +2027,26 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
 														Description: "",
 														Required:    true,
 														Optional:    false,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
 													},
 													"to": schema.StringAttribute{
 														Description: "",
 														Required:    true,
 														Optional:    false,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
 													},
 												},
 											},
@@ -1977,6 +2055,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
@@ -2028,6 +2109,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										"standard": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -2060,6 +2144,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"port": schema.ListAttribute{
@@ -2093,6 +2180,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
 													},
 												},
 											},
@@ -2103,6 +2193,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "Connection origin matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 									Optional:    true,
 									Required:    false,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Validators: []validator.String{
 										stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
 									},
@@ -2138,7 +2231,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	input, diags := hydrateIfwApiRuleState(ctx, plan)
+	input, diags := hydrateIfwRuleApi(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -2280,7 +2373,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	input, diags := hydrateIfwApiRuleState(ctx, plan)
+	input, diags := hydrateIfwRuleApi(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

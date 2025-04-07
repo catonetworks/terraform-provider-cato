@@ -22,7 +22,7 @@ type hydrateIfwApiTypes struct {
 
 // hydrateIfwApiRuleState takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato api data used to either create or update IFW entries
-func hydrateIfwApiRuleState(ctx context.Context, plan InternetFirewallRule) (hydrateIfwApiTypes, diag.Diagnostics) {
+func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateIfwApiTypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 
 	hydrateApiReturn := hydrateIfwApiTypes{}
