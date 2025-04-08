@@ -8,6 +8,8 @@ github.com/bufbuild/protocompile v0.4.0 h1:LbFKd2XowZvQ/kajzguUp2DC9UEIQhIq77fZZ
 github.com/bufbuild/protocompile v0.4.0/go.mod h1:3v93+mbWn/v3xzN+31nwkJfrEpAUwp+BagBSZWx+TP8=
 github.com/catonetworks/cato-go-sdk v0.1.0 h1:y7bWB/BxrQx0yO/jkq5Jp0xROp7hPt8rj23aiodZOLs=
 github.com/catonetworks/cato-go-sdk v0.1.0/go.mod h1:zYimFz27B2ru5HTgWir9c4XUbDwBjz+MiMme2rv/sWQ=
+github.com/catonetworks/cato-go-sdk v0.2.2 h1:KfjIqKENm+dEWgP3MrsQysz2DGIdMVBng/7cnbDq/hA=
+github.com/catonetworks/cato-go-sdk v0.2.2/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
