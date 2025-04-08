@@ -13,7 +13,7 @@ The `cato_socket_site` resource contains the configuration parameters necessary 
 ## Example Usage
 
 ```terraform
-// socket site for AWS
+// Data Source for site location
 data "cato_siteLocation" "ny" {
   filters = [{
     field = "city"
@@ -32,6 +32,7 @@ data "cato_siteLocation" "ny" {
   }]
 }
 
+// socket site for AWS
 resource "cato_socket_site" "aws_site" {
   name            = "aws_site"
   description     = "site description"
