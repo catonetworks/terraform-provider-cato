@@ -14,6 +14,8 @@ require (
 	github.com/99designs/gqlgen v0.17.61 // indirect
 	github.com/Yamashou/gqlgenc v0.30.2 // indirect
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/fatih/structs v1.1.0 // indirect
+	github.com/gobeam/stringy v0.0.7 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
