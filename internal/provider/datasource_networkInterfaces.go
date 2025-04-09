@@ -57,8 +57,9 @@ const socketMappJson = `{
 }`
 
 type NetworkInterfaceLookup struct {
-	SiteID types.String `tfsdk:"site_id"`
-	Items  types.List   `tfsdk:"items"`
+	SiteID               types.String `tfsdk:"site_id"`
+	NetworkInterfaceName types.String `tfsdk:"network_interface_name"`
+	Items                types.List   `tfsdk:"items"`
 }
 
 type NetworkInterface struct {
@@ -87,6 +88,11 @@ func (d *networkInterfacesDataSource) Schema(_ context.Context, _ datasource.Sch
 		Attributes: map[string]schema.Attribute{
 			"site_id": schema.StringAttribute{
 				Description: "ID of the site to retrieve network interfaces for",
+				Required:    false,
+				Optional:    true,
+			},
+			"network_interface_name": schema.StringAttribute{
+				Description: "Name of the interface to retrieve",
 				Required:    false,
 				Optional:    true,
 			},
@@ -187,10 +193,14 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 					ifaceMap[*siteID] = make(map[string]InterfaceConfig)
 				}
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
-					ifaceMap[*siteID][*iface.Name] = InterfaceConfig{
-						InterfaceID: socketConf[iface.ID],
-						Index:       iface.ID,
-						DestType:    *iface.DestType,
+					if networkInterfaceLookup.NetworkInterfaceName.IsNull() || (!networkInterfaceLookup.NetworkInterfaceName.IsNull() && *iface.Name == networkInterfaceLookup.NetworkInterfaceName.ValueString()) {
+						fmt.Println("networkInterfaceLookup.NetworkInterfaceName.ValueString() " + fmt.Sprintf("%v", networkInterfaceLookup.NetworkInterfaceName.ValueString()))
+						fmt.Println("*iface.Name " + fmt.Sprintf("%v", *iface.Name))
+						ifaceMap[*siteID][*iface.Name] = InterfaceConfig{
+							InterfaceID: socketConf[iface.ID],
+							Index:       iface.ID,
+							DestType:    *iface.DestType,
+						}
 					}
 				}
 			} else {
@@ -229,34 +239,36 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 		interfaceName := cast.ToString(helperFields["interfaceName"])
 		siteID := cast.ToString(helperFields["siteId"])
 		if networkInterfaceLookup.SiteID.IsNull() || (!networkInterfaceLookup.SiteID.IsNull() && siteID == networkInterfaceLookup.SiteID.ValueString()) {
-			interfaceId := types.StringNull()
-			interfaceIndex := types.StringNull()
-			interfaceDestType := types.StringNull()
-			if _, exists := ifaceMap[siteID]; exists {
-				if _, exists := ifaceMap[siteID][interfaceName]; exists {
-					interfaceId = types.StringValue(ifaceMap[siteID][interfaceName].InterfaceID)
-					interfaceIndex = types.StringValue(ifaceMap[siteID][interfaceName].Index)
-					interfaceDestType = types.StringValue(ifaceMap[siteID][interfaceName].DestType)
+			if networkInterfaceLookup.NetworkInterfaceName.IsNull() || (!networkInterfaceLookup.NetworkInterfaceName.IsNull() && interfaceName == networkInterfaceLookup.NetworkInterfaceName.ValueString()) {
+				interfaceId := types.StringNull()
+				interfaceIndex := types.StringNull()
+				interfaceDestType := types.StringNull()
+				if _, exists := ifaceMap[siteID]; exists {
+					if _, exists := ifaceMap[siteID][interfaceName]; exists {
+						interfaceId = types.StringValue(ifaceMap[siteID][interfaceName].InterfaceID)
+						interfaceIndex = types.StringValue(ifaceMap[siteID][interfaceName].Index)
+						interfaceDestType = types.StringValue(ifaceMap[siteID][interfaceName].DestType)
+					}
 				}
+				obj, diags := types.ObjectValue(
+					attrTypes,
+					map[string]attr.Value{
+						"id":                     types.StringValue(item.GetEntity().GetID()),
+						"name":                   types.StringValue(interfaceName),
+						"site_id":                types.StringValue(siteID),
+						"site_name":              types.StringValue(cast.ToString(helperFields["siteName"])),
+						"subnet":                 types.StringValue(cast.ToString(helperFields["subnet"])),
+						"socket_interface_index": interfaceIndex,
+						"socket_interface_id":    interfaceId,
+						"dest_type":              interfaceDestType,
+					},
+				)
+				if diags.HasError() {
+					resp.Diagnostics.Append(diags...)
+					return
+				}
+				objects = append(objects, obj)
 			}
-			obj, diags := types.ObjectValue(
-				attrTypes,
-				map[string]attr.Value{
-					"id":                     types.StringValue(item.GetEntity().GetID()),
-					"name":                   types.StringValue(interfaceName),
-					"site_id":                types.StringValue(siteID),
-					"site_name":              types.StringValue(cast.ToString(helperFields["siteName"])),
-					"subnet":                 types.StringValue(cast.ToString(helperFields["subnet"])),
-					"socket_interface_index": interfaceIndex,
-					"socket_interface_id":    interfaceId,
-					"dest_type":              interfaceDestType,
-				},
-			)
-			if diags.HasError() {
-				resp.Diagnostics.Append(diags...)
-				return
-			}
-			objects = append(objects, obj)
 		}
 	}
 
