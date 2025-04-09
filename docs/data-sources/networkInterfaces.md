@@ -23,6 +23,7 @@ provider "cato" {
 ### Data Source ###
 data "cato_networkInterfaces" "test-site" {
 	site_id = "12345"
+    network_interface_name = "INT_7"
 }
 
 ### Example Response Output ###
@@ -34,7 +35,7 @@ data "cato_networkInterfaces" "test-site" {
             name                   = "MY-LAN"
             site_id                = "89328"
             site_name              = "SD-Office"
-            socket_interface_id    = "INT_2"
+            socket_interface_id    = "INT_7"
             socket_interface_index = "6"
             subnet                 = "192.168.2.0/24"
         },

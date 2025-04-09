@@ -16,43 +16,43 @@ import (
 
 const socketMappJson = `{
 	"SOCKET_X1600": {
-		"1": "WAN_1",
-		"2": "WAN_2",
-		"3": "LAN_1",
-		"4": "LAN_2",
-		"5": "INT_1",
-		"6": "INT_2",
-		"7": "INT_3",
-		"8": "INT_4"
+		"1": "WAN",
+		"2": "INT_2",
+		"3": "INT_3",
+		"4": "INT_4",
+		"5": "LAN",
+		"6": "INT_6",
+		"7": "INT_7",
+		"8": "INT_8"
 	},
 	"SOCKET_X1600_LTE": {
-		"1": "WAN_1",
-		"2": "WAN_2",
-		"3": "LAN_1",
-		"4": "LAN_2",
-		"5": "INT_1",
-		"6": "INT_2",
-		"7": "INT_3",
-		"8": "INT_4",
+		"1": "WAN",
+		"2": "INT_2",
+		"3": "INT_3",
+		"4": "INT_4",
+		"5": "LAN",
+		"6": "INT_6",
+		"7": "INT_7",
+		"8": "INT_8",
 		"LTE": "LTE"
 	},
 	"SOCKET_X1700": {
-		"1": "WAN_1",
-		"2": "WAN_2",
-		"3": "LAN_1",
-		"4": "LAN_2",
-		"5": "INT_1",
-		"6": "INT_2",
-		"7": "INT_3",
-		"8": "INT_4",
-		"9": "INT_5",
-		"10": "INT_6",
-		"11": "INT_7",
-		"12": "INT_8",
-		"13": "INT_9",
-		"14": "INT_10",
-		"15": "INT_11",
-		"16": "INT_12"
+		"1": "WAN",
+		"2": "INT_2",
+		"3": "INT_3",
+		"4": "INT_4",
+		"5": "LAN",
+		"6": "INT_6",
+		"7": "INT_7",
+		"8": "INT_8",
+		"9": "INT_9",
+		"10": "INT_10",
+		"11": "INT_11",
+		"12": "INT_12",
+		"13": "INT_13",
+		"14": "INT_14",
+		"15": "INT_15",
+		"16": "INT_16"
 	}
 }`
 
@@ -149,8 +149,8 @@ func (d *networkInterfacesDataSource) Configure(_ context.Context, req datasourc
 }
 
 func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var networkInterfaceLookup NetworkInterfaceLookup
-	if diags := req.Config.Get(ctx, &networkInterfaceLookup); diags.HasError() {
+	var networkInterfacesDataSource NetworkInterfaceLookup
+	if diags := req.Config.Get(ctx, &networkInterfacesDataSource); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
 	}
@@ -182,25 +182,26 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 		InterfaceID string `json:"interface_id"`
 		Index       string `json:"index"`
 		DestType    string `json:"dest_type"`
+		Name        string `json:"name"`
 	}
 	ifaceMap := make(map[string]map[string]InterfaceConfig)
 	for _, site := range accountSnapshotSite.AccountSnapshot.GetSites() {
 		siteID := site.GetID()
-		if networkInterfaceLookup.SiteID.IsNull() || (!networkInterfaceLookup.SiteID.IsNull() && *siteID == networkInterfaceLookup.SiteID.ValueString()) {
+		if networkInterfacesDataSource.SiteID.IsNull() || (!networkInterfacesDataSource.SiteID.IsNull() && *siteID == networkInterfacesDataSource.SiteID.ValueString()) {
 			connType := site.InfoSiteSnapshot.ConnType
 			if socketConf, ok := socketMap[connType.String()]; ok {
 				if _, exists := ifaceMap[*siteID]; !exists {
 					ifaceMap[*siteID] = make(map[string]InterfaceConfig)
 				}
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
-					if networkInterfaceLookup.NetworkInterfaceName.IsNull() || (!networkInterfaceLookup.NetworkInterfaceName.IsNull() && *iface.Name == networkInterfaceLookup.NetworkInterfaceName.ValueString()) {
-						fmt.Println("networkInterfaceLookup.NetworkInterfaceName.ValueString() " + fmt.Sprintf("%v", networkInterfaceLookup.NetworkInterfaceName.ValueString()))
-						fmt.Println("*iface.Name " + fmt.Sprintf("%v", *iface.Name))
-						ifaceMap[*siteID][*iface.Name] = InterfaceConfig{
-							InterfaceID: socketConf[iface.ID],
-							Index:       iface.ID,
-							DestType:    *iface.DestType,
-						}
+					fmt.Println("networkInterfaceLookup.NetworkInterfaceName.ValueString() " + fmt.Sprintf("%v", networkInterfacesDataSource.NetworkInterfaceName.ValueString()))
+					fmt.Println("iface.Id " + fmt.Sprintf("%v", iface.ID))
+					fmt.Println("*iface.Name " + fmt.Sprintf("%v", *iface.Name))
+					ifaceMap[*siteID][socketConf[iface.ID]] = InterfaceConfig{
+						InterfaceID: socketConf[iface.ID],
+						Index:       iface.ID,
+						DestType:    *iface.DestType,
+						Name:        *iface.Name,
 					}
 				}
 			} else {
@@ -236,18 +237,24 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 	for _, item := range result.GetEntityLookup().GetItems() {
 		helperFields := item.GetHelperFields()
-		interfaceName := cast.ToString(helperFields["interfaceName"])
+		entLookupinterfaceID := cast.ToString(helperFields["interfaceName"])
 		siteID := cast.ToString(helperFields["siteId"])
-		if networkInterfaceLookup.SiteID.IsNull() || (!networkInterfaceLookup.SiteID.IsNull() && siteID == networkInterfaceLookup.SiteID.ValueString()) {
-			if networkInterfaceLookup.NetworkInterfaceName.IsNull() || (!networkInterfaceLookup.NetworkInterfaceName.IsNull() && interfaceName == networkInterfaceLookup.NetworkInterfaceName.ValueString()) {
+		tflog.Warn(ctx, "networkInterfaceLookup.SiteID '"+fmt.Sprintf("%v", networkInterfacesDataSource.SiteID.ValueString())+"'")
+		tflog.Warn(ctx, "siteID '"+fmt.Sprintf("%v", siteID)+"'")
+		if networkInterfacesDataSource.SiteID.IsNull() || (!networkInterfacesDataSource.SiteID.IsNull() && siteID == networkInterfacesDataSource.SiteID.ValueString()) {
+			interfaceName := string(ifaceMap[siteID][entLookupinterfaceID].InterfaceID)
+			tflog.Warn(ctx, "entLookupinterfaceID '"+fmt.Sprintf("%v", entLookupinterfaceID)+"'")
+			tflog.Warn(ctx, "interfaceName '"+fmt.Sprintf("%v", interfaceName)+"'")
+			tflog.Warn(ctx, "networkInterfacesDataSource.NetworkInterfaceName.ValueString() '"+fmt.Sprintf("%v", networkInterfacesDataSource.NetworkInterfaceName.ValueString())+"'")
+			if networkInterfacesDataSource.NetworkInterfaceName.IsNull() || (!networkInterfacesDataSource.NetworkInterfaceName.IsNull() && interfaceName == networkInterfacesDataSource.NetworkInterfaceName.ValueString()) {
 				interfaceId := types.StringNull()
-				interfaceIndex := types.StringNull()
 				interfaceDestType := types.StringNull()
+				interfaceIndex := types.StringNull()
 				if _, exists := ifaceMap[siteID]; exists {
-					if _, exists := ifaceMap[siteID][interfaceName]; exists {
-						interfaceId = types.StringValue(ifaceMap[siteID][interfaceName].InterfaceID)
-						interfaceIndex = types.StringValue(ifaceMap[siteID][interfaceName].Index)
-						interfaceDestType = types.StringValue(ifaceMap[siteID][interfaceName].DestType)
+					if _, exists := ifaceMap[siteID][entLookupinterfaceID]; exists {
+						interfaceId = types.StringValue(ifaceMap[siteID][entLookupinterfaceID].InterfaceID)
+						interfaceDestType = types.StringValue(ifaceMap[siteID][entLookupinterfaceID].DestType)
+						interfaceIndex = types.StringValue(ifaceMap[siteID][entLookupinterfaceID].Index)
 					}
 				}
 				obj, diags := types.ObjectValue(
@@ -283,8 +290,8 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
-	networkInterfaceLookup.Items = list
-	if diags := resp.State.Set(ctx, &networkInterfaceLookup); diags.HasError() {
+	networkInterfacesDataSource.Items = list
+	if diags := resp.State.Set(ctx, &networkInterfacesDataSource); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
 }
