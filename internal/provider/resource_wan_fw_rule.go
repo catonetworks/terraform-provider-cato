@@ -4,14 +4,19 @@ import (
 	"context"
 	"fmt"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -89,26 +94,37 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Required:    true,
 						Optional:    false,
 					},
-					"section": schema.SingleNestedAttribute{
-						Required: false,
-						Optional: true,
-						Attributes: map[string]schema.Attribute{
-							"name": schema.StringAttribute{
-								Description: "",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.String{
-									stringvalidator.ConflictsWith(path.Expressions{
-										path.MatchRelative().AtParent().AtName("id"),
-									}...),
-								},
-							},
-							"id": schema.StringAttribute{
-								Description: "",
-								Required:    false,
-								Optional:    true,
-							},
+					// "section": schema.SingleNestedAttribute{
+					// 	Required: false,
+					// 	Optional: true,
+					// 	Attributes: map[string]schema.Attribute{
+					// 		"name": schema.StringAttribute{
+					// 			Description: "",
+					// 			Required:    false,
+					// 			Optional:    true,
+					// 			Validators: []validator.String{
+					// 				stringvalidator.ConflictsWith(path.Expressions{
+					// 					path.MatchRelative().AtParent().AtName("id"),
+					// 				}...),
+					// 			},
+					// 		},
+					// 		"id": schema.StringAttribute{
+					// 			Description: "",
+					// 			Required:    false,
+					// 			Optional:    true,
+					// 		},
+					// 	},
+					// },
+					"action": schema.StringAttribute{
+						Description: "The action applied by the Wan Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
+						Required:    true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT"),
 						},
+					},
+					"direction": schema.StringAttribute{
+						Description: "Define the direction on which the rule is applied (https://api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)",
+						Required:    true,
 					},
 					"source": schema.SingleNestedAttribute{
 						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
@@ -121,10 +137,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Required:    false,
 								Optional:    true,
 							},
-							"host": schema.ListNestedAttribute{
+							"host": schema.SetNestedAttribute{
 								Description: "Hosts and servers defined for your account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -136,19 +158,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"site": schema.ListNestedAttribute{
+							"site": schema.SetNestedAttribute{
 								Description: "Site defined for the account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -160,11 +196,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -194,10 +238,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 							},
-							"global_ip_range": schema.ListNestedAttribute{
+							"global_ip_range": schema.SetNestedAttribute{
 								Description: "Globally defined IP range, IP and subnet objects",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -209,19 +259,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"network_interface": schema.ListNestedAttribute{
+							"network_interface": schema.SetNestedAttribute{
 								Description: "Network range defined for a site",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -233,19 +297,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"site_network_subnet": schema.ListNestedAttribute{
+							"site_network_subnet": schema.SetNestedAttribute{
 								Description: "GlobalRange + InterfaceSubnet",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -257,19 +335,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"floating_subnet": schema.ListNestedAttribute{
+							"floating_subnet": schema.SetNestedAttribute{
 								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP.",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -281,19 +373,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"user": schema.ListNestedAttribute{
+							"user": schema.SetNestedAttribute{
 								Description: "Individual users defined for the account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -305,19 +411,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"users_group": schema.ListNestedAttribute{
+							"users_group": schema.SetNestedAttribute{
 								Description: "Group of users",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -329,19 +449,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"group": schema.ListNestedAttribute{
+							"group": schema.SetNestedAttribute{
 								Description: "Groups defined for your account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -353,19 +487,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"system_group": schema.ListNestedAttribute{
+							"system_group": schema.SetNestedAttribute{
 								Description: "Predefined Cato groups",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -377,11 +525,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -399,10 +555,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Required:    false,
 								Optional:    true,
 							},
-							"host": schema.ListNestedAttribute{
+							"host": schema.SetNestedAttribute{
 								Description: "Hosts and servers defined for your account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -414,19 +576,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"site": schema.ListNestedAttribute{
+							"site": schema.SetNestedAttribute{
 								Description: "Site defined for the account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -438,11 +614,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -472,10 +656,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 							},
-							"global_ip_range": schema.ListNestedAttribute{
+							"global_ip_range": schema.SetNestedAttribute{
 								Description: "Globally defined IP range, IP and subnet objects",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -487,19 +677,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"network_interface": schema.ListNestedAttribute{
+							"network_interface": schema.SetNestedAttribute{
 								Description: "Network range defined for a site",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -511,19 +715,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"site_network_subnet": schema.ListNestedAttribute{
+							"site_network_subnet": schema.SetNestedAttribute{
 								Description: "GlobalRange + InterfaceSubnet",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -535,19 +753,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"floating_subnet": schema.ListNestedAttribute{
+							"floating_subnet": schema.SetNestedAttribute{
 								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP.",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -559,19 +791,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"user": schema.ListNestedAttribute{
+							"user": schema.SetNestedAttribute{
 								Description: "Individual users defined for the account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -583,19 +829,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"users_group": schema.ListNestedAttribute{
+							"users_group": schema.SetNestedAttribute{
 								Description: "Group of users",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -607,19 +867,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"group": schema.ListNestedAttribute{
+							"group": schema.SetNestedAttribute{
 								Description: "Groups defined for your account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -631,19 +905,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
 							},
-							"system_group": schema.ListNestedAttribute{
+							"system_group": schema.SetNestedAttribute{
 								Description: "Predefined Cato groups",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -655,11 +943,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -671,10 +967,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Optional:    true,
 						Required:    false,
 					},
-					"country": schema.ListNestedAttribute{
+					"country": schema.SetNestedAttribute{
 						Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
+						PlanModifiers: []planmodifier.Set{
+							setplanmodifier.UseStateForUnknown(), // Avoid drift
+						},
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
+						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
@@ -686,19 +988,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											path.MatchRelative().AtParent().AtName("id"),
 										}...),
 									},
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 								},
 								"id": schema.StringAttribute{
 									Description: "",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 								},
 							},
 						},
 					},
-					"device": schema.ListNestedAttribute{
+					"device": schema.SetNestedAttribute{
 						Description: "Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
+						PlanModifiers: []planmodifier.Set{
+							setplanmodifier.UseStateForUnknown(), // Avoid drift
+						},
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
+						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
@@ -730,10 +1046,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Optional:    true,
 						Required:    false,
 						Attributes: map[string]schema.Attribute{
-							"application": schema.ListNestedAttribute{
+							"application": schema.SetNestedAttribute{
 								Description: "Applications for the rule (pre-defined)",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -754,10 +1076,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 							},
-							"custom_app": schema.ListNestedAttribute{
+							"custom_app": schema.SetNestedAttribute{
 								Description: "Custom (user-defined) applications",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -778,10 +1106,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 							},
-							"app_category": schema.ListNestedAttribute{
+							"app_category": schema.SetNestedAttribute{
 								Description: "Cato category of applications which are dynamically updated by Cato",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -802,10 +1136,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 							},
-							"custom_category": schema.ListNestedAttribute{
+							"custom_category": schema.SetNestedAttribute{
 								Description: "Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc.",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -826,10 +1166,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 							},
-							"sanctioned_apps_category": schema.ListNestedAttribute{
+							"sanctioned_apps_category": schema.SetNestedAttribute{
 								Description: "Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization.",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -893,10 +1239,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 							},
-							"global_ip_range": schema.ListNestedAttribute{
+							"global_ip_range": schema.SetNestedAttribute{
 								Description: "Globally defined IP range, IP and subnet objects",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -924,10 +1276,16 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Required:    false,
 						Optional:    true,
 						Attributes: map[string]schema.Attribute{
-							"standard": schema.ListNestedAttribute{
+							"standard": schema.SetNestedAttribute{
 								Description: "Standard Service to which this Wan Firewall rule applies",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -939,11 +1297,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 									},
 								},
@@ -987,14 +1353,6 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 							},
 						},
 					},
-					"action": schema.StringAttribute{
-						Description: "The action applied by the Wan Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
-						Required:    true,
-					},
-					"direction": schema.StringAttribute{
-						Description: "Define the direction on which the rule is applied (https://api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)",
-						Required:    true,
-					},
 					"tracking": schema.SingleNestedAttribute{
 						Description: "Tracking information when the rule is matched, such as events and notifications",
 						Required:    false,
@@ -1026,10 +1384,13 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										Required:    true,
 										Optional:    false,
 									},
-									"subscription_group": schema.ListNestedAttribute{
+									"subscription_group": schema.SetNestedAttribute{
 										Description: "Returns data for the Subscription Group that receives the alert",
 										Required:    false,
 										Optional:    true,
+										Validators: []validator.Set{
+											setvalidator.SizeAtLeast(1),
+										},
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
@@ -1041,19 +1402,30 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 															path.MatchRelative().AtParent().AtName("id"),
 														}...),
 													},
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 											},
 										},
 									},
-									"webhook": schema.ListNestedAttribute{
+									"webhook": schema.SetNestedAttribute{
 										Description: "Returns data for the Webhook that receives the alert",
 										Required:    false,
 										Optional:    true,
+										Validators: []validator.Set{
+											setvalidator.SizeAtLeast(1),
+										},
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
@@ -1065,19 +1437,30 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 															path.MatchRelative().AtParent().AtName("id"),
 														}...),
 													},
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 											},
 										},
 									},
-									"mailing_list": schema.ListNestedAttribute{
+									"mailing_list": schema.SetNestedAttribute{
 										Description: "Returns data for the Mailing List that receives the alert",
 										Required:    false,
 										Optional:    true,
+										Validators: []validator.Set{
+											setvalidator.SizeAtLeast(1),
+										},
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
@@ -1089,11 +1472,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 															path.MatchRelative().AtParent().AtName("id"),
 														}...),
 													},
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 												"id": schema.StringAttribute{
 													Description: "",
 													Required:    false,
 													Optional:    true,
+													PlanModifiers: []planmodifier.String{
+														stringplanmodifier.UseStateForUnknown(), // Avoid drift
+													},
+													Computed: true,
 												},
 											},
 										},
@@ -1153,16 +1544,25 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 							},
 						},
 					},
-					"exceptions": schema.ListNestedAttribute{
+					"exceptions": schema.SetNestedAttribute{
 						Description: "The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules.",
 						Required:    false,
 						Optional:    true,
+						PlanModifiers: []planmodifier.Set{
+							setplanmodifier.UseStateForUnknown(), // Avoid drift
+						},
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
+						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
 									Description: "A unique name of the rule exception.",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 								},
 								"source": schema.SingleNestedAttribute{
 									Description: "Source traffic matching criteria for the exception.",
@@ -1174,10 +1574,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											ElementType: types.StringType,
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
-										"host": schema.ListNestedAttribute{
+										"host": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1189,18 +1598,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"site": schema.ListNestedAttribute{
+										"site": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1212,11 +1635,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1226,10 +1657,20 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
@@ -1245,9 +1686,15 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 												},
 											},
 										},
-										"global_ip_range": schema.ListNestedAttribute{
+										"global_ip_range": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1259,18 +1706,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"network_interface": schema.ListNestedAttribute{
+										"network_interface": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1282,18 +1743,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"site_network_subnet": schema.ListNestedAttribute{
+										"site_network_subnet": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1305,18 +1780,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"floating_subnet": schema.ListNestedAttribute{
+										"floating_subnet": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1328,18 +1817,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"user": schema.ListNestedAttribute{
+										"user": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1351,18 +1854,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"users_group": schema.ListNestedAttribute{
+										"users_group": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1374,18 +1891,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"group": schema.ListNestedAttribute{
+										"group": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1397,18 +1928,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"system_group": schema.ListNestedAttribute{
+										"system_group": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1420,11 +1965,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1441,10 +1994,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											ElementType: types.StringType,
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
-										"host": schema.ListNestedAttribute{
+										"host": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1456,18 +2018,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"site": schema.ListNestedAttribute{
+										"site": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1479,11 +2055,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1493,10 +2077,17 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
@@ -1512,9 +2103,15 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 												},
 											},
 										},
-										"global_ip_range": schema.ListNestedAttribute{
+										"global_ip_range": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1526,18 +2123,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"network_interface": schema.ListNestedAttribute{
+										"network_interface": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1549,18 +2160,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"site_network_subnet": schema.ListNestedAttribute{
+										"site_network_subnet": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1572,18 +2197,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"floating_subnet": schema.ListNestedAttribute{
+										"floating_subnet": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1595,18 +2234,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"user": schema.ListNestedAttribute{
+										"user": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1618,18 +2271,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"users_group": schema.ListNestedAttribute{
+										"users_group": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1641,18 +2308,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"group": schema.ListNestedAttribute{
+										"group": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1664,18 +2345,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"system_group": schema.ListNestedAttribute{
+										"system_group": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1687,21 +2382,35 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
 									},
 								},
-								"country": schema.ListNestedAttribute{
+								"country": schema.SetNestedAttribute{
 									Description: "Source country matching criteria for the exception.",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.Set{
+										setplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Validators: []validator.Set{
+										setvalidator.SizeAtLeast(1),
+									},
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"name": schema.StringAttribute{
@@ -1713,35 +2422,88 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														path.MatchRelative().AtParent().AtName("id"),
 													}...),
 												},
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
 											},
 											"id": schema.StringAttribute{
 												Description: "",
 												Required:    false,
 												Optional:    true,
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
 											},
 										},
 									},
 								},
-								"device": schema.ListAttribute{
-									ElementType: types.StringType,
-									Description: "Source Device Profile matching criteria for the exception.",
-									Optional:    true,
+								"device": schema.SetNestedAttribute{
+									Description: "Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 									Required:    false,
+									Optional:    true,
+									PlanModifiers: []planmodifier.Set{
+										setplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Validators: []validator.Set{
+										setvalidator.SizeAtLeast(1),
+									},
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"name": schema.StringAttribute{
+												Description: "",
+												Required:    false,
+												Optional:    true,
+												Validators: []validator.String{
+													stringvalidator.ConflictsWith(path.Expressions{
+														path.MatchRelative().AtParent().AtName("id"),
+													}...),
+												},
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
+											},
+											"id": schema.StringAttribute{
+												Description: "",
+												Required:    false,
+												Optional:    true,
+												PlanModifiers: []planmodifier.String{
+													stringplanmodifier.UseStateForUnknown(), // Avoid drift
+												},
+												Computed: true,
+											},
+										},
+									},
 								},
 								"device_os": schema.ListAttribute{
 									ElementType: types.StringType,
 									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
 									Required:    false,
+									PlanModifiers: []planmodifier.List{
+										listplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Validators: []validator.List{
+										listvalidator.ValueStringsAre(stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS")),
+									},
+									Computed: true,
 								},
 								"application": schema.SingleNestedAttribute{
 									Description: "Application matching criteria for the exception.",
 									Optional:    true,
 									Required:    false,
 									Attributes: map[string]schema.Attribute{
-										"application": schema.ListNestedAttribute{
+										"application": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1753,18 +2515,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"custom_app": schema.ListNestedAttribute{
+										"custom_app": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1776,18 +2552,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"app_category": schema.ListNestedAttribute{
+										"app_category": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1799,19 +2589,33 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"custom_category": schema.ListNestedAttribute{
+										"custom_category": schema.SetNestedAttribute{
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1823,18 +2627,32 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
-										"sanctioned_apps_category": schema.ListNestedAttribute{
+										"sanctioned_apps_category": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1846,11 +2664,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1860,24 +2686,37 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"fqdn": schema.ListAttribute{
 											ElementType: types.StringType,
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"ip": schema.ListAttribute{
 											ElementType: types.StringType,
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Required: false,
@@ -1897,9 +2736,15 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 												},
 											},
 										},
-										"global_ip_range": schema.ListNestedAttribute{
+										"global_ip_range": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1911,11 +2756,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
@@ -1927,9 +2780,15 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Required:    false,
 									Optional:    true,
 									Attributes: map[string]schema.Attribute{
-										"standard": schema.ListNestedAttribute{
+										"standard": schema.SetNestedAttribute{
 											Required: false,
 											Optional: true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -1941,18 +2800,30 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
 														Required:    false,
 														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														Computed: true,
 													},
 												},
 											},
 										},
 										"custom": schema.ListNestedAttribute{
-											Required: false,
-											Optional: true,
+											Description: "",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"port": schema.ListAttribute{
@@ -1990,11 +2861,23 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								"direction": schema.StringAttribute{
 									Description: "Direction matching criteria for the exception.",
 									Required:    true,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Validators: []validator.String{
+										stringvalidator.OneOf("BOTH", "TO"),
+									},
 								},
 								"connection_origin": schema.StringAttribute{
 									Description: "Connection origin matching criteria for the exception.",
 									Optional:    true,
 									Required:    false,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Validators: []validator.String{
+										stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+									},
 								},
 							},
 						},
@@ -4308,13 +5191,14 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 }
 
 func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
+	tflog.Warn(ctx, "Read(1)")
 	var state WanFirewallRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Warn(ctx, "Read(2)")
 
 	// body, err := r.client.catov2.Policy(ctx, &cato_models.WanFirewallPolicyInput{}, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
@@ -4326,6 +5210,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		)
 		return
 	}
+	tflog.Warn(ctx, "Read(3)")
 
 	//retrieve rule ID
 	rule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
@@ -4334,12 +5219,16 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	resp.Diagnostics.Append(diags...)
+	tflog.Warn(ctx, "Read(4)")
 
 	ruleList := body.GetPolicy().WanFirewall.Policy.GetRules()
 	ruleExist := false
+	currentRule := &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule{}
 	for _, ruleListItem := range ruleList {
 		if ruleListItem.GetRule().ID == rule.ID.ValueString() {
 			ruleExist = true
+			currentRule = ruleListItem.GetRule()
 
 			// Need to refresh STATE
 			resp.State.SetAttribute(
@@ -4356,11 +5245,114 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	ruleInput := hydrateWanRuleState(ctx, state, currentRule)
+	tflog.Info(ctx, "ruleInput - "+fmt.Sprintf("%v", ruleInput))
+	// tflog.Info(ctx, "ruleInput.ID", map[string]interface{}{
+	// 	"value":      ruleInput.ID,
+	// 	"is_null":    ruleInput.ID.IsNull(),
+	// 	"is_unknown": ruleInput.ID.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Name", map[string]interface{}{
+	// 	"value":      ruleInput.Name,
+	// 	"is_null":    ruleInput.Name.IsNull(),
+	// 	"is_unknown": ruleInput.Name.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Description", map[string]interface{}{
+	// 	"value":      ruleInput.Description,
+	// 	"is_null":    ruleInput.Description.IsNull(),
+	// 	"is_unknown": ruleInput.Description.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Index", map[string]interface{}{
+	// 	"value":      ruleInput.Index,
+	// 	"is_null":    ruleInput.Index.IsNull(),
+	// 	"is_unknown": ruleInput.Index.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Enabled", map[string]interface{}{
+	// 	"value":      ruleInput.Enabled,
+	// 	"is_null":    ruleInput.Enabled.IsNull(),
+	// 	"is_unknown": ruleInput.Enabled.IsUnknown(),
+	// })
+	// // tflog.Info(ctx, "ruleInput.Section", map[string]interface{}{
+	// // 	"value":      ruleInput.Section,
+	// // 	"is_null":    ruleInput.Section.IsNull(),
+	// // 	"is_unknown": ruleInput.Section.IsUnknown(),
+	// // })
+	// tflog.Info(ctx, "ruleInput.Source", map[string]interface{}{
+	// 	"value":      ruleInput.Source,
+	// 	"is_null":    ruleInput.Source.IsNull(),
+	// 	"is_unknown": ruleInput.Source.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.ConnectionOrigin", map[string]interface{}{
+	// 	"value":      ruleInput.ConnectionOrigin,
+	// 	"is_null":    ruleInput.ConnectionOrigin.IsNull(),
+	// 	"is_unknown": ruleInput.ConnectionOrigin.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Country", map[string]interface{}{
+	// 	"value":      ruleInput.Country,
+	// 	"is_null":    ruleInput.Country.IsNull(),
+	// 	"is_unknown": ruleInput.Country.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Device", map[string]interface{}{
+	// 	"value":      ruleInput.Device,
+	// 	"is_null":    ruleInput.Device.IsNull(),
+	// 	"is_unknown": ruleInput.Device.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.DeviceOs", map[string]interface{}{
+	// 	"value":      ruleInput.DeviceOs,
+	// 	"is_null":    ruleInput.DeviceOs.IsNull(),
+	// 	"is_unknown": ruleInput.DeviceOs.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Application", map[string]interface{}{
+	// 	"value":      ruleInput.Application,
+	// 	"is_null":    ruleInput.Application.IsNull(),
+	// 	"is_unknown": ruleInput.Application.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Destination", map[string]interface{}{
+	// 	"value":      ruleInput.Destination,
+	// 	"is_null":    ruleInput.Destination.IsNull(),
+	// 	"is_unknown": ruleInput.Destination.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Service", map[string]interface{}{
+	// 	"value":      ruleInput.Service,
+	// 	"is_null":    ruleInput.Service.IsNull(),
+	// 	"is_unknown": ruleInput.Service.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Action", map[string]interface{}{
+	// 	"value":      ruleInput.Action,
+	// 	"is_null":    ruleInput.Action.IsNull(),
+	// 	"is_unknown": ruleInput.Action.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Tracking", map[string]interface{}{
+	// 	"value":      ruleInput.Tracking,
+	// 	"is_null":    ruleInput.Tracking.IsNull(),
+	// 	"is_unknown": ruleInput.Tracking.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Schedule", map[string]interface{}{
+	// 	"value":      ruleInput.Schedule,
+	// 	"is_null":    ruleInput.Schedule.IsNull(),
+	// 	"is_unknown": ruleInput.Schedule.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Direction", map[string]interface{}{
+	// 	"value":      ruleInput.Direction,
+	// 	"is_null":    ruleInput.Direction.IsNull(),
+	// 	"is_unknown": ruleInput.Direction.IsUnknown(),
+	// })
+	// tflog.Info(ctx, "ruleInput.Exceptions", map[string]interface{}{
+	// 	"value":      ruleInput.Exceptions,
+	// 	"is_null":    ruleInput.Exceptions.IsNull(),
+	// 	"is_unknown": ruleInput.Exceptions.IsUnknown(),
+	// })
+
+	// tflog.Info(ctx, "ruleInput.Source", map[string]interface{}{"attrs": ruleInput.Source.Attributes()})
+	// tflog.Info(ctx, "ruleInput.Destination", map[string]interface{}{"attrs": ruleInput.Destination.Attributes()})
+	// tflog.Info(ctx, "ruleInput.Application", map[string]interface{}{"attrs": ruleInput.Application.Attributes()})
+	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	resp.Diagnostics.Append(diags...)
+	tflog.Warn(ctx, "Read(7)")
+
 }
 
 func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

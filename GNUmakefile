@@ -4,7 +4,7 @@ NAMESPACE=terraform-providers
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
 # Whenever bumping provider version, please update the version in cato/client.go (line 27) as well.
-VERSION=0.0.17
+VERSION=0.0.18
 
 # Mac Intel Chip
 # OS_ARCH=darwin_amd64

@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule) Policy_Policy_InternetFirewall_Policy_Rules_Rule {
-	ruleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule) Policy_Policy_WanFirewall_Policy_Rules_Rule {
+	ruleInput := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
 	diags := make(diag.Diagnostics, 0)
 	diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
 	diags = append(diags, diagstmp...)
@@ -21,6 +21,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		return ruleInput
 	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
+	ruleInput.Direction = types.StringValue(string(currentRule.Direction))
 	if currentRule.Description == "" {
 		ruleInput.Description = types.StringNull()
 	} else {
@@ -28,12 +29,13 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	}
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
 	ruleInput.ID = types.StringValue(currentRule.ID)
-	// ruleInput.Index = types.StringValue(currentRule.Index.String())
+	ruleInput.Index = types.Int64Value(currentRule.Index)
+	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
 
 	// //////////// Rule -> Source ///////////////
 	curRuleSourceObj, diagstmp := types.ObjectValue(
-		IfwSourceAttrTypes,
+		WanSourceAttrTypes,
 		map[string]attr.Value{
 			"ip":                  parseList(ctx, types.StringType, currentRule.Source.IP, "rule.source.ip"),
 			"host":                parseNameIDList(ctx, currentRule.Source.Host, "rule.source.host"),
@@ -64,32 +66,52 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 	//////////// Rule -> Destination ///////////////
 	curRuleDestinationObj, diagstmp := types.ObjectValue(
-		IfwDestAttrTypes,
+		WanDestAttrTypes,
 		map[string]attr.Value{
-			"application":              parseNameIDList(ctx, currentRule.Destination.Application, "rule.destination.application"),
-			"custom_app":               parseNameIDList(ctx, currentRule.Destination.CustomApp, "rule.destination.custom_app"),
-			"app_category":             parseNameIDList(ctx, currentRule.Destination.AppCategory, "rule.destination.app_category"),
-			"custom_category":          parseNameIDList(ctx, currentRule.Destination.CustomCategory, "rule.destination.custom_category"),
-			"sanctioned_apps_category": parseNameIDList(ctx, currentRule.Destination.SanctionedAppsCategory, "rule.destination.sanctioned_apps_category"),
-			"country":                  parseNameIDList(ctx, currentRule.Destination.Country, "rule.destination.country"),
-			"domain":                   parseList(ctx, types.StringType, currentRule.Destination.Domain, "rule.destination.domain"),
-			"fqdn":                     parseList(ctx, types.StringType, currentRule.Destination.Fqdn, "rule.destination.fqdn"),
-			"ip":                       parseList(ctx, types.StringType, currentRule.Destination.IP, "rule.destination.ip"),
-			"subnet":                   parseList(ctx, types.StringType, currentRule.Destination.Subnet, "rule.destination.subnet"),
-			"ip_range":                 parseFromToList(ctx, currentRule.Destination.IPRange, "rule.destination.ip_range"),
-			"global_ip_range":          parseNameIDList(ctx, currentRule.Destination.GlobalIPRange, "rule.destination.global_ip_range"),
-			"remote_asn":               parseList(ctx, types.StringType, currentRule.Destination.RemoteAsn, "rule.destination.remote_asn"),
+			"ip":                  parseList(ctx, types.StringType, currentRule.Destination.IP, "rule.destination.ip"),
+			"host":                parseNameIDList(ctx, currentRule.Destination.Host, "rule.destination.host"),
+			"site":                parseNameIDList(ctx, currentRule.Destination.Site, "rule.destination.site"),
+			"subnet":              parseList(ctx, types.StringType, currentRule.Destination.Subnet, "rule.destination.subnet"),
+			"ip_range":            parseFromToList(ctx, currentRule.Destination.IPRange, "rule.destination.ip_range"),
+			"global_ip_range":     parseNameIDList(ctx, currentRule.Destination.GlobalIPRange, "rule.destination.global_ip_range"),
+			"network_interface":   parseNameIDList(ctx, currentRule.Destination.NetworkInterface, "rule.destination.network_interface"),
+			"site_network_subnet": parseNameIDList(ctx, currentRule.Destination.SiteNetworkSubnet, "rule.destination.site_network_subnet"),
+			"floating_subnet":     parseNameIDList(ctx, currentRule.Destination.FloatingSubnet, "rule.destination.floating_subnet"),
+			"user":                parseNameIDList(ctx, currentRule.Destination.User, "rule.destination.user"),
+			"users_group":         parseNameIDList(ctx, currentRule.Destination.UsersGroup, "rule.destination.users_group"),
+			"group":               parseNameIDList(ctx, currentRule.Destination.Group, "rule.destination.group"),
+			"system_group":        parseNameIDList(ctx, currentRule.Destination.SystemGroup, "rule.destination.system_group"),
 		},
 	)
 	diags = append(diags, diagstmp...)
 	ruleInput.Destination = curRuleDestinationObj
 	////////////// end Rule -> Destination ///////////////
 
+	// //////////// Rule -> Application ///////////////
+	curRuleApplicationObj, diagstmp := types.ObjectValue(
+		WanApplicationAttrTypes,
+		map[string]attr.Value{
+			"application":              parseNameIDList(ctx, currentRule.Application.Application, "rule.application.application"),
+			"custom_app":               parseNameIDList(ctx, currentRule.Application.CustomApp, "rule.application.host"),
+			"app_category":             parseNameIDList(ctx, currentRule.Application.AppCategory, "rule.application.app_category"),
+			"custom_category":          parseNameIDList(ctx, currentRule.Application.CustomCategory, "rule.application.custom_category"),
+			"sanctioned_apps_category": parseNameIDList(ctx, currentRule.Application.SanctionedAppsCategory, "rule.application.sanctioned_apps_category"),
+			"domain":                   parseList(ctx, types.StringType, currentRule.Application.Domain, "rule.application.domain"),
+			"fqdn":                     parseList(ctx, types.StringType, currentRule.Application.Fqdn, "rule.application.fqdn"),
+			"ip":                       parseList(ctx, types.StringType, currentRule.Application.IP, "rule.application.ip"),
+			"subnet":                   parseList(ctx, types.StringType, currentRule.Application.Subnet, "rule.application.subnet"),
+			"ip_range":                 parseFromToList(ctx, currentRule.Application.IPRange, "rule.application.ip_range"),
+			"global_ip_range":          parseNameIDList(ctx, currentRule.Application.GlobalIPRange, "rule.source.global_ip_range"),
+		},
+	)
+	ruleInput.Application = curRuleApplicationObj
+	////////////// end Rul -> Application ///////////////
+
 	////////////// start Rule -> Service ///////////////
 	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
 		// Initialize Service object with null values
 		curRuleServiceObj, diagstmp := types.ObjectValue(
-			IfwServiceAttrTypes,
+			WanServiceAttrTypes,
 			map[string]attr.Value{
 				"standard": types.SetNull(NameIDObjectType),
 				"custom":   types.ListNull(CustomServiceObjectType),
@@ -171,22 +193,24 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	ruleInput.Schedule = curRuleScheduleObj
 	////////////// end Rule -> Schedule ///////////////
 
-	// ////////////// start Rule -> Exceptions ///////////////
+	// // ////////////// start Rule -> Exceptions ///////////////
 	// TODO set to set not list
 	curRuleExceptionsObj, diagstmp := types.SetValue(
-		types.ObjectType{AttrTypes: IfwExceptionAttrTypes},
+		types.ObjectType{AttrTypes: WanExceptionAttrTypes},
 		[]attr.Value{
 			types.ObjectValueMust( // Single exception object with all null values
-				IfwExceptionAttrTypes,
+				WanExceptionAttrTypes,
 				map[string]attr.Value{
 					"name":    types.StringNull(),
-					"source":  types.ObjectNull(IfwSourceAttrTypes),
+					"source":  types.ObjectNull(WanSourceAttrTypes),
 					"country": types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
 					"device":  types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
 					// "device_attributes": types.ObjectNull(DeviceAttrAttrTypes),
 					"device_os":         types.ListNull(types.StringType),
-					"destination":       types.ObjectNull(IfwDestAttrTypes),
-					"service":           types.ObjectNull(IfwServiceAttrTypes),
+					"destination":       types.ObjectNull(WanDestAttrTypes),
+					"application":       types.ObjectNull(WanApplicationAttrTypes),
+					"service":           types.ObjectNull(WanServiceAttrTypes),
+					"direction":         types.StringNull(),
 					"connection_origin": types.StringNull(),
 				},
 			),
@@ -201,7 +225,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		for _, ruleException := range currentRule.Exceptions {
 			// Rule -> Exceptions -> Source
 			curExceptionSourceObj, diags := types.ObjectValue(
-				IfwSourceAttrTypes,
+				WanSourceAttrTypes,
 				map[string]attr.Value{
 					"ip":                  parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
 					"subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet"),
@@ -221,28 +245,47 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 			// Rule -> Exceptions -> Destination
 			curExceptionDestObj, diags := types.ObjectValue(
-				IfwDestAttrTypes,
+				WanDestAttrTypes,
 				map[string]attr.Value{
-					"application":              parseNameIDList(ctx, ruleException.Destination.Application, "rule.exception.destination.application"),
-					"custom_app":               parseNameIDList(ctx, ruleException.Destination.CustomApp, "rule.exception.destination.custom_app"),
-					"app_category":             parseNameIDList(ctx, ruleException.Destination.AppCategory, "rule.exception.destination.app_category"),
-					"custom_category":          parseNameIDList(ctx, ruleException.Destination.CustomCategory, "rule.exception.destination.custom_category"),
-					"sanctioned_apps_category": parseNameIDList(ctx, ruleException.Destination.SanctionedAppsCategory, "rule.exception.destination.sanctioned_apps_category"),
-					"country":                  parseNameIDList(ctx, ruleException.Destination.Country, "rule.exception.destination.country"),
-					"domain":                   parseList(ctx, types.StringType, ruleException.Destination.Domain, "rule.exception.destination.domain"),
-					"fqdn":                     parseList(ctx, types.StringType, ruleException.Destination.Fqdn, "rule.exception.destination.fqdn"),
-					"ip":                       parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
-					"subnet":                   parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
-					"ip_range":                 parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range"),
-					"global_ip_range":          parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.exception.destination.global_ip_range"),
-					"remote_asn":               parseList(ctx, types.StringType, ruleException.Destination.RemoteAsn, "rule.exception.destination.remote_asn"),
+					"ip":                  parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.destination.ip"),
+					"host":                parseNameIDList(ctx, ruleException.Destination.Host, "rule.destination.host"),
+					"site":                parseNameIDList(ctx, ruleException.Destination.Site, "rule.destination.site"),
+					"subnet":              parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.destination.subnet"),
+					"ip_range":            parseFromToList(ctx, ruleException.Destination.IPRange, "rule.destination.ip_range"),
+					"global_ip_range":     parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.destination.global_ip_range"),
+					"network_interface":   parseNameIDList(ctx, ruleException.Destination.NetworkInterface, "rule.destination.network_interface"),
+					"site_network_subnet": parseNameIDList(ctx, ruleException.Destination.SiteNetworkSubnet, "rule.destination.site_network_subnet"),
+					"floating_subnet":     parseNameIDList(ctx, ruleException.Destination.FloatingSubnet, "rule.destination.floating_subnet"),
+					"user":                parseNameIDList(ctx, ruleException.Destination.User, "rule.destination.user"),
+					"users_group":         parseNameIDList(ctx, ruleException.Destination.UsersGroup, "rule.destination.users_group"),
+					"group":               parseNameIDList(ctx, ruleException.Destination.Group, "rule.destination.group"),
+					"system_group":        parseNameIDList(ctx, ruleException.Destination.SystemGroup, "rule.destination.system_group"),
 				},
 			)
+
+			// //////////// Rule -> Exceptions -> Application ///////////////
+			curExceptionApplicationObj, diagstmp := types.ObjectValue(
+				WanApplicationAttrTypes,
+				map[string]attr.Value{
+					"application":              parseNameIDList(ctx, ruleException.Application.Application, "rule.application.application"),
+					"custom_app":               parseNameIDList(ctx, ruleException.Application.CustomApp, "rule.application.host"),
+					"app_category":             parseNameIDList(ctx, ruleException.Application.AppCategory, "rule.application.app_category"),
+					"custom_category":          parseNameIDList(ctx, ruleException.Application.CustomCategory, "rule.application.custom_category"),
+					"sanctioned_apps_category": parseNameIDList(ctx, ruleException.Application.SanctionedAppsCategory, "rule.application.sanctioned_apps_category"),
+					"domain":                   parseList(ctx, types.StringType, ruleException.Application.Domain, "rule.application.domain"),
+					"fqdn":                     parseList(ctx, types.StringType, ruleException.Application.Fqdn, "rule.application.fqdn"),
+					"ip":                       parseList(ctx, types.StringType, ruleException.Application.IP, "rule.application.ip"),
+					"subnet":                   parseList(ctx, types.StringType, ruleException.Application.Subnet, "rule.application.subnet"),
+					"ip_range":                 parseFromToList(ctx, ruleException.Application.IPRange, "rule.application.ip_range"),
+					"global_ip_range":          parseNameIDList(ctx, ruleException.Application.GlobalIPRange, "rule.source.global_ip_range"),
+				},
+			)
+			////////////// end Rul -> Exceptions -> Application ///////////////
 
 			////////////// start Rule -> Service ///////////////
 			// Initialize Service object with null values
 			curExceptionServiceObj, diagstmp := types.ObjectValue(
-				IfwServiceAttrTypes,
+				WanServiceAttrTypes,
 				map[string]attr.Value{
 					"standard": types.SetNull(NameIDObjectType),
 					"custom":   types.ListNull(CustomServiceObjectType),
@@ -274,7 +317,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 
 			// Initialize Exception object with populated values
 			curException, diagstmp := types.ObjectValue(
-				IfwExceptionAttrTypes,
+				WanExceptionAttrTypes,
 				map[string]attr.Value{
 					"name":              types.StringValue(ruleException.Name),
 					"source":            curExceptionSourceObj,
@@ -282,19 +325,22 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 					"device":            parseNameIDList(ctx, ruleException.Device, "rule.exception.device"),
 					"device_os":         parseList(ctx, types.StringType, ruleException.DeviceOs, "rule.exception.device_os"),
 					"destination":       curExceptionDestObj,
+					"application":       curExceptionApplicationObj,
 					"service":           curExceptionServiceObj,
+					"direction":         types.StringValue(ruleException.Direction.String()),
 					"connection_origin": types.StringValue(ruleException.ConnectionOrigin.String()),
 				},
 			)
 			diags = append(diags, diagstmp...)
 			exceptions = append(exceptions, curException)
 		}
-		curRuleExceptionsObj, diagstmp = types.SetValue(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}, exceptions)
+		curRuleExceptionsObj, diagstmp = types.SetValue(types.ObjectType{AttrTypes: WanExceptionAttrTypes}, exceptions)
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
 	} else {
-		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: IfwExceptionAttrTypes})
+		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
 	}
+	ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
 	////////////// end Rule -> Exceptions ///////////////
 
 	return ruleInput

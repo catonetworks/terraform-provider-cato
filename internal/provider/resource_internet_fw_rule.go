@@ -1512,6 +1512,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},

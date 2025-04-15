@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
@@ -11,7 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/spf13/cast"
 )
 
 var (
@@ -35,6 +38,13 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 	resp.Schema = schema.Schema{
 		Description: "The `cato_lan_interface` resource contains the configuration parameters necessary to add a lan interface to a socket. ([physical socket physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "Network Interface ID",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"site_id": schema.StringAttribute{
 				Description: "Site ID",
 				Required:    true,
@@ -125,12 +135,52 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	input := hydrateLanInterfaceAPI(ctx, plan)
-
+	// Set name to nil to avoid name update bug where name does not propogate correctly
+	// to accountSnapshot and entityLookup when updated via API
+	input.Name = nil
 	tflog.Debug(ctx, "lan_interface create", map[string]interface{}{
 		"input": utils.InterfaceToJSONString(input),
 	})
 
+	tflog.Warn(ctx, "Update network interface without name")
 	_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API error",
+			err.Error(),
+		)
+		return
+	}
+
+	entityInput := &cato_models.EntityInput{}
+	entityInput.Type = cato_models.EntityTypeSite
+	entityInput.ID = plan.SiteId.ValueString()
+	siteResponse, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityTypeNetworkInterface, nil, nil, entityInput, nil, nil, nil, nil, nil)
+	if err != nil {
+		resp.Diagnostics.AddError("Catov2 API error", err.Error())
+		return
+	}
+
+	tflog.Warn(ctx, "Interate over network interfaces from entityLookup to match name against defatult interfaceID (name) '"+*plan.InterfaceID.ValueStringPointer()+"' to retrieve numeric networkInterfaceID")
+	for _, item := range siteResponse.GetEntityLookup().GetItems() {
+		entityFields := item.GetEntity()
+		helperFields := item.GetHelperFields()
+		interfaceName := cast.ToString(helperFields["interfaceName"])
+		if plan.Name.ValueStringPointer() != nil && interfaceName == *plan.InterfaceID.ValueStringPointer() {
+			tflog.Warn(ctx, "Network interface name matched! "+interfaceName+", setting plan.ID "+fmt.Sprintf("%v", entityFields.GetID()))
+			plan.ID = types.StringValue(entityFields.GetID())
+			break
+		}
+	}
+
+	// Set name to the correct value
+	tflog.Warn(ctx, "Set interface name to the correct value")
+	input.Name = plan.Name.ValueStringPointer()
+	tflog.Debug(ctx, "lan_interface create", map[string]interface{}{
+		"input": utils.InterfaceToJSONString(input),
+	})
+
+	_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -162,7 +212,9 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Debug(ctx, "lan_interface update", map[string]interface{}{
 		"input": utils.InterfaceToJSONString(input),
 	})
-
+	// Update the interface keeping the default name, then retrieve the ID via entity lookup,
+	// due to bug in name updates via API not propogating correctly.  Making a second call to update the name.
+	input.Name = nil
 	_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -171,7 +223,9 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		)
 		return
 	}
-
+	// Setting the plan.ID to the previous state value, as this can not be retrieved reliably via API.
+	planID := plan.ID
+	plan.ID = planID
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -216,7 +270,7 @@ func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.
 
 	input := cato_models.UpdateSocketInterfaceInput{
 		DestType: cato_models.SocketInterfaceDestType(plan.DestType.ValueString()),
-		// Name:     plan.Name.ValueStringPointer(),
+		Name:     plan.Name.ValueStringPointer(),
 		Lan: &cato_models.SocketInterfaceLanInput{
 			Subnet:           plan.Subnet.ValueString(),
 			TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),

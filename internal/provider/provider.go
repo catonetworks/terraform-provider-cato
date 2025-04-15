@@ -159,9 +159,9 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 	return []func() datasource.DataSource{
 		NewAccountSnapshotSiteDataSource,
 		AllocatedIpDataSource,
-		SiteLocationDataSource,
+		LicensingInfoDataSource,
 		NetworkInterfacesDataSource,
-		// NewInternetFwPolicyDataSource,
+		SiteLocationDataSource,
 	}
 }
 
@@ -170,6 +170,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewSocketSiteResource,
 		NewWanInterfaceResource,
 		NewLanInterfaceResource,
+		NewLicenseResource,
 		NewInternetFwRuleResource,
 		NewInternetFwSectionResource,
 		NewWanFwRuleResource,
