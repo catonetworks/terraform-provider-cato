@@ -11,8 +11,8 @@ require (
 )
 
 require (
-	github.com/99designs/gqlgen v0.17.61 // indirect
-	github.com/Yamashou/gqlgenc v0.30.2 // indirect
+	github.com/99designs/gqlgen v0.17.66 // indirect
+	github.com/Yamashou/gqlgenc v0.31.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/gobeam/stringy v0.0.7 // indirect
@@ -27,18 +27,18 @@ require (
 	github.com/hashicorp/terraform-registry-address v0.2.3 // indirect
 	github.com/hashicorp/terraform-svchost v0.1.1 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.20 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.23 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/grpc v1.66.2 // indirect
-	google.golang.org/protobuf v1.35.2 // indirect
+	google.golang.org/protobuf v1.36.5 // indirect
 )
