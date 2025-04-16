@@ -111,7 +111,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
 		// Initialize Service object with null values
 		curRuleServiceObj, diagstmp := types.ObjectValue(
-			WanServiceAttrTypes,
+			IfwServiceAttrTypes,
 			map[string]attr.Value{
 				"standard": types.SetNull(NameIDObjectType),
 				"custom":   types.ListNull(CustomServiceObjectType),
@@ -220,7 +220,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	exceptions := []attr.Value{}
 
 	// Rule -> Exceptions -> Source
-	tflog.Warn(ctx, "hydrateIFRuleState() currentRule.Exceptions - "+fmt.Sprintf("%v", currentRule.Exceptions))
+	tflog.Warn(ctx, "hydrateWanRuleState() currentRule.Exceptions - "+fmt.Sprintf("%v", currentRule.Exceptions)+" len="+fmt.Sprintf("%v", len(currentRule.Exceptions)))
 	if currentRule.Exceptions != nil && len(currentRule.Exceptions) > 0 {
 		for _, ruleException := range currentRule.Exceptions {
 			// Rule -> Exceptions -> Source
@@ -285,7 +285,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			////////////// start Rule -> Service ///////////////
 			// Initialize Service object with null values
 			curExceptionServiceObj, diagstmp := types.ObjectValue(
-				WanServiceAttrTypes,
+				IfwServiceAttrTypes,
 				map[string]attr.Value{
 					"standard": types.SetNull(NameIDObjectType),
 					"custom":   types.ListNull(CustomServiceObjectType),
@@ -340,7 +340,6 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	} else {
 		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
 	}
-	ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
 	////////////// end Rule -> Exceptions ///////////////
 
 	return ruleInput

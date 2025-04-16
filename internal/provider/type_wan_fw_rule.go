@@ -317,8 +317,8 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule_Exceptions struct {
 	Name             types.String `tfsdk:"name"`
 	Source           types.Object `tfsdk:"source"`
 	ConnectionOrigin types.String `tfsdk:"connection_origin"`
-	Country          types.List   `tfsdk:"country"`
-	Device           types.List   `tfsdk:"device"`
+	Country          types.Set    `tfsdk:"country"`
+	Device           types.Set    `tfsdk:"device"`
 	DeviceOs         types.List   `tfsdk:"device_os"`
 	Destination      types.Object `tfsdk:"destination"`
 	Application      types.Object `tfsdk:"application"`
@@ -346,14 +346,14 @@ var WanFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"country":           types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device":            types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device_os":         types.ListType{ElemType: types.StringType},
-	// "application":       WanApplicationObjectType,
-	"destination": types.ObjectType{AttrTypes: WanDestAttrTypes},
-	"service":     types.ObjectType{AttrTypes: WanServiceAttrTypes},
-	"action":      types.StringType,
-	"tracking":    TrackingObjectType,
-	"schedule":    ScheduleObjectType,
-	"direction":   types.StringType,
-	// "exceptions":  types.SetType{ElemType: types.ObjectType{AttrTypes: WanExceptionAttrTypes}},
+	"application":       WanApplicationObjectType,
+	"destination":       types.ObjectType{AttrTypes: WanDestAttrTypes},
+	"service":           types.ObjectType{AttrTypes: WanServiceAttrTypes},
+	"action":            types.StringType,
+	"tracking":          TrackingObjectType,
+	"schedule":          ScheduleObjectType,
+	"direction":         types.StringType,
+	"exceptions":        types.SetType{ElemType: types.ObjectType{AttrTypes: WanExceptionAttrTypes}},
 }
 
 var WanServiceObjectType = types.ObjectType{AttrTypes: WanServiceAttrTypes}
