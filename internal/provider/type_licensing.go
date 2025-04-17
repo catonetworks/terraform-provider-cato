@@ -38,16 +38,16 @@ type License struct {
 	ExpirationDate string  `tfsdk:"expiration_date"`
 	StartDate      string  `tfsdk:"start_date"`
 	LastUpdated    string  `tfsdk:"last_updated"`
-	Total          int     `tfsdk:"total"`
-	// DPAVersion            string  `tfsdk:"dpa_version"`
-	SiteLicenseGroup string `tfsdk:"site_license_group"`
-	SiteLicenseType  string `tfsdk:"site_license_type"`
-	// Regionality           string  `tfsdk:"regionality"`
-	// ZTNAUsersLicenseGroup string  `tfsdk:"ztna_users_license_group"`
-	AllocatedBandwidth *int  `tfsdk:"allocated_bandwidth"`
-	Site               *Site `tfsdk:"site"`
-	// Sites                 []SiteBandwidth `tfsdk:"sites"`
-	// Accounts              []interface{}   `tfsdk:"accounts"` // or []Account if you define it
+	Total          *int    `tfsdk:"total"`
+	// DPAVersion            string          `tfsdk:"dpa_version"`
+	SiteLicenseGroup *string `tfsdk:"site_license_group"`
+	SiteLicenseType  *string `tfsdk:"site_license_type"`
+	// Regionality           string          `tfsdk:"regionality"`
+	// ZTNAUsersLicenseGroup string          `tfsdk:"ztna_users_license_group"`
+	AllocatedBandwidth *int             `tfsdk:"allocated_bandwidth"`
+	Site               *Site            `tfsdk:"site"`
+	Sites              []*SiteBandwidth `tfsdk:"sites"`
+	Accounts           []interface{}    `tfsdk:"accounts"` // or []Account if you define it
 }
 
 type Site struct {
@@ -60,75 +60,7 @@ type SiteBandwidth struct {
 	AllocatedBandwidth int  `tfsdk:"allocated_bandwidth"`
 }
 
-var SiteType = types.ObjectType{AttrTypes: SiteAttrType}
-var SiteAttrType = map[string]attr.Type{
-	"id":   types.StringType,
-	"name": types.StringType,
-}
-
-var SiteBandwidthType = types.ObjectType{AttrTypes: SiteBandwidthAttrType}
-var SiteBandwidthAttrType = map[string]attr.Type{
-	"site":                SiteType,
-	"allocated_bandwidth": types.Int64Type,
-}
-
-var LicenseCountPublicIpsType = types.ObjectType{AttrTypes: LicenseCountPublicIpsAttrType}
-var LicenseCountPublicIpsAttrType = map[string]attr.Type{
-	// "total":     types.Int64Type,
-	"allocated": types.Int64Type,
-	"available": types.Int64Type,
-}
-
-var LicenseCountZtnaUsersType = types.ObjectType{AttrTypes: LicenseCountZtnaUsersAttrType}
-var LicenseCountZtnaUsersAttrType = map[string]attr.Type{
-	"total":     types.Int64Type,
-	"allocated": types.Int64Type,
-	"available": types.Int64Type,
-}
-
-var GlobalLicenseAllocationsType = types.ObjectType{AttrTypes: GlobalLicenseAllocationsAttrType}
-var GlobalLicenseAllocationsAttrType = map[string]attr.Type{
-	"public_ips": LicenseCountPublicIpsType,
-	"ztna_users": LicenseCountZtnaUsersType,
-}
-
-var LicenseType = types.ObjectType{AttrTypes: LicenseAttrType}
-var LicenseAttrType = map[string]attr.Type{
-	"id":                       types.StringType,
-	"sku":                      types.StringType,
-	"plan":                     types.StringType,
-	"status":                   types.StringType,
-	"expiration_date":          types.StringType,
-	"start_date":               types.StringType,
-	"last_updated":             types.StringType,
-	"total":                    types.Int64Type,
-	"dpa_version":              types.StringType,
-	"site_license_group":       types.StringType,
-	"site_license_type":        types.StringType,
-	"regionality":              types.StringType,
-	"ztna_users_license_group": types.StringType,
-	"allocated_bandwidth":      types.Int64Type,
-	"site":                     SiteType,
-	"sites": types.ListType{
-		ElemType: SiteBandwidthType,
-	},
-	"accounts": types.ListType{
-		ElemType: types.MapType{
-			ElemType: types.StringType,
-		},
-	},
-}
-
-var LicensingInfoType = types.ObjectType{AttrTypes: LicensingInfoAttrType}
-var LicensingInfoAttrType = map[string]attr.Type{
-	"global_license_allocations": GlobalLicenseAllocationsType,
-	"licenses": types.ListType{
-		ElemType: LicenseType,
-	},
-}
-
 // License Resource Structs and Types
-
 type LicenseResource struct {
 	ID               types.String `tfsdk:"id"`
 	SiteID           types.String `tfsdk:"site_id"`
@@ -173,4 +105,81 @@ var LicenseInfoResourceAttrTypes = map[string]attr.Type{
 	"start_date":          types.StringType,
 	"status":              types.StringType,
 	"total":               types.Int64Type,
+}
+
+// License Data Source Structs and Types
+type LicenseDataSource struct {
+	SKU                      types.String   `tfsdk:"sku"`
+	IsActive                 types.Bool     `tfsdk:"is_active"`
+	IsAssigned               types.Bool     `tfsdk:"is_assigned"`
+	GlobalLicenseAllocations types.Object   `tfsdk:"global_license_allocations"`
+	Licenses                 []types.Object `tfsdk:"licenses"`
+}
+
+var LicenseDataSourceObjectType = types.ObjectType{AttrTypes: LicenseDataSourceAttrTypes}
+var LicenseDataSourceAttrTypes = map[string]attr.Type{
+	"sku":                        types.StringType,
+	"is_active":                  types.BoolType,
+	"is_assigned":                types.BoolType,
+	"global_license_allocations": GlobalLicenseAllocationsDataSourceObjectType,
+	"licenses": types.ListType{
+		ElemType: LicenseObjectType,
+	},
+}
+
+var GlobalLicenseAllocationsDataSourceObjectType = types.ObjectType{AttrTypes: GlobalLicenseAllocationsDataSourceAttrTypes}
+var GlobalLicenseAllocationsDataSourceAttrTypes = map[string]attr.Type{
+	"public_ips": types.ObjectType{AttrTypes: LicenseCountPublicIpsAttrTypes},
+	"ztna_users": types.ObjectType{AttrTypes: LicenseCountZtnaUsersAttrTypes},
+}
+
+var LicenseCountZtnaUsersObjectType = types.ObjectType{AttrTypes: LicenseCountZtnaUsersAttrTypes}
+var LicenseCountZtnaUsersAttrTypes = map[string]attr.Type{
+	"total":     types.Int64Type,
+	"allocated": types.Int64Type,
+	"available": types.Int64Type,
+}
+
+var LicenseCountPublicIpsObjectType = types.ObjectType{AttrTypes: LicenseCountPublicIpsAttrTypes}
+var LicenseCountPublicIpsAttrTypes = map[string]attr.Type{
+	"total":     types.Int64Type,
+	"allocated": types.Int64Type,
+	"available": types.Int64Type,
+}
+
+var LicenseFilterObjectType = types.ObjectType{AttrTypes: LicenseFilterAttrTypes}
+var LicenseFilterAttrTypes = map[string]attr.Type{
+	"sku":         types.StringType,
+	"is_active":   types.BoolType,
+	"is_assigned": types.BoolType,
+}
+
+var LicenseObjectType = types.ObjectType{AttrTypes: LicenseAttrTypes}
+var LicenseAttrTypes = map[string]attr.Type{
+	// Base License Fields
+	"id":              types.StringType,
+	"sku":             types.StringType,
+	"plan":            types.StringType,
+	"status":          types.StringType,
+	"expiration_date": types.StringType,
+	"start_date":      types.StringType,
+	"last_updated":    types.StringType,
+	// Conditional fields dependent on SKU
+	"total": &types.Int64Type,
+	// "site_license_group":  &types.StringType,
+	// "site_license_type":   &types.StringType,
+	// "allocated_bandwidth": &types.Int64Type,
+	// "site":                &NameIDObjectType,
+	"sites": types.ListType{
+		ElemType: &SiteAllocationObjectType,
+	},
+	// "accounts": types.ListType{
+	// 	ElemType: &types.StringType,
+	// },
+}
+
+var SiteAllocationObjectType = types.ObjectType{AttrTypes: SiteAllocationAttrTypes}
+var SiteAllocationAttrTypes = map[string]attr.Type{
+	"site":                NameIDObjectType,
+	"allocated_bandwidth": types.Int64Type,
 }
