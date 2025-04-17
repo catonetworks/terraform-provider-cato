@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -91,6 +92,10 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "",
 						Required:    false,
 						Optional:    true,
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.UseStateForUnknown(), // Avoid drift
+						},
+						Computed: true,
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Attribute to define rule status (enabled or disabled)",
@@ -136,6 +141,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
+						PlanModifiers: []planmodifier.Object{
+							objectplanmodifier.UseStateForUnknown(), // Avoid drift
+						},
 						Attributes: map[string]schema.Attribute{
 							"ip": schema.ListAttribute{
 								Description: "Pv4 address list",
@@ -149,6 +157,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Optional:    true,
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
+								},
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
@@ -2961,6 +2972,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 	//creating new rule
+	tflog.Warn(ctx, "Create() "+fmt.Sprintf("%#v", input.create)+" "+fmt.Sprintf("%T", input.create))
 	createRuleResponse, err := r.client.catov2.PolicyWanFirewallAddRule(ctx, input.create, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -3157,11 +3169,15 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	tflog.Debug(ctx, "wan_fw_policy update", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input),
+		"input": utils.InterfaceToJSONString(input.update),
 	})
 
 	//creating new rule
 	updateRuleResponse, err := r.client.catov2.PolicyWanFirewallUpdateRule(ctx, input.update, r.client.AccountId)
+	tflog.Debug(ctx, "updateRuleResponse", map[string]interface{}{
+		"input.update": utils.InterfaceToJSONString(input.update),
+	})
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallUpdateRule error",
@@ -3195,7 +3211,10 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 
 	// Read rule and hydrate response to state
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
-	body, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	wanFWQueryResponse, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	tflog.Debug(ctx, "wanFWQueryResponse", map[string]interface{}{
+		"wanFWQueryResponse": utils.InterfaceToJSONString(wanFWQueryResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewall error",
@@ -3204,7 +3223,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	ruleList := body.GetPolicy().WanFirewall.Policy.GetRules()
+	ruleList := wanFWQueryResponse.GetPolicy().WanFirewall.Policy.GetRules()
 	currentRule := &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule{}
 	// Get current rule from response by ID
 	for _, ruleListItem := range ruleList {

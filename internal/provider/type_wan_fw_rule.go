@@ -396,7 +396,7 @@ var WanDestAttrTypes = map[string]attr.Type{
 	"system_group":        types.SetType{ElemType: NameIDObjectType},
 }
 
-var WanApplicationObjectType = types.ObjectType{AttrTypes: WanSourceAttrTypes}
+var WanApplicationObjectType = types.ObjectType{AttrTypes: WanApplicationAttrTypes}
 var WanApplicationAttrTypes = map[string]attr.Type{
 	"application":              types.SetType{ElemType: NameIDObjectType},
 	"custom_app":               types.SetType{ElemType: NameIDObjectType},

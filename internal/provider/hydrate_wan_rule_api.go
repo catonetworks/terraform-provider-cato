@@ -70,26 +70,26 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &ruleSourceUpdateInput.Subnet, false)...)
 			}
 
-			// setting source site
-			if !sourceInput.Site.IsUnknown() && !sourceInput.Site.IsNull() {
-				elementsSourceSiteInput := make([]types.Object, 0, len(sourceInput.Site.Elements()))
-				diags = append(diags, sourceInput.Site.ElementsAs(ctx, &elementsSourceSiteInput, false)...)
+			// setting source host
+			if !sourceInput.Host.IsUnknown() && !sourceInput.Host.IsNull() {
+				elementsSourceHostInput := make([]types.Object, 0, len(sourceInput.Host.Elements()))
+				diags = append(diags, sourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)...)
 
-				var itemSourceSiteInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Site
-				for _, item := range elementsSourceSiteInput {
-					diags = append(diags, item.As(ctx, &itemSourceSiteInput, basetypes.ObjectAsOptions{})...)
+				var itemSourceHostInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Host
+				for _, item := range elementsSourceHostInput {
+					diags = append(diags, item.As(ctx, &itemSourceHostInput, basetypes.ObjectAsOptions{})...)
 
-					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceSiteInput)
+					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceHostInput)
 					if err != nil {
 						tflog.Error(ctx, err.Error())
 					}
 
-					ruleSourceInput.Site = append(ruleSourceInput.Site, &cato_models.SiteRefInput{
+					ruleSourceInput.Host = append(ruleSourceInput.Host, &cato_models.HostRefInput{
 						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 						Input: ObjectRefOutput.Input,
 					})
 				}
-				ruleSourceUpdateInput.Site = ruleSourceInput.Site
+				ruleSourceUpdateInput.Host = ruleSourceInput.Host
 			}
 
 			// setting source site
