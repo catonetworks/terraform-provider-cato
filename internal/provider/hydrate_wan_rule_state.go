@@ -13,6 +13,7 @@ import (
 )
 
 func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule) Policy_Policy_WanFirewall_Policy_Rules_Rule {
+
 	ruleInput := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
 	diags := make(diag.Diagnostics, 0)
 	diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})

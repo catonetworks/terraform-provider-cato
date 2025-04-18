@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -3172,6 +3173,12 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		"input": utils.InterfaceToJSONString(input.update),
 	})
 
+	policyChangeJsonU, _ := json.Marshal(input.update)
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_input.update", map[string]interface{}{
+		"OUTPUT": string(policyChangeJsonU),
+	})
+
 	//creating new rule
 	updateRuleResponse, err := r.client.catov2.PolicyWanFirewallUpdateRule(ctx, input.update, r.client.AccountId)
 	tflog.Debug(ctx, "updateRuleResponse", map[string]interface{}{
@@ -3232,6 +3239,13 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 			break
 		}
 	}
+
+	policyChangeJson, _ := json.Marshal(currentRule)
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_currentRule", map[string]interface{}{
+		"OUTPUT": string(policyChangeJson),
+	})
+
 	// Hydrate ruleInput from api respoonse
 	ruleInputRead := hydrateWanRuleState(ctx, plan, currentRule)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)

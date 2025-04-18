@@ -62,12 +62,16 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 			if !sourceInput.IP.IsUnknown() && !sourceInput.IP.IsNull() {
 				diags = append(diags, sourceInput.IP.ElementsAs(ctx, &ruleSourceInput.IP, false)...)
 				diags = append(diags, sourceInput.IP.ElementsAs(ctx, &ruleSourceUpdateInput.IP, false)...)
+			} else {
+				ruleSourceUpdateInput.IP = make([]string, 0)
 			}
 
 			// setting source subnet
 			if !sourceInput.Subnet.IsUnknown() && !sourceInput.Subnet.IsNull() {
 				diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &ruleSourceInput.Subnet, false)...)
 				diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &ruleSourceUpdateInput.Subnet, false)...)
+			} else {
+				ruleSourceUpdateInput.Subnet = make([]string, 0)
 			}
 
 			// setting source host
@@ -90,6 +94,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.Host = ruleSourceInput.Host
+			} else {
+				ruleSourceUpdateInput.Host = make([]*cato_models.HostRefInput, 0)
 			}
 
 			// setting source site
@@ -112,6 +118,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.Site = ruleSourceInput.Site
+			} else {
+				ruleSourceUpdateInput.Site = make([]*cato_models.SiteRefInput, 0)
 			}
 
 			// setting source ip range
@@ -129,6 +137,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.IPRange = ruleSourceInput.IPRange
+			} else {
+				ruleSourceUpdateInput.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
 			}
 
 			// setting source global ip range
@@ -151,6 +161,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.GlobalIPRange = ruleSourceInput.GlobalIPRange
+			} else {
+				ruleSourceUpdateInput.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
 			}
 
 			// setting source network interface
@@ -173,6 +185,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.NetworkInterface = ruleSourceInput.NetworkInterface
+			} else {
+				ruleSourceUpdateInput.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
 			}
 
 			// setting source site network subnet
@@ -195,6 +209,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.SiteNetworkSubnet = ruleSourceInput.SiteNetworkSubnet
+			} else {
+				ruleSourceUpdateInput.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
 			}
 
 			// setting source floating subnet
@@ -217,6 +233,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.FloatingSubnet = ruleSourceInput.FloatingSubnet
+			} else {
+				ruleSourceUpdateInput.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
 			}
 
 			// setting source user
@@ -239,6 +257,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.User = ruleSourceInput.User
+			} else {
+				ruleSourceUpdateInput.User = make([]*cato_models.UserRefInput, 0)
 			}
 
 			// setting source users group
@@ -261,6 +281,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.UsersGroup = ruleSourceInput.UsersGroup
+			} else {
+				ruleSourceUpdateInput.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
 			}
 
 			// setting source group
@@ -283,6 +305,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.Group = ruleSourceInput.Group
+			} else {
+				ruleSourceUpdateInput.Group = make([]*cato_models.GroupRefInput, 0)
 			}
 
 			// setting source system group
@@ -308,6 +332,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 			}
 			rootAddRule.Source = ruleSourceInput
 			rootUpdateRule.Source = ruleSourceUpdateInput
+		} else {
+			tflog.Warn(ctx, "TFLOG_SOURCE_WANFW_IS_NULL")
 		}
 
 		// setting country
@@ -330,6 +356,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				})
 			}
 			rootUpdateRule.Country = rootAddRule.Country
+		} else {
+			rootUpdateRule.Country = make([]*cato_models.CountryRefInput, 0)
 		}
 
 		// setting device
@@ -352,12 +380,16 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				})
 			}
 			rootUpdateRule.Device = rootAddRule.Device
+		} else {
+			rootUpdateRule.Device = make([]*cato_models.DeviceProfileRefInput, 0)
 		}
 
 		// setting device OS
 		if !ruleInput.DeviceOs.IsUnknown() && !ruleInput.DeviceOs.IsNull() {
 			diags = append(diags, ruleInput.DeviceOs.ElementsAs(ctx, &rootAddRule.DeviceOs, false)...)
 			diags = append(diags, ruleInput.DeviceOs.ElementsAs(ctx, &rootUpdateRule.DeviceOs, false)...)
+		} else {
+			rootUpdateRule.DeviceOs = make([]cato_models.OperatingSystem, 0)
 		}
 
 		// setting destination
@@ -373,12 +405,16 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 			if !destinationInput.IP.IsUnknown() && !destinationInput.IP.IsNull() {
 				diags = append(diags, destinationInput.IP.ElementsAs(ctx, &ruleDestinationInput.IP, false)...)
 				diags = append(diags, destinationInput.IP.ElementsAs(ctx, &ruleDestinationUpdateInput.IP, false)...)
+			} else {
+				ruleDestinationUpdateInput.IP = make([]string, 0)
 			}
 
 			// setting destination subnet
 			if !destinationInput.Subnet.IsUnknown() && !destinationInput.Subnet.IsNull() {
 				diags = append(diags, destinationInput.Subnet.ElementsAs(ctx, &ruleDestinationInput.Subnet, false)...)
 				diags = append(diags, destinationInput.Subnet.ElementsAs(ctx, &ruleDestinationUpdateInput.Subnet, false)...)
+			} else {
+				ruleDestinationUpdateInput.Subnet = make([]string, 0)
 			}
 
 			// setting destination host
@@ -401,6 +437,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.Host = ruleDestinationInput.Host
+			} else {
+				ruleDestinationUpdateInput.Host = make([]*cato_models.HostRefInput, 0)
 			}
 
 			// setting destination site
@@ -423,6 +461,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.Site = ruleDestinationInput.Site
+			} else {
+				ruleDestinationUpdateInput.Site = make([]*cato_models.SiteRefInput, 0)
 			}
 
 			// setting destination ip range
@@ -440,6 +480,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.IPRange = ruleDestinationInput.IPRange
+			} else {
+				ruleDestinationUpdateInput.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
 			}
 
 			// setting destination global ip range
@@ -462,6 +504,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.GlobalIPRange = ruleDestinationInput.GlobalIPRange
+			} else {
+				ruleDestinationUpdateInput.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
 			}
 
 			// setting destination network interface
@@ -484,6 +528,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.NetworkInterface = ruleDestinationInput.NetworkInterface
+			} else {
+				ruleDestinationUpdateInput.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
 			}
 
 			// setting destination site network subnet
@@ -506,6 +552,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.SiteNetworkSubnet = ruleDestinationInput.SiteNetworkSubnet
+			} else {
+				ruleDestinationUpdateInput.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
 			}
 
 			// setting destination floating subnet
@@ -528,6 +576,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.FloatingSubnet = ruleDestinationInput.FloatingSubnet
+			} else {
+				ruleDestinationUpdateInput.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
 			}
 
 			// setting destination user
@@ -550,6 +600,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.User = ruleDestinationInput.User
+			} else {
+				ruleDestinationUpdateInput.User = make([]*cato_models.UserRefInput, 0)
 			}
 
 			// setting destination users group
@@ -572,6 +624,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.UsersGroup = ruleDestinationInput.UsersGroup
+			} else {
+				ruleDestinationUpdateInput.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
 			}
 
 			// setting destination group
@@ -594,6 +648,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.Group = ruleDestinationInput.Group
+			} else {
+				ruleDestinationUpdateInput.Group = make([]*cato_models.GroupRefInput, 0)
 			}
 
 			// setting destination system group
@@ -616,7 +672,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleDestinationUpdateInput.SystemGroup = ruleDestinationInput.SystemGroup
+			} else {
+				ruleDestinationUpdateInput.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
 			}
+
 			rootAddRule.Destination = ruleDestinationInput
 			rootUpdateRule.Destination = ruleDestinationUpdateInput
 		}
@@ -633,24 +692,32 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 			if !applicationInput.IP.IsUnknown() && !applicationInput.IP.IsNull() {
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationInput.IP, false)...)
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationUpdateInput.IP, false)...)
+			} else {
+				ruleApplicationUpdateInput.IP = make([]string, 0)
 			}
 
 			// setting application subnet
 			if !applicationInput.Subnet.IsUnknown() && !applicationInput.Subnet.IsNull() {
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationInput.Subnet, false)...)
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationUpdateInput.Subnet, false)...)
+			} else {
+				ruleApplicationUpdateInput.Subnet = make([]string, 0)
 			}
 
 			// setting application domain
 			if !applicationInput.Domain.IsUnknown() && !applicationInput.Domain.IsNull() {
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationInput.Domain, false)...)
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationUpdateInput.Domain, false)...)
+			} else {
+				ruleApplicationUpdateInput.Domain = make([]string, 0)
 			}
 
 			// setting application fqdn
 			if !applicationInput.Fqdn.IsUnknown() && !applicationInput.Fqdn.IsNull() {
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationInput.Fqdn, false)...)
 				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationUpdateInput.Fqdn, false)...)
+			} else {
+				ruleApplicationUpdateInput.Fqdn = make([]string, 0)
 			}
 
 			// setting application application
@@ -673,6 +740,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleApplicationUpdateInput.Application = ruleApplicationInput.Application
+			} else {
+				ruleApplicationUpdateInput.Application = make([]*cato_models.ApplicationRefInput, 0)
 			}
 
 			// setting application custom app
@@ -695,6 +764,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleApplicationUpdateInput.CustomApp = ruleApplicationInput.CustomApp
+			} else {
+				ruleApplicationUpdateInput.CustomApp = make([]*cato_models.CustomApplicationRefInput, 0)
 			}
 
 			// setting application ip range
@@ -712,6 +783,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleApplicationUpdateInput.IPRange = ruleApplicationInput.IPRange
+			} else {
+				ruleApplicationUpdateInput.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
 			}
 
 			// setting application global ip range
@@ -734,6 +807,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleApplicationUpdateInput.GlobalIPRange = ruleApplicationInput.GlobalIPRange
+			} else {
+				ruleApplicationUpdateInput.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
 			}
 
 			// setting application app category
@@ -756,6 +831,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleApplicationUpdateInput.AppCategory = ruleApplicationInput.AppCategory
+			} else {
+				ruleApplicationUpdateInput.AppCategory = make([]*cato_models.ApplicationCategoryRefInput, 0)
 			}
 
 			// setting application custom app category
@@ -778,6 +855,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleApplicationUpdateInput.CustomCategory = ruleApplicationInput.CustomCategory
+			} else {
+				ruleApplicationUpdateInput.CustomCategory = make([]*cato_models.CustomCategoryRefInput, 0)
 			}
 
 			// setting application sanctionned apps category
@@ -800,7 +879,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleApplicationUpdateInput.SanctionedAppsCategory = ruleApplicationInput.SanctionedAppsCategory
+			} else {
+				ruleApplicationUpdateInput.SanctionedAppsCategory = make([]*cato_models.SanctionedAppsCategoryRefInput, 0)
 			}
+
 			rootAddRule.Application = ruleApplicationInput
 			rootUpdateRule.Application = ruleApplicationUpdateInput
 		}
@@ -833,6 +915,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleServiceUpdateInput.Standard = ruleServiceInput.Standard
+			} else {
+				ruleServiceUpdateInput.Standard = make([]*cato_models.ServiceRefInput, 0)
 			}
 
 			// setting service custom
@@ -878,7 +962,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					ruleServiceInput.Custom = append(ruleServiceInput.Custom, customInput)
 				}
 				ruleServiceUpdateInput.Custom = ruleServiceInput.Custom
+			} else {
+				ruleServiceUpdateInput.Custom = make([]*cato_models.CustomServiceInput, 0)
 			}
+
 			rootAddRule.Service = ruleServiceInput
 			rootUpdateRule.Service = ruleServiceUpdateInput
 		}
@@ -942,6 +1029,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						})
 					}
 					rootUpdateRule.Tracking.Alert.SubscriptionGroup = rootAddRule.Tracking.Alert.SubscriptionGroup
+				} else {
+					rootUpdateRule.Tracking.Alert.SubscriptionGroup = make([]*cato_models.SubscriptionGroupRefInput, 0)
 				}
 
 				// setting tracking alert webhook
@@ -966,6 +1055,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						}
 						rootUpdateRule.Tracking.Alert.Webhook = rootAddRule.Tracking.Alert.Webhook
 					}
+				} else {
+					rootUpdateRule.Tracking.Alert.Webhook = make([]*cato_models.SubscriptionWebhookRefInput, 0)
 				}
 
 				// setting tracking alert mailing list
@@ -988,6 +1079,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						})
 					}
 					rootUpdateRule.Tracking.Alert.MailingList = rootAddRule.Tracking.Alert.MailingList
+				} else {
+					rootUpdateRule.Tracking.Alert.MailingList = make([]*cato_models.SubscriptionMailingListRefInput, 0)
 				}
 			}
 		}
@@ -1023,6 +1116,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 				rootUpdateRule.Schedule.CustomTimeframe.From = customeTimeFrameInput.From.ValueStringPointer()
 				rootUpdateRule.Schedule.CustomTimeframe.To = customeTimeFrameInput.To.ValueStringPointer()
+			} else {
+				rootUpdateRule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{}
 			}
 
 			// setting schedule custom recurring
@@ -1041,6 +1136,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				// setting schedule custom recurring days
 				diags = append(diags, customRecurringInput.Days.ElementsAs(ctx, &rootAddRule.Schedule.CustomRecurring.Days, false)...)
 				rootUpdateRule.Schedule.CustomRecurring.Days = rootAddRule.Schedule.CustomRecurring.Days
+			} else {
+				rootUpdateRule.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{}
 			}
 		}
 
