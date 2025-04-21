@@ -49,7 +49,7 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					stringplanmodifier.RequiresReplace(),
+					// stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"site_id": schema.StringAttribute{
@@ -189,8 +189,6 @@ func (r *licenseResource) Create(ctx context.Context, req resource.CreateRequest
 		resp.Diagnostics.AddError("Error updating license", err.Error())
 		return
 	}
-	tflog.Debug(ctx, "curLicense.create.err"+fmt.Sprintf("%v", err))
-	tflog.Debug(ctx, "curLicense.create"+fmt.Sprintf("%v", curLicense))
 
 	plan.ID = types.StringValue(plan.SiteID.ValueString())
 	plan.LicenseIDCurrent = types.StringValue(plan.LicenseID.ValueString())
@@ -226,10 +224,13 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Match current license by ID from API response
 	license := &cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses{}
-	licenses := licensingInfoResponse.GetLicensing().GetLicensingInfo().GetLicenses()
-	for _, curLicense := range licenses {
-		if curLicense.ID != nil && *curLicense.ID == state.ID.ValueString() {
-			license = curLicense
+	curSiteLicenseId, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, state.ID.ValueString(), licensingInfoResponse)
+	if siteIsAssigned {
+		licenses := licensingInfoResponse.GetLicensing().GetLicensingInfo().GetLicenses()
+		for _, curLicense := range licenses {
+			if curLicense.ID != nil && *curLicense.ID == curSiteLicenseId.ValueString() {
+				license = curLicense
+			}
 		}
 	}
 
