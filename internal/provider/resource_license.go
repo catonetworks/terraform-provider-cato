@@ -184,94 +184,30 @@ func (r *licenseResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Get all sites, check for valid siteID
-	siteExists := false
-	siteResponse, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityTypeSite, nil, nil, nil, nil, nil, nil, nil, nil)
+	curLicense, err := upsertLicense(ctx, plan, r.client)
 	if err != nil {
-		resp.Diagnostics.AddError("Catov2 API error", err.Error())
+		resp.Diagnostics.AddError("Error updating license", err.Error())
 		return
 	}
-	for _, item := range siteResponse.GetEntityLookup().GetItems() {
-		entityFields := item.GetEntity()
-		tflog.Warn(ctx, "Checking site IDs, input='"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', currentItem='"+entityFields.GetID()+"'")
-		if entityFields.GetID() == plan.SiteID.ValueString() {
-			tflog.Warn(ctx, "Site ID matched! "+entityFields.GetID())
-			siteExists = true
-			break
-		}
+	tflog.Debug(ctx, "curLicense.create.err"+fmt.Sprintf("%v", err))
+	tflog.Debug(ctx, "curLicense.create"+fmt.Sprintf("%v", curLicense))
+
+	plan.ID = types.StringValue(plan.SiteID.ValueString())
+	plan.LicenseIDCurrent = types.StringValue(plan.LicenseID.ValueString())
+	// Check for valid license and hydrate state
+	licenseInfo, diagstmp := hydrateLicenseState(ctx, plan.LicenseID.ValueString(), curLicense)
+	diags = append(diags, diagstmp...)
+	if diags.HasError() {
+		return
 	}
-	if !siteExists {
-		resp.Diagnostics.AddError("INVALID SITE ID", "Site '"+plan.SiteID.ValueString()+"' not found.")
+	licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
+	plan.LicenseInfo = licenseInfoObject
+	diags = resp.State.Set(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if diags.HasError() {
 		return
 	}
 
-	// Get all licenses
-	licensingInfoResponse, err := r.client.catov2.Licensing(ctx, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Catov2 API error", err.Error())
-		return
-	}
-	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
-
-	if licenseExists {
-		input := cato_models.AssignSiteBwLicenseInput{}
-		input.LicenseID = plan.LicenseID.ValueString()
-		plan.ID = types.StringValue(plan.SiteID.ValueString())
-		plan.LicenseIDCurrent = types.StringValue(plan.LicenseID.ValueString())
-		siteRef := &cato_models.SiteRefInput{}
-		siteRef.By = "ID"
-		siteRef.Input = plan.SiteID.ValueString()
-		input.Site = siteRef
-		// Check for the correct license type
-		tflog.Warn(ctx, "Checking license SKU for CATO_PB or CATO_SITE type, license.Sku='"+string(license.Sku)+"'")
-		if string(license.Sku) != "CATO_PB" && string(license.Sku) != "CATO_SITE" {
-			resp.Diagnostics.AddError(
-				"INVALID LICENSE TYPE",
-				"Site License ID '"+plan.LicenseID.ValueString()+"' is not a valid site license. Must be 'CATO_PB' or 'CATO_SITE' license type.",
-			)
-			return
-		}
-		// Check for BW if pooled
-		if string(license.Sku) == "CATO_PB" {
-			if plan.BW.IsUnknown() || plan.BW.IsNull() {
-				resp.Diagnostics.AddError("INVALID CONFIGURATION", "Bandwidth must be set for 'CATO_PB' pooled bandwidth license type.")
-				return
-			}
-			bw := plan.BW.ValueInt64()
-			input.Bw = &bw
-		} else {
-			// Check for BW not present if not pooled
-			if !plan.BW.IsUnknown() && !plan.BW.IsNull() {
-				resp.Diagnostics.AddError("INVALID CONFIGURATION", "Bandwidth is not supported for CATO_SITE license type only for 'CATO_PB' pooled bandwidth type.")
-				return
-			}
-		}
-
-		// TODO Check if the site has a license currently
-		// If site assigned, use replace, otherwise use assign
-
-		_, err := r.client.catov2.AssignSiteBwLicense(ctx, r.client.AccountId, input)
-		if err != nil {
-			resp.Diagnostics.AddError("Catov2 API error", err.Error())
-			return
-		}
-		// Check for valid license and hydrate state
-		licenseInfo, diagstmp := hydrateLicenseState(ctx, plan.LicenseID.ValueString(), license)
-		diags = append(diags, diagstmp...)
-		if diags.HasError() {
-			return
-		}
-		licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
-		plan.LicenseInfo = licenseInfoObject
-		diags = resp.State.Set(ctx, &plan)
-		resp.Diagnostics.Append(diags...)
-		if diags.HasError() {
-			return
-		}
-	} else {
-		resp.Diagnostics.AddError("INVALID LICENSE ID", "License '"+plan.LicenseID.ValueString()+"' not found.")
-		return
-	}
 }
 
 func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -321,116 +257,28 @@ func (r *licenseResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	tflog.Warn(ctx, "Current1 plan.ID (old license) '"+fmt.Sprintf("%v", plan.LicenseIDCurrent.ValueString())+"' and current plan.LicenseID (new license)='"+fmt.Sprintf("%v", plan.LicenseID.ValueString())+"'")
-
-	// Get all sites, check for valid siteID
-	siteExists := false
-	siteResponse, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityTypeSite, nil, nil, nil, nil, nil, nil, nil, nil)
+	curLicense, err := upsertLicense(ctx, plan, r.client)
 	if err != nil {
-		resp.Diagnostics.AddError("Catov2 API error", err.Error())
-		return
-	}
-	for _, item := range siteResponse.GetEntityLookup().GetItems() {
-		entityFields := item.GetEntity()
-		tflog.Warn(ctx, "Checking site IDs, input='"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', currentItem='"+entityFields.GetID()+"'")
-		if entityFields.GetID() == plan.SiteID.ValueString() {
-			tflog.Warn(ctx, "Site ID matched! "+entityFields.GetID())
-			siteExists = true
-			break
-		}
-	}
-	if !siteExists {
-		resp.Diagnostics.AddError("INVALID SITE ID", "Site '"+plan.SiteID.ValueString()+"' not found.")
+		resp.Diagnostics.AddError("Error updating license", err.Error())
 		return
 	}
 
-	// Get all licenses, check for valid licenseID
-	licensingInfoResponse, err := r.client.catov2.Licensing(ctx, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Catov2 API error", err.Error())
+	plan.ID = types.StringValue(plan.SiteID.ValueString())
+	plan.LicenseIDCurrent = types.StringValue(plan.LicenseID.ValueString())
+	// Check for valid license and hydrate state
+	licenseInfo, diagstmp := hydrateLicenseState(ctx, plan.LicenseID.ValueString(), curLicense)
+	diags = append(diags, diagstmp...)
+	if diags.HasError() {
 		return
 	}
-	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
+	licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
+	plan.LicenseInfo = licenseInfoObject
+	diags = resp.State.Set(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if diags.HasError() {
+		return
+	}
 
-	if licenseExists {
-		tflog.Warn(ctx, "Current plan.ID (old license) '"+fmt.Sprintf("%v", plan.LicenseIDCurrent.ValueString())+"' and current plan.LicenseID (new license)='"+fmt.Sprintf("%v", plan.LicenseID.ValueString())+"'")
-		// Check to see if licenseID changed, use replace else use udpate
-		if plan.LicenseIDCurrent.ValueString() != plan.LicenseID.ValueString() {
-			tflog.Warn(ctx, "License does not match, using ReplaceSiteBwLicenseInput()")
-			input := cato_models.ReplaceSiteBwLicenseInput{}
-			input.LicenseIDToAdd = plan.LicenseID.ValueString()
-			input.LicenseIDToRemove = plan.LicenseIDCurrent.ValueString()
-			siteRef := &cato_models.SiteRefInput{}
-			siteRef.By = "ID"
-			siteRef.Input = plan.SiteID.ValueString()
-			input.Site = siteRef
-			// Check for BW if pooled
-			if license.Sku == "CATO_PB" {
-				if plan.BW.IsUnknown() || plan.BW.IsNull() {
-					resp.Diagnostics.AddError("INVALID CONFIGURATION", "Bandwidth must be set for 'CATO_PB' pooled bandwidth license type.")
-					return
-				}
-				input.Bw = plan.BW.ValueInt64Pointer()
-			} else {
-				// Check for BW not present if not pooled
-				if !plan.BW.IsUnknown() && !plan.BW.IsNull() {
-					resp.Diagnostics.AddError("INVALID CONFIGURATION", "Bandwidth is not supported for CATO_SITE license type only for 'CATO_PB' pooled bandwidth type.")
-					return
-				}
-			}
-			_, err := r.client.catov2.ReplaceSiteBwLicense(ctx, r.client.AccountId, input)
-			if err != nil {
-				resp.Diagnostics.AddError("Catov2 API ReplaceSiteBwLicense error", err.Error())
-				return
-			}
-		} else {
-			tflog.Warn(ctx, "License does match, using UpdateSiteBwLicenseInput()")
-			input := cato_models.UpdateSiteBwLicenseInput{}
-			input.LicenseID = plan.LicenseID.ValueString()
-			siteRef := &cato_models.SiteRefInput{}
-			siteRef.By = "ID"
-			siteRef.Input = plan.SiteID.ValueString()
-			input.Site = siteRef
-			// Check for BW if pooled
-			if license.Sku == "CATO_PB" {
-				if plan.BW.IsUnknown() || plan.BW.IsNull() {
-					resp.Diagnostics.AddError("INVALID CONFIGURATION", "Bandwidth must be set for 'CATO_PB' pooled bandwidth license type.")
-					return
-				}
-				bw := plan.BW.ValueInt64()
-				input.Bw = bw
-			} else {
-				// Check for BW not present if not pooled
-				if !plan.BW.IsUnknown() && !plan.BW.IsNull() {
-					resp.Diagnostics.AddError("INVALID CONFIGURATION", "Bandwidth is not supported for CATO_SITE license type only for 'CATO_PB' pooled bandwidth type.")
-					return
-				}
-			}
-			_, err := r.client.catov2.UpdateSiteBwLicense(ctx, r.client.AccountId, input)
-			if err != nil {
-				resp.Diagnostics.AddError("Catov2 API ReplaceSiteBwLicense error", err.Error())
-				return
-			}
-		}
-		plan.ID = types.StringValue(plan.SiteID.ValueString())
-		plan.LicenseIDCurrent = types.StringValue(plan.LicenseID.ValueString())
-		// Check for valid license and hydrate state
-		licenseInfo, diagstmp := hydrateLicenseState(ctx, plan.LicenseID.ValueString(), license)
-		diags = append(diags, diagstmp...)
-		if diags.HasError() {
-			return
-		}
-		licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
-		plan.LicenseInfo = licenseInfoObject
-		diags = resp.State.Set(ctx, &plan)
-		resp.Diagnostics.Append(diags...)
-		if diags.HasError() {
-			return
-		}
-	} else {
-		resp.Diagnostics.AddError("INVALID LICENSE ID", "License '"+plan.LicenseID.ValueString()+"' not found.")
-		return
-	}
 }
 
 func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -466,50 +314,6 @@ func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 func hydrateLicenseState(ctx context.Context, licenseId string, curLicense *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses) (basetypes.ObjectValue, diag.Diagnostics) {
 	diags := make(diag.Diagnostics, 0)
-	// licenseInfo := LicenseInfoResource{}
-	// if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_SITE" {
-	// 	if curLicense.Status == "ACTIVE" {
-	// 		licenseInfo.AllocatedBandwidth = types.Int64Value(0)
-	// 		licenseInfo.ExpirationDate = types.StringValue(string(curLicense.ExpirationDate))
-	// 		licenseInfo.LastUpdated = types.StringValue(string(*curLicense.LastUpdated))
-	// 		licenseInfo.Plan = types.StringValue(string(curLicense.Plan))
-	// 		licenseInfo.SiteLicenseGroup = types.StringValue(string("*curLicense.SiteLicenseGroup"))
-	// 		licenseInfo.SiteLicenseType = types.StringValue(string("*curLicense.SiteLicenseType"))
-	// 		licenseInfo.SKU = types.StringValue(string(curLicense.Sku))
-	// 		licenseInfo.StartDate = types.StringValue(string(*curLicense.StartDate))
-	// 		licenseInfo.Status = types.StringValue(string(curLicense.Status))
-	// 		licenseInfo.Total = types.Int64Value(int64(0))
-	// 	} else {
-	// 		diags.AddError(
-	// 			"INACTIVE LICENSE STATUS",
-	// 			"Site License ID '"+licenseId+"' is not active. Must be 'ACTIVE' status.",
-	// 		)
-	// 		return licenseInfo, diags
-	// 	}
-	// } else {
-	// 	diags.AddError(
-	// 		"INVALID LICENSE ID",
-	// 		"Site License ID '"+licenseId+"' is not a valid site license. Must be 'CATO_PB' or 'CATO_SITE' license type.",
-	// 	)
-	// 	return licenseInfo, diags
-	// }
-	tflog.Warn(ctx, "hydrate(1)")
-	// licenseInfo, diagstmp := types.ObjectValue(
-	// 	LicenseInfoResourceAttrTypes,
-	// 	map[string]attr.Value{
-	// 		"allocated_bandwidth": types.Int64Value(0),
-	// 		"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
-	// 		"last_updated":        types.StringValue(string(*curLicense.LastUpdated)),
-	// 		"plan":                types.StringValue(string(curLicense.Plan)),
-	// 		"site_license_group":  types.StringValue(string("*curLicense.SiteLicenseGroup")),
-	// 		"site_license_type":   types.StringValue(string("*curLicense.SiteLicenseType")),
-	// 		"sku":                 types.StringValue(string(curLicense.Sku)),
-	// 		"start_date":          types.StringValue(string(*curLicense.StartDate)),
-	// 		"status":              types.StringValue(string(curLicense.Status)),
-	// 		"total":               types.Int64Value(int64(0)),
-	// 	},
-	// )
-
 	licenseInfoAttrs := map[string]attr.Value{
 		"allocated_bandwidth": types.Int64Value(0),
 		"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
@@ -531,25 +335,20 @@ func hydrateLicenseState(ctx context.Context, licenseId string, curLicense *cato
 	}
 
 	licenseInfo, diagstmp := types.ObjectValue(LicenseInfoResourceAttrTypes, licenseInfoAttrs)
-	tflog.Warn(ctx, "hydrate(2)")
 	diags = append(diags, diagstmp...)
 	if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_SITE" {
-		tflog.Warn(ctx, "hydrate(3)")
 		if curLicense.Status != "ACTIVE" {
-			tflog.Warn(ctx, "hydrate(4)")
 			diags.AddError(
 				"INACTIVE LICENSE STATUS",
 				"Site License ID '"+licenseId+"' is not active. Must be 'ACTIVE' status.",
 			)
 		}
 	} else {
-		tflog.Warn(ctx, "hydrate(5)")
 		diags.AddError(
 			"INVALID LICENSE ID",
 			"Site License ID '"+licenseId+"' is not a valid site license. Must be 'CATO_PB' or 'CATO_SITE' license type.",
 		)
 	}
-	tflog.Warn(ctx, "hydrate(6)")
 	return licenseInfo, diags
 }
 
@@ -563,8 +362,7 @@ func getLicenseByID(ctx context.Context, curLicenseId string, licensingInfoRespo
 		if curLicense.ID != nil {
 			licenseID = *curLicense.ID
 		}
-		tflog.Warn(ctx, "Checking license IDs, input='"+curLicenseId+"', currentItem='"+licenseID+"'")
-		if licenseID == curLicenseId {
+		if licenseID != "" && licenseID == curLicenseId {
 			tflog.Warn(ctx, "Found license ID! "+licenseID)
 			licenseExists = true
 			license = curLicense
@@ -572,6 +370,59 @@ func getLicenseByID(ctx context.Context, curLicenseId string, licensingInfoRespo
 		}
 	}
 	return license, licenseExists
+}
+
+func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, licensingInfoResponse *cato_go_sdk.Licensing) (types.String, bool) {
+	isAssigned := false
+	var curLicenseId types.String
+	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
+	for _, curLicense := range licenses {
+		if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_PB_SSE" {
+			if len(curLicense.PooledBandwidthLicense.Sites) > 0 {
+				for _, site := range curLicense.PooledBandwidthLicense.Sites {
+					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Checking site IDs, input='"+fmt.Sprintf("%v", curSiteId)+"', currentItem='"+site.SitePooledBandwidthLicenseSite.ID+"'")
+					if site.SitePooledBandwidthLicenseSite.ID == curSiteId {
+						tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
+						isAssigned = true
+						curLicenseId = types.StringValue(*curLicense.ID)
+					}
+				}
+			}
+		} else if curLicense.Sku == "CATO_SITE" || curLicense.Sku == "CATO_SSE_SITE" {
+			if curLicense.SiteLicense.Site != nil {
+				if curLicense.SiteLicense.Site.ID == curSiteId {
+					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+curLicense.SiteLicense.Site.ID)
+					isAssigned = true
+					curLicenseId = types.StringValue(*curLicense.ID)
+				}
+			}
+		}
+	}
+	return curLicenseId, isAssigned
+}
+
+func checkStaticLicenseForAssignment(ctx context.Context, licenseId string, licensingInfoResponse *cato_go_sdk.Licensing) (types.String, bool) {
+	isAssigned := false
+	var curSiteId types.String
+	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
+	for _, curLicense := range licenses {
+		if curLicense.ID != nil {
+			tflog.Debug(ctx, "Calling checkStaticLicenseForAssignment()", map[string]interface{}{
+				"curLicense.ID": fmt.Sprintf("%v", curLicense.ID),
+			})
+			if *curLicense.ID == licenseId && (curLicense.Sku == "CATO_SITE" || curLicense.Sku == "CATO_SSE_SITE") {
+				if curLicense.SiteLicense.Site != nil {
+					tflog.Debug(ctx, "Calling checkStaticLicenseForAssignment() curLicense.SiteLicense.Site", map[string]interface{}{
+						"curLicense.SiteLicense.Site.ID":                  fmt.Sprintf("%v", curLicense.SiteLicense.Site.ID),
+						"curLicense.ID == curLicense.SiteLicense.Site.ID": (*curLicense.ID == licenseId),
+					})
+					isAssigned = true
+					curSiteId = types.StringValue(curLicense.SiteLicense.Site.ID)
+				}
+			}
+		}
+	}
+	return curSiteId, isAssigned
 }
 
 // General purpose functions
