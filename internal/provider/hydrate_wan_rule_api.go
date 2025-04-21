@@ -968,6 +968,12 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 			rootAddRule.Service = ruleServiceInput
 			rootUpdateRule.Service = ruleServiceUpdateInput
+		} else {
+			// Create empty Rule.Service object due to update issue only modifying what is in the payload
+			ruleServiceUpdateInput := &cato_models.WanFirewallServiceTypeUpdateInput{}
+			ruleServiceUpdateInput.Standard = make([]*cato_models.ServiceRefInput, 0)
+			ruleServiceUpdateInput.Custom = make([]*cato_models.CustomServiceInput, 0)
+			rootUpdateRule.Service = ruleServiceUpdateInput
 		}
 
 		// setting tracking
