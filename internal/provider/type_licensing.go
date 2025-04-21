@@ -62,12 +62,11 @@ type SiteBandwidth struct {
 
 // License Resource Structs and Types
 type LicenseResource struct {
-	ID               types.String `tfsdk:"id"`
-	SiteID           types.String `tfsdk:"site_id"`
-	LicenseIDCurrent types.String `tfsdk:"license_id_current"`
-	LicenseID        types.String `tfsdk:"license_id"`
-	BW               types.Int64  `tfsdk:"bw"`
-	LicenseInfo      types.Object `tfsdk:"license_info"`
+	ID          types.String `tfsdk:"id"`
+	SiteID      types.String `tfsdk:"site_id"`
+	LicenseID   types.String `tfsdk:"license_id"`
+	BW          types.Int64  `tfsdk:"bw"`
+	LicenseInfo types.Object `tfsdk:"license_info"`
 }
 
 type LicenseInfoResource struct {
@@ -85,12 +84,11 @@ type LicenseInfoResource struct {
 
 var LicenseResourceType = types.ObjectType{AttrTypes: LicenseResourceAttrTypes}
 var LicenseResourceAttrTypes = map[string]attr.Type{
-	"id":                 types.StringType,
-	"site_id":            types.StringType,
-	"license_id_current": types.StringType,
-	"license_id":         types.StringType,
-	"bw":                 types.Int64Type,
-	"license_info":       LicenseInfoResourceType,
+	"id":           types.StringType,
+	"site_id":      types.StringType,
+	"license_id":   types.StringType,
+	"bw":           types.Int64Type,
+	"license_info": LicenseInfoResourceType,
 }
 
 var LicenseInfoResourceType = types.ObjectType{AttrTypes: LicenseInfoResourceAttrTypes}

@@ -60,12 +60,6 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"license_id_current": schema.StringAttribute{
-				Description: "License ID Current",
-				Required:    false,
-				Optional:    true,
-				Computed:    true,
-			},
 			"license_id": schema.StringAttribute{
 				Description: "License ID",
 				Required:    false,
@@ -191,7 +185,7 @@ func (r *licenseResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	plan.ID = types.StringValue(plan.SiteID.ValueString())
-	plan.LicenseIDCurrent = types.StringValue(plan.LicenseID.ValueString())
+	plan.SiteID = types.StringValue(plan.SiteID.ValueString())
 	// Check for valid license and hydrate state
 	licenseInfo, diagstmp := hydrateLicenseState(ctx, plan.LicenseID.ValueString(), curLicense)
 	diags = append(diags, diagstmp...)
@@ -224,7 +218,11 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Match current license by ID from API response
 	license := &cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses{}
-	curSiteLicenseId, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, state.ID.ValueString(), licensingInfoResponse)
+	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, state.ID.ValueString(), licensingInfoResponse)
+	if allocatedBw != nil {
+		state.BW = types.Int64Value(*allocatedBw)
+	}
+
 	if siteIsAssigned {
 		licenses := licensingInfoResponse.GetLicensing().GetLicensingInfo().GetLicenses()
 		for _, curLicense := range licenses {
@@ -242,7 +240,8 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 	licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
 	state.LicenseInfo = licenseInfoObject
-	state.LicenseIDCurrent = state.LicenseID
+	state.SiteID = types.StringValue(state.ID.ValueString())
+	state.LicenseID = curSiteLicenseId
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if diags.HasError() {
@@ -265,7 +264,7 @@ func (r *licenseResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	plan.ID = types.StringValue(plan.SiteID.ValueString())
-	plan.LicenseIDCurrent = types.StringValue(plan.LicenseID.ValueString())
+	plan.SiteID = types.StringValue(plan.SiteID.ValueString())
 	// Check for valid license and hydrate state
 	licenseInfo, diagstmp := hydrateLicenseState(ctx, plan.LicenseID.ValueString(), curLicense)
 	diags = append(diags, diagstmp...)
@@ -274,6 +273,7 @@ func (r *licenseResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
 	plan.LicenseInfo = licenseInfoObject
+	plan.SiteID = types.StringValue(plan.ID.ValueString())
 	diags = resp.State.Set(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if diags.HasError() {
@@ -373,8 +373,9 @@ func getLicenseByID(ctx context.Context, curLicenseId string, licensingInfoRespo
 	return license, licenseExists
 }
 
-func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, licensingInfoResponse *cato_go_sdk.Licensing) (types.String, bool) {
+func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, licensingInfoResponse *cato_go_sdk.Licensing) (types.String, *int64, bool) {
 	isAssigned := false
+	var allocatedBw *int64 = nil
 	var curLicenseId types.String
 	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
 	for _, curLicense := range licenses {
@@ -385,6 +386,7 @@ func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, li
 					if site.SitePooledBandwidthLicenseSite.ID == curSiteId {
 						tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
 						isAssigned = true
+						allocatedBw = &site.AllocatedBandwidth
 						curLicenseId = types.StringValue(*curLicense.ID)
 					}
 				}
@@ -399,7 +401,7 @@ func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, li
 			}
 		}
 	}
-	return curLicenseId, isAssigned
+	return curLicenseId, allocatedBw, isAssigned
 }
 
 func checkStaticLicenseForAssignment(ctx context.Context, licenseId string, licensingInfoResponse *cato_go_sdk.Licensing) (types.String, bool) {

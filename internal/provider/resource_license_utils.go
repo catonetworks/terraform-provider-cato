@@ -8,6 +8,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -51,7 +52,11 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	}
 
 	// Check if the site has a license currently
-	curSiteLicenseId, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
+	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
+	if allocatedBw != nil {
+		plan.BW = types.Int64Value(*allocatedBw)
+	}
+
 	// Get current license objeect by ID
 	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
 
