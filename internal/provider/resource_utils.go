@@ -100,18 +100,10 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrNa
 	tflog.Warn(ctx, "parseList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
-	// if stateItems != nil && len(stateItems) > 0 {
-	// 	tflog.Info(ctx, "parseList() - empty input list found in state, returning empty array")
-	// 	return types.ListValueMust(elemType, []attr.Value{})
-	// } else
 	if items == nil || len(items) == 0 {
 		tflog.Info(ctx, "parseList() - nil or empty input list, returning null")
 		return types.ListNull(elemType)
 	}
-	// if len(items) == 0 {
-	// 	tflog.Info(ctx, "parseList() - empty input list")
-	// 	return types.ListValueMust(elemType, []attr.Value{})
-	// }
 
 	tflog.Info(ctx, "parseList() - "+fmt.Sprintf("%v", items))
 

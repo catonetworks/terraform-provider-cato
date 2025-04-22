@@ -329,11 +329,44 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					})
 				}
 				ruleSourceUpdateInput.SystemGroup = ruleSourceInput.SystemGroup
+			} else {
+				ruleSourceUpdateInput.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
 			}
+
 			rootAddRule.Source = ruleSourceInput
 			rootUpdateRule.Source = ruleSourceUpdateInput
 		} else {
 			tflog.Warn(ctx, "TFLOG_SOURCE_WANFW_IS_NULL")
+			// rootAddRule.Source = &cato_models.WanFirewallSourceInput{
+			// 	FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
+			// 	GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
+			// 	Group:             make([]*cato_models.GroupRefInput, 0),
+			// 	Host:              make([]*cato_models.HostRefInput, 0),
+			// 	IP:                make([]string, 0),
+			// 	IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
+			// 	NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
+			// 	Site:              make([]*cato_models.SiteRefInput, 0),
+			// 	SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
+			// 	Subnet:            make([]string, 0),
+			// 	SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
+			// 	User:              make([]*cato_models.UserRefInput, 0),
+			// 	UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
+			// }
+			// rootUpdateRule.Source = &cato_models.WanFirewallSourceUpdateInput{
+			// 	FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
+			// 	GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
+			// 	Group:             make([]*cato_models.GroupRefInput, 0),
+			// 	Host:              make([]*cato_models.HostRefInput, 0),
+			// 	IP:                make([]string, 0),
+			// 	IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
+			// 	NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
+			// 	Site:              make([]*cato_models.SiteRefInput, 0),
+			// 	SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
+			// 	Subnet:            make([]string, 0),
+			// 	SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
+			// 	User:              make([]*cato_models.UserRefInput, 0),
+			// 	UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
+			// }
 		}
 
 		// setting country
@@ -698,24 +731,24 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 			// setting application subnet
 			if !applicationInput.Subnet.IsUnknown() && !applicationInput.Subnet.IsNull() {
-				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationInput.Subnet, false)...)
-				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationUpdateInput.Subnet, false)...)
+				diags = append(diags, applicationInput.Subnet.ElementsAs(ctx, &ruleApplicationInput.Subnet, false)...)
+				diags = append(diags, applicationInput.Subnet.ElementsAs(ctx, &ruleApplicationUpdateInput.Subnet, false)...)
 			} else {
 				ruleApplicationUpdateInput.Subnet = make([]string, 0)
 			}
 
 			// setting application domain
 			if !applicationInput.Domain.IsUnknown() && !applicationInput.Domain.IsNull() {
-				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationInput.Domain, false)...)
-				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationUpdateInput.Domain, false)...)
+				diags = append(diags, applicationInput.Domain.ElementsAs(ctx, &ruleApplicationInput.Domain, false)...)
+				diags = append(diags, applicationInput.Domain.ElementsAs(ctx, &ruleApplicationUpdateInput.Domain, false)...)
 			} else {
 				ruleApplicationUpdateInput.Domain = make([]string, 0)
 			}
 
 			// setting application fqdn
 			if !applicationInput.Fqdn.IsUnknown() && !applicationInput.Fqdn.IsNull() {
-				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationInput.Fqdn, false)...)
-				diags = append(diags, applicationInput.IP.ElementsAs(ctx, &ruleApplicationUpdateInput.Fqdn, false)...)
+				diags = append(diags, applicationInput.Fqdn.ElementsAs(ctx, &ruleApplicationInput.Fqdn, false)...)
+				diags = append(diags, applicationInput.Fqdn.ElementsAs(ctx, &ruleApplicationUpdateInput.Fqdn, false)...)
 			} else {
 				ruleApplicationUpdateInput.Fqdn = make([]string, 0)
 			}
@@ -974,6 +1007,11 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 			ruleServiceUpdateInput.Standard = make([]*cato_models.ServiceRefInput, 0)
 			ruleServiceUpdateInput.Custom = make([]*cato_models.CustomServiceInput, 0)
 			rootUpdateRule.Service = ruleServiceUpdateInput
+
+			ruleServiceInput := &cato_models.WanFirewallServiceTypeInput{}
+			ruleServiceInput.Standard = make([]*cato_models.ServiceRefInput, 0)
+			ruleServiceInput.Custom = make([]*cato_models.CustomServiceInput, 0)
+			rootAddRule.Service = ruleServiceInput
 		}
 
 		// setting tracking
@@ -1197,6 +1235,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source subnet
+					tflog.Debug(ctx, "sourceInput.Subnet", map[string]interface{}{
+						"sourceInput.Subnet": utils.InterfaceToJSONString(sourceInput.Subnet),
+					})
 					if !sourceInput.Subnet.IsNull() {
 						diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Source.Subnet, false)...)
 						exceptionUpdateInput.Source.Subnet = exceptionAddInput.Source.Subnet
@@ -1517,6 +1558,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				}
 
 				// setting device OS
+				tflog.Debug(ctx, "itemExceptionsInput.DeviceOs", map[string]interface{}{
+					"itemExceptionsInput.DeviceOs": utils.InterfaceToJSONString(itemExceptionsInput.DeviceOs),
+				})
+
 				if !itemExceptionsInput.DeviceOs.IsUnknown() && !itemExceptionsInput.DeviceOs.IsNull() {
 					diags = append(diags, itemExceptionsInput.DeviceOs.ElementsAs(ctx, &exceptionAddInput.DeviceOs, false)...)
 					exceptionUpdateInput.DeviceOs = exceptionAddInput.DeviceOs
@@ -2094,11 +2139,64 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						exceptionUpdateInput.Service.Custom = make([]*cato_models.CustomServiceInput, 0)
 					}
 				}
-
 				rootAddRule.Exceptions = append(rootAddRule.Exceptions, &exceptionAddInput)
 				rootUpdateRule.Exceptions = append(rootUpdateRule.Exceptions, &exceptionUpdateInput)
 			}
 		}
+		//  else {
+		// 	exceptionEmptyInput := cato_models.WanFirewallRuleExceptionInput{}
+		// 	exceptionEmptyInput.Direction = cato_models.WanFirewallDirectionEnum("BOTH")
+		// 	exceptionEmptyInput.ConnectionOrigin = cato_models.ConnectionOriginEnum("ANY")
+		// 	exceptionEmptyInput.Source = &cato_models.WanFirewallSourceInput{}
+		// 	exceptionEmptyInput.Source.IP = make([]string, 0)
+		// 	exceptionEmptyInput.Source.Subnet = make([]string, 0)
+		// 	exceptionEmptyInput.Source.Host = make([]*cato_models.HostRefInput, 0)
+		// 	exceptionEmptyInput.Source.Site = make([]*cato_models.SiteRefInput, 0)
+		// 	exceptionEmptyInput.Source.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
+		// 	exceptionEmptyInput.Source.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
+		// 	exceptionEmptyInput.Source.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
+		// 	exceptionEmptyInput.Source.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
+		// 	exceptionEmptyInput.Source.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
+		// 	exceptionEmptyInput.Source.User = make([]*cato_models.UserRefInput, 0)
+		// 	exceptionEmptyInput.Source.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
+		// 	exceptionEmptyInput.Source.Group = make([]*cato_models.GroupRefInput, 0)
+		// 	exceptionEmptyInput.Source.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
+		// 	exceptionEmptyInput.Country = make([]*cato_models.CountryRefInput, 0)
+		// 	exceptionEmptyInput.Device = make([]*cato_models.DeviceProfileRefInput, 0)
+		// 	exceptionEmptyInput.DeviceOs = make([]cato_models.OperatingSystem, 0)
+		// 	exceptionEmptyInput.Destination = &cato_models.WanFirewallDestinationInput{}
+		// 	exceptionEmptyInput.Destination.IP = make([]string, 0)
+		// 	exceptionEmptyInput.Destination.Subnet = make([]string, 0)
+		// 	exceptionEmptyInput.Destination.Host = make([]*cato_models.HostRefInput, 0)
+		// 	exceptionEmptyInput.Destination.Site = make([]*cato_models.SiteRefInput, 0)
+		// 	exceptionEmptyInput.Destination.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
+		// 	exceptionEmptyInput.Destination.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
+		// 	exceptionEmptyInput.Destination.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
+		// 	exceptionEmptyInput.Destination.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
+		// 	exceptionEmptyInput.Destination.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
+		// 	exceptionEmptyInput.Destination.User = make([]*cato_models.UserRefInput, 0)
+		// 	exceptionEmptyInput.Destination.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
+		// 	exceptionEmptyInput.Destination.Group = make([]*cato_models.GroupRefInput, 0)
+		// 	exceptionEmptyInput.Destination.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
+		// 	exceptionEmptyInput.Application = &cato_models.WanFirewallApplicationInput{}
+		// 	exceptionEmptyInput.Application.IP = make([]string, 0)
+		// 	exceptionEmptyInput.Application.Subnet = make([]string, 0)
+		// 	exceptionEmptyInput.Application.Domain = make([]string, 0)
+		// 	exceptionEmptyInput.Application.Fqdn = make([]string, 0)
+		// 	exceptionEmptyInput.Application.Application = make([]*cato_models.ApplicationRefInput, 0)
+		// 	exceptionEmptyInput.Application.CustomApp = make([]*cato_models.CustomApplicationRefInput, 0)
+		// 	exceptionEmptyInput.Application.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
+		// 	exceptionEmptyInput.Application.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
+		// 	exceptionEmptyInput.Application.AppCategory = make([]*cato_models.ApplicationCategoryRefInput, 0)
+		// 	exceptionEmptyInput.Application.CustomCategory = make([]*cato_models.CustomCategoryRefInput, 0)
+		// 	exceptionEmptyInput.Application.SanctionedAppsCategory = make([]*cato_models.SanctionedAppsCategoryRefInput, 0)
+		// 	exceptionEmptyInput.Service = &cato_models.WanFirewallServiceTypeInput{}
+		// 	exceptionEmptyInput.Service.Standard = make([]*cato_models.ServiceRefInput, 0)
+		// 	exceptionEmptyInput.Service.Custom = make([]*cato_models.CustomServiceInput, 0)
+
+		// 	rootAddRule.Exceptions = append(rootAddRule.Exceptions, &exceptionEmptyInput)
+		// 	rootUpdateRule.Exceptions = append(rootUpdateRule.Exceptions, &exceptionEmptyInput)
+		// }
 
 		// settings other rule attributes
 		rootAddRule.Name = ruleInput.Name.ValueString()

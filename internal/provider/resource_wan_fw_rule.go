@@ -2974,6 +2974,9 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	}
 	//creating new rule
 	tflog.Warn(ctx, "Create() "+fmt.Sprintf("%#v", input.create)+" "+fmt.Sprintf("%T", input.create))
+	tflog.Debug(ctx, "input.create", map[string]interface{}{
+		"input.create": utils.InterfaceToJSONString(input.create),
+	})
 	createRuleResponse, err := r.client.catov2.PolicyWanFirewallAddRule(ctx, input.create, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
