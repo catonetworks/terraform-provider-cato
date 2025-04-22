@@ -1619,6 +1619,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						PlanModifiers: []planmodifier.Set{
 							setplanmodifier.UseStateForUnknown(), // Avoid drift
 						},
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
+						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
@@ -1633,6 +1636,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Description: "Source traffic matching criteria for the exception.",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Attributes: map[string]schema.Attribute{
 										"ip": schema.ListAttribute{
 											Description: "",
@@ -1729,7 +1735,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.List{
 												listvalidator.SizeAtLeast(1),
 											},
-											Computed: true,
+											//Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
@@ -2061,12 +2067,18 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Description: "Destination traffic matching criteria for the exception.",
 									Required:    false,
 									Optional:    true,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Attributes: map[string]schema.Attribute{
 										"ip": schema.ListAttribute{
 											Description: "Pv4 address list",
 											ElementType: types.StringType,
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"host": schema.SetNestedAttribute{
 											Description: "Hosts and servers defined for your account",
@@ -2074,6 +2086,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
+											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -2110,6 +2125,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -2143,11 +2161,17 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "Subnets and network ranges defined for the LAN interfaces of a site",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "Multiple separate IP addresses or an IP range",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
@@ -2169,6 +2193,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
+											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -2205,6 +2232,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -2239,6 +2269,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
+											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -2275,6 +2308,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -2310,6 +2346,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -2344,6 +2383,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
+											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -2538,6 +2580,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Description: "Application matching criteria for the exception.",
 									Optional:    true,
 									Required:    false,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Attributes: map[string]schema.Attribute{
 										"application": schema.SetNestedAttribute{
 											Description: "",
@@ -2762,7 +2807,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
-											Computed: true,
+											// Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
@@ -3035,7 +3080,8 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	}
 	tflog.Info(ctx, "ruleObject - "+fmt.Sprintf("%v", currentRule))
 	// Hydrate ruleInput from api respoonse
-	ruleInputRead := hydrateWanRuleState(ctx, plan, currentRule)
+	ruleInputRead, hydrateDiags := hydrateWanRuleState(ctx, plan, currentRule)
+	resp.Diagnostics.Append(hydrateDiags...)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
 	tflog.Info(ctx, "ruleInputRead - "+fmt.Sprintf("%v", ruleInputRead))
 	ruleObject, diags := types.ObjectValueFrom(ctx, WanFirewallRuleRuleAttrTypes, ruleInputRead)
@@ -3105,7 +3151,8 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	ruleInput := hydrateWanRuleState(ctx, state, currentRule)
+	ruleInput, hydrateDiags := hydrateWanRuleState(ctx, state, currentRule)
+	resp.Diagnostics.Append(hydrateDiags...)
 
 	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
 	if resp.Diagnostics.HasError() {
@@ -3250,7 +3297,9 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	})
 
 	// Hydrate ruleInput from api respoonse
-	ruleInputRead := hydrateWanRuleState(ctx, plan, currentRule)
+	ruleInputRead, hydrateDiags := hydrateWanRuleState(ctx, plan, currentRule)
+	resp.Diagnostics.Append(hydrateDiags...)
+
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
 	ruleObject, diags := types.ObjectValueFrom(ctx, WanFirewallRuleRuleAttrTypes, ruleInputRead)
 	resp.Diagnostics.Append(diags...)

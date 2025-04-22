@@ -12,14 +12,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule) Policy_Policy_WanFirewall_Policy_Rules_Rule {
+func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule) (Policy_Policy_WanFirewall_Policy_Rules_Rule, diag.Diagnostics) {
 
 	ruleInput := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
 	diags := make(diag.Diagnostics, 0)
 	diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
 	diags = append(diags, diagstmp...)
 	if diags.HasError() {
-		return ruleInput
+		return ruleInput, diags
 	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
 	ruleInput.Direction = types.StringValue(string(currentRule.Direction))
@@ -106,6 +106,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		},
 	)
 	ruleInput.Application = curRuleApplicationObj
+	diags = append(diags, diagstmp...)
 	////////////// end Rul -> Application ///////////////
 
 	////////////// start Rule -> Service ///////////////
@@ -153,12 +154,13 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	curRuleTrackingObjAttrs := curRuleTrackingObj.Attributes()
 
 	// Rule -> Tracking -> Event
-	trackingEventValue, diags := types.ObjectValue(
+	trackingEventValue, diagsObj := types.ObjectValue(
 		TrackingEventAttrTypes,
 		map[string]attr.Value{
 			"enabled": types.BoolValue(currentRule.Tracking.Event.Enabled),
 		},
 	)
+	diags = append(diags, diagsObj...)
 	curRuleTrackingObjAttrs["event"] = trackingEventValue
 
 	// Rule -> Tracking -> Alert
@@ -218,14 +220,16 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		},
 	)
 	diags = append(diags, diagstmp...)
+	ruleInput.Exceptions = curRuleExceptionsObj
+
 	exceptions := []attr.Value{}
 
 	// Rule -> Exceptions -> Source
 	tflog.Warn(ctx, "hydrateWanRuleState() currentRule.Exceptions - "+fmt.Sprintf("%v", currentRule.Exceptions)+" len="+fmt.Sprintf("%v", len(currentRule.Exceptions)))
-	if currentRule.Exceptions != nil && len(currentRule.Exceptions) > 0 {
+	if len(currentRule.Exceptions) > 0 {
 		for _, ruleException := range currentRule.Exceptions {
 			// Rule -> Exceptions -> Source
-			curExceptionSourceObj, diags := types.ObjectValue(
+			curExceptionSourceObj, diagstmp := types.ObjectValue(
 				WanSourceAttrTypes,
 				map[string]attr.Value{
 					"ip":                  parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
@@ -243,9 +247,10 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 					"system_group":        parseNameIDList(ctx, ruleException.Source.SystemGroup, "rule.exception.source.system_group"),
 				},
 			)
+			diags = append(diags, diagstmp...)
 
 			// Rule -> Exceptions -> Destination
-			curExceptionDestObj, diags := types.ObjectValue(
+			curExceptionDestObj, diagstmp := types.ObjectValue(
 				WanDestAttrTypes,
 				map[string]attr.Value{
 					"ip":                  parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
@@ -263,6 +268,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 					"system_group":        parseNameIDList(ctx, ruleException.Destination.SystemGroup, "rule.exception.destination.system_group"),
 				},
 			)
+			diags = append(diags, diagstmp...)
 
 			// //////////// Rule -> Exceptions -> Application ///////////////
 			curExceptionApplicationObj, diagstmp := types.ObjectValue(
@@ -281,6 +287,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 					"global_ip_range":          parseNameIDList(ctx, ruleException.Application.GlobalIPRange, "rule.exception.application.global_ip_range"),
 				},
 			)
+			diags = append(diags, diagstmp...)
 			////////////// end Rul -> Exceptions -> Application ///////////////
 
 			////////////// start Rule -> Service ///////////////
@@ -338,11 +345,12 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		curRuleExceptionsObj, diagstmp = types.SetValue(types.ObjectType{AttrTypes: WanExceptionAttrTypes}, exceptions)
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
-	} else {
-		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
 	}
+	// else {
+	// 	ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
+	// }
 	////////////// end Rule -> Exceptions ///////////////
 
-	return ruleInput
+	return ruleInput, diags
 
 }
