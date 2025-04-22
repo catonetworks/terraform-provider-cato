@@ -100,8 +100,9 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrNa
 	tflog.Warn(ctx, "parseList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
+	//if items == nil || len(items) == 0 {
 	if items == nil || len(items) == 0 {
-		tflog.Info(ctx, "parseList() - nil or empty input list, returning null")
+		tflog.Info(ctx, "parseList() - nil list, returning null")
 		return types.ListNull(elemType)
 	}
 
