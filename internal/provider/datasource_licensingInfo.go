@@ -237,15 +237,6 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-	tflog.Info(ctx, "state - "+fmt.Sprintf("%v", state))
-	tflog.Debug(ctx, "state value and type", map[string]interface{}{
-		"value": state,
-		"type":  fmt.Sprintf("%T", state),
-	})
-	tflog.Debug(ctx, "state.IsActive value and type", map[string]interface{}{
-		"value": state.IsActive,
-		"type":  fmt.Sprintf("%T", state.IsActive),
-	})
 
 	licensingInfoResponse, err := d.client.catov2.Licensing(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "licensingInfoResponse", map[string]interface{}{
@@ -260,6 +251,14 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
+	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
+	if len(licenses) == 0 {
+		resp.Diagnostics.AddError(
+			"LICENSE API ERROR",
+			"No licenses were found on this account.",
+		)
+		return
+	}
 	gla := licensingInfoResponse.Licensing.LicensingInfo.GlobalLicenseAllocations
 
 	publicIps, diags := types.ObjectValue(
@@ -290,9 +289,8 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 	resp.Diagnostics.Append(diags...)
 	state.GlobalLicenseAllocations = globalLicenseAllocationsObj
 
-	li := licensingInfoResponse.Licensing.LicensingInfo.Licenses
 	filteredLicenses := make([]types.Object, 0)
-	for _, license := range li {
+	for _, license := range licenses {
 		matches := true
 		tflog.Debug(ctx, "state.Filters.IsActive value and type", map[string]interface{}{
 			"value": state.IsActive,

@@ -17,6 +17,9 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	// Get all sites, check for valid siteID
 	siteExists := false
 	siteResponse, err := cc.catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, nil, nil, nil, nil, nil, nil, nil, nil)
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_siteResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(siteResponse),
+	})
 
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
@@ -41,6 +44,13 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
 		return nil, err
+	}
+
+	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
+	if len(licenses) == 0 {
+		message := "No licenses were found on this account."
+		diags = append(diags, diag.NewErrorDiagnostic("LICENSE API ERROR", message))
+		return nil, fmt.Errorf("LICENSE API ERROR: %s", message)
 	}
 
 	// Check if static license currently assigned to site
