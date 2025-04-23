@@ -42,7 +42,7 @@ func (r *licenseResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_lan_interface` resource contains the configuration parameters necessary to add a lan interface to a socket. ([physical socket physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
+		Description: "The `cato_license` resource contains the configuration parameters necessary to assign and replace licenses for sites. When creating a new license resource, the `site_id` and `license_id` attributes are required. The `license_info` attribute is optional and will be populated with the license information after the resource is created. If the site has an existing license assigned, the license resource will call the mutation.ReplaceSiteBwLicense() operation replacing the existing license with the new license_id ensuring there is no interruption in servive of reassigning a license.\n\n**NOTE** License assignment does not work for Trial accounts, or for accounts that are \"not synced\".",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "License ID",

@@ -135,4 +135,5 @@ Required:
 Optional:
 
 - `address` (String) Optionnal address
+- `city` (String) Optionnal city
 - `state_code` (String) Optionnal site state code(can be retrieve from entityLookup)

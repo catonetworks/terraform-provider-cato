@@ -71,3 +71,10 @@ func InterfaceToJSONString(data interface{}) string {
 	jsonData, _ := json.Marshal(data)
 	return string(jsonData)
 }
+
+func ConvertOptionalString(input *string) types.String {
+	if input != nil {
+		return types.StringValue(*input)
+	}
+	return types.StringNull()
+}
