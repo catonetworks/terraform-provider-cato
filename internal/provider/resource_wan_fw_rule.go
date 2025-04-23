@@ -316,11 +316,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "",
 											Required:    false,
 											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
+											// Validators: []validator.String{
+											// 	stringvalidator.ConflictsWith(path.Expressions{
+											// 		path.MatchRelative().AtParent().AtName("id"),
+											// 	}...),
+											// },
 											PlanModifiers: []planmodifier.String{
 												stringplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
@@ -728,6 +728,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Description: "Network range defined for a site",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -737,11 +740,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "",
 											Required:    false,
 											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
+											// Validators: []validator.String{
+											// 	stringvalidator.ConflictsWith(path.Expressions{
+											// 		path.MatchRelative().AtParent().AtName("id"),
+											// 	}...),
+											// },
 											PlanModifiers: []planmodifier.String{
 												stringplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
@@ -1676,8 +1679,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								},
 								"source": schema.SingleNestedAttribute{
 									Description: "Source traffic matching criteria for the exception.",
-									Required:    false,
-									Optional:    true,
+									Required:    true,
+									Optional:    false,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Attributes: map[string]schema.Attribute{
 										"ip": schema.ListAttribute{
 											Description: "",
@@ -1794,21 +1800,13 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
 														Description: "",
-														Required:    false,
-														Optional:    true,
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
-														// Computed: true,
+														Required:    true,
+														Optional:    false,
 													},
 													"to": schema.StringAttribute{
 														Description: "",
-														Required:    false,
-														Optional:    true,
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
-														// Computed: true,
+														Required:    true,
+														Optional:    false,
 													},
 												},
 											},
@@ -1852,8 +1850,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"network_interface": schema.SetNestedAttribute{
-											Required: false,
-											Optional: true,
+											Description: "Network range defined for a site",
+											Required:    false,
+											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
 												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
@@ -1866,11 +1865,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Description: "",
 														Required:    false,
 														Optional:    true,
-														Validators: []validator.String{
-															stringvalidator.ConflictsWith(path.Expressions{
-																path.MatchRelative().AtParent().AtName("id"),
-															}...),
-														},
+														// Validators: []validator.String{
+														// 	stringvalidator.ConflictsWith(path.Expressions{
+														// 		path.MatchRelative().AtParent().AtName("id"),
+														// 	}...),
+														// },
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
@@ -1941,15 +1940,15 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Description: "",
 														Required:    false,
 														Optional:    true,
-														// Validators: []validator.String{
-														// 	stringvalidator.ConflictsWith(path.Expressions{
-														// 		path.MatchRelative().AtParent().AtName("id"),
-														// 	}...),
-														// },
+														Validators: []validator.String{
+															stringvalidator.ConflictsWith(path.Expressions{
+																path.MatchRelative().AtParent().AtName("id"),
+															}...),
+														},
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
-														// Computed: true,
+														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
@@ -1958,7 +1957,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
-														// Computed: true,
+														Computed: true,
 													},
 												},
 											},
@@ -2304,11 +2303,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Description: "",
 														Required:    false,
 														Optional:    true,
-														Validators: []validator.String{
-															stringvalidator.ConflictsWith(path.Expressions{
-																path.MatchRelative().AtParent().AtName("id"),
-															}...),
-														},
+														// Validators: []validator.String{
+														// 	stringvalidator.ConflictsWith(path.Expressions{
+														// 		path.MatchRelative().AtParent().AtName("id"),
+														// 	}...),
+														// },
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},

@@ -1584,6 +1584,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					diags = append(diags, itemExceptionsInput.Destination.As(ctx, &exceptionDestinationInput, basetypes.ObjectAsOptions{})...)
 
 					// setting destination IP
+					tflog.Debug(ctx, "exceptionDestinationInput.IP", map[string]interface{}{
+						"exceptionDestinationInput.IP": utils.InterfaceToJSONString(exceptionDestinationInput.IP),
+						"Type":                         fmt.Sprintf("%T", exceptionDestinationInput.IP),
+					})
 					if !exceptionDestinationInput.IP.IsUnknown() && !exceptionDestinationInput.IP.IsNull() {
 						diags = append(diags, exceptionDestinationInput.IP.ElementsAs(ctx, &exceptionAddInput.Destination.IP, false)...)
 						exceptionUpdateInput.Destination.IP = exceptionAddInput.Destination.IP
