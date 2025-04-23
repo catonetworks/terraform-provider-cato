@@ -23,7 +23,6 @@ The `cato_lan_interface` resource contains the configuration parameters necessar
 
 - `bw` (Number) Bandwidth to allocate to site (only used for pooled license model)
 - `license_id` (String) License ID
-- `license_id_current` (String) License ID Current
 - `license_info` (Attributes) (see [below for nested schema](#nestedatt--license_info))
 
 ### Read-Only

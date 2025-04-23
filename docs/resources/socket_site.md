@@ -4,11 +4,14 @@ page_title: "cato_socket_site Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
   The cato_socket_site resource contains the configuration parameters necessary to add a socket site to the Cato cloud (virtual socket in AWS/Azure, or physical socket https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites). Documentation for the underlying API used in this resource can be found at mutation.addSocketSite() https://api.catonetworks.com/documentation/#mutation-site.addSocketSite.
+  Note: For AWS deployments, please accept the EULA for the Cato Networks AWS Marketplace product https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c.
 ---
 
 # cato_socket_site (Resource)
 
-The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site to the Cato cloud ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite).
+The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site to the Cato cloud ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite). 
+
+ **Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product](https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).
 
 ## Example Usage
 
@@ -47,7 +50,7 @@ resource "cato_socket_site" "aws_site" {
   site_location = {
     country_code = data.cato_siteLocation.ny.locations[1].country_code
     state_code = data.cato_siteLocation.ny.locations[1].state_code
-    timezone = data.cato_siteLocation.ny.locations[1].timezone
+    timezone = data.cato_siteLocation.ny.locations[1].timezone[0]
  }
 }
 

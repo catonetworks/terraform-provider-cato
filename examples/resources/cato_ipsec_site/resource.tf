@@ -26,7 +26,7 @@ resource "cato_ipsec_site" "test-dev-site" {
   site_location = {
     country_code = data.cato_siteLocation.ny.locations[1].country_code
     state_code = data.cato_siteLocation.ny.locations[1].state_code
-    timezone = data.cato_siteLocation.ny.locations[1].timezone
+    timezone = data.cato_siteLocation.ny.locations[1].timezone[0]
     address = "555 That Way"
   }
   ipsec = {

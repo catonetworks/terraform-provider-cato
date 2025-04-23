@@ -90,7 +90,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Optional:    true,
 					},
 					"index": schema.Int64Attribute{
-						Description: "",
+						Description: "Ruile index",
 						Required:    false,
 						Optional:    true,
 						PlanModifiers: []planmodifier.Int64{
@@ -168,7 +168,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Host Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -182,7 +182,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Host ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -206,7 +206,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Site Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -220,7 +220,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Site ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -250,12 +250,12 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"from": schema.StringAttribute{
-											Description: "",
+											Description: "IP Range Name",
 											Required:    false,
 											Optional:    true,
 										},
 										"to": schema.StringAttribute{
-											Description: "",
+											Description: "IP Range ID",
 											Required:    false,
 											Optional:    true,
 										},
@@ -275,7 +275,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Global IP Range",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -289,7 +289,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Global IP ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -313,7 +313,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Network Interface Name",
 											Required:    false,
 											Optional:    true,
 											// Validators: []validator.String{
@@ -327,7 +327,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Network Interface ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -351,7 +351,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Site Natwork Subnet Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -365,7 +365,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Site Natwork Subnet ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -389,7 +389,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Floating Subnet Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -403,7 +403,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Floating Subnet ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -427,7 +427,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "User Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -441,7 +441,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "User ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -465,7 +465,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "User Group Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -479,7 +479,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "User Group ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -503,7 +503,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Group Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -517,7 +517,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Group ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -541,7 +541,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "System Group Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -555,7 +555,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "System Group ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -595,7 +595,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Host Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -609,7 +609,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Host ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -633,7 +633,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Site Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -647,7 +647,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Site ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -674,12 +674,12 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"from": schema.StringAttribute{
-											Description: "",
+											Description: "IP Range Name",
 											Required:    false,
 											Optional:    true,
 										},
 										"to": schema.StringAttribute{
-											Description: "",
+											Description: "IP Range ID",
 											Required:    false,
 											Optional:    true,
 										},
@@ -699,7 +699,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Global IP Range Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -713,7 +713,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Global IP ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -737,7 +737,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Network Interface Name",
 											Required:    false,
 											Optional:    true,
 											// Validators: []validator.String{
@@ -751,7 +751,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Network Interface ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -772,7 +772,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Site Natwork Subnet Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -786,7 +786,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Site Natwork Subnet ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -807,7 +807,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Floating Subnet Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -821,7 +821,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Floating Subnet ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -842,7 +842,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "User Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -856,7 +856,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "User ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -877,7 +877,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Users Group Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -891,7 +891,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Users Group ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -912,7 +912,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Group Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -926,7 +926,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Group ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -947,7 +947,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "System Group Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -961,7 +961,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "System Group ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -996,7 +996,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
-									Description: "",
+									Description: "Country Name",
 									Required:    false,
 									Optional:    true,
 									Validators: []validator.String{
@@ -1010,7 +1010,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Computed: true,
 								},
 								"id": schema.StringAttribute{
-									Description: "",
+									Description: "Country ID",
 									Required:    false,
 									Optional:    true,
 									PlanModifiers: []planmodifier.String{
@@ -1031,7 +1031,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
-									Description: "",
+									Description: "Device Name",
 									Required:    false,
 									Optional:    true,
 									Validators: []validator.String{
@@ -1045,7 +1045,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Computed: true,
 								},
 								"id": schema.StringAttribute{
-									Description: "",
+									Description: "Device ID",
 									Required:    false,
 									Optional:    true,
 									PlanModifiers: []planmodifier.String{
@@ -1080,7 +1080,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Application Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1094,7 +1094,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Application ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -1115,7 +1115,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Custom Application Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1129,7 +1129,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Custom Application ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -1150,7 +1150,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Application Category Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1165,7 +1165,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Application Category ID",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1192,7 +1192,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Custom Category Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1206,7 +1206,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Custom Category ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -1227,7 +1227,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Sanctioned Apps Category Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1241,7 +1241,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Sanctioned Apps Category ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -1298,12 +1298,12 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"from": schema.StringAttribute{
-											Description: "",
+											Description: "IP Range Name",
 											Required:    false,
 											Optional:    true,
 										},
 										"to": schema.StringAttribute{
-											Description: "",
+											Description: "IP Range ID",
 											Required:    false,
 											Optional:    true,
 										},
@@ -1320,7 +1320,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Global IP Range Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1334,7 +1334,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Global IP ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -1362,7 +1362,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "",
+											Description: "Service Standard Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -1376,7 +1376,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "",
+											Description: "Service Standard ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -1436,7 +1436,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Required:    true,
 								Attributes: map[string]schema.Attribute{
 									"enabled": schema.BoolAttribute{
-										Description: "",
+										Description: "Enable event creation",
 										Required:    false,
 										Optional:    true,
 										Computed:    true,
@@ -1454,7 +1454,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Computed: true,
 								Attributes: map[string]schema.Attribute{
 									"enabled": schema.BoolAttribute{
-										Description: "",
+										Description: "Alert creation enabled",
 										Optional:    true,
 										Required:    false,
 										PlanModifiers: []planmodifier.Bool{
@@ -1486,7 +1486,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
-													Description: "",
+													Description: "Subscription Group Name",
 													Required:    false,
 													Optional:    true,
 													Validators: []validator.String{
@@ -1500,7 +1500,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													Computed: true,
 												},
 												"id": schema.StringAttribute{
-													Description: "",
+													Description: "Subscription Group ID",
 													Required:    false,
 													Optional:    true,
 													PlanModifiers: []planmodifier.String{
@@ -1521,7 +1521,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
-													Description: "",
+													Description: "Webhook Name",
 													Required:    false,
 													Optional:    true,
 													Validators: []validator.String{
@@ -1535,7 +1535,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													Computed: true,
 												},
 												"id": schema.StringAttribute{
-													Description: "",
+													Description: "Webhook ID",
 													Required:    false,
 													Optional:    true,
 													PlanModifiers: []planmodifier.String{
@@ -1556,7 +1556,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"name": schema.StringAttribute{
-													Description: "",
+													Description: "Mailing List Name",
 													Required:    false,
 													Optional:    true,
 													Validators: []validator.String{
@@ -1570,7 +1570,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													Computed: true,
 												},
 												"id": schema.StringAttribute{
-													Description: "",
+													Description: "Mailing List ID",
 													Required:    false,
 													Optional:    true,
 													PlanModifiers: []planmodifier.String{
@@ -1615,12 +1615,12 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								},
 								Attributes: map[string]schema.Attribute{
 									"from": schema.StringAttribute{
-										Description: "",
+										Description: "Custom Timeframe Name",
 										Required:    false,
 										Optional:    true,
 									},
 									"to": schema.StringAttribute{
-										Description: "",
+										Description: "Custom Timeframe ID",
 										Required:    false,
 										Optional:    true,
 									},
@@ -1635,18 +1635,18 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								},
 								Attributes: map[string]schema.Attribute{
 									"from": schema.StringAttribute{
-										Description: "",
+										Description: "Custom Recurring Name",
 										Required:    false,
 										Optional:    true,
 									},
 									"to": schema.StringAttribute{
-										Description: "",
+										Description: "Custom Recurring ID",
 										Required:    false,
 										Optional:    true,
 									},
 									"days": schema.ListAttribute{
 										ElementType: types.StringType,
-										Description: "(https://api.catonetworks.com/documentation/#definition-DayOfWeek)",
+										Description: "Custom Recurring Days - (https://api.catonetworks.com/documentation/#definition-DayOfWeek)",
 										Required:    false,
 										Optional:    true,
 										Validators: []validator.List{
@@ -1686,7 +1686,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 									Attributes: map[string]schema.Attribute{
 										"ip": schema.ListAttribute{
-											Description: "",
+											Description: "Source IP traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 											ElementType: types.StringType,
 											Required:    false,
 											Optional:    true,
@@ -1710,7 +1710,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Host Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1724,7 +1724,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Host ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1748,7 +1748,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Site Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1762,7 +1762,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Site ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1775,7 +1775,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -1787,7 +1787,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											//Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
-											Description: "",
+											Description: "IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -1799,12 +1799,12 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
-														Description: "",
+														Description: "From IP Range Name",
 														Required:    true,
 														Optional:    false,
 													},
 													"to": schema.StringAttribute{
-														Description: "",
+														Description: "To IP Range ID",
 														Required:    true,
 														Optional:    false,
 													},
@@ -1824,7 +1824,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1838,7 +1838,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1862,7 +1862,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Network Interface Name",
 														Required:    false,
 														Optional:    true,
 														// Validators: []validator.String{
@@ -1876,7 +1876,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Network Interface ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1899,7 +1899,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Site Network Subnet Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1913,7 +1913,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Site Network Subnet ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1925,7 +1925,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"floating_subnet": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Floating Subnet defined for a site",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1937,7 +1937,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Floating Subnet Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1951,7 +1951,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Floating Subnet ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1963,7 +1963,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"user": schema.SetNestedAttribute{
-											Description: "",
+											Description: "User defined for your account",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1975,7 +1975,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "User Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1989,7 +1989,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "User ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2013,7 +2013,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Users Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2027,7 +2027,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Users Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2051,7 +2051,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2065,7 +2065,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2089,7 +2089,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "System Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2103,7 +2103,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "System Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2149,7 +2149,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Host Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2163,7 +2163,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Hst ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2187,7 +2187,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Site Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2201,7 +2201,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Site ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2237,12 +2237,12 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
-														Description: "",
+														Description: "IP Range Name",
 														Required:    true,
 														Optional:    false,
 													},
 													"to": schema.StringAttribute{
-														Description: "",
+														Description: "IP Range ID",
 														Required:    true,
 														Optional:    false,
 													},
@@ -2262,7 +2262,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2276,7 +2276,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2300,7 +2300,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Network Interface Name",
 														Required:    false,
 														Optional:    true,
 														// Validators: []validator.String{
@@ -2314,7 +2314,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Network Interface ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2338,7 +2338,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Site Network Subnet Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2352,7 +2352,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Site Network Subnet ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2376,7 +2376,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Floating Subnet Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2390,7 +2390,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Floating Subnet ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2414,7 +2414,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "User Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2428,7 +2428,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "User ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2452,7 +2452,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Users Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2466,7 +2466,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Users Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2487,7 +2487,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2501,7 +2501,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2522,7 +2522,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "System Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2536,7 +2536,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "System Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2562,7 +2562,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"name": schema.StringAttribute{
-												Description: "",
+												Description: "Country Name",
 												Required:    false,
 												Optional:    true,
 												Validators: []validator.String{
@@ -2576,7 +2576,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 												Computed: true,
 											},
 											"id": schema.StringAttribute{
-												Description: "",
+												Description: "Country ID",
 												Required:    false,
 												Optional:    true,
 												PlanModifiers: []planmodifier.String{
@@ -2600,7 +2600,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"name": schema.StringAttribute{
-												Description: "",
+												Description: "Device Name",
 												Required:    false,
 												Optional:    true,
 												Validators: []validator.String{
@@ -2614,7 +2614,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 												Computed: true,
 											},
 											"id": schema.StringAttribute{
-												Description: "",
+												Description: "Device ID",
 												Required:    false,
 												Optional:    true,
 												PlanModifiers: []planmodifier.String{
@@ -2647,7 +2647,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 									Attributes: map[string]schema.Attribute{
 										"application": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Application defined for your account",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -2659,7 +2659,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Application Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2673,7 +2673,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Application ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2697,7 +2697,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Application Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2711,7 +2711,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Application ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2734,7 +2734,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Application Category Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2748,7 +2748,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Application Category ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2772,7 +2772,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Application Category Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2786,7 +2786,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Application Category ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2809,7 +2809,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Sanctioned Application Category Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2823,7 +2823,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Sanctioned Application Category ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2836,7 +2836,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										},
 										"domain": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "Domain names matching criteria for the exception.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -2848,7 +2848,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										},
 										"fqdn": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "Fully Qualified Domain Names matching criteria for the exception.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -2860,7 +2860,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										},
 										"ip": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "IPv4 address list matching criteria for the exception.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -2872,7 +2872,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "Subnets and network ranges matching criteria for the exception.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -2883,7 +2883,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"ip_range": schema.ListNestedAttribute{
-											Description: "",
+											Description: "IP range matching criteria for the exception.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -2895,7 +2895,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
-														Description: "",
+														Description: "IP Range From",
 														Required:    true,
 														Optional:    false,
 														PlanModifiers: []planmodifier.String{
@@ -2903,7 +2903,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														},
 													},
 													"to": schema.StringAttribute{
-														Description: "",
+														Description: "IP Range To",
 														Required:    true,
 														Optional:    false,
 														PlanModifiers: []planmodifier.String{
@@ -2914,7 +2914,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"global_ip_range": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Global IP range matching criteria for the exception.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -2926,7 +2926,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2940,7 +2940,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2970,7 +2970,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Standard Service Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2984,7 +2984,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Standard Service ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -3006,7 +3006,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 												Attributes: map[string]schema.Attribute{
 													"port": schema.ListAttribute{
 														ElementType: types.StringType,
-														Description: "",
+														Description: "Custom Service Port",
 														Optional:    true,
 														Required:    false,
 													},
@@ -3015,19 +3015,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Optional: true,
 														Attributes: map[string]schema.Attribute{
 															"from": schema.StringAttribute{
-																Description: "",
+																Description: "Port Range From",
 																Required:    true,
 																Optional:    false,
 															},
 															"to": schema.StringAttribute{
-																Description: "",
+																Description: "Port Range To",
 																Required:    true,
 																Optional:    false,
 															},
 														},
 													},
 													"protocol": schema.StringAttribute{
-														Description: "",
+														Description: "Protocol matching criteria for the exception.",
 														Required:    false,
 														Optional:    true,
 													},
