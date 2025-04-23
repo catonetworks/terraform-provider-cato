@@ -48,7 +48,9 @@ data "cato_siteLocation" "ny" {
             country_name = "United States"
             state_code   = "US-NY"
             state_name   = "New York"
-            timezone     = "America/New_York"
+            timezone     = [
+                "America/New_York",
+            ]
         },
         {
             city         = "New York City"
@@ -56,7 +58,9 @@ data "cato_siteLocation" "ny" {
             country_name = "United States"
             state_code   = "US-NY"
             state_name   = "New York"
-            timezone     = "America/New_York"
+            timezone     = [
+                "America/New_York",
+            ]
         },
     ]
 }
@@ -93,4 +97,4 @@ Read-Only:
 - `country_name` (String) Country name
 - `state_code` (String) State code
 - `state_name` (String) State name
-- `timezone` (String) Timezone
+- `timezone` (List of String) Timezone

@@ -126,6 +126,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								ElementType: types.StringType,
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"host": schema.SetNestedAttribute{
 								Description: "Hosts and servers defined for your account",
@@ -202,6 +205,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Subnets and network ranges defined for the LAN interfaces of a site",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"ip_range": schema.ListNestedAttribute{
 								Description: "Multiple separate IP addresses or an IP range",
@@ -816,24 +822,36 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"fqdn": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"ip": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "IPv4 addresses",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"subnet": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "Network subnets in CIDR notation",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"ip_range": schema.ListNestedAttribute{
 								Description: "A range of IPs. Every IP within the range will be matched",
@@ -1512,6 +1530,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},

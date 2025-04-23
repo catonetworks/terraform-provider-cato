@@ -269,12 +269,6 @@ var InternetFirewallRuleAttrTypes = map[string]attr.Type{
 	"at":   PositionObjectType,
 }
 
-var PositionObjectType = types.ObjectType{AttrTypes: PositionAttrTypes}
-var PositionAttrTypes = map[string]attr.Type{
-	"position": types.StringType,
-	"ref":      types.StringType,
-}
-
 var InternetFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleRuleAttrTypes}
 var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"id":                types.StringType,
@@ -283,76 +277,27 @@ var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"index":             types.Int64Type,
 	"enabled":           types.BoolType,
 	"section":           NameIDObjectType,
-	"source":            SourceObjectType,
+	"source":            IfwSourceObjectType,
 	"connection_origin": types.StringType,
 	"country":           types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device":            types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device_os":         types.ListType{ElemType: types.StringType},
-	"destination":       types.ObjectType{AttrTypes: DestAttrTypes},
-	"service":           types.ObjectType{AttrTypes: ServiceAttrTypes},
+	"destination":       types.ObjectType{AttrTypes: IfwDestAttrTypes},
+	"service":           types.ObjectType{AttrTypes: IfwServiceAttrTypes},
 	"action":            types.StringType,
 	"tracking":          TrackingObjectType,
 	"schedule":          ScheduleObjectType,
-	"exceptions":        types.SetType{ElemType: types.ObjectType{AttrTypes: ExceptionAttrTypes}},
+	"exceptions":        types.SetType{ElemType: types.ObjectType{AttrTypes: IfwExceptionAttrTypes}},
 }
 
-var ServiceObjectType = types.ObjectType{AttrTypes: ServiceAttrTypes}
-var ServiceAttrTypes = map[string]attr.Type{
+var IfwServiceObjectType = types.ObjectType{AttrTypes: IfwServiceAttrTypes}
+var IfwServiceAttrTypes = map[string]attr.Type{
 	"standard": types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"custom":   types.ListType{ElemType: types.ObjectType{AttrTypes: CustomServiceAttrTypes}},
 }
-var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
-var CustomServiceAttrTypes = map[string]attr.Type{
-	"port":       types.ListType{ElemType: types.StringType},
-	"port_range": FromToObjectType,
-	"protocol":   types.StringType,
-}
-var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
-var NameIDAttrTypes = map[string]attr.Type{
-	"name": types.StringType,
-	"id":   types.StringType,
-}
-var FromToObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
-var FromToAttrTypes = map[string]attr.Type{
-	"from": types.StringType,
-	"to":   types.StringType,
-}
-var FromToDaysObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
-var FromToDaysAttrTypes = map[string]attr.Type{
-	"from": types.StringType,
-	"to":   types.StringType,
-	"days": types.ListType{ElemType: types.StringType},
-}
 
-// Rule -> Tracking
-var TrackingObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
-var TrackingAttrTypes = map[string]attr.Type{
-	"event": types.ObjectType{AttrTypes: TrackingEventAttrTypes},
-	"alert": types.ObjectType{AttrTypes: TrackingAlertAttrTypes},
-}
-
-var TrackingEventObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
-var TrackingEventAttrTypes = map[string]attr.Type{
-	"enabled": types.BoolType,
-}
-var TrackingAlertObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
-var TrackingAlertAttrTypes = map[string]attr.Type{
-	"enabled":            types.BoolType,
-	"frequency":          types.StringType,
-	"subscription_group": types.SetType{ElemType: NameIDObjectType},
-	"webhook":            types.SetType{ElemType: NameIDObjectType},
-	"mailing_list":       types.SetType{ElemType: NameIDObjectType},
-}
-
-var ScheduleObjectType = types.ObjectType{AttrTypes: ScheduleAttrTypes}
-var ScheduleAttrTypes = map[string]attr.Type{
-	"active_on":        types.StringType,
-	"custom_timeframe": types.ObjectType{AttrTypes: FromToAttrTypes},
-	"custom_recurring": types.ObjectType{AttrTypes: FromToDaysAttrTypes},
-}
-
-var SourceObjectType = types.ObjectType{AttrTypes: SourceAttrTypes}
-var SourceAttrTypes = map[string]attr.Type{
+var IfwSourceObjectType = types.ObjectType{AttrTypes: IfwSourceAttrTypes}
+var IfwSourceAttrTypes = map[string]attr.Type{
 	"ip":                  types.ListType{ElemType: types.StringType},
 	"host":                types.SetType{ElemType: NameIDObjectType},
 	"site":                types.SetType{ElemType: NameIDObjectType},
@@ -368,8 +313,8 @@ var SourceAttrTypes = map[string]attr.Type{
 	"system_group":        types.SetType{ElemType: NameIDObjectType},
 }
 
-var DestObjectType = types.ObjectType{AttrTypes: DestAttrTypes}
-var DestAttrTypes = map[string]attr.Type{
+var IfwDestObjectType = types.ObjectType{AttrTypes: IfwDestAttrTypes}
+var IfwDestAttrTypes = map[string]attr.Type{
 	"application":              types.SetType{ElemType: NameIDObjectType},
 	"custom_app":               types.SetType{ElemType: NameIDObjectType},
 	"app_category":             types.SetType{ElemType: NameIDObjectType},
@@ -385,21 +330,21 @@ var DestAttrTypes = map[string]attr.Type{
 	"remote_asn":               types.ListType{ElemType: types.StringType},
 }
 
-var ExceptionObjectType = types.ObjectType{AttrTypes: ExceptionAttrTypes}
-var ExceptionAttrTypes = map[string]attr.Type{
+var IfwExceptionObjectType = types.ObjectType{AttrTypes: IfwExceptionAttrTypes}
+var IfwExceptionAttrTypes = map[string]attr.Type{
 	"name":    types.StringType,
-	"source":  types.ObjectType{AttrTypes: SourceAttrTypes},
+	"source":  types.ObjectType{AttrTypes: IfwSourceAttrTypes},
 	"country": types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device":  types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	// "device_attributes": types.ObjectType{AttrTypes: DeviceAttrAttrTypes},
 	"device_os":         types.ListType{ElemType: types.StringType},
-	"destination":       types.ObjectType{AttrTypes: DestAttrTypes},
-	"service":           types.ObjectType{AttrTypes: ServiceAttrTypes},
+	"destination":       types.ObjectType{AttrTypes: IfwDestAttrTypes},
+	"service":           types.ObjectType{AttrTypes: IfwServiceAttrTypes},
 	"connection_origin": types.StringType,
 }
 
-var DeviceAttrObjectType = types.ObjectType{AttrTypes: DeviceAttrAttrTypes}
-var DeviceAttrAttrTypes = map[string]attr.Type{
+var IfwDeviceAttrObjectType = types.ObjectType{AttrTypes: IfwDeviceAttrAttrTypes}
+var IfwDeviceAttrAttrTypes = map[string]attr.Type{
 	"category":     types.ListType{ElemType: types.StringType},
 	"type":         types.ListType{ElemType: types.StringType},
 	"model":        types.ListType{ElemType: types.StringType},

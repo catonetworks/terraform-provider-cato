@@ -63,12 +63,16 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			if !sourceInput.IP.IsUnknown() && !sourceInput.IP.IsNull() {
 				diags = append(diags, sourceInput.IP.ElementsAs(ctx, &ruleSourceInput.IP, false)...)
 				diags = append(diags, sourceInput.IP.ElementsAs(ctx, &ruleSourceUpdateInput.IP, false)...)
+			} else {
+				ruleSourceUpdateInput.IP = (make([]string, 0))
 			}
 
 			// setting source subnet
 			if !sourceInput.Subnet.IsUnknown() && !sourceInput.Subnet.IsNull() {
 				diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &ruleSourceInput.Subnet, false)...)
 				diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &ruleSourceUpdateInput.Subnet, false)...)
+			} else {
+				ruleSourceUpdateInput.Subnet = make([]string, 0)
 			}
 
 			// setting source host
@@ -91,6 +95,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.Host = ruleSourceInput.Host
+			} else {
+				ruleSourceUpdateInput.Host = make([]*cato_models.HostRefInput, 0)
 			}
 
 			// setting source site
@@ -113,6 +119,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.Site = ruleSourceInput.Site
+			} else {
+				ruleSourceUpdateInput.Site = make([]*cato_models.SiteRefInput, 0)
 			}
 
 			// setting source ip range
@@ -130,6 +138,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.IPRange = ruleSourceInput.IPRange
+			} else {
+				ruleSourceUpdateInput.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
 			}
 
 			// setting source global ip range
@@ -152,6 +162,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.GlobalIPRange = ruleSourceInput.GlobalIPRange
+			} else {
+				ruleSourceUpdateInput.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
 			}
 
 			// setting source network interface
@@ -174,6 +186,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.NetworkInterface = ruleSourceInput.NetworkInterface
+			} else {
+				ruleSourceUpdateInput.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
 			}
 
 			// setting source site network subnet
@@ -196,6 +210,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.SiteNetworkSubnet = ruleSourceInput.SiteNetworkSubnet
+			} else {
+				ruleSourceUpdateInput.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
 			}
 
 			// setting source floating subnet
@@ -218,6 +234,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.FloatingSubnet = ruleSourceInput.FloatingSubnet
+			} else {
+				ruleSourceUpdateInput.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
 			}
 
 			// setting source user
@@ -240,6 +258,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.User = ruleSourceInput.User
+			} else {
+				ruleSourceUpdateInput.User = make([]*cato_models.UserRefInput, 0)
 			}
 
 			// setting source users group
@@ -262,6 +282,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.UsersGroup = ruleSourceInput.UsersGroup
+			} else {
+				ruleSourceUpdateInput.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
 			}
 
 			// setting source group
@@ -284,6 +306,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.Group = ruleSourceInput.Group
+			} else {
+				ruleSourceUpdateInput.Group = make([]*cato_models.GroupRefInput, 0)
 			}
 
 			// setting source system group
@@ -306,7 +330,10 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleSourceUpdateInput.SystemGroup = ruleSourceInput.SystemGroup
+			} else {
+				ruleSourceUpdateInput.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
 			}
+
 			rootAddRule.Source = ruleSourceInput
 			rootUpdateRule.Source = ruleSourceUpdateInput
 		}
@@ -331,6 +358,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				})
 			}
 			rootUpdateRule.Country = rootAddRule.Country
+		} else {
+			rootUpdateRule.Country = make([]*cato_models.CountryRefInput, 0)
 		}
 
 		// setting device
@@ -353,12 +382,16 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				})
 			}
 			rootUpdateRule.Device = rootAddRule.Device
+		} else {
+			rootUpdateRule.Device = make([]*cato_models.DeviceProfileRefInput, 0)
 		}
 
 		// setting device OS
 		if !ruleInput.DeviceOs.IsUnknown() && !ruleInput.DeviceOs.IsNull() {
 			diags = append(diags, ruleInput.DeviceOs.ElementsAs(ctx, &rootAddRule.DeviceOs, false)...)
 			diags = append(diags, ruleInput.DeviceOs.ElementsAs(ctx, &rootUpdateRule.DeviceOs, false)...)
+		} else {
+			rootUpdateRule.DeviceOs = make([]cato_models.OperatingSystem, 0)
 		}
 
 		// setting destination
@@ -374,30 +407,40 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			if !destinationInput.IP.IsUnknown() && !destinationInput.IP.IsNull() {
 				diags = append(diags, destinationInput.IP.ElementsAs(ctx, &ruleDestinationInput.IP, false)...)
 				diags = append(diags, destinationInput.IP.ElementsAs(ctx, &ruleDestinationUpdateInput.IP, false)...)
+			} else {
+				ruleDestinationUpdateInput.IP = make([]string, 0)
 			}
 
 			// setting destination subnet
 			if !destinationInput.Subnet.IsUnknown() && !destinationInput.Subnet.IsNull() {
 				diags = append(diags, destinationInput.Subnet.ElementsAs(ctx, &ruleDestinationInput.Subnet, false)...)
 				diags = append(diags, destinationInput.Subnet.ElementsAs(ctx, &ruleDestinationUpdateInput.Subnet, false)...)
+			} else {
+				ruleDestinationUpdateInput.Subnet = make([]string, 0)
 			}
 
 			// setting destination domain
 			if !destinationInput.Domain.IsUnknown() && !destinationInput.Domain.IsNull() {
 				diags = append(diags, destinationInput.Domain.ElementsAs(ctx, &ruleDestinationInput.Domain, false)...)
 				diags = append(diags, destinationInput.Domain.ElementsAs(ctx, &ruleDestinationUpdateInput.Domain, false)...)
+			} else {
+				ruleDestinationUpdateInput.Domain = make([]string, 0)
 			}
 
 			// setting destination fqdn
 			if !destinationInput.Fqdn.IsUnknown() && !destinationInput.Fqdn.IsNull() {
 				diags = append(diags, destinationInput.Fqdn.ElementsAs(ctx, &ruleDestinationInput.Fqdn, false)...)
 				diags = append(diags, destinationInput.Fqdn.ElementsAs(ctx, &ruleDestinationUpdateInput.Fqdn, false)...)
+			} else {
+				ruleDestinationUpdateInput.Fqdn = make([]string, 0)
 			}
 
 			// setting destination remote asn
 			if !destinationInput.RemoteAsn.IsUnknown() && !destinationInput.RemoteAsn.IsNull() {
 				diags = append(diags, destinationInput.RemoteAsn.ElementsAs(ctx, &ruleDestinationInput.RemoteAsn, false)...)
 				diags = append(diags, destinationInput.RemoteAsn.ElementsAs(ctx, &ruleDestinationUpdateInput.RemoteAsn, false)...)
+			} else {
+				ruleDestinationUpdateInput.RemoteAsn = make([]cato_scalars.Asn16, 0)
 			}
 
 			// setting destination application
@@ -420,6 +463,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.Application = ruleDestinationInput.Application
+			} else {
+				ruleDestinationUpdateInput.Application = make([]*cato_models.ApplicationRefInput, 0)
 			}
 
 			// setting destination custom app
@@ -442,6 +487,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.CustomApp = ruleDestinationInput.CustomApp
+			} else {
+				ruleDestinationUpdateInput.CustomApp = make([]*cato_models.CustomApplicationRefInput, 0)
 			}
 
 			// setting destination ip range
@@ -459,6 +506,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.IPRange = ruleDestinationInput.IPRange
+			} else {
+				ruleDestinationUpdateInput.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
 			}
 
 			// setting destination global ip range
@@ -481,6 +530,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.GlobalIPRange = ruleDestinationInput.GlobalIPRange
+			} else {
+				ruleDestinationUpdateInput.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
 			}
 
 			// setting destination app category
@@ -503,6 +554,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.AppCategory = ruleDestinationInput.AppCategory
+			} else {
+				ruleDestinationUpdateInput.AppCategory = make([]*cato_models.ApplicationCategoryRefInput, 0)
 			}
 
 			// setting destination custom app category
@@ -525,6 +578,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.CustomCategory = ruleDestinationInput.CustomCategory
+			} else {
+				ruleDestinationUpdateInput.CustomCategory = make([]*cato_models.CustomCategoryRefInput, 0)
 			}
 
 			// setting destination sanctionned apps category
@@ -547,6 +602,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.SanctionedAppsCategory = ruleDestinationInput.SanctionedAppsCategory
+			} else {
+				ruleDestinationUpdateInput.SanctionedAppsCategory = make([]*cato_models.SanctionedAppsCategoryRefInput, 0)
 			}
 
 			// setting destination country
@@ -569,7 +626,10 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleDestinationUpdateInput.Country = ruleDestinationInput.Country
+			} else {
+				ruleDestinationUpdateInput.Country = make([]*cato_models.CountryRefInput, 0)
 			}
+
 			rootAddRule.Destination = ruleDestinationInput
 			rootUpdateRule.Destination = ruleDestinationUpdateInput
 		}
@@ -602,6 +662,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					})
 				}
 				ruleServiceUpdateInput.Standard = ruleServiceInput.Standard
+			} else {
+				ruleServiceUpdateInput.Standard = make([]*cato_models.ServiceRefInput, 0)
 			}
 
 			// setting service custom
@@ -647,7 +709,10 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					ruleServiceInput.Custom = append(ruleServiceInput.Custom, customInput)
 				}
 				ruleServiceUpdateInput.Custom = ruleServiceInput.Custom
+			} else {
+				ruleServiceUpdateInput.Custom = make([]*cato_models.CustomServiceInput, 0)
 			}
+
 			rootAddRule.Service = ruleServiceInput
 			rootUpdateRule.Service = ruleServiceUpdateInput
 		}
@@ -711,30 +776,32 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						})
 					}
 					rootUpdateRule.Tracking.Alert.SubscriptionGroup = rootAddRule.Tracking.Alert.SubscriptionGroup
+				} else {
+					rootUpdateRule.Tracking.Alert.SubscriptionGroup = make([]*cato_models.SubscriptionGroupRefInput, 0)
 				}
 
 				// setting tracking alert webhook
 				if !trackingAlertInput.Webhook.IsNull() {
-					if !trackingAlertInput.Webhook.IsNull() {
-						elementsAlertWebHookInput := make([]types.Object, 0, len(trackingAlertInput.Webhook.Elements()))
-						diags = append(diags, trackingAlertInput.Webhook.ElementsAs(ctx, &elementsAlertWebHookInput, false)...)
+					elementsAlertWebHookInput := make([]types.Object, 0, len(trackingAlertInput.Webhook.Elements()))
+					diags = append(diags, trackingAlertInput.Webhook.ElementsAs(ctx, &elementsAlertWebHookInput, false)...)
 
-						var itemAlertWebHookInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
-						for _, item := range elementsAlertWebHookInput {
-							diags = append(diags, item.As(ctx, &itemAlertWebHookInput, basetypes.ObjectAsOptions{})...)
+					var itemAlertWebHookInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
+					for _, item := range elementsAlertWebHookInput {
+						diags = append(diags, item.As(ctx, &itemAlertWebHookInput, basetypes.ObjectAsOptions{})...)
 
-							ObjectRefOutput, err := utils.TransformObjectRefInput(itemAlertWebHookInput)
-							if err != nil {
-								tflog.Error(ctx, err.Error())
-							}
-
-							rootAddRule.Tracking.Alert.Webhook = append(rootAddRule.Tracking.Alert.Webhook, &cato_models.SubscriptionWebhookRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
+						ObjectRefOutput, err := utils.TransformObjectRefInput(itemAlertWebHookInput)
+						if err != nil {
+							tflog.Error(ctx, err.Error())
 						}
-						rootUpdateRule.Tracking.Alert.Webhook = rootAddRule.Tracking.Alert.Webhook
+
+						rootAddRule.Tracking.Alert.Webhook = append(rootAddRule.Tracking.Alert.Webhook, &cato_models.SubscriptionWebhookRefInput{
+							By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
+							Input: ObjectRefOutput.Input,
+						})
 					}
+					rootUpdateRule.Tracking.Alert.Webhook = rootAddRule.Tracking.Alert.Webhook
+				} else {
+					rootUpdateRule.Tracking.Alert.Webhook = make([]*cato_models.SubscriptionWebhookRefInput, 0)
 				}
 
 				// setting tracking alert mailing list
@@ -758,6 +825,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						})
 					}
 					rootUpdateRule.Tracking.Alert.MailingList = rootAddRule.Tracking.Alert.MailingList
+				} else {
+					rootUpdateRule.Tracking.Alert.MailingList = make([]*cato_models.SubscriptionMailingListRefInput, 0)
 				}
 			}
 		}
@@ -793,6 +862,8 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 				rootUpdateRule.Schedule.CustomTimeframe.From = customeTimeFrameInput.From.ValueStringPointer()
 				rootUpdateRule.Schedule.CustomTimeframe.To = customeTimeFrameInput.To.ValueStringPointer()
+			} else {
+				rootUpdateRule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{}
 			}
 
 			// setting schedule custom recurring
@@ -811,7 +882,11 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				// setting schedule custom recurring days
 				diags = append(diags, customRecurringInput.Days.ElementsAs(ctx, &rootAddRule.Schedule.CustomRecurring.Days, false)...)
 				rootUpdateRule.Schedule.CustomRecurring.Days = rootAddRule.Schedule.CustomRecurring.Days
+			} else {
+				rootUpdateRule.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{}
 			}
+		} else {
+			rootUpdateRule.Schedule = &cato_models.PolicyScheduleUpdateInput{}
 		}
 
 		// settings exceptions
@@ -823,35 +898,47 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			var itemExceptionsInput Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
 			for _, item := range elementsExceptionsInput {
 
-				exceptionInput := cato_models.InternetFirewallRuleExceptionInput{}
+				exceptionAddInput := cato_models.InternetFirewallRuleExceptionInput{}
+				exceptionUpdateInput := cato_models.InternetFirewallRuleExceptionInput{}
 
 				diags = append(diags, item.As(ctx, &itemExceptionsInput, basetypes.ObjectAsOptions{})...)
 
 				// setting exception name
-				exceptionInput.Name = itemExceptionsInput.Name.ValueString()
+				exceptionAddInput.Name = itemExceptionsInput.Name.ValueString()
+				exceptionUpdateInput.Name = itemExceptionsInput.Name.ValueString()
 
 				// setting exception connection origin
 				if !itemExceptionsInput.ConnectionOrigin.IsUnknown() && !itemExceptionsInput.ConnectionOrigin.IsNull() {
-					exceptionInput.ConnectionOrigin = cato_models.ConnectionOriginEnum(itemExceptionsInput.ConnectionOrigin.ValueString())
+					exceptionAddInput.ConnectionOrigin = cato_models.ConnectionOriginEnum(itemExceptionsInput.ConnectionOrigin.ValueString())
 				} else {
-					exceptionInput.ConnectionOrigin = cato_models.ConnectionOriginEnum("ANY")
+					exceptionAddInput.ConnectionOrigin = cato_models.ConnectionOriginEnum("ANY")
 				}
+
+				exceptionUpdateInput.ConnectionOrigin = exceptionAddInput.ConnectionOrigin
 
 				// setting source
 				if !itemExceptionsInput.Source.IsNull() {
 
-					exceptionInput.Source = &cato_models.InternetFirewallSourceInput{}
+					exceptionAddInput.Source = &cato_models.InternetFirewallSourceInput{}
+					exceptionUpdateInput.Source = &cato_models.InternetFirewallSourceInput{}
+
 					sourceInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source{}
 					diags = append(diags, itemExceptionsInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})...)
 
 					// setting source IP
 					if !sourceInput.IP.IsNull() {
-						diags = append(diags, sourceInput.IP.ElementsAs(ctx, &exceptionInput.Source.IP, false)...)
+						diags = append(diags, sourceInput.IP.ElementsAs(ctx, &exceptionAddInput.Source.IP, false)...)
+						exceptionUpdateInput.Source.IP = exceptionAddInput.Source.IP
+					} else {
+						exceptionUpdateInput.Source.IP = make([]string, 0)
 					}
 
 					// setting source subnet
 					if !sourceInput.Subnet.IsUnknown() && !sourceInput.Subnet.IsNull() {
-						diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &exceptionInput.Source.Subnet, false)...)
+						diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Source.Subnet, false)...)
+						exceptionUpdateInput.Source.Subnet = exceptionAddInput.Source.Subnet
+					} else {
+						exceptionUpdateInput.Source.Subnet = make([]string, 0)
 					}
 
 					// setting source host
@@ -868,11 +955,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.Host = append(exceptionInput.Source.Host, &cato_models.HostRefInput{
+							exceptionAddInput.Source.Host = append(exceptionAddInput.Source.Host, &cato_models.HostRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.Host = exceptionAddInput.Source.Host
+					} else {
+						exceptionUpdateInput.Source.Host = make([]*cato_models.HostRefInput, 0)
 					}
 
 					// setting source site
@@ -889,11 +979,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.Site = append(exceptionInput.Source.Site, &cato_models.SiteRefInput{
+							exceptionAddInput.Source.Site = append(exceptionAddInput.Source.Site, &cato_models.SiteRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.Site = exceptionAddInput.Source.Site
+					} else {
+						exceptionUpdateInput.Source.Site = make([]*cato_models.SiteRefInput, 0)
 					}
 
 					// setting source ip range
@@ -905,11 +998,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						for _, item := range elementsSourceIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemSourceIPRangeInput, basetypes.ObjectAsOptions{})...)
 
-							exceptionInput.Source.IPRange = append(exceptionInput.Source.IPRange, &cato_models.IPAddressRangeInput{
+							exceptionAddInput.Source.IPRange = append(exceptionAddInput.Source.IPRange, &cato_models.IPAddressRangeInput{
 								From: itemSourceIPRangeInput.From.ValueString(),
 								To:   itemSourceIPRangeInput.To.ValueString(),
 							})
 						}
+						exceptionUpdateInput.Source.IPRange = exceptionAddInput.Source.IPRange
+					} else {
+						exceptionUpdateInput.Source.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
 					}
 
 					// setting source global ip range
@@ -926,11 +1022,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.GlobalIPRange = append(exceptionInput.Source.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
+							exceptionAddInput.Source.GlobalIPRange = append(exceptionAddInput.Source.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.GlobalIPRange = exceptionAddInput.Source.GlobalIPRange
+					} else {
+						exceptionUpdateInput.Source.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
 					}
 
 					// setting source network interface
@@ -947,11 +1046,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.NetworkInterface = append(exceptionInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+							exceptionAddInput.Source.NetworkInterface = append(exceptionAddInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.NetworkInterface = exceptionAddInput.Source.NetworkInterface
+					} else {
+						exceptionUpdateInput.Source.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
 					}
 
 					// setting source site network subnet
@@ -968,11 +1070,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.SiteNetworkSubnet = append(exceptionInput.Source.SiteNetworkSubnet, &cato_models.SiteNetworkSubnetRefInput{
+							exceptionAddInput.Source.SiteNetworkSubnet = append(exceptionAddInput.Source.SiteNetworkSubnet, &cato_models.SiteNetworkSubnetRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.SiteNetworkSubnet = exceptionAddInput.Source.SiteNetworkSubnet
+					} else {
+						exceptionUpdateInput.Source.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
 					}
 
 					// setting source floating subnet
@@ -989,11 +1094,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.FloatingSubnet = append(exceptionInput.Source.FloatingSubnet, &cato_models.FloatingSubnetRefInput{
+							exceptionAddInput.Source.FloatingSubnet = append(exceptionAddInput.Source.FloatingSubnet, &cato_models.FloatingSubnetRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.FloatingSubnet = exceptionAddInput.Source.FloatingSubnet
+					} else {
+						exceptionUpdateInput.Source.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
 					}
 
 					// setting source user
@@ -1010,11 +1118,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.User = append(exceptionInput.Source.User, &cato_models.UserRefInput{
+							exceptionAddInput.Source.User = append(exceptionAddInput.Source.User, &cato_models.UserRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.User = exceptionAddInput.Source.User
+					} else {
+						exceptionUpdateInput.Source.User = make([]*cato_models.UserRefInput, 0)
 					}
 
 					// setting source users group
@@ -1031,11 +1142,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.UsersGroup = append(exceptionInput.Source.UsersGroup, &cato_models.UsersGroupRefInput{
+							exceptionAddInput.Source.UsersGroup = append(exceptionAddInput.Source.UsersGroup, &cato_models.UsersGroupRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.UsersGroup = exceptionAddInput.Source.UsersGroup
+					} else {
+						exceptionUpdateInput.Source.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
 					}
 
 					// setting source group
@@ -1052,11 +1166,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.Group = append(exceptionInput.Source.Group, &cato_models.GroupRefInput{
+							exceptionAddInput.Source.Group = append(exceptionAddInput.Source.Group, &cato_models.GroupRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.Group = exceptionAddInput.Source.Group
+					} else {
+						exceptionUpdateInput.Source.Group = make([]*cato_models.GroupRefInput, 0)
 					}
 
 					// setting source system group
@@ -1073,18 +1190,21 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Source.SystemGroup = append(exceptionInput.Source.SystemGroup, &cato_models.SystemGroupRefInput{
+							exceptionAddInput.Source.SystemGroup = append(exceptionAddInput.Source.SystemGroup, &cato_models.SystemGroupRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Source.SystemGroup = exceptionAddInput.Source.SystemGroup
+					} else {
+						exceptionUpdateInput.Source.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
 					}
 				}
 
 				// setting country
 				if !itemExceptionsInput.Country.IsNull() {
 
-					exceptionInput.Country = []*cato_models.CountryRefInput{}
+					exceptionAddInput.Country = []*cato_models.CountryRefInput{}
 					elementsCountryInput := make([]types.Object, 0, len(itemExceptionsInput.Country.Elements()))
 					diags = append(diags, itemExceptionsInput.Country.ElementsAs(ctx, &elementsCountryInput, false)...)
 
@@ -1097,17 +1217,20 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 							tflog.Error(ctx, err.Error())
 						}
 
-						exceptionInput.Country = append(exceptionInput.Country, &cato_models.CountryRefInput{
+						exceptionAddInput.Country = append(exceptionAddInput.Country, &cato_models.CountryRefInput{
 							By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 							Input: ObjectRefOutput.Input,
 						})
 					}
+					exceptionUpdateInput.Country = exceptionAddInput.Country
+				} else {
+					exceptionUpdateInput.Country = []*cato_models.CountryRefInput{}
 				}
 
 				// setting device
 				if !itemExceptionsInput.Device.IsNull() {
 
-					exceptionInput.Device = []*cato_models.DeviceProfileRefInput{}
+					exceptionAddInput.Device = []*cato_models.DeviceProfileRefInput{}
 					elementsDeviceInput := make([]types.Object, 0, len(itemExceptionsInput.Device.Elements()))
 					diags = append(diags, itemExceptionsInput.Device.ElementsAs(ctx, &elementsDeviceInput, false)...)
 
@@ -1120,48 +1243,71 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 							tflog.Error(ctx, err.Error())
 						}
 
-						exceptionInput.Device = append(exceptionInput.Device, &cato_models.DeviceProfileRefInput{
+						exceptionAddInput.Device = append(exceptionAddInput.Device, &cato_models.DeviceProfileRefInput{
 							By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 							Input: ObjectRefOutput.Input,
 						})
 					}
+					exceptionUpdateInput.Device = exceptionAddInput.Device
+				} else {
+					exceptionUpdateInput.Device = []*cato_models.DeviceProfileRefInput{}
 				}
 
 				// setting device OS
 				if !itemExceptionsInput.DeviceOs.IsUnknown() && !itemExceptionsInput.DeviceOs.IsNull() {
-					diags = append(diags, itemExceptionsInput.DeviceOs.ElementsAs(ctx, &exceptionInput.DeviceOs, false)...)
+					diags = append(diags, itemExceptionsInput.DeviceOs.ElementsAs(ctx, &exceptionAddInput.DeviceOs, false)...)
+					exceptionUpdateInput.DeviceOs = exceptionAddInput.DeviceOs
+				} else {
+					exceptionUpdateInput.DeviceOs = make([]cato_models.OperatingSystem, 0)
 				}
 
 				// setting destination
 				if !itemExceptionsInput.Destination.IsNull() {
 
-					exceptionInput.Destination = &cato_models.InternetFirewallDestinationInput{}
+					exceptionAddInput.Destination = &cato_models.InternetFirewallDestinationInput{}
+					exceptionUpdateInput.Destination = &cato_models.InternetFirewallDestinationInput{}
+
 					destinationInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination{}
 					diags = append(diags, itemExceptionsInput.Destination.As(ctx, &destinationInput, basetypes.ObjectAsOptions{})...)
 
 					// setting destination IP
 					if !destinationInput.IP.IsUnknown() && !destinationInput.IP.IsNull() {
-						diags = append(diags, destinationInput.IP.ElementsAs(ctx, &exceptionInput.Destination.IP, false)...)
+						diags = append(diags, destinationInput.IP.ElementsAs(ctx, &exceptionAddInput.Destination.IP, false)...)
+						exceptionUpdateInput.Destination.IP = exceptionAddInput.Destination.IP
+					} else {
+						exceptionUpdateInput.Destination.IP = make([]string, 0)
 					}
 
 					// setting destination subnet
 					if !destinationInput.Subnet.IsUnknown() && !destinationInput.Subnet.IsNull() {
-						diags = append(diags, destinationInput.Subnet.ElementsAs(ctx, &exceptionInput.Destination.Subnet, false)...)
+						diags = append(diags, destinationInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Destination.Subnet, false)...)
+						exceptionUpdateInput.Destination.Subnet = exceptionAddInput.Destination.Subnet
+					} else {
+						exceptionUpdateInput.Destination.Subnet = make([]string, 0)
 					}
 
 					// setting destination domain
 					if !destinationInput.Domain.IsUnknown() && !destinationInput.Domain.IsNull() {
-						diags = append(diags, destinationInput.Domain.ElementsAs(ctx, &exceptionInput.Destination.Domain, false)...)
+						diags = append(diags, destinationInput.Domain.ElementsAs(ctx, &exceptionAddInput.Destination.Domain, false)...)
+						exceptionUpdateInput.Destination.Domain = exceptionAddInput.Destination.Domain
+					} else {
+						exceptionUpdateInput.Destination.Domain = make([]string, 0)
 					}
 
 					// setting destination fqdn
 					if !destinationInput.Fqdn.IsUnknown() && !destinationInput.Fqdn.IsNull() {
-						diags = append(diags, destinationInput.Fqdn.ElementsAs(ctx, &exceptionInput.Destination.Fqdn, false)...)
+						diags = append(diags, destinationInput.Fqdn.ElementsAs(ctx, &exceptionAddInput.Destination.Fqdn, false)...)
+						exceptionUpdateInput.Destination.Fqdn = exceptionAddInput.Destination.Fqdn
+					} else {
+						exceptionUpdateInput.Destination.Fqdn = make([]string, 0)
 					}
 
 					// setting destination remote asn
 					if !destinationInput.RemoteAsn.IsUnknown() && !destinationInput.RemoteAsn.IsNull() {
-						diags = append(diags, destinationInput.RemoteAsn.ElementsAs(ctx, &exceptionInput.Destination.RemoteAsn, false)...)
+						diags = append(diags, destinationInput.RemoteAsn.ElementsAs(ctx, &exceptionAddInput.Destination.RemoteAsn, false)...)
+						exceptionUpdateInput.Destination.RemoteAsn = exceptionAddInput.Destination.RemoteAsn
+					} else {
+						exceptionUpdateInput.Destination.RemoteAsn = make([]cato_scalars.Asn16, 0)
 					}
 
 					// setting destination application
@@ -1178,11 +1324,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Destination.Application = append(exceptionInput.Destination.Application, &cato_models.ApplicationRefInput{
+							exceptionAddInput.Destination.Application = append(exceptionAddInput.Destination.Application, &cato_models.ApplicationRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Destination.Application = exceptionAddInput.Destination.Application
+					} else {
+						exceptionUpdateInput.Destination.Application = make([]*cato_models.ApplicationRefInput, 0)
 					}
 
 					// setting destination custom app
@@ -1199,11 +1348,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Destination.CustomApp = append(exceptionInput.Destination.CustomApp, &cato_models.CustomApplicationRefInput{
+							exceptionAddInput.Destination.CustomApp = append(exceptionAddInput.Destination.CustomApp, &cato_models.CustomApplicationRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Destination.CustomApp = exceptionAddInput.Destination.CustomApp
+					} else {
+						exceptionUpdateInput.Destination.CustomApp = make([]*cato_models.CustomApplicationRefInput, 0)
 					}
 
 					// setting destination ip range
@@ -1215,11 +1367,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						for _, item := range elementsDestinationIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemDestinationIPRangeInput, basetypes.ObjectAsOptions{})...)
 
-							exceptionInput.Destination.IPRange = append(exceptionInput.Destination.IPRange, &cato_models.IPAddressRangeInput{
+							exceptionAddInput.Destination.IPRange = append(exceptionAddInput.Destination.IPRange, &cato_models.IPAddressRangeInput{
 								From: itemDestinationIPRangeInput.From.ValueString(),
 								To:   itemDestinationIPRangeInput.To.ValueString(),
 							})
 						}
+						exceptionUpdateInput.Destination.IPRange = exceptionAddInput.Destination.IPRange
+					} else {
+						exceptionUpdateInput.Destination.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
 					}
 
 					// setting destination global ip range
@@ -1236,11 +1391,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Destination.GlobalIPRange = append(exceptionInput.Destination.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
+							exceptionAddInput.Destination.GlobalIPRange = append(exceptionAddInput.Destination.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Destination.GlobalIPRange = exceptionAddInput.Destination.GlobalIPRange
+					} else {
+						exceptionUpdateInput.Destination.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
 					}
 
 					// setting destination app category
@@ -1257,11 +1415,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Destination.AppCategory = append(exceptionInput.Destination.AppCategory, &cato_models.ApplicationCategoryRefInput{
+							exceptionAddInput.Destination.AppCategory = append(exceptionAddInput.Destination.AppCategory, &cato_models.ApplicationCategoryRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Destination.AppCategory = exceptionAddInput.Destination.AppCategory
+					} else {
+						exceptionUpdateInput.Destination.AppCategory = make([]*cato_models.ApplicationCategoryRefInput, 0)
 					}
 
 					// setting destination custom app category
@@ -1278,11 +1439,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Destination.CustomCategory = append(exceptionInput.Destination.CustomCategory, &cato_models.CustomCategoryRefInput{
+							exceptionAddInput.Destination.CustomCategory = append(exceptionAddInput.Destination.CustomCategory, &cato_models.CustomCategoryRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Destination.CustomCategory = exceptionAddInput.Destination.CustomCategory
+					} else {
+						exceptionUpdateInput.Destination.CustomCategory = make([]*cato_models.CustomCategoryRefInput, 0)
 					}
 
 					// setting destination sanctionned apps category
@@ -1299,11 +1463,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Destination.SanctionedAppsCategory = append(exceptionInput.Destination.SanctionedAppsCategory, &cato_models.SanctionedAppsCategoryRefInput{
+							exceptionAddInput.Destination.SanctionedAppsCategory = append(exceptionAddInput.Destination.SanctionedAppsCategory, &cato_models.SanctionedAppsCategoryRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Destination.SanctionedAppsCategory = exceptionAddInput.Destination.SanctionedAppsCategory
+					} else {
+						exceptionUpdateInput.Destination.SanctionedAppsCategory = make([]*cato_models.SanctionedAppsCategoryRefInput, 0)
 					}
 
 					// setting destination country
@@ -1320,18 +1487,25 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Destination.Country = append(exceptionInput.Destination.Country, &cato_models.CountryRefInput{
+							exceptionAddInput.Destination.Country = append(exceptionAddInput.Destination.Country, &cato_models.CountryRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Destination.Country = exceptionAddInput.Destination.Country
+					} else {
+						exceptionUpdateInput.Destination.Country = make([]*cato_models.CountryRefInput, 0)
 					}
+				} else {
+					exceptionUpdateInput.Destination = &cato_models.InternetFirewallDestinationInput{}
 				}
 
 				// setting service
 				if !itemExceptionsInput.Service.IsNull() {
 
-					exceptionInput.Service = &cato_models.InternetFirewallServiceTypeInput{}
+					exceptionAddInput.Service = &cato_models.InternetFirewallServiceTypeInput{}
+					exceptionUpdateInput.Service = &cato_models.InternetFirewallServiceTypeInput{}
+
 					serviceInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service{}
 					diags = append(diags, itemExceptionsInput.Service.As(ctx, &serviceInput, basetypes.ObjectAsOptions{})...)
 
@@ -1349,11 +1523,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionInput.Service.Standard = append(exceptionInput.Service.Standard, &cato_models.ServiceRefInput{
+							exceptionAddInput.Service.Standard = append(exceptionAddInput.Service.Standard, &cato_models.ServiceRefInput{
 								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
 								Input: ObjectRefOutput.Input,
 							})
 						}
+						exceptionUpdateInput.Service.Standard = exceptionAddInput.Service.Standard
+					} else {
+						exceptionUpdateInput.Service.Standard = make([]*cato_models.ServiceRefInput, 0)
 					}
 
 					// setting service custom
@@ -1398,13 +1575,18 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 							}
 
 							// append custom service
-							exceptionInput.Service.Custom = append(exceptionInput.Service.Custom, customInput)
+							exceptionAddInput.Service.Custom = append(exceptionAddInput.Service.Custom, customInput)
 						}
+						exceptionUpdateInput.Service.Custom = exceptionAddInput.Service.Custom
+					} else {
+						exceptionUpdateInput.Service.Custom = make([]*cato_models.CustomServiceInput, 0)
 					}
+				} else {
+					exceptionUpdateInput.Service = &cato_models.InternetFirewallServiceTypeInput{}
 				}
 
-				rootAddRule.Exceptions = append(rootAddRule.Exceptions, &exceptionInput)
-				rootUpdateRule.Exceptions = append(rootUpdateRule.Exceptions, &exceptionInput)
+				rootAddRule.Exceptions = append(rootAddRule.Exceptions, &exceptionAddInput)
+				rootUpdateRule.Exceptions = append(rootUpdateRule.Exceptions, &exceptionUpdateInput)
 			}
 		}
 

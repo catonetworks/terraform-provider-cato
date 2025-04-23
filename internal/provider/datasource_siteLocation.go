@@ -41,7 +41,7 @@ type locations struct {
 	CountryName types.String `tfsdk:"country_name"`
 	StateCode   types.String `tfsdk:"state_code"`
 	StateName   types.String `tfsdk:"state_name"`
-	Timezone    types.String `tfsdk:"timezone"`
+	Timezone    types.List   `tfsdk:"timezone"`
 	City        types.String `tfsdk:"city"`
 }
 
@@ -81,7 +81,7 @@ var SiteLocationAttrTypes = map[string]attr.Type{
 	"country_name": types.StringType,
 	"state_code":   types.StringType,
 	"state_name":   types.StringType,
-	"timezone":     types.StringType,
+	"timezone":     types.ListType{ElemType: types.StringType},
 	"city":         types.StringType,
 }
 
@@ -172,8 +172,9 @@ func (d *siteLocationDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 							Description: "State name",
 							Computed:    true,
 						},
-						"timezone": schema.StringAttribute{
+						"timezone": schema.ListAttribute{
 							Description: "Timezone",
+							ElementType: types.StringType,
 							Computed:    true,
 						},
 						"city": schema.StringAttribute{
@@ -321,7 +322,16 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 				}(),
 				"timezone": func() attr.Value {
 					if len(loc.Timezone) > 0 {
-						return types.StringValue(strings.Join(loc.Timezone, ", "))
+						timezoneValues := make([]attr.Value, len(loc.Timezone))
+						for i, tz := range loc.Timezone {
+							timezoneValues[i] = types.StringValue(tz)
+						}
+						listValue, diags := types.ListValue(types.StringType, timezoneValues)
+						if diags.HasError() {
+							resp.Diagnostics.Append(diags...)
+							return types.ListNull(types.StringType)
+						}
+						return listValue
 					}
 					return types.StringNull()
 				}(),

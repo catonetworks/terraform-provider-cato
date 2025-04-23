@@ -37,7 +37,7 @@ func (r *socketSiteResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site to the Cato cloud ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite).",
+		Description: "The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site to the Cato cloud ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite). \n\n **Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product](https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Site ID",
@@ -125,10 +125,10 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Description: "Site timezone (can be retrieve from entityLookup)",
 						Required:    true,
 					},
-					// "city": schema.StringAttribute{
-					// 	Description: "Optionnal city",
-					// 	Optional:    true,
-					// },
+					"city": schema.StringAttribute{
+						Description: "Optionnal city",
+						Optional:    true,
+					},
 					"address": schema.StringAttribute{
 						Description: "Optionnal address",
 						Optional:    true,
@@ -173,7 +173,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.Append(diags...)
 
 		input.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
-		// input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
+		input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
 		input.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueString()
 		input.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		input.SiteLocation.Timezone = siteLocationInput.Timezone.ValueString()
@@ -342,6 +342,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 		inputSiteGeneral.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
+		inputSiteGeneral.SiteLocation.CityName = siteLocationInput.City.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
 	}

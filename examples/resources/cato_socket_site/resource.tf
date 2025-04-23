@@ -32,7 +32,7 @@ resource "cato_socket_site" "aws_site" {
   site_location = {
     country_code = data.cato_siteLocation.ny.locations[1].country_code
     state_code = data.cato_siteLocation.ny.locations[1].state_code
-    timezone = data.cato_siteLocation.ny.locations[1].timezone
+    timezone = data.cato_siteLocation.ny.locations[1].timezone[0]
  }
 }
 
