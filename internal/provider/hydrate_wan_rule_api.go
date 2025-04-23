@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
@@ -1222,33 +1223,33 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					exceptionAddInput.Source = &cato_models.WanFirewallSourceInput{}
 					exceptionUpdateInput.Source = &cato_models.WanFirewallSourceInput{}
 
-					sourceInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Source{}
+					exceptionSourceInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Source{}
 
-					diags = append(diags, itemExceptionsInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})...)
+					diags = append(diags, itemExceptionsInput.Source.As(ctx, &exceptionSourceInput, basetypes.ObjectAsOptions{})...)
 
 					// setting source IP
-					if !sourceInput.IP.IsNull() {
-						diags = append(diags, sourceInput.IP.ElementsAs(ctx, &exceptionAddInput.Source.IP, false)...)
+					if !exceptionSourceInput.IP.IsNull() {
+						diags = append(diags, exceptionSourceInput.IP.ElementsAs(ctx, &exceptionAddInput.Source.IP, false)...)
 						exceptionUpdateInput.Source.IP = exceptionAddInput.Source.IP
 					} else {
 						exceptionUpdateInput.Source.IP = make([]string, 0)
 					}
 
 					// setting source subnet
-					tflog.Debug(ctx, "sourceInput.Subnet", map[string]interface{}{
-						"sourceInput.Subnet": utils.InterfaceToJSONString(sourceInput.Subnet),
+					tflog.Debug(ctx, "exceptionSourceInput.Subnet", map[string]interface{}{
+						"exceptionSourceInput.Subnet": utils.InterfaceToJSONString(exceptionSourceInput.Subnet),
 					})
-					if !sourceInput.Subnet.IsNull() {
-						diags = append(diags, sourceInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Source.Subnet, false)...)
+					if !exceptionSourceInput.Subnet.IsNull() {
+						diags = append(diags, exceptionSourceInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Source.Subnet, false)...)
 						exceptionUpdateInput.Source.Subnet = exceptionAddInput.Source.Subnet
 					} else {
 						exceptionUpdateInput.Source.Subnet = make([]string, 0)
 					}
 
 					// setting source host
-					if !sourceInput.Host.IsNull() {
-						elementsSourceHostInput := make([]types.Object, 0, len(sourceInput.Host.Elements()))
-						diags = append(diags, sourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)...)
+					if !exceptionSourceInput.Host.IsNull() {
+						elementsSourceHostInput := make([]types.Object, 0, len(exceptionSourceInput.Host.Elements()))
+						diags = append(diags, exceptionSourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)...)
 
 						var itemSourceHostInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Host
 						for _, item := range elementsSourceHostInput {
@@ -1270,9 +1271,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source site
-					if !sourceInput.Site.IsNull() {
-						elementsSourceSiteInput := make([]types.Object, 0, len(sourceInput.Site.Elements()))
-						diags = append(diags, sourceInput.Site.ElementsAs(ctx, &elementsSourceSiteInput, false)...)
+					if !exceptionSourceInput.Site.IsNull() {
+						elementsSourceSiteInput := make([]types.Object, 0, len(exceptionSourceInput.Site.Elements()))
+						diags = append(diags, exceptionSourceInput.Site.ElementsAs(ctx, &elementsSourceSiteInput, false)...)
 
 						var itemSourceSiteInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Site
 						for _, item := range elementsSourceSiteInput {
@@ -1294,12 +1295,12 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source ip range
-					if !sourceInput.IPRange.IsNull() {
-						elementsSourceIPRangeInput := make([]types.Object, 0, len(sourceInput.IPRange.Elements()))
-						diags = append(diags, sourceInput.IPRange.ElementsAs(ctx, &elementsSourceIPRangeInput, false)...)
+					if !exceptionSourceInput.IPRange.IsNull() {
+						elementsExceptionSourceIPRangeInput := make([]types.Object, 0, len(exceptionSourceInput.IPRange.Elements()))
+						diags = append(diags, exceptionSourceInput.IPRange.ElementsAs(ctx, &elementsExceptionSourceIPRangeInput, false)...)
 
 						var itemSourceIPRangeInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_IPRange
-						for _, item := range elementsSourceIPRangeInput {
+						for _, item := range elementsExceptionSourceIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemSourceIPRangeInput, basetypes.ObjectAsOptions{})...)
 
 							exceptionAddInput.Source.IPRange = append(exceptionAddInput.Source.IPRange, &cato_models.IPAddressRangeInput{
@@ -1313,9 +1314,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source global ip range
-					if !sourceInput.GlobalIPRange.IsNull() {
-						elementsSourceGlobalIPRangeInput := make([]types.Object, 0, len(sourceInput.GlobalIPRange.Elements()))
-						diags = append(diags, sourceInput.GlobalIPRange.ElementsAs(ctx, &elementsSourceGlobalIPRangeInput, false)...)
+					if !exceptionSourceInput.GlobalIPRange.IsNull() {
+						elementsSourceGlobalIPRangeInput := make([]types.Object, 0, len(exceptionSourceInput.GlobalIPRange.Elements()))
+						diags = append(diags, exceptionSourceInput.GlobalIPRange.ElementsAs(ctx, &elementsSourceGlobalIPRangeInput, false)...)
 
 						var itemSourceGlobalIPRangeInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_GlobalIPRange
 						for _, item := range elementsSourceGlobalIPRangeInput {
@@ -1337,9 +1338,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source network interface
-					if !sourceInput.NetworkInterface.IsNull() {
-						elementsSourceNetworkInterfaceInput := make([]types.Object, 0, len(sourceInput.NetworkInterface.Elements()))
-						diags = append(diags, sourceInput.NetworkInterface.ElementsAs(ctx, &elementsSourceNetworkInterfaceInput, false)...)
+					if !exceptionSourceInput.NetworkInterface.IsNull() {
+						elementsSourceNetworkInterfaceInput := make([]types.Object, 0, len(exceptionSourceInput.NetworkInterface.Elements()))
+						diags = append(diags, exceptionSourceInput.NetworkInterface.ElementsAs(ctx, &elementsSourceNetworkInterfaceInput, false)...)
 
 						var itemSourceNetworkInterfaceInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_NetworkInterface
 						for _, item := range elementsSourceNetworkInterfaceInput {
@@ -1361,9 +1362,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source site network subnet
-					if !sourceInput.SiteNetworkSubnet.IsNull() {
-						elementsSourceSiteNetworkSubnetInput := make([]types.Object, 0, len(sourceInput.SiteNetworkSubnet.Elements()))
-						diags = append(diags, sourceInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsSourceSiteNetworkSubnetInput, false)...)
+					if !exceptionSourceInput.SiteNetworkSubnet.IsNull() {
+						elementsSourceSiteNetworkSubnetInput := make([]types.Object, 0, len(exceptionSourceInput.SiteNetworkSubnet.Elements()))
+						diags = append(diags, exceptionSourceInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsSourceSiteNetworkSubnetInput, false)...)
 
 						var itemSourceSiteNetworkSubnetInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet
 						for _, item := range elementsSourceSiteNetworkSubnetInput {
@@ -1385,9 +1386,13 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source floating subnet
-					if !sourceInput.FloatingSubnet.IsNull() {
-						elementsSourceFloatingSubnetInput := make([]types.Object, 0, len(sourceInput.FloatingSubnet.Elements()))
-						diags = append(diags, sourceInput.FloatingSubnet.ElementsAs(ctx, &elementsSourceFloatingSubnetInput, false)...)
+					tflog.Debug(ctx, "exception.exceptionSourceInput.FloatingSubnet", map[string]interface{}{
+						"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", exceptionSourceInput.FloatingSubnet)),
+						"T": utils.InterfaceToJSONString(fmt.Sprintf("%T", exceptionSourceInput.FloatingSubnet)),
+					})
+					if !exceptionSourceInput.FloatingSubnet.IsNull() {
+						elementsSourceFloatingSubnetInput := make([]types.Object, 0, len(exceptionSourceInput.FloatingSubnet.Elements()))
+						diags = append(diags, exceptionSourceInput.FloatingSubnet.ElementsAs(ctx, &elementsSourceFloatingSubnetInput, false)...)
 
 						var itemSourceFloatingSubnetInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_FloatingSubnet
 						for _, item := range elementsSourceFloatingSubnetInput {
@@ -1409,9 +1414,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source user
-					if !sourceInput.User.IsNull() {
-						elementsSourceUserInput := make([]types.Object, 0, len(sourceInput.User.Elements()))
-						diags = append(diags, sourceInput.User.ElementsAs(ctx, &elementsSourceUserInput, false)...)
+					if !exceptionSourceInput.User.IsNull() {
+						elementsSourceUserInput := make([]types.Object, 0, len(exceptionSourceInput.User.Elements()))
+						diags = append(diags, exceptionSourceInput.User.ElementsAs(ctx, &elementsSourceUserInput, false)...)
 
 						var itemSourceUserInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_User
 						for _, item := range elementsSourceUserInput {
@@ -1433,9 +1438,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source users group
-					if !sourceInput.UsersGroup.IsNull() {
-						elementsSourceUsersGroupInput := make([]types.Object, 0, len(sourceInput.UsersGroup.Elements()))
-						diags = append(diags, sourceInput.UsersGroup.ElementsAs(ctx, &elementsSourceUsersGroupInput, false)...)
+					if !exceptionSourceInput.UsersGroup.IsNull() {
+						elementsSourceUsersGroupInput := make([]types.Object, 0, len(exceptionSourceInput.UsersGroup.Elements()))
+						diags = append(diags, exceptionSourceInput.UsersGroup.ElementsAs(ctx, &elementsSourceUsersGroupInput, false)...)
 
 						var itemSourceUsersGroupInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_UsersGroup
 						for _, item := range elementsSourceUsersGroupInput {
@@ -1457,9 +1462,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source group
-					if !sourceInput.Group.IsNull() {
-						elementsSourceGroupInput := make([]types.Object, 0, len(sourceInput.Group.Elements()))
-						diags = append(diags, sourceInput.Group.ElementsAs(ctx, &elementsSourceGroupInput, false)...)
+					if !exceptionSourceInput.Group.IsNull() {
+						elementsSourceGroupInput := make([]types.Object, 0, len(exceptionSourceInput.Group.Elements()))
+						diags = append(diags, exceptionSourceInput.Group.ElementsAs(ctx, &elementsSourceGroupInput, false)...)
 
 						var itemSourceGroupInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Group
 						for _, item := range elementsSourceGroupInput {
@@ -1481,9 +1486,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting source system group
-					if !sourceInput.SystemGroup.IsNull() {
-						elementsSourceSystemGroupInput := make([]types.Object, 0, len(sourceInput.SystemGroup.Elements()))
-						diags = append(diags, sourceInput.SystemGroup.ElementsAs(ctx, &elementsSourceSystemGroupInput, false)...)
+					if !exceptionSourceInput.SystemGroup.IsNull() {
+						elementsSourceSystemGroupInput := make([]types.Object, 0, len(exceptionSourceInput.SystemGroup.Elements()))
+						diags = append(diags, exceptionSourceInput.SystemGroup.ElementsAs(ctx, &elementsSourceSystemGroupInput, false)...)
 
 						var itemSourceSystemGroupInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SystemGroup
 						for _, item := range elementsSourceSystemGroupInput {
@@ -1575,29 +1580,29 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					exceptionAddInput.Destination = &cato_models.WanFirewallDestinationInput{}
 					exceptionUpdateInput.Destination = &cato_models.WanFirewallDestinationInput{}
 
-					destinationInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination{}
-					diags = append(diags, itemExceptionsInput.Destination.As(ctx, &destinationInput, basetypes.ObjectAsOptions{})...)
+					exceptionDestinationInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination{}
+					diags = append(diags, itemExceptionsInput.Destination.As(ctx, &exceptionDestinationInput, basetypes.ObjectAsOptions{})...)
 
 					// setting destination IP
-					if !destinationInput.IP.IsUnknown() && !destinationInput.IP.IsNull() {
-						diags = append(diags, destinationInput.IP.ElementsAs(ctx, &exceptionAddInput.Destination.IP, false)...)
+					if !exceptionDestinationInput.IP.IsUnknown() && !exceptionDestinationInput.IP.IsNull() {
+						diags = append(diags, exceptionDestinationInput.IP.ElementsAs(ctx, &exceptionAddInput.Destination.IP, false)...)
 						exceptionUpdateInput.Destination.IP = exceptionAddInput.Destination.IP
 					} else {
 						exceptionUpdateInput.Destination.IP = make([]string, 0)
 					}
 
 					// setting destination subnet
-					if !destinationInput.Subnet.IsUnknown() && !destinationInput.Subnet.IsNull() {
-						diags = append(diags, destinationInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Destination.Subnet, false)...)
+					if !exceptionDestinationInput.Subnet.IsUnknown() && !exceptionDestinationInput.Subnet.IsNull() {
+						diags = append(diags, exceptionDestinationInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Destination.Subnet, false)...)
 						exceptionUpdateInput.Destination.Subnet = exceptionAddInput.Destination.Subnet
 					} else {
 						exceptionUpdateInput.Destination.Subnet = make([]string, 0)
 					}
 
 					// setting destination host
-					if !destinationInput.Host.IsNull() {
-						elementsDestinationHostInput := make([]types.Object, 0, len(destinationInput.Host.Elements()))
-						diags = append(diags, destinationInput.Host.ElementsAs(ctx, &elementsDestinationHostInput, false)...)
+					if !exceptionDestinationInput.Host.IsNull() {
+						elementsDestinationHostInput := make([]types.Object, 0, len(exceptionDestinationInput.Host.Elements()))
+						diags = append(diags, exceptionDestinationInput.Host.ElementsAs(ctx, &elementsDestinationHostInput, false)...)
 
 						var itemDestinationHostInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Host
 						for _, item := range elementsDestinationHostInput {
@@ -1619,9 +1624,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination site
-					if !destinationInput.Site.IsNull() {
-						elementsDestinationSiteInput := make([]types.Object, 0, len(destinationInput.Site.Elements()))
-						diags = append(diags, destinationInput.Site.ElementsAs(ctx, &elementsDestinationSiteInput, false)...)
+					if !exceptionDestinationInput.Site.IsNull() {
+						elementsDestinationSiteInput := make([]types.Object, 0, len(exceptionDestinationInput.Site.Elements()))
+						diags = append(diags, exceptionDestinationInput.Site.ElementsAs(ctx, &elementsDestinationSiteInput, false)...)
 
 						var itemDestinationSiteInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Site
 						for _, item := range elementsDestinationSiteInput {
@@ -1643,9 +1648,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination ip range
-					if !destinationInput.IPRange.IsNull() {
-						elementsDestinationIPRangeInput := make([]types.Object, 0, len(destinationInput.IPRange.Elements()))
-						diags = append(diags, destinationInput.IPRange.ElementsAs(ctx, &elementsDestinationIPRangeInput, false)...)
+					if !exceptionDestinationInput.IPRange.IsNull() {
+						elementsDestinationIPRangeInput := make([]types.Object, 0, len(exceptionDestinationInput.IPRange.Elements()))
+						diags = append(diags, exceptionDestinationInput.IPRange.ElementsAs(ctx, &elementsDestinationIPRangeInput, false)...)
 
 						var itemDestinationIPRangeInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_IPRange
 						for _, item := range elementsDestinationIPRangeInput {
@@ -1662,9 +1667,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination global ip range
-					if !destinationInput.GlobalIPRange.IsNull() {
-						elementsDestinationGlobalIPRangeInput := make([]types.Object, 0, len(destinationInput.GlobalIPRange.Elements()))
-						diags = append(diags, destinationInput.GlobalIPRange.ElementsAs(ctx, &elementsDestinationGlobalIPRangeInput, false)...)
+					if !exceptionDestinationInput.GlobalIPRange.IsNull() {
+						elementsDestinationGlobalIPRangeInput := make([]types.Object, 0, len(exceptionDestinationInput.GlobalIPRange.Elements()))
+						diags = append(diags, exceptionDestinationInput.GlobalIPRange.ElementsAs(ctx, &elementsDestinationGlobalIPRangeInput, false)...)
 
 						var itemDestinationGlobalIPRangeInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_GlobalIPRange
 						for _, item := range elementsDestinationGlobalIPRangeInput {
@@ -1686,9 +1691,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination network interface
-					if !destinationInput.NetworkInterface.IsNull() {
-						elementsDestinationNetworkInterfaceInput := make([]types.Object, 0, len(destinationInput.NetworkInterface.Elements()))
-						diags = append(diags, destinationInput.NetworkInterface.ElementsAs(ctx, &elementsDestinationNetworkInterfaceInput, false)...)
+					if !exceptionDestinationInput.NetworkInterface.IsNull() {
+						elementsDestinationNetworkInterfaceInput := make([]types.Object, 0, len(exceptionDestinationInput.NetworkInterface.Elements()))
+						diags = append(diags, exceptionDestinationInput.NetworkInterface.ElementsAs(ctx, &elementsDestinationNetworkInterfaceInput, false)...)
 
 						var itemDestinationNetworkInterfaceInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_NetworkInterface
 						for _, item := range elementsDestinationNetworkInterfaceInput {
@@ -1710,9 +1715,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination site network subnet
-					if !destinationInput.SiteNetworkSubnet.IsNull() {
-						elementsDestinationSiteNetworkSubnetInput := make([]types.Object, 0, len(destinationInput.SiteNetworkSubnet.Elements()))
-						diags = append(diags, destinationInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsDestinationSiteNetworkSubnetInput, false)...)
+					if !exceptionDestinationInput.SiteNetworkSubnet.IsNull() {
+						elementsDestinationSiteNetworkSubnetInput := make([]types.Object, 0, len(exceptionDestinationInput.SiteNetworkSubnet.Elements()))
+						diags = append(diags, exceptionDestinationInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsDestinationSiteNetworkSubnetInput, false)...)
 
 						var itemDestinationSiteNetworkSubnetInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SiteNetworkSubnet
 						for _, item := range elementsDestinationSiteNetworkSubnetInput {
@@ -1734,9 +1739,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination floating subnet
-					if !destinationInput.FloatingSubnet.IsNull() {
-						elementsDestinationFloatingSubnetInput := make([]types.Object, 0, len(destinationInput.FloatingSubnet.Elements()))
-						diags = append(diags, destinationInput.FloatingSubnet.ElementsAs(ctx, &elementsDestinationFloatingSubnetInput, false)...)
+					if !exceptionDestinationInput.FloatingSubnet.IsNull() {
+						elementsDestinationFloatingSubnetInput := make([]types.Object, 0, len(exceptionDestinationInput.FloatingSubnet.Elements()))
+						diags = append(diags, exceptionDestinationInput.FloatingSubnet.ElementsAs(ctx, &elementsDestinationFloatingSubnetInput, false)...)
 
 						var itemDestinationFloatingSubnetInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_FloatingSubnet
 						for _, item := range elementsDestinationFloatingSubnetInput {
@@ -1758,9 +1763,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination user
-					if !destinationInput.User.IsNull() {
-						elementsDestinationUserInput := make([]types.Object, 0, len(destinationInput.User.Elements()))
-						diags = append(diags, destinationInput.User.ElementsAs(ctx, &elementsDestinationUserInput, false)...)
+					if !exceptionDestinationInput.User.IsNull() {
+						elementsDestinationUserInput := make([]types.Object, 0, len(exceptionDestinationInput.User.Elements()))
+						diags = append(diags, exceptionDestinationInput.User.ElementsAs(ctx, &elementsDestinationUserInput, false)...)
 
 						var itemDestinationUserInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_User
 						for _, item := range elementsDestinationUserInput {
@@ -1782,9 +1787,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination users group
-					if !destinationInput.UsersGroup.IsNull() {
-						elementsDestinationUsersGroupInput := make([]types.Object, 0, len(destinationInput.UsersGroup.Elements()))
-						diags = append(diags, destinationInput.UsersGroup.ElementsAs(ctx, &elementsDestinationUsersGroupInput, false)...)
+					if !exceptionDestinationInput.UsersGroup.IsNull() {
+						elementsDestinationUsersGroupInput := make([]types.Object, 0, len(exceptionDestinationInput.UsersGroup.Elements()))
+						diags = append(diags, exceptionDestinationInput.UsersGroup.ElementsAs(ctx, &elementsDestinationUsersGroupInput, false)...)
 
 						var itemDestinationUsersGroupInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_UsersGroup
 						for _, item := range elementsDestinationUsersGroupInput {
@@ -1806,9 +1811,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination group
-					if !destinationInput.Group.IsNull() {
-						elementsDestinationGroupInput := make([]types.Object, 0, len(destinationInput.Group.Elements()))
-						diags = append(diags, destinationInput.Group.ElementsAs(ctx, &elementsDestinationGroupInput, false)...)
+					if !exceptionDestinationInput.Group.IsNull() {
+						elementsDestinationGroupInput := make([]types.Object, 0, len(exceptionDestinationInput.Group.Elements()))
+						diags = append(diags, exceptionDestinationInput.Group.ElementsAs(ctx, &elementsDestinationGroupInput, false)...)
 
 						var itemDestinationGroupInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Group
 						for _, item := range elementsDestinationGroupInput {
@@ -1830,9 +1835,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting destination system group
-					if !destinationInput.SystemGroup.IsNull() {
-						elementsDestinationSystemGroupInput := make([]types.Object, 0, len(destinationInput.SystemGroup.Elements()))
-						diags = append(diags, destinationInput.SystemGroup.ElementsAs(ctx, &elementsDestinationSystemGroupInput, false)...)
+					if !exceptionDestinationInput.SystemGroup.IsNull() {
+						elementsDestinationSystemGroupInput := make([]types.Object, 0, len(exceptionDestinationInput.SystemGroup.Elements()))
+						diags = append(diags, exceptionDestinationInput.SystemGroup.ElementsAs(ctx, &elementsDestinationSystemGroupInput, false)...)
 
 						var itemDestinationSystemGroupInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SystemGroup
 						for _, item := range elementsDestinationSystemGroupInput {
@@ -1860,45 +1865,45 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					exceptionAddInput.Application = &cato_models.WanFirewallApplicationInput{}
 					exceptionUpdateInput.Application = &cato_models.WanFirewallApplicationInput{}
 
-					applicationInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Application{}
-					diags = append(diags, itemExceptionsInput.Application.As(ctx, &applicationInput, basetypes.ObjectAsOptions{})...)
+					exceptionApplicationInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Application{}
+					diags = append(diags, itemExceptionsInput.Application.As(ctx, &exceptionApplicationInput, basetypes.ObjectAsOptions{})...)
 
 					// setting application IP
-					if !applicationInput.IP.IsNull() {
-						diags = append(diags, applicationInput.IP.ElementsAs(ctx, &exceptionAddInput.Application.IP, false)...)
+					if !exceptionApplicationInput.IP.IsNull() {
+						diags = append(diags, exceptionApplicationInput.IP.ElementsAs(ctx, &exceptionAddInput.Application.IP, false)...)
 						exceptionUpdateInput.Application.IP = exceptionAddInput.Application.IP
 					} else {
 						exceptionUpdateInput.Application.IP = make([]string, 0)
 					}
 
 					// setting application subnet
-					if !applicationInput.Subnet.IsNull() {
-						diags = append(diags, applicationInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Application.Subnet, false)...)
+					if !exceptionApplicationInput.Subnet.IsNull() {
+						diags = append(diags, exceptionApplicationInput.Subnet.ElementsAs(ctx, &exceptionAddInput.Application.Subnet, false)...)
 						exceptionUpdateInput.Application.Subnet = exceptionAddInput.Application.Subnet
 					} else {
 						exceptionUpdateInput.Application.Subnet = make([]string, 0)
 					}
 
 					// setting application domain
-					if !applicationInput.Domain.IsNull() {
-						diags = append(diags, applicationInput.Domain.ElementsAs(ctx, &exceptionAddInput.Application.Domain, false)...)
+					if !exceptionApplicationInput.Domain.IsNull() {
+						diags = append(diags, exceptionApplicationInput.Domain.ElementsAs(ctx, &exceptionAddInput.Application.Domain, false)...)
 						exceptionUpdateInput.Application.Domain = exceptionAddInput.Application.Domain
 					} else {
 						exceptionUpdateInput.Application.Domain = make([]string, 0)
 					}
 
 					// setting application fqdn
-					if !applicationInput.Fqdn.IsNull() {
-						diags = append(diags, applicationInput.Fqdn.ElementsAs(ctx, &exceptionAddInput.Application.Fqdn, false)...)
+					if !exceptionApplicationInput.Fqdn.IsNull() {
+						diags = append(diags, exceptionApplicationInput.Fqdn.ElementsAs(ctx, &exceptionAddInput.Application.Fqdn, false)...)
 						exceptionUpdateInput.Application.Fqdn = exceptionAddInput.Application.Fqdn
 					} else {
 						exceptionUpdateInput.Application.Fqdn = make([]string, 0)
 					}
 
 					// setting application application
-					if !applicationInput.Application.IsNull() {
-						elementsApplicationApplicationInput := make([]types.Object, 0, len(applicationInput.Application.Elements()))
-						diags = append(diags, applicationInput.Application.ElementsAs(ctx, &elementsApplicationApplicationInput, false)...)
+					if !exceptionApplicationInput.Application.IsNull() {
+						elementsApplicationApplicationInput := make([]types.Object, 0, len(exceptionApplicationInput.Application.Elements()))
+						diags = append(diags, exceptionApplicationInput.Application.ElementsAs(ctx, &elementsApplicationApplicationInput, false)...)
 
 						var itemApplicationApplicationInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_Application
 						for _, item := range elementsApplicationApplicationInput {
@@ -1920,9 +1925,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting application custom app
-					if !applicationInput.CustomApp.IsNull() {
-						elementsApplicationCustomAppInput := make([]types.Object, 0, len(applicationInput.CustomApp.Elements()))
-						diags = append(diags, applicationInput.CustomApp.ElementsAs(ctx, &elementsApplicationCustomAppInput, false)...)
+					if !exceptionApplicationInput.CustomApp.IsNull() {
+						elementsApplicationCustomAppInput := make([]types.Object, 0, len(exceptionApplicationInput.CustomApp.Elements()))
+						diags = append(diags, exceptionApplicationInput.CustomApp.ElementsAs(ctx, &elementsApplicationCustomAppInput, false)...)
 
 						var itemApplicationCustomAppInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_CustomApp
 						for _, item := range elementsApplicationCustomAppInput {
@@ -1944,9 +1949,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting application ip range
-					if !applicationInput.IPRange.IsNull() {
-						elementsApplicationIPRangeInput := make([]types.Object, 0, len(applicationInput.IPRange.Elements()))
-						diags = append(diags, applicationInput.IPRange.ElementsAs(ctx, &elementsApplicationIPRangeInput, false)...)
+					if !exceptionApplicationInput.IPRange.IsNull() {
+						elementsApplicationIPRangeInput := make([]types.Object, 0, len(exceptionApplicationInput.IPRange.Elements()))
+						diags = append(diags, exceptionApplicationInput.IPRange.ElementsAs(ctx, &elementsApplicationIPRangeInput, false)...)
 
 						var itemApplicationIPRangeInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_IPRange
 						for _, item := range elementsApplicationIPRangeInput {
@@ -1963,9 +1968,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting application global ip range
-					if !applicationInput.GlobalIPRange.IsNull() {
-						elementsApplicationGlobalIPRangeInput := make([]types.Object, 0, len(applicationInput.GlobalIPRange.Elements()))
-						diags = append(diags, applicationInput.GlobalIPRange.ElementsAs(ctx, &elementsApplicationGlobalIPRangeInput, false)...)
+					if !exceptionApplicationInput.GlobalIPRange.IsNull() {
+						elementsApplicationGlobalIPRangeInput := make([]types.Object, 0, len(exceptionApplicationInput.GlobalIPRange.Elements()))
+						diags = append(diags, exceptionApplicationInput.GlobalIPRange.ElementsAs(ctx, &elementsApplicationGlobalIPRangeInput, false)...)
 
 						var itemApplicationGlobalIPRangeInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_GlobalIPRange
 						for _, item := range elementsApplicationGlobalIPRangeInput {
@@ -1987,9 +1992,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting application app category
-					if !applicationInput.AppCategory.IsNull() {
-						elementsApplicationAppCategoryInput := make([]types.Object, 0, len(applicationInput.AppCategory.Elements()))
-						diags = append(diags, applicationInput.AppCategory.ElementsAs(ctx, &elementsApplicationAppCategoryInput, false)...)
+					if !exceptionApplicationInput.AppCategory.IsNull() {
+						elementsApplicationAppCategoryInput := make([]types.Object, 0, len(exceptionApplicationInput.AppCategory.Elements()))
+						diags = append(diags, exceptionApplicationInput.AppCategory.ElementsAs(ctx, &elementsApplicationAppCategoryInput, false)...)
 
 						var itemApplicationAppCategoryInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_AppCategory
 						for _, item := range elementsApplicationAppCategoryInput {
@@ -2011,9 +2016,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting application custom app category
-					if !applicationInput.CustomCategory.IsNull() {
-						elementsApplicationCustomCategoryInput := make([]types.Object, 0, len(applicationInput.CustomCategory.Elements()))
-						diags = append(diags, applicationInput.CustomCategory.ElementsAs(ctx, &elementsApplicationCustomCategoryInput, false)...)
+					if !exceptionApplicationInput.CustomCategory.IsNull() {
+						elementsApplicationCustomCategoryInput := make([]types.Object, 0, len(exceptionApplicationInput.CustomCategory.Elements()))
+						diags = append(diags, exceptionApplicationInput.CustomCategory.ElementsAs(ctx, &elementsApplicationCustomCategoryInput, false)...)
 
 						var itemApplicationCustomCategoryInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_CustomCategory
 						for _, item := range elementsApplicationCustomCategoryInput {
@@ -2035,9 +2040,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					}
 
 					// setting application sanctionned apps category
-					if !applicationInput.SanctionedAppsCategory.IsNull() {
-						elementsApplicationSanctionedAppsCategoryInput := make([]types.Object, 0, len(applicationInput.SanctionedAppsCategory.Elements()))
-						diags = append(diags, applicationInput.SanctionedAppsCategory.ElementsAs(ctx, &elementsApplicationSanctionedAppsCategoryInput, false)...)
+					if !exceptionApplicationInput.SanctionedAppsCategory.IsNull() {
+						elementsApplicationSanctionedAppsCategoryInput := make([]types.Object, 0, len(exceptionApplicationInput.SanctionedAppsCategory.Elements()))
+						diags = append(diags, exceptionApplicationInput.SanctionedAppsCategory.ElementsAs(ctx, &elementsApplicationSanctionedAppsCategoryInput, false)...)
 
 						var itemApplicationSanctionedAppsCategoryInput Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_SanctionedAppsCategory
 						for _, item := range elementsApplicationSanctionedAppsCategoryInput {

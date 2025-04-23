@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models" // Import the correct package
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/fatih/structs"
 	"github.com/gobeam/stringy"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -118,6 +119,10 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 	tflog.Warn(ctx, "parseNameIDList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
+	tflog.Debug(ctx, "parseNameIDList.items", map[string]interface{}{
+		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", items)),
+		"T": utils.InterfaceToJSONString(fmt.Sprintf("%T", items)),
+	})
 	// Handle nil or empty list
 	if items == nil || len(items) == 0 {
 		tflog.Warn(ctx, "parseNameIDList() - nil or empty input list")

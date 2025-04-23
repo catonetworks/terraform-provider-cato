@@ -232,10 +232,11 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			curExceptionSourceObj, diagstmp := types.ObjectValue(
 				WanSourceAttrTypes,
 				map[string]attr.Value{
-					"ip":                  parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
-					"host":                parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host"),
-					"site":                parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site"),
-					"subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet"),
+					"ip":     parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
+					"host":   parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host"),
+					"site":   parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site"),
+					"subnet": types.ListNull(types.StringType),
+					// "subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet"),
 					"ip_range":            parseFromToList(ctx, ruleException.Source.IPRange, "rule.exception.source.ip_range"),
 					"global_ip_range":     parseNameIDList(ctx, ruleException.Source.GlobalIPRange, "rule.exception.source.global_ip_range"),
 					"network_interface":   parseNameIDList(ctx, ruleException.Source.NetworkInterface, "rule.exception.source.network_interface"),
@@ -253,10 +254,11 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			curExceptionDestObj, diagstmp := types.ObjectValue(
 				WanDestAttrTypes,
 				map[string]attr.Value{
-					"ip":                  parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
-					"host":                parseNameIDList(ctx, ruleException.Destination.Host, "rule.exception.destination.host"),
-					"site":                parseNameIDList(ctx, ruleException.Destination.Site, "rule.exception.destination.site"),
-					"subnet":              parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
+					"ip":     parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
+					"host":   parseNameIDList(ctx, ruleException.Destination.Host, "rule.exception.destination.host"),
+					"site":   parseNameIDList(ctx, ruleException.Destination.Site, "rule.exception.destination.site"),
+					"subnet": types.ListNull(types.StringType),
+					// "subnet":              parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
 					"ip_range":            parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range"),
 					"global_ip_range":     parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.exception.destination.global_ip_range"),
 					"network_interface":   parseNameIDList(ctx, ruleException.Destination.NetworkInterface, "rule.exception.destination.network_interface"),
@@ -282,9 +284,10 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 					"domain":                   parseList(ctx, types.StringType, ruleException.Application.Domain, "rule.exception.application.domain"),
 					"fqdn":                     parseList(ctx, types.StringType, ruleException.Application.Fqdn, "rule.exception.application.fqdn"),
 					"ip":                       parseList(ctx, types.StringType, ruleException.Application.IP, "rule.exception.application.ip"),
-					"subnet":                   parseList(ctx, types.StringType, ruleException.Application.Subnet, "rule.exception.application.subnet"),
-					"ip_range":                 parseFromToList(ctx, ruleException.Application.IPRange, "rule.exception.application.ip_range"),
-					"global_ip_range":          parseNameIDList(ctx, ruleException.Application.GlobalIPRange, "rule.exception.application.global_ip_range"),
+					"subnet":                   types.ListNull(types.StringType),
+					// "subnet":                   parseList(ctx, types.StringType, ruleException.Application.Subnet, "rule.exception.application.subnet"),
+					"ip_range":        parseFromToList(ctx, ruleException.Application.IPRange, "rule.exception.application.ip_range"),
+					"global_ip_range": parseNameIDList(ctx, ruleException.Application.GlobalIPRange, "rule.exception.application.global_ip_range"),
 				},
 			)
 			diags = append(diags, diagstmp...)
@@ -345,10 +348,9 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		curRuleExceptionsObj, diagstmp = types.SetValue(types.ObjectType{AttrTypes: WanExceptionAttrTypes}, exceptions)
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
+	} else {
+		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
 	}
-	// else {
-	// 	ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
-	// }
 	////////////// end Rule -> Exceptions ///////////////
 
 	return ruleInput, diags

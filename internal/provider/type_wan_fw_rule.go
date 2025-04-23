@@ -67,263 +67,263 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application struct {
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_Application struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_CustomApp struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_AppCategory struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_CustomCategory struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_SanctionedAppsCategory struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_IPRange struct {
-	From types.String `tfsdk:"from"`
-	To   types.String `tfsdk:"to"`
+	From types.String `tfsdk:"from" json:"from,omitempty"`
+	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Application_GlobalIPRange struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source struct {
-	IP                types.List `tfsdk:"ip"`
-	Host              types.Set  `tfsdk:"host"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Host
-	Site              types.Set  `tfsdk:"site"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Site
-	Subnet            types.List `tfsdk:"subnet"`
-	IPRange           types.List `tfsdk:"ip_range"`            //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_IPRange
-	GlobalIPRange     types.Set  `tfsdk:"global_ip_range"`     //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_GlobalIPRange
-	NetworkInterface  types.Set  `tfsdk:"network_interface"`   //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_NetworkInterface
-	SiteNetworkSubnet types.Set  `tfsdk:"site_network_subnet"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet
-	FloatingSubnet    types.Set  `tfsdk:"floating_subnet"`     //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_FloatingSubnet
-	User              types.Set  `tfsdk:"user"`                //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_User
-	UsersGroup        types.Set  `tfsdk:"users_group"`         //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_UsersGroup
-	Group             types.Set  `tfsdk:"group"`               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Group
-	SystemGroup       types.Set  `tfsdk:"system_group"`        //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SystemGroup
+	IP                types.List `tfsdk:"ip" json:"ip,omitempty"`
+	Host              types.Set  `tfsdk:"host" json:"host,omitempty"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Host
+	Site              types.Set  `tfsdk:"site" json:"site,omitempty"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Site
+	Subnet            types.List `tfsdk:"subnet" json:"subnet,omitempty"`
+	IPRange           types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`                       //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_IPRange
+	GlobalIPRange     types.Set  `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"`         //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_GlobalIPRange
+	NetworkInterface  types.Set  `tfsdk:"network_interface" json:"network_interface,omitempty"`     //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_NetworkInterface
+	SiteNetworkSubnet types.Set  `tfsdk:"site_network_subnet" json:"site_network_subnet,omitempty"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet
+	FloatingSubnet    types.Set  `tfsdk:"floating_subnet" json:"floating_subnet,omitempty"`         //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_FloatingSubnet
+	User              types.Set  `tfsdk:"user" json:"user,omitempty"`                               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_User
+	UsersGroup        types.Set  `tfsdk:"users_group" json:"users_group,omitempty"`                 //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_UsersGroup
+	Group             types.Set  `tfsdk:"group" json:"group,omitempty"`                             //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Group
+	SystemGroup       types.Set  `tfsdk:"system_group" json:"system_group,omitempty"`               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SystemGroup
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Host struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Site struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_IPRange struct {
-	From types.String `tfsdk:"from"`
-	To   types.String `tfsdk:"to"`
+	From types.String `tfsdk:"from" json:"from,omitempty"`
+	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_GlobalIPRange struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_NetworkInterface struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SiteNetworkSubnet struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_User struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_UsersGroup struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_Group struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_SystemGroup struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Source_FloatingSubnet struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination struct {
-	IP                types.List `tfsdk:"ip"`
-	Host              types.Set  `tfsdk:"host"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Host
-	Site              types.Set  `tfsdk:"site"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Site
-	Subnet            types.List `tfsdk:"subnet"`
-	IPRange           types.List `tfsdk:"ip_range"`            //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_IPRange
-	GlobalIPRange     types.Set  `tfsdk:"global_ip_range"`     //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_GlobalIPRange
-	NetworkInterface  types.Set  `tfsdk:"network_interface"`   //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_NetworkInterface
-	SiteNetworkSubnet types.Set  `tfsdk:"site_network_subnet"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SiteNetworkSubnet
-	FloatingSubnet    types.Set  `tfsdk:"floating_subnet"`     //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_FloatingSubnet
-	User              types.Set  `tfsdk:"user"`                //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_User
-	UsersGroup        types.Set  `tfsdk:"users_group"`         //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_UsersGroup
-	Group             types.Set  `tfsdk:"group"`               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Group
-	SystemGroup       types.Set  `tfsdk:"system_group"`        //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SystemGroup
+	IP                types.List `tfsdk:"ip" json:"ip,omitempty"`                                   //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_IP
+	Host              types.Set  `tfsdk:"host" json:"host,omitempty"`                               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Host
+	Site              types.Set  `tfsdk:"site" json:"site,omitempty"`                               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Site
+	Subnet            types.List `tfsdk:"subnet" json:"subnet,omitempty"`                           //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Subnet
+	IPRange           types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`                       //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_IPRange
+	GlobalIPRange     types.Set  `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"`         //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_GlobalIPRange
+	NetworkInterface  types.Set  `tfsdk:"network_interface" json:"network_interface,omitempty"`     //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_NetworkInterface
+	SiteNetworkSubnet types.Set  `tfsdk:"site_network_subnet" json:"site_network_subnet,omitempty"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SiteNetworkSubnet
+	FloatingSubnet    types.Set  `tfsdk:"floating_subnet" json:"floating_subnet,omitempty"`         //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_FloatingSubnet
+	User              types.Set  `tfsdk:"user" json:"user,omitempty"`                               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_User
+	UsersGroup        types.Set  `tfsdk:"users_group" json:"users_group,omitempty"`                 //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_UsersGroup
+	Group             types.Set  `tfsdk:"group" json:"group,omitempty"`                             //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Group
+	SystemGroup       types.Set  `tfsdk:"system_group" json:"system_group,omitempty"`               //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SystemGroup
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Host struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Site struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_IPRange struct {
-	From types.String `tfsdk:"from"`
-	To   types.String `tfsdk:"to"`
+	From types.String `tfsdk:"from" json:"from,omitempty"`
+	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_GlobalIPRange struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_NetworkInterface struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SiteNetworkSubnet struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_User struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_UsersGroup struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_Group struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_SystemGroup struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination_FloatingSubnet struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Service struct {
-	Standard types.Set  `tfsdk:"standard"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Standard
-	Custom   types.List `tfsdk:"custom"`   //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Custom
+	Standard types.Set  `tfsdk:"standard" json:"standard,omitempty"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Standard
+	Custom   types.List `tfsdk:"custom" json:"custom,omitempty"`     //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Custom
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Standard struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Custom struct {
-	Port      types.List   `tfsdk:"port"`
-	PortRange types.Object `tfsdk:"port_range"` //*Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Custom_PortRange
-	Protocol  types.String `tfsdk:"protocol"`
+	Port      types.List   `tfsdk:"port" json:"port,omitempty"`
+	PortRange types.Object `tfsdk:"port_range" json:"port_range,omitempty"` //*Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Custom_PortRange
+	Protocol  types.String `tfsdk:"protocol" json:"protocol,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Custom_PortRange struct {
-	From types.String `tfsdk:"from"`
-	To   types.String `tfsdk:"to"`
+	From types.String `tfsdk:"from" json:"from,omitempty"`
+	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking struct {
-	Event types.Object `tfsdk:"event"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Event
-	Alert types.Object `tfsdk:"alert"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert
+	Event types.Object `tfsdk:"event" json:"event,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Event
+	Alert types.Object `tfsdk:"alert" json:"alert,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Event struct {
-	Enabled types.Bool `tfsdk:"enabled"`
+	Enabled types.Bool `tfsdk:"enabled" json:"enabled,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert struct {
-	Enabled           types.Bool   `tfsdk:"enabled"`
-	Frequency         types.String `tfsdk:"frequency"`
-	SubscriptionGroup types.Set    `tfsdk:"subscription_group"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
-	Webhook           types.Set    `tfsdk:"webhook"`            //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook
-	MailingList       types.Set    `tfsdk:"mailing_list"`       //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList
+	Enabled           types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
+	Frequency         types.String `tfsdk:"frequency" json:"frequency,omitempty"`
+	SubscriptionGroup types.Set    `tfsdk:"subscription_group" json:"subscription_group,omitempty"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
+	Webhook           types.Set    `tfsdk:"webhook" json:"webhook,omitempty"`                       //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook
+	MailingList       types.Set    `tfsdk:"mailing_list" json:"mailing_list,omitempty"`             //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_Webhook struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Tracking_Alert_MailingList struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
+	ID   types.String `tfsdk:"id" json:"id,omitempty"`
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule struct {
-	ActiveOn        types.String `tfsdk:"active_on"`
-	CustomTimeframe types.Object `tfsdk:"custom_timeframe"` //*Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule_CustomTimeframe
-	CustomRecurring types.Object `tfsdk:"custom_recurring"` //*Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule_CustomRecurring
+	ActiveOn        types.String `tfsdk:"active_on" json:"active_on,omitempty"`
+	CustomTimeframe types.Object `tfsdk:"custom_timeframe" json:"custom_timeframe,omitempty"` //*Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule_CustomTimeframe
+	CustomRecurring types.Object `tfsdk:"custom_recurring" json:"custom_recurring,omitempty"` //*Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule_CustomRecurring
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule_CustomTimeframe struct {
-	From types.String `tfsdk:"from"`
-	To   types.String `tfsdk:"to"`
+	From types.String `tfsdk:"from" json:"from,omitempty"`
+	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule_CustomRecurring struct {
-	From types.String `tfsdk:"from"`
-	To   types.String `tfsdk:"to"`
-	Days types.List   `tfsdk:"days"` //[]DayOfWeek
+	From types.String `tfsdk:"from" json:"from,omitempty"`
+	To   types.String `tfsdk:"to" json:"to,omitempty"`
+	Days types.List   `tfsdk:"days" json:"days,omitempty"` //[]DayOfWeek
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Exceptions struct {
-	Name             types.String `tfsdk:"name"`
-	Source           types.Object `tfsdk:"source"`
-	ConnectionOrigin types.String `tfsdk:"connection_origin"`
-	Country          types.Set    `tfsdk:"country"`
-	Device           types.Set    `tfsdk:"device"`
-	DeviceOs         types.List   `tfsdk:"device_os"`
-	Destination      types.Object `tfsdk:"destination"`
-	Application      types.Object `tfsdk:"application"`
-	Service          types.Object `tfsdk:"service"`
-	Direction        types.String `tfsdk:"direction"`
+	Name             types.String `tfsdk:"name" json:"name,omitempty"`
+	Source           types.Object `tfsdk:"source" json:"source,omitempty"`
+	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connection_origin,omitempty"`
+	Country          types.Set    `tfsdk:"country" json:"country,omitempty"`
+	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`
+	DeviceOs         types.List   `tfsdk:"device_os" json:"device_os,omitempty"`
+	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"`
+	Application      types.Object `tfsdk:"application" json:"application,omitempty"`
+	Service          types.Object `tfsdk:"service" json:"service,omitempty"`
+	Direction        types.String `tfsdk:"direction" json:"direction,omitempty"`
 }
 
 // Generic object types used to write back to state

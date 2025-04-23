@@ -151,6 +151,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								ElementType: types.StringType,
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"host": schema.SetNestedAttribute{
 								Description: "Hosts and servers defined for your account",
@@ -233,11 +236,17 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Description: "Subnets and network ranges defined for the LAN interfaces of a site",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"ip_range": schema.ListNestedAttribute{
 								Description: "Multiple separate IP addresses or an IP range",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"from": schema.StringAttribute{
@@ -569,6 +578,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								ElementType: types.StringType,
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"host": schema.SetNestedAttribute{
 								Description: "Hosts and servers defined for your account",
@@ -576,6 +588,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Optional:    true,
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
+								},
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
@@ -648,6 +663,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Description: "Subnets and network ranges defined for the LAN interfaces of a site",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"ip_range": schema.ListNestedAttribute{
 								Description: "Multiple separate IP addresses or an IP range",
@@ -666,6 +684,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 										},
 									},
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
 								},
 							},
 							"global_ip_range": schema.SetNestedAttribute{
@@ -1037,6 +1058,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 						Optional:    true,
 						Required:    false,
+						Validators: []validator.List{
+							listvalidator.SizeAtLeast(1),
+						},
 					},
 					"application": schema.SingleNestedAttribute{
 						Description: "Application traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
@@ -1159,6 +1183,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -1227,29 +1254,44 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Description: "A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"fqdn": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"ip": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "IPv4 addresses",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"subnet": schema.ListAttribute{
 								ElementType: types.StringType,
 								Description: "Network subnets in CIDR notation",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 							},
 							"ip_range": schema.ListNestedAttribute{
 								Description: "A range of IPs. Every IP within the range will be matched",
 								Required:    false,
 								Optional:    true,
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"from": schema.StringAttribute{
@@ -1636,9 +1678,6 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Description: "Source traffic matching criteria for the exception.",
 									Required:    false,
 									Optional:    true,
-									PlanModifiers: []planmodifier.Object{
-										objectplanmodifier.UseStateForUnknown(), // Avoid drift
-									},
 									Attributes: map[string]schema.Attribute{
 										"ip": schema.ListAttribute{
 											Description: "",
@@ -1648,10 +1687,14 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 										},
 										"host": schema.SetNestedAttribute{
-											Required: false,
-											Optional: true,
+											Description: "Hosts and servers defined for your account",
+											Required:    false,
+											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
 												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
@@ -1744,17 +1787,28 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
 														Description: "",
-														Required:    true,
-														Optional:    false,
+														Required:    false,
+														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														// Computed: true,
 													},
 													"to": schema.StringAttribute{
 														Description: "",
-														Required:    true,
-														Optional:    false,
+														Required:    false,
+														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+														// Computed: true,
 													},
 												},
 											},
@@ -1887,15 +1941,15 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Description: "",
 														Required:    false,
 														Optional:    true,
-														Validators: []validator.String{
-															stringvalidator.ConflictsWith(path.Expressions{
-																path.MatchRelative().AtParent().AtName("id"),
-															}...),
-														},
+														// Validators: []validator.String{
+														// 	stringvalidator.ConflictsWith(path.Expressions{
+														// 		path.MatchRelative().AtParent().AtName("id"),
+														// 	}...),
+														// },
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
-														Computed: true,
+														// Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "",
@@ -1904,7 +1958,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
-														Computed: true,
+														// Computed: true,
 													},
 												},
 											},
@@ -2079,16 +2133,19 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 										},
 										"host": schema.SetNestedAttribute{
 											Description: "Hosts and servers defined for your account",
 											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
 											PlanModifiers: []planmodifier.Set{
 												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -2164,6 +2221,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "Multiple separate IP addresses or an IP range",
@@ -2171,6 +2231,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -2194,9 +2257,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
+											// PlanModifiers: []planmodifier.Set{
+											// 	setplanmodifier.UseStateForUnknown(), // Avoid drift
+											// },
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -2573,8 +2636,8 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 									Validators: []validator.List{
 										listvalidator.ValueStringsAre(stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS")),
+										listvalidator.SizeAtLeast(1),
 									},
-									Computed: true,
 								},
 								"application": schema.SingleNestedAttribute{
 									Description: "Application matching criteria for the exception.",
@@ -2701,11 +2764,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
+											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -2780,6 +2843,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 										},
 										"fqdn": schema.ListAttribute{
 											ElementType: types.StringType,
@@ -2788,6 +2854,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 										},
 										"ip": schema.ListAttribute{
@@ -2798,6 +2867,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
@@ -2807,7 +2879,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
-											// Computed: true,
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
@@ -2815,6 +2889,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
@@ -3017,12 +3094,17 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	//creating new rule
-	tflog.Warn(ctx, "Create() "+fmt.Sprintf("%#v", input.create)+" "+fmt.Sprintf("%T", input.create))
-	tflog.Debug(ctx, "input.create", map[string]interface{}{
-		"input.create": utils.InterfaceToJSONString(input.create),
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_input.create", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
+
 	createRuleResponse, err := r.client.catov2.PolicyWanFirewallAddRule(ctx, input.create, r.client.AccountId)
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_createRuleResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
+	})
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallAddRule error",
@@ -3219,20 +3301,18 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	tflog.Debug(ctx, "wan_fw_policy update", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input.update),
-	})
-
-	policyChangeJsonU, _ := json.Marshal(input.update)
-
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_input.update", map[string]interface{}{
-		"OUTPUT": string(policyChangeJsonU),
+		"OUTPUT": utils.InterfaceToJSONString(input.update),
 	})
 
 	//creating new rule
 	updateRuleResponse, err := r.client.catov2.PolicyWanFirewallUpdateRule(ctx, input.update, r.client.AccountId)
 	tflog.Debug(ctx, "updateRuleResponse", map[string]interface{}{
 		"input.update": utils.InterfaceToJSONString(input.update),
+	})
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_updateRuleResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(updateRuleResponse),
 	})
 
 	if err != nil {
