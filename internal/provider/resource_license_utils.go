@@ -8,7 +8,6 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -63,9 +62,6 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 
 	// Check if the site has a license currently
 	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
-	if allocatedBw != nil {
-		plan.BW = types.Int64Value(*allocatedBw)
-	}
 
 	// Get current license objeect by ID
 	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
@@ -85,8 +81,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 			if curSiteLicenseId.ValueString() == plan.LicenseID.ValueString() {
 				tflog.Warn(ctx, "Site ID '"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"' is already assigned to license ID '"+fmt.Sprintf("%v", license.ID)+"'")
 				if string(license.Sku) == "CATO_PB" || string(license.Sku) == "CATO_PB_SSE" {
-					tflog.Warn(ctx, "Checking current license BW '"+fmt.Sprintf("%v", license.PooledBandwidthLicense.GetAllocatedBandwidth())+"' to configured plan BW '"+fmt.Sprintf("%v", plan.BW.ValueInt64())+"'")
-					if license.PooledBandwidthLicense.GetAllocatedBandwidth() != plan.BW.ValueInt64() {
+					if plan.BW.ValueInt64() != *allocatedBw {
 						// Checking license SKU type for PB
 						tflog.Warn(ctx, "Pooled bandwidth license identfied '"+fmt.Sprintf("%v", license.Sku)+"', assigning BW")
 						if plan.BW.IsUnknown() || plan.BW.IsNull() {

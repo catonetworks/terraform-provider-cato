@@ -390,13 +390,11 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 				case "CATO_SITE", "CATO_SSE_SITE":
 					total := int(license.SiteLicense.Total)
 					curTotal = types.Int64Value(int64(total))
+					var curSites []attr.Value
 					if license.SiteLicense.Site != nil {
-						matches = !state.IsAssigned.IsNull() && state.IsAssigned.ValueBool() == true
-					} else {
-						matches = !state.IsAssigned.IsNull() && state.IsAssigned.ValueBool() == false
-					}
-					if license.SiteLicense.Site != nil {
-						var curSites []attr.Value
+						if !state.IsAssigned.IsNull() {
+							matches = state.IsAssigned.ValueBool() == true
+						}
 						curSite, _ := types.ObjectValue(
 							NameIDAttrTypes,
 							map[string]attr.Value{
@@ -412,8 +410,8 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 							},
 						)
 						curSites = append(curSites, curSiteItem)
-						curSitesListType, _ = types.ListValue(SiteAllocationObjectType, curSites)
 					}
+					curSitesListType, _ = types.ListValue(SiteAllocationObjectType, curSites)
 				case "CATO_XDR_PRO":
 					total := int(license.XdrProLicense.Total)
 					curTotal = types.Int64Value(int64(total))

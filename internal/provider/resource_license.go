@@ -316,16 +316,30 @@ func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest
 func hydrateLicenseState(ctx context.Context, licenseId string, curLicense *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses) (basetypes.ObjectValue, diag.Diagnostics) {
 	diags := make(diag.Diagnostics, 0)
 	licenseInfoAttrs := map[string]attr.Value{
-		"allocated_bandwidth": types.Int64Value(0),
+		"allocated_bandwidth": types.Int64Null(),
 		"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
-		"last_updated":        types.StringNull(),
+		"last_updated":        types.StringValue(*curLicense.LastUpdated),
 		"plan":                types.StringValue(string(curLicense.Plan)),
 		"site_license_group":  types.StringNull(),
 		"site_license_type":   types.StringNull(),
 		"sku":                 types.StringValue(string(curLicense.Sku)),
-		"start_date":          types.StringNull(),
+		"start_date":          types.StringValue(string(*curLicense.StartDate)),
 		"status":              types.StringValue(string(curLicense.Status)),
-		"total":               types.Int64Value(0),
+		"total":               types.Int64Value(curLicense.SiteLicense.Total),
+	}
+	if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_PB_SSE" {
+		licenseInfoAttrs = map[string]attr.Value{
+			"allocated_bandwidth": types.Int64Value(curLicense.PooledBandwidthLicense.AllocatedBandwidth),
+			"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
+			"last_updated":        types.StringValue(*curLicense.LastUpdated),
+			"plan":                types.StringValue(string(curLicense.Plan)),
+			"site_license_group":  types.StringNull(),
+			"site_license_type":   types.StringNull(),
+			"sku":                 types.StringValue(string(curLicense.Sku)),
+			"start_date":          types.StringValue(string(*curLicense.StartDate)),
+			"status":              types.StringValue(string(curLicense.Status)),
+			"total":               types.Int64Value(curLicense.SiteLicense.Total),
+		}
 	}
 
 	if curLicense.LastUpdated != nil {
