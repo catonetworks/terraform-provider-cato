@@ -13,6 +13,25 @@ description: |-
 ## Example Usage
 
 ```terraform
+// Data Source for site location
+data "cato_siteLocation" "ny" {
+  filters = [{
+    field = "city"
+    search = "New York"
+    operation = "startsWith"
+  },
+  {
+    field = "state_name"
+    search = "New York"
+    operation = "exact"
+  },
+ {
+    field = "country_name"
+    search = "United"
+    operation = "contains"
+  }]
+}
+
 // ipsec site and tunnels
 resource "cato_ipsec_site" "test-dev-site" {
   name = "ipsec-dev-site"
@@ -20,9 +39,9 @@ resource "cato_ipsec_site" "test-dev-site" {
   description = "IPSec Dev site"
   native_network_range = "172.98.10.0/24"
   site_location = {
-    country_code = "US"
-    state_code = "US-WA"
-    timezone = "America/Los_Angeles"
+    country_code = data.cato_siteLocation.ny.locations[1].country_code
+    state_code = data.cato_siteLocation.ny.locations[1].state_code
+    timezone = data.cato_siteLocation.ny.locations[1].timezone[0]
     address = "555 That Way"
   }
   ipsec = {
