@@ -16,8 +16,8 @@ The `cato_license` resource contains the configuration parameters necessary to a
 ## Example Usage
 
 ```terraform
-// Assign static license to site
-resource "cato_license" "site-static" {
+// Assign site license
+resource "cato_license" "site-license" {
   site_id = "123456"
   license_id = "abcde-1234-abcd-1234-abcde1234"
 }
