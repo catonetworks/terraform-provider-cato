@@ -5,11 +5,16 @@
 ### Features
 - Added full read support for IFW Rule and WANFW Rule in state
 - Added resources for license, bgp_peer, and lan_interface
-- Added data sources for lincense, and network_interface
+- Added data sources for license, and network_interface
 
-## 0.0.20 (2025-04-23)
+## 0.0.21 (2025-04-23)
 
 ### Features
 - Fixed documentation to include comprehensive examples for WAN FW rule
 - Updated license resource fixing pooled bw logic for existing licensed sites
 - Updated license data source to retrieve all CATO_SITE licenses with filters properly
+
+## 0.0.22 (2025-04-25)
+
+### Features
+- Updated license resource to allow license assignment for same license on same site.  Also fixed state change issue for license_info attrobites while migrating to new license ID.
