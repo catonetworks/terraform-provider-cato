@@ -48,7 +48,6 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					// stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"site_id": schema.StringAttribute{
