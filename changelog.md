@@ -18,3 +18,4 @@
 
 ### Features
 - Updated license resource to allow license assignment for same license on same site.  Also fixed state change issue for license_info attrobites while migrating to new license ID.
+- Fixed WF and IF rule section resources to check for existing sections and throw errors properly
