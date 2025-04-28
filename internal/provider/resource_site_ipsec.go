@@ -320,8 +320,8 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	input.NativeNetworkRange = plan.NativeNetworkRange.ValueString()
 	input.Description = plan.Description.ValueStringPointer()
 
-	tflog.Debug(ctx, "ipsec site create", map[string]interface{}{
-		"input-ipsecsite": utils.InterfaceToJSONString(input),
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2Site", map[string]interface{}{
+		"input": utils.InterfaceToJSONString(input_ipsec),
 	})
 
 	ipsecSite, err := r.client.catov2.SiteAddIpsecIkeV2Site(ctx, input, r.client.AccountId)
@@ -332,6 +332,10 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		)
 		return
 	}
+
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2Site", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(ipsecSite),
+	})
 
 	// retrieving native-network range ID to update native range
 	entityParent := cato_models.EntityInput{
@@ -347,6 +351,10 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		)
 		return
 	}
+
+	tflog.Debug(ctx, "Create.EntityLookup", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteRangeEntities),
+	})
 
 	var networkRangeEntity cato_go_sdk.EntityLookup_EntityLookup_Items_Entity
 	for _, item := range siteRangeEntities.EntityLookup.Items {
@@ -460,6 +468,10 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 
 	varSiteId = ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()
 
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels", map[string]interface{}{
+		"input_ipsec": utils.InterfaceToJSONString(input_ipsec),
+	})
+
 	tunnelData, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, varSiteId, *input_ipsec, r.client.AccountId)
 	if err_ipsec != nil {
 		resp.Diagnostics.AddError(
@@ -468,6 +480,10 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		)
 		return
 	}
+
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(tunnelData),
+	})
 
 	// create types to support multiple primary and secondary tunnels
 	tunnelsPrimaryData := []*cato_go_sdk.SiteAddIpsecIkeV2SiteTunnels_Site_AddIpsecIkeV2SiteTunnels_PrimaryAddIpsecIkeV2SiteTunnelsPayload_Tunnels{}
@@ -526,6 +542,10 @@ func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, 
 		)
 		return
 	}
+
+	tflog.Debug(ctx, "Read.EntityLookup", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 
 	// read in the ipsec site entries
 	for _, v := range querySiteResult.EntityLookup.Items {
@@ -595,7 +615,11 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		"input-networkRange": utils.InterfaceToJSONString(inputUpdateNetworkRange),
 	})
 
-	_, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), inputSiteGeneral, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails", map[string]interface{}{
+		"input": utils.InterfaceToJSONString(inputSiteGeneral),
+	})
+
+	inputSiteGeneralResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), inputSiteGeneral, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API SiteUpdateSiteGeneralDetails error",
@@ -604,6 +628,15 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(inputSiteGeneralResponse),
+	})
+
+	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange", map[string]interface{}{
+		"input": utils.InterfaceToJSONString(inputUpdateNetworkRange),
+	})
+
+	// TODO, look at why response object does not resolve
 	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, plan.NativeNetworkRangeId.ValueString(), inputUpdateNetworkRange, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -699,6 +732,10 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 			}
 		}
 
+		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels", map[string]interface{}{
+			"input": utils.InterfaceToJSONString(input_ipsec),
+		})
+
 		tunnelData, err_ipsec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, varSiteId, input_ipsec, r.client.AccountId)
 		if err_ipsec != nil {
 			resp.Diagnostics.AddError(
@@ -707,6 +744,10 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 			)
 			return
 		}
+
+		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(tunnelData),
+		})
 
 		// create types to support multiple primary and secondary tunnels
 		if len(tunnelData.Site.GetUpdateIpsecIkeV2SiteTunnels().GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()) > 0 {
