@@ -118,7 +118,6 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		sectionInput := PolicyAddSectionInfoInput{}
 		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
-
 		input.Section.Name = sectionInput.Name.ValueString()
 	}
 
@@ -129,12 +128,19 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 	//creating new section
 	policyChange, err := r.client.catov2.PolicyWanFirewallAddSection(ctx, input, r.client.AccountId)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API PolicyWanFirewallAddSection error",
-			err.Error(),
-		)
+		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallAddSection error", err.Error())
 		return
 	}
+	if len(policyChange.Policy.WanFirewall.AddSection.Errors) > 0 {
+		for _, e := range policyChange.Policy.WanFirewall.AddSection.Errors {
+			resp.Diagnostics.AddError("ERROR: "+*e.ErrorCode, *e.ErrorMessage)
+			return
+		}
+	}
+
+	tflog.Debug(ctx, "wan_fw_section policyChange", map[string]interface{}{
+		"input": utils.InterfaceToJSONString(policyChange),
+	})
 
 	//publishing new section
 	tflog.Info(ctx, "publishing new rule")

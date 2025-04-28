@@ -52,19 +52,19 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 		return nil, fmt.Errorf("LICENSE API ERROR: %s", message)
 	}
 
-	// Check if static license currently assigned to site
-	curLicenseSiteId, licenseStaticIsAssigned := checkStaticLicenseForAssignment(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
-	if licenseStaticIsAssigned {
-		message := "The license ID '" + fmt.Sprintf("%v", plan.LicenseID.ValueString()) + "' is already assigned to site ID " + fmt.Sprintf("%v", curLicenseSiteId)
-		diags = append(diags, diag.NewErrorDiagnostic("LICENSE ALREADY ASSIGNED", message))
-		return nil, fmt.Errorf("LICENSE ALREADY ASSIGNED: %s", message)
-	}
-
 	// Check if the site has a license currently
 	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
 
 	// Get current license objeect by ID
 	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
+
+	// Check if site license is currently assigned
+	curLicenseSiteId, siteLicenseCurrentlyAssigned := checkStaticLicenseForAssignment(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
+	if siteLicenseCurrentlyAssigned {
+		message := "The license ID '" + fmt.Sprintf("%v", plan.LicenseID.ValueString()) + "' is already assigned to site ID " + fmt.Sprintf("%v", curLicenseSiteId)
+		diags = append(diags, diag.NewErrorDiagnostic("LICENSE ALREADY ASSIGNED", message))
+		return license, nil
+	}
 
 	if licenseExists {
 		// Check for the correct license type

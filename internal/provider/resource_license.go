@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -49,7 +48,6 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					// stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"site_id": schema.StringAttribute{
@@ -82,24 +80,30 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Required:    false,
 				Optional:    true,
 				Computed:    true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(), // Avoid drift
-				},
 				Attributes: map[string]schema.Attribute{
 					"sku": schema.StringAttribute{
 						Computed: true,
 						Required: false,
 						Optional: true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"plan": schema.StringAttribute{
 						Computed: true,
 						Required: false,
 						Optional: true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"status": schema.StringAttribute{
 						Computed: true,
 						Required: false,
 						Optional: true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"expiration_date": schema.StringAttribute{
 						Computed: true,
@@ -118,7 +122,7 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						},
 					},
 					"last_updated": schema.StringAttribute{
-						Computed: true,
+						// Computed: true,
 						Optional: true,
 						Required: false,
 						PlanModifiers: []planmodifier.String{
@@ -126,7 +130,7 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						},
 					},
 					"total": schema.Int64Attribute{
-						Computed: true,
+						// Computed: true,
 						Required: false,
 						Optional: true,
 						PlanModifiers: []planmodifier.Int64{
@@ -137,11 +141,17 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						Computed: true,
 						Optional: true,
 						Required: false,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"site_license_type": schema.StringAttribute{
 						Computed: true,
 						Optional: true,
 						Required: false,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"allocated_bandwidth": schema.Int64Attribute{
 						Computed: true,
@@ -230,16 +240,16 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 				license = curLicense
 			}
 		}
+		// Check for valid license and hydrate state
+		licenseInfo, diagstmp := hydrateLicenseState(ctx, state.ID.ValueString(), license)
+		licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
+		diags = append(diags, diagstmp...)
+		if diags.HasError() {
+			return
+		}
+		state.LicenseInfo = licenseInfoObject
 	}
 
-	// Check for valid license and hydrate state
-	licenseInfo, diagstmp := hydrateLicenseState(ctx, state.ID.ValueString(), license)
-	diags = append(diags, diagstmp...)
-	if diags.HasError() {
-		return
-	}
-	licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
-	state.LicenseInfo = licenseInfoObject
 	state.SiteID = types.StringValue(state.ID.ValueString())
 	state.LicenseID = curSiteLicenseId
 	diags = resp.State.Set(ctx, &state)
@@ -279,7 +289,6 @@ func (r *licenseResource) Update(ctx context.Context, req resource.UpdateRequest
 	if diags.HasError() {
 		return
 	}
-
 }
 
 func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -318,35 +327,28 @@ func hydrateLicenseState(ctx context.Context, licenseId string, curLicense *cato
 	licenseInfoAttrs := map[string]attr.Value{
 		"allocated_bandwidth": types.Int64Null(),
 		"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
-		"last_updated":        types.StringValue(*curLicense.LastUpdated),
+		"last_updated":        types.StringValue(string(*curLicense.LastUpdated)),
 		"plan":                types.StringValue(string(curLicense.Plan)),
 		"site_license_group":  types.StringNull(),
 		"site_license_type":   types.StringNull(),
 		"sku":                 types.StringValue(string(curLicense.Sku)),
 		"start_date":          types.StringValue(string(*curLicense.StartDate)),
 		"status":              types.StringValue(string(curLicense.Status)),
-		"total":               types.Int64Value(curLicense.SiteLicense.Total),
+		"total":               types.Int64Value(int64(curLicense.SiteLicense.Total)),
 	}
 	if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_PB_SSE" {
 		licenseInfoAttrs = map[string]attr.Value{
 			"allocated_bandwidth": types.Int64Value(curLicense.PooledBandwidthLicense.AllocatedBandwidth),
 			"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
-			"last_updated":        types.StringValue(*curLicense.LastUpdated),
+			"last_updated":        types.StringValue(string(*curLicense.LastUpdated)),
 			"plan":                types.StringValue(string(curLicense.Plan)),
 			"site_license_group":  types.StringNull(),
 			"site_license_type":   types.StringNull(),
 			"sku":                 types.StringValue(string(curLicense.Sku)),
 			"start_date":          types.StringValue(string(*curLicense.StartDate)),
 			"status":              types.StringValue(string(curLicense.Status)),
-			"total":               types.Int64Value(curLicense.SiteLicense.Total),
+			"total":               types.Int64Value(int64(curLicense.SiteLicense.Total)),
 		}
-	}
-
-	if curLicense.LastUpdated != nil {
-		licenseInfoAttrs["last_updated"] = types.StringValue(string(*curLicense.LastUpdated))
-	}
-	if curLicense.StartDate != nil {
-		licenseInfoAttrs["start_date"] = types.StringValue(string(*curLicense.StartDate))
 	}
 
 	licenseInfo, diagstmp := types.ObjectValue(LicenseInfoResourceAttrTypes, licenseInfoAttrs)

@@ -340,6 +340,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
+		inputSiteGeneral.SiteLocation.CityName = siteLocationInput.City.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.CityName = siteLocationInput.City.ValueStringPointer()

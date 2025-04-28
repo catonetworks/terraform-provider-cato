@@ -135,6 +135,12 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 		)
 		return
 	}
+	if len(policyChange.Policy.InternetFirewall.AddSection.Errors) > 0 {
+		for _, e := range policyChange.Policy.InternetFirewall.AddSection.Errors {
+			resp.Diagnostics.AddError("ERROR: "+*e.ErrorCode, *e.ErrorMessage)
+			return
+		}
+	}
 
 	//publishing new section
 	tflog.Info(ctx, "publishing new rule")
