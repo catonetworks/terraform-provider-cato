@@ -94,11 +94,13 @@ func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequ
 		MacAddress: plan.MacAddress.ValueStringPointer(),
 	}
 
-	tflog.Debug(ctx, "static_host create", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input),
+	tflog.Debug(ctx, "Create.SiteAddStaticHost.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
 	})
-
 	body, err := r.client.catov2.SiteAddStaticHost(ctx, plan.SiteId.ValueString(), input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.SiteAddStaticHost.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(body),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -132,6 +134,9 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	// check if site exist, else remove resource
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Read.EntityLookup.site.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -148,6 +153,9 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	// check if host exist before removing
 	queryHostResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("host"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Read.EntityLookup.host.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(queryHostResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -200,7 +208,14 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 		"input": utils.InterfaceToJSONString(input),
 	})
 
-	_, err := r.client.catov2.SiteUpdateStaticHost(ctx, plan.Id.ValueString(), input, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(input),
+	})
+	siteUpdateStaticHostResponse, err := r.client.catov2.SiteUpdateStaticHost(ctx, plan.Id.ValueString(), input, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteUpdateStaticHostResponse),
+	})
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -226,6 +241,9 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Delete.EntityLookup.site.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API EntityLookup error",
@@ -236,8 +254,10 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-
 		queryHostResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("host"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
+		tflog.Debug(ctx, "Delete.EntityLookup.host.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(queryHostResult),
+		})
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API EntityLookup error",
@@ -248,8 +268,10 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 		// check if host exist before removing
 		if len(queryHostResult.EntityLookup.GetItems()) == 1 {
-
-			_, err := r.client.catov2.SiteRemoveStaticHost(ctx, state.Id.ValueString(), r.client.AccountId)
+			siteRemoveStaticHostResponse, err := r.client.catov2.SiteRemoveStaticHost(ctx, state.Id.ValueString(), r.client.AccountId)
+			tflog.Debug(ctx, "Delete.SiteRemoveStaticHost.response", map[string]interface{}{
+				"response": utils.InterfaceToJSONString(siteRemoveStaticHostResponse),
+			})
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Catov2 API SiteRemoveStaticHost error",

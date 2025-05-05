@@ -175,6 +175,9 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	lanInterface := cato_go_sdk.EntityLookup_EntityLookup_Items_Entity{}
 	if plan.InterfaceId.IsNull() || plan.InterfaceId.IsUnknown() {
 		networkInterface, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
+		tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(networkInterface),
+		})
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API EntityLookup error",
@@ -198,7 +201,13 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		"lanInterfaceID": lanInterface.ID,
 	})
 
+	tflog.Debug(ctx, "Create.SiteAddNetworkRange.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
 	networkRange, err := r.client.catov2.SiteAddNetworkRange(ctx, lanInterface.ID, input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.SiteAddNetworkRange.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(networkRange),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API SiteAddNetworkRange error",
@@ -226,6 +235,9 @@ func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API EntityLookup error",
@@ -295,7 +307,13 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		"lanInterfaceID": plan.Id.ValueString(),
 	})
 
-	_, err := r.client.catov2.SiteUpdateNetworkRange(ctx, plan.Id.ValueString(), input, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
+	siteUpdateNetworkRangeResponse, err := r.client.catov2.SiteUpdateNetworkRange(ctx, plan.Id.ValueString(), input, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteUpdateNetworkRangeResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error",
@@ -322,6 +340,9 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	// check if site exist before removing
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Delete.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API EntityLookup error",
@@ -332,7 +353,6 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-
 		_, err = r.client.catov2.SiteRemoveNetworkRange(ctx, state.Id.ValueString(), r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError(

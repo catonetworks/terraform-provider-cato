@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -236,6 +237,9 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 	}
 
 	accountSnapshotSite, err := d.client.catov2.AccountSnapshot(ctx, []string{*state.Id}, nil, &d.client.AccountId)
+	tflog.Debug(ctx, "Read.AccountSnapshot.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(accountSnapshotSite),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
