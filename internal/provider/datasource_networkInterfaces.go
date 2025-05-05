@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -170,6 +171,9 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 	}
 
 	accountSnapshotSite, err := d.client.catov2.AccountSnapshot(ctx, []string{}, nil, &d.client.AccountId)
+	tflog.Debug(ctx, "Read.AccountSnapshot.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(accountSnapshotSite),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -177,6 +181,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 		)
 		return
 	}
+
 	// Create a mapping to store map[siteID][interface name]{interface_id, index}
 	type InterfaceConfig struct {
 		InterfaceID string `json:"interface_id"`
@@ -212,12 +217,10 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 	tflog.Warn(ctx, "ifaceMap '"+fmt.Sprintf("%v", ifaceMap)+"'")
 
-	result, err := d.client.catov2.EntityLookup(
-		ctx,
-		d.client.AccountId,
-		cato_models.EntityTypeNetworkInterface,
-		nil, nil, nil, nil, nil, nil, nil, nil,
-	)
+	result, err := d.client.catov2.EntityLookup(ctx, d.client.AccountId, cato_models.EntityTypeNetworkInterface, nil, nil, nil, nil, nil, nil, nil, nil)
+	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(result),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API EntityLookup error", err.Error())
 		return

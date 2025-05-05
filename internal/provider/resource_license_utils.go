@@ -16,8 +16,8 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	// Get all sites, check for valid siteID
 	siteExists := false
 	siteResponse, err := cc.catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, nil, nil, nil, nil, nil, nil, nil, nil)
-	tflog.Warn(ctx, "TFLOG_WARN_WAN_siteResponse", map[string]interface{}{
-		"OUTPUT": utils.InterfaceToJSONString(siteResponse),
+	tflog.Warn(ctx, "upsertLicense().EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteResponse),
 	})
 
 	if err != nil {
@@ -40,6 +40,10 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 
 	// Get all licenses
 	licensingInfoResponse, err := cc.catov2.Licensing(ctx, cc.AccountId)
+	tflog.Warn(ctx, "upsertLicense().Licensing.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(licensingInfoResponse),
+	})
+
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
 		return nil, err
@@ -96,10 +100,13 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 						siteRef.Input = plan.SiteID.ValueString()
 						input.Site = siteRef
 						input.Bw = plan.BW.ValueInt64()
-						tflog.Debug(ctx, "Calling UpdateSiteBwLicenseInput()", map[string]interface{}{
-							"input": utils.InterfaceToJSONString(input),
+						tflog.Warn(ctx, "upsertLicense().UpdateSiteBwLicense.request", map[string]interface{}{
+							"request": utils.InterfaceToJSONString(input),
 						})
-						_, err := cc.catov2.UpdateSiteBwLicense(ctx, cc.AccountId, input)
+						UpdateSiteBwLicenseResponse, err := cc.catov2.UpdateSiteBwLicense(ctx, cc.AccountId, input)
+						tflog.Warn(ctx, "upsertLicense().UpdateSiteBwLicense.response", map[string]interface{}{
+							"response": utils.InterfaceToJSONString(UpdateSiteBwLicenseResponse),
+						})
 						if err != nil {
 							diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
 							return nil, err
@@ -130,8 +137,13 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 					tflog.Warn(ctx, "License SKU is '"+string(license.Sku)+"', adding bw '"+fmt.Sprintf("%v", bw)+"'")
 					input.Bw = &bw
 				}
-				tflog.Warn(ctx, "Calling ReplaceSiteBwLicense()")
-				_, err := cc.catov2.ReplaceSiteBwLicense(ctx, cc.AccountId, input)
+				tflog.Warn(ctx, "upsertLicense().ReplaceSiteBwLicense.request", map[string]interface{}{
+					"request": utils.InterfaceToJSONString(input),
+				})
+				replaceSiteBwLicenseResponse, err := cc.catov2.ReplaceSiteBwLicense(ctx, cc.AccountId, input)
+				tflog.Warn(ctx, "upsertLicense().ReplaceSiteBwLicense.response", map[string]interface{}{
+					"response": utils.InterfaceToJSONString(replaceSiteBwLicenseResponse),
+				})
 				if err != nil {
 					diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
 					return nil, err
@@ -165,8 +177,13 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 				}
 				tflog.Warn(ctx, "License SKU is '"+string(license.Sku)+"', bw not present.")
 			}
-			tflog.Warn(ctx, "Calling AssignSiteBwLicense()")
-			_, err := cc.catov2.AssignSiteBwLicense(ctx, cc.AccountId, input)
+			tflog.Warn(ctx, "upsertLicense().AssignSiteBwLicense.response", map[string]interface{}{
+				"response": utils.InterfaceToJSONString(input),
+			})
+			assignSiteBwLicenseResponse, err := cc.catov2.AssignSiteBwLicense(ctx, cc.AccountId, input)
+			tflog.Warn(ctx, "upsertLicense().AssignSiteBwLicense.response", map[string]interface{}{
+				"response": utils.InterfaceToJSONString(assignSiteBwLicenseResponse),
+			})
 			if err != nil {
 				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
 				return nil, err

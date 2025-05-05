@@ -239,8 +239,8 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 	}
 
 	licensingInfoResponse, err := d.client.catov2.Licensing(ctx, d.client.AccountId)
-	tflog.Debug(ctx, "licensingInfoResponse", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(licensingInfoResponse),
+	tflog.Debug(ctx, "Read.Licensing.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(licensingInfoResponse),
 	})
 
 	if err != nil {

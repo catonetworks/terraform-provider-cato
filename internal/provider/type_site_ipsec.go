@@ -18,7 +18,7 @@ type AddIpsecSiteLocationInput struct {
 	StateCode   types.String `tfsdk:"state_code"`
 	Timezone    types.String `tfsdk:"timezone"`
 	Address     types.String `tfsdk:"address"`
-	// City        types.String `tfsdk:"city"`
+	City        types.String `tfsdk:"city"`
 }
 
 type AddIpsecIkeV2SiteTunnelsInput struct {

@@ -124,10 +124,11 @@ func (d *siteLocationDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 		Attributes: map[string]schema.Attribute{
 			"filters": schema.ListNestedAttribute{
 				Description: "Field to filter on (city, stateName, countryName)",
+				Required:    false,
 				Optional:    true,
-				Validators: []validator.List{
-					filtersValidator{},
-				},
+				// Validators: []validator.List{
+				// 	filtersValidator{},
+				// },
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"field": schema.StringAttribute{

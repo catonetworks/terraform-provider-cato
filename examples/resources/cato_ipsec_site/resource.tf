@@ -2,7 +2,7 @@
 data "cato_siteLocation" "ny" {
   filters = [{
     field = "city"
-    search = "New York"
+    search = "New York City"
     operation = "startsWith"
   },
   {
@@ -12,7 +12,7 @@ data "cato_siteLocation" "ny" {
   },
  {
     field = "country_name"
-    search = "United"
+    search = "United States"
     operation = "contains"
   }]
 }
@@ -24,9 +24,10 @@ resource "cato_ipsec_site" "test-dev-site" {
   description = "IPSec Dev site"
   native_network_range = "172.98.10.0/24"
   site_location = {
-    country_code = data.cato_siteLocation.ny.locations[1].country_code
-    state_code = data.cato_siteLocation.ny.locations[1].state_code
-    timezone = data.cato_siteLocation.ny.locations[1].timezone[0]
+    city = data.cato_siteLocation.ny.locations[0].city
+    country_code = data.cato_siteLocation.ny.locations[0].country_code
+    state_code = data.cato_siteLocation.ny.locations[0].state_code
+    timezone = data.cato_siteLocation.ny.locations[0].timezone[0]
     address = "555 That Way"
   }
   ipsec = {

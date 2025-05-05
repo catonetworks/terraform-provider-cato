@@ -120,11 +120,13 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		},
 	}
 
-	tflog.Debug(ctx, "wan_interface create", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input),
+	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
 	})
-
-	_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -166,11 +168,13 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		},
 	}
 
-	tflog.Debug(ctx, "wan_interface update", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input),
+	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
 	})
-
-	_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -196,6 +200,9 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Delete.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API EntityLookup error",
@@ -209,6 +216,9 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 
 		// check if there is only one WAN interface & rewrite the input with default one
 		accountSnapshotSite, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
+		tflog.Debug(ctx, "Delete.AccountSnapshot.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(accountSnapshotSite),
+		})
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API error",
@@ -249,10 +259,9 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 			}
 		}
 
-		tflog.Debug(ctx, "wan_interface update", map[string]interface{}{
-			"input": utils.InterfaceToJSONString(input),
+		tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request", map[string]interface{}{
+			"request": utils.InterfaceToJSONString(input),
 		})
-
 		_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()), input, r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError(

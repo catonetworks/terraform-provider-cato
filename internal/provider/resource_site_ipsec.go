@@ -91,11 +91,11 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Required:    false,
 						Optional:    true,
 					},
-					// "city": schema.StringAttribute{
-					// 	Description: "City",
-					// 	Required:    false,
-					// 	Optional:    true,
-					// },
+					"city": schema.StringAttribute{
+						Description: "City",
+						Required:    false,
+						Optional:    true,
+					},
 				},
 			},
 			"ipsec": schema.SingleNestedAttribute{
@@ -308,7 +308,7 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		resp.Diagnostics.Append(diags...)
 
 		input.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
-		// input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
+		input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
 		input.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueString()
 		input.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		input.SiteLocation.Timezone = siteLocationInput.Timezone.ValueString()
@@ -320,11 +320,13 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	input.NativeNetworkRange = plan.NativeNetworkRange.ValueString()
 	input.Description = plan.Description.ValueStringPointer()
 
-	tflog.Debug(ctx, "ipsec site create", map[string]interface{}{
-		"input-ipsecsite": utils.InterfaceToJSONString(input),
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2Site.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input_ipsec),
 	})
-
 	ipsecSite, err := r.client.catov2.SiteAddIpsecIkeV2Site(ctx, input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2Site.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(ipsecSite),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error",
@@ -332,6 +334,8 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		)
 		return
 	}
+	// overiding state with socket site id
+	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), types.StringValue(ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()))
 
 	// retrieving native-network range ID to update native range
 	entityParent := cato_models.EntityInput{
@@ -340,6 +344,9 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	siteRangeEntities, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
+	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteRangeEntities),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API EntityLookup error",
@@ -450,17 +457,19 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		resp.Diagnostics.Append(diags...)
 	}
 
-	tflog.Debug(ctx, "site_ipsec_tunnel create", map[string]interface{}{
-		"input_ipsec": utils.InterfaceToJSONString(input_ipsec),
-	})
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	varSiteId = ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()
 
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(*input_ipsec),
+	})
 	tunnelData, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, varSiteId, *input_ipsec, r.client.AccountId)
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(tunnelData),
+	})
 	if err_ipsec != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
@@ -519,6 +528,9 @@ func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	// check if site exist, else remove resource
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -590,12 +602,13 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 	inputSiteGeneral.SiteType = (*cato_models.SiteType)(plan.SiteType.ValueStringPointer())
 	inputSiteGeneral.Description = plan.Description.ValueStringPointer()
 
-	tflog.Debug(ctx, "ipsec site update", map[string]interface{}{
-		"input-ipsecsite":    utils.InterfaceToJSONString(inputSiteGeneral),
-		"input-networkRange": utils.InterfaceToJSONString(inputUpdateNetworkRange),
+	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputSiteGeneral),
 	})
-
-	_, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), inputSiteGeneral, r.client.AccountId)
+	inputSiteGeneralResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), inputSiteGeneral, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(inputSiteGeneralResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API SiteUpdateSiteGeneralDetails error",
@@ -604,6 +617,10 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputUpdateNetworkRange),
+	})
+	// TODO, look at why response object does not resolve
 	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, plan.NativeNetworkRangeId.ValueString(), inputUpdateNetworkRange, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -699,7 +716,13 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 			}
 		}
 
+		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.request", map[string]interface{}{
+			"request": utils.InterfaceToJSONString(input_ipsec),
+		})
 		tunnelData, err_ipsec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, varSiteId, input_ipsec, r.client.AccountId)
+		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(tunnelData),
+		})
 		if err_ipsec != nil {
 			resp.Diagnostics.AddError(
 				"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
@@ -742,6 +765,9 @@ func (r *siteIpsecResource) Delete(ctx context.Context, req resource.DeleteReque
 	}
 
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
+	tflog.Debug(ctx, "Delete.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -752,7 +778,7 @@ func (r *siteIpsecResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-
+		tflog.Debug(ctx, "Delete site")
 		_, err := r.client.catov2.SiteRemoveSite(ctx, state.ID.ValueString(), r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError(
