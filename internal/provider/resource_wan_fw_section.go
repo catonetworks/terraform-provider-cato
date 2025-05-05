@@ -121,12 +121,14 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		input.Section.Name = sectionInput.Name.ValueString()
 	}
 
-	tflog.Debug(ctx, "wan_fw_section create", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input),
+	tflog.Debug(ctx, "Create.PolicyWanFirewallAddSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
+	policyChange, err := r.client.catov2.PolicyWanFirewallAddSection(ctx, input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.PolicyWanFirewallAddSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(policyChange),
 	})
 
-	//creating new section
-	policyChange, err := r.client.catov2.PolicyWanFirewallAddSection(ctx, input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallAddSection error", err.Error())
 		return
@@ -137,10 +139,6 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 			return
 		}
 	}
-
-	tflog.Debug(ctx, "wan_fw_section policyChange", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(policyChange),
-	})
 
 	//publishing new section
 	tflog.Info(ctx, "publishing new rule")
@@ -180,6 +178,10 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
 	body, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	tflog.Debug(ctx, "Read.PolicyWanFirewall.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(body),
+	})
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -261,16 +263,13 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 		inputMoveSection.ID = inputUpdateSection.ID
 	}
 
-	tflog.Debug(ctx, "wab_fw_section update", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(inputUpdateSection),
+	tflog.Debug(ctx, "Update.PolicyWanFirewallMoveSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-
-	tflog.Debug(ctx, "wan_fw_section move", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(inputMoveSection),
-	})
-
-	//move section
 	moveSection, err := r.client.catov2.PolicyWanFirewallMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	tflog.Debug(ctx, "Update.PolicyWanFirewallMoveSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(moveSection),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallAddSection error",
@@ -290,8 +289,13 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	//update section
+	tflog.Debug(ctx, "Update.PolicyWanFirewallUpdateSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputUpdateSection),
+	})
 	updateSection, err := r.client.catov2.PolicyWanFirewallUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	tflog.Debug(ctx, "Update.PolicyWanFirewallUpdateSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(updateSection),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallAddSection error",
@@ -351,7 +355,13 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 		ID: section.Id.ValueString(),
 	}
 
-	_, err := r.client.catov2.PolicyWanFirewallRemoveSection(ctx, removeSection, r.client.AccountId)
+	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(removeSection),
+	})
+	policyWanFirewallRemoveSectionResponse, err := r.client.catov2.PolicyWanFirewallRemoveSection(ctx, removeSection, r.client.AccountId)
+	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(policyWanFirewallRemoveSectionResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to connect or request the Catov2 API",

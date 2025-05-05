@@ -2,13 +2,16 @@ package provider
 
 import (
 	"context"
+	"strings"
+
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
-	"strings"
 )
 
 type AllocatedIpLookup struct {
@@ -87,12 +90,10 @@ func (d *allocatedIpDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	result, err := d.client.catov2.EntityLookup(
-		ctx,
-		d.client.AccountId,
-		cato_models.EntityTypeAllocatedIP,
-		nil, nil, nil, nil, nil, nil, nil, nil,
-	)
+	result, err := d.client.catov2.EntityLookup(ctx, d.client.AccountId, cato_models.EntityTypeAllocatedIP, nil, nil, nil, nil, nil, nil, nil, nil)
+	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(result),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API EntityLookup error", err.Error())
 		return

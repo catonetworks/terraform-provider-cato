@@ -352,7 +352,14 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 		input.Tracking = &trackingInput
 	}
 
+	tflog.Debug(ctx, "Create.SiteAddBgpPeer.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
 	addBgpPeerPayload, err := r.client.catov2.SiteAddBgpPeer(ctx, input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.SiteAddBgpPeer.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(addBgpPeerPayload),
+	})
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error in SiteAddBgpPeer",
@@ -384,7 +391,14 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 		By:    cato_models.ObjectRefByID,
 		Input: state.ID.ValueString(),
 	}
+	tflog.Debug(ctx, "Read.SiteBgpPeer.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(bgpPeerRefInput),
+	})
 	result, err := r.client.catov2.SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
+	tflog.Debug(ctx, "Read.SiteAddBgpPeer.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(result),
+	})
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error in SiteBgpPeer",
@@ -510,7 +524,13 @@ func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest
 		input.Tracking = &trackingInput
 	}
 
-	_, err := r.client.catov2.SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateBgpPeer.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
+	SiteUpdateBgpPeerResponse, err := r.client.catov2.SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteAddBgpPeer.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(SiteUpdateBgpPeerResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error in SiteUpdateBgpPeer",
@@ -536,7 +556,13 @@ func (r *bgpPeerResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	removeBgpPeerInput := cato_models.RemoveBgpPeerInput{ID: state.ID.ValueString()}
 
-	_, err := r.client.catov2.SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
+	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(removeBgpPeerInput),
+	})
+	SiteRemoveBgpPeerResponse, err := r.client.catov2.SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
+	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(SiteRemoveBgpPeerResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error in SiteRemoveBgpPeer",

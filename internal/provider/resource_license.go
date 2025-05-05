@@ -221,6 +221,9 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 	// Get all licenses
 	licensingInfoResponse, err := r.client.catov2.Licensing(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Read.Licensing.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(licensingInfoResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API error", err.Error())
 		return
@@ -308,11 +311,14 @@ func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest
 	siteRef.Input = state.SiteID.ValueString()
 	input.Site = siteRef
 
-	tflog.Debug(ctx, "license remove", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input),
+	tflog.Debug(ctx, "Delete.RemoveSiteBwLicense.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
+	RemoveSiteBwLicenseResponse, err := r.client.catov2.RemoveSiteBwLicense(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "Delete.RemoveSiteBwLicense.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(RemoveSiteBwLicenseResponse),
 	})
 
-	_, err := r.client.catov2.RemoveSiteBwLicense(ctx, r.client.AccountId, input)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API RemoveSiteBwLicense error",
