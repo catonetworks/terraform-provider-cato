@@ -8,7 +8,8 @@ description: |-
 
 # cato_siteLocation (Data Source)
 
-
+## Important Note: 
+For instructions on how to use the `siteLocation` data source in bulk for terraform pre-flight validation from csv, please refer to the [Cato SiteLocation Module](https://registry.terraform.io/modules/catonetworks/sitelocation/cato/latest).
 
 ## Example Usage
 
