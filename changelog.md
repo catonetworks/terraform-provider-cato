@@ -27,3 +27,11 @@
 - Updated siteLocation schema definition to optimize siteLocation validation for upcoming sitelocaions bulk csv module
 - Updated all resources to include consistent debug for request and response of API calls to SDK
 - Added city attribute to IPSec site resource
+
+## 0.0.24 (2025-05-19)
+
+### Features
+
+- Updated data source for networkInterfaces to support querying for LAN on X1600, X1600_LTE, and X1700, as well as LAN1 on X1500 to fix socket module behavior 
+- Updated socket lan interface resource to fail gracefully when trying to delete native range interface
+- Updated docs for all data source to include examples and descriptions
