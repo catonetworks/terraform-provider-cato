@@ -3,13 +3,12 @@
 page_title: "cato_siteLocation Data Source - terraform-provider-cato"
 subcategory: ""
 description: |-
-  
+  Retrieves account site locations.
 ---
 
 # cato_siteLocation (Data Source)
 
-## Important Note: 
-For instructions on how to use the `siteLocation` data source in bulk for terraform pre-flight validation from csv, please refer to the [Cato SiteLocation Module](https://registry.terraform.io/modules/catonetworks/sitelocation/cato/latest).
+Retrieves account site locations.
 
 ## Example Usage
 

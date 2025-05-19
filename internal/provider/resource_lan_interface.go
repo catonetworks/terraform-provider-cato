@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -77,33 +78,15 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 			"local_ip": schema.StringAttribute{
 				Description: "Local IP address of the LAN interface",
 				Required:    true,
-				// Validators: []validator.String{
-				// 	stringvalidator.RegexMatches(
-				// 		`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`,
-				// 		"must be a valid IPv4 address",
-				// 	),
-				// },
 			},
 			"subnet": schema.StringAttribute{
 				Description: "Subnet of the LAN interface in CIDR notation",
 				Required:    true,
-				// Validators: []validator.String{
-				// 	stringvalidator.RegexMatches(
-				// 		`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[1-2][0-9]|3[0-2])$`,
-				// 		"must be a valid CIDR notation",
-				// 	),
-				// },
 			},
 			"translated_subnet": schema.StringAttribute{
 				Description: "Translated NAT subnet configuration",
 				Required:    false,
 				Optional:    true,
-				// Validators: []validator.String{
-				// 	stringvalidator.RegexMatches(
-				// 		`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[1-2][0-9]|3[0-2])$`,
-				// 		"must be a valid CIDR notation",
-				// 	),
-				// },
 			},
 			"vrrp_type": schema.StringAttribute{
 				Description: "VRRP Type (https://api.catonetworks.com/documentation/#definition-VrrpType)",
@@ -126,7 +109,7 @@ func (r *lanInterfaceResource) Configure(_ context.Context, req resource.Configu
 }
 
 func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
+	// Fail if LAN1, INT_5, INT_3
 	var plan LanInterface
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -148,10 +131,30 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API error",
-			err.Error(),
-		)
+		var apiError struct {
+			NetworkErrors interface{} `json:"networkErrors"`
+			GraphqlErrors []struct {
+				Message string   `json:"message"`
+				Path    []string `json:"path"`
+			} `json:"graphqlErrors"`
+		}
+		reservedInterface := false
+		if parseErr := json.Unmarshal([]byte(err.Error()), &apiError); parseErr == nil && len(apiError.GraphqlErrors) > 0 {
+			if apiError.GraphqlErrors[0].Message == "DHCP Range should be included in the native range" {
+				reservedInterface = true
+			}
+		}
+		if reservedInterface {
+			resp.Diagnostics.AddError(
+				"Catov2 API error",
+				err.Error()+"\n\nThe interfaceID "+plan.InterfaceID.ValueString()+" on this site type is reserved as a native range managed from the socket_site resource, and is unable to be modified from the cato_lan_interface resource.",
+			)
+		} else {
+			resp.Diagnostics.AddError(
+				"Catov2 API error",
+				err.Error(),
+			)
+		}
 		return
 	}
 
@@ -234,10 +237,30 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API error",
-			err.Error(),
-		)
+		var apiError struct {
+			NetworkErrors interface{} `json:"networkErrors"`
+			GraphqlErrors []struct {
+				Message string   `json:"message"`
+				Path    []string `json:"path"`
+			} `json:"graphqlErrors"`
+		}
+		reservedInterface := false
+		if parseErr := json.Unmarshal([]byte(err.Error()), &apiError); parseErr == nil && len(apiError.GraphqlErrors) > 0 {
+			if apiError.GraphqlErrors[0].Message == "DHCP Range should be included in the native range" {
+				reservedInterface = true
+			}
+		}
+		if reservedInterface {
+			resp.Diagnostics.AddError(
+				"Catov2 API error",
+				err.Error()+"\n\nThe interfaceID "+plan.InterfaceID.ValueString()+" on this site type is reserved as a native range managed from the socket_site resource, and is unable to be modified from the cato_lan_interface resource.",
+			)
+		} else {
+			resp.Diagnostics.AddError(
+				"Catov2 API error",
+				err.Error(),
+			)
+		}
 		return
 	}
 	// Setting the plan.ID to the previous state value, as this can not be retrieved reliably via API.
@@ -274,11 +297,31 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	})
 
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API SiteUpdateSocketInterface error",
-			err.Error(),
-		)
-		return
+		var apiError struct {
+			NetworkErrors interface{} `json:"networkErrors"`
+			GraphqlErrors []struct {
+				Message string   `json:"message"`
+				Path    []string `json:"path"`
+			} `json:"graphqlErrors"`
+		}
+		reservedInterface := false
+		if parseErr := json.Unmarshal([]byte(err.Error()), &apiError); parseErr == nil && len(apiError.GraphqlErrors) > 0 {
+			if apiError.GraphqlErrors[0].Message == "At least one LAN interface must be defined" {
+				reservedInterface = true
+			}
+		}
+		tflog.Debug(ctx, "Checking for reservedInterface of LAN on socket, if reservedInterface, gracefully failing deleting resource from state.", map[string]interface{}{
+			"isReservedInterface": utils.InterfaceToJSONString(reservedInterface),
+			"InterfaceID":         utils.InterfaceToJSONString(cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString())),
+			"SiteId":              utils.InterfaceToJSONString(state.SiteId.ValueString()),
+		})
+		if !reservedInterface {
+			resp.Diagnostics.AddError(
+				"Catov2 API error",
+				err.Error(),
+			)
+			return
+		}
 	}
 }
 

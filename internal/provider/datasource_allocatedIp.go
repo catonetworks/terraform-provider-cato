@@ -40,6 +40,7 @@ func (d *allocatedIpDataSource) Metadata(_ context.Context, req datasource.Metad
 
 func (d *allocatedIpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Retrieves account allocated IPs.",
 		Attributes: map[string]schema.Attribute{
 			"name_filter": schema.ListAttribute{
 				ElementType: types.StringType,
