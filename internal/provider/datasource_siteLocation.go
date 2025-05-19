@@ -121,6 +121,7 @@ func (d *siteLocationDataSource) Metadata(_ context.Context, req datasource.Meta
 
 func (d *siteLocationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Retrieves account site locations.",
 		Attributes: map[string]schema.Attribute{
 			"filters": schema.ListNestedAttribute{
 				Description: "Field to filter on (city, stateName, countryName)",

@@ -59,7 +59,7 @@ data "cato_networkInterfaces" "test-site" {
 
 ### Optional
 
-- `network_interface_name` (String) Name of the interface to retrieve
+- `network_interface_index` (String) Index of the interface to retrieve, example: INT_1, INT_2, etc
 - `site_id` (String) ID of the site to retrieve network interfaces for
 
 ### Read-Only

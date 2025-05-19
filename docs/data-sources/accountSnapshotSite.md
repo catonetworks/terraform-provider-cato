@@ -3,12 +3,12 @@
 page_title: "cato_accountSnapshotSite Data Source - terraform-provider-cato"
 subcategory: ""
 description: |-
-  
+  Retrieves account snapshot site socket serial number and primary status information.
 ---
 
 # cato_accountSnapshotSite (Data Source)
 
-
+Retrieves account snapshot site socket serial number and primary status information.
 
 ## Example Usage
 

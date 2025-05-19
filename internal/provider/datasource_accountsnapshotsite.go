@@ -181,6 +181,7 @@ func (d *accountSnapshotSiteDataSource) Metadata(_ context.Context, req datasour
 
 func (d *accountSnapshotSiteDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Retrieves account snapshot site socket serial number and primary status information.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Identifier for the site",
