@@ -162,6 +162,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		LicensingInfoDataSource,
 		NetworkInterfacesDataSource,
 		SiteLocationDataSource,
+		IfwRulesIndexDataSource,
 	}
 }
 
