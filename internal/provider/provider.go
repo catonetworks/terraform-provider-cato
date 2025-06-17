@@ -180,5 +180,6 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewWanFwRuleResource,
 		NewWanFwSectionResource,
 		NewWanInterfaceResource,
+		NewIfwRulesIndexResource,
 	}
 }

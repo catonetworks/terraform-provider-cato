@@ -202,7 +202,4 @@ func (d *ifwRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 		resp.Diagnostics.Append(diags...)
 	}
 
-	// rootMap := make(map[string]string)
-
-	// tflog.Warn(context.Background(), jsonTxt)
 }
