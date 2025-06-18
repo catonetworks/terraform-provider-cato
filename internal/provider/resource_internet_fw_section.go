@@ -122,6 +122,39 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 		input.Section.Name = sectionInput.Name.ValueString()
 	}
 
+	sectionIndexApiData, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndexInCreate.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(sectionIndexApiData),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API EntityLookup error",
+			err.Error(),
+		)
+		return
+	}
+	if len(sectionIndexApiData.Policy.InternetFirewall.Policy.Sections) == 0 {
+		input := cato_models.PolicyAddSectionInput{
+			At: &cato_models.PolicySectionPositionInput{
+				Position: cato_models.PolicySectionPositionEnumLastInPolicy,
+			},
+			Section: &cato_models.PolicyAddSectionInfoInput{
+				Name: "Default Outbound Internet",
+			}}
+		sectionCreateApiData, err := r.client.catov2.PolicyInternetFirewallAddSection(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, input, r.client.AccountId)
+		tflog.Debug(ctx, "Write.PolicyInternetFirewallAddSectionWithinSection.response", map[string]interface{}{
+			"reason":   "creating new section as IFW does not have a default listed",
+			"response": utils.InterfaceToJSONString(sectionCreateApiData),
+		})
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Catov2 API EntityLookup error",
+				err.Error(),
+			)
+			return
+		}
+	}
+
 	tflog.Debug(ctx, "Create.PolicyInternetFirewallAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
