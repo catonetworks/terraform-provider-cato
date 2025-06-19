@@ -28,7 +28,7 @@ type wanRulesIndexResource struct {
 }
 
 func (r *wanRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_bulk_wan_move_rule"
+	resp.TypeName = req.ProviderTypeName + "_bulk_wf_move_rule"
 }
 
 func (r *wanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
