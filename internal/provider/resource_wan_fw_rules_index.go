@@ -149,6 +149,7 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	// as the name indicates, a slice of string containing WF sections names
 	listOfSectionNames := make([]string, 0)
 
 	// maps section_name -> section_id
@@ -166,11 +167,15 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	// for easier processing, a map of section name to ID is created
 	for _, v := range sectionIndexApiData.Policy.WanFirewall.Policy.Sections {
 		sectionIdList[v.Section.Name] = v.Section.ID
 	}
 
 	// first section is defined by the P2P rule section
+	// if the user passes in a section ID, we will use that
+	// if no sections are currently in the account, we will create a default one
+	// else if there are existing sections, we will use the first one in the list
 	var firstSectionId string
 	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
 		firstSectionId = plan.SectionToStartAfterId.ValueString()
@@ -199,6 +204,7 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		firstSectionId = sectionIndexApiData.Policy.WanFirewall.Policy.Sections[0].Section.ID
 	}
 
+	// update the state with our current value to start after...probably should change to "Start before"
 	plan.SectionToStartAfterId = types.StringValue(firstSectionId)
 
 	sectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
@@ -220,6 +226,7 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	// reverse the section list from the plan so that we can move sections in the correct order
+	// in WFW we are moving bottom to top as opposed to top to bottom in IFW
 	reversedSectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
 	for i := len(sectionListFromPlan) - 1; i >= 0; i-- {
 		reversedSectionListFromPlan = append(reversedSectionListFromPlan, sectionListFromPlan[i])
@@ -357,8 +364,13 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 				"ruleNameIdMap":   utils.InterfaceToJSONString(reversedListOfSectionNames),
 			})
 
+			// for easier processing and visualization, we are creating two maps
+			// 1 - mapRuleIndexToRuleName
+			//   this maps the rule index in section to the rule name
+			// 2 - mapRuleIndexToSectionName
+			//  this maps the rule index in section to the section name
+			mapRuleIndexToRuleName := make(map[int64]string)
 			mapRuleIndexToSectionName := make(map[int64]string)
-			mapRuleIndexToSectionSectionName := make(map[int64]string)
 
 			for _, ruleItemFromPlan := range ruleListFromPlan {
 				tflog.Warn(ctx, "Read.CompareruleItemFromPlanAndruleListFromPlan", map[string]interface{}{
@@ -367,49 +379,49 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 				})
 				if ruleItemFromPlan.SectionName == sectionNameItem {
 					// section name -> rule index order -> rule name
-					mapRuleIndexToSectionName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.RuleName
-					mapRuleIndexToSectionSectionName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.SectionName
-					tflog.Warn(ctx, "Read.mapRuleIndexToSectionName.response", map[string]interface{}{
+					mapRuleIndexToRuleName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.RuleName
+					mapRuleIndexToSectionName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.SectionName
+					tflog.Warn(ctx, "Read.mapRuleIndexToRuleName.response", map[string]interface{}{
 						"ruleItemFromPlan.IndexInSection":   ruleItemFromPlan.IndexInSection,
 						"ruleItemFromPlan.RuleName":         ruleItemFromPlan.RuleName,
-						"mapInternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToSectionName),
+						"mapInternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 					})
 				}
 			}
 
 			tflog.Warn(ctx, "Read.mapRuleIndexToSectionName.response", map[string]interface{}{
-				"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToSectionName),
+				"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 			})
 
 			currentRuleId := ""
-			for x := 1; x < len(mapRuleIndexToSectionName)+1; x++ {
+			for x := 1; x < len(mapRuleIndexToRuleName)+1; x++ {
 				toPosition := &cato_models.PolicyRulePositionInput{}
 				if x == 1 {
 					pos := "FIRST_IN_SECTION"
 					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					firstSectionId := sectionIdList[mapRuleIndexToSectionSectionName[1]]
+					firstSectionId := sectionIdList[mapRuleIndexToSectionName[1]]
 					toPosition.Ref = &firstSectionId
 				} else {
 					pos := "AFTER_RULE"
 					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					currentRuleId = ruleNameIdMap[mapRuleIndexToSectionName[int64(x)-1]]
+					currentRuleId = ruleNameIdMap[mapRuleIndexToRuleName[int64(x)-1]]
 					toPosition.Ref = &currentRuleId
 					tflog.Warn(ctx, "Read.sectionIdList[mapRuleIndexToSectionName[1]].response", map[string]interface{}{
-						"mapRuleIndexToSectionName":         mapRuleIndexToSectionName,
+						"mapRuleIndexToSectionName":         mapRuleIndexToRuleName,
 						"currentRuleId":                     currentRuleId,
-						"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToSectionName),
+						"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 						"ruleNameIdMap":                     utils.InterfaceToJSONString(ruleNameIdMap),
 					})
 				}
 
 				moveRuleConfig := cato_models.PolicyMoveRuleInput{
-					ID: ruleNameIdMap[mapRuleIndexToSectionName[int64(x)]],
+					ID: ruleNameIdMap[mapRuleIndexToRuleName[int64(x)]],
 					To: toPosition,
 				}
 				ruleMoveApiData, err := r.client.catov2.PolicyWanFirewallMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveRule.response", map[string]interface{}{
 					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIdMap),
-					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToSectionName),
+					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 					"moveRuleConfig":            utils.InterfaceToJSONString(moveRuleConfig),
 					"response":                  utils.InterfaceToJSONString(ruleMoveApiData),
 				})
