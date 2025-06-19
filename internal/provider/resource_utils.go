@@ -68,6 +68,12 @@ func mapAttributeTypes(ctx context.Context, srcItemObj any, resp *resource.ReadR
 	return attrTypes
 }
 
+func reverseSlice[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
 func convertGoTypeToTfType(ctx context.Context, srcItemObj any) attr.Type {
 	srcItemObjType := reflect.TypeOf(srcItemObj).String()
 	tflog.Error(ctx, "srcItemObjType", map[string]interface{}{
