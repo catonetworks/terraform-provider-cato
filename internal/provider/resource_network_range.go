@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -338,25 +339,27 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	// check if site exist before removing
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
-	tflog.Debug(ctx, "Delete.EntityLookup.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(querySiteResult),
-	})
+	// check if interface is already removed and fail gracefully
+	//	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
+	_, err := r.client.catov2.SiteRemoveNetworkRange(ctx, state.Id.ValueString(), r.client.AccountId)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
-		return
-	}
-
-	// check if site exist before removing
-	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-		_, err = r.client.catov2.SiteRemoveNetworkRange(ctx, state.Id.ValueString(), r.client.AccountId)
-		if err != nil {
+		var apiError struct {
+			NetworkErrors interface{} `json:"networkErrors"`
+			GraphqlErrors []struct {
+				Message string   `json:"message"`
+				Path    []string `json:"path"`
+			} `json:"graphqlErrors"`
+		}
+		interfaceNotPresent := false
+		if parseErr := json.Unmarshal([]byte(err.Error()), &apiError); parseErr == nil && len(apiError.GraphqlErrors) > 0 {
+			msg := apiError.GraphqlErrors[0].Message
+			if strings.Contains(msg, "Network range with id: ") && strings.Contains(msg, "is not found") {
+				interfaceNotPresent = true
+			}
+		}
+		if !interfaceNotPresent {
 			resp.Diagnostics.AddError(
-				"Catov2 API SiteUpdateSocketInterface error",
+				"Catov2 API error",
 				err.Error(),
 			)
 			return
