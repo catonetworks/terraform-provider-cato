@@ -35,3 +35,11 @@
 - Updated data source for networkInterfaces to support querying for LAN on X1600, X1600_LTE, and X1700, as well as LAN1 on X1500 to fix socket module behavior 
 - Updated socket lan interface resource to fail gracefully when trying to delete native range interface
 - Updated docs for all data source to include examples and descriptions
+
+## 0.0.27 (2026-06-23)
+
+### Features
+
+- Added data source for wan and internet firewalls
+- Optimized the sitelocation data source to resolve immediately from index for exact matche searches
+- Added internetOnly boolean for network_ranges

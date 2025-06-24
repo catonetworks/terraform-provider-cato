@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -47,6 +48,10 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"gateway": schema.StringAttribute{
+				Description: "Network range gateway (Only releveant for Routed range_type)",
+				Optional:    true,
+			},
 			"interface_id": schema.StringAttribute{
 				Description: "Network Interface ID",
 				Computed:    true,
@@ -55,12 +60,16 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"site_id": schema.StringAttribute{
-				Description: "Site ID",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+			"internet_only": schema.BoolAttribute{
+				Description: "Internet only network range (Only releveant for Routed range_type)",
+				Computed:    true,
+				Required:    false,
+				Optional:    true,
+				Default:     booldefault.StaticBool(false),
+			},
+			"local_ip": schema.StringAttribute{
+				Description: "Network range local ip",
+				Optional:    true,
 			},
 			"name": schema.StringAttribute{
 				Description: "Network range name",
@@ -73,24 +82,19 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"site_id": schema.StringAttribute{
+				Description: "Site ID",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"subnet": schema.StringAttribute{
 				Description: "Network range (CIDR)",
 				Required:    true,
 			},
-			"local_ip": schema.StringAttribute{
-				Description: "Network range local ip",
-				Optional:    true,
-			},
 			"translated_subnet": schema.StringAttribute{
 				Description: "Network range translated native IP range (CIDR)",
-				Optional:    true,
-			},
-			"gateway": schema.StringAttribute{
-				Description: "Network range gateway (Only releveant for Routed range_type)",
-				Optional:    true,
-			},
-			"vlan": schema.Int64Attribute{
-				Description: "Network range VLAN ID (Only releveant for VLAN range_type)",
 				Optional:    true,
 			},
 			"dhcp_settings": schema.SingleNestedAttribute{
@@ -110,6 +114,10 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 						Optional:    true,
 					},
 				},
+			},
+			"vlan": schema.Int64Attribute{
+				Description: "Network range VLAN ID (Only releveant for VLAN range_type)",
+				Optional:    true,
 			},
 		},
 	}
@@ -146,7 +154,14 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),
 		Gateway:          plan.Gateway.ValueStringPointer(),
 		Vlan:             plan.Vlan.ValueInt64Pointer(),
+		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
 	}
+
+	internetOnly := false // default
+	if !plan.InternetOnly.IsNull() {
+		internetOnly = plan.InternetOnly.ValueBool()
+	}
+	input.InternetOnly = &internetOnly
 
 	// get planned DHCP settings Object value, or set default value if null (for VLAN Type)
 	var DhcpSettings DhcpSettings
@@ -282,7 +297,14 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),
 		Gateway:          plan.Gateway.ValueStringPointer(),
 		Vlan:             plan.Vlan.ValueInt64Pointer(),
+		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
 	}
+
+	internetOnly := false // default
+	if !plan.InternetOnly.IsNull() {
+		internetOnly = plan.InternetOnly.ValueBool()
+	}
+	input.InternetOnly = &internetOnly
 
 	// get planned DHCP settings Object value, or set default value if null (for VLAN Type)
 	var DhcpSettings DhcpSettings

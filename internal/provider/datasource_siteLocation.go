@@ -221,56 +221,85 @@ func (d *siteLocationDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
+	allLocationFiltersExact := true
+	for _, filter := range filterList {
+		if filter.Operation.ValueString() != "exact" {
+			allLocationFiltersExact = false
+			break
+		}
+	}
+
 	filteredLocations := make([]SiteLocationJsonObj, 0)
-	for _, location := range allLocations {
-		tflog.Debug(ctx, "filteredLocations.location - "+fmt.Sprintf("%v", location))
-
-		matches := true
+	if allLocationFiltersExact {
+		filterMap := make(map[string]string)
 		for _, filter := range filterList {
-			field := filter.Field.ValueString()
-			search := filter.Search.ValueString()
-			operation := filter.Operation.ValueString()
-			tflog.Debug(ctx, "location.field - "+fmt.Sprintf("%v", field))
-
-			var value string
-			switch field {
-			case "city":
-				tflog.Info(ctx, "city present - "+fmt.Sprintf("%v", location.City))
-				value = location.City
-			case "state_name":
-				if location.StateName == "" {
-					tflog.Debug(ctx, "state_name is not present on location - "+fmt.Sprintf("%v", location))
-					matches = false
-				}
-				tflog.Debug(ctx, "state_name present - "+fmt.Sprintf("%v", location.StateName))
-				value = location.StateName
-			case "country_name":
-				tflog.Debug(ctx, "country_name present - "+fmt.Sprintf("%v", location.CountryName))
-				value = location.CountryName
-			default:
-				continue
-			}
-
-			if matches {
-				if operation == "exact" && !(value == search) {
-					tflog.Debug(ctx, "field '"+field+"' exact not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(value == search)))
-					matches = false
-				} else if operation == "startsWith" && !(strings.HasPrefix(value, search)) {
-					tflog.Debug(ctx, "field '"+field+"' startsWith not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.HasPrefix(value, search))))
-					matches = false
-				} else if operation == "endsWith" && !(strings.HasSuffix(value, search)) {
-					tflog.Debug(ctx, "field '"+field+"' endsWith not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.HasSuffix(value, search))))
-					matches = false
-				} else if operation == "contains" && !(strings.Contains(value, search)) {
-					tflog.Debug(ctx, "field '"+field+"' contains not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.Contains(value, search))))
-					matches = false
-				}
+			filterMap[filter.Field.ValueString()] = filter.Search.ValueString()
+		}
+		var parts []string
+		for _, field := range []string{"country_name", "state_name", "city"} {
+			if value, exists := filterMap[field]; exists && value != "" {
+				parts = append(parts, value)
 			}
 		}
+		locationString := strings.Join(parts, "___")
+		tflog.Debug(ctx, "allLocationFiltersExact is true, str: "+locationString)
 
-		tflog.Debug(ctx, "field match - "+fmt.Sprintf("%v", matches)+"' "+fmt.Sprintf("%v", location)+"'")
-		if matches {
+		if location, exists := allLocations[locationString]; exists {
+			tflog.Debug(ctx, "location found in allLocations - "+fmt.Sprintf("%v", location))
 			filteredLocations = append(filteredLocations, location)
+		}
+	}
+
+	if !allLocationFiltersExact || len(filteredLocations) == 0 {
+		for _, location := range allLocations {
+			tflog.Debug(ctx, "filteredLocations.location - "+fmt.Sprintf("%v", location))
+			matches := true
+			for _, filter := range filterList {
+				field := filter.Field.ValueString()
+				search := filter.Search.ValueString()
+				operation := filter.Operation.ValueString()
+				tflog.Debug(ctx, "location.field - "+fmt.Sprintf("%v", field))
+
+				var value string
+				switch field {
+				case "city":
+					tflog.Info(ctx, "city present - "+fmt.Sprintf("%v", location.City))
+					value = location.City
+				case "state_name":
+					if location.StateName == "" {
+						tflog.Debug(ctx, "state_name is not present on location - "+fmt.Sprintf("%v", location))
+						matches = false
+					}
+					tflog.Debug(ctx, "state_name present - "+fmt.Sprintf("%v", location.StateName))
+					value = location.StateName
+				case "country_name":
+					tflog.Debug(ctx, "country_name present - "+fmt.Sprintf("%v", location.CountryName))
+					value = location.CountryName
+				default:
+					continue
+				}
+
+				if matches {
+					if operation == "exact" && !(value == search) {
+						tflog.Debug(ctx, "field '"+field+"' exact not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(value == search)))
+						matches = false
+					} else if operation == "startsWith" && !(strings.HasPrefix(value, search)) {
+						tflog.Debug(ctx, "field '"+field+"' startsWith not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.HasPrefix(value, search))))
+						matches = false
+					} else if operation == "endsWith" && !(strings.HasSuffix(value, search)) {
+						tflog.Debug(ctx, "field '"+field+"' endsWith not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.HasSuffix(value, search))))
+						matches = false
+					} else if operation == "contains" && !(strings.Contains(value, search)) {
+						tflog.Debug(ctx, "field '"+field+"' contains not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.Contains(value, search))))
+						matches = false
+					}
+				}
+			}
+
+			tflog.Debug(ctx, "field match - "+fmt.Sprintf("%v", matches)+"' "+fmt.Sprintf("%v", location)+"'")
+			if matches {
+				filteredLocations = append(filteredLocations, location)
+			}
 		}
 	}
 	tflog.Debug(ctx, "field match filteredLocations - "+fmt.Sprintf("%v", filteredLocations))
