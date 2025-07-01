@@ -7,6 +7,7 @@ import (
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -287,7 +288,7 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	// check if site exist, else remove resource
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
-	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
+	tflog.Warn(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
 	if err != nil {
@@ -298,22 +299,147 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	// read in the ipsec site entries
+	// check if site exist before refreshing
+	// we should only have one entry since we are filtering on site ID
+	if len(querySiteResult.EntityLookup.GetItems()) != 1 {
+		tflog.Warn(ctx, "site not found, site resource removed")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	// read in the socket site entries
+
+	// type SocketSite struct {
+	//     Id             types.String `tfsdk:"id"`
+	//     Name           types.String `tfsdk:"name"`
+	//     ConnectionType types.String `tfsdk:"connection_type"`
+	//     SiteType       types.String `tfsdk:"site_type"`
+	//     Description    types.String `tfsdk:"description"`
+	//     NativeRange    types.Object `tfsdk:"native_range"`
+	//     SiteLocation   types.Object `tfsdk:"site_location"`
+	// }
 	for _, v := range querySiteResult.EntityLookup.Items {
+		// find the socket site entry we need
 		if v.Entity.ID == state.Id.ValueString() {
 			resp.State.SetAttribute(
 				ctx,
 				path.Root("id"),
 				v.Entity.ID,
 			)
-		}
-	}
+			connType := ""
+			if val, containsKey := v.GetHelperFields()["connectionType"]; containsKey {
+				connType = val.(string)
+			}
+			siteType := ""
+			if val, containsKey := v.GetHelperFields()["type"]; containsKey {
+				siteType = val.(string)
+			}
 
-	// check if site exist before refreshing
-	if len(querySiteResult.EntityLookup.GetItems()) != 1 {
-		tflog.Warn(ctx, "site not found, site resource removed")
-		resp.State.RemoveResource(ctx)
-		return
+			primaryLanInterfaceId := "LAN1"
+
+			if connType == "Socket X1500" {
+				primaryLanInterfaceId = "LAN1"
+			} else if connType == "Socket X1600" {
+				primaryLanInterfaceId = "5"
+			} else if connType == "Socket X1600 LTE" {
+				primaryLanInterfaceId = "5"
+			} else if connType == "Socket X1700" {
+				primaryLanInterfaceId = "3"
+			}
+
+			querySiteNetworkRangeResult, err := r.client.catov2.EntityLookup(
+				ctx,
+				r.client.AccountId,
+				cato_models.EntityType("networkInterface"),
+				nil, // limit
+				nil, // from
+				&cato_models.EntityInput{
+					Type: "site",
+					ID:   state.Id.ValueString(),
+				}, // parent
+				nil, // search
+				nil, // entityIds
+				nil, nil, nil,
+			)
+			tflog.Warn(ctx, "Read.EntityLookup/querySiteNetworkRangeResult.response", map[string]interface{}{
+				"response": utils.InterfaceToJSONString(querySiteResult),
+			})
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API error",
+					err.Error(),
+				)
+				return
+			}
+
+			siteNetRangeApiData := make(map[string]any)
+			for _, v := range querySiteNetworkRangeResult.GetEntityLookup().GetItems() {
+				if val, containsKey := v.HelperFields["interfaceId"]; containsKey {
+					if val == primaryLanInterfaceId {
+						siteNetRangeApiData = v.GetHelperFields()
+					}
+				}
+			}
+
+			tflog.Warn(ctx, "Read.querySiteNetworkRangeResult/siteAccountSnapshotApiData.response", map[string]interface{}{
+				"response": utils.InterfaceToJSONString(siteNetRangeApiData),
+			})
+
+			state.Id = types.StringValue(v.Entity.GetID())
+			state.Name = types.StringValue(*v.GetEntity().Name)
+			// state.ConnectionType = state.ConnectionType
+			state.SiteType = types.StringValue(siteType)
+			// state.Description = types.StringValue(v.GetDescription())
+			state.Description = types.StringValue(v.GetHelperFields()["description"].(string))
+
+			var fromStateNativeRange NativeRange
+			diags = append(diags, state.NativeRange.As(ctx, &fromStateNativeRange, basetypes.ObjectAsOptions{})...)
+			resp.Diagnostics.Append(diags...)
+
+			stateNativeRange, diags := types.ObjectValue(
+				SiteNativeRangeResourceAttrTypes,
+				map[string]attr.Value{
+					"native_network_range":    types.StringValue(siteNetRangeApiData["subnet"].(string)),
+					"native_network_range_id": fromStateNativeRange.NativeNetworkRangeId,
+					"local_ip":                fromStateNativeRange.LocalIp,
+					"translated_subnet":       fromStateNativeRange.TranslatedSubnet,
+					"dhcp_settings":           fromStateNativeRange.DhcpSettings,
+				},
+			)
+			resp.Diagnostics.Append(diags...)
+			state.NativeRange = stateNativeRange
+
+			siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.Id.ValueString()}, nil, &r.client.AccountId)
+			tflog.Warn(ctx, "Read.AccountSnapshot/siteAccountSnapshotApiData.response", map[string]interface{}{
+				"response": utils.InterfaceToJSONString(siteAccountSnapshotApiData),
+			})
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API error",
+					err.Error(),
+				)
+				return
+			}
+
+			var fromStateSiteLocation SiteLocation
+			diags = append(diags, state.SiteLocation.As(ctx, &fromStateSiteLocation, basetypes.ObjectAsOptions{})...)
+			resp.Diagnostics.Append(diags...)
+
+			thisSiteAccountSnapshot := siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()[0]
+
+			stateSiteLocation, diags := types.ObjectValue(
+				SiteLocationResourceAttrTypes,
+				map[string]attr.Value{
+					"country_code": types.StringValue(*thisSiteAccountSnapshot.GetInfoSiteSnapshot().CountryCode),
+					"state_code":   fromStateSiteLocation.StateCode,
+					"timezone":     fromStateSiteLocation.Timezone,
+					"address":      types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.Address),
+					"city":         types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName),
+				},
+			)
+			state.SiteLocation = stateSiteLocation
+			resp.Diagnostics.Append(diags...)
+		}
 	}
 
 	diags = resp.State.Set(ctx, &state)
