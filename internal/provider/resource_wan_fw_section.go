@@ -6,11 +6,13 @@ import (
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -203,15 +205,31 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	for _, sectionListItem := range sectionList {
 		if sectionListItem.GetSection().ID == section.Id.ValueString() {
 			sectionExist = true
-
-			// Need to refresh STATE
-			resp.State.SetAttribute(
-				ctx,
-				path.Root("section").AtName("id"),
-				sectionListItem.GetSection().ID,
+			state.Id = types.StringValue(sectionListItem.GetSection().ID)
+			curSectionObj, diagstmp := types.ObjectValue(
+				NameIDAttrTypes,
+				map[string]attr.Value{
+					"id":   types.StringValue(sectionListItem.GetSection().ID),
+					"name": types.StringValue(sectionListItem.GetSection().GetName()),
+				},
 			)
+			diags = append(diags, diagstmp...)
+			state.Section = curSectionObj
 		}
 	}
+
+	// Hard coding LAST_IN_POLICY position as the API does not return any value and
+	// hardcoding position supports the use case of bulk rule import/export
+	// getting around state changes for the position field
+	curAtObj, diagstmp := types.ObjectValue(
+		PositionAttrTypes,
+		map[string]attr.Value{
+			"position": types.StringValue("LAST_IN_POLICY"),
+			"ref":      types.StringNull(),
+		},
+	)
+	state.At = curAtObj
+	diags = append(diags, diagstmp...)
 
 	// remove resource if it doesn't exist anymore
 	if !sectionExist {

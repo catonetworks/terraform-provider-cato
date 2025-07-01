@@ -21,6 +21,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		return ruleInput
 	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
+	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 	if currentRule.Description == "" {
 		ruleInput.Description = types.StringNull()
 	} else {

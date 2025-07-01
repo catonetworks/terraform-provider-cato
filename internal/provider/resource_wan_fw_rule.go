@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -3240,6 +3241,20 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 	resp.Diagnostics.Append(diags...)
+
+	// Hard coding LAST_IN_POLICY position as the API does not return any value and
+	// hardcoding position supports the use case of bulk rule import/export
+	// getting around state changes for the position field
+	curAtObj, diagstmp := types.ObjectValue(
+		PositionAttrTypes,
+		map[string]attr.Value{
+			"position": types.StringValue("LAST_IN_POLICY"),
+			"ref":      types.StringNull(),
+		},
+	)
+	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
+	diags = append(diags, diagstmp...)
+
 }
 
 func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

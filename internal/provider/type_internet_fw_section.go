@@ -3,6 +3,7 @@ package provider
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
 type InternetFirewallSection struct {
+	Id      types.String `tfsdk:"id"`
 	At      types.Object `tfsdk:"at"`
 	Section types.Object `tfsdk:"section"`
 }
@@ -18,6 +19,11 @@ type PolicyAddSectionInfoInput struct {
 }
 
 type PolicyUpdateSectionInfoInput struct {
+	Id   types.String `tfsdk:"id"`
+	Name types.String `tfsdk:"name"`
+}
+
+type PolicySectionInfoInput struct {
 	Id   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
