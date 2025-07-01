@@ -422,19 +422,22 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 	sectionIndexListCount := make(map[string]int64)
 
 	// pass in the api sections list during read to the state
-	for _, v := range sectionIndexApiData.Policy.InternetFirewall.Policy.Sections {
-		sectionIndexListCount[v.Section.Name] = 0
-		sectionIndexStateData, diags := types.ObjectValue(
-			IfwSectionIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":            types.StringValue(v.Section.ID),
-				"section_name":  types.StringValue(v.Section.Name),
-				"section_index": types.Int64Value(sectionCount),
-			},
-		)
-		resp.Diagnostics.Append(diags...)
-		sectionObjects = append(sectionObjects, sectionIndexStateData)
-		sectionCount++
+	for k, v := range sectionIndexApiData.Policy.InternetFirewall.Policy.Sections {
+		if k != 0 {
+
+			sectionIndexListCount[v.Section.Name] = 0
+			sectionIndexStateData, diags := types.ObjectValue(
+				IfwSectionIndexResourceAttrTypes,
+				map[string]attr.Value{
+					"id":            types.StringValue(v.Section.ID),
+					"section_name":  types.StringValue(v.Section.Name),
+					"section_index": types.Int64Value(sectionCount),
+				},
+			)
+			resp.Diagnostics.Append(diags...)
+			sectionObjects = append(sectionObjects, sectionIndexStateData)
+			sectionCount++
+		}
 	}
 
 	sectionObjectsList, diags := types.ListValue(
