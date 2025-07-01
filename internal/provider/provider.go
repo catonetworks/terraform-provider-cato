@@ -162,6 +162,8 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		LicensingInfoDataSource,
 		NetworkInterfacesDataSource,
 		SiteLocationDataSource,
+		IfwRulesIndexDataSource,
+		WanRulesIndexDataSource,
 	}
 }
 
@@ -179,5 +181,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewWanFwRuleResource,
 		NewWanFwSectionResource,
 		NewWanInterfaceResource,
+		NewIfwRulesIndexResource,
+		NewWanRulesIndexResource,
 	}
 }

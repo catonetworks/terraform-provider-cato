@@ -62,6 +62,7 @@ resource "cato_network_range" "routed250" {
 - `dhcp_settings` (Attributes) Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type) (see [below for nested schema](#nestedatt--dhcp_settings))
 - `gateway` (String) Network range gateway (Only releveant for Routed range_type)
 - `interface_id` (String) Network Interface ID
+- `internet_only` (Boolean) Internet only network range (Only releveant for Routed range_type)
 - `local_ip` (String) Network range local ip
 - `translated_subnet` (String) Network range translated native IP range (CIDR)
 - `vlan` (Number) Network range VLAN ID (Only releveant for VLAN range_type)

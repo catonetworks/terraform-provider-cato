@@ -1,6 +1,9 @@
 package provider
 
-import "github.com/hashicorp/terraform-plugin-framework/types"
+import (
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
 
 type SocketSite struct {
 	Id             types.String `tfsdk:"id"`
@@ -26,4 +29,26 @@ type SiteLocation struct {
 	Timezone    types.String `tfsdk:"timezone"`
 	Address     types.String `tfsdk:"address"`
 	City        types.String `tfsdk:"city"`
+}
+
+var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
+	"native_network_range":    types.StringType,
+	"native_network_range_id": types.StringType,
+	"local_ip":                types.StringType,
+	"translated_subnet":       types.StringType,
+	"dhcp_settings":           types.ObjectType{AttrTypes: SiteNativeRangeDhcpResourceAttrTypes},
+}
+
+var SiteNativeRangeDhcpResourceAttrTypes = map[string]attr.Type{
+	"dhcp_type":      types.StringType,
+	"ip_range":       types.StringType,
+	"relay_group_id": types.StringType,
+}
+
+var SiteLocationResourceAttrTypes = map[string]attr.Type{
+	"country_code": types.StringType,
+	"state_code":   types.StringType,
+	"timezone":     types.StringType,
+	"address":      types.StringType,
+	"city":         types.StringType,
 }
