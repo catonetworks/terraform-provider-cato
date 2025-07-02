@@ -402,85 +402,85 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-	var sectionObjects []attr.Value
-	var ruleObjects []attr.Value
+	// var sectionObjects []attr.Value
+	// var ruleObjects []attr.Value
 
-	sectionIndexApiData, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndexInRead.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(sectionIndexApiData),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
-		return
-	}
+	// sectionIndexApiData, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+	// tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndexInRead.response", map[string]interface{}{
+	// 	"response": utils.InterfaceToJSONString(sectionIndexApiData),
+	// })
+	// if err != nil {
+	// 	resp.Diagnostics.AddError(
+	// 		"Catov2 API EntityLookup error",
+	// 		err.Error(),
+	// 	)
+	// 	return
+	// }
 
-	sectionCount := int64(1)
+	// sectionCount := int64(1)
 
-	sectionIndexListCount := make(map[string]int64)
+	// sectionIndexListCount := make(map[string]int64)
 
-	// pass in the api sections list during read to the state
-	for _, v := range sectionIndexApiData.Policy.InternetFirewall.Policy.Sections {
-		sectionIndexListCount[v.Section.Name] = 0
-		sectionIndexStateData, diags := types.ObjectValue(
-			IfwSectionIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":            types.StringValue(v.Section.ID),
-				"section_name":  types.StringValue(v.Section.Name),
-				"section_index": types.Int64Value(sectionCount),
-			},
-		)
-		resp.Diagnostics.Append(diags...)
-		sectionObjects = append(sectionObjects, sectionIndexStateData)
-		sectionCount++
-	}
+	// // pass in the api sections list during read to the state
+	// for _, v := range sectionIndexApiData.Policy.InternetFirewall.Policy.Sections {
+	// 	sectionIndexListCount[v.Section.Name] = 0
+	// 	sectionIndexStateData, diags := types.ObjectValue(
+	// 		IfwSectionIndexResourceAttrTypes,
+	// 		map[string]attr.Value{
+	// 			"id":            types.StringValue(v.Section.ID),
+	// 			"section_name":  types.StringValue(v.Section.Name),
+	// 			"section_index": types.Int64Value(sectionCount),
+	// 		},
+	// 	)
+	// 	resp.Diagnostics.Append(diags...)
+	// 	sectionObjects = append(sectionObjects, sectionIndexStateData)
+	// 	sectionCount++
+	// }
 
-	sectionObjectsList, diags := types.ListValue(
-		types.ObjectType{
-			AttrTypes: IfwSectionIndexResourceAttrTypes,
-		},
-		sectionObjects,
-	)
-	resp.Diagnostics.Append(diags...)
-	state.SectionData = sectionObjectsList
+	// sectionObjectsList, diags := types.ListValue(
+	// 	types.ObjectType{
+	// 		AttrTypes: IfwSectionIndexResourceAttrTypes,
+	// 	},
+	// 	sectionObjects,
+	// )
+	// resp.Diagnostics.Append(diags...)
+	// state.SectionData = sectionObjectsList
 
-	ruleIndexApiData, err := r.client.catov2.PolicyInternetFirewallRulesIndex(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "Read.PolicyInternetFirewallRulesIndex.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(ruleIndexApiData),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
-		return
-	}
+	// ruleIndexApiData, err := r.client.catov2.PolicyInternetFirewallRulesIndex(ctx, r.client.AccountId)
+	// tflog.Debug(ctx, "Read.PolicyInternetFirewallRulesIndex.response", map[string]interface{}{
+	// 	"response": utils.InterfaceToJSONString(ruleIndexApiData),
+	// })
+	// if err != nil {
+	// 	resp.Diagnostics.AddError(
+	// 		"Catov2 API EntityLookup error",
+	// 		err.Error(),
+	// 	)
+	// 	return
+	// }
 
-	for _, v := range ruleIndexApiData.Policy.InternetFirewall.Policy.Rules {
-		sectionIndexListCount[v.Rule.Section.Name]++
-		ruleIndexStateData, diags := types.ObjectValue(
-			IfwRuleIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":               types.StringValue(v.Rule.ID),
-				"index_in_section": types.Int64Value(sectionIndexListCount[v.Rule.Section.Name]),
-				"section_name":     types.StringValue(v.Rule.Section.Name),
-				"rule_name":        types.StringValue(v.Rule.Name),
-			},
-		)
-		resp.Diagnostics.Append(diags...)
-		ruleObjects = append(ruleObjects, ruleIndexStateData)
-	}
+	// for _, v := range ruleIndexApiData.Policy.InternetFirewall.Policy.Rules {
+	// 	sectionIndexListCount[v.Rule.Section.Name]++
+	// 	ruleIndexStateData, diags := types.ObjectValue(
+	// 		IfwRuleIndexResourceAttrTypes,
+	// 		map[string]attr.Value{
+	// 			"id":               types.StringValue(v.Rule.ID),
+	// 			"index_in_section": types.Int64Value(sectionIndexListCount[v.Rule.Section.Name]),
+	// 			"section_name":     types.StringValue(v.Rule.Section.Name),
+	// 			"rule_name":        types.StringValue(v.Rule.Name),
+	// 		},
+	// 	)
+	// 	resp.Diagnostics.Append(diags...)
+	// 	ruleObjects = append(ruleObjects, ruleIndexStateData)
+	// }
 
-	ruleObjectsList, diags := types.ListValue(
-		types.ObjectType{
-			AttrTypes: IfwRuleIndexResourceAttrTypes,
-		},
-		ruleObjects,
-	)
-	resp.Diagnostics.Append(diags...)
-	state.RuleData = ruleObjectsList
+	// ruleObjectsList, diags := types.ListValue(
+	// 	types.ObjectType{
+	// 		AttrTypes: IfwRuleIndexResourceAttrTypes,
+	// 	},
+	// 	ruleObjects,
+	// )
+	// resp.Diagnostics.Append(diags...)
+	// state.RuleData = ruleObjectsList
 
 	if diags := resp.State.Set(ctx, &state); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
