@@ -608,14 +608,14 @@ Optional:
 - `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
 - `device_os` (List of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `exceptions` (Attributes Set) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--rule--exceptions))
-- `index` (Number) Ruile index
 - `schedule` (Attributes) The time period specifying when the rule is enabled, otherwise it is disabled. (see [below for nested schema](#nestedatt--rule--schedule))
-- `service` (Attributes) Destination service traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--service))
+- `service` (Attributes) Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--service))
 - `source` (Attributes) Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--source))
 
 Read-Only:
 
 - `id` (String) ID of the rule
+- `index` (Number) Rule Index
 
 <a id="nestedatt--rule--tracking"></a>
 ### Nested Schema for `rule.tracking`

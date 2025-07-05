@@ -172,13 +172,14 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		sectionIdList[v.Section.Name] = v.Section.ID
 	}
 
-	// first section is defined by the P2P rule section
 	// if the user passes in a section ID, we will use that
 	// if no sections are currently in the account, we will create a default one
 	// else if there are existing sections, we will use the first one in the list
 	var firstSectionId string
+	var useSpecifiedStartAfter bool
 	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
 		firstSectionId = plan.SectionToStartAfterId.ValueString()
+		useSpecifiedStartAfter = true
 	} else if len(sectionIndexApiData.Policy.WanFirewall.Policy.Sections) == 0 {
 		input := cato_models.PolicyAddSectionInput{
 			At: &cato_models.PolicySectionPositionInput{
@@ -200,12 +201,16 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 			return
 		}
 		firstSectionId = sectionCreateApiData.GetPolicy().GetWanFirewall().GetAddSection().GetSection().Section.ID
+		useSpecifiedStartAfter = true
 	} else {
 		firstSectionId = sectionIndexApiData.Policy.WanFirewall.Policy.Sections[0].Section.ID
+		useSpecifiedStartAfter = false
 	}
 
 	// update the state with our current value to start after...probably should change to "Start before"
-	plan.SectionToStartAfterId = types.StringValue(firstSectionId)
+	if useSpecifiedStartAfter {
+		plan.SectionToStartAfterId = types.StringValue(firstSectionId)
+	}
 
 	sectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
 
@@ -238,14 +243,23 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	var reversedSectionObjects []attr.Value
 
 	// create the sections from the list provided following the section ID provided in firstSectionId
-	for _, workingSectionName := range reversedSectionListFromPlan {
+	for i, workingSectionName := range reversedSectionListFromPlan {
 		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
 		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
 			ID: sectionIdList[workingSectionName.SectionName],
-			To: &cato_models.PolicySectionPositionInput{
+		}
+
+		// If this is the first section and no section_to_start_after_id was specified, place it first in policy
+		if i == 0 && !useSpecifiedStartAfter {
+			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
+				Position: "FIRST_IN_POLICY",
+			}
+		} else {
+			// Otherwise, place after the current section
+			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
 				Ref:      &currentSectionId,
-				Position: "BEFORE_SECTION",
-			},
+				Position: "AFTER_SECTION",
+			}
 		}
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
 			"moveFrom":                       workingSectionName.SectionName,
@@ -446,7 +460,10 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	plan.SectionToStartAfterId = types.StringValue(currentSectionId)
+	// Only set SectionToStartAfterId if it was explicitly provided in the configuration
+	if useSpecifiedStartAfter {
+		plan.SectionToStartAfterId = types.StringValue(firstSectionId)
+	}
 
 	sectionObjectsList, diags := types.ListValue(
 		types.ObjectType{

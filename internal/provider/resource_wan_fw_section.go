@@ -39,6 +39,13 @@ func (r *wanFwSectionResource) Schema(_ context.Context, _ resource.SchemaReques
 	resp.Schema = schema.Schema{
 		Description: "The `cato_wf_section` resource contains the configuration parameters necessary to WAN firewall section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at[mutation.policy.wanFirewall.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addSection).",
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "Section ID",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"at": schema.SingleNestedAttribute{
 				Description: "",
 				Required:    true,
@@ -154,6 +161,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	plan.Id = types.StringValue(policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

@@ -43,3 +43,11 @@
 - Added data source for wan and internet firewalls
 - Optimized the sitelocation data source to resolve immediately from index for exact matche searches
 - Added internetOnly boolean for network_ranges
+
+## 0.0.28 (2026-06-23)
+
+### Features
+
+- Added dhcpRelayGroup data source
+- Updated if_rule and wf_rule to fix issues with tracking changes in exceptions and index field
+- Fixed state in section resources to write id and attributes correctly to state

@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -92,9 +93,12 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Optional:    true,
 					},
 					"index": schema.Int64Attribute{
-						Description: "",
-						Required:    false,
-						Optional:    true,
+						Description: "Rule Index",
+						Computed:    true,
+						Optional:    false,
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.UseStateForUnknown(),
+						},
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Attribute to define rule status (enabled or disabled)",
@@ -1351,7 +1355,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Validators: []validator.List{
 												listvalidator.SizeAtLeast(1),
 											},
-											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
@@ -1768,7 +1771,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Validators: []validator.List{
 										listvalidator.ValueStringsAre(stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS")),
 									},
-									Computed: true,
 								},
 								"destination": schema.SingleNestedAttribute{
 									Description: "Destination service matching criteria for the exception.",
@@ -2033,7 +2035,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
-											Computed: true,
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
@@ -2043,7 +2044,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
-											Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "",
@@ -2119,7 +2119,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
-											Computed: true,
 										},
 									},
 								},
@@ -2179,7 +2178,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														PlanModifiers: []planmodifier.List{
 															listplanmodifier.UseStateForUnknown(), // avoids plan drift
 														},
-														Computed: true,
 													},
 													"port_range": schema.SingleNestedAttribute{
 														Description: "",
@@ -2258,6 +2256,10 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	tflog.Debug(ctx, "internet_fw_rule create", map[string]interface{}{
+		"input": utils.InterfaceToJSONString(input.create),
+	})
 
 	//creating new rule
 	createRuleResponse, err := r.client.catov2.PolicyInternetFirewallAddRule(ctx, input.create, r.client.AccountId)
@@ -2460,7 +2462,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	tflog.Debug(ctx, "internet_fw_rule update", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input),
+		"input": utils.InterfaceToJSONString(input.update),
 	})
 
 	//Update new rule

@@ -68,6 +68,10 @@ resource "cato_wf_rule" "wf_rule_1" {
 - `at` (Attributes) (see [below for nested schema](#nestedatt--at))
 - `section` (Attributes) Section parameters (see [below for nested schema](#nestedatt--section))
 
+### Read-Only
+
+- `id` (String) Section ID
+
 <a id="nestedatt--at"></a>
 ### Nested Schema for `at`
 
