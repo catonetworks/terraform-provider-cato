@@ -30,7 +30,11 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	}
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
 	ruleInput.ID = types.StringValue(currentRule.ID)
-	ruleInput.Index = types.Int64Value(currentRule.Index)
+	// Set index from API response when state index is null/unknown, otherwise preserve state index
+	if ruleInput.Index.IsNull() || ruleInput.Index.IsUnknown() {
+		ruleInput.Index = types.Int64Value(currentRule.Index)
+	}
+	// If ruleInput.Index has a value, we preserve it (no action needed)
 	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
 
@@ -110,36 +114,34 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	////////////// end Rul -> Application ///////////////
 
 	////////////// start Rule -> Service ///////////////
-	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
-		// Initialize Service object with null values
-		curRuleServiceObj, diagstmp := types.ObjectValue(
-			IfwServiceAttrTypes,
-			map[string]attr.Value{
-				"standard": types.SetNull(NameIDObjectType),
-				"custom":   types.ListNull(CustomServiceObjectType),
-			},
-		)
-		diags = append(diags, diagstmp...)
-		curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
+	// Always initialize Service object to prevent drift
+	curRuleServiceObj, diagstmp := types.ObjectValue(
+		IfwServiceAttrTypes,
+		map[string]attr.Value{
+			"standard": types.SetNull(NameIDObjectType),
+			"custom":   types.ListNull(CustomServiceObjectType),
+		},
+	)
+	diags = append(diags, diagstmp...)
+	curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
 
-		// Rule -> Service -> Standard
-		curRuleServiceObjAttrs["standard"] = parseNameIDList(ctx, currentRule.Service.Standard, "rule.service.standard")
+	// Rule -> Service -> Standard
+	curRuleServiceObjAttrs["standard"] = parseNameIDList(ctx, currentRule.Service.Standard, "rule.service.standard")
 
-		// Rule -> Service -> Custom
-		if len(currentRule.Service.Custom) > 0 {
-			var curRuleCustomServices []types.Object
-			tflog.Info(ctx, "ruleResponse.Service.Custom - "+fmt.Sprintf("%v", currentRule.Service.Custom))
-			for _, item := range currentRule.Service.Custom {
-				curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item, "rule.service.custom"))
-			}
-			curRuleServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
-			diags = append(diags, diagstmp...)
+	// Rule -> Service -> Custom
+	if len(currentRule.Service.Custom) > 0 {
+		var curRuleCustomServices []types.Object
+		tflog.Info(ctx, "ruleResponse.Service.Custom - "+fmt.Sprintf("%v", currentRule.Service.Custom))
+		for _, item := range currentRule.Service.Custom {
+			curRuleCustomServices = append(curRuleCustomServices, parseCustomService(ctx, item, "rule.service.custom"))
 		}
-
-		curRuleServiceObj, diagstmp = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
+		curRuleServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
 		diags = append(diags, diagstmp...)
-		ruleInput.Service = curRuleServiceObj
 	}
+
+	curRuleServiceObj, diagstmp = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
+	diags = append(diags, diagstmp...)
+	ruleInput.Service = curRuleServiceObj
 	////////////// end Rule -> Service ///////////////
 
 	////////////// start Rule -> Tracking ///////////////
@@ -196,32 +198,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	ruleInput.Schedule = curRuleScheduleObj
 	////////////// end Rule -> Schedule ///////////////
 
-	// // ////////////// start Rule -> Exceptions ///////////////
-	// TODO set to set not list
-	curRuleExceptionsObj, diagstmp := types.SetValue(
-		types.ObjectType{AttrTypes: WanExceptionAttrTypes},
-		[]attr.Value{
-			types.ObjectValueMust( // Single exception object with all null values
-				WanExceptionAttrTypes,
-				map[string]attr.Value{
-					"name":    types.StringNull(),
-					"source":  types.ObjectNull(WanSourceAttrTypes),
-					"country": types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
-					"device":  types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes}),
-					// "device_attributes": types.ObjectNull(DeviceAttrAttrTypes),
-					"device_os":         types.ListNull(types.StringType),
-					"destination":       types.ObjectNull(WanDestAttrTypes),
-					"application":       types.ObjectNull(WanApplicationAttrTypes),
-					"service":           types.ObjectNull(WanServiceAttrTypes),
-					"direction":         types.StringNull(),
-					"connection_origin": types.StringNull(),
-				},
-			),
-		},
-	)
-	diags = append(diags, diagstmp...)
-	ruleInput.Exceptions = curRuleExceptionsObj
-
+	//////////////// start Rule -> Exceptions ///////////////
 	exceptions := []attr.Value{}
 
 	// Rule -> Exceptions -> Source
@@ -284,10 +261,9 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 					"domain":                   parseList(ctx, types.StringType, ruleException.Application.Domain, "rule.exception.application.domain"),
 					"fqdn":                     parseList(ctx, types.StringType, ruleException.Application.Fqdn, "rule.exception.application.fqdn"),
 					"ip":                       parseList(ctx, types.StringType, ruleException.Application.IP, "rule.exception.application.ip"),
-					"subnet":                   types.ListNull(types.StringType),
-					// "subnet":                   parseList(ctx, types.StringType, ruleException.Application.Subnet, "rule.exception.application.subnet"),
-					"ip_range":        parseFromToList(ctx, ruleException.Application.IPRange, "rule.exception.application.ip_range"),
-					"global_ip_range": parseNameIDList(ctx, ruleException.Application.GlobalIPRange, "rule.exception.application.global_ip_range"),
+					"subnet":                   parseList(ctx, types.StringType, ruleException.Application.Subnet, "rule.exception.application.subnet"),
+					"ip_range":                 parseFromToList(ctx, ruleException.Application.IPRange, "rule.exception.application.ip_range"),
+					"global_ip_range":          parseNameIDList(ctx, ruleException.Application.GlobalIPRange, "rule.exception.application.global_ip_range"),
 				},
 			)
 			diags = append(diags, diagstmp...)
@@ -308,13 +284,13 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 				// Rule -> Service -> Standard
 				curExceptionServiceObjAttrs["standard"] = parseNameIDList(ctx, ruleException.Service.Standard, "rule.exception.service.standard")
 
-				// Rule -> Service -> Custom
+				// Rule -> Service -> Custom (use special parser for exceptions that handles portRangeCustomService)
 				if ruleException.Service.Custom != nil {
 					if len(ruleException.Service.Custom) > 0 {
 						var curExceptionCustomServices []types.Object
 						tflog.Info(ctx, "ruleException.Service.Custom - "+fmt.Sprintf("%v", ruleException.Service.Custom))
 						for _, item := range ruleException.Service.Custom {
-							curExceptionCustomServices = append(curExceptionCustomServices, parseCustomService(ctx, item, "rule.exception.service.custom"))
+							curExceptionCustomServices = append(curExceptionCustomServices, parseExceptionCustomService(ctx, item, "rule.exception.service.custom"))
 						}
 						curExceptionServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curExceptionCustomServices)
 						diags = append(diags, diagstmp...)
@@ -345,11 +321,14 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			diags = append(diags, diagstmp...)
 			exceptions = append(exceptions, curException)
 		}
-		curRuleExceptionsObj, diagstmp = types.SetValue(types.ObjectType{AttrTypes: WanExceptionAttrTypes}, exceptions)
+		curRuleExceptionsObj, diagstmp := types.SetValue(types.ObjectType{AttrTypes: WanExceptionAttrTypes}, exceptions)
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
 	} else {
-		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: WanExceptionAttrTypes})
+		// Use empty set instead of null to match schema expectations
+		curRuleExceptionsObj, diagstmp := types.SetValue(types.ObjectType{AttrTypes: WanExceptionAttrTypes}, []attr.Value{})
+		diags = append(diags, diagstmp...)
+		ruleInput.Exceptions = curRuleExceptionsObj
 	}
 	////////////// end Rule -> Exceptions ///////////////
 

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -90,13 +91,12 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Optional:    true,
 					},
 					"index": schema.Int64Attribute{
-						Description: "Ruile index",
-						Required:    false,
-						Optional:    true,
+						Description: "Rule Index",
+						Computed:    true,
+						Optional:    false,
 						PlanModifiers: []planmodifier.Int64{
-							int64planmodifier.UseStateForUnknown(), // Avoid drift
+							int64planmodifier.UseStateForUnknown(),
 						},
-						Computed: true,
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Attribute to define rule status (enabled or disabled)",
@@ -1348,9 +1348,13 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"service": schema.SingleNestedAttribute{
-						Description: "Destination service traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
+						Description: "Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
+						PlanModifiers: []planmodifier.Object{
+							objectplanmodifier.UseStateForUnknown(), // Avoid drift
+						},
+						Computed: true,
 						Attributes: map[string]schema.Attribute{
 							"standard": schema.SetNestedAttribute{
 								Description: "Standard Service to which this Internet Firewall rule applies",
@@ -1661,6 +1665,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules.",
 						Required:    false,
 						Optional:    true,
+						Computed:    true,
 						PlanModifiers: []planmodifier.Set{
 							setplanmodifier.UseStateForUnknown(), // Avoid drift
 						},
@@ -3240,6 +3245,20 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 	resp.Diagnostics.Append(diags...)
+
+	// Hard coding LAST_IN_POLICY position as the API does not return any value and
+	// hardcoding position supports the use case of bulk rule import/export
+	// getting around state changes for the position field
+	curAtObj, diagstmp := types.ObjectValue(
+		PositionAttrTypes,
+		map[string]attr.Value{
+			"position": types.StringValue("LAST_IN_POLICY"),
+			"ref":      types.StringNull(),
+		},
+	)
+	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
+	diags = append(diags, diagstmp...)
+
 }
 
 func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

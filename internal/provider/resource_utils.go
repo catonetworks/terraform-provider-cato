@@ -394,30 +394,42 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 	tflog.Debug(ctx, "parseCustomService() portField - "+fmt.Sprintf("%v", portField))
 	tflog.Debug(ctx, "parseCustomService() protocolField - "+fmt.Sprintf("%v", protocolField))
 	tflog.Debug(ctx, "parseCustomService() portRangeField - "+fmt.Sprintf("%v", portRangeField))
-	// Handle port field (allowing null)
+	// Handle port field - match config logic behavior
 	var portList types.List
 	if portField.IsValid() && portField.Kind() == reflect.Slice {
-		ports := make([]attr.Value, portField.Len())
-		for i := range portField.Len() {
-			portValue := portField.Index(i)
-			var portStr string
-			switch portValue.Kind() {
-			case reflect.String:
-				portStr = portValue.String()
-			case reflect.Int, reflect.Int64:
-				portStr = fmt.Sprintf("%d", portValue.Int())
-			default:
-				tflog.Info(ctx, "parseCustomService() unsupported port type - "+fmt.Sprintf("%v", portValue.Kind()))
-				portStr = fmt.Sprintf("%v", portValue.Interface())
+		// Check if this is a null pointer to slice vs empty slice
+		if portField.IsNil() {
+			// Source data was null - don't include port field in state to match config
+			portList = types.ListNull(types.StringType)
+		} else if portField.Len() == 0 {
+			// Source data was empty array [] - include as empty list in state
+			var diagsTmp diag.Diagnostics
+			portList, diagsTmp = types.ListValue(types.StringType, []attr.Value{})
+			diags = append(diags, diagsTmp...)
+		} else {
+			// Source data has values - include them
+			ports := make([]attr.Value, portField.Len())
+			for i := range portField.Len() {
+				portValue := portField.Index(i)
+				var portStr string
+				switch portValue.Kind() {
+				case reflect.String:
+					portStr = portValue.String()
+				case reflect.Int, reflect.Int64:
+					portStr = fmt.Sprintf("%d", portValue.Int())
+				default:
+					tflog.Info(ctx, "parseCustomService() unsupported port type - "+fmt.Sprintf("%v", portValue.Kind()))
+					portStr = fmt.Sprintf("%v", portValue.Interface())
+				}
+				ports[i] = types.StringValue(portStr)
 			}
-			ports[i] = types.StringValue(portStr)
-			// ports[i] = types.StringNull()
+			var diagsTmp diag.Diagnostics
+			portList, diagsTmp = types.ListValue(types.StringType, ports)
+			diags = append(diags, diagsTmp...)
 		}
-		var diagsTmp diag.Diagnostics
-		portList, diagsTmp = types.ListValue(types.StringType, ports)
-		diags = append(diags, diagsTmp...)
 	} else {
-		portList = types.ListNull(types.StringType) // Explicit null handling
+		// Invalid or non-slice field
+		portList = types.ListNull(types.StringType)
 	}
 
 	// Handle protocol
@@ -462,6 +474,138 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 		},
 	)
 	tflog.Debug(ctx, "parseCustomService() obj - "+fmt.Sprintf("%v", obj))
+	diags = append(diags, diagstmp...)
+	return obj
+}
+
+// parseExceptionCustomService handles custom services in exceptions which use "portRangeCustomService" field instead of "portRange"
+func parseExceptionCustomService(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Debug(ctx, "parseExceptionCustomService() "+attrName+" - "+fmt.Sprintf("%v", item))
+	diags := make(diag.Diagnostics, 0)
+
+	// Get the reflect.Value of the input
+	itemValue := reflect.ValueOf(item)
+
+	// Handle nil or invalid input
+	if item == nil || itemValue.Kind() != reflect.Struct {
+		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			itemValue = itemValue.Elem()
+			// Keep dereferencing until we get to a struct or can't anymore
+			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+				itemValue = itemValue.Elem()
+			}
+			if itemValue.Kind() != reflect.Struct {
+				return types.ObjectNull(CustomServiceAttrTypes)
+			}
+		} else {
+			return types.ObjectNull(CustomServiceAttrTypes)
+		}
+	}
+
+	// Handle pointer to struct
+	if itemValue.Kind() == reflect.Ptr {
+		tflog.Debug(ctx, "parseExceptionCustomService() itemValue.Kind()- "+fmt.Sprintf("%v", itemValue))
+		if itemValue.IsNil() {
+			return types.ObjectNull(CustomServiceAttrTypes)
+		}
+		itemValue = itemValue.Elem()
+		tflog.Debug(ctx, "parseExceptionCustomService() itemValue.Elem()- "+fmt.Sprintf("%v", itemValue))
+	}
+
+	// Get fields - note that exceptions use "PortRangeCustomService" instead of "PortRange"
+	portField := itemValue.FieldByName("Port")
+	protocolField := itemValue.FieldByName("Protocol")
+	portRangeField := itemValue.FieldByName("PortRangeCustomService") // Different field name for exceptions
+
+	tflog.Debug(ctx, "parseExceptionCustomService() portField - "+fmt.Sprintf("%v", portField))
+	tflog.Debug(ctx, "parseExceptionCustomService() protocolField - "+fmt.Sprintf("%v", protocolField))
+	tflog.Debug(ctx, "parseExceptionCustomService() portRangeField - "+fmt.Sprintf("%v", portRangeField))
+	
+	// Handle port field - match config logic behavior
+	var portList types.List
+	if portField.IsValid() && portField.Kind() == reflect.Slice {
+		// Check if this is a null pointer to slice vs empty slice
+		if portField.IsNil() {
+			// Source data was null - don't include port field in state to match config
+			portList = types.ListNull(types.StringType)
+		} else if portField.Len() == 0 {
+			// Source data was empty array [] - include as empty list in state
+			var diagsTmp diag.Diagnostics
+			portList, diagsTmp = types.ListValue(types.StringType, []attr.Value{})
+			diags = append(diags, diagsTmp...)
+		} else {
+			// Source data has values - include them
+			ports := make([]attr.Value, portField.Len())
+			for i := range portField.Len() {
+				portValue := portField.Index(i)
+				var portStr string
+				switch portValue.Kind() {
+				case reflect.String:
+					portStr = portValue.String()
+				case reflect.Int, reflect.Int64:
+					portStr = fmt.Sprintf("%d", portValue.Int())
+				default:
+					tflog.Info(ctx, "parseExceptionCustomService() unsupported port type - "+fmt.Sprintf("%v", portValue.Kind()))
+					portStr = fmt.Sprintf("%v", portValue.Interface())
+				}
+				ports[i] = types.StringValue(portStr)
+			}
+			var diagsTmp diag.Diagnostics
+			portList, diagsTmp = types.ListValue(types.StringType, ports)
+			diags = append(diags, diagsTmp...)
+		}
+	} else {
+		// Invalid or non-slice field
+		portList = types.ListNull(types.StringType)
+	}
+
+	// Handle protocol
+	var protocolVal types.String
+	if protocolField.IsValid() {
+		protocolVal = types.StringValue(protocolField.String())
+	} else {
+		protocolVal = types.StringNull()
+	}
+
+	// Handle port_range (from PortRangeCustomService field)
+	var portRangeVal types.Object
+	if portRangeField.Kind() == reflect.Ptr {
+		if portRangeField.IsNil() {
+			portRangeVal = types.ObjectNull(FromToAttrTypes)
+		} else {
+			portRangeField = portRangeField.Elem()
+		}
+	}
+	if portRangeField.IsValid() && !portRangeField.IsZero() {
+		from := portRangeField.FieldByName("From")
+		to := portRangeField.FieldByName("To")
+		if from.IsValid() && to.IsValid() {
+			var diagsTmp diag.Diagnostics
+			portRangeVal, diagsTmp = types.ObjectValue(
+				FromToAttrTypes,
+				map[string]attr.Value{
+					"from": types.StringValue(from.String()),
+					"to":   types.StringValue(to.String()),
+				},
+			)
+			diags = append(diags, diagsTmp...)
+		} else {
+			portRangeVal = types.ObjectNull(FromToAttrTypes)
+		}
+	} else {
+		portRangeVal = types.ObjectNull(FromToAttrTypes)
+	}
+
+	// Create final custom service object
+	obj, diagstmp := types.ObjectValue(
+		CustomServiceAttrTypes,
+		map[string]attr.Value{
+			"port":       portList,
+			"port_range": portRangeVal,
+			"protocol":   protocolVal,
+		},
+	)
+	tflog.Debug(ctx, "parseExceptionCustomService() obj - "+fmt.Sprintf("%v", obj))
 	diags = append(diags, diagstmp...)
 	return obj
 }
