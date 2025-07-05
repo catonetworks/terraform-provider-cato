@@ -200,7 +200,19 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 			)
 			return
 		}
-		firstSectionId = sectionCreateApiData.GetPolicy().GetWanFirewall().GetAddSection().GetSection().Section.ID
+		// Safely extract section ID with nil checks
+		if sectionCreateApiData != nil && sectionCreateApiData.GetPolicy() != nil &&
+		   sectionCreateApiData.GetPolicy().GetWanFirewall() != nil &&
+		   sectionCreateApiData.GetPolicy().GetWanFirewall().GetAddSection() != nil &&
+		   sectionCreateApiData.GetPolicy().GetWanFirewall().GetAddSection().GetSection() != nil {
+			firstSectionId = sectionCreateApiData.GetPolicy().GetWanFirewall().GetAddSection().GetSection().Section.ID
+		} else {
+			resp.Diagnostics.AddError(
+				"API Response Error",
+				"Failed to extract section ID from API response - unexpected response structure",
+			)
+			return
+		}
 		useSpecifiedStartAfter = true
 	} else {
 		firstSectionId = sectionIndexApiData.Policy.WanFirewall.Policy.Sections[0].Section.ID
@@ -243,23 +255,16 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	var reversedSectionObjects []attr.Value
 
 	// create the sections from the list provided following the section ID provided in firstSectionId
-	for i, workingSectionName := range reversedSectionListFromPlan {
+	for _, workingSectionName := range reversedSectionListFromPlan {
 		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
 		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
 			ID: sectionIdList[workingSectionName.SectionName],
 		}
 
-		// If this is the first section and no section_to_start_after_id was specified, place it first in policy
-		if i == 0 && !useSpecifiedStartAfter {
-			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Position: "FIRST_IN_POLICY",
-			}
-		} else {
-			// Otherwise, place after the current section
-			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionId,
-				Position: "AFTER_SECTION",
-			}
+		// Always place sections after the current section (similar to IFW logic)
+		policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
+			Ref:      &currentSectionId,
+			Position: "AFTER_SECTION",
 		}
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
 			"moveFrom":                       workingSectionName.SectionName,
@@ -270,7 +275,11 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
 		sectionMoveApiData, err := r.client.catov2.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
-		if len(sectionMoveApiData.GetPolicy().WanFirewall.GetMoveSection().Errors) != 0 {
+		// Check for API errors safely with nil checks
+		if sectionMoveApiData != nil && sectionMoveApiData.GetPolicy() != nil && 
+		   sectionMoveApiData.GetPolicy().WanFirewall != nil && 
+		   sectionMoveApiData.GetPolicy().WanFirewall.GetMoveSection() != nil &&
+		   len(sectionMoveApiData.GetPolicy().WanFirewall.GetMoveSection().Errors) != 0 {
 			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSectionMoveSection.response", map[string]interface{}{
 				"response": utils.InterfaceToJSONString(sectionMoveApiData),
 			})
@@ -460,10 +469,8 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	// Only set SectionToStartAfterId if it was explicitly provided in the configuration
-	if useSpecifiedStartAfter {
-		plan.SectionToStartAfterId = types.StringValue(firstSectionId)
-	}
+	// Always set SectionToStartAfterId in the state (it's a computed field)
+	plan.SectionToStartAfterId = types.StringValue(firstSectionId)
 
 	sectionObjectsList, diags := types.ListValue(
 		types.ObjectType{
