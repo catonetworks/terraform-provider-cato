@@ -17,8 +17,10 @@ type IfwRulesSectionDataIndex struct {
 type IfwRulesRuleDataIndex struct {
 	Id             string
 	IndexInSection int64
-	RuleName       string
 	SectionName    string
+	RuleName       string
+	Description    string
+	Enabled        bool
 }
 
 type IfwRulesSectionItemIndex struct {
@@ -32,6 +34,8 @@ type IfwRulesRuleItemIndex struct {
 	IndexInSection types.Int64  `tfsdk:"index_in_section"`
 	SectionName    types.String `tfsdk:"section_name"`
 	RuleName       types.String `tfsdk:"rule_name"`
+	Description    types.String `tfsdk:"description"`
+	Enabled        types.Bool   `tfsdk:"enabled"`
 }
 
 // type IfwRulesIndexRule struct {

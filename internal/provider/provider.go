@@ -165,6 +165,8 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		SiteLocationDataSource,
 		IfwRulesIndexDataSource,
 		WanRulesIndexDataSource,
+		IfRuleSectionsDataSource,
+		WfRuleSectionsDataSource,
 	}
 }
 
