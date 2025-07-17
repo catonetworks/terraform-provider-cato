@@ -3,6 +3,7 @@ package provider
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
 type WanInterface struct {
+	ID                  types.String `tfsdk:"id"`
 	SiteId              types.String `tfsdk:"site_id"`
 	InterfaceID         types.String `tfsdk:"interface_id"`
 	Name                types.String `tfsdk:"name"`

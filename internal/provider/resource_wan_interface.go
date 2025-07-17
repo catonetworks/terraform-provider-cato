@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -34,8 +36,13 @@ func (r *wanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 	resp.Schema = schema.Schema{
 		Description: "The `cato_wan_interface` resource contains the configuration parameters necessary to add a wan interface to a socket. ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "The WAN interface ID, which is a combination of the site ID and the interface ID (e.g., `site_id:interface_id`, 12345:INT_1). This is used to identify the WAN interface resource.",
+				Required:    false,
+				Computed:    true,
+			},
 			"interface_id": schema.StringAttribute{
-				Description: "SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https://api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)",
+				Description: "The interface ID, which is a unique identifier for the WAN interface (e.g., `INT_1`, `INT_2`, etc.). This is used to identify the specific WAN interface resource.",
 				Required:    true,
 			},
 			"site_id": schema.StringAttribute{
@@ -97,6 +104,11 @@ func (r *wanInterfaceResource) Configure(_ context.Context, req resource.Configu
 	r.client = req.ProviderData.(*catoClientData)
 }
 
+func (r *wanInterfaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
 func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 
 	var plan WanInterface
@@ -135,6 +147,10 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	intId := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID.String())
+	siteId := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
+	plan.ID = types.StringValue(siteId.ValueString() + ":" + intId.ValueString())
+
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -143,6 +159,83 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 }
 
 func (r *wanInterfaceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state WanInterface
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Split the ID to extract site_id and interface_id
+	parts := strings.Split(state.ID.ValueString(), ":")
+	if len(parts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid WAN interface ID format",
+			"Expected format 'site_id:interface_id', got: "+state.ID.ValueString(),
+		)
+		return
+	}
+	siteId := parts[0]
+	interfaceId := parts[1]
+
+	// Get accoutnSnapshot data to check if site exists and has interfaces
+	siteAccountSnapshotData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteId}, nil, &r.client.AccountId)
+	tflog.Warn(ctx, "Read.AccountSnapshot/siteAccountSnapshotData.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteAccountSnapshotData),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API error",
+			err.Error(),
+		)
+		return
+	}
+
+	if len(siteAccountSnapshotData.AccountSnapshot.Sites) == 0 {
+		resp.Diagnostics.AddError(
+			"Site not found",
+			"Site with ID "+siteId+" not found in the account snapshot.",
+		)
+		return
+	}
+
+	site := siteAccountSnapshotData.AccountSnapshot.Sites[0]
+	if len(site.InfoSiteSnapshot.Interfaces) == 0 {
+		resp.Diagnostics.AddError(
+			"No WAN interfaces found",
+			"Site with ID "+siteId+" has no WAN interfaces.",
+		)
+		return
+	}
+
+	// Find the interface with the specified interface ID
+	isPresent := false
+	for _, iface := range site.InfoSiteSnapshot.Interfaces {
+		if "INT_"+iface.ID == interfaceId {
+			isPresent = true
+			state.InterfaceID = types.StringValue("INT_" + iface.ID)
+			state.SiteId = types.StringValue(siteId)
+			state.Name = types.StringValue(*iface.Name)
+			state.UpstreamBandwidth = types.Int64Value(*iface.UpstreamBandwidth)
+			state.DownstreamBandwidth = types.Int64Value(*iface.DownstreamBandwidth)
+			state.Role = types.StringValue(string(*iface.WanRoleInterfaceInfo))
+			// state.Precedence = types.StringValue(string(iface.Precedence))
+			break
+		}
+	}
+	if !isPresent {
+		resp.Diagnostics.AddError(
+			"Interface not found",
+			"Interface with ID "+interfaceId+" not found in site "+siteId+".",
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -182,6 +275,10 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		)
 		return
 	}
+
+	intId := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID.String())
+	siteId := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
+	plan.ID = types.StringValue(siteId.ValueString() + ":" + intId.ValueString())
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)

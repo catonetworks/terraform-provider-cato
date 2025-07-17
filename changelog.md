@@ -58,7 +58,7 @@
 
 - Fixed issues with resource_wan_fw_rules_index to address null pointers
 
-## 0.0.31 (2026-07-16)
+## 0.0.32 (2026-07-16)
 
 ### Features
 
@@ -66,4 +66,5 @@
 - Added data sources for ifRuleSections and wfRuleSections, fixed encoding issues in siteLocation and optimized internet_fw_rules_index and wan_fw_rules_index
 - Fixed logic in move rule index resources to fail of invalid section id specified for section_to_start_after_id
 - Updated socket_site, network_range, and network_interface resources to fix read operations and support import
+- Fixed wan_interface resource to support import and read operation
 
