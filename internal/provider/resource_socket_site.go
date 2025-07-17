@@ -167,7 +167,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	inputUpdateNetworkRange := cato_models.UpdateNetworkRangeInput{}
 
 	// setting input site location
-	if !plan.SiteLocation.IsNull() {
+	if !plan.SiteLocation.IsNull() && !plan.SiteLocation.IsUnknown() {
 		input.SiteLocation = &cato_models.AddSiteLocationInput{}
 		siteLocationInput := SiteLocation{}
 		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
@@ -181,7 +181,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// setting input native range
-	if !plan.NativeRange.IsNull() {
+	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
 		nativeRangeInput := NativeRange{}
 		diags = plan.NativeRange.As(ctx, &nativeRangeInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
@@ -194,7 +194,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 
 		// setting input native range DHCP settings
-		if !nativeRangeInput.DhcpSettings.IsNull() {
+		if !nativeRangeInput.DhcpSettings.IsNull() && !nativeRangeInput.DhcpSettings.IsUnknown() {
 			inputUpdateNetworkRange.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
 			dhcpSettingsInput := DhcpSettings{}
 			diags = nativeRangeInput.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
@@ -393,20 +393,41 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 			state.Description = types.StringValue(v.GetHelperFields()["description"].(string))
 
 			var fromStateNativeRange NativeRange
-			diags = append(diags, state.NativeRange.As(ctx, &fromStateNativeRange, basetypes.ObjectAsOptions{})...)
-			resp.Diagnostics.Append(diags...)
+			if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
+				diags = append(diags, state.NativeRange.As(ctx, &fromStateNativeRange, basetypes.ObjectAsOptions{})...)
+				resp.Diagnostics.Append(diags...)
+			}
 
-			stateNativeRange, diags := types.ObjectValue(
-				SiteNativeRangeResourceAttrTypes,
-				map[string]attr.Value{
-					"native_network_range":    types.StringValue(siteNetRangeApiData["subnet"].(string)),
-					"native_network_range_id": fromStateNativeRange.NativeNetworkRangeId,
-					"local_ip":                fromStateNativeRange.LocalIp,
-					"translated_subnet":       fromStateNativeRange.TranslatedSubnet,
-					"dhcp_settings":           fromStateNativeRange.DhcpSettings,
-				},
-			)
-			resp.Diagnostics.Append(diags...)
+			var stateNativeRange types.Object
+			if len(siteNetRangeApiData) > 0 {
+				subnet := ""
+				if val, ok := siteNetRangeApiData["subnet"].(string); ok {
+					subnet = val
+				}
+
+				// Handle dhcp_settings properly - either use existing or create null
+				var dhcpSettingsValue attr.Value
+				if !fromStateNativeRange.DhcpSettings.IsNull() && !fromStateNativeRange.DhcpSettings.IsUnknown() {
+					dhcpSettingsValue = fromStateNativeRange.DhcpSettings
+				} else {
+					dhcpSettingsValue = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
+				}
+
+				stateNativeRange, diags = types.ObjectValue(
+					SiteNativeRangeResourceAttrTypes,
+					map[string]attr.Value{
+						"native_network_range":    types.StringValue(subnet),
+						"native_network_range_id": fromStateNativeRange.NativeNetworkRangeId,
+						"local_ip":                fromStateNativeRange.LocalIp,
+						"translated_subnet":       fromStateNativeRange.TranslatedSubnet,
+						"dhcp_settings":           dhcpSettingsValue,
+					},
+				)
+				resp.Diagnostics.Append(diags...)
+			} else {
+				// Create a null object if no data is available
+				stateNativeRange = types.ObjectNull(SiteNativeRangeResourceAttrTypes)
+			}
 			state.NativeRange = stateNativeRange
 
 			siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.Id.ValueString()}, nil, &r.client.AccountId)
@@ -422,23 +443,30 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 			}
 
 			var fromStateSiteLocation SiteLocation
-			diags = append(diags, state.SiteLocation.As(ctx, &fromStateSiteLocation, basetypes.ObjectAsOptions{})...)
-			resp.Diagnostics.Append(diags...)
+			if !state.SiteLocation.IsNull() && !state.SiteLocation.IsUnknown() {
+				diags = append(diags, state.SiteLocation.As(ctx, &fromStateSiteLocation, basetypes.ObjectAsOptions{})...)
+				resp.Diagnostics.Append(diags...)
+			}
 
-			thisSiteAccountSnapshot := siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()[0]
-
-			stateSiteLocation, diags := types.ObjectValue(
-				SiteLocationResourceAttrTypes,
-				map[string]attr.Value{
-					"country_code": types.StringValue(*thisSiteAccountSnapshot.GetInfoSiteSnapshot().CountryCode),
-					"state_code":   fromStateSiteLocation.StateCode,
-					"timezone":     fromStateSiteLocation.Timezone,
-					"address":      types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.Address),
-					"city":         types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName),
-				},
-			)
+			var stateSiteLocation types.Object
+			if len(siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()) > 0 {
+				thisSiteAccountSnapshot := siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()[0]
+				stateSiteLocation, diags = types.ObjectValue(
+					SiteLocationResourceAttrTypes,
+					map[string]attr.Value{
+						"country_code": types.StringValue(*thisSiteAccountSnapshot.GetInfoSiteSnapshot().CountryCode),
+						"state_code":   fromStateSiteLocation.StateCode,
+						"timezone":     fromStateSiteLocation.Timezone,
+						"address":      types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.Address),
+						"city":         types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName),
+					},
+				)
+				resp.Diagnostics.Append(diags...)
+			} else {
+				// Create a null object if no data is available
+				stateSiteLocation = types.ObjectNull(SiteLocationResourceAttrTypes)
+			}
 			state.SiteLocation = stateSiteLocation
-			resp.Diagnostics.Append(diags...)
 		}
 	}
 
@@ -470,7 +498,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// setting input site location
-	if !plan.SiteLocation.IsNull() {
+	if !plan.SiteLocation.IsNull() && !plan.SiteLocation.IsUnknown() {
 		inputSiteGeneral.SiteLocation = &cato_models.UpdateSiteLocationInput{}
 		siteLocationInput := SiteLocation{}
 		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
@@ -484,7 +512,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// setting input native range
-	if !plan.NativeRange.IsNull() {
+	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
 		nativeRangeInput := NativeRange{}
 		diags = plan.NativeRange.As(ctx, &nativeRangeInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
@@ -495,7 +523,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 
 		// setting input native range DHCP settings
-		if !nativeRangeInput.DhcpSettings.IsNull() {
+		if !nativeRangeInput.DhcpSettings.IsNull() && !nativeRangeInput.DhcpSettings.IsUnknown() {
 			inputUpdateNetworkRange.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
 			dhcpSettingsInput := DhcpSettings{}
 			diags = nativeRangeInput.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})

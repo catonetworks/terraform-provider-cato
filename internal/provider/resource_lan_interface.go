@@ -8,6 +8,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -106,6 +107,11 @@ func (r *lanInterfaceResource) Configure(_ context.Context, req resource.Configu
 	}
 
 	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *lanInterfaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -210,7 +216,64 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 }
 
 func (r *lanInterfaceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state LanInterface
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
+	// check if interface exists, else remove resource
+	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
+	tflog.Warn(ctx, "Read.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(queryInterfaceResult),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API error",
+			err.Error(),
+		)
+		return
+	}
+
+	isPresent := false
+	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+		// find the socket site entry we need
+		if curIint.Entity.ID == state.ID.ValueString() {
+			isPresent = true
+			state.ID = types.StringValue(curIint.Entity.ID)
+			if siteIdVal, ok := curIint.HelperFields["siteId"]; ok {
+				state.SiteId = types.StringValue(cast.ToString(siteIdVal))
+			}
+			if intIdVal, ok := curIint.HelperFields["interfaceId"]; ok {
+				state.InterfaceID = types.StringValue(cast.ToString(intIdVal))
+			}
+			if nameVal, ok := curIint.HelperFields["interfaceName"]; ok {
+				state.Name = types.StringValue(cast.ToString(nameVal))
+			}
+			if destTypeVal, ok := curIint.HelperFields["destType"]; ok {
+				state.DestType = types.StringValue(cast.ToString(destTypeVal))
+			}
+			if subnetVal, ok := curIint.HelperFields["subnet"]; ok {
+				state.Subnet = types.StringValue(cast.ToString(subnetVal))
+			}
+			// translatedSubnet is missing from API
+			// localIp is missing from API
+			// vrrpType is missing from API
+		}
+	}
+
+	if !isPresent {
+		tflog.Warn(ctx, "networkInterface not found, networkInterface resource removed")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

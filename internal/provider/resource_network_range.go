@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/spf13/cast"
 )
 
 var (
@@ -133,7 +134,7 @@ func (r *networkRangeResource) Configure(_ context.Context, req resource.Configu
 
 func (r *networkRangeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
-	resource.ImportStatePassthroughID(ctx, path.Root("Id"), req, resp)
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -182,15 +183,20 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		}
 	}
 
-	// retrieving native-network range ID to update native range
-	entityParent := cato_models.EntityInput{
-		ID:   plan.SiteId.ValueString(),
-		Type: "site",
-	}
+	// // retrieving native-network range ID to update native range
+	// var entityParent *cato_models.EntityInput
+	// if !plan.SiteId.IsNull() && !plan.SiteId.IsUnknown() && plan.SiteId.ValueString() != "" {
+	// 	entityParent = &cato_models.EntityInput{
+	// 		ID:   plan.SiteId.ValueString(),
+	// 		Type: "site",
+	// 	}
+	// } else {
+	// 	entityParent = nil
+	// }
 
 	lanInterface := cato_go_sdk.EntityLookup_EntityLookup_Items_Entity{}
 	if plan.InterfaceId.IsNull() || plan.InterfaceId.IsUnknown() {
-		networkInterface, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
+		networkInterface, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, nil, nil, nil, nil, nil, nil)
 		tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(networkInterface),
 		})
@@ -250,9 +256,9 @@ func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, nil, nil, nil, nil, nil, nil)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(querySiteResult),
+		"response": utils.InterfaceToJSONString(querySiteRangeResult),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -262,14 +268,42 @@ func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	for _, v := range querySiteResult.EntityLookup.Items {
-		if v.Entity.ID == state.SiteId.ValueString() {
-			resp.State.SetAttribute(
-				ctx,
-				path.Root("section").AtName("id"),
-				v.Entity.ID,
-			)
+	isPresent := false
+	for _, curRange := range querySiteRangeResult.EntityLookup.Items {
+		// find the siteRange entry we need
+		if curRange.Entity.ID == state.Id.ValueString() {
+			isPresent = true
+			state.Id = types.StringValue(curRange.Entity.ID)
+			if curRange.GetEntity() != nil && curRange.GetEntity().Name != nil {
+				nameParts := strings.Split(*curRange.GetEntity().Name, " \\ ")
+				state.Name = types.StringValue(nameParts[len(nameParts)-1])
+			}
+			if siteIdVal, ok := curRange.HelperFields["siteId"]; ok {
+				state.SiteId = types.StringValue(cast.ToString(siteIdVal))
+			}
+			if subnetVal, ok := curRange.HelperFields["subnet"]; ok {
+				state.Subnet = types.StringValue(cast.ToString(subnetVal))
+			}
+			// The following fields are missing
+			// if gatewayVal, ok := curRange.HelperFields["gateway"]; ok {
+			// 	state.Gateway = types.StringValue(cast.ToString(gatewayVal))
+			// }
+			// if rangeTypeVal, ok := curRange.HelperFields["range_type"]; ok {
+			// 	state.RangeType = types.StringValue(cast.ToString(rangeTypeVal))
+			// }
+			// if vlanVal, ok := curRange.HelperFields["vlan"]; ok {
+			// 	state.Vlan = types.Int64Value(cast.ToInt64(vlanVal))
+			// }
+			// if dhcpSettingsVal, ok := curRange.HelperFields["dhcp_settings"]; ok {
+			// 	state.DhcpSettings = types.ObjectValue(cast.ToMap(dhcpSettingsVal))
+			// }
 		}
+	}
+
+	if !isPresent {
+		tflog.Warn(ctx, "siteRange not found, siteRange resource removed")
+		resp.State.RemoveResource(ctx)
+		return
 	}
 
 	diags = resp.State.Set(ctx, &state)

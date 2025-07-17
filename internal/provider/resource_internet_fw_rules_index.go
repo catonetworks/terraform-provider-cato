@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
@@ -12,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/spf13/cast"
 )
 
 var (
@@ -149,7 +151,14 @@ func (r *ifwRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	sectionObjectsList, diags := r.moveIfwRulesAndSections(ctx, plan)
+	sectionObjectsList, diags, err := r.moveIfwRulesAndSections(ctx, plan)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicyInternetFirewallMoveSection error",
+			err.Error(),
+		)
+		return
+	}
 	resp.Diagnostics.Append(diags...)
 	plan.SectionData = sectionObjectsList
 
@@ -260,7 +269,14 @@ func (r *ifwRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	sectionObjectsList, diags := r.moveIfwRulesAndSections(ctx, plan)
+	sectionObjectsList, diags, err := r.moveIfwRulesAndSections(ctx, plan)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicyInternetFirewallMoveSection error",
+			err.Error(),
+		)
+		return
+	}
 	resp.Diagnostics.Append(diags...)
 	plan.SectionData = sectionObjectsList
 
@@ -283,8 +299,34 @@ func (r *ifwRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, plan IfwRulesIndex) (basetypes.ListValue, diag.Diagnostics) {
+func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, plan IfwRulesIndex) (basetypes.ListValue, diag.Diagnostics, error) {
 	diags := []diag.Diagnostic{}
+
+	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
+		result, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+		tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndex.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(result),
+		})
+		if err != nil {
+			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewallSectionsIndex error", err.Error()))
+			return basetypes.ListValue{}, diags, err
+		}
+		isPresent := false
+		for _, item := range result.Policy.InternetFirewall.Policy.Sections {
+			section_id := cast.ToString(item.Section.ID)
+			if section_id == plan.SectionToStartAfterId.ValueString() {
+				isPresent = true
+				break
+			}
+		}
+		if !isPresent {
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"SectionToStartAfterId '"+plan.SectionToStartAfterId.ValueString()+"' not found",
+				"Please check the section ID and try again.",
+			))
+			return basetypes.ListValue{}, diags, errors.New("SectionToStartAfterId not found")
+		}
+	}
 
 	listOfSectionNames := make([]string, 0)
 
@@ -300,7 +342,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 			"Catov2 API EntityLookup error",
 			err.Error(),
 		))
-		return basetypes.ListValue{}, diags
+		return basetypes.ListValue{}, diags, err
 	}
 
 	for _, v := range sectionIndexApiData.Policy.InternetFirewall.Policy.Sections {
@@ -327,7 +369,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 				"Catov2 API EntityLookup error",
 				err.Error(),
 			))
-			return basetypes.ListValue{}, diags
+			return basetypes.ListValue{}, diags, err
 		}
 	}
 
@@ -404,7 +446,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 					"Catov2 API EntityLookup error",
 					err.Error(),
 				))
-				return basetypes.ListValue{}, diags
+				return basetypes.ListValue{}, diags, err
 			}
 		}
 		tflog.Warn(ctx, "Write.PolicyInternetFirewallMoveSection.response", map[string]interface{}{
@@ -415,7 +457,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 				"Catov2 API EntityLookup error",
 				err.Error(),
 			))
-			return basetypes.ListValue{}, diags
+			return basetypes.ListValue{}, diags, err
 		}
 
 		sectionIndexStateData, diagsSection := types.ObjectValue(
@@ -471,7 +513,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 				"Catov2 API PolicyInternetFirewallRulesIndex error",
 				err.Error(),
 			))
-			return basetypes.ListValue{}, diags
+			return basetypes.ListValue{}, diags, err
 		}
 		ruleNameIdMap := make(map[string]string)
 
@@ -557,7 +599,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 						"Catov2 API EntityLookup error",
 						err.Error(),
 					))
-					return basetypes.ListValue{}, diags
+					return basetypes.ListValue{}, diags, err
 				}
 			}
 		}
@@ -569,7 +611,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 			"Catov2 API PolicyInternetFirewallPublishPolicyRevision error",
 			err.Error(),
 		))
-		return basetypes.ListValue{}, diags
+		return basetypes.ListValue{}, diags, err
 	}
 
 	sectionObjectsList, listDiags := types.ListValue(
@@ -580,6 +622,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 	)
 	diags = append(diags, listDiags...)
 
-	return sectionObjectsList, diags
+	return sectionObjectsList, diags, nil
 
 }
