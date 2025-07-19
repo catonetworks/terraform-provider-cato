@@ -68,3 +68,10 @@
 - Updated socket_site, network_range, and network_interface resources to fix read operations and support import
 - Fixed wan_interface resource to support import and read operation
 
+## 0.0.33 (2026-07-18)
+
+### Features
+
+- Fixed issues in wan_interface
+- Fixed issues with socket_site address and city fields with state
+- Added resources for account and admin

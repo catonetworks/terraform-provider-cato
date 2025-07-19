@@ -211,9 +211,13 @@ func (r *wanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 	// Find the interface with the specified interface ID
 	isPresent := false
 	for _, iface := range site.InfoSiteSnapshot.Interfaces {
-		if "INT_"+iface.ID == interfaceId {
+		if "INT_"+iface.ID == interfaceId || iface.ID == interfaceId {
 			isPresent = true
-			state.InterfaceID = types.StringValue("INT_" + iface.ID)
+			if strings.HasPrefix(iface.ID, "WAN") {
+				state.InterfaceID = types.StringValue(iface.ID)
+			} else {
+				state.InterfaceID = types.StringValue("INT_" + iface.ID)
+			}
 			state.SiteId = types.StringValue(siteId)
 			state.Name = types.StringValue(*iface.Name)
 			state.UpstreamBandwidth = types.Int64Value(*iface.UpstreamBandwidth)

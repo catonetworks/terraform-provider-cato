@@ -455,10 +455,25 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 					SiteLocationResourceAttrTypes,
 					map[string]attr.Value{
 						"country_code": types.StringValue(*thisSiteAccountSnapshot.GetInfoSiteSnapshot().CountryCode),
-						"state_code":   fromStateSiteLocation.StateCode,
-						"timezone":     fromStateSiteLocation.Timezone,
-						"address":      types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.Address),
-						"city":         types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName),
+						"state_code": func() attr.Value {
+							val := fromStateSiteLocation.StateCode.ValueString()
+							if val == "" {
+								return types.StringNull()
+							}
+							return types.StringValue(val)
+						}(),
+						"timezone": fromStateSiteLocation.Timezone,
+						"address": func() attr.Value {
+							val := ""
+							if thisSiteAccountSnapshot.InfoSiteSnapshot.Address != nil {
+								val = *thisSiteAccountSnapshot.InfoSiteSnapshot.Address
+							}
+							if val == "" {
+								return types.StringNull()
+							}
+							return types.StringValue(val)
+						}(),
+						"city": types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName),
 					},
 				)
 				resp.Diagnostics.Append(diags...)

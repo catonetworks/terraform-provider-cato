@@ -8,6 +8,8 @@ github.com/bufbuild/protocompile v0.4.0 h1:LbFKd2XowZvQ/kajzguUp2DC9UEIQhIq77fZZ
 github.com/bufbuild/protocompile v0.4.0/go.mod h1:3v93+mbWn/v3xzN+31nwkJfrEpAUwp+BagBSZWx+TP8=
 github.com/catonetworks/cato-go-sdk v0.2.6-0.20250701172042-0716340fec2d h1:0VAVNGw9IaDWoreBICd+VxOaYuMKJ86xnTpiBF1Cc4w=
 github.com/catonetworks/cato-go-sdk v0.2.6-0.20250701172042-0716340fec2d/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
+github.com/catonetworks/cato-go-sdk v0.2.6-0.20250718174328-da3a77482475 h1:A2dCt7a+//jpfe9Ag1VNAjHNXdy/9JULiCQHrD9RRgI=
+github.com/catonetworks/cato-go-sdk v0.2.6-0.20250718174328-da3a77482475/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
