@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -54,6 +56,7 @@ func (r *wanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Description: "IFW rule id",
 							Required:    false,
 							Optional:    true,
+							Computed:    true,
 						},
 						"index_in_section": schema.Int64Attribute{
 							Description: "Index value remapped per section",
@@ -75,11 +78,16 @@ func (r *wanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Description: "WAN rule description",
 							Required:    false,
 							Optional:    true,
+							Computed:    true,
 						},
 						"enabled": schema.BoolAttribute{
 							Description: "WAN rule enabled",
 							Required:    false,
 							Optional:    true,
+							Computed:    true,
+							PlanModifiers: []planmodifier.Bool{
+								boolplanmodifier.RequiresReplace(),
+							},
 						},
 					},
 				},
@@ -152,7 +160,7 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	sectionObjectsList, diags, err := r.moveWanRulesAndSections(ctx, plan)
+	sectionObjectsList, rulesObjectsList, diags, err := r.moveWanRulesAndSections(ctx, plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallMoveSection error",
@@ -163,6 +171,7 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 
 	resp.Diagnostics.Append(diags...)
 	plan.SectionData = sectionObjectsList
+	plan.RuleData = rulesObjectsList
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -276,7 +285,7 @@ func (r *wanRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	sectionObjectsList, diags, err := r.moveWanRulesAndSections(ctx, plan)
+	sectionObjectsList, rulesObjectsList, diags, err := r.moveWanRulesAndSections(ctx, plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallMoveSection error",
@@ -286,6 +295,7 @@ func (r *wanRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 	}
 	resp.Diagnostics.Append(diags...)
 	plan.SectionData = sectionObjectsList
+	plan.RuleData = rulesObjectsList
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -307,7 +317,7 @@ func (r *wanRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, plan WanRulesIndex) (basetypes.ListValue, diag.Diagnostics, error) {
+func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, plan WanRulesIndex) (basetypes.ListValue, basetypes.ListValue, diag.Diagnostics, error) {
 	diags := []diag.Diagnostic{}
 
 	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
@@ -317,7 +327,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		})
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallSectionsIndex error", err.Error()))
-			return basetypes.ListValue{}, diags, err
+			return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
 		}
 		isPresent := false
 		for _, item := range result.Policy.WanFirewall.Policy.Sections {
@@ -332,7 +342,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 				"SectionToStartAfterId '"+plan.SectionToStartAfterId.ValueString()+"' not found",
 				"Please check the section ID and try again.",
 			))
-			return basetypes.ListValue{}, diags, errors.New("sectionToStartAfterId not found")
+			return basetypes.ListValue{}, basetypes.ListValue{}, diags, errors.New("sectionToStartAfterId not found")
 		}
 	}
 
@@ -351,7 +361,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			"Catov2 API EntityLookup error",
 			err.Error(),
 		))
-		return basetypes.ListValue{}, diags, err
+		return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
 	}
 
 	// for easier processing, a map of section name to ID is created
@@ -433,7 +443,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 					"Catov2 API EntityLookup error",
 					err.Error(),
 				))
-				return basetypes.ListValue{}, diags, err
+				return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
 			}
 		}
 		tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.response", map[string]interface{}{
@@ -444,7 +454,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 				"Catov2 API EntityLookup error",
 				err.Error(),
 			))
-			return basetypes.ListValue{}, diags, err
+			return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
 		}
 
 		sectionIndexStateData, diagsSection := types.ObjectValue(
@@ -500,7 +510,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 				"Catov2 API EntityLookup error",
 				err.Error(),
 			))
-			return basetypes.ListValue{}, diags, err
+			return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
 		}
 		ruleNameIdMap := make(map[string]string)
 
@@ -586,7 +596,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 						"Catov2 API EntityLookup error",
 						err.Error(),
 					))
-					return basetypes.ListValue{}, diags, err
+					return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
 				}
 			}
 		}
@@ -599,7 +609,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
 			err.Error(),
 		))
-		return basetypes.ListValue{}, diags, err
+		return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
 	}
 
 	// Always set SectionToStartAfterId in the state (it's a computed field)
@@ -613,5 +623,48 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 	)
 	diags = append(diags, diagsList...)
 
-	return sectionObjectsList, diags, nil
+	// After moving sections and rules, get the current state from API to build rule objects
+	var ruleObjects []attr.Value
+	currentRuleIndexApiData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
+	if err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic(
+			"Catov2 API PolicyWanFirewallRulesIndex error",
+			err.Error(),
+		))
+		return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+	}
+
+	// Create index count per section
+	sectionIndexListCount := make(map[string]int64)
+	for _, v := range currentRuleIndexApiData.Policy.WanFirewall.Policy.Rules {
+		sectionIndexListCount[v.Rule.Section.Name] = 0
+	}
+
+	// Build rule objects with current data from API
+	for _, v := range currentRuleIndexApiData.Policy.WanFirewall.Policy.Rules {
+		sectionIndexListCount[v.Rule.Section.Name]++
+		ruleIndexStateData, ruleObjDiags := types.ObjectValue(
+			WanRuleIndexResourceAttrTypes,
+			map[string]attr.Value{
+				"id":               types.StringValue(v.Rule.ID),
+				"index_in_section": types.Int64Value(sectionIndexListCount[v.Rule.Section.Name]),
+				"section_name":     types.StringValue(v.Rule.Section.Name),
+				"rule_name":        types.StringValue(v.Rule.Name),
+				"description":      types.StringValue(v.Rule.Description),
+				"enabled":          types.BoolValue(v.Rule.Enabled),
+			},
+		)
+		diags = append(diags, ruleObjDiags...)
+		ruleObjects = append(ruleObjects, ruleIndexStateData)
+	}
+
+	ruleObjectsList, ruleListDiags := types.ListValue(
+		types.ObjectType{
+			AttrTypes: WanRuleIndexResourceAttrTypes,
+		},
+		ruleObjects,
+	)
+	diags = append(diags, ruleListDiags...)
+
+	return sectionObjectsList, ruleObjectsList, diags, nil
 }

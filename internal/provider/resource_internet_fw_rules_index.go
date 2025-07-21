@@ -82,6 +82,7 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 						"enabled": schema.BoolAttribute{
 							Description: "IFW rule enabled",
 							Required:    false,
+							Optional:    true,
 							Computed:    true,
 							PlanModifiers: []planmodifier.Bool{
 								boolplanmodifier.RequiresReplace(),
@@ -622,7 +623,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 				}
 			}
 		}
-		
+
 		// Now create the rule objects with proper IDs from the API
 		for _, ruleFromPlan := range ruleListFromPlan {
 			ruleId := ruleNameIdMap[ruleFromPlan.RuleName]
