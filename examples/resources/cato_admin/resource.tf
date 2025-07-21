@@ -1,3 +1,4 @@
+
 # Example: Basic admin user creation
 resource "cato_admin" "basic_admin" {
   email                  = "admin@email.com"

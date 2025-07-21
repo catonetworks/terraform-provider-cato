@@ -89,6 +89,9 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"translated_subnet": schema.StringAttribute{
 						Description: "Site translated native IP range (CIDR)",
 						Optional:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.RequiresReplace(),
+						},
 					},
 					"dhcp_settings": schema.SingleNestedAttribute{
 						Description: "Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type)",

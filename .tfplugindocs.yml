@@ -1,0 +1,4 @@
+rendered-provider-name: terraform-provider-cato
+rendered-website-dir: docs
+examples-dir: examples
+template-dir: templates

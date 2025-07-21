@@ -1,0 +1,39 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Default Roles Reference
+
+### Default roles for Regular account
+
+| ID | Name | Description | Is Predefined |
+|---|---|---|---|
+| 1 | Editor | Edit permission for all CMA sections | true |
+| 2 | Viewer | Read-Only permission for all CMA sections | true |
+| 3 | Network admin | Edit permission for all Network sections | true |
+| 6 | Security Admin | Edit permission for all Security sections | true |
+| 7 | Access Admin | Edit permission for all Access sections | true |
+| 306 | Regional Viewer | Access to sites and users, including application analytics and events | true |
+| 307 | Restricted Regional Viewer | Access to sites and users | true |
+| 1802 | Logistics Admin | Logistics Admin | true |
+
+### Default roles for Reseller account
+ 
+| ID | Name | Description | Is Predefined |
+|---|---|---|---|
+| 4 | Reseller Editor |  | true |
+| 5 | Reseller Viewer |  | true |
+| 1801 | Logistics Admin | Logistics Admin | true |
+
+## Example Usage
+
+{{ tffile "examples/resources/cato_admin/resource.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
