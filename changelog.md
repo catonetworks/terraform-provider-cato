@@ -75,3 +75,9 @@
 - Fixed issues in wan_interface
 - Fixed issues with socket_site address and city fields with state
 - Added resources for account and admin
+
+## 0.0.35 (2026-07-23)
+
+### Features
+
+- Updated bulk rule index resources for if_rule and wf_rule to map sections and rules by name in state, for deployment when source rules are purged for back/restore function
