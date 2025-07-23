@@ -4,8 +4,8 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 
 type WanRulesIndex struct {
 	SectionToStartAfterId types.String `tfsdk:"section_to_start_after_id"`
-	RuleData              types.List   `tfsdk:"rule_data"`
-	SectionData           types.List   `tfsdk:"section_data"`
+	RuleData              types.Map    `tfsdk:"rule_data"`
+	SectionData           types.Map    `tfsdk:"section_data"`
 }
 
 type WanRulesSectionDataIndex struct {

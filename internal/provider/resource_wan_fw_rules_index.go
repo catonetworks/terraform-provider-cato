@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"sort"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
@@ -17,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 )
-
 var (
 	_ resource.Resource              = &wanRulesIndexResource{}
 	_ resource.ResourceWithConfigure = &wanRulesIndexResource{}
@@ -46,8 +46,8 @@ func (r *wanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 				Optional:    true,
 				// Computed:    true,
 			},
-			"rule_data": schema.ListNestedAttribute{
-				Description: "List of WAN Rule Policy Indexes",
+			"rule_data": schema.MapNestedAttribute{
+				Description: "Map of WAN Rule Policy Indexes keyed by rule_name",
 				Required:    false,
 				Optional:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -81,19 +81,19 @@ func (r *wanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Computed:    true,
 						},
 						"enabled": schema.BoolAttribute{
-							Description: "WAN rule enabled",
+							Description: "IFW rule enabled",
 							Required:    false,
 							Optional:    true,
 							Computed:    true,
 							PlanModifiers: []planmodifier.Bool{
-								boolplanmodifier.RequiresReplace(),
+								boolplanmodifier.UseStateForUnknown(), // Avoid drift
 							},
 						},
 					},
 				},
 			},
-			"section_data": schema.ListNestedAttribute{
-				Description: "List of IFW section Indexes",
+			"section_data": schema.MapNestedAttribute{
+				Description: "Map of IFW section Indexes keyed by section_name",
 				Required:    false,
 				Optional:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -188,92 +188,15 @@ func (r *wanRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-	var sectionObjects []attr.Value
-	var ruleObjects []attr.Value
+	// For this resource, we should preserve the state as-is since it represents
+	// the intended configuration/ordering rather than reading all data from API.
+	// The state is already properly set during Create/Update operations.
+	// Only refresh IDs if needed, but preserve planned values.
 
-	sectionIndexApiData, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
-	tflog.Warn(ctx, "Read.PolicyWanFirewallSectionsIndexInRead.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(sectionIndexApiData),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
-		return
-	}
-
-	sectionCount := int64(1)
-
-	sectionIndexListCount := make(map[string]int64)
-
-	// pass in the api sections list during read to the state
-	for _, v := range sectionIndexApiData.Policy.WanFirewall.Policy.Sections {
-		sectionIndexListCount[v.Section.Name] = 0
-		sectionIndexStateData, diags := types.ObjectValue(
-			WanSectionIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":            types.StringValue(v.Section.ID),
-				"section_name":  types.StringValue(v.Section.Name),
-				"section_index": types.Int64Value(sectionCount),
-			},
-		)
-		resp.Diagnostics.Append(diags...)
-		sectionObjects = append(sectionObjects, sectionIndexStateData)
-		sectionCount++
-	}
-
-	sectionObjectsList, diags := types.ListValue(
-		types.ObjectType{
-			AttrTypes: WanSectionIndexResourceAttrTypes,
-		},
-		sectionObjects,
-	)
-	resp.Diagnostics.Append(diags...)
-	state.SectionData = sectionObjectsList
-
-	ruleIndexApiData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
-	tflog.Warn(ctx, "Read.PolicyWanFirewallRulesIndex.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(ruleIndexApiData),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
-		return
-	}
-
-	for _, v := range ruleIndexApiData.Policy.WanFirewall.Policy.Rules {
-		sectionIndexListCount[v.Rule.Section.Name]++
-		ruleIndexStateData, diags := types.ObjectValue(
-			WanRuleIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":               types.StringValue(v.Rule.ID),
-				"index_in_section": types.Int64Value(sectionIndexListCount[v.Rule.Section.Name]),
-				"section_name":     types.StringValue(v.Rule.Section.Name),
-				"rule_name":        types.StringValue(v.Rule.Name),
-				"description":      types.StringValue(v.Rule.Description),
-				"enabled":          types.BoolValue(v.Rule.Enabled),
-			},
-		)
-		resp.Diagnostics.Append(diags...)
-		ruleObjects = append(ruleObjects, ruleIndexStateData)
-	}
-
-	ruleObjectsList, diags := types.ListValue(
-		types.ObjectType{
-			AttrTypes: WanRuleIndexResourceAttrTypes,
-		},
-		ruleObjects,
-	)
-	resp.Diagnostics.Append(diags...)
-	state.RuleData = ruleObjectsList
-
+	// No changes needed - preserve existing state
 	if diags := resp.State.Set(ctx, &state); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
-
 }
 
 func (r *wanRulesIndexResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -317,8 +240,9 @@ func (r *wanRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, plan WanRulesIndex) (basetypes.ListValue, basetypes.ListValue, diag.Diagnostics, error) {
+func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, plan WanRulesIndex) (basetypes.MapValue, basetypes.MapValue, diag.Diagnostics, error) {
 	diags := []diag.Diagnostic{}
+	ruleObjectMap := make(map[string]attr.Value)
 
 	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
 		result, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
@@ -327,7 +251,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		})
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallSectionsIndex error", err.Error()))
-			return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 		isPresent := false
 		for _, item := range result.Policy.WanFirewall.Policy.Sections {
@@ -342,7 +266,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 				"SectionToStartAfterId '"+plan.SectionToStartAfterId.ValueString()+"' not found",
 				"Please check the section ID and try again.",
 			))
-			return basetypes.ListValue{}, basetypes.ListValue{}, diags, errors.New("sectionToStartAfterId not found")
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, errors.New("sectionToStartAfterId not found")
 		}
 	}
 
@@ -350,7 +274,6 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 	listOfSectionNames := make([]string, 0)
 
 	// maps section_name -> section_id
-	// initially used to find ID of Default section
 	sectionIdList := make(map[string]string)
 	sectionIndexApiData, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
@@ -361,7 +284,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			"Catov2 API EntityLookup error",
 			err.Error(),
 		))
-		return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
 	// for easier processing, a map of section name to ID is created
@@ -371,27 +294,32 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 
 	sectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
 
-	sectionDataFromPlanList := make([]types.Object, 0, len(plan.SectionData.Elements()))
-	diags = append(diags, plan.SectionData.ElementsAs(ctx, &sectionDataFromPlanList, false)...)
-	var sectionSourceRuleIndex WanRulesSectionItemIndex
-	for _, item := range sectionDataFromPlanList {
-		diags = append(diags, item.As(ctx, &sectionSourceRuleIndex, basetypes.ObjectAsOptions{})...)
+	// Convert map to slice for processing
+	sectionDataMapElements := plan.SectionData.Elements()
+	for _, sectionValue := range sectionDataMapElements {
+		sectionObject := sectionValue.(types.Object)
+		var sectionSourceRuleIndex WanRulesSectionItemIndex
+		diags = append(diags, sectionObject.As(ctx, &sectionSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
 		sectionDataTmp := WanRulesSectionDataIndex{
 			SectionIndex: sectionSourceRuleIndex.SectionIndex.ValueInt64(),
 			SectionName:  sectionSourceRuleIndex.SectionName.ValueString(),
 		}
 		sectionListFromPlan = append(sectionListFromPlan, sectionDataTmp)
-
 	}
 
-	tflog.Debug(ctx, "Processing sections in plan order (already sorted by module)", map[string]interface{}{
+	// Sort sections by SectionIndex to ensure proper ordering
+	sort.Slice(sectionListFromPlan, func(i, j int) bool {
+		return sectionListFromPlan[i].SectionIndex < sectionListFromPlan[j].SectionIndex
+	})
+
+	tflog.Debug(ctx, "Processing sections sorted by section_index", map[string]interface{}{
 		"sections": utils.InterfaceToJSONString(sectionListFromPlan),
 	})
 
 	currentSectionId := ""
 
-	var sectionObjects []attr.Value
+	sectionObjectMap := make(map[string]attr.Value)
 
 	// create the sections from the list provided following the section ID provided in firstSectionId
 	for _, workingSectionName := range sectionListFromPlan {
@@ -443,7 +371,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 					"Catov2 API EntityLookup error",
 					err.Error(),
 				))
-				return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 			}
 		}
 		tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.response", map[string]interface{}{
@@ -454,7 +382,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 				"Catov2 API EntityLookup error",
 				err.Error(),
 			))
-			return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 
 		sectionIndexStateData, diagsSection := types.ObjectValue(
@@ -467,7 +395,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		)
 		diags = append(diags, diagsSection...)
 
-		sectionObjects = append(sectionObjects, sectionIndexStateData)
+		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
 
 		currentSectionId = sectionIdList[workingSectionName.SectionName]
 	}
@@ -477,12 +405,12 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		// get all of the list elements from the plan
 		ruleListFromPlan := make([]WanRulesRuleDataIndex, 0)
 
-		ruleDataFromPlanList := make([]types.Object, 0, len(plan.SectionData.Elements()))
-		diags = append(diags, plan.RuleData.ElementsAs(ctx, &ruleDataFromPlanList, false)...)
-
-		var planSourceRuleIndex WanRulesRuleItemIndex
-		for _, item := range ruleDataFromPlanList {
-			diags = append(diags, item.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
+		// Convert map to slice for processing
+		ruleDataMapElements := plan.RuleData.Elements()
+		for _, ruleValue := range ruleDataMapElements {
+			ruleObject := ruleValue.(types.Object)
+			var planSourceRuleIndex WanRulesRuleItemIndex
+			diags = append(diags, ruleObject.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
 			rulenDataTmp := WanRulesRuleDataIndex{
 				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
@@ -497,7 +425,16 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			})
 		}
 
-		tflog.Warn(ctx, "Read.ruleListFromPlan.response", map[string]interface{}{
+		// Sort rules by IndexInSection to ensure proper ordering within sections
+		sort.Slice(ruleListFromPlan, func(i, j int) bool {
+			// First sort by section name, then by index within section
+			if ruleListFromPlan[i].SectionName != ruleListFromPlan[j].SectionName {
+				return ruleListFromPlan[i].SectionName < ruleListFromPlan[j].SectionName
+			}
+			return ruleListFromPlan[i].IndexInSection < ruleListFromPlan[j].IndexInSection
+		})
+
+		tflog.Warn(ctx, "Read.ruleListFromPlan.response (sorted by section_name and index_in_section)", map[string]interface{}{
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
@@ -510,7 +447,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 				"Catov2 API EntityLookup error",
 				err.Error(),
 			))
-			return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 		ruleNameIdMap := make(map[string]string)
 
@@ -596,11 +533,28 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 						"Catov2 API EntityLookup error",
 						err.Error(),
 					))
-					return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 				}
 			}
 		}
 
+		// Now create the rule objects map with proper IDs from the API
+		for _, ruleFromPlan := range ruleListFromPlan {
+			ruleId := ruleNameIdMap[ruleFromPlan.RuleName]
+			ruleIndexStateData, diagsSection := types.ObjectValue(
+				WanRuleIndexResourceAttrTypes,
+				map[string]attr.Value{
+					"id":               types.StringValue(ruleId),
+					"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
+					"section_name":     types.StringValue(ruleFromPlan.SectionName),
+					"rule_name":        types.StringValue(ruleFromPlan.RuleName),
+					"description":      types.StringValue(ruleFromPlan.Description),
+					"enabled":          types.BoolValue(ruleFromPlan.Enabled),
+				},
+			)
+			diags = append(diags, diagsSection...)
+			ruleObjectMap[ruleFromPlan.RuleName] = ruleIndexStateData
+		}
 	}
 
 	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
@@ -609,62 +563,20 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
 			err.Error(),
 		))
-		return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	// Always set SectionToStartAfterId in the state (it's a computed field)
-	// plan.SectionToStartAfterId = types.StringValue(firstSectionId)
-
-	sectionObjectsList, diagsList := types.ListValue(
-		types.ObjectType{
-			AttrTypes: WanSectionIndexResourceAttrTypes,
-		},
-		sectionObjects,
+	sectionObjectsMap, sectionMapDiags := types.MapValue(
+		WanSectionIndexResourceObjectTypes,
+		sectionObjectMap,
 	)
-	diags = append(diags, diagsList...)
+	diags = append(diags, sectionMapDiags...)
 
-	// After moving sections and rules, get the current state from API to build rule objects
-	var ruleObjects []attr.Value
-	currentRuleIndexApiData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
-	if err != nil {
-		diags = append(diags, diag.NewErrorDiagnostic(
-			"Catov2 API PolicyWanFirewallRulesIndex error",
-			err.Error(),
-		))
-		return basetypes.ListValue{}, basetypes.ListValue{}, diags, err
-	}
-
-	// Create index count per section
-	sectionIndexListCount := make(map[string]int64)
-	for _, v := range currentRuleIndexApiData.Policy.WanFirewall.Policy.Rules {
-		sectionIndexListCount[v.Rule.Section.Name] = 0
-	}
-
-	// Build rule objects with current data from API
-	for _, v := range currentRuleIndexApiData.Policy.WanFirewall.Policy.Rules {
-		sectionIndexListCount[v.Rule.Section.Name]++
-		ruleIndexStateData, ruleObjDiags := types.ObjectValue(
-			WanRuleIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":               types.StringValue(v.Rule.ID),
-				"index_in_section": types.Int64Value(sectionIndexListCount[v.Rule.Section.Name]),
-				"section_name":     types.StringValue(v.Rule.Section.Name),
-				"rule_name":        types.StringValue(v.Rule.Name),
-				"description":      types.StringValue(v.Rule.Description),
-				"enabled":          types.BoolValue(v.Rule.Enabled),
-			},
-		)
-		diags = append(diags, ruleObjDiags...)
-		ruleObjects = append(ruleObjects, ruleIndexStateData)
-	}
-
-	ruleObjectsList, ruleListDiags := types.ListValue(
-		types.ObjectType{
-			AttrTypes: WanRuleIndexResourceAttrTypes,
-		},
-		ruleObjects,
+	ruleObjectsMap, ruleMapDiags := types.MapValue(
+		WanRuleIndexResourceObjectTypes,
+		ruleObjectMap,
 	)
-	diags = append(diags, ruleListDiags...)
+	diags = append(diags, ruleMapDiags...)
 
-	return sectionObjectsList, ruleObjectsList, diags, nil
+	return sectionObjectsMap, ruleObjectsMap, diags, nil
 }

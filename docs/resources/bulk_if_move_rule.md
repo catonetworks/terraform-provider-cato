@@ -97,8 +97,8 @@ output "rule_data" {
 
 ### Optional
 
-- `rule_data` (Attributes List) List of IF Rule Policy Indexes (see [below for nested schema](#nestedatt--rule_data))
-- `section_data` (Attributes List) List of IFW section Indexes (see [below for nested schema](#nestedatt--section_data))
+- `rule_data` (Attributes Map) Map of IF Rule Policy Indexes keyed by rule_name (see [below for nested schema](#nestedatt--rule_data))
+- `section_data` (Attributes Map) Map of IFW section Indexes keyed by section_name (see [below for nested schema](#nestedatt--section_data))
 - `section_to_start_after_id` (String) IFW rule id
 
 <a id="nestedatt--rule_data"></a>

@@ -213,7 +213,7 @@ func (r *wanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 	for _, iface := range site.InfoSiteSnapshot.Interfaces {
 		if "INT_"+iface.ID == interfaceId || iface.ID == interfaceId {
 			isPresent = true
-			if strings.HasPrefix(iface.ID, "WAN") {
+			if strings.HasPrefix(iface.ID, "WAN") || strings.HasPrefix(iface.ID, "LTE") || strings.HasPrefix(iface.ID, "USB") {
 				state.InterfaceID = types.StringValue(iface.ID)
 			} else {
 				state.InterfaceID = types.StringValue("INT_" + iface.ID)

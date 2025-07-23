@@ -93,8 +93,8 @@ output "rule_data" {
 
 ### Optional
 
-- `rule_data` (Attributes List) List of WAN Rule Policy Indexes (see [below for nested schema](#nestedatt--rule_data))
-- `section_data` (Attributes List) List of IFW section Indexes (see [below for nested schema](#nestedatt--section_data))
+- `rule_data` (Attributes Map) Map of WAN Rule Policy Indexes keyed by rule_name (see [below for nested schema](#nestedatt--rule_data))
+- `section_data` (Attributes Map) Map of IFW section Indexes keyed by section_name (see [below for nested schema](#nestedatt--section_data))
 - `section_to_start_after_id` (String) WAN rule id
 
 <a id="nestedatt--rule_data"></a>
@@ -103,7 +103,7 @@ output "rule_data" {
 Optional:
 
 - `description` (String) WAN rule description
-- `enabled` (Boolean) WAN rule enabled
+- `enabled` (Boolean) IFW rule enabled
 - `id` (String) IFW rule id
 - `index_in_section` (Number) Index value remapped per section
 - `rule_name` (String) WAN rule name housing rule
