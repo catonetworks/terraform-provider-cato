@@ -21,6 +21,8 @@ type NativeRange struct {
 	LocalIp              types.String `tfsdk:"local_ip"`
 	TranslatedSubnet     types.String `tfsdk:"translated_subnet"`
 	DhcpSettings         types.Object `tfsdk:"dhcp_settings"`
+	Vlan                 types.Int64  `tfsdk:"vlan"`
+	MdnsReflector        types.Bool   `tfsdk:"mdns_reflector"`
 }
 
 type SiteLocation struct {
@@ -36,13 +38,16 @@ var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
 	"native_network_range_id": types.StringType,
 	"local_ip":                types.StringType,
 	"translated_subnet":       types.StringType,
+	"vlan":                    types.Int64Type,
+	"mdns_reflector":          types.BoolType,
 	"dhcp_settings":           types.ObjectType{AttrTypes: SiteNativeRangeDhcpResourceAttrTypes},
 }
 
 var SiteNativeRangeDhcpResourceAttrTypes = map[string]attr.Type{
-	"dhcp_type":      types.StringType,
-	"ip_range":       types.StringType,
-	"relay_group_id": types.StringType,
+	"dhcp_type":              types.StringType,
+	"ip_range":               types.StringType,
+	"relay_group_id":         types.StringType,
+	"dhcp_microsegmentation": types.BoolType,
 }
 
 var SiteLocationResourceAttrTypes = map[string]attr.Type{

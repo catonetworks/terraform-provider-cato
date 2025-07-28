@@ -18,7 +18,8 @@ type NetworkRange struct {
 }
 
 type DhcpSettings struct {
-	DhcpType     types.String `tfsdk:"dhcp_type"`
-	IpRange      types.String `tfsdk:"ip_range"`
-	RelayGroupId types.String `tfsdk:"relay_group_id"`
+	DhcpType              types.String `tfsdk:"dhcp_type"`
+	IpRange               types.String `tfsdk:"ip_range"`
+	RelayGroupId          types.String `tfsdk:"relay_group_id"`
+	DhcpMicrosegmentation types.Bool   `tfsdk:"dhcp_microsegmentation"`
 }
