@@ -89,3 +89,10 @@
 - Updated network_range and socket_site resources to properly implement read operation to support import and write all available attributes from read back to state
 - Updated all data sources using entityLookup to add 0 and limit to support large numbers of records in return
 - Added network_range data source
+
+## 0.0.37 (2026-07-31)
+
+### Features
+
+- Updated network_range to mark interface_id as required
+- Updated ifw rule resource to set activeon to default values initially

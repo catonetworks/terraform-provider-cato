@@ -78,6 +78,7 @@ resource "cato_network_range" "vlan201_relay" {
 
 ### Required
 
+- `interface_id` (String) Network Interface ID
 - `name` (String) Network range name
 - `range_type` (String) Network range type (https://api.catonetworks.com/documentation/#definition-SubnetType)
 - `site_id` (String) Site ID
@@ -87,7 +88,6 @@ resource "cato_network_range" "vlan201_relay" {
 
 - `dhcp_settings` (Attributes) Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type) (see [below for nested schema](#nestedatt--dhcp_settings))
 - `gateway` (String) Network range gateway (Only releveant for Routed range_type)
-- `interface_id` (String) Network Interface ID
 - `internet_only` (Boolean) Internet only network range (Only releveant for Routed range_type)
 - `local_ip` (String) Network range local ip
 - `mdns_reflector` (Boolean) Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.

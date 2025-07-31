@@ -1590,6 +1590,12 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			}
 		}
 
+		// setting activePeriod with default values for create operation
+		rootAddRule.ActivePeriod = &cato_models.PolicyRuleActivePeriodInput{
+			UseEffectiveFrom: false,
+			UseExpiresAt:     false,
+		}
+
 		// settings other rule attributes
 		rootAddRule.Name = ruleInput.Name.ValueString()
 		rootUpdateRule.Name = ruleInput.Name.ValueStringPointer()
