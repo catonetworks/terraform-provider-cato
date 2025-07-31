@@ -87,7 +87,8 @@ func (d *dhcpRelayGroupDataSource) Read(ctx context.Context, req datasource.Read
 		return
 	}
 
-	result, err := d.client.catov2.EntityLookupMinimal(ctx, d.client.AccountId, cato_models.EntityTypeDhcpRelayGroup, nil, nil, nil, nil, nil)
+	zeroInt64 := int64(0)
+	result, err := d.client.catov2.EntityLookupMinimal(ctx, d.client.AccountId, cato_models.EntityTypeDhcpRelayGroup, &zeroInt64, nil, nil, nil, nil)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})

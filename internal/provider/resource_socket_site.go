@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -103,10 +105,20 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Description: "VLAN ID for the site native range (optional)",
 						Optional:    true,
 					},
+					"internet_only": schema.BoolAttribute{
+						Description: "Internet only network range (Only releveant for Routed range_type)",
+						Computed:    true,
+						Optional:    true,
+						Default:     booldefault.StaticBool(false),
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
 					"mdns_reflector": schema.BoolAttribute{
 						Description: "Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.",
 						Optional:    true,
 						Computed:    true,
+						Default:     booldefault.StaticBool(false),
 						PlanModifiers: []planmodifier.Bool{
 							boolplanmodifier.UseStateForUnknown(),
 						},
@@ -138,10 +150,15 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 								Description: "Network range dhcp relay group id",
 								Optional:    true,
 							},
+							"relay_group_name": schema.StringAttribute{
+								Description: "Network range dhcp relay group name",
+								Optional:    true,
+							},
 							"dhcp_microsegmentation": schema.BoolAttribute{
-								Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation.",
+								Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
 								Optional:    true,
 								Computed:    true,
+								Default:     booldefault.StaticBool(false),
 								PlanModifiers: []planmodifier.Bool{
 									boolplanmodifier.UseStateForUnknown(),
 								},
@@ -226,6 +243,16 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		diags = plan.NativeRange.As(ctx, &nativeRangeInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
+		// Validate that InternetOnly and MdnsReflector cannot be set simultaneously
+		if !nativeRangeInput.InternetOnly.IsNull() && !nativeRangeInput.MdnsReflector.IsNull() &&
+			nativeRangeInput.InternetOnly.ValueBool() == true && nativeRangeInput.MdnsReflector.ValueBool() == true {
+			resp.Diagnostics.AddError(
+				"Invalid Configuration",
+				"mDNS and Internet Only cannot be set simultaneously",
+			)
+			return
+		}
+
 		input.NativeNetworkRange = nativeRangeInput.NativeNetworkRange.ValueString()
 		input.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
 
@@ -233,6 +260,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		inputUpdateNetworkRange.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
+		inputUpdateNetworkRange.InternetOnly = nativeRangeInput.InternetOnly.ValueBoolPointer()
 		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
 
 		// setting input native range DHCP settings
@@ -245,7 +273,55 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 			inputUpdateNetworkRange.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
 			inputUpdateNetworkRange.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
 			inputUpdateNetworkRange.DhcpSettings.RelayGroupID = dhcpSettingsInput.RelayGroupId.ValueStringPointer()
-			inputUpdateNetworkRange.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
+			// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE
+			if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
+				// set to false if dhcp_microsegmentation is not set for DHCP_RANGE use case
+				fmt.Println("dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() " + fmt.Sprintf("%v", dhcpSettingsInput.DhcpMicrosegmentation.ValueBool()))
+				if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpSettingsInput.DhcpType.ValueString() != "DHCP_RANGE" {
+					resp.Diagnostics.AddError(
+						"Invalid DHCP Microsegmentation Configuration",
+						"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE",
+					)
+					return
+				}
+			}
+
+			// Only set dhcpMicrosegmentation for DHCP_RANGE type
+			if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RANGE" {
+				inputUpdateNetworkRange.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
+			}
+
+			// Validate DHCP relay group configuration when dhcp_type is DHCP_RELAY
+			if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RELAY" {
+				relayGroupName := ""
+				relayGroupId := ""
+
+				if !dhcpSettingsInput.RelayGroupName.IsNull() && !dhcpSettingsInput.RelayGroupName.IsUnknown() {
+					relayGroupName = dhcpSettingsInput.RelayGroupName.ValueString()
+				}
+				if !dhcpSettingsInput.RelayGroupId.IsNull() && !dhcpSettingsInput.RelayGroupId.IsUnknown() {
+					relayGroupId = dhcpSettingsInput.RelayGroupId.ValueString()
+				}
+
+				resolvedRelayGroupId, success, err := checkForDhcpRelayGroup(ctx, r.client, relayGroupName, relayGroupId)
+				if err != nil {
+					resp.Diagnostics.AddError(
+						"DHCP Relay Configuration Error",
+						err.Error(),
+					)
+					return
+				}
+				if !success {
+					resp.Diagnostics.AddError(
+						"DHCP Relay Group Validation Failed",
+						"Failed to validate DHCP relay group configuration.",
+					)
+					return
+				}
+
+				// Set the resolved relay group ID
+				inputUpdateNetworkRange.DhcpSettings.RelayGroupID = &resolvedRelayGroupId
+			}
 		}
 	}
 
@@ -309,7 +385,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// hydrate the state with API data
-	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan)
+	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, socketSite.Site.AddSocketSite.GetSiteID())
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -347,7 +423,7 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// hydrate the state with API data
-	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, state)
+	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, state, state.Id.ValueString())
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -379,6 +455,14 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
+	// Get current state to preserve computed values
+	var state SocketSite
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// setting input & input to update network range
 	inputSiteGeneral := cato_models.UpdateSiteGeneralDetailsInput{
 		SiteLocation: &cato_models.UpdateSiteLocationInput{},
@@ -398,14 +482,22 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		resp.Diagnostics.Append(diags...)
 
 		inputSiteGeneral.SiteLocation.CityName = siteLocationInput.City.ValueStringPointer()
-		inputSiteGeneral.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
-		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
+		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
+		addressValue := ""
+		if !siteLocationInput.Address.IsNull() && !siteLocationInput.Address.IsUnknown() {
+			addressValue = siteLocationInput.Address.ValueString()
+		}
+		inputSiteGeneral.SiteLocation.Address = &addressValue
 	}
 
 	// setting input native range
 	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
+		nativeRangeState := NativeRange{}
+		diags = state.NativeRange.As(ctx, &nativeRangeState, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+
 		nativeRangeInput := NativeRange{}
 		diags = plan.NativeRange.As(ctx, &nativeRangeInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
@@ -419,7 +511,12 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 		// setting input native range DHCP settings
 		if !nativeRangeInput.DhcpSettings.IsNull() && !nativeRangeInput.DhcpSettings.IsUnknown() {
+			// Configuration has dhcp_settings block - use it
 			inputUpdateNetworkRange.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
+			dhcpSettingsState := DhcpSettings{}
+			diags = nativeRangeInput.DhcpSettings.As(ctx, &dhcpSettingsState, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+
 			dhcpSettingsInput := DhcpSettings{}
 			diags = nativeRangeInput.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
 			resp.Diagnostics.Append(diags...)
@@ -427,7 +524,78 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			inputUpdateNetworkRange.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
 			inputUpdateNetworkRange.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
 			inputUpdateNetworkRange.DhcpSettings.RelayGroupID = dhcpSettingsInput.RelayGroupId.ValueStringPointer()
-			inputUpdateNetworkRange.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
+
+			// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE
+			if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
+				if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpSettingsInput.DhcpType.ValueString() != "DHCP_RANGE" {
+					resp.Diagnostics.AddError(
+						"Invalid DHCP Microsegmentation Configuration",
+						"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE",
+					)
+					return
+				}
+			}
+
+			// Only set dhcpMicrosegmentation for DHCP_RANGE type
+			if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RANGE" {
+				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
+					inputUpdateNetworkRange.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
+				}
+			}
+
+			// Validate DHCP relay group configuration when dhcp_type is DHCP_RELAY
+			if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RELAY" {
+				relayGroupName := ""
+				relayGroupId := ""
+
+				if !dhcpSettingsInput.RelayGroupName.IsNull() && !dhcpSettingsInput.RelayGroupName.IsUnknown() {
+					relayGroupName = dhcpSettingsInput.RelayGroupName.ValueString()
+				}
+				if !dhcpSettingsInput.RelayGroupId.IsNull() && !dhcpSettingsInput.RelayGroupId.IsUnknown() {
+					relayGroupId = dhcpSettingsInput.RelayGroupId.ValueString()
+				}
+
+				resolvedRelayGroupId, success, err := checkForDhcpRelayGroup(ctx, r.client, relayGroupName, relayGroupId)
+				if err != nil {
+					resp.Diagnostics.AddError(
+						"DHCP Relay Configuration Error",
+						err.Error(),
+					)
+					return
+				}
+				if !success {
+					resp.Diagnostics.AddError(
+						"DHCP Relay Group Validation Failed",
+						"Failed to validate DHCP relay group configuration.",
+					)
+					return
+				}
+
+				// Set the resolved relay group ID
+				inputUpdateNetworkRange.DhcpSettings.RelayGroupID = &resolvedRelayGroupId
+			}
+		} else {
+			// Configuration has no dhcp_settings block - preserve dhcp_microsegmentation from state if it exists
+			if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
+				var stateNativeRange NativeRange
+				diags = state.NativeRange.As(ctx, &stateNativeRange, basetypes.ObjectAsOptions{})
+				resp.Diagnostics.Append(diags...)
+
+				if !stateNativeRange.DhcpSettings.IsNull() && !stateNativeRange.DhcpSettings.IsUnknown() {
+					var stateDhcpSettings DhcpSettings
+					diags = stateNativeRange.DhcpSettings.As(ctx, &stateDhcpSettings, basetypes.ObjectAsOptions{})
+					resp.Diagnostics.Append(diags...)
+
+					// Only preserve dhcp_microsegmentation, don't send other DHCP settings to API
+					if !stateDhcpSettings.DhcpMicrosegmentation.IsNull() && !stateDhcpSettings.DhcpMicrosegmentation.IsUnknown() {
+						// We don't actually want to send DHCP settings to the API when config omits them
+						// The preservation will happen during state hydration
+						tflog.Debug(ctx, "Preserving dhcp_microsegmentation from state during update", map[string]interface{}{
+							"dhcp_microsegmentation": stateDhcpSettings.DhcpMicrosegmentation.ValueBool(),
+						})
+					}
+				}
+			}
 		}
 	}
 
@@ -473,7 +641,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// hydrate the state with API data
-	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan)
+	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, plan.Id.ValueString())
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -579,9 +747,9 @@ func calculateLocalIP(ctx context.Context, subnet, connType string) string {
 }
 
 // hydrateSocketSiteState populates the SocketSite state with data from API responses
-func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state SocketSite) (SocketSite, bool, error) {
+func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state SocketSite, siteID string) (SocketSite, bool, error) {
 	// check if site exist, else remove resource
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{siteID}, nil, nil, nil)
 	tflog.Warn(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -589,7 +757,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 		return state, false, err
 	}
 
-	siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.Id.ValueString()}, nil, &r.client.AccountId)
+	siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
 	tflog.Warn(ctx, "Read.AccountSnapshot/siteAccountSnapshotApiData.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteAccountSnapshotApiData),
 	})
@@ -604,7 +772,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 	}
 	for _, v := range querySiteResult.EntityLookup.Items {
 		// find the socket site entry we need
-		if v.Entity.ID == state.Id.ValueString() {
+		if v.Entity.ID == siteID {
 			var stateSiteLocation types.Object
 			if len(siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()) > 0 {
 				thisSiteAccountSnapshot := siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()[0]
@@ -633,7 +801,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 				}
 
 				// check if site exist, else remove resource
-				siteEntity := &cato_models.EntityInput{Type: "site", ID: state.Id.ValueString()}
+				siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
 				querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, siteEntity, nil, nil, nil, nil, nil)
 				tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
 					"response": utils.InterfaceToJSONString(querySiteRangeResult),
@@ -670,7 +838,10 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 				state.Name = types.StringValue(*v.GetEntity().Name)
 				// ConnectionType is already set above in the switch statement
 				state.SiteType = types.StringValue(siteType)
-				state.Description = types.StringValue(v.GetHelperFields()["description"].(string))
+				descriptionStr := v.GetHelperFields()["description"].(string)
+				if descriptionStr != "" {
+					state.Description = types.StringValue(descriptionStr)
+				}
 
 				var fromStateNativeRange NativeRange
 				if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
@@ -683,7 +854,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					subnet = val
 				}
 				mdnsReflector := false
-				if val, ok := siteNetRangeApiData["mdns_reflector"].(bool); ok {
+				if val, ok := siteNetRangeApiData["mdnsReflector"].(bool); ok {
 					mdnsReflector = val
 				}
 				microsegmentation := false
@@ -691,47 +862,64 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					microsegmentation = val
 				}
 				var vlan attr.Value = types.Int64Null()
-				if val, ok := siteNetRangeApiData["vlanTag"].(string); ok {
+				tflog.Debug(ctx, "Read.siteNetRangeApiData.vlanString", map[string]interface{}{
+					"vlanString": utils.InterfaceToJSONString(siteNetRangeApiData["vlanTag"]),
+				})
+				if val, ok := siteNetRangeApiData["vlanTag"].(float64); ok {
+					tflog.Debug(ctx, "Read.siteNetRangeApiData.vlan", map[string]interface{}{
+						"vlan": utils.InterfaceToJSONString(val),
+					})
 					if vlanInt, err := cast.ToInt64E(val); err == nil {
+						tflog.Debug(ctx, "Read.siteNetRangeApiData.vlanInt", map[string]interface{}{
+							"vlanInt": utils.InterfaceToJSONString(vlanInt),
+						})
 						vlan = types.Int64Value(vlanInt)
 					}
 				}
-				dhcpTyleValue := types.StringNull()
-				ipRangeVal := types.StringNull()
-				relayGroupIdVal := types.StringNull()
-				if !fromStateNativeRange.DhcpSettings.IsNull() && !fromStateNativeRange.DhcpSettings.IsUnknown() {
-					// Configuration has dhcp_settings, so preserve them
-					var dhcpSettings DhcpSettings
-					fromStateNativeRange.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
-					if dhcpSettings.DhcpType.ValueString() != "" {
-						dhcpTyleValue = types.StringValue(dhcpSettings.DhcpType.ValueString())
-					}
-					if dhcpSettings.IpRange.ValueString() != "" {
-						ipRangeVal = types.StringValue(dhcpSettings.IpRange.ValueString())
-					}
-					if dhcpSettings.RelayGroupId.ValueString() != "" {
-						relayGroupIdVal = types.StringValue(dhcpSettings.RelayGroupId.ValueString())
+
+				// Use existing LocalIp from state if available, otherwise calculate based on connection type and subnet
+				var localIPValue types.String
+				if !fromStateNativeRange.LocalIp.IsNull() && !fromStateNativeRange.LocalIp.IsUnknown() {
+					// Use existing value from state
+					localIPValue = fromStateNativeRange.LocalIp
+				} else {
+					// Calculate new IP based on connection type and subnet
+					calculatedLocalIP := calculateLocalIP(ctx, subnet, connTypeVal)
+					if calculatedLocalIP != "" {
+						localIPValue = types.StringValue(calculatedLocalIP)
+					} else {
+						localIPValue = types.StringNull()
 					}
 				}
 
-				// Handle dhcp_settings properly - only create if they exist in config
-				var dhcpSettingsValue attr.Value
-				dhcpSettingsValue, _ = types.ObjectValue(
-					SiteNativeRangeDhcpResourceAttrTypes,
-					map[string]attr.Value{
-						"dhcp_type":              dhcpTyleValue,
-						"ip_range":               ipRangeVal,
-						"relay_group_id":         relayGroupIdVal,
-						"dhcp_microsegmentation": types.BoolValue(microsegmentation),
-					},
-				)
+				// Not available via API, default to false
+				internetOnlyValue := types.BoolValue(false)
+				// Ensure internet_only has a valid value from and try to assign from state
+				if !fromStateNativeRange.InternetOnly.IsNull() && !fromStateNativeRange.InternetOnly.IsUnknown() {
+					internetOnlyValue = fromStateNativeRange.InternetOnly
+				}
 
-				// Calculate local IP based on connection type and subnet
-				calculatedLocalIP := calculateLocalIP(ctx, subnet, connTypeVal)
-				localIPValue := types.StringValue(calculatedLocalIP)
-				if calculatedLocalIP == "" {
-					// Fallback to state value if calculation fails
-					localIPValue = fromStateNativeRange.LocalIp
+				// Handle dhcp_settings - only include if configured, or if there are active DHCP settings
+				var dhcpSettingsValue attr.Value
+				if !fromStateNativeRange.DhcpSettings.IsNull() && !fromStateNativeRange.DhcpSettings.IsUnknown() {
+					// Configuration has dhcp_settings, so preserve all values from config + computed microsegmentation
+					var dhcpSettings DhcpSettings
+					fromStateNativeRange.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
+					dhcpSettingsValue, _ = types.ObjectValue(
+						SiteNativeRangeDhcpResourceAttrTypes,
+						map[string]attr.Value{
+							"dhcp_type":              dhcpSettings.DhcpType,
+							"ip_range":               dhcpSettings.IpRange,
+							"relay_group_id":         dhcpSettings.RelayGroupId,
+							"relay_group_name":       dhcpSettings.RelayGroupName,
+							"dhcp_microsegmentation": types.BoolValue(microsegmentation),
+						},
+					)
+				} else {
+					// Configuration has no dhcp_settings - set to null to match config
+					// The dhcp_microsegmentation is a computed value that doesn't need to be preserved
+					// in state when there's no DHCP configuration
+					dhcpSettingsValue = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
 				}
 
 				stateNativeRange, _ = types.ObjectValue(
@@ -748,13 +936,10 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 						"translated_subnet": fromStateNativeRange.TranslatedSubnet,
 						"vlan":              vlan,
 						"mdns_reflector":    types.BoolValue(mdnsReflector),
+						"internet_only":     internetOnlyValue,
 						"dhcp_settings":     dhcpSettingsValue,
 					},
 				)
-				// } else {
-				// 	// Create a null object if no data is available
-				// 	stateNativeRange = types.ObjectNull(SiteNativeRangeResourceAttrTypes)
-				// }
 				state.NativeRange = stateNativeRange
 
 				var fromStateSiteLocation SiteLocation

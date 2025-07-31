@@ -81,3 +81,11 @@
 ### Features
 
 - Updated bulk rule index resources for if_rule and wf_rule to map sections and rules by name in state, for deployment when source rules are purged for back/restore function
+
+## 0.0.36 (2026-07-30)
+
+### Features
+
+- Updated network_range and socket_site resources to properly implement read operation to support import and write all available attributes from read back to state
+- Updated all data sources using entityLookup to add 0 and limit to support large numbers of records in return
+- Added network_range data source

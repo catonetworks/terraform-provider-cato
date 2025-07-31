@@ -199,7 +199,8 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 	ifaceMap := make(map[string]map[string]InterfaceConfig)
 
 	tflog.Warn(ctx, "ifaceMap '"+fmt.Sprintf("%v", ifaceMap)+"'")
-	entityLookupResponse, err := d.client.catov2.EntityLookup(ctx, d.client.AccountId, cato_models.EntityTypeNetworkInterface, nil, nil, nil, nil, nil, nil, nil, nil)
+	zeroInt64 := int64(0)
+	entityLookupResponse, err := d.client.catov2.EntityLookup(ctx, d.client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, nil, nil, nil, nil, nil, nil)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(entityLookupResponse),
 	})

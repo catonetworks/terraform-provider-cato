@@ -23,12 +23,12 @@ provider "cato" {
 # --------------------------------------------------------------------------------
 
 locals {
-  rule_data = csvdecode(file("${path.module}/rules.csv"))
+  rule_data    = csvdecode(file("${path.module}/rules.csv"))
   section_data = csvdecode(file("${path.module}/sections.csv"))
 }
 
 resource "cato_if_section" "all_if_sections" {
-  for_each = { for section in local.section_data : section.section_index => section} 
+  for_each = { for section in local.section_data : section.section_index => section }
   at = {
     position = "LAST_IN_POLICY"
   }
@@ -38,8 +38,8 @@ resource "cato_if_section" "all_if_sections" {
 }
 
 resource "cato_if_rule" "all_if_rules" {
-  depends_on = [ cato_if_section.all_if_sections ]
-  for_each = { for rule in local.rule_data : rule.rule_name => rule }
+  depends_on = [cato_if_section.all_if_sections]
+  for_each   = { for rule in local.rule_data : rule.rule_name => rule }
   at = {
     position = "LAST_IN_POLICY" // adding last, to reorder in cato_bulk_if_move_rule
   }
@@ -63,9 +63,9 @@ resource "cato_if_rule" "all_if_rules" {
 }
 
 resource "cato_bulk_if_move_rule" "all_if_rules" {
-depends_on = [ cato_if_section.all_if_sections, cato_if_rule.all_if_rules ]
- rule_data = local.rule_data 
- section_data = local.section_data
+  depends_on   = [cato_if_section.all_if_sections, cato_if_rule.all_if_rules]
+  rule_data    = local.rule_data
+  section_data = local.section_data
 }
 
 output "section_data" {

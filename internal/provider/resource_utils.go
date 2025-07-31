@@ -23,6 +23,33 @@ func contains(nameToIdMap map[string]struct{}, name string) bool {
 	return exists
 }
 
+// getSiteById retrieves site information by site ID using EntityLookup
+func getSiteNetworkInterfaceById(ctx context.Context, client *catoClientData, siteID string, interfaceId string) (interface{}, error) {
+	zeroInt64 := int64(0)
+	// func (c *Client) EntityLookup(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64, parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*EntityLookup, error) {
+	site := &cato_models.EntityInput{
+		Type: cato_models.EntityTypeSite,
+		ID:   siteID,
+	}
+	querySiteResult, err := client.catov2.EntityLookup(ctx, client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, site, nil, []string{interfaceId}, nil, nil, nil)
+	tflog.Warn(ctx, "getSiteNetworkInterfaceById.EntityLookup.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteResult),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if any items were returned
+	items := querySiteResult.GetEntityLookup().GetItems()
+	if len(items) == 0 {
+		return nil, fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceId, siteID)
+	}
+
+	// Return the first (and should be only) interface item
+	interfaceItem := items[0]
+	return interfaceItem, nil
+}
+
 func mapObjectList(ctx context.Context, srcItemObjList any, resp *resource.ReadResponse) []types.Object {
 	vals := reflect.ValueOf(srcItemObjList)
 	var objList []types.Object
@@ -520,7 +547,7 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 	tflog.Debug(ctx, "parseExceptionCustomService() portField - "+fmt.Sprintf("%v", portField))
 	tflog.Debug(ctx, "parseExceptionCustomService() protocolField - "+fmt.Sprintf("%v", protocolField))
 	tflog.Debug(ctx, "parseExceptionCustomService() portRangeField - "+fmt.Sprintf("%v", portRangeField))
-	
+
 	// Handle port field - match config logic behavior
 	var portList types.List
 	if portField.IsValid() && portField.Kind() == reflect.Slice {

@@ -154,8 +154,8 @@ resource "cato_wf_rule" "kitchen_sink" {
       ]
       ip_range = [
         {
-          from: "1.2.3.4",
-          to: "1.2.3.5"
+          from : "1.2.3.4",
+          to : "1.2.3.5"
         }
       ]
       global_ip_range = [
@@ -257,8 +257,8 @@ resource "cato_wf_rule" "kitchen_sink" {
       ]
       ip_range = [
         {
-          from: "1.2.3.4",
-          to: "1.2.3.5"
+          from : "1.2.3.4",
+          to : "1.2.3.5"
         }
       ]
       global_ip_range = [
@@ -273,8 +273,8 @@ resource "cato_wf_rule" "kitchen_sink" {
       ]
       network_interface = [
         {
-            "id": "123456",
-            # "name": "test aws socket \\ LAN"
+          "id" : "123456",
+          # "name": "test aws socket \\ LAN"
         },
         {
           id = "123456"
@@ -289,7 +289,7 @@ resource "cato_wf_rule" "kitchen_sink" {
       ]
       floating_subnet = [
         {
-          id = "123456",  // TODO see why this does not take name
+          id = "123456", // TODO see why this does not take name
           # name = "floating_range"          
         },
       ]
@@ -383,13 +383,13 @@ resource "cato_wf_rule" "kitchen_sink" {
         destination = {
           floating_subnet = [
             {
-              id   = "123456"
+              id = "123456"
               #name = "floating_range"
             },
           ]
           group = [
             {
-              id   = "123456"
+              id = "123456"
               #name = "test group"
             },
           ]
@@ -416,7 +416,7 @@ resource "cato_wf_rule" "kitchen_sink" {
           ]
           network_interface = [
             {
-              id   = "123456"
+              id = "123456"
               #name = "IPSec Site \\ Default"
             },
           ]
@@ -428,7 +428,7 @@ resource "cato_wf_rule" "kitchen_sink" {
           ]
           site_network_subnet = [
             {
-              id   = "TjE0Nzk5MTc="
+              id = "TjE0Nzk5MTc="
               #name = "IPSec Site \\ Default \\ Native Range"
             },
           ]
@@ -476,7 +476,7 @@ resource "cato_wf_rule" "kitchen_sink" {
         source = {
           floating_subnet = [
             {
-              id   = "123456"
+              id = "123456"
             },
           ]
           global_ip_range = [
@@ -513,7 +513,7 @@ resource "cato_wf_rule" "kitchen_sink" {
           ]
           network_interface = [
             {
-              id   = "124986"
+              id = "124986"
               #name = "IPSec Site \\ Default"
             },
           ]
@@ -529,7 +529,7 @@ resource "cato_wf_rule" "kitchen_sink" {
           ]
           site_network_subnet = [
             {
-              id   = "ABCDEFG="
+              id = "ABCDEFG="
               #name = "IPSec Site \\ Default \\ Native Range"
             },
           ]

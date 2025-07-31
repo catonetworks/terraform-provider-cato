@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -23,7 +25,8 @@ type accountSnapshotSiteDataSource struct {
 }
 
 type SiteSnapshot struct {
-	Id *string `tfsdk:"id"`
+	Id       *string `tfsdk:"id"`
+	SiteName *string `tfsdk:"site_name"`
 	// ProtoId            *int             `tfsdk:"protoId"`
 	// ConnectivityStatus *string          `tfsdk:"connectivityStatus"`
 	// HaStatus           *HaStatus        `tfsdk:"haStatus"`
@@ -184,8 +187,12 @@ func (d *accountSnapshotSiteDataSource) Schema(_ context.Context, _ datasource.S
 		Description: "Retrieves account snapshot site socket serial number and primary status information.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "Identifier for the site",
-				Required:    true,
+				Description: "Identifier for the site. Cannot be used with site_name.",
+				Optional:    true,
+			},
+			"site_name": schema.StringAttribute{
+				Description: "Name of a site. Cannot be used with id.",
+				Optional:    true,
 			},
 			"info": schema.SingleNestedAttribute{
 				Computed: true,
@@ -237,7 +244,24 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 
-	accountSnapshotSite, err := d.client.catov2.AccountSnapshot(ctx, []string{*state.Id}, nil, &d.client.AccountId)
+	// Ensure exactly one of 'id' or 'site_name' is set
+	if state.Id != nil && state.SiteName != nil {
+		resp.Diagnostics.AddError(
+			"Configuration Error",
+			"Only one of 'id' or 'site_name' can be set, not both.",
+		)
+		return
+	}
+
+	if state.Id == nil && state.SiteName == nil {
+		resp.Diagnostics.AddError(
+			"Configuration Error",
+			"Either 'id' or 'site_name' must be specified.",
+		)
+		return
+	}
+
+	accountSnapshotSite, err := d.client.catov2.AccountSnapshot(ctx, nil, nil, &d.client.AccountId)
 	tflog.Debug(ctx, "Read.AccountSnapshot.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(accountSnapshotSite),
 	})
@@ -249,25 +273,51 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 
-	if len(accountSnapshotSite.AccountSnapshot.Sites) == 1 {
-		state = SiteSnapshot{
-			Id: accountSnapshotSite.AccountSnapshot.Sites[0].ID,
-			Info: &SiteInfo{
-				Name: accountSnapshotSite.AccountSnapshot.Sites[0].InfoSiteSnapshot.Name,
-			},
-		}
+	// Find the site that matches the provided id or site_name
+	var foundSite *cato_go_sdk.AccountSnapshot_AccountSnapshot_Sites
 
-		for _, socket := range accountSnapshotSite.AccountSnapshot.Sites[0].InfoSiteSnapshot.GetSockets() {
-			state.Info.Sockets = append(state.Info.Sockets, SocketInfo{
-				Id:        socket.ID,
-				Serial:    socket.Serial,
-				IsPrimary: socket.IsPrimary,
-			})
+	for _, site := range accountSnapshotSite.AccountSnapshot.Sites {
+		// Check if site matches by ID
+		if state.Id != nil && site.ID != nil && *site.ID == *state.Id {
+			foundSite = site
+			break
 		}
+		// Check if site matches by name
+		if state.SiteName != nil && site.InfoSiteSnapshot != nil && site.InfoSiteSnapshot.Name != nil && *site.InfoSiteSnapshot.Name == *state.SiteName {
+			foundSite = site
+			break
+		}
+	}
 
-	} else {
-		tflog.Error(ctx, "Can't find Site into AccountSnapshot")
+	if foundSite == nil {
+		if state.Id != nil {
+			resp.Diagnostics.AddError(
+				"Site Not Found",
+				fmt.Sprintf("No site found with ID: %s", *state.Id),
+			)
+		} else {
+			resp.Diagnostics.AddError(
+				"Site Not Found",
+				fmt.Sprintf("No site found with name: %s", *state.SiteName),
+			)
+		}
 		return
+	}
+
+	state = SiteSnapshot{
+		Id:       foundSite.ID,
+		SiteName: foundSite.InfoSiteSnapshot.Name,
+		Info: &SiteInfo{
+			Name: foundSite.InfoSiteSnapshot.Name,
+		},
+	}
+
+	for _, socket := range foundSite.InfoSiteSnapshot.Sockets {
+		state.Info.Sockets = append(state.Info.Sockets, SocketInfo{
+			Id:        socket.ID,
+			Serial:    socket.Serial,
+			IsPrimary: socket.IsPrimary,
+		})
 	}
 
 	diags = resp.State.Set(ctx, &state)

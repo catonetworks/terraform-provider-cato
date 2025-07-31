@@ -15,9 +15,9 @@ Retrieves account allocated IPs.
 ```terraform
 ## Providers ###
 provider "cato" {
-    baseurl = "https://api.catonetworks.com/api/v1/graphql2"
-    token = var.cato_token
-    account_id = var.account_id
+  baseurl    = "https://api.catonetworks.com/api/v1/graphql2"
+  token      = var.cato_token
+  account_id = var.account_id
 }
 
 ### Data Source Usage ###
@@ -27,7 +27,7 @@ data "cato_allocatedIp" "ips" {}
 
 ### Retrieve allocated IPs by name ###
 data "cato_allocatedIp" "ips" {
-	name_filter = ["11.22.33.44"]
+  name_filter = ["11.22.33.44"]
 }
 ```
 

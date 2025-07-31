@@ -23,12 +23,12 @@ provider "cato" {
 # --------------------------------------------------------------------------------
 
 locals {
-  rule_data = csvdecode(file("${path.module}/rules.csv"))
+  rule_data    = csvdecode(file("${path.module}/rules.csv"))
   section_data = csvdecode(file("${path.module}/sections.csv"))
 }
 
 resource "cato_wf_section" "all_wf_sections" {
-  for_each = { for section in local.section_data : section.section_index => section}
+  for_each = { for section in local.section_data : section.section_index => section }
   at = {
     position = "LAST_IN_POLICY"
   }
@@ -46,10 +46,10 @@ resource "cato_wf_rule" "all_fw_rules" {
     description = each.value.rule_name
     enabled     = true
     direction   = "TO"
-    source = {}
+    source      = {}
     destination = {}
     application = {}
-    action = "ALLOW"
+    action      = "ALLOW"
     tracking = {
       event = {
         enabled = true
@@ -59,9 +59,9 @@ resource "cato_wf_rule" "all_fw_rules" {
 }
 
 resource "cato_bulk_wf_move_rule" "all_wf_rules" {
- depends_on = [ cato_wf_section.all_wf_sections, cato_wf_rule.all_fw_rules ]
- rule_data = local.rule_data
- section_data = local.section_data
+  depends_on   = [cato_wf_section.all_wf_sections, cato_wf_rule.all_fw_rules]
+  rule_data    = local.rule_data
+  section_data = local.section_data
 }
 
 output "section_data" {

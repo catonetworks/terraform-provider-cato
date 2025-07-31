@@ -61,13 +61,13 @@ resource "cato_if_section" "if_section" {
 }
 
 resource "cato_if_rule" "kitchen_sink" {
-  depends_on = [ cato_if_section.if_section ]
+  depends_on = [cato_if_section.if_section]
   at = {
     position = "LAST_IN_SECTION"
-    ref=cato_if_section.if_section.section.id
+    ref      = cato_if_section.if_section.section.id
   }
   rule = {
-    name        = "Internet Firewall Kitchen Sink"
+    name              = "Internet Firewall Kitchen Sink"
     action            = "ALLOW"
     connection_origin = "REMOTE"
     country = [
@@ -126,7 +126,7 @@ resource "cato_if_rule" "kitchen_sink" {
           name = "Sanctioned Apps"
         },
       ]
-#       subnet = []
+      #       subnet = []
     }
     device = [
       {
@@ -134,7 +134,7 @@ resource "cato_if_rule" "kitchen_sink" {
       },
     ]
     device_os = ["ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS"]
-    enabled = true
+    enabled   = true
     exceptions = [
       {
         connection_origin = "REMOTE"

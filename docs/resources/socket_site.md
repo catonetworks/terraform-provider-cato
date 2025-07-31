@@ -19,19 +19,19 @@ The `cato_socket_site` resource contains the configuration parameters necessary 
 // Data Source for site location
 data "cato_siteLocation" "ny" {
   filters = [{
-    field = "city"
-    search = "New York City"
+    field     = "city"
+    search    = "New York City"
     operation = "startsWith"
-  },
-  {
-    field = "state_name"
-    search = "New York"
-    operation = "exact"
-  },
- {
-    field = "country_name"
-    search = "United States"
-    operation = "contains"
+    },
+    {
+      field     = "state_name"
+      search    = "New York"
+      operation = "exact"
+    },
+    {
+      field     = "country_name"
+      search    = "United States"
+      operation = "contains"
   }]
 }
 
@@ -48,11 +48,11 @@ resource "cato_socket_site" "aws_site" {
   }
 
   site_location = {
-    city = data.cato_siteLocation.ny.locations[0].city
+    city         = data.cato_siteLocation.ny.locations[0].city
     country_code = data.cato_siteLocation.ny.locations[0].country_code
-    state_code = data.cato_siteLocation.ny.locations[0].state_code
-    timezone = data.cato_siteLocation.ny.locations[0].timezone[0]
-    address = "555 That Way"
+    state_code   = data.cato_siteLocation.ny.locations[0].state_code
+    timezone     = data.cato_siteLocation.ny.locations[0].timezone[0]
+    address      = "555 That Way"
   }
 }
 
@@ -109,8 +109,11 @@ Required:
 Optional:
 
 - `dhcp_settings` (Attributes) Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type) (see [below for nested schema](#nestedatt--native_range--dhcp_settings))
+- `internet_only` (Boolean) Internet only network range (Only releveant for Routed range_type)
+- `mdns_reflector` (Boolean) Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.
 - `native_network_range_id` (String) Site native IP range ID (for update purpose)
 - `translated_subnet` (String) Site translated native IP range (CIDR)
+- `vlan` (Number) VLAN ID for the site native range (optional)
 
 <a id="nestedatt--native_range--dhcp_settings"></a>
 ### Nested Schema for `native_range.dhcp_settings`
@@ -121,8 +124,10 @@ Required:
 
 Optional:
 
+- `dhcp_microsegmentation` (Boolean) DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.
 - `ip_range` (String) Network range dhcp range (format "192.168.1.10-192.168.1.20")
 - `relay_group_id` (String) Network range dhcp relay group id
+- `relay_group_name` (String) Network range dhcp relay group name
 
 
 

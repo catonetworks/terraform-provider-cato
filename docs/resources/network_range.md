@@ -13,37 +13,63 @@ The `cato_network_range` resource contains the configuration parameters necessar
 ## Example Usage
 
 ```terraform
-// network range of type VLAN
-resource "cato_network_range" "vlan100" {
-  site_id    = cato_socket_site.site1.id
-  name       = "VLAN100"
-  range_type = "VLAN"
-  subnet     = "192.168.100.0/24"
-  local_ip   = "192.168.100.100"
-  vlan       = "100"
+// network range of type Direct
+resource "cato_network_range" "direct" {
+  site_id      = "142382"
+  interface_id = "172922"
+  name         = "Direct Network Range"
+  range_type   = "Direct"
+  subnet       = "192.166.100.0/24"
+  local_ip     = "192.166.100.1"
+  # internet_only = true 
+  mdns_reflector    = true
+  translated_subnet = "172.166.100.0/24"
+}
+
+resource "cato_network_range" "routed" {
+  site_id       = "142382"
+  interface_id  = "172922"
+  name          = "Routed Network Range"
+  range_type    = "Routed"
+  subnet        = "192.167.100.0/24"
+  gateway       = "10.0.0.3"
+  internet_only = true
+  # mdns_reflector = true
+  translated_subnet = "172.167.100.0/24"
 }
 
 // network range of type VLAN with DHCP RANGE
 resource "cato_network_range" "vlan200" {
+  site_id       = cato_socket_site.site1.id
+  name          = "VLAN200"
+  range_type    = "VLAN"
+  subnet        = "192.168.200.0/24"
+  local_ip      = "192.168.200.1"
+  vlan          = "200"
+  internet_only = true
+  # mdns_reflector = true
+  dhcp_settings = {
+    dhcp_type              = "DHCP_RANGE"
+    ip_range               = "192.168.200.100-192.168.200.150"
+    dhcp_microsegmentation = false
+  }
+}
+
+// network range of type VLAN with DHCP RELAY
+resource "cato_network_range" "vlan201_relay" {
   site_id    = cato_socket_site.site1.id
-  name       = "VLAN200"
+  name       = "VLAN201"
   range_type = "VLAN"
   subnet     = "192.168.200.0/24"
   local_ip   = "192.168.200.1"
   vlan       = "200"
+  # internet_only = true
+  mdns_reflector = true
   dhcp_settings = {
-    dhcp_type = "DHCP_RANGE"
-    ip_range  = "192.168.200.100-192.168.200.150"
+    dhcp_type              = "DHCP_RELAY"
+    relay_group_name       = "my_dhcp_relay"
+    dhcp_microsegmentation = true
   }
-}
-
-// routed network 
-resource "cato_network_range" "routed250" {
-  site_id    = cato_socket_site.site1.id
-  name       = "routed250"
-  range_type = "Routed"
-  subnet     = "192.168.250.0/24"
-  gateway   = "192.168.25.1"
 }
 ```
 
@@ -64,6 +90,7 @@ resource "cato_network_range" "routed250" {
 - `interface_id` (String) Network Interface ID
 - `internet_only` (Boolean) Internet only network range (Only releveant for Routed range_type)
 - `local_ip` (String) Network range local ip
+- `mdns_reflector` (Boolean) Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.
 - `translated_subnet` (String) Network range translated native IP range (CIDR)
 - `vlan` (Number) Network range VLAN ID (Only releveant for VLAN range_type)
 
@@ -80,5 +107,7 @@ Required:
 
 Optional:
 
+- `dhcp_microsegmentation` (Boolean) DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.
 - `ip_range` (String) Network range dhcp range (format "192.168.1.10-192.168.1.20")
 - `relay_group_id` (String) Network range dhcp relay group id
+- `relay_group_name` (String) Network range dhcp relay group name

@@ -1,19 +1,19 @@
 // Data Source for site location
 data "cato_siteLocation" "ny" {
   filters = [{
-    field = "city"
-    search = "New York City"
+    field     = "city"
+    search    = "New York City"
     operation = "startsWith"
-  },
-  {
-    field = "state_name"
-    search = "New York"
-    operation = "exact"
-  },
- {
-    field = "country_name"
-    search = "United States"
-    operation = "contains"
+    },
+    {
+      field     = "state_name"
+      search    = "New York"
+      operation = "exact"
+    },
+    {
+      field     = "country_name"
+      search    = "United States"
+      operation = "contains"
   }]
 }
 
@@ -30,11 +30,11 @@ resource "cato_socket_site" "aws_site" {
   }
 
   site_location = {
-    city = data.cato_siteLocation.ny.locations[0].city
+    city         = data.cato_siteLocation.ny.locations[0].city
     country_code = data.cato_siteLocation.ny.locations[0].country_code
-    state_code = data.cato_siteLocation.ny.locations[0].state_code
-    timezone = data.cato_siteLocation.ny.locations[0].timezone[0]
-    address = "555 That Way"
+    state_code   = data.cato_siteLocation.ny.locations[0].state_code
+    timezone     = data.cato_siteLocation.ny.locations[0].timezone[0]
+    address      = "555 That Way"
   }
 }
 

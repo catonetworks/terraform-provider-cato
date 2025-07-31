@@ -74,7 +74,7 @@ resource "cato_admin" "reseller_admin" {
 
   managed_roles = [
     {
-      id = "1"
+      id               = "1"
       allowed_accounts = ["1234"]
     }
   ]

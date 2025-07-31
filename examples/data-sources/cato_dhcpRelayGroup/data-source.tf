@@ -1,8 +1,8 @@
 ## Providers ###
 provider "cato" {
-    baseurl = "https://api.catonetworks.com/api/v1/graphql2"
-    token = var.cato_token
-    account_id = var.account_id
+  baseurl    = "https://api.catonetworks.com/api/v1/graphql2"
+  token      = var.cato_token
+  account_id = var.account_id
 }
 
 ### Data Source Usage ###
@@ -12,5 +12,5 @@ data "cato_dhcpRelayGroup" "all" {}
 
 ### Retrieve allocated IPs by name ###
 data "cato_dhcpRelayGroup" "my_dhcp_group" {
-	name_filter = ["my_dhcp_group"]
+  name_filter = ["my_dhcp_group"]
 }
