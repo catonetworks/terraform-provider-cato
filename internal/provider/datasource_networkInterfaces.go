@@ -239,7 +239,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 					fmt.Println("networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() " + fmt.Sprintf("%v", networkInterfacesDataSource.NetworkInterfaceIndex.ValueString()))
 					fmt.Println("iface.Id " + fmt.Sprintf("%v", iface.ID))
 					fmt.Println("*iface.Name " + fmt.Sprintf("%v", *iface.Name))
-					curInterfaceIndex := getInterfaceIndex(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
+					curInterfaceIndex := getInterfaceIndexByConnType(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
 					if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN" ||
 						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN1") &&
 						"INT_"+iface.ID == curInterfaceIndex {
@@ -276,12 +276,12 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 	for _, item := range entityLookupResponse.GetEntityLookup().GetItems() {
 		helperFields := item.GetHelperFields()
 		// entLookupinterfaceID := cast.ToString(helperFields["interfaceName"])
-		entLookupinterfaceID := getInterfaceIndex(cast.ToString(helperFields["interfaceName"]), connType)
+		entLookupinterfaceID := getInterfaceIndexByConnType(cast.ToString(helperFields["interfaceName"]), connType)
 		siteID := cast.ToString(helperFields["siteId"])
 		tflog.Warn(ctx, "networkInterfaceLookup.SiteID '"+fmt.Sprintf("%v", networkInterfacesDataSource.SiteID.ValueString())+"'")
 		tflog.Warn(ctx, "siteID '"+fmt.Sprintf("%v", siteID)+"'")
 		if networkInterfacesDataSource.SiteID.IsNull() || (!networkInterfacesDataSource.SiteID.IsNull() && siteID == networkInterfacesDataSource.SiteID.ValueString()) {
-			curInterfaceIndex := getInterfaceIndex(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
+			curInterfaceIndex := getInterfaceIndexByConnType(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
 			tflog.Warn(ctx, "entLookupinterfaceID '"+fmt.Sprintf("%v", entLookupinterfaceID)+"'")
 			tflog.Warn(ctx, "networkInterfacesDataSource.NetworkInterfaceName.ValueString() '"+fmt.Sprintf("%v", curInterfaceIndex)+"'")
 			if networkInterfacesDataSource.NetworkInterfaceIndex.IsNull() ||
@@ -336,7 +336,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 	}
 }
 
-func getInterfaceIndex(interfaceName, connType string) string {
+func getInterfaceIndexByConnType(interfaceName, connType string) string {
 	curInterfaceIndex := interfaceName
 	if interfaceName == "LAN1" && connType == "SOCKET_X1500" {
 		curInterfaceIndex = "LAN 01"
@@ -349,3 +349,17 @@ func getInterfaceIndex(interfaceName, connType string) string {
 	}
 	return curInterfaceIndex
 }
+
+// func getInterfaceIndex(interfaceName, connType string) string {
+// 	curInterfaceIndex := interfaceName
+// 	if interfaceName == "LAN1" && connType == "SOCKET_X1500" {
+// 		curInterfaceIndex = "LAN 01"
+// 	} else if interfaceName == "LAN" {
+// 		if connType == "SOCKET_X1600" || connType == "SOCKET_X1600_LTE" {
+// 			curInterfaceIndex = "INT_5"
+// 		} else if connType == "SOCKET_X1700" {
+// 			curInterfaceIndex = "INT_3"
+// 		}
+// 	}
+// 	return curInterfaceIndex
+// }

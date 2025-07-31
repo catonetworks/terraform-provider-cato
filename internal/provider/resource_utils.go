@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/spf13/cast"
 )
 
 func contains(nameToIdMap map[string]struct{}, name string) bool {
@@ -24,30 +25,67 @@ func contains(nameToIdMap map[string]struct{}, name string) bool {
 }
 
 // getSiteById retrieves site information by site ID using EntityLookup
-func getSiteNetworkInterfaceById(ctx context.Context, client *catoClientData, siteID string, interfaceId string) (interface{}, error) {
+func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID string, interfaceId string, interfaceIndex string, interfaceName string) (string, string, error) {
 	zeroInt64 := int64(0)
 	// func (c *Client) EntityLookup(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64, parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*EntityLookup, error) {
 	site := &cato_models.EntityInput{
 		Type: cato_models.EntityTypeSite,
 		ID:   siteID,
 	}
-	querySiteResult, err := client.catov2.EntityLookup(ctx, client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, site, nil, []string{interfaceId}, nil, nil, nil)
-	tflog.Warn(ctx, "getSiteNetworkInterfaceById.EntityLookup.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(querySiteResult),
+	// Add filter for interfaceId if set
+	var entityIDs []string
+	if interfaceId != "" {
+		entityIDs = []string{interfaceId}
+	} else {
+		entityIDs = nil
+	}
+	networkInterfaceResponse, err := client.catov2.EntityLookup(ctx, client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, site, nil, entityIDs, nil, nil, nil)
+	tflog.Warn(ctx, "getSiteNetworkInterfaceById.EntityLookup.networkInterfaceResponse", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(networkInterfaceResponse),
 	})
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
-
-	// Check if any items were returned
-	items := querySiteResult.GetEntityLookup().GetItems()
-	if len(items) == 0 {
-		return nil, fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceId, siteID)
+	items := networkInterfaceResponse.GetEntityLookup().GetItems()
+	// Check for interfaceIndex
+	if interfaceIndex != "" {
+		for _, item := range items {
+			helperFields := item.GetHelperFields()
+			curInterfaceId := item.GetEntity().GetID()
+			curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
+			if len(curInterfaceIndex) == 1 {
+				intVal, err := cast.ToIntE(curInterfaceIndex)
+				if err == nil {
+					curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
+				}
+			}
+			if curInterfaceIndex == interfaceIndex {
+				tflog.Info(ctx, "getSiteNetworkInterfaceById found interface by index", map[string]interface{}{
+					"interfaceId":    curInterfaceId,
+					"interfaceIndex": curInterfaceIndex,
+				})
+				return curInterfaceId, curInterfaceIndex, nil
+			}
+		}
+		return "", "", fmt.Errorf("network interface with index '%s' not found in site '%s'", interfaceIndex, siteID)
+	} else {
+		// Confirm single record retiurned by Id
+		if len(items) == 0 {
+		return "", "", fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceId, siteID)
+		}
+		interfaceItem := items[0]
+		// Return the first (and should be only) interface item
+		helperFields := interfaceItem.GetHelperFields()
+		curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
+		if len(curInterfaceIndex) == 1 {
+			intVal, err := cast.ToIntE(curInterfaceIndex)
+			if err == nil {
+				curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
+			}
+		}
+		interfaceId := interfaceItem.GetEntity().GetID()
+		return interfaceId, curInterfaceIndex, nil
 	}
-
-	// Return the first (and should be only) interface item
-	interfaceItem := items[0]
-	return interfaceItem, nil
 }
 
 func mapObjectList(ctx context.Context, srcItemObjList any, resp *resource.ReadResponse) []types.Object {

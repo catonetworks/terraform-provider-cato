@@ -64,10 +64,15 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 
 	// Check if site license is currently assigned
 	curLicenseSiteId, siteLicenseCurrentlyAssigned := checkStaticLicenseForAssignment(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
-	if siteLicenseCurrentlyAssigned {
+	tflog.Debug(ctx, "checkStaticLicenseForAssignment().result", map[string]interface{}{
+		"curLicenseSiteId":                   fmt.Sprintf("%v", curLicenseSiteId),
+		"siteLicenseCurrentlyAssigned":       fmt.Sprintf("%v", siteLicenseCurrentlyAssigned),
+		"siteLicenseCurrentlyAssigned==true": fmt.Sprintf("%t", (siteLicenseCurrentlyAssigned == true)),
+	})
+	if siteLicenseCurrentlyAssigned == true {
 		message := "The license ID '" + fmt.Sprintf("%v", plan.LicenseID.ValueString()) + "' is already assigned to site ID " + fmt.Sprintf("%v", curLicenseSiteId)
 		diags = append(diags, diag.NewErrorDiagnostic("LICENSE ALREADY ASSIGNED", message))
-		return license, nil
+		return nil, fmt.Errorf("LICENSE ALREADY ASSIGNED: %s", message)
 	}
 
 	if licenseExists {

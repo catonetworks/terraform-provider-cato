@@ -93,6 +93,14 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Description: "Site native IP range (CIDR)",
 						Required:    true,
 					},
+					"native_network_lan_interface_id": schema.StringAttribute{
+						Description: "ID of native range LAN interface (for additional network range update purposes)",
+						Optional:    true,
+						Computed:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
 					"native_network_range_id": schema.StringAttribute{
 						Description: "Site native IP range ID (for update purpose)",
 						Optional:    true,
@@ -800,9 +808,10 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					siteType = val.(string)
 				}
 
-				// check if site exist, else remove resource
+				// Retrieve default site range attributes
 				siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
-				querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, siteEntity, nil, nil, nil, nil, nil)
+				zeroInt64 := int64(0)
+				querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
 				tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
 					"response": utils.InterfaceToJSONString(querySiteRangeResult),
 				})
@@ -922,10 +931,38 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					dhcpSettingsValue = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
 				}
 
+				// Look up default LAN interface ID for site
+				interfacesResponse, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+				tflog.Debug(ctx, "Read.EntityTypeNetworkInterface.response", map[string]interface{}{
+					"response": utils.InterfaceToJSONString(interfacesResponse),
+				})
+				if err != nil {
+					return state, false, err
+				}
+
+				// Find the default LAN interface ID
+				nativeNetworkLanInterfaceId := types.StringNull()
+				for _, iface := range interfacesResponse.GetEntityLookup().GetItems() {
+					if iface.Entity.Name != nil {
+						interfaceID, ok := iface.HelperFields["InterfaceID"].(string)
+						if !ok {
+							continue
+						}
+						if connTypeVal == "SOCKET_X1500" && interfaceID == "LAN1" {
+							nativeNetworkLanInterfaceId = types.StringValue(iface.Entity.GetID())
+						} else if (connTypeVal == "SOCKET_X1600" || connTypeVal == "SOCKET_X1600_LTE") && interfaceID == "5" {
+							nativeNetworkLanInterfaceId = types.StringValue(iface.Entity.GetID())
+						} else if connTypeVal == "SOCKET_X1700" && interfaceID == "3" {
+							nativeNetworkLanInterfaceId = types.StringValue(iface.Entity.GetID())
+						}
+					}
+				}
+
 				stateNativeRange, _ = types.ObjectValue(
 					SiteNativeRangeResourceAttrTypes,
 					map[string]attr.Value{
-						"native_network_range": types.StringValue(subnet),
+						"native_network_lan_interface_id": nativeNetworkLanInterfaceId,
+						"native_network_range":            types.StringValue(subnet),
 						"native_network_range_id": func() attr.Value {
 							if val, ok := siteNetRangeApiData["native_network_range_id"].(string); ok {
 								return types.StringValue(val)

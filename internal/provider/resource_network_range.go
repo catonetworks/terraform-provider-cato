@@ -58,10 +58,47 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"interface_id": schema.StringAttribute{
 				Description: "Network Interface ID",
-				Required:    true,
-				Optional:    false,
+				Required:    false,
+				Optional:    true,
+				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"interface_index": schema.StringAttribute{
+				Description: "Network Interface Index",
+				Required:    false,
+				Optional:    true,
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					stringvalidator.OneOf(
+						"WAN1",
+						"WAN2",
+						"LAN1",
+						"LAN2",
+						"LTE",
+						"USB1",
+						"USB2",
+						"INT_1",
+						"INT_2",
+						"INT_3",
+						"INT_4",
+						"INT_5",
+						"INT_6",
+						"INT_7",
+						"INT_8",
+						"INT_9",
+						"INT_10",
+						"INT_11",
+						"INT_12",
+						"INT_13",
+						"INT_14",
+						"INT_15",
+						"INT_16",
+					),
 				},
 			},
 			"internet_only": schema.BoolAttribute{
@@ -187,12 +224,49 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Validate that interface_id and interface_index cannot be set simultaneously
+	tflog.Debug(ctx, "plan.InterfaceId.sample", map[string]interface{}{
+		"plan.InterfaceId.IsNull()":    utils.InterfaceToJSONString(plan.InterfaceId.IsNull()),
+		"plan.InterfaceIndex.IsNull()": utils.InterfaceToJSONString(plan.InterfaceIndex.IsNull()),
+	})
+
+	interfaceIdSet := !plan.InterfaceId.IsNull() && !plan.InterfaceId.IsUnknown()
+	interfaceIndexSet := !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown()
+	if interfaceIdSet && interfaceIndexSet {
+		resp.Diagnostics.AddError(
+			"Conflicting Configuration",
+			fmt.Sprintf("Both interface_id (%q) and interface_index (%q) are specified. "+
+				"Only one interface specification method is allowed per network range.",
+				plan.InterfaceId.ValueString(), plan.InterfaceIndex.ValueString()),
+		)
+		return
+	}
+
 	// Validate that the site ID exists
 	if !plan.SiteId.IsNull() && !plan.SiteId.IsUnknown() {
-		_, err := getSiteNetworkInterfaceById(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceId.ValueString())
+		// If interface_id is set, use it to validate the site network interface
+		var err error
+		var curInterfaceId, curInterfaceIndex string
+
+		if !plan.InterfaceId.IsNull() && !plan.InterfaceId.IsUnknown() {
+			// When interface_id is provided, get the corresponding interface_index
+			_, curInterfaceIndex, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceId.ValueString(), "", "")
+			if err == nil {
+				// Set the interface_index in the plan based on the lookup
+				plan.InterfaceIndex = types.StringValue(curInterfaceIndex)
+			}
+		} else if !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown() {
+			// When interface_index is provided, get the corresponding interface_id
+			curInterfaceId, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
+			if err == nil {
+				// Set the interface_id in the plan based on the lookup
+				plan.InterfaceId = types.StringValue(curInterfaceId)
+			}
+		}
+
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Site Validation Error",
+				"Site Interface Validation Error",
 				err.Error(),
 			)
 			return
@@ -418,9 +492,24 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
+	// Validate that interface_id and interface_index cannot be set simultaneously
+	if !plan.InterfaceId.IsNull() && !plan.InterfaceIndex.IsNull() {
+		resp.Diagnostics.AddError(
+			"Invalid Configuration",
+			"Interface ID and Interface Index cannot be set simultaneously",
+		)
+		return
+	}
+
 	// Validate that the site ID exists
 	if !plan.SiteId.IsNull() && !plan.SiteId.IsUnknown() {
-		_, err := getSiteNetworkInterfaceById(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceId.ValueString())
+		// If interface_id is set, use it to validate the site network interface
+		var err error
+		if !plan.InterfaceId.IsNull() && !plan.InterfaceId.IsUnknown() {
+			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceId.ValueString(), "", "")
+		} else if !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown() {
+			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
+		}
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Site Validation Error",
@@ -664,6 +753,15 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 		// find the siteRange entry we need
 		if curRange.Entity.ID == state.Id.ValueString() {
 			state.Id = types.StringValue(curRange.Entity.ID)
+			helperFields := curRange.GetHelperFields()
+			siteIdStr := cast.ToString(helperFields["siteId"])
+			interfaceNameStr := cast.ToString(helperFields["interfaceId"])
+			interfaceId, curInterfaceIndex, err := getSiteNetworkInterface(ctx, r.client, siteIdStr, "", "", interfaceNameStr)
+			if err != nil {
+				return state, false, fmt.Errorf("Site Interface Validation Error: %w", err)
+			}
+			state.InterfaceId = types.StringValue(interfaceId)
+			state.InterfaceIndex = types.StringValue(curInterfaceIndex)
 
 			// Field missing, add when supported by API
 			// if gatewayVal, ok := curRange.HelperFields["gateway"]; ok {

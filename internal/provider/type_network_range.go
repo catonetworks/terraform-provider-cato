@@ -10,6 +10,7 @@ type NetworkRange struct {
 	DhcpSettings     types.Object `tfsdk:"dhcp_settings"`
 	Gateway          types.String `tfsdk:"gateway"`
 	InterfaceId      types.String `tfsdk:"interface_id"`
+	InterfaceIndex   types.String `tfsdk:"interface_index"`
 	InternetOnly     types.Bool   `tfsdk:"internet_only"`
 	MdnsReflector    types.Bool   `tfsdk:"mdns_reflector"`
 	LocalIp          types.String `tfsdk:"local_ip"`

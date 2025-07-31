@@ -111,6 +111,7 @@ Optional:
 - `dhcp_settings` (Attributes) Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type) (see [below for nested schema](#nestedatt--native_range--dhcp_settings))
 - `internet_only` (Boolean) Internet only network range (Only releveant for Routed range_type)
 - `mdns_reflector` (Boolean) Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.
+- `native_network_lan_interface_id` (String) ID of native range LAN interface (for additional network range update purposes)
 - `native_network_range_id` (String) Site native IP range ID (for update purpose)
 - `translated_subnet` (String) Site translated native IP range (CIDR)
 - `vlan` (Number) VLAN ID for the site native range (optional)
