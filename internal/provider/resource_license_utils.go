@@ -15,7 +15,8 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	diags := make(diag.Diagnostics, 0)
 	// Get all sites, check for valid siteID
 	siteExists := false
-	siteResponse, err := cc.catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, nil, nil, nil, nil, nil, nil, nil, nil)
+	thousandInt64 := int64(1000)
+	siteResponse, err := cc.catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, &thousandInt64, nil, nil, nil, nil, nil, nil, nil)
 	tflog.Warn(ctx, "upsertLicense().EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteResponse),
 	})

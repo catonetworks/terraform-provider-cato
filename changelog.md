@@ -96,3 +96,11 @@
 
 - Updated network_range to mark interface_id as required
 - Updated ifw rule resource to set activeon to default values initially
+
+## 0.0.39 (2026-08-01)
+
+### Features
+
+- updated socket_site resource to support additional outputs of default interface index and id, network_range to support interface_id, or interface_index
+- Fixed license resource entityLookup to retrieve all sites to validate site ID, previously limited to 50 without limit of 0 in entityLookup
+

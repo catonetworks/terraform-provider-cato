@@ -284,8 +284,8 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// mDNS not supported for rangeType Routed, set to null
-	if plan.RangeType == types.StringValue("Routed") && !plan.InternetOnly.IsNull() &&
-		!plan.MdnsReflector.IsNull() && plan.InternetOnly.ValueBool() == true {
+	if plan.RangeType == types.StringValue("Routed") && !plan.MdnsReflector.IsNull() &&
+		!plan.MdnsReflector.IsNull() && plan.MdnsReflector.ValueBool() == true {
 		resp.Diagnostics.AddError(
 			"Invalid Configuration",
 			"mDNS reflector is not a supported configuration for routed subnets",
