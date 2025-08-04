@@ -104,3 +104,8 @@
 - updated socket_site resource to support additional outputs of default interface index and id, network_range to support interface_id, or interface_index
 - Fixed license resource entityLookup to retrieve all sites to validate site ID, previously limited to 50 without limit of 0 in entityLookup
 
+## 0.0.40 (2026-08-04)
+
+### Features
+
+- Minor update to license schema in SDK adding PENDING to enum for license status

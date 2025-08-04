@@ -12,6 +12,8 @@ github.com/catonetworks/cato-go-sdk v0.2.6-0.20250718174328-da3a77482475 h1:A2dC
 github.com/catonetworks/cato-go-sdk v0.2.6-0.20250718174328-da3a77482475/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
 github.com/catonetworks/cato-go-sdk v0.2.6-0.20250725221713-d1a0d7989e6a h1:6JYB5+GCjc073ouJcgngQee+ls76eoqG8HqplE6P5Mw=
 github.com/catonetworks/cato-go-sdk v0.2.6-0.20250725221713-d1a0d7989e6a/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
+github.com/catonetworks/cato-go-sdk v0.2.6-0.20250804182926-529bdb653a06 h1:FGHfG7RnesjSq/SIj8xk/XXGrKlxet1yKoG37ds43Rs=
+github.com/catonetworks/cato-go-sdk v0.2.6-0.20250804182926-529bdb653a06/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
