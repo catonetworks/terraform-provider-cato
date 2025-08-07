@@ -409,7 +409,11 @@ func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, li
 						tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
 						isAssigned = true
 						allocatedBw = &site.AllocatedBandwidth
-						curLicenseId = types.StringValue(*curLicense.ID)
+						if curLicense.ID != nil {
+							curLicenseId = types.StringValue(*curLicense.ID)
+						} else {
+							curLicenseId = types.StringNull()
+						}
 					}
 				}
 			}
@@ -418,7 +422,11 @@ func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, li
 				if curLicense.SiteLicense.Site.ID == curSiteId {
 					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+curLicense.SiteLicense.Site.ID)
 					isAssigned = true
-					curLicenseId = types.StringValue(*curLicense.ID)
+					if curLicense.ID != nil {
+						curLicenseId = types.StringValue(*curLicense.ID)
+					} else {
+						curLicenseId = types.StringNull()
+					}
 				}
 			}
 		}

@@ -246,6 +246,9 @@ func (r *lanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 				state.SiteId = types.StringValue(cast.ToString(siteIdVal))
 			}
 			if intIdVal, ok := curIint.HelperFields["interfaceId"]; ok {
+				if _, err := cast.ToIntE(intIdVal); err == nil {
+					intIdVal = "INT_" + cast.ToString(intIdVal)
+				}
 				state.InterfaceID = types.StringValue(cast.ToString(intIdVal))
 			}
 			if nameVal, ok := curIint.HelperFields["interfaceName"]; ok {

@@ -662,10 +662,31 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		"response": utils.InterfaceToJSONString(siteUpdateNetworkRangeResponse),
 	})
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Cato API error",
-			err.Error(),
-		)
+		var apiError struct {
+			NetworkErrors interface{} `json:"networkErrors"`
+			GraphqlErrors []struct {
+				Message string   `json:"message"`
+				Path    []string `json:"path"`
+			} `json:"graphqlErrors"`
+		}
+		interfaceNotPresent := false
+		if parseErr := json.Unmarshal([]byte(err.Error()), &apiError); parseErr == nil && len(apiError.GraphqlErrors) > 0 {
+			msg := apiError.GraphqlErrors[0].Message
+			if strings.Contains(msg, "Network range with id: ") && strings.Contains(msg, "is not found") {
+				interfaceNotPresent = true
+			}
+		}
+		if !interfaceNotPresent {
+			resp.Diagnostics.AddError(
+				"Catov2 API error",
+				err.Error(),
+			)
+			return
+		}
+		// If the network range is not present, delete the resource and recreate it
+		tflog.Warn(ctx, "Network range not found during update, recreating resource")
+		// Remove the resource from state
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
