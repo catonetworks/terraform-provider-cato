@@ -13,10 +13,6 @@ github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6
 github.com/apparentlymart/go-textseg/v13 v13.0.0/go.mod h1:ZK2fH7c4NqDTLtiYLvIkEghdlcqw7yxLeM89kiTRPUo=
 github.com/bufbuild/protocompile v0.4.0 h1:LbFKd2XowZvQ/kajzguUp2DC9UEIQhIq77fZZlaQsNA=
 github.com/bufbuild/protocompile v0.4.0/go.mod h1:3v93+mbWn/v3xzN+31nwkJfrEpAUwp+BagBSZWx+TP8=
-github.com/catonetworks/cato-go-sdk v0.2.6-0.20250817204358-7fcb8af53206 h1:nOHs7jTLcvSKF4TQpCIrBdgcDwC/qbnXVVhOJF6JKGQ=
-github.com/catonetworks/cato-go-sdk v0.2.6-0.20250817204358-7fcb8af53206/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
-github.com/catonetworks/cato-go-sdk v0.2.6-0.20250819211345-98f7508cfd37 h1:0Mo0tXfeT2h1Q7HXLoyhROpRN12r1EFaYDQQqW6Bhj8=
-github.com/catonetworks/cato-go-sdk v0.2.6-0.20250819211345-98f7508cfd37/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
 github.com/catonetworks/cato-go-sdk v0.2.6-0.20250819215631-4233089716ef h1:57L85DcK2SPbPVAMozBYaFotDK8l9Jhfrr8An//PCT4=
 github.com/catonetworks/cato-go-sdk v0.2.6-0.20250819215631-4233089716ef/go.mod h1:KnebAFFIvAarFAHxPYuOPK/1e/mRkvhKCbnoc6vfuHc=
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
