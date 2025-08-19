@@ -104,6 +104,26 @@
 - updated socket_site resource to support additional outputs of default interface index and id, network_range to support interface_id, or interface_index
 - Fixed license resource entityLookup to retrieve all sites to validate site ID, previously limited to 50 without limit of 0 in entityLookup
 
+## 0.0.41 (2025-08-19)
+
+### Features
+
+- Updated IFW and WAN firewall rules to support device_attributes with category, type, model, manufacturer, os, and osVersion filtering
+- Added active_period support for IFW and WAN rules with effective_from and expires_at functionality 
+- Enhanced exceptions handling for firewall rules with comprehensive device attribute filtering
+- Added new plan modifiers for better state management:
+  - active_period_modifier for handling rule activation periods
+  - ifw_exceptions_set_modifier and wan_exceptions_set_modifier for exception handling
+  - source_dest_object_modifier for source/destination object state management
+  - empty_set_default_modifier for default empty set handling
+- Added utility functions for IFW and WAN rule management in resource_internet_fw_utils.go and resource_wan_utils.go
+- Enhanced socket_site resource with improved state management and additional interface outputs
+- Updated license resource to fail gracefully when trial license is used on sites
+- Added semantic equality checking for WAN firewall rules to prevent unnecessary updates
+- Improved rule state hydration with better device attribute and exception handling
+- Enhanced documentation and examples for IFW and WAN rule resources
+- Updated bulk sites functionality for improved site management
+
 ## 0.0.40 (2026-08-04)
 
 ### Features
