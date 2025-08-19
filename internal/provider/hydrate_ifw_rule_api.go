@@ -394,6 +394,73 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			rootUpdateRule.DeviceOs = make([]cato_models.OperatingSystem, 0)
 		}
 
+		// setting device attributes
+		if !ruleInput.DeviceAttributes.IsNull() {
+			var curDeviceAttributes *DeviceAttributesInputIfw
+			diags = append(diags, ruleInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
+			if curDeviceAttributes != nil {
+				// Handle each field with proper null checking
+				categoryValues := make([]string, 0)
+				if curDeviceAttributes.Category != nil {
+					categoryValues = curDeviceAttributes.Category
+				}
+
+				manufacturerValues := make([]string, 0)
+				if curDeviceAttributes.Manufacturer != nil {
+					manufacturerValues = curDeviceAttributes.Manufacturer
+				}
+
+				modelValues := make([]string, 0)
+				if curDeviceAttributes.Model != nil {
+					modelValues = curDeviceAttributes.Model
+				}
+
+				osValues := make([]string, 0)
+				if curDeviceAttributes.Os != nil {
+					osValues = curDeviceAttributes.Os
+				}
+
+				osVersionValues := make([]string, 0)
+				if curDeviceAttributes.OsVersion != nil {
+					osVersionValues = curDeviceAttributes.OsVersion
+				}
+
+				typeValues := make([]string, 0)
+				if curDeviceAttributes.Type != nil {
+					typeValues = curDeviceAttributes.Type
+				}
+
+				rootAddRule.DeviceAttributes = &cato_models.DeviceAttributesInput{
+					Category:     categoryValues,
+					Manufacturer: manufacturerValues,
+					Model:        modelValues,
+					Os:           osValues,
+					OsVersion:    osVersionValues,
+					Type:         typeValues,
+				}
+				rootUpdateRule.DeviceAttributes = &cato_models.DeviceAttributesUpdateInput{
+					Category:     categoryValues,
+					Manufacturer: manufacturerValues,
+					Model:        modelValues,
+					Os:           osValues,
+					OsVersion:    osVersionValues,
+					Type:         typeValues,
+				}
+			}
+		} else {
+			// DeviceAttributes should never be null in API - always provide empty arrays
+			emptyDeviceAttributes := &cato_models.DeviceAttributesInput{
+				Category:     make([]string, 0),
+				Manufacturer: make([]string, 0),
+				Model:        make([]string, 0),
+				Os:           make([]string, 0),
+				OsVersion:    make([]string, 0),
+				Type:         make([]string, 0),
+			}
+			rootUpdateRule.DeviceAttributes = (*cato_models.DeviceAttributesUpdateInput)(emptyDeviceAttributes)
+			rootAddRule.DeviceAttributes = emptyDeviceAttributes
+		}
+
 		// setting destination
 		if !ruleInput.Destination.IsUnknown() && !ruleInput.Destination.IsNull() {
 
@@ -1261,6 +1328,71 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					exceptionUpdateInput.DeviceOs = make([]cato_models.OperatingSystem, 0)
 				}
 
+				// if !itemExceptionsInput.DeviceAttributes.IsNull() {
+				// 	var curExceptionDeviceAttributes *DeviceAttributesInputIfw
+				// 	diags = append(diags, itemExceptionsInput.DeviceAttributes.As(ctx, &curExceptionDeviceAttributes, basetypes.ObjectAsOptions{})...)
+				// 	if curExceptionDeviceAttributes != nil {
+				// 		// Handle each field with proper null checking
+				// 		categoryValues := make([]string, 0)
+				// 		if curExceptionDeviceAttributes.Category != nil {
+				// 			categoryValues = curExceptionDeviceAttributes.Category
+				// 		}
+
+				// 		manufacturerValues := make([]string, 0)
+				// 		if curExceptionDeviceAttributes.Manufacturer != nil {
+				// 			manufacturerValues = curExceptionDeviceAttributes.Manufacturer
+				// 		}
+
+				// 		modelValues := make([]string, 0)
+				// 		if curExceptionDeviceAttributes.Model != nil {
+				// 			modelValues = curExceptionDeviceAttributes.Model
+				// 		}
+
+				// 		osValues := make([]string, 0)
+				// 		if curExceptionDeviceAttributes.Os != nil {
+				// 			osValues = curExceptionDeviceAttributes.Os
+				// 		}
+
+				// 		osVersionValues := make([]string, 0)
+				// 		if curExceptionDeviceAttributes.OsVersion != nil {
+				// 			osVersionValues = curExceptionDeviceAttributes.OsVersion
+				// 		}
+
+				// 		typeValues := make([]string, 0)
+				// 		if curExceptionDeviceAttributes.Type != nil {
+				// 			typeValues = curExceptionDeviceAttributes.Type
+				// 		}
+
+				// 		exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+				// 			Category:     categoryValues,
+				// 			Manufacturer: manufacturerValues,
+				// 			Model:        modelValues,
+				// 			Os:           osValues,
+				// 			OsVersion:    osVersionValues,
+				// 			Type:         typeValues,
+				// 		}
+				// 		exceptionUpdateInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+				// 			Category:     categoryValues,
+				// 			Manufacturer: manufacturerValues,
+				// 			Model:        modelValues,
+				// 			Os:           osValues,
+				// 			OsVersion:    osVersionValues,
+				// 			Type:         typeValues,
+				// 		}
+				// 	}
+				// } else {
+				// emptyExceptionDeviceAttributes := &cato_models.DeviceAttributesInput{
+				// 	Category:     make([]string, 0),
+				// 	Manufacturer: make([]string, 0),
+				// 	Model:        make([]string, 0),
+				// 	Os:           make([]string, 0),
+				// 	OsVersion:    make([]string, 0),
+				// 	Type:         make([]string, 0),
+				// }
+				// exceptionUpdateInput.DeviceAttributes = (*cato_models.DeviceAttributesInput)(emptyExceptionDeviceAttributes)
+				// exceptionAddInput.DeviceAttributes = emptyExceptionDeviceAttributes
+				// }
+
 				// setting destination
 				if !itemExceptionsInput.Destination.IsNull() {
 
@@ -1590,10 +1722,79 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			}
 		}
 
-		// setting activePeriod with default values for create operation
-		rootAddRule.ActivePeriod = &cato_models.PolicyRuleActivePeriodInput{
-			UseEffectiveFrom: false,
-			UseExpiresAt:     false,
+		// setting activePeriod
+		if !ruleInput.ActivePeriod.IsNull() && !ruleInput.ActivePeriod.IsUnknown() {
+			activePeriodInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_ActivePeriod{}
+			diags = append(diags, ruleInput.ActivePeriod.As(ctx, &activePeriodInput, basetypes.ObjectAsOptions{})...)
+
+			activePeriodApiInput := &cato_models.PolicyRuleActivePeriodInput{
+				EffectiveFrom:    nil,
+				ExpiresAt:        nil,
+				UseEffectiveFrom: false,
+				UseExpiresAt:     false,
+			}
+
+			// Handle effective_from
+			if !activePeriodInput.EffectiveFrom.IsNull() && !activePeriodInput.EffectiveFrom.IsUnknown() {
+				effectiveFromStr := activePeriodInput.EffectiveFrom.ValueString()
+				if effectiveFromStr != "" {
+					// Parse the time string - support both RFC3339 format and human-readable formats
+					parsedTime, err := parseTimeStringWithTZ(effectiveFromStr)
+					if err != nil {
+						diags = append(diags, diag.NewErrorDiagnostic(
+							"Invalid effective_from time format",
+							fmt.Sprintf("Unable to parse effective_from time '%s': %v. Expected RFC3339 format (e.g., '2024-12-31T23:59:59Z')", effectiveFromStr, err),
+						))
+					} else {
+						activePeriodApiInput.EffectiveFrom = &parsedTime
+						activePeriodApiInput.UseEffectiveFrom = true
+					}
+				}
+			}
+
+			// Handle expires_at
+			if !activePeriodInput.ExpiresAt.IsNull() && !activePeriodInput.ExpiresAt.IsUnknown() {
+				expiresAtStr := activePeriodInput.ExpiresAt.ValueString()
+				if expiresAtStr != "" {
+					// Parse the time string - support both RFC3339 format and human-readable formats
+					parsedTime, err := parseTimeStringWithTZ(expiresAtStr)
+					if err != nil {
+						diags = append(diags, diag.NewErrorDiagnostic(
+							"Invalid expires_at time format",
+							fmt.Sprintf("Unable to parse expires_at time '%s': %v. Expected RFC3339 format (e.g., '2024-12-31T23:59:59Z')", expiresAtStr, err),
+						))
+					} else {
+						activePeriodApiInput.ExpiresAt = &parsedTime
+						activePeriodApiInput.UseExpiresAt = true
+					}
+				}
+			}
+
+			rootAddRule.ActivePeriod = activePeriodApiInput
+			// For update, we need to create a separate struct with pointer fields for bools
+			activePeriodUpdateApiInput := &cato_models.PolicyRuleActivePeriodUpdateInput{
+				EffectiveFrom:    activePeriodApiInput.EffectiveFrom,
+				ExpiresAt:        activePeriodApiInput.ExpiresAt,
+				UseEffectiveFrom: &activePeriodApiInput.UseEffectiveFrom,
+				UseExpiresAt:     &activePeriodApiInput.UseExpiresAt,
+			}
+			rootUpdateRule.ActivePeriod = activePeriodUpdateApiInput
+		} else {
+			// setting activePeriod with default values when not provided
+			rootAddRule.ActivePeriod = &cato_models.PolicyRuleActivePeriodInput{
+				EffectiveFrom:    nil,
+				ExpiresAt:        nil,
+				UseEffectiveFrom: false,
+				UseExpiresAt:     false,
+			}
+			useEffectiveFromDefault := false
+			useExpiresAtDefault := false
+			rootUpdateRule.ActivePeriod = &cato_models.PolicyRuleActivePeriodUpdateInput{
+				EffectiveFrom:    nil,
+				ExpiresAt:        nil,
+				UseEffectiveFrom: &useEffectiveFromDefault,
+				UseExpiresAt:     &useExpiresAtDefault,
+			}
 		}
 
 		// settings other rule attributes

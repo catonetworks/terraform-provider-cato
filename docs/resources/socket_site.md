@@ -86,7 +86,7 @@ resource "cato_socket_site" "branch_site" {
 
 - `connection_type` (String) Connection type for the site (SOCKET_X1500, SOCKET_AWS1500, SOCKET_AZ1500, ...)
 - `name` (String) Site name
-- `native_range` (Attributes) Site native range settings (see [below for nested schema](#nestedatt--native_range))
+- `native_range` (Attributes) Site lan native range settings (see [below for nested schema](#nestedatt--native_range))
 - `site_location` (Attributes) Site location (see [below for nested schema](#nestedatt--site_location))
 - `site_type` (String) Site type (https://api.catonetworks.com/documentation/#definition-SiteType)
 
@@ -115,6 +115,11 @@ Optional:
 - `native_network_range_id` (String) Site native IP range ID (for update purpose)
 - `translated_subnet` (String) Site translated native IP range (CIDR)
 - `vlan` (Number) VLAN ID for the site native range (optional)
+
+Read-Only:
+
+- `interface_id` (String) LAN native range interface id
+- `interface_index` (String) LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models
 
 <a id="nestedatt--native_range--dhcp_settings"></a>
 ### Nested Schema for `native_range.dhcp_settings`

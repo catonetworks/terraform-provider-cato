@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk" // Import the correct package
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -16,10 +17,20 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 
 	ruleInput := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
 	diags := make(diag.Diagnostics, 0)
-	diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
-	diags = append(diags, diagstmp...)
-	if diags.HasError() {
-		return ruleInput, diags
+
+	// Handle case where state might be incomplete (e.g., during import)
+	// Try to extract existing state first, but don't fail if it's incomplete
+	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
+		diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+		if diagstmp.HasError() {
+			// If conversion fails during import, log it but continue with empty ruleInput
+			tflog.Debug(ctx, "Failed to convert state to struct in hydrateWanRuleState, using empty struct for hydration")
+			// Reset ruleInput to empty struct and clear diagnostics
+			ruleInput = Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+			// Don't add the errors to diags, we'll handle this by populating from API response
+		} else {
+			diags = append(diags, diagstmp...)
+		}
 	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
 	ruleInput.Direction = types.StringValue(string(currentRule.Direction))
@@ -113,10 +124,49 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	diags = append(diags, diagstmp...)
 	////////////// end Rul -> Application ///////////////
 
+	////////////// Start Rule -> deviceAttributes ///////////////
+	// Check if DeviceAttributes has any non-empty fields (not in zero state)
+	hasDeviceAttributes := len(currentRule.DeviceAttributes.Category) > 0 ||
+		len(currentRule.DeviceAttributes.Type) > 0 ||
+		len(currentRule.DeviceAttributes.Model) > 0 ||
+		len(currentRule.DeviceAttributes.Manufacturer) > 0 ||
+		len(currentRule.DeviceAttributes.Os) > 0 ||
+		len(currentRule.DeviceAttributes.OsVersion) > 0
+
+	tflog.Debug(ctx, "WAN_rule.read.currentRule.DeviceAttributes", map[string]interface{}{
+		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", currentRule.DeviceAttributes)),
+	})
+
+	var deviceAttributesObj types.Object
+	if hasDeviceAttributes {
+		deviceAttributesObj, diagstmp = types.ObjectValue(
+			WanDeviceAttrAttrTypes,
+			map[string]attr.Value{
+				"category":     parseList(ctx, types.StringType, currentRule.DeviceAttributes.Category, "rule.deviceattributes.category"),
+				"type":         parseList(ctx, types.StringType, currentRule.DeviceAttributes.Type, "rule.deviceattributes.type"),
+				"model":        parseList(ctx, types.StringType, currentRule.DeviceAttributes.Model, "rule.deviceattributes.model"),
+				"manufacturer": parseList(ctx, types.StringType, currentRule.DeviceAttributes.Manufacturer, "rule.deviceattributes.manufacturer"),
+				"os":           parseList(ctx, types.StringType, currentRule.DeviceAttributes.Os, "rule.deviceattributes.os"),
+				"os_version":   parseList(ctx, types.StringType, currentRule.DeviceAttributes.OsVersion, "rule.deviceattributes.os_version"),
+			},
+		)
+		diags = append(diags, diagstmp...)
+	} else {
+		// Set device_attributes to null when no attributes are present
+		deviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
+	}
+
+	tflog.Debug(ctx, "WAN_rule.read.currentRule.DeviceAttributes", map[string]interface{}{
+		"deviceAttributesObj": utils.InterfaceToJSONString(fmt.Sprintf("%v", deviceAttributesObj)),
+	})
+
+	ruleInput.DeviceAttributes = deviceAttributesObj
+	////////////// End Rule -> deviceAttributes ///////////////
+
 	////////////// start Rule -> Service ///////////////
 	// Always initialize Service object to prevent drift
 	curRuleServiceObj, diagstmp := types.ObjectValue(
-		IfwServiceAttrTypes,
+		WanServiceAttrTypes,
 		map[string]attr.Value{
 			"standard": types.SetNull(NameIDObjectType),
 			"custom":   types.ListNull(CustomServiceObjectType),
@@ -272,7 +322,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			////////////// start Rule -> Service ///////////////
 			// Initialize Service object with null values
 			curExceptionServiceObj, diagstmp := types.ObjectValue(
-				IfwServiceAttrTypes,
+				WanServiceAttrTypes,
 				map[string]attr.Value{
 					"standard": types.SetNull(NameIDObjectType),
 					"custom":   types.ListNull(CustomServiceObjectType),
@@ -302,6 +352,33 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			}
 			////////////// end Rule -> Service ///////////////
 
+			// Check if DeviceAttributes has any non-empty fields for exceptions (similar to main rule logic)
+			exceptionHasDeviceAttributes := len(ruleException.DeviceAttributes.Category) > 0 ||
+				len(ruleException.DeviceAttributes.Type) > 0 ||
+				len(ruleException.DeviceAttributes.Model) > 0 ||
+				len(ruleException.DeviceAttributes.Manufacturer) > 0 ||
+				len(ruleException.DeviceAttributes.Os) > 0 ||
+				len(ruleException.DeviceAttributes.OsVersion) > 0
+
+			var exceptionDeviceAttributesObj types.Object
+			if exceptionHasDeviceAttributes {
+				exceptionDeviceAttributesObj, diagstmp = types.ObjectValue(
+					WanDeviceAttrAttrTypes,
+					map[string]attr.Value{
+						"category":     parseList(ctx, types.StringType, ruleException.DeviceAttributes.Category, "rule.exception.deviceattributes.category"),
+						"type":         parseList(ctx, types.StringType, ruleException.DeviceAttributes.Type, "rule.exception.deviceattributes.type"),
+						"model":        parseList(ctx, types.StringType, ruleException.DeviceAttributes.Model, "rule.exception.deviceattributes.model"),
+						"manufacturer": parseList(ctx, types.StringType, ruleException.DeviceAttributes.Manufacturer, "rule.exception.deviceattributes.manufacturer"),
+						"os":           parseList(ctx, types.StringType, ruleException.DeviceAttributes.Os, "rule.exception.deviceattributes.os"),
+						"os_version":   parseList(ctx, types.StringType, ruleException.DeviceAttributes.OsVersion, "rule.exception.deviceattributes.os_version"),
+					},
+				)
+				diags = append(diags, diagstmp...)
+			} else {
+				// Set device_attributes to null when no attributes are present
+				exceptionDeviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
+			}
+
 			// Initialize Exception object with populated values
 			curException, diagstmp := types.ObjectValue(
 				WanExceptionAttrTypes,
@@ -310,6 +387,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 					"source":            curExceptionSourceObj,
 					"country":           parseNameIDList(ctx, ruleException.Country, "rule.exception.country"),
 					"device":            parseNameIDList(ctx, ruleException.Device, "rule.exception.device"),
+					"device_attributes": exceptionDeviceAttributesObj,
 					"device_os":         parseList(ctx, types.StringType, ruleException.DeviceOs, "rule.exception.device_os"),
 					"destination":       curExceptionDestObj,
 					"application":       curExceptionApplicationObj,
@@ -332,6 +410,84 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	}
 	////////////// end Rule -> Exceptions ///////////////
 
-	return ruleInput, diags
+	////////////// start Rule -> ActivePeriod ///////////////
+	// Debug logging to see what API returns
+	tflog.Warn(ctx, "ActivePeriod from API: EffectiveFrom="+fmt.Sprintf("%v", currentRule.ActivePeriod.EffectiveFrom)+", ExpiresAt="+fmt.Sprintf("%v", currentRule.ActivePeriod.ExpiresAt)+", UseEffectiveFrom="+fmt.Sprintf("%v", currentRule.ActivePeriod.UseEffectiveFrom)+", UseExpiresAt="+fmt.Sprintf("%v", currentRule.ActivePeriod.UseExpiresAt))
 
+	effectiveFromValue := getActivePeriodString(currentRule.ActivePeriod.EffectiveFrom)
+	expiresAtValue := getActivePeriodString(currentRule.ActivePeriod.ExpiresAt)
+	useEffectiveFromValue := types.BoolValue(currentRule.ActivePeriod.UseEffectiveFrom)
+	useExpiresAtValue := types.BoolValue(currentRule.ActivePeriod.UseExpiresAt)
+
+	if effectiveFromValue.IsUnknown() {
+		effectiveFromValue = types.StringNull()
+	}
+	if expiresAtValue.IsUnknown() {
+		expiresAtValue = types.StringNull()
+	}
+
+	// If API returned nil but we have configured values in state, preserve them
+	// Only attempt to preserve values if ActivePeriod is not null and not unknown
+	tflog.Warn(ctx, "TFLOG_WARN_WAN.ruleInput.ActivePeriod", map[string]interface{}{
+		"OUTPUT":                utils.InterfaceToJSONString(ruleInput.ActivePeriod),
+		"effectiveFromValue":    utils.InterfaceToJSONString(effectiveFromValue.ValueString()),
+		"expiresAtValue":        utils.InterfaceToJSONString(expiresAtValue.ValueString()),
+		"useEffectiveFromValue": utils.InterfaceToJSONString(useEffectiveFromValue.ValueBool()),
+		"useExpiresAtValue":     utils.InterfaceToJSONString(useExpiresAtValue.ValueBool()),
+	})
+
+	// Preserve effective_from if API returned nil
+	if !effectiveFromValue.IsNull() && useEffectiveFromValue.ValueBool() == true {
+		parsedEffectiveFromStr, err := parseTimeString(effectiveFromValue.ValueString())
+		if err == nil {
+			tflog.Warn(ctx, "TFLOG_WARN_WAN.ruleInput.parsedEffectiveFromStr", map[string]interface{}{
+				"OUTPUT": utils.InterfaceToJSONString(parsedEffectiveFromStr),
+				"error":  utils.InterfaceToJSONString(err),
+			})
+			effectiveFromValue = types.StringValue(parsedEffectiveFromStr)
+		}
+		// useEffectiveFromValue = types.BoolValue(true) // If we have a value, set use flag to true
+	} else {
+		effectiveFromValue = types.StringNull() // If no value, set to null
+	}
+
+	// Preserve expires_at if API returned nil
+	if !expiresAtValue.IsNull() && useExpiresAtValue.ValueBool() == true {
+		parsedExpiresAtStr, err := parseTimeString(expiresAtValue.ValueString())
+		if err == nil {
+			tflog.Warn(ctx, "TFLOG_WARN_WAN.ruleInput.parsedExpiresAtStr", map[string]interface{}{
+				"OUTPUT": utils.InterfaceToJSONString(parsedExpiresAtStr),
+				"error":  utils.InterfaceToJSONString(err),
+			})
+			expiresAtValue = types.StringValue(parsedExpiresAtStr)
+		}
+	} else {
+		expiresAtValue = types.StringNull() // If no value, set to null
+	}
+
+	// Recompute use_effective_from and use_expires_at based on final values after preservation logic
+	// This ensures consistency: use_effective_from should be true only when effective_from has a value
+	useEffectiveFromValue = types.BoolValue(!effectiveFromValue.IsNull() && !effectiveFromValue.IsUnknown() && effectiveFromValue.ValueString() != "")
+	useExpiresAtValue = types.BoolValue(!expiresAtValue.IsNull() && !expiresAtValue.IsUnknown() && expiresAtValue.ValueString() != "")
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN.ruleInput.ActivePeriod", map[string]interface{}{
+		"effectiveFromValue": utils.InterfaceToJSONString(effectiveFromValue),
+		"expiresAtValue":     utils.InterfaceToJSONString(expiresAtValue),
+	})
+
+	curRuleActivePeriodObj, diagstmp := types.ObjectValue(
+		ActivePeriodAttrTypes,
+		map[string]attr.Value{
+			"effective_from":     effectiveFromValue,
+			"expires_at":         expiresAtValue,
+			"use_effective_from": useEffectiveFromValue,
+			"use_expires_at":     useExpiresAtValue,
+		},
+	)
+	diags = append(diags, diagstmp...)
+	ruleInput.ActivePeriod = curRuleActivePeriodObj
+	tflog.Warn(ctx, "Final ActivePeriod WAN object: "+fmt.Sprintf("%v", curRuleActivePeriodObj))
+	////////////// end Rule -> ActivePeriod ///////////////
+
+	return ruleInput, diags
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models" // Import the correct package
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
@@ -71,7 +72,7 @@ func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID
 	} else {
 		// Confirm single record retiurned by Id
 		if len(items) == 0 {
-		return "", "", fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceId, siteID)
+			return "", "", fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceId, siteID)
 		}
 		interfaceItem := items[0]
 		// Return the first (and should be only) interface item
@@ -217,6 +218,39 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 	return setValue
 }
 
+// parseNameIDListWithUnknownName creates a Set of NameID objects but keeps all names as unknown
+// This is used for computed name fields with UseStateForUnknown() to prevent spurious diffs
+func parseNameIDListWithUnknownName[T any](ctx context.Context, items []T, attrName string) types.Set {
+	tflog.Debug(ctx, "parseNameIDListWithUnknownName() "+attrName+" - "+fmt.Sprintf("%v", items))
+	diags := make(diag.Diagnostics, 0)
+
+	tflog.Debug(ctx, "parseNameIDListWithUnknownName.items", map[string]interface{}{
+		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", items)),
+		"T": utils.InterfaceToJSONString(fmt.Sprintf("%T", items)),
+	})
+	// Handle nil or empty list
+	if items == nil || len(items) == 0 {
+		tflog.Debug(ctx, "parseNameIDListWithUnknownName() - nil or empty input list")
+		return types.SetNull(NameIDObjectType)
+	}
+
+	// Process each item into an attr.Value using the unknown name variant
+	nameIDValues := make([]attr.Value, 0, len(items))
+	for i, item := range items {
+		obj := parseNameIDWithUnknownName(ctx, item, attrName)
+		if !obj.IsNull() { // Include non-null values (unknown is allowed)
+			nameIDValues = append(nameIDValues, obj)
+		} else {
+			tflog.Debug(ctx, "parseNameIDListWithUnknownName() - skipping null item at index "+fmt.Sprintf("%d", i))
+		}
+	}
+
+	// Convert to types.Set using SetValueFrom
+	setValue, diagstmp := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
+	diags = append(diags, diagstmp...)
+	return setValue
+}
+
 func parseNameID(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseNameID() "+attrName+" - "+fmt.Sprintf("%v", item))
 	diags := make(diag.Diagnostics, 0)
@@ -253,15 +287,145 @@ func parseNameID(ctx context.Context, item interface{}, attrName string) types.O
 		return types.ObjectNull(NameIDAttrTypes)
 	}
 
-	// Create object value
+	// Safely extract string values, handling pointers and empty values
+	var nameValue types.String
+	var idValue types.String
+
+	// Handle ID field first (this is always populated)
+	if idField.Kind() == reflect.Ptr {
+		if idField.IsNil() {
+			idValue = types.StringNull()
+		} else {
+			val := idField.Elem().String()
+			if val == "" {
+				idValue = types.StringNull()
+			} else {
+				idValue = types.StringValue(val)
+			}
+		}
+	} else {
+		val := idField.String()
+		if val == "" {
+			idValue = types.StringNull()
+		} else {
+			idValue = types.StringValue(val)
+		}
+	}
+
+	// Handle name field - use UseStateForUnknown logic to prevent spurious diffs
+	// If name would be empty/null, keep it as null to match Terraform's expectations
+	// for computed optional fields
+	if nameField.Kind() == reflect.Ptr {
+		if nameField.IsNil() {
+			nameValue = types.StringNull()
+		} else {
+			val := nameField.Elem().String()
+			if val == "" {
+				nameValue = types.StringNull()
+			} else {
+				// Only populate name if we have a valid value
+				// The UseStateForUnknown() plan modifier in the schema should handle the rest
+				nameValue = types.StringValue(val)
+			}
+		}
+	} else {
+		val := nameField.String()
+		if val == "" {
+			nameValue = types.StringNull()
+		} else {
+			nameValue = types.StringValue(val)
+		}
+	}
+
+	// Create object value with proper null/value handling
 	obj, diagstmp := types.ObjectValue(
 		NameIDAttrTypes,
 		map[string]attr.Value{
-			"name": basetypes.NewStringValue(nameField.String()),
-			"id":   basetypes.NewStringValue(idField.String()),
+			"name": nameValue,
+			"id":   idValue,
 		},
 	)
 	tflog.Debug(ctx, "parseNameID() obj - "+fmt.Sprintf("%v", obj))
+	diags = append(diags, diagstmp...)
+	return obj
+}
+
+// parseNameIDWithUnknownName creates a NameID object but keeps the name as unknown
+// This is used for computed name fields with UseStateForUnknown() to prevent spurious diffs
+func parseNameIDWithUnknownName(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Debug(ctx, "parseNameIDWithUnknownName() "+attrName+" - "+fmt.Sprintf("%v", item))
+	diags := make(diag.Diagnostics, 0)
+
+	// Get the reflect.Value of the input
+	itemValue := reflect.ValueOf(item)
+
+	// Handle nil or invalid input (must be a struct, not a slice/array)
+	if item == nil || itemValue.Kind() != reflect.Struct {
+		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			itemValue = itemValue.Elem()
+			if itemValue.Kind() != reflect.Struct {
+				return types.ObjectNull(NameIDAttrTypes)
+			}
+		} else {
+			return types.ObjectNull(NameIDAttrTypes)
+		}
+	}
+
+	// Handle pointer to struct
+	if itemValue.Kind() == reflect.Ptr {
+		if itemValue.IsNil() {
+			return types.ObjectNull(NameIDAttrTypes)
+		}
+		itemValue = itemValue.Elem()
+	}
+
+	// Get Name and ID fields
+	nameField := itemValue.FieldByName("Name")
+	idField := itemValue.FieldByName("ID")
+
+	if !nameField.IsValid() || !idField.IsValid() {
+		tflog.Debug(ctx, "parseNameIDWithUnknownName() !nameField.IsValid() - "+fmt.Sprintf("%v", nameField))
+		return types.ObjectNull(NameIDAttrTypes)
+	}
+
+	// Safely extract string values, handling pointers and empty values
+	var nameValue types.String
+	var idValue types.String
+
+	// Handle ID field first (this is always populated)
+	if idField.Kind() == reflect.Ptr {
+		if idField.IsNil() {
+			idValue = types.StringNull()
+		} else {
+			val := idField.Elem().String()
+			if val == "" {
+				idValue = types.StringNull()
+			} else {
+				idValue = types.StringValue(val)
+			}
+		}
+	} else {
+		val := idField.String()
+		if val == "" {
+			idValue = types.StringNull()
+		} else {
+			idValue = types.StringValue(val)
+		}
+	}
+
+	// For computed name fields with UseStateForUnknown(), keep name as unknown
+	// to let Terraform's plan modifier handle it properly
+	nameValue = types.StringUnknown()
+
+	// Create object value with proper null/unknown handling
+	obj, diagstmp := types.ObjectValue(
+		NameIDAttrTypes,
+		map[string]attr.Value{
+			"name": nameValue,
+			"id":   idValue,
+		},
+	)
+	tflog.Debug(ctx, "parseNameIDWithUnknownName() obj - "+fmt.Sprintf("%v", obj))
 	diags = append(diags, diagstmp...)
 	return obj
 }
@@ -673,4 +837,31 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 	tflog.Debug(ctx, "parseExceptionCustomService() obj - "+fmt.Sprintf("%v", obj))
 	diags = append(diags, diagstmp...)
 	return obj
+}
+
+func parseTimeString(timeStr string) (string, error) {
+	t, err := time.Parse("2006-01-02T15:04:05", timeStr)
+	if err != nil {
+		return "", err
+	}
+	// If all formats fail, return an error
+	return t.Format("2006-01-02T15:04:05"), nil
+}
+
+func parseTimeStringWithTZ(timeStr string) (string, error) {
+	t, err := time.Parse("2006-01-02T15:04:05", timeStr)
+	if err != nil {
+		return "", err
+	}
+	// If all formats fail, return an error
+	return t.Format("2006-01-02T15:04:05+00:00"), nil
+}
+
+// getActivePeriodString safely converts API active period string fields to Terraform string values
+// Returns null string if empty, otherwise returns the string value
+func getActivePeriodString(value *string) types.String {
+	if value == nil || *value == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(*value)
 }

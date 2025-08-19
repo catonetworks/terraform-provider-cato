@@ -75,314 +75,326 @@ resource "cato_if_section" "if_section" {
   }
 }
 
-resource "cato_if_rule" "kitchen_sink" {
-  depends_on = [cato_if_section.if_section]
+resource "cato_if_rule" "example_min" {
   at = {
-    position = "LAST_IN_SECTION"
-    ref      = cato_if_section.if_section.section.id
+    position = "LAST_IN_POLICY"
   }
   rule = {
-    name              = "Internet Firewall Kitchen Sink"
-    action            = "ALLOW"
-    connection_origin = "REMOTE"
-    country = [
-      {
-        name = "Afghanistan"
-      },
-    ]
+    name        = "Internet Firewall Test Kitchen Sink"
     description = "test description"
-    destination = {
-      app_category = [
-        {
-          name = "Alcohol and Tobacco"
-        },
-        {
-          id = "anonymizers"
-        },
-      ]
-      application = [
-        {
-          name = "assembled"
-        },
-      ]
-      country = [
-        {
-          name = "Afghanistan"
-        },
-      ]
-      custom_app = [
-        {
-          name = "Test Custom App"
-        },
-      ]
-      custom_category = [
-        {
-          name = "Test Custom Category"
-        },
-      ]
-      domain = [
-        "testdomain.com",
-      ]
-      fqdn = [
-        "my.testedomain.com",
-      ]
-      # ip = []
-      ip_range = [
-        {
-          from = "192.168.11.6"
-          to   = "192.168.11.8"
-        },
-      ]
-      remote_asn = [
-        "12345",
-      ]
-      sanctioned_apps_category = [
-        {
-          name = "Sanctioned Apps"
-        },
-      ]
-      #       subnet = []
-    }
-    device = [
-      {
-        name = "Test Device Posture Profile"
-      },
-    ]
-    device_os = ["ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS"]
-    enabled   = true
-    exceptions = [
-      {
-        connection_origin = "REMOTE"
-        country = [
-          {
-            name = "American Samoa"
-          },
-        ]
-        destination = {
-          app_category = [
-            {
-              name = "Anonymizers"
-            },
-          ]
-          application = [
-            {
-              name = "Kyriba Corp."
-            },
-          ]
-          country = [
-            {
-              name = "Anguilla"
-            },
-          ]
-          custom_app = [
-            {
-              name = "Test Custom App"
-            },
-          ]
-          custom_category = [
-            {
-              name = "Test Custom Category"
-            },
-          ]
-          domain = [
-            "test.com",
-          ]
-          fqdn = [
-            "my.test.com",
-          ]
-          ip_range = [
-            {
-              from = "192.168.11.2"
-              to   = "192.168.11.3"
-            },
-          ]
-          sanctioned_apps_category = [
-            {
-              name = "Sanctioned Apps"
-            },
-          ]
-        }
-        name = "Kitchen Sink Exception3"
-        service = {
-          custom = [
-            {
-              protocol = "TCP"
-            },
-          ]
-          standard = [
-            {
-              name = "Agora"
-            },
-          ]
-        }
-        source = {
-          floating_subnet = [
-            {
-              name = "floating_range"
-            },
-          ]
-          group = [
-            {
-              name = "test group"
-            },
-          ]
-          host = [
-            {
-              name = "Test Host"
-            },
-          ]
-          ip = [
-            "192.168.11.2",
-          ]
-          ip_range = [
-            {
-              from = "192.168.11.2"
-              to   = "192.168.11.4"
-            },
-          ]
-          network_interface = [
-            {
-              name = "Test IPSec \\ Default"
-            },
-          ]
-          site = [
-            {
-              name = "test aws socket"
-            },
-          ]
-          site_network_subnet = [
-            {
-              name = "Test IPSec \\ Default \\ Native Range"
-            },
-          ]
-          system_group = [
-            {
-              name = "All Floating Ranges"
-            },
-          ]
-          user = [
-            {
-              name = "test user"
-            },
-          ]
-          users_group = [
-            {
-              name = "test group"
-            },
-          ]
-        }
-      },
-    ]
-    schedule = {
-      active_on = "CUSTOM_RECURRING"
-      custom_recurring = {
-        days = [
-          "SUNDAY",
-          "WEDNESDAY",
-          "SATURDAY",
-          "THURSDAY",
-          "MONDAY",
-          "TUESDAY",
-          "FRIDAY",
-        ]
-        from = "02:02:00"
-        to   = "03:03:00"
-      }
-    }
-    service = {
-      custom = [
-        {
-          port = []
-          port_range = {
-            from = "10"
-            to   = "50"
-          }
-          protocol = "UDP"
-        },
-        {
-          port = [
-            "22",
-          ]
-          protocol = "UDP"
-        },
-      ]
-      standard = [
-        {
-          name = "Amazon EC2"
-        },
-      ]
-    }
-    source = {
-      floating_subnet = [
-        {
-          id = "1474041"
-        },
-      ]
-      group = [
-        {
-          name = "test group"
-        },
-      ]
-      host = [
-        {
-          name = "Test Host"
-        },
-      ]
-      ip = [
-        "192.168.11.2",
-      ]
-      ip_range = [
-        {
-          from = "192.168.11.2"
-          to   = "192.168.11.5"
-        },
-      ]
-      network_interface = [
-        {
-          id = "124986"
-        },
-      ]
-      site = [
-        {
-          name = "test aws socket"
-        },
-      ]
-      site_network_subnet = [
-        {
-          id = "TjE0Nzk5MTc="
-        },
-      ]
-      system_group = [
-        {
-          name = "All Floating Ranges"
-        },
-      ]
-      user = [
-        {
-          name = "test user"
-        },
-      ]
-      users_group = [
-        {
-          name = "test group"
-        },
-      ]
-    }
+    enabled     = true
+    source      = {}
+    destination = {}
+    action      = "ALLOW"
     tracking = {
-      alert = {
-        enabled   = true
-        frequency = "WEEKLY"
-        mailing_list = [
-          {
-            name = "All Admins"
-          }
-        ]
-      }
       event = {
         enabled = true
       }
     }
   }
+}
+
+# cato_if_rule.kitchen_sink:
+resource "cato_if_rule" "example_kitchen_sink" {
+    at   = {
+      position = "LAST_IN_SECTION"
+      ref      = cato_if_section.if_section.section.id
+    }
+    rule = {
+        name              = "Internet Firewall Test Kitchen Sink"
+        action            = "ALLOW"
+        active_period     = {
+          effective_from = "2025-08-09T00:00:00"
+          expires_at     = "2026-12-31T23:57:59"
+        }
+        connection_origin = "REMOTE"
+        country           = [
+            {
+                id   = "AG"
+                # name = "Antigua and Barbuda"
+            },
+            {
+                # id   = "AW"
+                name = "Aruba"
+            },
+        ]
+        description       = "test description"
+        destination       = {
+            app_category             = [
+                {
+                    # id   = "anonymizers"
+                    name = "Anonymizers"
+                },
+                {
+                    # id   = "authentication_services"
+                    name = "Authentication Services"
+                },
+            ]
+            application              = [
+                {
+                    # id   = "ebix"
+                    name = "Ebix Inc."
+                },
+                {
+                    id   = "fotocasa"
+                    # name = "Fotocasa"
+                },
+            ]
+            country                  = [
+                {
+                    # id   = "AI"
+                    name = "Anguilla"
+                },
+                {
+                    # id   = "AQ"
+                    name = "Antarctica"
+                },
+            ]
+            custom_app               = [
+                {
+                    # id   = "CustomApp_11362_34188"
+                    name = "Test Custom App"
+                },
+            ]
+            custom_category          = [
+                {
+                    # id   = "24255"
+                    name = "Test Custom Category"
+                },
+                {
+                    # id   = "27782"
+                    name = "RBI-URLs"
+                },
+            ]
+            domain                   = [
+                "test.com",
+            ]
+            fqdn                     = [
+                "www.test.com",
+            ]
+            global_ip_range          = [
+                {
+                    # id   = "1757826"
+                    name = "global_ip_range"
+                },
+                {
+                    # id   = "1910542"
+                    name = "global_ip_range2"
+                },
+            ]
+            ip                       = [
+                "1.2.3.4",
+            ]
+            ip_range                 = [
+                {
+                    from = "1.2.3.4"
+                    to   = "1.2.3.5"
+                },
+            ]
+            remote_asn               = [
+                "12",
+            ]
+            sanctioned_apps_category = [
+                {
+                    # id   = "22736"
+                    name = "Sanctioned Apps"
+                },
+            ]
+            subnet                   = [
+                "1.2.3.0/24",
+            ]
+        }
+        device            = [
+            {
+                # id   = "4202"
+                name = "Test Device Posture Profile"
+            },
+        ]
+        device_attributes = {
+            category     = [
+                "IoT",
+                "Mobile",
+            ]
+            manufacturer = [
+                "ADTRAN",
+                "ACTi",
+            ]
+            model        = [
+                " 9",
+                " 7+",
+            ]
+            os           = [
+                "Aruba OS",
+                "Arch Linux",
+            ]
+            type         = [
+                "Appliance",
+                "Analog Telephone Adapter",
+            ]
+        }
+        device_os         = [
+            "WINDOWS",
+            "MACOS",
+        ]
+        enabled           = true
+        schedule          = {
+            active_on        = "CUSTOM_RECURRING"
+            custom_recurring = {
+                days = [
+                    "SUNDAY",
+                    "WEDNESDAY",
+                    "SATURDAY",
+                    "THURSDAY",
+                    "MONDAY",
+                    "TUESDAY",
+                    "FRIDAY",
+                ]
+                from = "02:02:00"
+                to   = "03:03:00"
+            }
+        }
+        service           = {
+            custom   = [
+                {
+                    port       = []
+                    port_range = {
+                        from = "10"
+                        to   = "50"
+                    }
+                    protocol   = "UDP"
+                },
+                {
+                    port     = [
+                        "22",
+                    ]
+                    protocol = "UDP"
+                },
+            ]
+            standard = [
+                {
+                    # id   = "amazon_ec2"
+                    name = "Amazon EC2"
+                },
+            ]
+        }
+        source            = {
+            floating_subnet     = [
+                {
+                    id   = "1474041"
+                    # name = "floating_range"
+                },
+                {
+                    id   = "1910541"
+                    # name = "floating_range2"
+                },
+            ]
+            global_ip_range     = [
+                {
+                    # id   = "1757826"
+                    name = "global_ip_range"
+                },
+                {
+                    # id   = "1910542"
+                    name = "global_ip_range2"
+                },
+            ]
+            group               = [
+                {
+                    # id   = "623603"
+                    name = "test group"
+                },
+            ]
+            host                = [
+                {
+                    # id   = "1700335"
+                    name = "my.hostname25"
+                },
+                {
+                    # id   = "1778359"
+                    name = "host31"
+                },
+            ]
+            ip                  = [
+                "1.2.3.4",
+            ]
+            ip_range            = [
+                {
+                    from = "1.2.3.4"
+                    to   = "1.2.3.5"
+                },
+            ]
+            network_interface   = [
+                {
+                    id   = "124986"
+                    # name = "ipsec-dev-site \\ Default"
+                },
+                {
+                    id   = "175651"
+                    # name = "TestSite001 \\ Default"
+                },
+            ]
+            site                = [
+                {
+                    # id   = "144904"
+                    name = "1600LTE"
+                },
+                {
+                    # id   = "144905"
+                    name = "1600"
+                },
+            ]
+            site_network_subnet = [
+                {
+                    id   = "TjE3MDE0NDI="
+                    # name = "aws-site \\ LAN \\ Native Range"
+                },
+                {
+                    id   = "TjIyMzcxODI="
+                    # name = "Cato-X1600 \\ LAN88 \\ Native Range"
+                },
+            ]
+            subnet              = [
+                "1.2.3.0/24",
+            ]
+            system_group        = [
+                {
+                    # id   = "2S"
+                    name = "All SDP Users"
+                },
+                {
+                    # id   = "7S"
+                    name = "All Floating Ranges"
+                },
+            ]
+            user                = [
+                {
+                    # id   = "0"
+                    name = "test user"
+                },
+            ]
+            users_group         = [
+                {
+                    # id   = "500000001"
+                    name = "Operations Team"
+                },
+            ]
+        }
+        tracking          = {
+            alert = {
+                enabled      = true
+                frequency    = "WEEKLY"
+                mailing_list = [
+                    {
+                        id   = "-100"
+                        # name = "All Admins"
+                    },
+                ]
+            }
+            event = {
+                enabled = true
+            }
+        }
+    }
 }
 ```
 
@@ -420,14 +432,15 @@ Required:
 
 Optional:
 
+- `active_period` (Attributes) Time period during which the rule is active. Outside this period, the rule is inactive. Times should be in RFC3339 format (e.g., '2024-12-31T23:59:59Z'). (see [below for nested schema](#nestedatt--rule--active_period))
 - `connection_origin` (String) Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
 - `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--country))
 - `description` (String) Description of the rule
 - `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
+- `device_attributes` (Attributes) Device attributes matching criteria for the rule. (see [below for nested schema](#nestedatt--rule--device_attributes))
 - `device_os` (List of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `exceptions` (Attributes Set) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--rule--exceptions))
 - `schedule` (Attributes) The time period specifying when the rule is enabled, otherwise it is disabled. (see [below for nested schema](#nestedatt--rule--schedule))
-- `section` (Attributes) (see [below for nested schema](#nestedatt--rule--section))
 - `service` (Attributes) Destination service traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--service))
 
 Read-Only:
@@ -705,6 +718,20 @@ Optional:
 
 
 
+<a id="nestedatt--rule--active_period"></a>
+### Nested Schema for `rule.active_period`
+
+Optional:
+
+- `effective_from` (String) The time the rule becomes active (RFC3339 format, e.g., '2024-01-01T00:00:00Z'). If not specified, the rule is active from creation.
+- `expires_at` (String) The time the rule expires and becomes inactive (RFC3339 format, e.g., '2024-12-31T23:59:59Z'). If not specified, the rule never expires.
+
+Read-Only:
+
+- `use_effective_from` (Boolean) Whether to use the effective_from time. Computed from the presence of effective_from field.
+- `use_expires_at` (Boolean) Whether to use the expires_at time. Computed from the presence of expires_at field.
+
+
 <a id="nestedatt--rule--country"></a>
 ### Nested Schema for `rule.country`
 
@@ -723,49 +750,63 @@ Optional:
 - `name` (String)
 
 
+<a id="nestedatt--rule--device_attributes"></a>
+### Nested Schema for `rule.device_attributes`
+
+Optional:
+
+- `category` (List of String) Device category matching criteria for the rule.
+- `manufacturer` (List of String) Device manufacturer matching criteria for the rule.
+- `model` (List of String) Device model matching criteria for the rule.
+- `os` (List of String) Device OS matching criteria for the rule.
+- `os_version` (List of String) Device OS version matching criteria for the rule.
+- `type` (List of String) Device type matching criteria for the rule.
+
+
 <a id="nestedatt--rule--exceptions"></a>
 ### Nested Schema for `rule.exceptions`
 
 Required:
 
 - `destination` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--destination))
-- `service` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--service))
-- `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
 
 Optional:
 
 - `connection_origin` (String) Connection origin matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
-- `country` (Attributes Set) Source country matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--country))
+- `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--country))
 - `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--device))
+- `device_attributes` (Attributes) Device attributes matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--device_attributes))
 - `device_os` (List of String) Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `name` (String) A unique name of the rule exception.
+- `service` (Attributes) Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--service))
+- `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
 
 <a id="nestedatt--rule--exceptions--destination"></a>
 ### Nested Schema for `rule.exceptions.destination`
 
 Optional:
 
-- `app_category` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--app_category))
-- `application` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--application))
-- `country` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--country))
-- `custom_app` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_app))
-- `custom_category` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_category))
-- `domain` (List of String)
-- `fqdn` (List of String)
-- `global_ip_range` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--global_ip_range))
-- `ip` (List of String)
-- `ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--destination--ip_range))
+- `app_category` (Attributes Set) Cato category of applications which are dynamically updated by Cato (see [below for nested schema](#nestedatt--rule--exceptions--destination--app_category))
+- `application` (Attributes Set) Applications for the rule (pre-defined) (see [below for nested schema](#nestedatt--rule--exceptions--destination--application))
+- `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--destination--country))
+- `custom_app` (Attributes Set) Custom (user-defined) applications (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_app))
+- `custom_category` (Attributes Set) Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc. (see [below for nested schema](#nestedatt--rule--exceptions--destination--custom_category))
+- `domain` (List of String) A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.
+- `fqdn` (List of String) An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.
+- `global_ip_range` (Attributes Set) Globally defined IP range, IP and subnet objects. (see [below for nested schema](#nestedatt--rule--exceptions--destination--global_ip_range))
+- `ip` (List of String) IPv4 addresses
+- `ip_range` (Attributes List) A range of IPs. Every IP within the range will be matched (see [below for nested schema](#nestedatt--rule--exceptions--destination--ip_range))
 - `remote_asn` (List of String)
-- `sanctioned_apps_category` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--destination--sanctioned_apps_category))
-- `subnet` (List of String)
+- `sanctioned_apps_category` (Attributes Set) Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization. (see [below for nested schema](#nestedatt--rule--exceptions--destination--sanctioned_apps_category))
+- `subnet` (List of String) Network subnets in CIDR notation
 
 <a id="nestedatt--rule--exceptions--destination--app_category"></a>
 ### Nested Schema for `rule.exceptions.destination.app_category`
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Application Category ID
+- `name` (String) Application Category Name
 
 
 <a id="nestedatt--rule--exceptions--destination--application"></a>
@@ -773,8 +814,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Application ID
+- `name` (String) Application Name
 
 
 <a id="nestedatt--rule--exceptions--destination--country"></a>
@@ -782,8 +823,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Country ID
+- `name` (String) Country Name
 
 
 <a id="nestedatt--rule--exceptions--destination--custom_app"></a>
@@ -791,8 +832,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Custom Application ID
+- `name` (String) Custom Application Name
 
 
 <a id="nestedatt--rule--exceptions--destination--custom_category"></a>
@@ -800,8 +841,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Custom Category ID
+- `name` (String) Custom Category Name
 
 
 <a id="nestedatt--rule--exceptions--destination--global_ip_range"></a>
@@ -809,8 +850,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global IP ID
+- `name` (String) Global IP Range Name
 
 
 <a id="nestedatt--rule--exceptions--destination--ip_range"></a>
@@ -818,8 +859,8 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) IP Range Name
+- `to` (String) IP Range ID
 
 
 <a id="nestedatt--rule--exceptions--destination--sanctioned_apps_category"></a>
@@ -827,9 +868,40 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Sanctioned Apps Category ID
+- `name` (String) Sanctioned Apps Category Name
 
+
+
+<a id="nestedatt--rule--exceptions--country"></a>
+### Nested Schema for `rule.exceptions.country`
+
+Optional:
+
+- `id` (String) Country ID
+- `name` (String) Country Name
+
+
+<a id="nestedatt--rule--exceptions--device"></a>
+### Nested Schema for `rule.exceptions.device`
+
+Optional:
+
+- `id` (String) Device ID
+- `name` (String) Device Name
+
+
+<a id="nestedatt--rule--exceptions--device_attributes"></a>
+### Nested Schema for `rule.exceptions.device_attributes`
+
+Optional:
+
+- `category` (List of String) Device category matching criteria for the exception.
+- `manufacturer` (List of String) Device manufacturer matching criteria for the exception.
+- `model` (List of String) Device model matching criteria for the exception.
+- `os` (List of String) Device OS matching criteria for the exception.
+- `os_version` (List of String) Device OS version matching criteria for the exception.
+- `type` (List of String) Device type matching criteria for the exception.
 
 
 <a id="nestedatt--rule--exceptions--service"></a>
@@ -837,17 +909,17 @@ Optional:
 
 Optional:
 
-- `custom` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--service--custom))
-- `standard` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--service--standard))
+- `custom` (Attributes List) Custom Service defined by a combination of L4 ports and an IP Protocol (see [below for nested schema](#nestedatt--rule--exceptions--service--custom))
+- `standard` (Attributes Set) Standard Service to which this Internet Firewall rule applies (see [below for nested schema](#nestedatt--rule--exceptions--service--standard))
 
 <a id="nestedatt--rule--exceptions--service--custom"></a>
 ### Nested Schema for `rule.exceptions.service.custom`
 
 Optional:
 
-- `port` (List of String)
-- `port_range` (Attributes) (see [below for nested schema](#nestedatt--rule--exceptions--service--custom--port_range))
-- `protocol` (String)
+- `port` (List of String) List of TCP/UDP port
+- `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--rule--exceptions--service--custom--port_range))
+- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
 
 <a id="nestedatt--rule--exceptions--service--custom--port_range"></a>
 ### Nested Schema for `rule.exceptions.service.custom.port_range`
@@ -864,8 +936,8 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Service Standard ID
+- `name` (String) Service Standard Name
 
 
 
@@ -874,18 +946,18 @@ Optional:
 
 Optional:
 
-- `floating_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--floating_subnet))
-- `global_ip_range` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--global_ip_range))
+- `floating_subnet` (Attributes Set) Floating Subnet defined for a site (see [below for nested schema](#nestedatt--rule--exceptions--source--floating_subnet))
+- `global_ip_range` (Attributes Set) Global IP Range (see [below for nested schema](#nestedatt--rule--exceptions--source--global_ip_range))
 - `group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--group))
-- `host` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--host))
+- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--host))
 - `ip` (List of String)
-- `ip_range` (Attributes List) (see [below for nested schema](#nestedatt--rule--exceptions--source--ip_range))
-- `network_interface` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--network_interface))
-- `site` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site))
+- `ip_range` (Attributes List) IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--source--ip_range))
+- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--rule--exceptions--source--network_interface))
+- `site` (Attributes Set) Sites defined in your account (see [below for nested schema](#nestedatt--rule--exceptions--source--site))
 - `site_network_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site_network_subnet))
-- `subnet` (List of String)
+- `subnet` (List of String) Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
 - `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
-- `user` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
+- `user` (Attributes Set) User defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
 - `users_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
 
 <a id="nestedatt--rule--exceptions--source--floating_subnet"></a>
@@ -893,8 +965,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Floating Subnet ID
+- `name` (String) Floating Subnet Name
 
 
 <a id="nestedatt--rule--exceptions--source--global_ip_range"></a>
@@ -902,8 +974,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global IP Range ID
+- `name` (String) Global IP Range Name
 
 
 <a id="nestedatt--rule--exceptions--source--group"></a>
@@ -911,8 +983,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group Name
 
 
 <a id="nestedatt--rule--exceptions--source--host"></a>
@@ -920,8 +992,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Host ID
+- `name` (String) Host Name
 
 
 <a id="nestedatt--rule--exceptions--source--ip_range"></a>
@@ -929,8 +1001,8 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From IP Range Name
+- `to` (String) To IP Range ID
 
 
 <a id="nestedatt--rule--exceptions--source--network_interface"></a>
@@ -938,8 +1010,8 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Network Interface ID
+- `name` (String) Network Interface Name
 
 
 <a id="nestedatt--rule--exceptions--source--site"></a>
@@ -947,8 +1019,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site ID
+- `name` (String) Site Name
 
 
 <a id="nestedatt--rule--exceptions--source--site_network_subnet"></a>
@@ -956,8 +1028,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site Network Subnet ID
+- `name` (String) Site Network Subnet Name
 
 
 <a id="nestedatt--rule--exceptions--source--system_group"></a>
@@ -965,8 +1037,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) System Group ID
+- `name` (String) System Group Name
 
 
 <a id="nestedatt--rule--exceptions--source--user"></a>
@@ -974,8 +1046,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User ID
+- `name` (String) User Name
 
 
 <a id="nestedatt--rule--exceptions--source--users_group"></a>
@@ -983,27 +1055,9 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Users Group ID
+- `name` (String) Users Group Name
 
-
-
-<a id="nestedatt--rule--exceptions--country"></a>
-### Nested Schema for `rule.exceptions.country`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
-
-
-<a id="nestedatt--rule--exceptions--device"></a>
-### Nested Schema for `rule.exceptions.device`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
 
 
 
@@ -1034,15 +1088,6 @@ Optional:
 - `from` (String)
 - `to` (String)
 
-
-
-<a id="nestedatt--rule--section"></a>
-### Nested Schema for `rule.section`
-
-Optional:
-
-- `id` (String)
-- `name` (String)
 
 
 <a id="nestedatt--rule--service"></a>

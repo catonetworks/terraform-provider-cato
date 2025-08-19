@@ -71,499 +71,543 @@ resource "cato_wf_rule" "allow_smbv3_to_dc" {
 }
 
 // Comprehensive kitchen sink rule example
-resource "cato_wf_rule" "kitchen_sink" {
-  at = {
-    position = "FIRST_IN_POLICY"
-    # ref = cato_wf_section.wf_section.section.id
-  }
-  rule = {
-    direction = "TO"
-    enabled   = true
-    name      = "WAN Firewall Kitchen Sink Example"
-    action    = "ALLOW"
-    application = {
-      app_category = [
-        {
-          name = "Advertisements"
-        },
-      ]
-      application = [
-        {
-          name = "AppBoy By Braze, Inc."
-        },
-      ]
-      custom_app = [
-        {
-          name = "My Custom App"
-        },
-      ]
-      custom_category = [
-        {
-          name = "Some Custom Category"
-        },
-        {
-          name = "RBI-URLs"
-        },
-      ]
-      domain = [
-        "something.com",
-        "something2.com",
-      ]
-      fqdn = [
-        "www.something.com",
-      ]
-      global_ip_range = [
-        {
-          name = "global_ip_range"
-        },
-      ]
-      ip_range = [
-        {
-          from = "1.2.3.1"
-          to   = "1.2.3.4"
-        },
-      ]
-      sanctioned_apps_category = [
-        {
-          name = "Sanctioned Apps"
-        },
-      ]
+resource "cato_wf_rule" "example_kitchen_sink" {
+    at   = {
+        position = "LAST_IN_POLICY"
     }
-    connection_origin = "SITE"
-    country = [
-      {
-        name = "Antigua and Barbuda"
-      },
-    ]
-    description = "WAN Firewall Test Kitchen Sink"
-    destination = {
-      host = [
-        {
-          # id = "000000"
-          name = "my.hostname25"
-        },
-      ]
-      site = [
-        {
-          // id = "000000",
-          name = "aws-site"
+    rule = {
+        name              = "WAN Firewall Test Kitchen Sink"
+        action            = "ALLOW"
+        active_period     = {
+            effective_from     = "2025-08-31T10:10:10"
+            expires_at         = "2026-12-31T11:11:12"
         }
-      ]
-      ip = [
-        "1.2.3.4"
-      ]
-      ip_range = [
-        {
-          from : "1.2.3.4",
-          to : "1.2.3.5"
+        application       = {
+            app_category             = [
+                {
+                    # id   = "advertisements"
+                    name = "Advertisements"
+                },
+            ]
+            application              = [
+                {
+                    # id   = "appboy"
+                    name = "AppBoy By Braze, Inc."
+                },
+            ]
+            custom_app               = [
+                {
+                    # id   = "CustomApp_11362_34188"
+                    name = "Test Custom App"
+                },
+            ]
+            custom_category          = [
+                {
+                    # id   = "24255"
+                    name = "Test Custom Category"
+                },
+                {
+                    # id   = "27782"
+                    name = "RBI-URLs"
+                },
+            ]
+            domain                   = [
+                "something.com",
+                "something2.com",
+            ]
+            fqdn                     = [
+                "www.something.com",
+            ]
+            global_ip_range          = [
+                {
+                    # id   = "1757826"
+                    name = "global_ip_range"
+                },
+            ]
+            ip_range                 = [
+                {
+                    from = "1.2.3.1"
+                    to   = "1.2.3.4"
+                },
+            ]
+            sanctioned_apps_category = [
+                {
+                    # id   = "22736"
+                    name = "Sanctioned Apps"
+                },
+            ]
         }
-      ]
-      global_ip_range = [
-        {
-          // id = "000000",
-          name = "global_ip_range"
-        }
-      ]
-      network_interface = [
-        {
-          # id = "000000"
-          name = "Test IPSec \\ Default"
-        },
-      ]
-      site_network_subnet = [
-        {
-          name = "Test IPSec \\ Default \\ Native Range"
-          # id = "ABCDEFG="
-        },
-      ]
-      floating_subnet = [
-        {
-          id = "123456",
-          # name = "floating_range"          
-        },
-      ]
-      user = [
-        {
-          # id = "0",
-          name = "test user"
-        },
-      ]
-      users_group = [
-        {
-          # id: "0000000",
-          name = "test group"
-        },
-      ]
-      group = [
-        {
-          # id: "00",
-          name = "test group"
-        },
-      ]
-      system_group = [
-        {
-          # id: "00",
-          name = "All Floating Ranges"
-        },
-      ]
-    }
-    device = [
-      {
-        name = "Device Posture Profile"
-      },
-    ]
-    device_os = [
-      "WINDOWS",
-    ]
-    schedule = {
-      active_on = "ALWAYS"
-    }
-    service = {
-      custom = [
-        {
-          port     = ["80"]
-          protocol = "TCP"
-        },
-        {
-          port     = ["81"]
-          protocol = "TCP"
-        },
-      ]
-      standard = [
-        {
-          name = "Agora"
-        },
-      ]
-    }
-    source = {
-      host = [
-        {
-          # id = "123456"
-          name = "my.hostname25"
-        },
-      ]
-      site = [
-        {
-          // id = "123456",
-          name = "aws-site"
-        },
-        {
-          # "id": "123456",
-          name = "test aws socket"
-        }
-      ]
-      ip = [
-        "1.2.3.4"
-      ]
-      ip_range = [
-        {
-          from : "1.2.3.4",
-          to : "1.2.3.5"
-        }
-      ]
-      global_ip_range = [
-        {
-          // id = "123456",
-          name = "global_ip_range2"
-        },
-        {
-          // id = "123456",
-          name = "global_ip_range"
-        }
-      ]
-      network_interface = [
-        {
-          "id" : "123456",
-          # "name": "test aws socket \\ LAN"
-        },
-        {
-          id = "123456"
-          // name = "Test IPSec \\ Default"
-        },
-      ]
-      site_network_subnet = [
-        {
-          # name = "Test IPSec \\ Default \\ Native Range"
-          id = "ABCDEFG="
-        },
-      ]
-      floating_subnet = [
-        {
-          id = "123456", // TODO see why this does not take name
-          # name = "floating_range"          
-        },
-      ]
-      user = [
-        {
-          # id = "0",
-          name = "test user"
-        },
-      ]
-      users_group = [
-        {
-          # id: "0000000",
-          name = "test group"
-        },
-      ]
-      group = [
-        {
-          # id: "000",
-          name = "test group"
-        },
-      ]
-      system_group = [
-        {
-          # id: "000",
-          name = "All Floating Ranges"
-        },
-      ]
-    }
-    exceptions = [
-      {
-        application = {
-          app_category = [
+        connection_origin = "SITE"
+        country           = [
             {
-              #id   = "advertisements"
-              name = "Advertisements"
+                # id   = "AG"
+                name = "Antigua and Barbuda"
             },
-          ]
-          application = [
-            {
-              #id   = "parsec"
-              name = "Parsec"
-            },
-          ]
-          custom_app = [
-            {
-              #id   = "CustomApp_11362_34188"
-              name = "Test Custom App"
-            },
-          ]
-          custom_category = [
-            {
-              #id   = "123456"
-              name = "Test Custom Category"
-            },
-          ]
-          domain = [
-            "www.example.com",
-          ]
-          fqdn = [
-            "my.domain.com",
-          ]
-          global_ip_range = [
-            {
-              #id   = "123456"
-              name = "global_ip_range"
-            },
-          ]
-          ip = [
-            "1.2.3.4",
-          ]
-          ip_range = [
-            {
-              from = "1.2.3.4"
-              to   = "1.2.3.5"
-            },
-          ]
-          sanctioned_apps_category = [
-            {
-              #id   = "123456"
-              name = "Sanctioned Apps"
-            },
-          ]
-        }
-        connection_origin = "ANY"
-        country = [
-          {
-            # id   = "AF"
-            name = "Afghanistan"
-          },
         ]
-        destination = {
-          floating_subnet = [
-            {
-              id = "123456"
-              #name = "floating_range"
-            },
-          ]
-          group = [
-            {
-              id = "123456"
-              #name = "test group"
-            },
-          ]
-          host = [
-            {
-              #id   = "123456"
-              name = "my.hostname25"
-            },
-            {
-              #id   = "123456"
-              name = "host31"
-            },
-          ]
-          ip = [
-            "1.2.3.4",
-            "1.2.3.5",
-            "1.2.3.6",
-          ]
-          ip_range = [
-            {
-              from = "1.2.3.4"
-              to   = "1.2.3.5"
-            },
-          ]
-          network_interface = [
-            {
-              id = "123456"
-              #name = "IPSec Site \\ Default"
-            },
-          ]
-          site = [
-            {
-              #id   = "123456"
-              name = "aws-site"
-            },
-          ]
-          site_network_subnet = [
-            {
-              id = "TjE0Nzk5MTc="
-              #name = "IPSec Site \\ Default \\ Native Range"
-            },
-          ]
-          system_group = [
-            {
-              #id   = "000"
-              name = "All Floating Ranges"
-            },
-          ]
-          user = [
-            {
-              #id   = "0"
-              name = "test user"
-            },
-          ]
+        description       = "WAN Firewall Test Kitchen Sink"
+        destination       = {
+            floating_subnet     = [
+                {
+                    id   = "1474041"
+                    # name = "floating_range"
+                },
+            ]
+            global_ip_range     = [
+                {
+                    # id   = "1757826"
+                    name = "global_ip_range"
+                },
+            ]
+            group               = [
+                {
+                    # id   = "623603"
+                    name = "test group"
+                },
+            ]
+            host                = [
+                {
+                    # id   = "1700335"
+                    name = "my.hostname25"
+                },
+            ]
+            ip                  = [
+                "1.2.3.4",
+            ]
+            ip_range            = [
+                {
+                    from = "1.2.3.4"
+                    to   = "1.2.3.5"
+                },
+            ]
+            network_interface   = [
+                {
+                    id   = "124986"
+                    # name = "ipsec-dev-site \\ Default"
+                },
+            ]
+            site                = [
+                {
+                    # id   = "117560"
+                    name = "aws-site"
+                },
+            ]
+            site_network_subnet = [
+                {
+                    id   = "TjE0Nzk5MTc="
+                    # name = "ipsec-dev-site \\ Default \\ Native Range"
+                },
+            ]
+            system_group        = [
+                {
+                    # id   = "7S"
+                    name = "All Floating Ranges"
+                },
+            ]
+            user                = [
+                {
+                    id   = "0"
+                    # name = "test user"
+                },
+            ]
+            users_group         = [
+                {
+                    id   = "500000001"
+                    # name = "Operations Team"
+                },
+            ]
         }
-        device = [
-          {
-            # id   = "1234"
-            name = "Test Device Posture Profile"
-          },
+        device            = [
+            {
+                # id   = "4202"
+                name = "Test Device Posture Profile"
+            },
         ]
-        device_os = [
-          "WINDOWS",
-          "MACOS",
+        device_attributes = {
+            category     = [
+                "IoT",
+                "Mobile",
+            ]
+            manufacturer = [
+                "2N",
+                "2N, part of Axis group",
+            ]
+            model        = [
+                " 3",
+                " 4",
+                "002RMZ",
+            ]
+            os           = [
+                "Amazon Linux 2",
+                "Android",
+            ]
+            type         = [
+                "105",
+                "3D Printer",
+            ]
+        }
+        device_os         = [
+            "WINDOWS",
         ]
-        direction = "TO"
-        name      = "WAN Exception"
-        service = {
-          custom = [
+        direction         = "TO"
+        enabled           = true
+        exceptions        = [
             {
-              port = [
-                "80",
-              ]
-              protocol = "TCP"
+                application       = {
+                    app_category             = [
+                        {
+                            # id   = "advertisements"
+                            name = "Advertisements"
+                        },
+                    ]
+                    application              = [
+                        {
+                            # id   = "parsec"
+                            name = "Parsec"
+                        },
+                    ]
+                    custom_app               = [
+                        {
+                            # id   = "CustomApp_11362_34188"
+                            name = "Test Custom App"
+                        },
+                    ]
+                    custom_category          = [
+                        {
+                            # id   = "24255"
+                            name = "Test Custom Category"
+                        },
+                    ]
+                    domain                   = [
+                        "www.example.com",
+                    ]
+                    fqdn                     = [
+                        "my.domain.com",
+                    ]
+                    global_ip_range          = [
+                        {
+                            # id   = "1757826"
+                            name = "global_ip_range"
+                        },
+                    ]
+                    ip_range                 = [
+                        {
+                            from = "1.2.3.4"
+                            to   = "1.2.3.5"
+                        },
+                    ]
+                    sanctioned_apps_category = [
+                        {
+                            # id   = "22736"
+                            name = "Sanctioned Apps"
+                        },
+                    ]
+                }
+                connection_origin = "ANY"
+                country           = [
+                    {
+                        # id   = "AF"
+                        name = "Afghanistan"
+                    },
+                ]
+                destination       = {
+                    floating_subnet     = [
+                        {
+                            # id   = "1474041"
+                            name = "floating_range"
+                        },
+                    ]
+                    group               = [
+                        {
+                            # id   = "623603"
+                            name = "test group"
+                        },
+                    ]
+                    host                = [
+                        {
+                            # id   = "1700335"
+                            name = "my.hostname25"
+                        },
+                        {
+                            # id   = "1778359"
+                            name = "host31"
+                        },
+                    ]
+                    ip                  = [
+                        "1.2.3.4",
+                        "1.2.3.5",
+                        "1.2.3.6",
+                    ]
+                    ip_range            = [
+                        {
+                            from = "1.2.3.4"
+                            to   = "1.2.3.5"
+                        },
+                    ]
+                    network_interface   = [
+                        {
+                            id   = "124986"
+                            # name = "ipsec-dev-site \\ Default"
+                        },
+                    ]
+                    site                = [
+                        {
+                            # id   = "117560"
+                            name = "aws-site"
+                        },
+                    ]
+                    site_network_subnet = [
+                        {
+                            id   = "TjE0Nzk5MTc="
+                            # name = "ipsec-dev-site \\ Default \\ Native Range"
+                        },
+                    ]
+                    system_group        = [
+                        {
+                            # id   = "7S"
+                            name = "All Floating Ranges"
+                        },
+                    ]
+                    user                = [
+                        {
+                            # id   = "0"
+                            name = "test user"
+                        },
+                    ]
+                }
+                device            = [
+                    {
+                        # id   = "4202"
+                        name = "Test Device Posture Profile"
+                    },
+                ]
+                device_os         = [
+                    "WINDOWS",
+                    "MACOS",
+                ]
+                direction         = "TO"
+                name              = "WAN Exception"
+                service           = {
+                    custom   = [
+                        {
+                            port     = [
+                                "80",
+                            ]
+                            protocol = "TCP"
+                        },
+                    ]
+                    standard = [
+                        {
+                            # id   = "amazon_ec2"
+                            name = "Amazon EC2"
+                        },
+                    ]
+                }
+                source            = {
+                    floating_subnet     = [
+                        {
+                            id   = "1474041"
+                            # name = "floating_range"
+                        },
+                    ]
+                    global_ip_range     = [
+                        {
+                            # id   = "1757826"
+                            name = "global_ip_range"
+                        },
+                    ]
+                    group               = [
+                        {
+                            # id   = "623603"
+                            name = "test group"
+                        },
+                    ]
+                    host                = [
+                        {
+                            # id   = "1700335"
+                            name = "my.hostname25"
+                        },
+                        {
+                            # id   = "1778359"
+                            name = "host31"
+                        },
+                    ]
+                    ip                  = [
+                        "1.2.3.4",
+                        "1.2.3.4",
+                    ]
+                    ip_range            = [
+                        {
+                            from = "1.2.3.4"
+                            to   = "1.2.3.5"
+                        },
+                    ]
+                    network_interface   = [
+                        {
+                            id   = "124986"
+                            # name = "ipsec-dev-site \\ Default"
+                        },
+                    ]
+                    site                = [
+                        {
+                            # id   = "101055"
+                            name = "ipsec-dev-site"
+                        },
+                        {
+                            # id   = "117560"
+                            name = "aws-site"
+                        },
+                    ]
+                    site_network_subnet = [
+                        {
+                            id   = "TjE0Nzk5MTc="
+                            # name = "ipsec-dev-site \\ Default \\ Native Range"
+                        },
+                    ]
+                    system_group        = [
+                        {
+                            # id   = "7S"
+                            name = "All Floating Ranges"
+                        },
+                    ]
+                    user                = [
+                        {
+                            # id   = "0"
+                            name = "test user"
+                        },
+                    ]
+                    users_group         = [
+                        {
+                            # id   = "500000001"
+                            name = "Operations Team"
+                        },
+                    ]
+                }
             },
-          ]
-          standard = [
-            {
-              #id   = "amazon_ec2"
-              name = "Amazon EC2"
-            },
-          ]
+        ]
+        schedule          = {
+            active_on = "ALWAYS"
         }
-        source = {
-          floating_subnet = [
-            {
-              id = "123456"
-            },
-          ]
-          global_ip_range = [
-            {
-              #id   = "123456"
-              name = "global_ip_range"
-            },
-          ]
-          group = [
-            {
-              #id   = "123456"
-              name = "test group"
-            },
-          ]
-          host = [
-            {
-              #id   = "123456"
-              name = "my.hostname25"
-            },
-            {
-              #id   = "123456"
-              name = "host31"
-            },
-          ]
-          ip = [
-            "1.2.3.4",
-            "1.2.3.4",
-          ]
-          ip_range = [
-            {
-              from = "1.2.3.4"
-              to   = "1.2.3.5"
-            },
-          ]
-          network_interface = [
-            {
-              id = "124986"
-              #name = "IPSec Site \\ Default"
-            },
-          ]
-          site = [
-            {
-              #id   = "123456"
-              name = "aws-site"
-            },
-            {
-              #id   = "123456"
-              name = "ipsec-test-site"
-            },
-          ]
-          site_network_subnet = [
-            {
-              id = "ABCDEFG="
-              #name = "IPSec Site \\ Default \\ Native Range"
-            },
-          ]
-          system_group = [
-            {
-              #id   = "000"
-              name = "All Floating Ranges"
-            },
-          ]
-          user = [
-            {
-              #id   = "0"
-              name = "test user"
-            },
-          ]
-          users_group = [
-            {
-              #id   = "00000000"
-              name = "Operations Team"
-            },
-          ]
+        service           = {
+            custom   = [
+                {
+                    port     = [
+                        "80",
+                    ]
+                    protocol = "TCP"
+                },
+                {
+                    port     = [
+                        "81",
+                    ]
+                    protocol = "TCP"
+                },
+            ]
+            standard = [
+                {
+                    # id   = "amazon_ec2"
+                    name = "Amazon EC2"
+                },
+            ]
         }
-      },
-    ]
-    tracking = {
-      alert = {
-        enabled   = true
-        frequency = "DAILY"
-      }
-      event = {
-        enabled = true
-      }
+        source            = {
+            floating_subnet     = [
+                {
+                    # id   = "1474041"
+                    name = "floating_range"
+                },
+            ]
+            global_ip_range     = [
+                {
+                    # id   = "1757826"
+                    name = "global_ip_range"
+                },
+                {
+                    # id   = "1910542"
+                    name = "global_ip_range2"
+                },
+            ]
+            group               = [
+                {
+                    # id   = "623603"
+                    name = "test group"
+                },
+            ]
+            host                = [
+                {
+                    # id   = "1700335"
+                    name = "my.hostname25"
+                },
+            ]
+            ip                  = [
+                "1.2.3.4",
+            ]
+            ip_range            = [
+                {
+                    from = "1.2.3.4"
+                    to   = "1.2.3.5"
+                },
+            ]
+            network_interface   = [
+                {
+                    id   = "124986"
+                    # name = "ipsec-dev-site \\ Default"
+                },
+                {
+                    id   = "124988"
+                    # name = "test aws socket \\ LAN"
+                },
+            ]
+            site                = [
+                {
+                    # id   = "101057"
+                    name = "test aws socket"
+                },
+                {
+                    # id   = "117560"
+                    name = "aws-site"
+                },
+            ]
+            site_network_subnet = [
+                {
+                    id   = "TjE0Nzk5MTc="
+                    # name = "ipsec-dev-site \\ Default \\ Native Range"
+                },
+            ]
+            system_group        = [
+                {
+                    # id   = "7S"
+                    name = "All Floating Ranges"
+                },
+            ]
+            user                = [
+                {
+                    # id   = "0"
+                    name = "test user"
+                },
+            ]
+            users_group         = [
+                {
+                    # id   = "500000001"
+                    name = "Operations Team"
+                },
+            ]
+        }
+        tracking          = {
+            alert = {
+                enabled      = false
+                frequency    = "DAILY"
+                mailing_list = [
+                    {
+                        id   = "-100"
+                        # name = "All Admins"
+                    },
+                ]
+            }
+            event = {
+                enabled = true
+            }
+        }
     }
-  }
 }
 ```
 
@@ -600,12 +644,14 @@ Required:
 
 Optional:
 
+- `active_period` (Attributes) Time period during which the rule is active. Outside this period, the rule is inactive. Times should be in RFC3339 format (e.g., '2024-12-31T23:59:59Z'). (see [below for nested schema](#nestedatt--rule--active_period))
 - `application` (Attributes) Application traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--application))
 - `connection_origin` (String) Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
 - `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--country))
 - `description` (String) Description of the rule
 - `destination` (Attributes) Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--destination))
-- `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
+- `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
+- `device_attributes` (Attributes) Device attributes matching criteria for the rule. (see [below for nested schema](#nestedatt--rule--device_attributes))
 - `device_os` (List of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `exceptions` (Attributes Set) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--rule--exceptions))
 - `schedule` (Attributes) The time period specifying when the rule is enabled, otherwise it is disabled. (see [below for nested schema](#nestedatt--rule--schedule))
@@ -674,6 +720,20 @@ Optional:
 - `name` (String) Webhook Name
 
 
+
+
+<a id="nestedatt--rule--active_period"></a>
+### Nested Schema for `rule.active_period`
+
+Optional:
+
+- `effective_from` (String) The time the rule becomes active (RFC3339 format, e.g., '2024-01-01T00:00:00Z'). If not specified, the rule is active from creation.
+- `expires_at` (String) The time the rule expires and becomes inactive (RFC3339 format, e.g., '2024-12-31T23:59:59Z'). If not specified, the rule never expires.
+
+Read-Only:
+
+- `use_effective_from` (Boolean) Whether to use the effective_from time. Computed from the presence of effective_from field.
+- `use_expires_at` (Boolean) Whether to use the expires_at time. Computed from the presence of expires_at field.
 
 
 <a id="nestedatt--rule--application"></a>
@@ -894,13 +954,25 @@ Optional:
 - `name` (String) Device Name
 
 
+<a id="nestedatt--rule--device_attributes"></a>
+### Nested Schema for `rule.device_attributes`
+
+Optional:
+
+- `category` (List of String) Device category matching criteria for the rule.
+- `manufacturer` (List of String) Device manufacturer matching criteria for the rule.
+- `model` (List of String) Device model matching criteria for the rule.
+- `os` (List of String) Device OS matching criteria for the rule.
+- `os_version` (List of String) Device OS version matching criteria for the rule.
+- `type` (List of String) Device type matching criteria for the rule.
+
+
 <a id="nestedatt--rule--exceptions"></a>
 ### Nested Schema for `rule.exceptions`
 
 Required:
 
 - `direction` (String) Direction matching criteria for the exception.
-- `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
 
 Optional:
 
@@ -909,128 +981,11 @@ Optional:
 - `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--country))
 - `destination` (Attributes) Destination traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--destination))
 - `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--device))
+- `device_attributes` (Attributes) Device attributes matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--device_attributes))
 - `device_os` (List of String) Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `name` (String) A unique name of the rule exception.
 - `service` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--service))
-
-<a id="nestedatt--rule--exceptions--source"></a>
-### Nested Schema for `rule.exceptions.source`
-
-Optional:
-
-- `floating_subnet` (Attributes Set) Floating Subnet defined for a site (see [below for nested schema](#nestedatt--rule--exceptions--source--floating_subnet))
-- `global_ip_range` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--global_ip_range))
-- `group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--group))
-- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--host))
-- `ip` (List of String) Source IP traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
-- `ip_range` (Attributes List) IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--source--ip_range))
-- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--rule--exceptions--source--network_interface))
-- `site` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site))
-- `site_network_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site_network_subnet))
-- `subnet` (List of String) Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
-- `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
-- `user` (Attributes Set) User defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
-- `users_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
-
-<a id="nestedatt--rule--exceptions--source--floating_subnet"></a>
-### Nested Schema for `rule.exceptions.source.floating_subnet`
-
-Optional:
-
-- `id` (String) Floating Subnet ID
-- `name` (String) Floating Subnet Name
-
-
-<a id="nestedatt--rule--exceptions--source--global_ip_range"></a>
-### Nested Schema for `rule.exceptions.source.global_ip_range`
-
-Optional:
-
-- `id` (String) Global IP Range ID
-- `name` (String) Global IP Range Name
-
-
-<a id="nestedatt--rule--exceptions--source--group"></a>
-### Nested Schema for `rule.exceptions.source.group`
-
-Optional:
-
-- `id` (String) Group ID
-- `name` (String) Group Name
-
-
-<a id="nestedatt--rule--exceptions--source--host"></a>
-### Nested Schema for `rule.exceptions.source.host`
-
-Optional:
-
-- `id` (String) Host ID
-- `name` (String) Host Name
-
-
-<a id="nestedatt--rule--exceptions--source--ip_range"></a>
-### Nested Schema for `rule.exceptions.source.ip_range`
-
-Required:
-
-- `from` (String) From IP Range Name
-- `to` (String) To IP Range ID
-
-
-<a id="nestedatt--rule--exceptions--source--network_interface"></a>
-### Nested Schema for `rule.exceptions.source.network_interface`
-
-Optional:
-
-- `id` (String) Network Interface ID
-- `name` (String) Network Interface Name
-
-
-<a id="nestedatt--rule--exceptions--source--site"></a>
-### Nested Schema for `rule.exceptions.source.site`
-
-Optional:
-
-- `id` (String) Site ID
-- `name` (String) Site Name
-
-
-<a id="nestedatt--rule--exceptions--source--site_network_subnet"></a>
-### Nested Schema for `rule.exceptions.source.site_network_subnet`
-
-Optional:
-
-- `id` (String) Site Network Subnet ID
-- `name` (String) Site Network Subnet Name
-
-
-<a id="nestedatt--rule--exceptions--source--system_group"></a>
-### Nested Schema for `rule.exceptions.source.system_group`
-
-Optional:
-
-- `id` (String) System Group ID
-- `name` (String) System Group Name
-
-
-<a id="nestedatt--rule--exceptions--source--user"></a>
-### Nested Schema for `rule.exceptions.source.user`
-
-Optional:
-
-- `id` (String) User ID
-- `name` (String) User Name
-
-
-<a id="nestedatt--rule--exceptions--source--users_group"></a>
-### Nested Schema for `rule.exceptions.source.users_group`
-
-Optional:
-
-- `id` (String) Users Group ID
-- `name` (String) Users Group Name
-
-
+- `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
 
 <a id="nestedatt--rule--exceptions--application"></a>
 ### Nested Schema for `rule.exceptions.application`
@@ -1250,6 +1205,19 @@ Optional:
 - `name` (String) Device Name
 
 
+<a id="nestedatt--rule--exceptions--device_attributes"></a>
+### Nested Schema for `rule.exceptions.device_attributes`
+
+Optional:
+
+- `category` (List of String) Device category matching criteria for the exception.
+- `manufacturer` (List of String) Device manufacturer matching criteria for the exception.
+- `model` (List of String) Device model matching criteria for the exception.
+- `os` (List of String) Device OS matching criteria for the exception.
+- `os_version` (List of String) Device OS version matching criteria for the exception.
+- `type` (List of String) Device type matching criteria for the exception.
+
+
 <a id="nestedatt--rule--exceptions--service"></a>
 ### Nested Schema for `rule.exceptions.service`
 
@@ -1284,6 +1252,125 @@ Optional:
 
 - `id` (String) Standard Service ID
 - `name` (String) Standard Service Name
+
+
+
+<a id="nestedatt--rule--exceptions--source"></a>
+### Nested Schema for `rule.exceptions.source`
+
+Optional:
+
+- `floating_subnet` (Attributes Set) Floating Subnet defined for a site (see [below for nested schema](#nestedatt--rule--exceptions--source--floating_subnet))
+- `global_ip_range` (Attributes Set) Global IP Range (see [below for nested schema](#nestedatt--rule--exceptions--source--global_ip_range))
+- `group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--group))
+- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--host))
+- `ip` (List of String) Source IP traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
+- `ip_range` (Attributes List) IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--source--ip_range))
+- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--rule--exceptions--source--network_interface))
+- `site` (Attributes Set) Sites defined in your account (see [below for nested schema](#nestedatt--rule--exceptions--source--site))
+- `site_network_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site_network_subnet))
+- `subnet` (List of String) Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
+- `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
+- `user` (Attributes Set) User defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
+- `users_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
+
+<a id="nestedatt--rule--exceptions--source--floating_subnet"></a>
+### Nested Schema for `rule.exceptions.source.floating_subnet`
+
+Optional:
+
+- `id` (String) Floating Subnet ID
+- `name` (String) Floating Subnet Name
+
+
+<a id="nestedatt--rule--exceptions--source--global_ip_range"></a>
+### Nested Schema for `rule.exceptions.source.global_ip_range`
+
+Optional:
+
+- `id` (String) Global IP Range ID
+- `name` (String) Global IP Range Name
+
+
+<a id="nestedatt--rule--exceptions--source--group"></a>
+### Nested Schema for `rule.exceptions.source.group`
+
+Optional:
+
+- `id` (String) Group ID
+- `name` (String) Group Name
+
+
+<a id="nestedatt--rule--exceptions--source--host"></a>
+### Nested Schema for `rule.exceptions.source.host`
+
+Optional:
+
+- `id` (String) Host ID
+- `name` (String) Host Name
+
+
+<a id="nestedatt--rule--exceptions--source--ip_range"></a>
+### Nested Schema for `rule.exceptions.source.ip_range`
+
+Required:
+
+- `from` (String) From IP Range Name
+- `to` (String) To IP Range ID
+
+
+<a id="nestedatt--rule--exceptions--source--network_interface"></a>
+### Nested Schema for `rule.exceptions.source.network_interface`
+
+Optional:
+
+- `id` (String) Network Interface ID
+- `name` (String) Network Interface Name
+
+
+<a id="nestedatt--rule--exceptions--source--site"></a>
+### Nested Schema for `rule.exceptions.source.site`
+
+Optional:
+
+- `id` (String) Site ID
+- `name` (String) Site Name
+
+
+<a id="nestedatt--rule--exceptions--source--site_network_subnet"></a>
+### Nested Schema for `rule.exceptions.source.site_network_subnet`
+
+Optional:
+
+- `id` (String) Site Network Subnet ID
+- `name` (String) Site Network Subnet Name
+
+
+<a id="nestedatt--rule--exceptions--source--system_group"></a>
+### Nested Schema for `rule.exceptions.source.system_group`
+
+Optional:
+
+- `id` (String) System Group ID
+- `name` (String) System Group Name
+
+
+<a id="nestedatt--rule--exceptions--source--user"></a>
+### Nested Schema for `rule.exceptions.source.user`
+
+Optional:
+
+- `id` (String) User ID
+- `name` (String) User Name
+
+
+<a id="nestedatt--rule--exceptions--source--users_group"></a>
+### Nested Schema for `rule.exceptions.source.users_group`
+
+Optional:
+
+- `id` (String) Users Group ID
+- `name` (String) Users Group Name
 
 
 

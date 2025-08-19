@@ -418,6 +418,73 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 			rootUpdateRule.Device = make([]*cato_models.DeviceProfileRefInput, 0)
 		}
 
+		// setting device attributes
+		if !ruleInput.DeviceAttributes.IsNull() {
+			var curDeviceAttributes *DeviceAttributesInputIfw
+			diags = append(diags, ruleInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
+			if curDeviceAttributes != nil {
+				// Handle each field with proper null checking
+				categoryValues := make([]string, 0)
+				if curDeviceAttributes.Category != nil {
+					categoryValues = curDeviceAttributes.Category
+				}
+
+				manufacturerValues := make([]string, 0)
+				if curDeviceAttributes.Manufacturer != nil {
+					manufacturerValues = curDeviceAttributes.Manufacturer
+				}
+
+				modelValues := make([]string, 0)
+				if curDeviceAttributes.Model != nil {
+					modelValues = curDeviceAttributes.Model
+				}
+
+				osValues := make([]string, 0)
+				if curDeviceAttributes.Os != nil {
+					osValues = curDeviceAttributes.Os
+				}
+
+				osVersionValues := make([]string, 0)
+				if curDeviceAttributes.OsVersion != nil {
+					osVersionValues = curDeviceAttributes.OsVersion
+				}
+
+				typeValues := make([]string, 0)
+				if curDeviceAttributes.Type != nil {
+					typeValues = curDeviceAttributes.Type
+				}
+
+				rootAddRule.DeviceAttributes = &cato_models.DeviceAttributesInput{
+					Category:     categoryValues,
+					Manufacturer: manufacturerValues,
+					Model:        modelValues,
+					Os:           osValues,
+					OsVersion:    osVersionValues,
+					Type:         typeValues,
+				}
+				rootUpdateRule.DeviceAttributes = &cato_models.DeviceAttributesUpdateInput{
+					Category:     categoryValues,
+					Manufacturer: manufacturerValues,
+					Model:        modelValues,
+					Os:           osValues,
+					OsVersion:    osVersionValues,
+					Type:         typeValues,
+				}
+			}
+		} else {
+			// DeviceAttributes should never be null in API - always provide empty arrays
+			emptyDeviceAttributes := &cato_models.DeviceAttributesInput{
+				Category:     make([]string, 0),
+				Manufacturer: make([]string, 0),
+				Model:        make([]string, 0),
+				Os:           make([]string, 0),
+				OsVersion:    make([]string, 0),
+				Type:         make([]string, 0),
+			}
+			rootUpdateRule.DeviceAttributes = (*cato_models.DeviceAttributesUpdateInput)(emptyDeviceAttributes)
+			rootAddRule.DeviceAttributes = emptyDeviceAttributes
+		}
+
 		// setting device OS
 		if !ruleInput.DeviceOs.IsUnknown() && !ruleInput.DeviceOs.IsNull() {
 			diags = append(diags, ruleInput.DeviceOs.ElementsAs(ctx, &rootAddRule.DeviceOs, false)...)
@@ -922,7 +989,7 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 		}
 
 		// setting service
-		if !ruleInput.Service.IsNull() {
+		if !ruleInput.Service.IsUnknown() && !ruleInput.Service.IsNull() {
 			ruleServiceInput := &cato_models.WanFirewallServiceTypeInput{}
 			ruleServiceUpdateInput := &cato_models.WanFirewallServiceTypeUpdateInput{}
 
@@ -1562,6 +1629,48 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 					exceptionUpdateInput.Device = make([]*cato_models.DeviceProfileRefInput, 0)
 				}
 
+				// setting device attributes
+				if !itemExceptionsInput.DeviceAttributes.IsNull() {
+					var curDeviceAttributes *cato_models.DeviceAttributesInput
+					diags = append(diags, itemExceptionsInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
+					if curDeviceAttributes != nil {
+						exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+							Category:     curDeviceAttributes.Category,
+							Manufacturer: curDeviceAttributes.Manufacturer,
+							Model:        curDeviceAttributes.Model,
+							Os:           curDeviceAttributes.Os,
+							OsVersion:    curDeviceAttributes.OsVersion,
+							Type:         curDeviceAttributes.Type,
+						}
+						exceptionUpdateInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+							Category:     curDeviceAttributes.Category,
+							Manufacturer: curDeviceAttributes.Manufacturer,
+							Model:        curDeviceAttributes.Model,
+							Os:           curDeviceAttributes.Os,
+							OsVersion:    curDeviceAttributes.OsVersion,
+							Type:         curDeviceAttributes.Type,
+						}
+					}
+				} else {
+					// DeviceAttributes should never be null in API - always provide empty arrays
+					exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+						Category:     make([]string, 0),
+						Manufacturer: make([]string, 0),
+						Model:        make([]string, 0),
+						Os:           make([]string, 0),
+						OsVersion:    make([]string, 0),
+						Type:         make([]string, 0),
+					}
+					exceptionUpdateInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+						Category:     make([]string, 0),
+						Manufacturer: make([]string, 0),
+						Model:        make([]string, 0),
+						Os:           make([]string, 0),
+						OsVersion:    make([]string, 0),
+						Type:         make([]string, 0),
+					}
+				}
+
 				// setting device OS
 				tflog.Debug(ctx, "itemExceptionsInput.DeviceOs", map[string]interface{}{
 					"itemExceptionsInput.DeviceOs": utils.InterfaceToJSONString(itemExceptionsInput.DeviceOs),
@@ -1582,6 +1691,9 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 					exceptionDestinationInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination{}
 					diags = append(diags, itemExceptionsInput.Destination.As(ctx, &exceptionDestinationInput, basetypes.ObjectAsOptions{})...)
+
+					// Initlialize destination deviceAttributes as empty until added to sdk
+					// exceptionUpdateInput.Destination.deviceAttributes = make([]string, 0)
 
 					// setting destination IP
 					tflog.Debug(ctx, "exceptionDestinationInput.IP", map[string]interface{}{
@@ -2151,61 +2263,85 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				rootAddRule.Exceptions = append(rootAddRule.Exceptions, &exceptionAddInput)
 				rootUpdateRule.Exceptions = append(rootUpdateRule.Exceptions, &exceptionUpdateInput)
 			}
+		} else {
+			rootAddRule.Exceptions = make([]*cato_models.WanFirewallRuleExceptionInput, 0)
+			rootUpdateRule.Exceptions = make([]*cato_models.WanFirewallRuleExceptionInput, 0)
 		}
-		//  else {
-		// 	exceptionEmptyInput := cato_models.WanFirewallRuleExceptionInput{}
-		// 	exceptionEmptyInput.Direction = cato_models.WanFirewallDirectionEnum("BOTH")
-		// 	exceptionEmptyInput.ConnectionOrigin = cato_models.ConnectionOriginEnum("ANY")
-		// 	exceptionEmptyInput.Source = &cato_models.WanFirewallSourceInput{}
-		// 	exceptionEmptyInput.Source.IP = make([]string, 0)
-		// 	exceptionEmptyInput.Source.Subnet = make([]string, 0)
-		// 	exceptionEmptyInput.Source.Host = make([]*cato_models.HostRefInput, 0)
-		// 	exceptionEmptyInput.Source.Site = make([]*cato_models.SiteRefInput, 0)
-		// 	exceptionEmptyInput.Source.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
-		// 	exceptionEmptyInput.Source.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
-		// 	exceptionEmptyInput.Source.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
-		// 	exceptionEmptyInput.Source.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
-		// 	exceptionEmptyInput.Source.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
-		// 	exceptionEmptyInput.Source.User = make([]*cato_models.UserRefInput, 0)
-		// 	exceptionEmptyInput.Source.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
-		// 	exceptionEmptyInput.Source.Group = make([]*cato_models.GroupRefInput, 0)
-		// 	exceptionEmptyInput.Source.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
-		// 	exceptionEmptyInput.Country = make([]*cato_models.CountryRefInput, 0)
-		// 	exceptionEmptyInput.Device = make([]*cato_models.DeviceProfileRefInput, 0)
-		// 	exceptionEmptyInput.DeviceOs = make([]cato_models.OperatingSystem, 0)
-		// 	exceptionEmptyInput.Destination = &cato_models.WanFirewallDestinationInput{}
-		// 	exceptionEmptyInput.Destination.IP = make([]string, 0)
-		// 	exceptionEmptyInput.Destination.Subnet = make([]string, 0)
-		// 	exceptionEmptyInput.Destination.Host = make([]*cato_models.HostRefInput, 0)
-		// 	exceptionEmptyInput.Destination.Site = make([]*cato_models.SiteRefInput, 0)
-		// 	exceptionEmptyInput.Destination.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
-		// 	exceptionEmptyInput.Destination.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
-		// 	exceptionEmptyInput.Destination.NetworkInterface = make([]*cato_models.NetworkInterfaceRefInput, 0)
-		// 	exceptionEmptyInput.Destination.SiteNetworkSubnet = make([]*cato_models.SiteNetworkSubnetRefInput, 0)
-		// 	exceptionEmptyInput.Destination.FloatingSubnet = make([]*cato_models.FloatingSubnetRefInput, 0)
-		// 	exceptionEmptyInput.Destination.User = make([]*cato_models.UserRefInput, 0)
-		// 	exceptionEmptyInput.Destination.UsersGroup = make([]*cato_models.UsersGroupRefInput, 0)
-		// 	exceptionEmptyInput.Destination.Group = make([]*cato_models.GroupRefInput, 0)
-		// 	exceptionEmptyInput.Destination.SystemGroup = make([]*cato_models.SystemGroupRefInput, 0)
-		// 	exceptionEmptyInput.Application = &cato_models.WanFirewallApplicationInput{}
-		// 	exceptionEmptyInput.Application.IP = make([]string, 0)
-		// 	exceptionEmptyInput.Application.Subnet = make([]string, 0)
-		// 	exceptionEmptyInput.Application.Domain = make([]string, 0)
-		// 	exceptionEmptyInput.Application.Fqdn = make([]string, 0)
-		// 	exceptionEmptyInput.Application.Application = make([]*cato_models.ApplicationRefInput, 0)
-		// 	exceptionEmptyInput.Application.CustomApp = make([]*cato_models.CustomApplicationRefInput, 0)
-		// 	exceptionEmptyInput.Application.IPRange = make([]*cato_models.IPAddressRangeInput, 0)
-		// 	exceptionEmptyInput.Application.GlobalIPRange = make([]*cato_models.GlobalIPRangeRefInput, 0)
-		// 	exceptionEmptyInput.Application.AppCategory = make([]*cato_models.ApplicationCategoryRefInput, 0)
-		// 	exceptionEmptyInput.Application.CustomCategory = make([]*cato_models.CustomCategoryRefInput, 0)
-		// 	exceptionEmptyInput.Application.SanctionedAppsCategory = make([]*cato_models.SanctionedAppsCategoryRefInput, 0)
-		// 	exceptionEmptyInput.Service = &cato_models.WanFirewallServiceTypeInput{}
-		// 	exceptionEmptyInput.Service.Standard = make([]*cato_models.ServiceRefInput, 0)
-		// 	exceptionEmptyInput.Service.Custom = make([]*cato_models.CustomServiceInput, 0)
 
-		// 	rootAddRule.Exceptions = append(rootAddRule.Exceptions, &exceptionEmptyInput)
-		// 	rootUpdateRule.Exceptions = append(rootUpdateRule.Exceptions, &exceptionEmptyInput)
-		// }
+		// setting activePeriod
+		if !ruleInput.ActivePeriod.IsNull() && !ruleInput.ActivePeriod.IsUnknown() {
+			activePeriodInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_ActivePeriod{}
+			diags = append(diags, ruleInput.ActivePeriod.As(ctx, &activePeriodInput, basetypes.ObjectAsOptions{})...)
+
+			activePeriodApiInput := &cato_models.PolicyRuleActivePeriodInput{
+				EffectiveFrom:    nil,
+				ExpiresAt:        nil,
+				UseEffectiveFrom: false,
+				UseExpiresAt:     false,
+			}
+
+			// Handle effective_from
+			if !activePeriodInput.EffectiveFrom.IsNull() && !activePeriodInput.EffectiveFrom.IsUnknown() {
+				effectiveFromStr := activePeriodInput.EffectiveFrom.ValueString()
+				if effectiveFromStr != "" {
+					// Parse the time string - support both RFC3339 format and human-readable formats
+					parsedTime, err := parseTimeStringWithTZ(effectiveFromStr)
+					if err != nil {
+						diags = append(diags, diag.NewErrorDiagnostic(
+							"Invalid effective_from time format",
+							fmt.Sprintf("Unable to parse effective_from time '%s': %v. Expected RFC3339 format (e.g., '2024-12-31T23:59:59Z')", effectiveFromStr, err),
+						))
+					} else {
+						activePeriodApiInput.EffectiveFrom = &parsedTime
+						activePeriodApiInput.UseEffectiveFrom = true
+					}
+				}
+			}
+
+			// Handle expires_at
+			if !activePeriodInput.ExpiresAt.IsNull() && !activePeriodInput.ExpiresAt.IsUnknown() {
+				expiresAtStr := activePeriodInput.ExpiresAt.ValueString()
+				if expiresAtStr != "" {
+					// Parse the time string - support both RFC3339 format and human-readable formats
+					parsedTime, err := parseTimeStringWithTZ(expiresAtStr)
+					if err != nil {
+						diags = append(diags, diag.NewErrorDiagnostic(
+							"Invalid expires_at time format",
+							fmt.Sprintf("Unable to parse expires_at time '%s': %v. Expected RFC3339 format (e.g., '2024-12-31T23:59:59Z')", expiresAtStr, err),
+						))
+					} else {
+						activePeriodApiInput.ExpiresAt = &parsedTime
+						activePeriodApiInput.UseExpiresAt = true
+					}
+				}
+			}
+
+			rootAddRule.ActivePeriod = activePeriodApiInput
+			// For update, we need to create a separate struct with pointer fields for bools
+			activePeriodUpdateApiInput := &cato_models.PolicyRuleActivePeriodUpdateInput{
+				EffectiveFrom:    activePeriodApiInput.EffectiveFrom,
+				ExpiresAt:        activePeriodApiInput.ExpiresAt,
+				UseEffectiveFrom: &activePeriodApiInput.UseEffectiveFrom,
+				UseExpiresAt:     &activePeriodApiInput.UseExpiresAt,
+			}
+			rootUpdateRule.ActivePeriod = activePeriodUpdateApiInput
+		} else {
+			// setting activePeriod with default values when not provided
+			rootAddRule.ActivePeriod = &cato_models.PolicyRuleActivePeriodInput{
+				EffectiveFrom:    nil,
+				ExpiresAt:        nil,
+				UseEffectiveFrom: false,
+				UseExpiresAt:     false,
+			}
+			useEffectiveFromDefault := false
+			useExpiresAtDefault := false
+			rootUpdateRule.ActivePeriod = &cato_models.PolicyRuleActivePeriodUpdateInput{
+				EffectiveFrom:    nil,
+				ExpiresAt:        nil,
+				UseEffectiveFrom: &useEffectiveFromDefault,
+				UseExpiresAt:     &useExpiresAtDefault,
+			}
+		}
 
 		// settings other rule attributes
 		rootAddRule.Name = ruleInput.Name.ValueString()

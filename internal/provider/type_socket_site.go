@@ -16,6 +16,8 @@ type SocketSite struct {
 }
 
 type NativeRange struct {
+	InterfaceIndex              types.String `tfsdk:"interface_index"`
+	InterfaceId                 types.String `tfsdk:"interface_id"`
 	NativeNetworkLanInterfaceId types.String `tfsdk:"native_network_lan_interface_id"`
 	NativeNetworkRange          types.String `tfsdk:"native_network_range"`
 	NativeNetworkRangeId        types.String `tfsdk:"native_network_range_id"`
@@ -36,6 +38,8 @@ type SiteLocation struct {
 }
 
 var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
+	"interface_index":                 types.StringType,
+	"interface_id":                    types.StringType,
 	"native_network_lan_interface_id": types.StringType,
 	"native_network_range":            types.StringType,
 	"native_network_range_id":         types.StringType,

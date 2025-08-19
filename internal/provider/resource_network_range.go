@@ -864,8 +864,8 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 
 				// Convert DhcpSettings struct to types.Object with all attributes
 				dhcpSettingsObject, dErr := types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
-				if dErr != nil {
-					return state, false, fmt.Errorf("failed to convert dhcp settings to object: %w", dErr)
+				if dErr.HasError() {
+					return state, false, fmt.Errorf("failed to convert dhcp settings to object: %v", dErr)
 				}
 
 				state.DhcpSettings = dhcpSettingsObject

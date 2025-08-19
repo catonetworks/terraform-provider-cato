@@ -59,3 +59,11 @@ var CustomServiceAttrTypes = map[string]attr.Type{
 	"port_range": FromToObjectType,
 	"protocol":   types.StringType,
 }
+
+var ActivePeriodObjectType = types.ObjectType{AttrTypes: ActivePeriodAttrTypes}
+var ActivePeriodAttrTypes = map[string]attr.Type{
+	"effective_from":     types.StringType,
+	"expires_at":         types.StringType,
+	"use_effective_from": types.BoolType,
+	"use_expires_at":     types.BoolType,
+}

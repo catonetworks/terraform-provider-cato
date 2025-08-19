@@ -231,12 +231,16 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Match current license by ID from API response
 	license := &cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses{}
-	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, state.ID.ValueString(), licensingInfoResponse)
+	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, state.SiteID.ValueString(), licensingInfoResponse)
 	if allocatedBw != nil {
 		state.BW = types.Int64Value(*allocatedBw)
 	}
 
 	if siteIsAssigned {
+		if curSiteLicenseId.IsNull() {
+			resp.Diagnostics.AddError("License ID not found", "This could be due to the license or the account being set as trial where the license does not have an ID, or if there is a China license on the account.  If a trial license is assigned, please unassign the trial license and try to reapply.")
+			return
+		}
 		licenses := licensingInfoResponse.GetLicensing().GetLicensingInfo().GetLicenses()
 		for _, curLicense := range licenses {
 			if curLicense.ID != nil && *curLicense.ID == curSiteLicenseId.ValueString() {
@@ -403,7 +407,8 @@ func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, li
 	for _, curLicense := range licenses {
 		if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_PB_SSE" {
 			if len(curLicense.PooledBandwidthLicense.Sites) > 0 {
-				for _, site := range curLicense.PooledBandwidthLicense.Sites {
+			for _, site := range curLicense.PooledBandwidthLicense.Sites {
+				if site.SitePooledBandwidthLicenseSite.ID != "" {
 					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Checking site IDs, input='"+fmt.Sprintf("%v", curSiteId)+"', currentItem='"+site.SitePooledBandwidthLicenseSite.ID+"'")
 					if site.SitePooledBandwidthLicenseSite.ID == curSiteId {
 						tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
@@ -416,6 +421,7 @@ func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, li
 						}
 					}
 				}
+			}
 			}
 		} else if curLicense.Sku == "CATO_SITE" || curLicense.Sku == "CATO_SSE_SITE" {
 			if curLicense.SiteLicense.Site != nil {

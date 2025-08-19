@@ -61,6 +61,9 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 			"interface_id": schema.StringAttribute{
 				Description: "SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https://api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)",
 				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf(
 						"INT_1", "INT_2", "INT_3", "INT_4", "INT_5", "INT_6", "INT_7", "INT_8", "INT_9", "INT_10", "INT_11", "INT_12", "LAN1", "LAN2",
@@ -167,9 +170,10 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	entityInput := &cato_models.EntityInput{}
 	entityInput.Type = cato_models.EntityTypeSite
 	entityInput.ID = plan.SiteId.ValueString()
-	siteResponse, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityTypeNetworkInterface, nil, nil, entityInput, nil, nil, nil, nil, nil)
+	siteResponse, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, entityInput, nil, nil, nil, nil, nil)
 	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteResponse),
+		"len()":    len(siteResponse.GetEntityLookup().GetItems()),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API error", err.Error())
@@ -178,10 +182,17 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 
 	tflog.Warn(ctx, "Interate over network interfaces from entityLookup to match name against defatult interfaceID (name) '"+*plan.InterfaceID.ValueStringPointer()+"' to retrieve numeric networkInterfaceID")
 	for _, item := range siteResponse.GetEntityLookup().GetItems() {
+		tflog.Debug(ctx, "siteResponse.GetEntityLookup().GetItems()", map[string]interface{}{
+			"item": utils.InterfaceToJSONString(item),
+		})
 		entityFields := item.GetEntity()
 		helperFields := item.GetHelperFields()
 		interfaceName := cast.ToString(helperFields["interfaceName"])
-		if plan.Name.ValueStringPointer() != nil && interfaceName == *plan.InterfaceID.ValueStringPointer() {
+		interfaceId := cast.ToString(helperFields["interfaceId"])
+		if _, err := cast.ToIntE(interfaceId); err == nil {
+			interfaceId = fmt.Sprintf("INT_%v", interfaceId)
+		}
+		if plan.InterfaceID.ValueStringPointer() != nil && interfaceId == *plan.InterfaceID.ValueStringPointer() {
 			tflog.Warn(ctx, "Network interface name matched! "+interfaceName+", setting plan.ID "+fmt.Sprintf("%v", entityFields.GetID()))
 			plan.ID = types.StringValue(entityFields.GetID())
 			break
@@ -225,6 +236,7 @@ func (r *lanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 
 	// check if interface exists, else remove resource
 	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
+	// queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
 	tflog.Warn(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryInterfaceResult),
 	})
@@ -235,21 +247,27 @@ func (r *lanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 		)
 		return
 	}
-
 	isPresent := false
 	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
 		// find the socket site entry we need
+		tflog.Warn(ctx, "For.queryInterfaceResult.EntityLookup", map[string]interface{}{
+			"curIint": utils.InterfaceToJSONString(curIint),
+		})
 		if curIint.Entity.ID == state.ID.ValueString() {
+			tflog.Warn(ctx, "curIint.Entity.ID==state.ID.ValueString()", map[string]interface{}{
+				"curIint.Entity.ID": utils.InterfaceToJSONString(curIint.Entity.ID),
+			})
 			isPresent = true
 			state.ID = types.StringValue(curIint.Entity.ID)
 			if siteIdVal, ok := curIint.HelperFields["siteId"]; ok {
 				state.SiteId = types.StringValue(cast.ToString(siteIdVal))
 			}
-			if intIdVal, ok := curIint.HelperFields["interfaceId"]; ok {
-				if _, err := cast.ToIntE(intIdVal); err == nil {
-					intIdVal = "INT_" + cast.ToString(intIdVal)
+			if _, ok := curIint.HelperFields["interfaceId"]; ok {
+				if idxInt, err := cast.ToIntE(curIint.HelperFields["interfaceId"]); err == nil {
+					state.InterfaceID = types.StringValue(fmt.Sprintf("INT_%d", idxInt))
+				} else {
+					state.InterfaceID = types.StringValue(cast.ToString(curIint.HelperFields["interfaceId"]))
 				}
-				state.InterfaceID = types.StringValue(cast.ToString(intIdVal))
 			}
 			if nameVal, ok := curIint.HelperFields["interfaceName"]; ok {
 				state.Name = types.StringValue(cast.ToString(nameVal))

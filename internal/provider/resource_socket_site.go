@@ -2,11 +2,10 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
-	"strings"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -24,6 +23,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 )
+
+const defaultInterfaceByConnType = `{
+	"SOCKET_AWS1500":   "LAN1",
+	"SOCKET_AZ1500":    "LAN1",
+	"SOCKET_ESX1500":   "LAN1",
+	"SOCKET_GCP1500":   "LAN1",
+	"SOCKET_X1500":     "LAN1",
+	"SOCKET_X1600":     "INT_5",
+	"SOCKET_X1600_LTE": "INT_5",
+	"SOCKET_X1700":     "INT_3"
+}`
 
 var (
 	_ resource.Resource                = &socketSiteResource{}
@@ -86,9 +96,23 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Optional:    true,
 			},
 			"native_range": schema.SingleNestedAttribute{
-				Description: "Site native range settings",
+				Description: "Site lan native range settings",
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
+					"interface_index": schema.StringAttribute{
+						Description: "LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models",
+						Computed:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"interface_id": schema.StringAttribute{
+						Description: "LAN native range interface id",
+						Computed:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
 					"native_network_range": schema.StringAttribute{
 						Description: "Site native IP range (CIDR)",
 						Required:    true,
@@ -194,10 +218,16 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"city": schema.StringAttribute{
 						Description: "Optionnal city",
 						Optional:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"address": schema.StringAttribute{
 						Description: "Optionnal address",
 						Optional:    true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 				},
 			},
@@ -225,6 +255,12 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	var interfaceByConnType map[string]string
+	err := json.Unmarshal([]byte(defaultInterfaceByConnType), &interfaceByConnType)
+	if err != nil {
+		panic(err)
 	}
 
 	// setting input & input to update network range
@@ -355,35 +391,16 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// retrieving native-network range ID to update native range
-	entityParent := cato_models.EntityInput{
-		ID:   socketSite.Site.AddSocketSite.GetSiteID(),
-		Type: (cato_models.EntityType)("site"),
-	}
+	siteID := socketSite.Site.AddSocketSite.GetSiteID()
 
-	siteRangeEntities, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
-	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(siteRangeEntities),
-	})
+	// Get native interface and subnet information
+	result, err := r.getNativeInterfaceAndSubnet(ctx, string(input.ConnectionType), siteID, plan, interfaceByConnType)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
 		return
 	}
+	nativeNetworkRangeId := result.NativeNetworkRangeId
 
-	var networkRangeEntity cato_go_sdk.EntityLookup_EntityLookup_Items_Entity
-	for _, item := range siteRangeEntities.EntityLookup.Items {
-		splitName := strings.Split(*item.Entity.Name, " \\ ")
-		if splitName[2] == "Native Range" {
-			networkRangeEntity = item.Entity
-		}
-	}
-
-	tflog.Debug(ctx, "Create.SiteUpdateNetworkRange.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(inputUpdateNetworkRange),
-	})
-	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, networkRangeEntity.GetID(), inputUpdateNetworkRange, r.client.AccountId)
+	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, nativeNetworkRangeId, inputUpdateNetworkRange, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API SiteUpdateNetworkRange error",
@@ -393,7 +410,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// hydrate the state with API data
-	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, socketSite.Site.AddSocketSite.GetSiteID())
+	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, siteID)
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -416,9 +433,9 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// overiding state with socket site id
-	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), types.StringValue(socketSite.Site.AddSocketSite.GetSiteID()))
+	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), siteID)
 	// overiding state with native network range id
-	resp.State.SetAttribute(ctx, path.Root("native_range").AtName("native_network_range_id"), networkRangeEntity.ID)
+	resp.State.SetAttribute(ctx, path.Root("native_range").AtName("native_network_range_id"), nativeNetworkRangeId)
 }
 
 func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -783,8 +800,189 @@ func calculateLocalIP(ctx context.Context, subnet, connType string) string {
 	return localIP.String()
 }
 
+// NativeInterfaceAndSubnetResult contains all the data returned by getNativeInterfaceAndSubnet
+type NativeInterfaceAndSubnetResult struct {
+	Subnet               string
+	NativeNetworkRangeId string
+	InterfaceIndex       string
+	InterfaceId          string
+	SiteNetRangeApiData  map[string]any
+	NativeRangeObj       NativeRange
+}
+
+// getNativeInterfaceAndSubnet retrieves native interface and subnet information
+// Returns: NativeInterfaceAndSubnetResult, error
+func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, connType string, siteID string, state SocketSite, interfaceByConnType map[string]string) (*NativeInterfaceAndSubnetResult, error) {
+	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
+	zeroInt64 := int64(0)
+	if connType != "" {
+		// Translate VSOCKET_VGX_* values to SOCKET_* equivalents
+		switch connType {
+		case "VSOCKET_VGX_AWS":
+			connType = "SOCKET_AWS1500"
+		case "VSOCKET_VGX_AZURE":
+			connType = "SOCKET_AZ1500"
+		case "VSOCKET_VGX_ESX":
+			connType = "SOCKET_ESX1500"
+		}
+	} else {
+		return nil, fmt.Errorf("connection type is empty")
+	}
+
+	// Only assign interfaceIndex if it does not already exist in state
+	if _, ok := interfaceByConnType[connType]; !ok {
+		return nil, fmt.Errorf("connection type %s not found in interfaceByConnType", connType)
+	}
+	var nativeRangeObj NativeRange
+	if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
+		state.NativeRange.As(ctx, &nativeRangeObj, basetypes.ObjectAsOptions{})
+	}
+	// if nativeRangeObj.InterfaceIndex.IsNull() || nativeRangeObj.InterfaceIndex.ValueString() == "" {
+	defaultInterfaceIndexByConnType, ok := interfaceByConnType[connType]
+	if !ok {
+		return nil, fmt.Errorf("connection type %s not found in interfaceByConnType", connType)
+	}
+	// Retrieve default interface range attributes
+	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+	tflog.Warn(ctx, "Read.EntityLookupInterfaceRangeResult.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(queryInterfaceResult),
+	})
+	if err != nil {
+		return nil, err
+	}
+	isPresent := false
+	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+		// find the socket site entry we need
+		curSiteId := cast.ToString(curIint.HelperFields["siteId"])
+		tflog.Warn(ctx, "for.queryInterfaceResult.EntityLookup.Items | siteID==siteID", map[string]interface{}{
+			"siteID":                          siteID,
+			"curSiteId":                       curSiteId,
+			"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
+			"curInterfaceId":                  curIint.HelperFields["interfaceId"],
+		})
+		if curSiteId == siteID {
+			// get current interfaceId from the API and use to map to interface index
+			curInterfaceId := curIint.HelperFields["interfaceId"]
+			// Try to parse the interfaceId as int, otherwise prefix with "INT_"
+			if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
+				curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
+				curInterfaceId = curInterfaceIdStr
+				nativeRangeObj.InterfaceIndex = types.StringValue(curInterfaceIdStr)
+			} else {
+				nativeRangeObj.InterfaceIndex = types.StringValue(curInterfaceId.(string))
+			}
+			tflog.Warn(ctx, "defaultInterfaceIndexByConnType==curInterfaceId", map[string]interface{}{
+				"defaultInterfaceIndexByConnType": cast.ToString(defaultInterfaceIndexByConnType),
+				"curInterfaceId":                  curInterfaceId,
+			})
+			if cast.ToString(defaultInterfaceIndexByConnType) == curInterfaceId {
+				isPresent = true
+				nativeRangeObj.InterfaceIndex = types.StringValue(defaultInterfaceIndexByConnType)
+				nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
+				nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
+			} else {
+				tflog.Warn(ctx, "Skipping interface by connection type", map[string]interface{}{
+					"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
+					"curInterfaceId":                  curInterfaceId,
+				})
+			}
+		} else {
+			tflog.Warn(ctx, "Skipping interface as siteId does not match", map[string]interface{}{
+				"siteID":    siteID,
+				"curSiteId": curSiteId,
+			})
+		}
+	}
+	if !isPresent {
+		return nil, fmt.Errorf("Site does not contain configuration for default LAN interface index %s for connection type %s", defaultInterfaceIndexByConnType, connType)
+	}
+
+	// Retrieve default site range attributes
+	querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+	tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(querySiteRangeResult),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	siteNetRangeApiData := make(map[string]any)
+	for _, v := range querySiteRangeResult.GetEntityLookup().GetItems() {
+		curSubnet := v.GetHelperFields()["subnet"].(string)
+		if curSubnet == nativeRangeObj.NativeNetworkRange.ValueString() {
+			siteNetRangeApiData = v.GetHelperFields()
+			// Pull ID from entity attributes
+			siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
+			siteNetRangeApiData["microsegmentation"] = v.HelperFields["microsegmentation"]
+			siteNetRangeApiData["mdns_reflector"] = v.HelperFields["mdnsReflector"]
+			break
+		}
+		// Check if nativeRangeObj has a valid NativeNetworkRange value, otherwise use the first valid subnet
+		// if !nativeRangeObj.NativeNetworkRange.IsNull() && !nativeRangeObj.NativeNetworkRange.IsUnknown() {
+		// 	if curSubnet == nativeRangeObj.NativeNetworkRange.ValueString() {
+		// 		siteNetRangeApiData = v.GetHelperFields()
+		// 		// Pull ID from entity attributes
+		// 		siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
+		// 		siteNetRangeApiData["microsegmentation"] = v.HelperFields["microsegmentation"]
+		// 		siteNetRangeApiData["mdns_reflector"] = v.HelperFields["mdnsReflector"]
+		// 		break
+		// 	}
+		// } else {
+		// 	// If no native range is set, use the first range (usually the native range)
+		// 	if len(siteNetRangeApiData) == 0 {
+		// 		siteNetRangeApiData = v.GetHelperFields()
+		// 		// Pull ID from entity attributes
+		// 		siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
+		// 	}
+		// }
+	}
+	tflog.Debug(ctx, "Read.siteNetRangeApiData", map[string]interface{}{
+		"siteNetRangeApiData": utils.InterfaceToJSONString(siteNetRangeApiData),
+	})
+
+	// // Extract return values
+	// subnet := ""
+	// if val, ok := siteNetRangeApiData["subnet"].(string); ok {
+	// 	subnet = val
+	// }
+
+	nativeNetworkRangeId := ""
+	if val, ok := siteNetRangeApiData["native_network_range_id"].(string); ok {
+		nativeNetworkRangeId = val
+	}
+
+	interfaceIndex := ""
+	if !nativeRangeObj.InterfaceIndex.IsNull() && !nativeRangeObj.InterfaceIndex.IsUnknown() {
+		interfaceIndex = nativeRangeObj.InterfaceIndex.ValueString()
+	}
+
+	interfaceId := ""
+	if !nativeRangeObj.InterfaceId.IsNull() && !nativeRangeObj.InterfaceId.IsUnknown() {
+		interfaceId = nativeRangeObj.InterfaceId.ValueString()
+	}
+
+	return &NativeInterfaceAndSubnetResult{
+		Subnet:               nativeRangeObj.NativeNetworkRange.ValueString(),
+		NativeNetworkRangeId: nativeNetworkRangeId,
+		InterfaceIndex:       interfaceIndex,
+		InterfaceId:          interfaceId,
+		SiteNetRangeApiData:  siteNetRangeApiData,
+		NativeRangeObj:       nativeRangeObj,
+	}, nil
+}
+
 // hydrateSocketSiteState populates the SocketSite state with data from API responses
 func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state SocketSite, siteID string) (SocketSite, bool, error) {
+	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
+	zeroInt64 := int64(0)
+
+	// Unmarshal socketMapping into a map
+	var interfaceByConnType map[string]string
+	err := json.Unmarshal([]byte(defaultInterfaceByConnType), &interfaceByConnType)
+	if err != nil {
+		panic(err)
+	}
+
 	// check if site exist, else remove resource
 	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{siteID}, nil, nil, nil)
 	tflog.Warn(ctx, "Read.EntityLookup.response", map[string]interface{}{
@@ -813,6 +1011,8 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 			var stateSiteLocation types.Object
 			if len(siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()) > 0 {
 				thisSiteAccountSnapshot := siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()[0]
+
+				// Get connection type and set state
 				connTypeVal := ""
 				if val := siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()[0].InfoSiteSnapshot.GetConnType(); val != nil {
 					connTypeVal = val.String()
@@ -832,46 +1032,28 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					state.ConnectionType = types.StringNull()
 				}
 
-				siteType := ""
-				if val, containsKey := v.GetHelperFields()["type"]; containsKey {
-					siteType = val.(string)
-				}
-
-				// Retrieve default site range attributes
-				siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
-				zeroInt64 := int64(0)
-				querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
-				tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
-					"response": utils.InterfaceToJSONString(querySiteRangeResult),
-				})
+				// Get native interface and subnet information
+				result, err := r.getNativeInterfaceAndSubnet(ctx, connTypeVal, siteID, state, interfaceByConnType)
 				if err != nil {
 					return state, false, err
 				}
 
-				siteNetRangeApiData := make(map[string]any)
-				for _, v := range querySiteRangeResult.GetEntityLookup().GetItems() {
-					if v.Entity.Name != nil {
-						nameVal := *v.Entity.Name
-						splitName := strings.Split(nameVal, " \\ ")
-						tflog.Debug(ctx, "Read.querySiteRangeResult", map[string]interface{}{
-							"nameVal":     utils.InterfaceToJSONString(nameVal),
-							"splitName":   utils.InterfaceToJSONString(splitName),
-							"rangeName":   utils.InterfaceToJSONString(splitName[len(splitName)-1]),
-							"rangeName==": utils.InterfaceToJSONString(splitName[len(splitName)-1] == "Native Range"),
-						})
-						if len(splitName) > 0 {
-							rangeName := splitName[len(splitName)-1]
-							if rangeName == "Native Range" {
-								siteNetRangeApiData = v.GetHelperFields()
-								// Pull ID from entity attributes
-								siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
-							}
-						}
-					}
-				}
-				tflog.Debug(ctx, "Read.siteNetRangeApiData", map[string]interface{}{
-					"siteNetRangeApiData": utils.InterfaceToJSONString(siteNetRangeApiData),
+				tflog.Debug(ctx, "Read.getNativeInterfaceAndSubnet.result", map[string]interface{}{
+					"result": utils.InterfaceToJSONString(result),
 				})
+
+				// Extract values from result struct
+				subnet := result.Subnet
+				resultNativeNetworkRangeId := result.NativeNetworkRangeId
+				// interfaceIndex := result.InterfaceIndex
+				// interfaceId := result.InterfaceId
+				siteNetRangeApiData := result.SiteNetRangeApiData
+				nativeRangeObj := result.NativeRangeObj
+
+				siteType := ""
+				if val, containsKey := v.GetHelperFields()["type"]; containsKey {
+					siteType = val.(string)
+				}
 				state.Id = types.StringValue(v.Entity.GetID())
 				state.Name = types.StringValue(*v.GetEntity().Name)
 				// ConnectionType is already set above in the switch statement
@@ -886,34 +1068,33 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					state.NativeRange.As(ctx, &fromStateNativeRange, basetypes.ObjectAsOptions{})
 				}
 
-				var stateNativeRange types.Object
-				subnet := ""
-				if val, ok := siteNetRangeApiData["subnet"].(string); ok {
-					subnet = val
-				}
-				mdnsReflector := false
-				if val, ok := siteNetRangeApiData["mdnsReflector"].(bool); ok {
-					mdnsReflector = val
-				}
-				microsegmentation := false
-				if val, ok := siteNetRangeApiData["microsegmentation"].(bool); ok {
-					microsegmentation = val
-				}
-				var vlan attr.Value = types.Int64Null()
-				tflog.Debug(ctx, "Read.siteNetRangeApiData.vlanString", map[string]interface{}{
-					"vlanString": utils.InterfaceToJSONString(siteNetRangeApiData["vlanTag"]),
-				})
-				if val, ok := siteNetRangeApiData["vlanTag"].(float64); ok {
-					tflog.Debug(ctx, "Read.siteNetRangeApiData.vlan", map[string]interface{}{
-						"vlan": utils.InterfaceToJSONString(val),
-					})
-					if vlanInt, err := cast.ToInt64E(val); err == nil {
-						tflog.Debug(ctx, "Read.siteNetRangeApiData.vlanInt", map[string]interface{}{
-							"vlanInt": utils.InterfaceToJSONString(vlanInt),
-						})
-						vlan = types.Int64Value(vlanInt)
-					}
-				}
+				// var stateNativeRange types.Object
+				// if val, ok := siteNetRangeApiData["subnet"].(string); ok {
+				// 	resultSubnet = val
+				// }
+				// mdnsReflector := false
+				// if val, ok := siteNetRangeApiData["mdnsReflector"].(bool); ok {
+				// 	mdnsReflector = val
+				// }
+				// microsegmentation := false
+				// if val, ok := siteNetRangeApiData["microsegmentation"].(bool); ok {
+				// 	microsegmentation = val
+				// }
+				// var vlan attr.Value = types.Int64Null()
+				// tflog.Debug(ctx, "Read.siteNetRangeApiData.vlanString", map[string]interface{}{
+				// 	"vlanString": utils.InterfaceToJSONString(nativeRangeObj.Vlan),
+				// })
+				// if val, ok := siteNetRangeApiData["vlanTag"].(float64); ok {
+				// 	tflog.Debug(ctx, "Read.siteNetRangeApiData.vlan", map[string]interface{}{
+				// 		"vlan": utils.InterfaceToJSONString(val),
+				// 	})
+				// 	if vlanInt, err := cast.ToInt64E(val); err == nil {
+				// 		tflog.Debug(ctx, "Read.siteNetRangeApiData.vlanInt", map[string]interface{}{
+				// 			"vlanInt": utils.InterfaceToJSONString(vlanInt),
+				// 		})
+				// 		vlan = types.Int64Value(vlanInt)
+				// 	}
+				// }
 
 				// Use existing LocalIp from state if available, otherwise calculate based on connection type and subnet
 				var localIPValue types.String
@@ -950,7 +1131,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 							"ip_range":               dhcpSettings.IpRange,
 							"relay_group_id":         dhcpSettings.RelayGroupId,
 							"relay_group_name":       dhcpSettings.RelayGroupName,
-							"dhcp_microsegmentation": types.BoolValue(microsegmentation),
+							"dhcp_microsegmentation": types.BoolValue(siteNetRangeApiData["microsegmentation"].(bool)),
 						},
 					)
 				} else {
@@ -969,41 +1150,26 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					return state, false, err
 				}
 
-				// Find the default LAN interface ID
-				nativeNetworkLanInterfaceId := types.StringNull()
-				for _, iface := range interfacesResponse.GetEntityLookup().GetItems() {
-					if iface.Entity.Name != nil {
-						interfaceID, ok := iface.HelperFields["InterfaceID"].(string)
-						if !ok {
-							continue
-						}
-						if connTypeVal == "SOCKET_X1500" && interfaceID == "LAN1" {
-							nativeNetworkLanInterfaceId = types.StringValue(iface.Entity.GetID())
-						} else if (connTypeVal == "SOCKET_X1600" || connTypeVal == "SOCKET_X1600_LTE") && interfaceID == "5" {
-							nativeNetworkLanInterfaceId = types.StringValue(iface.Entity.GetID())
-						} else if connTypeVal == "SOCKET_X1700" && interfaceID == "3" {
-							nativeNetworkLanInterfaceId = types.StringValue(iface.Entity.GetID())
-						}
-					}
-				}
-
+				var stateNativeRange types.Object
 				stateNativeRange, _ = types.ObjectValue(
 					SiteNativeRangeResourceAttrTypes,
 					map[string]attr.Value{
-						"native_network_lan_interface_id": nativeNetworkLanInterfaceId,
+						"interface_index":                 nativeRangeObj.InterfaceIndex,
+						"interface_id":                    nativeRangeObj.InterfaceId,
+						"native_network_lan_interface_id": types.StringValue(resultNativeNetworkRangeId),
 						"native_network_range":            types.StringValue(subnet),
-						"native_network_range_id": func() attr.Value {
-							if val, ok := siteNetRangeApiData["native_network_range_id"].(string); ok {
-								return types.StringValue(val)
+						"native_network_range_id":         types.StringValue(resultNativeNetworkRangeId),
+						"local_ip":                        localIPValue,
+						"translated_subnet": func() attr.Value {
+							if !fromStateNativeRange.TranslatedSubnet.IsNull() && !fromStateNativeRange.TranslatedSubnet.IsUnknown() {
+								return fromStateNativeRange.TranslatedSubnet
 							}
 							return types.StringNull()
 						}(),
-						"local_ip":          localIPValue,
-						"translated_subnet": fromStateNativeRange.TranslatedSubnet,
-						"vlan":              vlan,
-						"mdns_reflector":    types.BoolValue(mdnsReflector),
-						"internet_only":     internetOnlyValue,
-						"dhcp_settings":     dhcpSettingsValue,
+						"vlan":           nativeRangeObj.Vlan,
+						"mdns_reflector": types.BoolValue(siteNetRangeApiData["mdnsReflector"].(bool)),
+						"internet_only":  internetOnlyValue,
+						"dhcp_settings":  dhcpSettingsValue,
 					},
 				)
 				state.NativeRange = stateNativeRange
@@ -1053,7 +1219,12 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 							}
 							return types.StringNull()
 						}(),
-						"city": types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName),
+						"city": func() types.String {
+							if thisSiteAccountSnapshot.InfoSiteSnapshot.CityName != nil && *thisSiteAccountSnapshot.InfoSiteSnapshot.CityName != "" {
+								return types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName)
+							}
+							return types.StringNull()
+						}(),
 					},
 				)
 			} else {

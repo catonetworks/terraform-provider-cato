@@ -2,11 +2,11 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -138,12 +138,49 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 							stringvalidator.OneOf("TO", "BOTH"),
 						},
 					},
+					"active_period": schema.SingleNestedAttribute{
+						Description: "Time period during which the rule is active. Outside this period, the rule is inactive. Times should be in RFC3339 format (e.g., '2024-12-31T23:59:59Z').",
+						Optional:    true,
+						Computed:    true,
+						PlanModifiers: []planmodifier.Object{
+							planmodifiers.ActivePeriodModifier(),
+						},
+						Attributes: map[string]schema.Attribute{
+							"effective_from": schema.StringAttribute{
+								Description: "The time the rule becomes active (RFC3339 format, e.g., '2024-01-01T00:00:00Z'). If not specified, the rule is active from creation.",
+								Optional:    true,
+								Required:    false,
+								Computed:    true,
+							},
+							"expires_at": schema.StringAttribute{
+								Description: "The time the rule expires and becomes inactive (RFC3339 format, e.g., '2024-12-31T23:59:59Z'). If not specified, the rule never expires.",
+								Optional:    true,
+								Required:    false,
+								Computed:    true,
+							},
+							"use_effective_from": schema.BoolAttribute{
+								Description: "Whether to use the effective_from time. Computed from the presence of effective_from field.",
+								Computed:    true,
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
+							},
+							"use_expires_at": schema.BoolAttribute{
+								Description: "Whether to use the expires_at time. Computed from the presence of expires_at field.",
+								Computed:    true,
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
+							},
+						},
+					},
 					"source": schema.SingleNestedAttribute{
 						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
 						PlanModifiers: []planmodifier.Object{
-							objectplanmodifier.UseStateForUnknown(), // Avoid drift
+							objectplanmodifier.UseStateForUnknown(),  // Avoid drift
+							planmodifiers.SourceDestObjectModifier(), // Handle ID correlation for nested sets
 						},
 						Attributes: map[string]schema.Attribute{
 							"ip": schema.ListAttribute{
@@ -572,6 +609,10 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
+						PlanModifiers: []planmodifier.Object{
+							objectplanmodifier.UseStateForUnknown(),  // Avoid drift
+							planmodifiers.SourceDestObjectModifier(), // Handle ID correlation for nested sets
+						},
 						Attributes: map[string]schema.Attribute{
 							"ip": schema.ListAttribute{
 								Description: "Pv4 address list",
@@ -1022,7 +1063,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"device": schema.SetNestedAttribute{
-						Description: "Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
+						Description: "Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
 						Required:    false,
 						Optional:    true,
 						Validators: []validator.Set{
@@ -1052,6 +1093,88 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										stringplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
 									Computed: true,
+								},
+							},
+						},
+					},
+					"device_attributes": schema.SingleNestedAttribute{
+						Description: "Device attributes matching criteria for the rule.",
+						Required:    false,
+						Optional:    true,
+						PlanModifiers: []planmodifier.Object{
+							objectplanmodifier.UseStateForUnknown(), // Avoid drift
+						},
+						Attributes: map[string]schema.Attribute{
+							"category": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device category matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"type": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device type matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"model": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device model matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"manufacturer": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device manufacturer matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"os": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device OS matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"os_version": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device OS version matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
 								},
 							},
 						},
@@ -1666,11 +1789,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Required:    false,
 						Optional:    true,
 						Computed:    true,
-						PlanModifiers: []planmodifier.Set{
-							setplanmodifier.UseStateForUnknown(), // Avoid drift
-						},
 						Validators: []validator.Set{
 							setvalidator.SizeAtLeast(1),
+						},
+						PlanModifiers: []planmodifier.Set{
+							planmodifiers.WanExceptionsSetModifier(), // Handle ID correlation for exceptions
 						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -1684,8 +1807,8 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								},
 								"source": schema.SingleNestedAttribute{
 									Description: "Source traffic matching criteria for the exception.",
-									Required:    true,
-									Optional:    false,
+									Required:    false,
+									Optional:    true,
 									PlanModifiers: []planmodifier.Object{
 										objectplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
@@ -1741,7 +1864,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"site": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Sites defined in your account",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1789,7 +1912,6 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.List{
 												listvalidator.SizeAtLeast(1),
 											},
-											//Computed: true,
 										},
 										"ip_range": schema.ListNestedAttribute{
 											Description: "IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
@@ -1817,7 +1939,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"global_ip_range": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Global IP Range",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1870,11 +1992,6 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														Description: "Network Interface Name",
 														Required:    false,
 														Optional:    true,
-														// Validators: []validator.String{
-														// 	stringvalidator.ConflictsWith(path.Expressions{
-														// 		path.MatchRelative().AtParent().AtName("id"),
-														// 	}...),
-														// },
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
@@ -2261,9 +2378,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
-											// PlanModifiers: []planmodifier.Set{
-											// 	setplanmodifier.UseStateForUnknown(), // Avoid drift
-											// },
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
@@ -2626,6 +2743,88 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													stringplanmodifier.UseStateForUnknown(), // Avoid drift
 												},
 												Computed: true,
+											},
+										},
+									},
+								},
+								"device_attributes": schema.SingleNestedAttribute{
+									Description: "Device attributes matching criteria for the exception.",
+									Required:    false,
+									Optional:    true,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Attributes: map[string]schema.Attribute{
+										"category": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device category matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"type": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device type matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"model": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device model matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"manufacturer": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device manufacturer matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"os": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device OS matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"os_version": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device OS version matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 										},
 									},
@@ -3140,6 +3339,9 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	// Sleep to allow the rule to propagate with active_period, bug in create/read
+	// time.Sleep(30 * time.Second)
+
 	// Read rule and hydrate response to state
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
 	body, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
@@ -3164,21 +3366,36 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 			break
 		}
 	}
-	tflog.Info(ctx, "ruleObject - "+fmt.Sprintf("%v", currentRule))
-	// Hydrate ruleInput from api respoonse
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_createRule.readResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(currentRule),
+	})
+	// Hydrate ruleInput from api response
 	ruleInputRead, hydrateDiags := hydrateWanRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
 	tflog.Info(ctx, "ruleInputRead - "+fmt.Sprintf("%v", ruleInputRead))
+
+	// Handle exceptions correlation manually to preserve plan structure
+	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
+		planRule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
+		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
+			// Correlate exceptions between plan and hydrated response
+			correlatedExceptions := correlateWanExceptions(ctx, planRule.Exceptions, ruleInputRead.Exceptions)
+			if correlatedExceptions != nil {
+				ruleInputRead.Exceptions = *correlatedExceptions
+			}
+		}
+	}
+
 	ruleObject, diags := types.ObjectValueFrom(ctx, WanFirewallRuleRuleAttrTypes, ruleInputRead)
-	tflog.Info(ctx, "ruleObject - "+fmt.Sprintf("%v", ruleObject))
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// Assign ruleObject to state
 	plan.Rule = ruleObject
 
+	// Set the complete plan to state
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -3206,19 +3423,44 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	//retrieve rule ID
-	rule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
-	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
+	// Handle case where state might be incomplete (e.g., during import)
+	var ruleID string
+	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
+		rule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
+		if diags.HasError() {
+			// If conversion fails, try to extract just the ID from the state
+			tflog.Debug(ctx, "Failed to convert full state to struct, attempting to extract ID only")
+			// Clear the diagnostics as we'll handle this differently
+			resp.Diagnostics = resp.Diagnostics[:0]
+
+			// Try to extract ID directly from the state
+			ruleAttrs := state.Rule.Attributes()
+			if idValue, ok := ruleAttrs["id"]; ok && !idValue.IsNull() {
+				ruleID = idValue.(types.String).ValueString()
+			} else {
+				resp.Diagnostics.AddError(
+					"Unable to extract rule ID from state",
+					"Could not find rule ID in state during import",
+				)
+				return
+			}
+		} else {
+			ruleID = rule.ID.ValueString()
+		}
+	} else {
+		resp.Diagnostics.AddError(
+			"Invalid state",
+			"Rule state is null or unknown",
+		)
 		return
 	}
-	resp.Diagnostics.Append(diags...)
 
 	ruleList := body.GetPolicy().WanFirewall.Policy.GetRules()
 	ruleExist := false
 	currentRule := &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule{}
 	for _, ruleListItem := range ruleList {
-		if ruleListItem.GetRule().ID == rule.ID.ValueString() {
+		if ruleListItem.GetRule().ID == ruleID {
 			ruleExist = true
 			currentRule = ruleListItem.GetRule()
 
@@ -3236,6 +3478,10 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		resp.State.RemoveResource(ctx)
 		return
 	}
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_readRule.readResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(currentRule),
+	})
 
 	ruleInput, hydrateDiags := hydrateWanRuleState(ctx, state, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
@@ -3323,12 +3569,8 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		"OUTPUT": utils.InterfaceToJSONString(input.update),
 	})
 
-	//creating new rule
+	// updating rule
 	updateRuleResponse, err := r.client.catov2.PolicyWanFirewallUpdateRule(ctx, input.update, r.client.AccountId)
-	tflog.Debug(ctx, "updateRuleResponse", map[string]interface{}{
-		"input.update": utils.InterfaceToJSONString(input.update),
-	})
-
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_updateRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(updateRuleResponse),
 	})
@@ -3387,11 +3629,8 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 			break
 		}
 	}
-
-	policyChangeJson, _ := json.Marshal(currentRule)
-
-	tflog.Warn(ctx, "TFLOG_WARN_WAN_currentRule", map[string]interface{}{
-		"OUTPUT": string(policyChangeJson),
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_createRule.readResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(currentRule),
 	})
 
 	// Hydrate ruleInput from api respoonse
@@ -3399,6 +3638,20 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	resp.Diagnostics.Append(hydrateDiags...)
 
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
+
+	// Handle exceptions correlation manually to preserve plan structure
+	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
+		planRule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
+		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
+			// Correlate exceptions between plan and hydrated response
+			correlatedExceptions := correlateWanExceptions(ctx, planRule.Exceptions, ruleInputRead.Exceptions)
+			if correlatedExceptions != nil {
+				ruleInputRead.Exceptions = *correlatedExceptions
+			}
+		}
+	}
+
 	ruleObject, diags := types.ObjectValueFrom(ctx, WanFirewallRuleRuleAttrTypes, ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

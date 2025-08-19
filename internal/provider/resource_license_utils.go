@@ -59,6 +59,12 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	// Check if the site has a license currently
 	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
 
+	if siteIsAssigned && curSiteLicenseId.IsNull() {
+		message := "License ID not found: This could be due to the license or the account being set as trial where the license does not have an ID, or if there is a China license on the account.  If a trial license is assigned, please unassign the trial license and try to reapply."
+		diags = append(diags, diag.NewErrorDiagnostic("LICENSE API ERROR", message))
+		return nil, fmt.Errorf("LICENSE API ERROR: %s", message)
+	}
+
 	// Get current license objeect by ID
 	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
 
@@ -70,11 +76,15 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 		"siteLicenseCurrentlyAssigned==true": fmt.Sprintf("%t", (siteLicenseCurrentlyAssigned == true)),
 	})
 	if siteLicenseCurrentlyAssigned == true {
-		message := "The license ID '" + fmt.Sprintf("%v", plan.LicenseID.ValueString()) + "' is already assigned to site ID " + fmt.Sprintf("%v", curLicenseSiteId)
-		diags = append(diags, diag.NewErrorDiagnostic("LICENSE ALREADY ASSIGNED", message))
-		return nil, fmt.Errorf("LICENSE ALREADY ASSIGNED: %s", message)
+		if plan.SiteID.ValueString()==curLicenseSiteId.ValueString() {			
+			tflog.Warn(ctx, "License '"+fmt.Sprintf("%v", license.ID)+"', already assigned to site ID '"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', returning license successfully applied.")
+			return license, nil
+		} else {
+			message := "The license ID '" + fmt.Sprintf("%v", plan.LicenseID.ValueString()) + "' is already assigned to site ID " + fmt.Sprintf("%v", curLicenseSiteId)
+			diags = append(diags, diag.NewErrorDiagnostic("LICENSE ALREADY ASSIGNED", message))
+			return nil, fmt.Errorf("LICENSE ALREADY ASSIGNED: %s", message)
+		}
 	}
-
 	if licenseExists {
 		// Check for the correct license type
 		tflog.Warn(ctx, "Checking license SKU for CATO_PB, CATO_PB_SSE, CATO_SITE, or CATO_SSE_SITE type, license.Sku='"+string(license.Sku)+"'")

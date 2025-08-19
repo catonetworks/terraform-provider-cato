@@ -20,13 +20,15 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule struct {
 	Name        types.String `tfsdk:"name" json:"name,omitempty"`
 	Description types.String `tfsdk:"description" json:"description,omitempty"`
 	Index       types.Int64  `tfsdk:"index" json:"index,omitempty"`
-	Enabled     types.Bool   `tfsdk:"enabled" json:"enable,omitempty"`
+	Enabled     types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
 	// Section          types.Object `tfsdk:"section" json:"section,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Section
 	Source           types.Object `tfsdk:"source" json:"source,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Source
-	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connection_origin,omitempty"`
-	Country          types.Set    `tfsdk:"country" json:"country,omitempty"` //[]Policy_Policy_WanFirewall_Policy_Rules_Rule_Country
-	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`   //[]Policy_Policy_WanFirewall_Policy_Rules_Rule_Device
-	DeviceOs         types.List   `tfsdk:"device_os" json:"device_os,omitempty"`
+	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connectionOrigin,omitempty"`
+	ActivePeriod     types.Object `tfsdk:"active_period" json:"activePeriod,omitempty"`         //Policy_Policy_WanFirewall_Policy_Rules_Rule_ActivePeriod
+	Country          types.Set    `tfsdk:"country" json:"country,omitempty"`                    //[]Policy_Policy_WanFirewall_Policy_Rules_Rule_Country
+	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`                      //[]Policy_Policy_WanFirewall_Policy_Rules_Rule_Device
+	DeviceAttributes types.Object `tfsdk:"device_attributes" json:"deviceAttributes,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_DeviceAttributes
+	DeviceOs         types.List   `tfsdk:"device_os" json:"deviceOS,omitempty"`
 	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination
 	Application      types.Object `tfsdk:"application" json:"application,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Application
 	Service          types.Object `tfsdk:"service" json:"service,omitempty"`         //Policy_Policy_WanFirewall_Policy_Rules_Rule_Service
@@ -37,6 +39,13 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule struct {
 	Exceptions       types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"` //[]*Policy_Policy_WanFirewall_Policy_Rules_Rule_Exceptions
 }
 
+type Policy_Policy_WanFirewall_Policy_Rules_Rule_ActivePeriod struct {
+	EffectiveFrom    types.String `tfsdk:"effective_from" json:"effective_from,omitempty"`
+	ExpiresAt        types.String `tfsdk:"expires_at" json:"expires_at,omitempty"`
+	UseEffectiveFrom types.Bool   `tfsdk:"use_effective_from" json:"use_effective_from,omitempty"`
+	UseExpiresAt     types.Bool   `tfsdk:"use_expires_at" json:"use_expires_at,omitempty"`
+}
+
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Country struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
@@ -45,6 +54,25 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule_Country struct {
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Device struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
+}
+
+type Policy_Policy_WanFirewall_Policy_Rules_Rule_DeviceAttributes struct {
+	Category     types.List `tfsdk:"category" json:"category,omitempty"`
+	Type         types.List `tfsdk:"type" json:"type,omitempty"`
+	Model        types.List `tfsdk:"model" json:"model,omitempty"`
+	Manufacturer types.List `tfsdk:"manufacturer" json:"manufacturer,omitempty"`
+	Os           types.List `tfsdk:"os" json:"os,omitempty"`
+	OsVersion    types.List `tfsdk:"os_version" json:"osVersion,omitempty"`
+}
+
+// DeviceAttributesInput struct for converting from tfsdk to cato_models
+type DeviceAttributesInput struct {
+	Category     []string `tfsdk:"category" json:"category"`
+	Manufacturer []string `tfsdk:"manufacturer" json:"manufacturer"`
+	Model        []string `tfsdk:"model" json:"model"`
+	Os           []string `tfsdk:"os" json:"os"`
+	OsVersion    []string `tfsdk:"os_version" json:"osVersion"`
+	Type         []string `tfsdk:"type" json:"type"`
 }
 
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Section struct {
@@ -316,10 +344,11 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule_Schedule_CustomRecurring struct
 type Policy_Policy_WanFirewall_Policy_Rules_Rule_Exceptions struct {
 	Name             types.String `tfsdk:"name" json:"name,omitempty"`
 	Source           types.Object `tfsdk:"source" json:"source,omitempty"`
-	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connection_origin,omitempty"`
+	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connectionOrigin,omitempty"`
 	Country          types.Set    `tfsdk:"country" json:"country,omitempty"`
 	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`
-	DeviceOs         types.List   `tfsdk:"device_os" json:"device_os,omitempty"`
+	DeviceAttributes types.Object `tfsdk:"device_attributes" json:"deviceAttributes,omitempty"`
+	DeviceOs         types.List   `tfsdk:"device_os" json:"deviceOS,omitempty"`
 	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"`
 	Application      types.Object `tfsdk:"application" json:"application,omitempty"`
 	Service          types.Object `tfsdk:"service" json:"service,omitempty"`
@@ -327,13 +356,13 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule_Exceptions struct {
 }
 
 // Generic object types used to write back to state
-var WanFirewallRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleAttrTypes}
+var WanFirewallRuleObjectType = types.ObjectType{AttrTypes: WanFirewallRuleAttrTypes}
 var WanFirewallRuleAttrTypes = map[string]attr.Type{
 	"rule": WanFirewallRuleRuleObjectType,
 	"at":   PositionObjectType,
 }
 
-var WanFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleRuleAttrTypes}
+var WanFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: WanFirewallRuleRuleAttrTypes}
 var WanFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"id":          types.StringType,
 	"name":        types.StringType,
@@ -343,8 +372,10 @@ var WanFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	// "section":           NameIDObjectType,
 	"source":            WanSourceObjectType,
 	"connection_origin": types.StringType,
+	"active_period":     types.ObjectType{AttrTypes: ActivePeriodAttrTypes},
 	"country":           types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device":            types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device_attributes": types.ObjectType{AttrTypes: WanDeviceAttrAttrTypes},
 	"device_os":         types.ListType{ElemType: types.StringType},
 	"application":       WanApplicationObjectType,
 	"destination":       types.ObjectType{AttrTypes: WanDestAttrTypes},
@@ -413,11 +444,11 @@ var WanApplicationAttrTypes = map[string]attr.Type{
 
 var WanExceptionObjectType = types.ObjectType{AttrTypes: WanExceptionAttrTypes}
 var WanExceptionAttrTypes = map[string]attr.Type{
-	"name":    types.StringType,
-	"source":  types.ObjectType{AttrTypes: WanSourceAttrTypes},
-	"country": types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
-	"device":  types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
-	// "device_attributes": types.ObjectType{AttrTypes: DeviceAttrAttrTypes},
+	"name":              types.StringType,
+	"source":            types.ObjectType{AttrTypes: WanSourceAttrTypes},
+	"country":           types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device":            types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device_attributes": types.ObjectType{AttrTypes: WanDeviceAttrAttrTypes},
 	"device_os":         types.ListType{ElemType: types.StringType},
 	"destination":       types.ObjectType{AttrTypes: WanDestAttrTypes},
 	"application":       types.ObjectType{AttrTypes: WanApplicationAttrTypes},
@@ -433,5 +464,5 @@ var WanDeviceAttrAttrTypes = map[string]attr.Type{
 	"model":        types.ListType{ElemType: types.StringType},
 	"manufacturer": types.ListType{ElemType: types.StringType},
 	"os":           types.ListType{ElemType: types.StringType},
-	"osVersion":    types.ListType{ElemType: types.StringType},
+	"os_version":   types.ListType{ElemType: types.StringType},
 }

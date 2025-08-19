@@ -6,6 +6,7 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -105,19 +106,59 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Required:    true,
 						Optional:    false,
 					},
-					"section": schema.SingleNestedAttribute{
-						Required: false,
-						Optional: true,
+					// "section": schema.SingleNestedAttribute{
+					// 	Required: false,
+					// 	Optional: true,
+					// 	Computed: true,
+					// 	PlanModifiers: []planmodifier.Object{
+					// 		objectplanmodifier.UseStateForUnknown(), // Preserve section from API when not in config
+					// 	},
+					// 	Attributes: map[string]schema.Attribute{
+					// 		"name": schema.StringAttribute{
+					// 			Description: "",
+					// 			Required:    false,
+					// 			Optional:    true,
+					// 		},
+					// 		"id": schema.StringAttribute{
+					// 			Description: "",
+					// 			Required:    false,
+					// 			Optional:    true,
+					// 		},
+					// 	},
+					// },
+					"active_period": schema.SingleNestedAttribute{
+						Description: "Time period during which the rule is active. Outside this period, the rule is inactive. Times should be in RFC3339 format (e.g., '2024-12-31T23:59:59Z').",
+						Optional:    true,
+						Computed:    true,
+						PlanModifiers: []planmodifier.Object{
+							planmodifiers.ActivePeriodModifier(),
+						},
 						Attributes: map[string]schema.Attribute{
-							"name": schema.StringAttribute{
-								Description: "",
-								Required:    false,
+							"effective_from": schema.StringAttribute{
+								Description: "The time the rule becomes active (RFC3339 format, e.g., '2024-01-01T00:00:00Z'). If not specified, the rule is active from creation.",
 								Optional:    true,
+								Required:    false,
+								Computed:    true,
 							},
-							"id": schema.StringAttribute{
-								Description: "",
-								Required:    false,
+							"expires_at": schema.StringAttribute{
+								Description: "The time the rule expires and becomes inactive (RFC3339 format, e.g., '2024-12-31T23:59:59Z'). If not specified, the rule never expires.",
 								Optional:    true,
+								Required:    false,
+								Computed:    true,
+							},
+							"use_effective_from": schema.BoolAttribute{
+								Description: "Whether to use the effective_from time. Computed from the presence of effective_from field.",
+								Computed:    true,
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
+							},
+							"use_expires_at": schema.BoolAttribute{
+								Description: "Whether to use the expires_at time. Computed from the presence of expires_at field.",
+								Computed:    true,
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
 							},
 						},
 					},
@@ -125,6 +166,10 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput)",
 						Required:    true,
 						Optional:    false,
+						PlanModifiers: []planmodifier.Object{
+							objectplanmodifier.UseStateForUnknown(),  // Avoid drift
+							planmodifiers.SourceDestObjectModifier(), // Handle ID correlation for nested sets
+						},
 						Attributes: map[string]schema.Attribute{
 							"ip": schema.ListAttribute{
 								Description: "Pv4 address list",
@@ -141,6 +186,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Optional:    true,
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
+								},
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
@@ -174,6 +222,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Site defined for the account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -237,6 +288,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Globally defined IP range, IP and subnet objects",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -272,6 +326,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Network range defined for a site",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -307,6 +364,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "GlobalRange + InterfaceSubnet",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -342,6 +402,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP.",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -377,6 +440,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Individual users defined for the account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -412,6 +478,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Group of users",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -447,6 +516,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Groups defined for your account",
 								Required:    false,
 								Optional:    true,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
@@ -603,10 +675,96 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Optional:    true,
 						Required:    false,
 					},
+					"device_attributes": schema.SingleNestedAttribute{
+						Description: "Device attributes matching criteria for the rule.",
+						Required:    false,
+						Optional:    true,
+						PlanModifiers: []planmodifier.Object{
+							objectplanmodifier.UseStateForUnknown(), // Avoid drift
+						},
+						Attributes: map[string]schema.Attribute{
+							"category": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device category matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"type": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device type matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"model": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device model matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"manufacturer": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device manufacturer matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"os": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device OS matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+							"os_version": schema.ListAttribute{
+								ElementType: types.StringType,
+								Description: "Device OS version matching criteria for the rule.",
+								Required:    false,
+								Optional:    true,
+								PlanModifiers: []planmodifier.List{
+									listplanmodifier.UseStateForUnknown(), // Avoid drift
+								},
+								Validators: []validator.List{
+									listvalidator.SizeAtLeast(1),
+								},
+							},
+						},
+					},
 					"destination": schema.SingleNestedAttribute{
 						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput)",
 						Optional:    false,
 						Required:    true,
+						PlanModifiers: []planmodifier.Object{
+							objectplanmodifier.UseStateForUnknown(),  // Avoid drift
+							planmodifiers.SourceDestObjectModifier(), // Handle ID correlation for nested sets
+						},
 						Attributes: map[string]schema.Attribute{
 							"application": schema.SetNestedAttribute{
 								Description: "Applications for the rule (pre-defined)",
@@ -1241,9 +1399,15 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules.",
 						Required:    false,
 						Optional:    true,
-						// Computed:    true,
+						Computed:    true,
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
+						},
 						PlanModifiers: []planmodifier.Set{
-							setplanmodifier.UseStateForUnknown(), // Avoid drift
+							// Temporarily disabled all plan modifiers to isolate issue
+							// planmodifiers.EmptySetDefault(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}), // Default empty set for new resources
+							setplanmodifier.UseStateForUnknown(),     // Avoid drift
+							planmodifiers.IfwExceptionsSetModifier(), // Handle ID correlation for Internet FW exceptions
 						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -1257,8 +1421,11 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 								"source": schema.SingleNestedAttribute{
 									Description: "Source traffic matching criteria for the exception.",
-									Required:    true,
-									Optional:    false,
+									Required:    false,
+									Optional:    true,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
 									Attributes: map[string]schema.Attribute{
 										"ip": schema.ListAttribute{
 											Description: "",
@@ -1268,10 +1435,14 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 										},
 										"host": schema.SetNestedAttribute{
-											Required: false,
-											Optional: true,
+											Description: "Hosts and servers defined for your account",
+											Required:    false,
+											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
 												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
@@ -1281,7 +1452,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Host Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1295,7 +1466,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Host ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1307,7 +1478,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"site": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Sites defined in your account",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1319,7 +1490,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Site Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1333,7 +1504,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Site ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1346,7 +1517,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
@@ -1357,21 +1528,24 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"ip_range": schema.ListNestedAttribute{
-											Description: "",
+											Description: "IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.List{
 												listplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
-														Description: "",
+														Description: "From IP Range Name",
 														Required:    true,
 														Optional:    false,
 													},
 													"to": schema.StringAttribute{
-														Description: "",
+														Description: "To IP Range ID",
 														Required:    true,
 														Optional:    false,
 													},
@@ -1379,7 +1553,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"global_ip_range": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Global IP Range",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1391,7 +1565,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1405,7 +1579,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1417,7 +1591,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"network_interface": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Network range defined for a site",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1429,21 +1603,16 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Network Interface Name",
 														Required:    false,
 														Optional:    true,
-														Validators: []validator.String{
-															stringvalidator.ConflictsWith(path.Expressions{
-																path.MatchRelative().AtParent().AtName("id"),
-															}...),
-														},
 														PlanModifiers: []planmodifier.String{
 															stringplanmodifier.UseStateForUnknown(), // Avoid drift
 														},
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Network Interface ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1455,9 +1624,8 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"site_network_subnet": schema.SetNestedAttribute{
-											Description: "",
-											Required:    false,
-											Optional:    true,
+											Required: false,
+											Optional: true,
 											PlanModifiers: []planmodifier.Set{
 												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
@@ -1467,7 +1635,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Site Network Subnet Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1481,7 +1649,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Site Network Subnet ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1493,7 +1661,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"floating_subnet": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Floating Subnet defined for a site",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1505,7 +1673,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Floating Subnet Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1519,7 +1687,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Floating Subnet ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1531,7 +1699,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"user": schema.SetNestedAttribute{
-											Description: "",
+											Description: "User defined for your account",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
@@ -1543,7 +1711,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "User Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1557,7 +1725,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "User ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1581,7 +1749,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Users Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1595,7 +1763,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Users Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1619,7 +1787,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1633,7 +1801,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1657,7 +1825,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "System Group Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1671,7 +1839,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "System Group ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1685,7 +1853,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 								},
 								"country": schema.SetNestedAttribute{
-									Description: "Source country matching criteria for the exception.",
+									Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 									Required:    false,
 									Optional:    true,
 									PlanModifiers: []planmodifier.Set{
@@ -1697,7 +1865,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"name": schema.StringAttribute{
-												Description: "",
+												Description: "Country Name",
 												Required:    false,
 												Optional:    true,
 												Validators: []validator.String{
@@ -1711,7 +1879,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 												Computed: true,
 											},
 											"id": schema.StringAttribute{
-												Description: "",
+												Description: "Country ID",
 												Required:    false,
 												Optional:    true,
 												PlanModifiers: []planmodifier.String{
@@ -1735,7 +1903,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"name": schema.StringAttribute{
-												Description: "",
+												Description: "Device Name",
 												Required:    false,
 												Optional:    true,
 												Validators: []validator.String{
@@ -1749,13 +1917,95 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 												Computed: true,
 											},
 											"id": schema.StringAttribute{
-												Description: "",
+												Description: "Device ID",
 												Required:    false,
 												Optional:    true,
 												PlanModifiers: []planmodifier.String{
 													stringplanmodifier.UseStateForUnknown(), // Avoid drift
 												},
 												Computed: true,
+											},
+										},
+									},
+								},
+								"device_attributes": schema.SingleNestedAttribute{
+									Description: "Device attributes matching criteria for the exception.",
+									Required:    false,
+									Optional:    true,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Attributes: map[string]schema.Attribute{
+										"category": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device category matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"type": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device type matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"model": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device model matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"manufacturer": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device manufacturer matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"os": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device OS matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
+											},
+										},
+										"os_version": schema.ListAttribute{
+											ElementType: types.StringType,
+											Description: "Device OS version matching criteria for the exception.",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.List{
+												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 										},
 									},
@@ -1770,6 +2020,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 									Validators: []validator.List{
 										listvalidator.ValueStringsAre(stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS")),
+										listvalidator.SizeAtLeast(1),
 									},
 								},
 								"destination": schema.SingleNestedAttribute{
@@ -1778,19 +2029,16 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Optional:    false,
 									Attributes: map[string]schema.Attribute{
 										"application": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Applications for the rule (pre-defined)",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Application Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1804,7 +2052,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Application ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1816,19 +2064,16 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"custom_app": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Custom (user-defined) applications",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Application Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1842,7 +2087,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Application ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1854,19 +2099,16 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"app_category": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Cato category of applications which are dynamically updated by Cato",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Application Category Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1881,7 +2123,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Application Category ID",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1896,19 +2138,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"custom_category": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc.",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
+											},
+											PlanModifiers: []planmodifier.Set{
+												setplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Category Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1922,7 +2164,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Custom Category ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1934,19 +2176,16 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"sanctioned_apps_category": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization.",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Sanctioned Apps Category Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1960,7 +2199,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Sanctioned Apps Category ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -1972,19 +2211,16 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"country": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Country Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -1998,7 +2234,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Country ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2011,82 +2247,73 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										},
 										"domain": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.List{
-												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 										},
 										"fqdn": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.List{
-												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 										},
 										"ip": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "IPv4 addresses",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.List{
-												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
-											Description: "",
+											Description: "Network subnets in CIDR notation",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.List{
-												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 										},
 										"ip_range": schema.ListNestedAttribute{
-											Description: "",
+											Description: "A range of IPs. Every IP within the range will be matched",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.List{
-												listplanmodifier.UseStateForUnknown(), // Avoid drift
+											Validators: []validator.List{
+												listvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"from": schema.StringAttribute{
-														Description: "",
+														Description: "IP Range Name",
 														Required:    true,
 														Optional:    false,
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
 													},
 													"to": schema.StringAttribute{
-														Description: "",
+														Description: "IP Range ID",
 														Required:    true,
 														Optional:    false,
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
 													},
 												},
 											},
 										},
 										"global_ip_range": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Globally defined IP range, IP and subnet objects.",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP Range Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2100,7 +2327,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Global IP ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2123,20 +2350,25 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 								},
 								"service": schema.SingleNestedAttribute{
-									Description: "Destination service matching criteria for the exception.",
-									Required:    true,
-									Optional:    false,
+									Description: "Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
+									Required:    false,
+									Optional:    true,
+									PlanModifiers: []planmodifier.Object{
+										objectplanmodifier.UseStateForUnknown(), // Avoid drift
+									},
+									Computed: true,
 									Attributes: map[string]schema.Attribute{
 										"standard": schema.SetNestedAttribute{
-											Required: false,
-											Optional: true,
-											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
+											Description: "Standard Service to which this Internet Firewall rule applies",
+											Required:    false,
+											Optional:    true,
+											Validators: []validator.Set{
+												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"name": schema.StringAttribute{
-														Description: "",
+														Description: "Service Standard Name",
 														Required:    false,
 														Optional:    true,
 														Validators: []validator.String{
@@ -2150,7 +2382,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
-														Description: "",
+														Description: "Service Standard ID",
 														Required:    false,
 														Optional:    true,
 														PlanModifiers: []planmodifier.String{
@@ -2162,25 +2394,19 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"custom": schema.ListNestedAttribute{
-											Description: "",
+											Description: "Custom Service defined by a combination of L4 ports and an IP Protocol",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.List{
-												listplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes: map[string]schema.Attribute{
 													"port": schema.ListAttribute{
 														ElementType: types.StringType,
-														Description: "",
+														Description: "List of TCP/UDP port",
 														Optional:    true,
 														Required:    false,
-														PlanModifiers: []planmodifier.List{
-															listplanmodifier.UseStateForUnknown(), // avoids plan drift
-														},
 													},
 													"port_range": schema.SingleNestedAttribute{
-														Description: "",
+														Description: "TCP/UDP port ranges",
 														Required:    false,
 														Optional:    true,
 														Attributes: map[string]schema.Attribute{
@@ -2197,12 +2423,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														},
 													},
 													"protocol": schema.StringAttribute{
-														Description: "",
+														Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
 														Required:    false,
 														Optional:    true,
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
 													},
 												},
 											},
@@ -2257,8 +2480,8 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	tflog.Debug(ctx, "internet_fw_rule create", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input.create),
+	tflog.Warn(ctx, "TFLOG_WARN_IFW_input.create", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
 
 	//creating new rule
@@ -2270,6 +2493,10 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		)
 		return
 	}
+
+	tflog.Warn(ctx, "TFLOG_WARN_IFW_createRuleResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
+	})
 
 	// check for errors
 	if createRuleResponse.Policy.InternetFirewall.AddRule.Status != "SUCCESS" {
@@ -2314,9 +2541,28 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 			break
 		}
 	}
+
+	tflog.Warn(ctx, "TFLOG_WARN_IFW_createRule.readResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(currentRule),
+	})
+
 	// Hydrate ruleInput from api respoonse
 	ruleInputRead := hydrateIfwRuleState(ctx, plan, currentRule)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
+
+	// Handle exceptions correlation manually to preserve plan structure
+	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
+		planRule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
+		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
+			// Correlate exceptions between plan and hydrated response
+			correlatedExceptions := correlateIfwExceptions(ctx, planRule.Exceptions, ruleInputRead.Exceptions)
+			if correlatedExceptions != nil {
+				ruleInputRead.Exceptions = *correlatedExceptions
+			}
+		}
+	}
+
 	ruleObject, diags := types.ObjectValueFrom(ctx, InternetFirewallRuleRuleAttrTypes, ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -2461,8 +2707,8 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	tflog.Debug(ctx, "internet_fw_rule update", map[string]interface{}{
-		"input": utils.InterfaceToJSONString(input.update),
+	tflog.Warn(ctx, "TFLOG_WARN_IFW_input.update", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(input.update),
 	})
 
 	//Update new rule
@@ -2518,9 +2764,27 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 			break
 		}
 	}
+	tflog.Warn(ctx, "TFLOG_WARN_IFW_createRule.readResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(currentRule),
+	})
+
 	// Hydrate ruleInput from api respoonse
 	ruleInputRead := hydrateIfwRuleState(ctx, plan, currentRule)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
+
+	// Handle exceptions correlation manually to preserve plan structure
+	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
+		planRule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
+		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
+			// Correlate exceptions between plan and hydrated response
+			correlatedExceptions := correlateIfwExceptions(ctx, planRule.Exceptions, ruleInputRead.Exceptions)
+			if correlatedExceptions != nil {
+				ruleInputRead.Exceptions = *correlatedExceptions
+			}
+		}
+	}
+
 	ruleObject, diags := types.ObjectValueFrom(ctx, InternetFirewallRuleRuleAttrTypes, ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

@@ -16,23 +16,32 @@ type PolicyRulePositionInput struct {
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule struct {
-	ID               types.String `tfsdk:"id" json:"id,omitempty"`
-	Name             types.String `tfsdk:"name" json:"name,omitempty"`
-	Description      types.String `tfsdk:"description" json:"description,omitempty"`
-	Index            types.Int64  `tfsdk:"index" json:"index,omitempty"`
-	Enabled          types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
-	Section          types.Object `tfsdk:"section" json:"section,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Section
-	Source           types.Object `tfsdk:"source" json:"source,omitempty"`   //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source
+	ID          types.String `tfsdk:"id" json:"id,omitempty"`
+	Name        types.String `tfsdk:"name" json:"name,omitempty"`
+	Description types.String `tfsdk:"description" json:"description,omitempty"`
+	Index       types.Int64  `tfsdk:"index" json:"index,omitempty"`
+	Enabled     types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
+	// Section          types.Object `tfsdk:"section" json:"section,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Section
+	Source           types.Object `tfsdk:"source" json:"source,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source
 	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connection_origin,omitempty"`
-	Country          types.Set    `tfsdk:"country" json:"country,omitempty"` //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country
-	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`   //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device
+	Country          types.Set    `tfsdk:"country" json:"country,omitempty"`                    //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country
+	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`                      //[]Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device
+	DeviceAttributes types.Object `tfsdk:"device_attributes" json:"deviceAttributes,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_DeviceAttributes
 	DeviceOs         types.List   `tfsdk:"device_os" json:"device_os,omitempty"`
 	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination
 	Service          types.Object `tfsdk:"service" json:"service,omitempty"`         //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service
 	Action           types.String `tfsdk:"action" json:"action,omitempty"`
-	Tracking         types.Object `tfsdk:"tracking" json:"tracking,omitempty"`     //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
-	Schedule         types.Object `tfsdk:"schedule" json:"schedule,omitempty"`     //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Schedule
-	Exceptions       types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"` //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	Tracking         types.Object `tfsdk:"tracking" json:"tracking,omitempty"`           //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
+	ActivePeriod     types.Object `tfsdk:"active_period" json:"active_period,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_ActivePeriod
+	Schedule         types.Object `tfsdk:"schedule" json:"schedule,omitempty"`           //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Schedule
+	Exceptions       types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"`       //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+}
+
+type Policy_Policy_InternetFirewall_Policy_Rules_Rule_ActivePeriod struct {
+	EffectiveFrom    types.String `tfsdk:"effective_from" json:"effective_from,omitempty"`
+	ExpiresAt        types.String `tfsdk:"expires_at" json:"expires_at,omitempty"`
+	UseEffectiveFrom types.Bool   `tfsdk:"use_effective_from" json:"use_effective_from,omitempty"`
+	UseExpiresAt     types.Bool   `tfsdk:"use_expires_at" json:"use_expires_at,omitempty"`
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country struct {
@@ -43,6 +52,25 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Country struct {
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Device struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
+}
+
+type Policy_Policy_InternetFirewall_Policy_Rules_Rule_DeviceAttributes struct {
+	Category     types.List `tfsdk:"category" json:"category,omitempty"`
+	Type         types.List `tfsdk:"type" json:"type,omitempty"`
+	Model        types.List `tfsdk:"model" json:"model,omitempty"`
+	Manufacturer types.List `tfsdk:"manufacturer" json:"manufacturer,omitempty"`
+	Os           types.List `tfsdk:"os" json:"os,omitempty"`
+	OsVersion    types.List `tfsdk:"os_version" json:"osVersion,omitempty"`
+}
+
+// DeviceAttributesInput struct for converting from tfsdk to cato_models
+type DeviceAttributesInputIfw struct {
+	Category     []string `tfsdk:"category" json:"category"`
+	Manufacturer []string `tfsdk:"manufacturer" json:"manufacturer"`
+	Model        []string `tfsdk:"model" json:"model"`
+	Os           []string `tfsdk:"os" json:"os"`
+	OsVersion    []string `tfsdk:"os_version" json:"osVersion"`
+	Type         []string `tfsdk:"type" json:"type"`
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Section struct {
@@ -255,6 +283,7 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions struct {
 	ConnectionOrigin types.String `tfsdk:"connection_origin" json:"connection_origin,omitempty"` ///////
 	Country          types.Set    `tfsdk:"country" json:"country,omitempty"`
 	Device           types.Set    `tfsdk:"device" json:"device,omitempty"`
+	DeviceAttributes types.Object `tfsdk:"device_attributes" json:"deviceAttributes,omitempty"`
 	DeviceOs         types.List   `tfsdk:"device_os" json:"device_os,omitempty"`
 	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"`
 	Service          types.Object `tfsdk:"service" json:"service,omitempty"`
@@ -271,16 +300,18 @@ var InternetFirewallRuleAttrTypes = map[string]attr.Type{
 
 var InternetFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleRuleAttrTypes}
 var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
-	"id":                types.StringType,
-	"name":              types.StringType,
-	"description":       types.StringType,
-	"index":             types.Int64Type,
-	"enabled":           types.BoolType,
-	"section":           NameIDObjectType,
+	"id":          types.StringType,
+	"name":        types.StringType,
+	"description": types.StringType,
+	"index":       types.Int64Type,
+	"enabled":     types.BoolType,
+	// "section":           NameIDObjectType,
 	"source":            IfwSourceObjectType,
 	"connection_origin": types.StringType,
+	"active_period":     types.ObjectType{AttrTypes: ActivePeriodAttrTypes},
 	"country":           types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
 	"device":            types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device_attributes": types.ObjectType{AttrTypes: IfwDeviceAttrAttrTypes},
 	"device_os":         types.ListType{ElemType: types.StringType},
 	"destination":       types.ObjectType{AttrTypes: IfwDestAttrTypes},
 	"service":           types.ObjectType{AttrTypes: IfwServiceAttrTypes},
@@ -332,11 +363,11 @@ var IfwDestAttrTypes = map[string]attr.Type{
 
 var IfwExceptionObjectType = types.ObjectType{AttrTypes: IfwExceptionAttrTypes}
 var IfwExceptionAttrTypes = map[string]attr.Type{
-	"name":    types.StringType,
-	"source":  types.ObjectType{AttrTypes: IfwSourceAttrTypes},
-	"country": types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
-	"device":  types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
-	// "device_attributes": types.ObjectType{AttrTypes: DeviceAttrAttrTypes},
+	"name":              types.StringType,
+	"source":            types.ObjectType{AttrTypes: IfwSourceAttrTypes},
+	"country":           types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device":            types.SetType{ElemType: types.ObjectType{AttrTypes: NameIDAttrTypes}},
+	"device_attributes": types.ObjectType{AttrTypes: IfwDeviceAttrAttrTypes},
 	"device_os":         types.ListType{ElemType: types.StringType},
 	"destination":       types.ObjectType{AttrTypes: IfwDestAttrTypes},
 	"service":           types.ObjectType{AttrTypes: IfwServiceAttrTypes},
@@ -350,5 +381,5 @@ var IfwDeviceAttrAttrTypes = map[string]attr.Type{
 	"model":        types.ListType{ElemType: types.StringType},
 	"manufacturer": types.ListType{ElemType: types.StringType},
 	"os":           types.ListType{ElemType: types.StringType},
-	"osVersion":    types.ListType{ElemType: types.StringType},
+	"os_version":   types.ListType{ElemType: types.StringType},
 }
