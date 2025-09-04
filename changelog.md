@@ -130,3 +130,9 @@
 - Enhanced documentation and examples for IFW and WAN rule resources
 - Updated bulk sites functionality for improved site management
 
+
+## 0.0.42 (2025-09-03)
+
+### Features
+- Fixed index field in IFW and WAN rules to be computed 
+- Updated socket_site to support native_network range name and default interface name, and validated import export for these fields

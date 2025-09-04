@@ -407,21 +407,21 @@ func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, li
 	for _, curLicense := range licenses {
 		if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_PB_SSE" {
 			if len(curLicense.PooledBandwidthLicense.Sites) > 0 {
-			for _, site := range curLicense.PooledBandwidthLicense.Sites {
-				if site.SitePooledBandwidthLicenseSite.ID != "" {
-					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Checking site IDs, input='"+fmt.Sprintf("%v", curSiteId)+"', currentItem='"+site.SitePooledBandwidthLicenseSite.ID+"'")
-					if site.SitePooledBandwidthLicenseSite.ID == curSiteId {
-						tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
-						isAssigned = true
-						allocatedBw = &site.AllocatedBandwidth
-						if curLicense.ID != nil {
-							curLicenseId = types.StringValue(*curLicense.ID)
-						} else {
-							curLicenseId = types.StringNull()
+				for _, site := range curLicense.PooledBandwidthLicense.Sites {
+					if site.SitePooledBandwidthLicenseSite.ID != "" {
+						tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Checking site IDs, input='"+fmt.Sprintf("%v", curSiteId)+"', currentItem='"+site.SitePooledBandwidthLicenseSite.ID+"'")
+						if site.SitePooledBandwidthLicenseSite.ID == curSiteId {
+							tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
+							isAssigned = true
+							allocatedBw = &site.AllocatedBandwidth
+							if curLicense.ID != nil {
+								curLicenseId = types.StringValue(*curLicense.ID)
+							} else {
+								curLicenseId = types.StringNull()
+							}
 						}
 					}
 				}
-			}
 			}
 		} else if curLicense.Sku == "CATO_SITE" || curLicense.Sku == "CATO_SSE_SITE" {
 			if curLicense.SiteLicense.Site != nil {

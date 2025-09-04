@@ -18,15 +18,20 @@ type SocketSite struct {
 type NativeRange struct {
 	InterfaceIndex              types.String `tfsdk:"interface_index"`
 	InterfaceId                 types.String `tfsdk:"interface_id"`
+	InterfaceName               types.String `tfsdk:"interface_name"`
 	NativeNetworkLanInterfaceId types.String `tfsdk:"native_network_lan_interface_id"`
 	NativeNetworkRange          types.String `tfsdk:"native_network_range"`
 	NativeNetworkRangeId        types.String `tfsdk:"native_network_range_id"`
+	RangeName                   types.String `tfsdk:"range_name"`
+	RangeId                     types.String `tfsdk:"range_id"`
 	LocalIp                     types.String `tfsdk:"local_ip"`
 	TranslatedSubnet            types.String `tfsdk:"translated_subnet"`
+	Gateway                     types.String `tfsdk:"gateway"`
+	RangeType                   types.String `tfsdk:"range_type"`
 	DhcpSettings                types.Object `tfsdk:"dhcp_settings"`
 	Vlan                        types.Int64  `tfsdk:"vlan"`
 	MdnsReflector               types.Bool   `tfsdk:"mdns_reflector"`
-	InternetOnly                types.Bool   `tfsdk:"internet_only"`
+	// InternetOnly                types.Bool   `tfsdk:"internet_only"`
 }
 
 type SiteLocation struct {
@@ -40,15 +45,20 @@ type SiteLocation struct {
 var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
 	"interface_index":                 types.StringType,
 	"interface_id":                    types.StringType,
+	"interface_name":                  types.StringType,
 	"native_network_lan_interface_id": types.StringType,
 	"native_network_range":            types.StringType,
 	"native_network_range_id":         types.StringType,
+	"range_name":                      types.StringType,
+	"range_id":                        types.StringType,
 	"local_ip":                        types.StringType,
 	"translated_subnet":               types.StringType,
+	"gateway":                         types.StringType,
+	"range_type":                      types.StringType,
 	"vlan":                            types.Int64Type,
 	"mdns_reflector":                  types.BoolType,
-	"internet_only":                   types.BoolType,
-	"dhcp_settings":                   types.ObjectType{AttrTypes: SiteNativeRangeDhcpResourceAttrTypes},
+	// "internet_only":                   types.BoolType,
+	"dhcp_settings": types.ObjectType{AttrTypes: SiteNativeRangeDhcpResourceAttrTypes},
 }
 
 var SiteNativeRangeDhcpResourceAttrTypes = map[string]attr.Type{

@@ -661,7 +661,7 @@ Optional:
 Read-Only:
 
 - `id` (String) ID of the rule
-- `index` (Number) Rule Index
+- `index` (Number) Rule Index - computed value that may change due to rule reordering
 
 <a id="nestedatt--rule--tracking"></a>
 ### Nested Schema for `rule.tracking`

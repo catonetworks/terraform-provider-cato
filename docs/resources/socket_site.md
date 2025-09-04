@@ -109,10 +109,12 @@ Required:
 Optional:
 
 - `dhcp_settings` (Attributes) Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type) (see [below for nested schema](#nestedatt--native_range--dhcp_settings))
-- `internet_only` (Boolean) Internet only network range (Only releveant for Routed range_type)
+- `gateway` (String) Gateway IP address for the native range
+- `interface_name` (String) LAN native range interface name (e.g., 'LAN 01')
 - `mdns_reflector` (Boolean) Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.
 - `native_network_lan_interface_id` (String) ID of native range LAN interface (for additional network range update purposes)
 - `native_network_range_id` (String) Site native IP range ID (for update purpose)
+- `range_type` (String) Native range type (NATIVE, VLAN, or ROUTED)
 - `translated_subnet` (String) Site translated native IP range (CIDR)
 - `vlan` (Number) VLAN ID for the site native range (optional)
 
@@ -120,6 +122,8 @@ Read-Only:
 
 - `interface_id` (String) LAN native range interface id
 - `interface_index` (String) LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models
+- `range_id` (String) Native range ID (base64 encoded identifier)
+- `range_name` (String) Native range name (typically 'Native Range')
 
 <a id="nestedatt--native_range--dhcp_settings"></a>
 ### Nested Schema for `native_range.dhcp_settings`
