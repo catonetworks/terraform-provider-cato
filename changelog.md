@@ -136,3 +136,9 @@
 ### Features
 - Fixed index field in IFW and WAN rules to be computed 
 - Updated socket_site to support native_network range name and default interface name, and validated import export for these fields
+
+## 0.0.43 (2025-09-11)
+
+### Features
+- Fixed logic in network_range, socket_site resources to support proper import/export for all available attributes
+ 

@@ -27,6 +27,12 @@ func contains(nameToIdMap map[string]struct{}, name string) bool {
 
 // getSiteById retrieves site information by site ID using EntityLookup
 func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID string, interfaceId string, interfaceIndex string, interfaceName string) (string, string, error) {
+	tflog.Debug(ctx, "getSiteNetworkInterface()", map[string]interface{}{
+		"siteID":         utils.InterfaceToJSONString(siteID),
+		"interfaceId":    utils.InterfaceToJSONString(interfaceId),
+		"interfaceName":  utils.InterfaceToJSONString(interfaceName),
+		"interfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
+	})
 	zeroInt64 := int64(0)
 	// func (c *Client) EntityLookup(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64, parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*EntityLookup, error) {
 	site := &cato_models.EntityInput{
@@ -43,17 +49,30 @@ func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID
 	networkInterfaceResponse, err := client.catov2.EntityLookup(ctx, client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, site, nil, entityIDs, nil, nil, nil)
 	tflog.Warn(ctx, "getSiteNetworkInterfaceById.EntityLookup.networkInterfaceResponse", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(networkInterfaceResponse),
+		"err":      utils.InterfaceToJSONString(err),
 	})
 	if err != nil {
 		return "", "", err
 	}
 	items := networkInterfaceResponse.GetEntityLookup().GetItems()
 	// Check for interfaceIndex
+	tflog.Info(ctx, "getSiteNetworkInterface.inputs", map[string]interface{}{
+		"interfaceIndex": interfaceIndex,
+		"interfaceName":  interfaceName,
+	})
+
 	if interfaceIndex != "" {
 		for _, item := range items {
 			helperFields := item.GetHelperFields()
 			curInterfaceId := item.GetEntity().GetID()
 			curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
+			tflog.Info(ctx, "getSiteNetworkInterface.interfaceItem", map[string]interface{}{
+				"interfaceItem":  item,
+				"interfaceIndex": interfaceIndex,
+				"interfaceName":  interfaceName,
+				"check":          cast.ToString(helperFields["interfaceName"]) == interfaceName,
+			})
+
 			if len(curInterfaceIndex) == 1 {
 				intVal, err := cast.ToIntE(curInterfaceIndex)
 				if err == nil {
@@ -73,19 +92,51 @@ func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID
 		// Confirm single record retiurned by Id
 		if len(items) == 0 {
 			return "", "", fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceId, siteID)
-		}
-		interfaceItem := items[0]
-		// Return the first (and should be only) interface item
-		helperFields := interfaceItem.GetHelperFields()
-		curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
-		if len(curInterfaceIndex) == 1 {
-			intVal, err := cast.ToIntE(curInterfaceIndex)
-			if err == nil {
-				curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
+		} else if len(items) == 1 {
+			interfaceItem := items[0]
+			// Return the first (and should be only) interface item
+			helperFields := interfaceItem.GetHelperFields()
+			curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
+			if len(curInterfaceIndex) == 1 {
+				intVal, err := cast.ToIntE(curInterfaceIndex)
+				if err == nil {
+					curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
+				}
 			}
+			interfaceId := interfaceItem.GetEntity().GetID()
+			return interfaceId, curInterfaceIndex, nil
+		} else {
+			var curInterfaceIndex string
+			var interfaceId string
+			for _, interfaceItem := range items {
+				helperFields := interfaceItem.GetHelperFields()
+				curInterfaceName := cast.ToString(helperFields["interfaceName"])
+				tflog.Info(ctx, "getSiteNetworkInterface.interfaceItem", map[string]interface{}{
+					"interfaceItem":                         interfaceItem,
+					"interfaceName":                         interfaceName,
+					"curInterfaceName":                      curInterfaceName,
+					"check curInterfaceName==interfaceName": (curInterfaceName == interfaceName),
+				})
+				if interfaceName == curInterfaceName {
+					curInterfaceIndex = cast.ToString(helperFields["interfaceId"])
+					if len(curInterfaceIndex) == 1 {
+						intVal, err := cast.ToIntE(curInterfaceIndex)
+						if err == nil {
+							curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
+						}
+					}
+					interfaceId = interfaceItem.GetEntity().GetID()
+				}
+			}
+			if interfaceId == "" {
+				return "", "", fmt.Errorf("network interface with name '%s' not found in site '%s'", interfaceName, siteID)
+			}
+			tflog.Info(ctx, "getSiteNetworkInterface.return", map[string]interface{}{
+				"interfaceId":       interfaceId,
+				"curInterfaceIndex": curInterfaceIndex,
+			})
+			return interfaceId, curInterfaceIndex, nil
 		}
-		interfaceId := interfaceItem.GetEntity().GetID()
-		return interfaceId, curInterfaceIndex, nil
 	}
 }
 

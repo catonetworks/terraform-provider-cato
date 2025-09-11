@@ -9,6 +9,7 @@ import (
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -165,6 +166,9 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"vlan": schema.Int64Attribute{
 						Description: "VLAN ID for the site native range (optional)",
 						Optional:    true,
+						Validators: []validator.Int64{
+							int64validator.AtLeast(1),
+						},
 					},
 					// "internet_only": schema.BoolAttribute{
 					// 	Description: "Internet only network range (Only releveant for Routed range_type)",
@@ -255,15 +259,17 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"city": schema.StringAttribute{
 						Description: "Optionnal city",
 						Optional:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
+						Computed:    true,
+						Validators: []validator.String{
+							stringvalidator.LengthAtLeast(1),
 						},
 					},
 					"address": schema.StringAttribute{
 						Description: "Optionnal address",
 						Optional:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
+						Computed:    true,
+						Validators: []validator.String{
+							stringvalidator.LengthAtLeast(1),
 						},
 					},
 				},
@@ -316,8 +322,18 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		input.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
-		input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
+		// Normalize address: if not provided or empty, send nil (to avoid empty string -> null drift)
+		addrPtr := siteLocationInput.Address.ValueStringPointer()
+		if addrPtr != nil && *addrPtr == "" {
+			addrPtr = nil
+		}
+		input.SiteLocation.Address = addrPtr
+		// Normalize city: if not provided or empty, send nil (to avoid empty string -> null drift)
+		cityPtr := siteLocationInput.City.ValueStringPointer()
+		if cityPtr != nil && *cityPtr == "" {
+			cityPtr = nil
+		}
+		input.SiteLocation.City = cityPtr
 		input.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueString()
 		input.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		input.SiteLocation.Timezone = siteLocationInput.Timezone.ValueString()
@@ -605,15 +621,21 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		inputSiteGeneral.SiteLocation.CityName = siteLocationInput.City.ValueStringPointer()
+		// Normalize city: if not provided or empty, send nil (to avoid empty string -> null drift)
+		cityPtr := siteLocationInput.City.ValueStringPointer()
+		if cityPtr != nil && *cityPtr == "" {
+			cityPtr = nil
+		}
+		inputSiteGeneral.SiteLocation.CityName = cityPtr
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
-		addressValue := ""
-		if !siteLocationInput.Address.IsNull() && !siteLocationInput.Address.IsUnknown() {
-			addressValue = siteLocationInput.Address.ValueString()
+		// Normalize address: if not provided or empty, send nil (to avoid empty string -> null drift)
+		addrPtr := siteLocationInput.Address.ValueStringPointer()
+		if addrPtr != nil && *addrPtr == "" {
+			addrPtr = nil
 		}
-		inputSiteGeneral.SiteLocation.Address = &addressValue
+		inputSiteGeneral.SiteLocation.Address = addrPtr
 	}
 
 	// setting input native range
@@ -629,6 +651,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 		// Check for interface_name removal from config
 		tflog.Info(ctx, "nativeRangeState.InterfaceName.check", map[string]interface{}{
+			"nativeRangeState.InterfaceName":                   utils.InterfaceToJSONString(nativeRangeState.InterfaceName),
 			"nativeRangeState.InterfaceName.IsNull()":          nativeRangeState.InterfaceName.IsNull(),
 			"nativeRangeState.InterfaceName.IsUnknown()":       nativeRangeState.InterfaceName.IsUnknown(),
 			"nativeRangeState.InterfaceName.ValueString()!=''": nativeRangeState.InterfaceName.ValueString() != "",
@@ -639,6 +662,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			nativeRangeState.InterfaceName.ValueString() != "" {
 			// Interface name exists in state
 			tflog.Info(ctx, "nativeRangeInput.InterfaceName.check", map[string]interface{}{
+				"nativeRangeInput.InterfaceName":                   utils.InterfaceToJSONString(nativeRangeInput.InterfaceName),
 				"nativeRangeInput.InterfaceName.IsNull()":          nativeRangeInput.InterfaceName.IsNull(),
 				"nativeRangeInput.InterfaceName.IsUnknown()":       nativeRangeInput.InterfaceName.IsUnknown(),
 				"nativeRangeInput.InterfaceName.ValueString()!=''": nativeRangeInput.InterfaceName.ValueString() != "",
@@ -656,7 +680,6 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			}
 		}
 
-		inputUpdateNetworkRange.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
 		inputUpdateNetworkRange.Subnet = nativeRangeInput.NativeNetworkRange.ValueStringPointer()
 		inputUpdateNetworkRange.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
@@ -1043,9 +1066,6 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 			if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
 				curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
 				curInterfaceId = curInterfaceIdStr
-				nativeRangeObj.InterfaceIndex = types.StringValue(curInterfaceIdStr)
-			} else {
-				nativeRangeObj.InterfaceIndex = types.StringValue(curInterfaceId.(string))
 			}
 			tflog.Warn(ctx, "defaultInterfaceIndexByConnType==curInterfaceId", map[string]interface{}{
 				"defaultInterfaceIndexByConnType": cast.ToString(defaultInterfaceIndexByConnType),
@@ -1054,6 +1074,11 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 			})
 			if cast.ToString(defaultInterfaceIndexByConnType) == curInterfaceId {
 				isPresent = true
+				if _, err := cast.ToIntE(curInterfaceId); err == nil {
+					nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+				} else {
+					nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+				}
 				nativeRangeObj.InterfaceIndex = types.StringValue(defaultInterfaceIndexByConnType)
 				nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
 				nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
@@ -1098,6 +1123,15 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 			siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
 			siteNetRangeApiData["microsegmentation"] = v.HelperFields["microsegmentation"]
 			siteNetRangeApiData["mdns_reflector"] = v.HelperFields["mdnsReflector"]
+			if vlanTag, ok := v.HelperFields["vlanTag"]; ok && vlanTag != nil {
+				if vlanInt, err := cast.ToInt64E(vlanTag); err == nil {
+					nativeRangeObj.Vlan = types.Int64Value(vlanInt)
+				} else {
+					nativeRangeObj.Vlan = types.Int64Null()
+				}
+			} else {
+				nativeRangeObj.Vlan = types.Int64Null()
+			}
 			break
 		}
 		// Check if nativeRangeObj has a valid NativeNetworkRange value, otherwise use the first valid subnet
@@ -1320,6 +1354,12 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					// Configuration has dhcp_settings, so preserve all values from config + computed microsegmentation
 					var dhcpSettings DhcpSettings
 					fromStateNativeRange.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
+
+					// Update microsegmentation from API if available, otherwise preserve from state
+					if microsegmentationVal, ok := siteNetRangeApiData["microsegmentation"]; ok {
+						dhcpSettings.DhcpMicrosegmentation = types.BoolValue(cast.ToBool(microsegmentationVal))
+					}
+
 					dhcpSettingsValue, _ = types.ObjectValue(
 						SiteNativeRangeDhcpResourceAttrTypes,
 						map[string]attr.Value{
@@ -1327,7 +1367,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 							"ip_range":               dhcpSettings.IpRange,
 							"relay_group_id":         dhcpSettings.RelayGroupId,
 							"relay_group_name":       dhcpSettings.RelayGroupName,
-							"dhcp_microsegmentation": types.BoolValue(siteNetRangeApiData["microsegmentation"].(bool)),
+							"dhcp_microsegmentation": dhcpSettings.DhcpMicrosegmentation,
 						},
 					)
 				} else {
@@ -1399,7 +1439,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 							if !fromStateNativeRange.RangeType.IsNull() && !fromStateNativeRange.RangeType.IsUnknown() {
 								return fromStateNativeRange.RangeType
 							}
-							return types.StringNull()
+							return types.StringValue("LAN")
 						}(),
 						"vlan":           nativeRangeObj.Vlan,
 						"mdns_reflector": types.BoolValue(siteNetRangeApiData["mdns_reflector"].(bool)),

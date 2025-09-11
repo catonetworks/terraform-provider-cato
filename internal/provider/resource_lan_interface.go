@@ -127,11 +127,6 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	input := hydrateLanInterfaceAPI(ctx, plan)
-	// Set name to nil to avoid name update bug where name does not propogate correctly
-	// to accountSnapshot and entityLookup when updated via API
-	input.Name = nil
-
-	tflog.Warn(ctx, "Update network interface without name, due to bug in API where name does not propogate correctly to accountSnapshot and entityLookup")
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
@@ -199,17 +194,17 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		}
 	}
 
-	// Set name to the correct value
-	tflog.Warn(ctx, "Set interface name to the correct value")
-	input.Name = plan.Name.ValueStringPointer()
+	// // Set name to the correct value
+	// tflog.Warn(ctx, "Set interface name to the correct value")
+	// input.Name = plan.Name.ValueStringPointer()
 
-	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
-	siteUpdateSocketInterfaceResponse, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
-	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
-	})
+	// tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
+	// 	"request": utils.InterfaceToJSONString(input),
+	// })
+	// siteUpdateSocketInterfaceResponse, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	// tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
+	// 	"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
+	// })
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -310,9 +305,6 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Debug(ctx, "lan_interface update", map[string]interface{}{
 		"input": utils.InterfaceToJSONString(input),
 	})
-	// Update the interface keeping the default name, then retrieve the ID via entity lookup,
-	// due to bug in name updates via API not propogating correctly.  Making a second call to update the name.
-	input.Name = nil
 	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
@@ -412,7 +404,9 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.UpdateSocketInterfaceInput {
 	tflog.Debug(ctx, "lan_interface update", map[string]interface{}{
 		"plan.DestType.String()": utils.InterfaceToJSONString(plan.DestType.ValueString()),
+		"plan.Name.String()":     utils.InterfaceToJSONString(plan.Name.ValueStringPointer()),
 		"cato_models.SocketInterfaceDestType(plan.DestType.String())": cato_models.SocketInterfaceDestType(plan.DestType.ValueString()),
+		"plan": utils.InterfaceToJSONString(plan),
 	})
 
 	input := cato_models.UpdateSocketInterfaceInput{

@@ -71,7 +71,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
 					stringvalidator.OneOf(
@@ -413,7 +413,8 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	tflog.Debug(ctx, "Create.SiteAddNetworkRange.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
+		"request":     utils.InterfaceToJSONString(input),
+		"interfaceId": utils.InterfaceToJSONString(plan.InterfaceId.ValueString()),
 	})
 	networkRange, err := r.client.catov2.SiteAddNetworkRange(ctx, plan.InterfaceId.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddNetworkRange.response", map[string]interface{}{
@@ -492,22 +493,32 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	// Validate that interface_id and interface_index cannot be set simultaneously
-	if !plan.InterfaceId.IsNull() && !plan.InterfaceIndex.IsNull() {
-		resp.Diagnostics.AddError(
-			"Invalid Configuration",
-			"Interface ID and Interface Index cannot be set simultaneously",
-		)
-		return
-	}
+	// // Validate that interface_id and interface_index cannot be set simultaneously
+	// if !plan.InterfaceId.IsNull() && !plan.InterfaceIndex.IsNull() {
+	// 	resp.Diagnostics.AddError(
+	// 		"Invalid Configuration",
+	// 		"Interface ID and Interface Index cannot be set simultaneously",
+	// 	)
+	// 	return
+	// }
 
 	// Validate that the site ID exists
 	if !plan.SiteId.IsNull() && !plan.SiteId.IsUnknown() {
 		// If interface_id is set, use it to validate the site network interface
 		var err error
+		tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceAttr", map[string]interface{}{
+			"plan.InterfaceId":                utils.InterfaceToJSONString(plan.InterfaceId),
+			"plan.InterfaceId.IsUnknown()":    plan.InterfaceId.IsUnknown(),
+			"plan.InterfaceId.IsNull()":       plan.InterfaceId.IsNull(),
+			"plan.InterfaceIndex":             utils.InterfaceToJSONString(plan.InterfaceIndex),
+			"plan.InterfaceIndex.IsUnknown()": plan.InterfaceIndex.IsUnknown(),
+			"plan.InterfaceIndex.IsNull()":    plan.InterfaceIndex.IsNull(),
+		})
 		if !plan.InterfaceId.IsNull() && !plan.InterfaceId.IsUnknown() {
+			tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceId.IsNull", map[string]interface{}{})
 			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceId.ValueString(), "", "")
 		} else if !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown() {
+			tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceIndex.IsNull", map[string]interface{}{})
 			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
 		}
 		if err != nil {
@@ -776,13 +787,53 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 			state.Id = types.StringValue(curRange.Entity.ID)
 			helperFields := curRange.GetHelperFields()
 			siteIdStr := cast.ToString(helperFields["siteId"])
-			interfaceNameStr := cast.ToString(helperFields["interfaceId"])
-			interfaceId, curInterfaceIndex, err := getSiteNetworkInterface(ctx, r.client, siteIdStr, "", "", interfaceNameStr)
-			if err != nil {
-				return state, false, fmt.Errorf("Site Interface Validation Error: %w", err)
+			interfaceNameStr := cast.ToString(helperFields["interfaceName"])
+
+			// Preserve existing interface_index if it's already set and valid
+			if !state.InterfaceIndex.IsNull() && !state.InterfaceIndex.IsUnknown() {
+				tflog.Debug(ctx, "hydrateNetworkRangeState.EntityLookup.response.hasInterfaceIndex", map[string]interface{}{
+					"curRange":                           utils.InterfaceToJSONString(curRange),
+					"helperFields":                       utils.InterfaceToJSONString(helperFields),
+					"state.InterfaceIndex.ValueString()": utils.InterfaceToJSONString(state.InterfaceIndex.ValueString()),
+				})
+				// Validate that the existing interface_index is still valid
+				existingInterfaceId, _, err := getSiteNetworkInterface(ctx, r.client, siteIdStr, "", state.InterfaceIndex.ValueString(), interfaceNameStr)
+				if err != nil {
+					// If validation fails, log and fall back to lookup by interface name
+					tflog.Warn(ctx, "Existing interface_index validation failed, performing lookup by interface name", map[string]interface{}{
+						"existing_interface_index": state.InterfaceIndex.ValueString(),
+						"error":                    err.Error(),
+					})
+					interfaceId, curInterfaceIndex, err := getSiteNetworkInterface(ctx, r.client, siteIdStr, "", "", interfaceNameStr)
+					if err != nil {
+						return state, false, fmt.Errorf("Site Interface Validation Error: %w", err)
+					}
+					state.InterfaceId = types.StringValue(interfaceId)
+					state.InterfaceIndex = types.StringValue(curInterfaceIndex)
+				} else {
+					// Existing interface_index is valid, just update interface_id if needed
+					state.InterfaceId = types.StringValue(existingInterfaceId)
+					// Keep existing interface_index unchanged
+				}
+			} else {
+				tflog.Debug(ctx, "hydrateNetworkRangeState.EntityLookup.response.noInterfaceIndex", map[string]interface{}{
+					"curRange":         utils.InterfaceToJSONString(curRange),
+					"helperFields":     utils.InterfaceToJSONString(helperFields),
+					"interfaceNameStr": utils.InterfaceToJSONString(interfaceNameStr),
+				})
+
+				// No existing interface_index, perform normal lookup
+				interfaceId, curInterfaceIndex, err := getSiteNetworkInterface(ctx, r.client, siteIdStr, "", "", interfaceNameStr)
+				tflog.Debug(ctx, "getSiteNetworkInterface.return", map[string]interface{}{
+					"interfaceId":       utils.InterfaceToJSONString(helperFields),
+					"curInterfaceIndex": utils.InterfaceToJSONString(curInterfaceIndex),
+				})
+				if err != nil {
+					return state, false, fmt.Errorf("Site Interface Validation Error: %w", err)
+				}
+				state.InterfaceId = types.StringValue(interfaceId)
+				state.InterfaceIndex = types.StringValue(curInterfaceIndex)
 			}
-			state.InterfaceId = types.StringValue(interfaceId)
-			state.InterfaceIndex = types.StringValue(curInterfaceIndex)
 
 			// Field missing, add when supported by API
 			// if gatewayVal, ok := curRange.HelperFields["gateway"]; ok {
