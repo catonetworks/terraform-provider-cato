@@ -322,6 +322,57 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Validate DHCP settings configuration based on dhcp_type
+	if !plan.DhcpSettings.IsNull() && !plan.DhcpSettings.IsUnknown() {
+		diags = plan.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		dhcpType := dhcpSettings.DhcpType.ValueString()
+
+		// Validate that interface_id and interface_index cannot be set simultaneously
+		tflog.Debug(ctx, "networkRange.create.dhcpSettings", map[string]interface{}{
+			"name":                                      utils.InterfaceToJSONString(plan.Name.ValueString()),
+			"dhcpSettings.IpRange.IsNull()":             utils.InterfaceToJSONString(dhcpSettings.IpRange.IsNull()),
+			"dhcpSettings.IpRange.IsUnknown()":          utils.InterfaceToJSONString(dhcpSettings.IpRange.IsUnknown()),
+			"dhcpSettings.IpRange.ValueString()":        utils.InterfaceToJSONString(dhcpSettings.IpRange.ValueString()),
+			"dhcpSettings.RelayGroupId.IsNull()":        utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsNull()),
+			"dhcpSettings.RelayGroupId.IsUnknown()":     utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsUnknown()),
+			"dhcpSettings.RelayGroupId.ValueString()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.ValueString()),
+			"dhcpSettings.RelayGroupName.IsNull()":      utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsNull()),
+			"dhcpSettings.RelayGroupName.IsUnknown()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsUnknown()),
+			"dhcpSettings.RelayGroupName.ValueString()": utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.ValueString()),
+		})
+
+		// Validate DHCP_DISABLED configuration
+		if dhcpType == "DHCP_DISABLED" {
+			if (!dhcpSettings.IpRange.IsNull() && !dhcpSettings.IpRange.IsUnknown() && dhcpSettings.IpRange.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
+				resp.Diagnostics.AddError(
+					"Invalid DHCP Configuration",
+					"When dhcp_type is DHCP_DISABLED, dhcp_ip_range, dhcp_relay_group_id, and dhcp_relay_group_name must be null, unset, or empty strings.",
+				)
+				return
+			}
+		}
+
+		// Validate DHCP_RANGE configuration
+		if dhcpType == "DHCP_RANGE" {
+			if (dhcpSettings.IpRange.IsNull() || dhcpSettings.IpRange.IsUnknown() || dhcpSettings.IpRange.ValueString() == "") ||
+				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
+				resp.Diagnostics.AddError(
+					"Invalid DHCP Configuration",
+					"When dhcp_type is DHCP_RANGE, dhcp_ip_range must be provided (not null, unset, or empty string), and dhcp_relay_group_id and dhcp_relay_group_name must be null, unset, or empty strings.",
+				)
+				return
+			}
+		}
+	}
+
 	if plan.RangeType == types.StringValue("Routed") {
 		if !plan.LocalIp.IsNull() && !plan.LocalIp.IsUnknown() && plan.LocalIp.ValueString() != "" {
 			resp.Diagnostics.AddError(
@@ -567,6 +618,57 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 			"Configuring dhcpSettings is allowed only for Native or VLAN network range types.",
 		)
 		return
+	}
+
+	// Validate that interface_id and interface_index cannot be set simultaneously
+	tflog.Debug(ctx, "networkRange.update.dhcpSettings", map[string]interface{}{
+		"name":                                      utils.InterfaceToJSONString(plan.Name.ValueStringPointer()),
+		"dhcpSettings.IpRange.IsNull()":             utils.InterfaceToJSONString(dhcpSettings.IpRange.IsNull()),
+		"dhcpSettings.IpRange.IsUnknown()":          utils.InterfaceToJSONString(dhcpSettings.IpRange.IsUnknown()),
+		"dhcpSettings.IpRange.ValueString()":        utils.InterfaceToJSONString(dhcpSettings.IpRange.ValueString()),
+		"dhcpSettings.RelayGroupId.IsNull()":        utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsNull()),
+		"dhcpSettings.RelayGroupId.IsUnknown()":     utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsUnknown()),
+		"dhcpSettings.RelayGroupId.ValueString()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.ValueString()),
+		"dhcpSettings.RelayGroupName.IsNull()":      utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsNull()),
+		"dhcpSettings.RelayGroupName.IsUnknown()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsUnknown()),
+		"dhcpSettings.RelayGroupName.ValueString()": utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.ValueString()),
+	})
+
+	// Validate DHCP settings configuration based on dhcp_type
+	if !plan.DhcpSettings.IsNull() && !plan.DhcpSettings.IsUnknown() {
+		diags = plan.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		dhcpType := dhcpSettings.DhcpType.ValueString()
+
+		// Validate DHCP_DISABLED configuration
+		if dhcpType == "DHCP_DISABLED" {
+			if (!dhcpSettings.IpRange.IsNull() && !dhcpSettings.IpRange.IsUnknown() && dhcpSettings.IpRange.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
+				resp.Diagnostics.AddError(
+					"Invalid DHCP Configuration",
+					"When dhcp_type is DHCP_DISABLED, dhcp_ip_range, dhcp_relay_group_id, and dhcp_relay_group_name must be null, unset, or empty strings.",
+				)
+				return
+			}
+		}
+
+		// Validate DHCP_RANGE configuration
+		if dhcpType == "DHCP_RANGE" {
+			if (dhcpSettings.IpRange.IsNull() || dhcpSettings.IpRange.IsUnknown() || dhcpSettings.IpRange.ValueString() == "") ||
+				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
+				resp.Diagnostics.AddError(
+					"Invalid DHCP Configuration",
+					"When dhcp_type is DHCP_RANGE, dhcp_ip_range must be provided (not null, unset, or empty string), and dhcp_relay_group_id and dhcp_relay_group_name must be null, unset, or empty strings.",
+				)
+				return
+			}
+		}
 	}
 
 	if plan.RangeType == types.StringValue("Routed") {

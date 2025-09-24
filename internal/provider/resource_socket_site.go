@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -207,6 +208,26 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 							stringplanmodifier.UseStateForUnknown(),
 						},
 					},
+					"lag_min_links": schema.Int64Attribute{
+						Description: "Number of interfaces to include in the link aggregation, only relevant for LAN_LAG_MASTER and LAN_LAG_MASTER_AND_VRRP interface destination types",
+						Optional:    true,
+						Validators: []validator.Int64{
+							int64validator.AtLeast(1),
+						},
+					},
+					"interface_dest_type": schema.StringAttribute{
+						Description: "Socket interface destination type for the native interface",
+						Optional:    true,
+						Computed:    true,
+						Default:     stringdefault.StaticString("LAN"),
+						Validators: []validator.String{
+							stringvalidator.OneOf(
+								"LAN",
+								"LAN_LAG_MASTER",
+								"LAN_LAG_MASTER_AND_VRRP",
+							),
+						},
+					},
 					"dhcp_settings": schema.SingleNestedAttribute{
 						Description: "Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type)",
 						Optional:    true,
@@ -368,6 +389,31 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		// 	return
 		// }
 
+		// Validate LAG configuration
+		interfaceDestType := nativeRangeInput.InterfaceDestType.ValueString()
+		// if interfaceDestType == "" {
+		// 	interfaceDestType = "LAN" // Use default if not specified
+		// }
+		hasLagMinLinks := !nativeRangeInput.LagMinLinks.IsNull() && !nativeRangeInput.LagMinLinks.IsUnknown()
+
+		// Rule 1: If interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, lag_min_links must have a value
+		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && !hasLagMinLinks {
+			resp.Diagnostics.AddError(
+				"Invalid LAG Configuration",
+				fmt.Sprintf("When interface_dest_type is %s, lag_min_links must be specified.", interfaceDestType),
+			)
+			return
+		}
+
+		// Rule 2: If lag_min_links has a value, interface_dest_type must be LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP
+		if hasLagMinLinks && interfaceDestType != "LAN_LAG_MASTER" && interfaceDestType != "LAN_LAG_MASTER_AND_VRRP" {
+			resp.Diagnostics.AddError(
+				"Invalid LAG Configuration",
+				fmt.Sprintf("lag_min_links can only be configured when interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, but interface_dest_type is %s.", interfaceDestType),
+			)
+			return
+		}
+
 		tflog.Debug(ctx, "Create.nativeRangeInput", map[string]interface{}{
 			"nativeRangeInput":                    utils.InterfaceToJSONString(nativeRangeInput),
 			"nativeRangeInput.NativeNetworkRange": utils.InterfaceToJSONString(nativeRangeInput.NativeNetworkRange.ValueString()),
@@ -409,7 +455,16 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 
 			// Update the native interface name adding necessary minimum required fields
 			inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceName.ValueStringPointer()
-			inputUpdateSocketInterface.DestType = "LAN" // Hard-coded as LAN for native interface
+			inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
+
+			// Add LAG configuration if needed
+			if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && hasLagMinLinks {
+				lagConfig := cato_models.SocketInterfaceLagInput{
+					MinLinks: nativeRangeInput.LagMinLinks.ValueInt64(),
+				}
+				inputUpdateSocketInterface.Lag = &lagConfig
+			}
+
 			socketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
 			if localIP := nativeRangeInput.LocalIp.ValueStringPointer(); localIP != nil {
 				socketInterfaceLanInput.LocalIP = *localIP // string
@@ -505,23 +560,28 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// Update native socket interface
+	if inputUpdateSocketInterface.Name == nil || (inputUpdateSocketInterface.Name != nil && *inputUpdateSocketInterface.Name == "") {
+		inputUpdateSocketInterface.Name = &nativeInterfaceAndSubnet.InterfaceIndex
+	}
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSocketInterface),
 		"nativeInterfaceAndSubnet.InterfaceIndex": utils.InterfaceToJSONString(nativeInterfaceAndSubnet.InterfaceIndex),
-		"siteID": utils.InterfaceToJSONString(siteID),
+		"nativeInterfaceAndSubnet.InterfaceName":  utils.InterfaceToJSONString(nativeInterfaceAndSubnet.InterfaceName),
+		"inputUpdateSocketInterface.Name":         utils.InterfaceToJSONString(inputUpdateSocketInterface.Name),
+		"siteID":                                  utils.InterfaceToJSONString(siteID),
 	})
-
-	// Update native socket interface
-	if inputUpdateSocketInterface.Name != nil && *inputUpdateSocketInterface.Name != "" {
-		_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, cato_models.SocketInterfaceIDEnum(nativeInterfaceAndSubnet.InterfaceIndex), inputUpdateSocketInterface, r.client.AccountId)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Catov2 API SiteUpdateNetworkRange error",
-				err.Error(),
-			)
-			return
-		}
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, cato_models.SocketInterfaceIDEnum(nativeInterfaceAndSubnet.InterfaceIndex), inputUpdateSocketInterface, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API SiteUpdateNetworkRange error",
+			err.Error(),
+		)
+		return
 	}
+	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
+	})
 
 	// hydrate the state with API data
 	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, siteID)
@@ -649,6 +709,31 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		diags = plan.NativeRange.As(ctx, &nativeRangeInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
+		// Validate LAG configuration
+		interfaceDestType := nativeRangeInput.InterfaceDestType.ValueString()
+		// if interfaceDestType == "" {
+		// 	interfaceDestType = "LAN" // Use default if not specified
+		// }
+		hasLagMinLinks := !nativeRangeInput.LagMinLinks.IsNull() && !nativeRangeInput.LagMinLinks.IsUnknown()
+
+		// Rule 1: If interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, lag_min_links must have a value
+		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && !hasLagMinLinks {
+			resp.Diagnostics.AddError(
+				"Invalid LAG Configuration",
+				fmt.Sprintf("When interface_dest_type is %s, lag_min_links must be specified.", interfaceDestType),
+			)
+			return
+		}
+
+		// Rule 2: If lag_min_links has a value, interface_dest_type must be LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP
+		if hasLagMinLinks && interfaceDestType != "LAN_LAG_MASTER" && interfaceDestType != "LAN_LAG_MASTER_AND_VRRP" {
+			resp.Diagnostics.AddError(
+				"Invalid LAG Configuration",
+				fmt.Sprintf("lag_min_links can only be configured when interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, but interface_dest_type is %s.", interfaceDestType),
+			)
+			return
+		}
+
 		// Check for interface_name removal from config
 		tflog.Info(ctx, "nativeRangeState.InterfaceName.check", map[string]interface{}{
 			"nativeRangeState.InterfaceName":                   utils.InterfaceToJSONString(nativeRangeState.InterfaceName),
@@ -706,17 +791,27 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 				"inputUpdateSocketInterface.Name": utils.InterfaceToJSONString(nativeRangeState.InterfaceName.ValueString()),
 			})
 		}
-		inputUpdateSocketInterface.DestType = "LAN" // Hard-coded as LAN for native interface
+		// Use the interfaceDestType string variable for the check, not the cast result
+		inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
+
+		// Add LAG configuration if needed
+		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && hasLagMinLinks {
+			lagConfig := cato_models.SocketInterfaceLagInput{
+				MinLinks: nativeRangeInput.LagMinLinks.ValueInt64(),
+			}
+			inputUpdateSocketInterface.Lag = &lagConfig
+		}
+
 		socketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
-		// Fix: assign correct types based on struct definition
-		if localIP := nativeRangeState.LocalIp.ValueStringPointer(); localIP != nil {
+		// Use plan values (nativeRangeInput) to ensure consistency with network range update
+		if localIP := nativeRangeInput.LocalIp.ValueStringPointer(); localIP != nil {
 			socketInterfaceLanInput.LocalIP = *localIP // string
 		}
-		if subnet := nativeRangeState.NativeNetworkRange.ValueStringPointer(); subnet != nil {
+		if subnet := nativeRangeInput.NativeNetworkRange.ValueStringPointer(); subnet != nil {
 			socketInterfaceLanInput.Subnet = *subnet // string
 		}
 		// TranslatedSubnet expects *string, so assign pointer directly
-		socketInterfaceLanInput.TranslatedSubnet = nativeRangeState.TranslatedSubnet.ValueStringPointer()
+		socketInterfaceLanInput.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
 		inputUpdateSocketInterface.Lan = &socketInterfaceLanInput
 
 		// setting input native range DHCP settings
@@ -1444,7 +1539,15 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 						"vlan":           nativeRangeObj.Vlan,
 						"mdns_reflector": types.BoolValue(siteNetRangeApiData["mdns_reflector"].(bool)),
 						// "internet_only":  internetOnlyValue,
-						"dhcp_settings": dhcpSettingsValue,
+						"lag_min_links": func() attr.Value {
+							// Preserve LAG min links from state if available
+							if !fromStateNativeRange.LagMinLinks.IsNull() && !fromStateNativeRange.LagMinLinks.IsUnknown() {
+								return fromStateNativeRange.LagMinLinks
+							}
+							return types.Int64Null()
+						}(),
+						"interface_dest_type": nativeInterfaceAndSubnet.NativeRangeObj.InterfaceDestType,
+						"dhcp_settings":       dhcpSettingsValue,
 					},
 				)
 				state.NativeRange = stateNativeRange

@@ -141,4 +141,21 @@
 
 ### Features
 - Fixed logic in network_range, socket_site resources to support proper import/export for all available attributes
+
+## 0.0.44 (2025-09-24)
+
+### Features
+- **NEW RESOURCE**: Added `cato_lan_interface_lag_member` resource for managing LAN LAG member interfaces on socket sites
+- **SOCKET_SITE ENHANCEMENTS**: Added LAG (Link Aggregation Group) support to `cato_socket_site` resource:
+  - Added `lag_min_links` attribute to specify minimum number of interfaces for LAG configuration
+  - Added `interface_dest_type` attribute with support for LAN, LAN_LAG_MASTER, and LAN_LAG_MASTER_AND_VRRP
+  - Added validation to ensure LAG configuration consistency between `interface_dest_type` and `lag_min_links`
+- **LAN_INTERFACE ENHANCEMENTS**: Enhanced `cato_lan_interface` resource with LAG support:
+  - Added `lag_min_links` attribute for LAG configuration
+  - Improved state management for LAG-enabled interfaces
+- **BUG FIXES**: 
+  - Fixed "Provider produced inconsistent result after apply" error in socket_site resource by ensuring consistent use of plan values instead of state values during updates
+  - Improved socket interface update logic to prevent subnet value mismatches
+  - Enhanced debug logging for socket interface operations
+- **DOCUMENTATION**: Updated resource documentation for socket_site and lan_interface to include new LAG attributes and examples
  

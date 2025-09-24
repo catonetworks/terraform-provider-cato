@@ -31,6 +31,8 @@ type NativeRange struct {
 	DhcpSettings                types.Object `tfsdk:"dhcp_settings"`
 	Vlan                        types.Int64  `tfsdk:"vlan"`
 	MdnsReflector               types.Bool   `tfsdk:"mdns_reflector"`
+	LagMinLinks                 types.Int64  `tfsdk:"lag_min_links"`
+	InterfaceDestType           types.String `tfsdk:"interface_dest_type"`
 	// InternetOnly                types.Bool   `tfsdk:"internet_only"`
 }
 
@@ -57,6 +59,8 @@ var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
 	"range_type":                      types.StringType,
 	"vlan":                            types.Int64Type,
 	"mdns_reflector":                  types.BoolType,
+	"lag_min_links":                   types.Int64Type,
+	"interface_dest_type":             types.StringType,
 	// "internet_only":                   types.BoolType,
 	"dhcp_settings": types.ObjectType{AttrTypes: SiteNativeRangeDhcpResourceAttrTypes},
 }

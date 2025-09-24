@@ -24,7 +24,7 @@ func checkForDhcpRelayGroup(ctx context.Context, client *catoClientData, relayGr
 
 	// Check that exactly one of relay_group_id or relay_group_name is specified
 	if !hasRelayGroupId && !hasRelayGroupName {
-		return "", false, fmt.Errorf("when dhcp_type is DHCP_RELAY, either relay_group_id or relay_group_name must be specified")
+		return "", false, fmt.Errorf("When dhcp_type is DHCP_RELAY, either relay_group_id or relay_group_name must be specified")
 	}
 
 	if hasRelayGroupId && hasRelayGroupName {

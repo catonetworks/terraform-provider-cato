@@ -31,13 +31,14 @@ resource "cato_lan_interface" "lan6" {
 
 - `dest_type` (String) SocketInterface destination type (https://api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)
 - `interface_id` (String) SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https://api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)
-- `local_ip` (String) Local IP address of the LAN interface
 - `name` (String) LAN interface name
 - `site_id` (String) Site ID
-- `subnet` (String) Subnet of the LAN interface in CIDR notation
 
 ### Optional
 
+- `lag_min_links` (Number) Number of interfaces to include in the link aggregagtion, only relevant for LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP
+- `local_ip` (String) Local IP address of the LAN interface
+- `subnet` (String) Subnet of the LAN interface in CIDR notation
 - `translated_subnet` (String) Translated NAT subnet configuration
 - `vrrp_type` (String) VRRP Type (https://api.catonetworks.com/documentation/#definition-VrrpType)
 
