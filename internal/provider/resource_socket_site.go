@@ -389,11 +389,13 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		// 	return
 		// }
 
-		// Validate LAG configuration
+		tflog.Debug(ctx, "Create.nativeRangeInput.InterfaceDestType", map[string]interface{}{
+			"nativeRangeInput.InterfaceDestType": utils.InterfaceToJSONString(nativeRangeInput.InterfaceDestType.ValueString()),
+		})
 		interfaceDestType := nativeRangeInput.InterfaceDestType.ValueString()
-		// if interfaceDestType == "" {
-		// 	interfaceDestType = "LAN" // Use default if not specified
-		// }
+		if interfaceDestType == "" {
+			interfaceDestType = "LAN" // Use default if not specified
+		}
 		hasLagMinLinks := !nativeRangeInput.LagMinLinks.IsNull() && !nativeRangeInput.LagMinLinks.IsUnknown()
 
 		// Rule 1: If interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, lag_min_links must have a value
@@ -429,6 +431,23 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
 		// inputUpdateNetworkRange.InternetOnly = nativeRangeInput.InternetOnly.ValueBoolPointer()
 		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
+		inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
+		inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceName.ValueStringPointer()
+		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && hasLagMinLinks {
+			lagConfig := cato_models.SocketInterfaceLagInput{
+				MinLinks: nativeRangeInput.LagMinLinks.ValueInt64(),
+			}
+			inputUpdateSocketInterface.Lag = &lagConfig
+		}
+		socketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
+		if localIP := nativeRangeInput.LocalIp.ValueStringPointer(); localIP != nil {
+			socketInterfaceLanInput.LocalIP = *localIP // string
+		}
+		if subnet := nativeRangeInput.NativeNetworkRange.ValueStringPointer(); subnet != nil {
+			socketInterfaceLanInput.Subnet = *subnet // string
+		}
+		socketInterfaceLanInput.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
+		inputUpdateSocketInterface.Lan = &socketInterfaceLanInput
 
 		// setting input native range DHCP settings
 		if !nativeRangeInput.DhcpSettings.IsNull() && !nativeRangeInput.DhcpSettings.IsUnknown() {
@@ -452,28 +471,6 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 					return
 				}
 			}
-
-			// Update the native interface name adding necessary minimum required fields
-			inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceName.ValueStringPointer()
-			inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
-
-			// Add LAG configuration if needed
-			if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && hasLagMinLinks {
-				lagConfig := cato_models.SocketInterfaceLagInput{
-					MinLinks: nativeRangeInput.LagMinLinks.ValueInt64(),
-				}
-				inputUpdateSocketInterface.Lag = &lagConfig
-			}
-
-			socketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
-			if localIP := nativeRangeInput.LocalIp.ValueStringPointer(); localIP != nil {
-				socketInterfaceLanInput.LocalIP = *localIP // string
-			}
-			if subnet := nativeRangeInput.NativeNetworkRange.ValueStringPointer(); subnet != nil {
-				socketInterfaceLanInput.Subnet = *subnet // string
-			}
-			socketInterfaceLanInput.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
-			inputUpdateSocketInterface.Lan = &socketInterfaceLanInput
 
 			// Only set dhcpMicrosegmentation for DHCP_RANGE type
 			if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RANGE" {
@@ -711,9 +708,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 		// Validate LAG configuration
 		interfaceDestType := nativeRangeInput.InterfaceDestType.ValueString()
-		// if interfaceDestType == "" {
-		// 	interfaceDestType = "LAN" // Use default if not specified
-		// }
+		if interfaceDestType == "" {
+			interfaceDestType = "LAN" // Use default if not specified
+		}
 		hasLagMinLinks := !nativeRangeInput.LagMinLinks.IsNull() && !nativeRangeInput.LagMinLinks.IsUnknown()
 
 		// Rule 1: If interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, lag_min_links must have a value

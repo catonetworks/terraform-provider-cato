@@ -142,7 +142,7 @@
 ### Features
 - Fixed logic in network_range, socket_site resources to support proper import/export for all available attributes
 
-## 0.0.44 (2025-09-24)
+## 0.0.45 (2025-09-24)
 
 ### Features
 - **NEW RESOURCE**: Added `cato_lan_interface_lag_member` resource for managing LAN LAG member interfaces on socket sites
@@ -159,3 +159,5 @@
   - Enhanced debug logging for socket interface operations
 - **DOCUMENTATION**: Updated resource documentation for socket_site and lan_interface to include new LAG attributes and examples
  
+## 0.0.46 (2025-09-24)
+- Fix for destType mapping for cloud deployments
