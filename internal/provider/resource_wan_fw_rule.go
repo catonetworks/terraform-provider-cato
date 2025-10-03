@@ -3488,14 +3488,30 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 	resp.Diagnostics.Append(diags...)
 
+	// Check if position is set in state, if not default to LAST_IN_POLICY
 	// Hard coding LAST_IN_POLICY position as the API does not return any value and
 	// hardcoding position supports the use case of bulk rule import/export
 	// getting around state changes for the position field
+	positionValue := "LAST_IN_POLICY"
+	refValue := types.StringNull()
+	
+	if !state.At.IsNull() && !state.At.IsUnknown() {
+		statePosInput := PolicyRulePositionInput{}
+		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if !diags.HasError() && !statePosInput.Position.IsNull() && !statePosInput.Position.IsUnknown() {
+			positionValue = statePosInput.Position.ValueString()
+			if !statePosInput.Ref.IsNull() && !statePosInput.Ref.IsUnknown() {
+				refValue = statePosInput.Ref
+			}
+		}
+	}
+	
 	curAtObj, diagstmp := types.ObjectValue(
 		PositionAttrTypes,
 		map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
+			"position": types.StringValue(positionValue),
+			"ref":      refValue,
 		},
 	)
 	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)

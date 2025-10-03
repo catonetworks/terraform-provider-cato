@@ -161,3 +161,6 @@
  
 ## 0.0.46 (2025-09-24)
 - Fix for destType mapping for cloud deployments
+
+## 0.0.47 (2025-09-24)
+- Minor fix for state drift for at.position for IF_RULES and WAN_RULES for imports vs create/update
