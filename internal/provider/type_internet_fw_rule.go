@@ -34,7 +34,7 @@ type Policy_Policy_InternetFirewall_Policy_Rules_Rule struct {
 	Tracking         types.Object `tfsdk:"tracking" json:"tracking,omitempty"`           //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
 	ActivePeriod     types.Object `tfsdk:"active_period" json:"active_period,omitempty"` //Policy_Policy_InternetFirewall_Policy_Rules_Rule_ActivePeriod
 	Schedule         types.Object `tfsdk:"schedule" json:"schedule,omitempty"`           //Policy_Policy_InternetFirewall_Policy_Rules_Rule_Schedule
-	Exceptions       types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"`       //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	Exceptions       types.List   `tfsdk:"exceptions" json:"exceptions,omitempty"`       //[]*Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
 }
 
 type Policy_Policy_InternetFirewall_Policy_Rules_Rule_ActivePeriod struct {
@@ -318,7 +318,7 @@ var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"action":            types.StringType,
 	"tracking":          TrackingObjectType,
 	"schedule":          ScheduleObjectType,
-	"exceptions":        types.SetType{ElemType: types.ObjectType{AttrTypes: IfwExceptionAttrTypes}},
+	"exceptions":        types.ListType{ElemType: types.ObjectType{AttrTypes: IfwExceptionAttrTypes}},
 }
 
 var IfwServiceObjectType = types.ObjectType{AttrTypes: IfwServiceAttrTypes}

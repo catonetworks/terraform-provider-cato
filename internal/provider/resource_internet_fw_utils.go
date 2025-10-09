@@ -13,8 +13,8 @@ import (
 // correlateIfwExceptions correlates plan exceptions with response exceptions to preserve ID structure
 // It supports both ID and name matching for elements, prioritizing ID matching if available
 // For creates, it uses names; for updates if ID is present in state it will use that for correlation
-func correlateIfwExceptions(ctx context.Context, planExceptions types.Set, responseExceptions types.Set) *types.Set {
-	// Handle null/unknown sets gracefully
+func correlateIfwExceptions(ctx context.Context, planExceptions types.List, responseExceptions types.List) *types.List {
+	// Handle null/unknown lists gracefully
 	if planExceptions.IsNull() || planExceptions.IsUnknown() || responseExceptions.IsNull() || responseExceptions.IsUnknown() {
 		return nil
 	}
@@ -34,7 +34,7 @@ func correlateIfwExceptions(ctx context.Context, planExceptions types.Set, respo
 		return &responseExceptions
 	}
 
-	// Create a new set of elements where we correlate plan and response
+	// Create a new list of elements where we correlate plan and response
 	correlatedElements := make([]attr.Value, 0, len(planElements))
 
 	// Iterate over plan elements to preserve order
@@ -83,14 +83,14 @@ func correlateIfwExceptions(ctx context.Context, planExceptions types.Set, respo
 		}
 	}
 
-	// Create the correlated set
+	// Create the correlated list
 	if len(correlatedElements) > 0 {
-		correlatedSet, diags := types.SetValue(planExceptions.ElementType(ctx), correlatedElements)
+		correlatedList, diags := types.ListValue(planExceptions.ElementType(ctx), correlatedElements)
 		if !diags.HasError() {
-			tflog.Debug(ctx, "correlateIfwExceptions: Successfully correlated exceptions set")
-			return &correlatedSet
+			tflog.Debug(ctx, "correlateIfwExceptions: Successfully correlated exceptions list")
+			return &correlatedList
 		} else {
-			tflog.Error(ctx, "correlateIfwExceptions: Failed to create correlated set, falling back to response", map[string]interface{}{
+			tflog.Error(ctx, "correlateIfwExceptions: Failed to create correlated list, falling back to response", map[string]interface{}{
 				"error": diags.Errors(),
 			})
 			return &responseExceptions
@@ -368,6 +368,7 @@ func correlateIfwExceptionElement(ctx context.Context, planObj types.Object, res
 	// Preserve certain plan values to ensure consistency with planned state
 	// This handles cases where the plan has null values but the response has defaults
 	preservePlanValue(ctx, newAttrs, planAttrs, "connection_origin")
+	preservePlanValue(ctx, newAttrs, planAttrs, "device_attributes")
 
 	// Correlate nested object structures from plan
 	correlateIfwNestedObjects(ctx, newAttrs, planAttrs, responseAttrs, "source")
