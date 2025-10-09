@@ -1391,19 +1391,17 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 							},
 						},
 					},
-					"exceptions": schema.SetNestedAttribute{
+					"exceptions": schema.ListNestedAttribute{ // ← Changed from Set to List
 						Description: "The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules.",
 						Required:    false,
 						Optional:    true,
 						Computed:    true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
+						Validators: []validator.List{ // ← Changed from Set to List
+							listvalidator.SizeAtLeast(1),
 						},
-						PlanModifiers: []planmodifier.Set{
-							// Temporarily disabled all plan modifiers to isolate issue
-							// planmodifiers.EmptySetDefault(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}), // Default empty set for new resources
-							setplanmodifier.UseStateForUnknown(),     // Avoid drift
-							planmodifiers.IfwExceptionsSetModifier(), // Handle ID correlation for Internet FW exceptions
+						PlanModifiers: []planmodifier.List{ // ← Changed from Set to List
+							listplanmodifier.UseStateForUnknown(),
+							// Removed IfwExceptionsSetModifier as it's Set-specific
 						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -2635,7 +2633,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	// getting around state changes for the position field
 	positionValue := "LAST_IN_POLICY"
 	refValue := types.StringNull()
-	
+
 	if !state.At.IsNull() && !state.At.IsUnknown() {
 		statePosInput := PolicyRulePositionInput{}
 		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
@@ -2647,7 +2645,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 			}
 		}
 	}
-	
+
 	curAtObj, diagstmp := types.ObjectValue(
 		PositionAttrTypes,
 		map[string]attr.Value{

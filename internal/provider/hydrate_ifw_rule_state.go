@@ -528,11 +528,11 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			tflog.Warn(ctx, "hydrateIFRuleState() Created exception: "+fmt.Sprintf("%+v", curException))
 			exceptions = append(exceptions, curException)
 		}
-		curRuleExceptionsObj, diagstmp := types.SetValue(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}, exceptions)
+		curRuleExceptionsObj, diagstmp := types.ListValue(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}, exceptions)
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
 	} else {
-		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: IfwExceptionAttrTypes})
+		ruleInput.Exceptions = types.ListNull(types.ObjectType{AttrTypes: IfwExceptionAttrTypes})
 	}
 	////////////// end Rule -> Exceptions ///////////////
 
