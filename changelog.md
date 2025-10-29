@@ -170,3 +170,6 @@
 - Fixed exceptions for IFW rules and WAN rules
 - Fixed subnet predicate in source, destination and exceoption source/destination
 - Fixed custom service port and port range issue 
+
+## 0.0.49 (2025-10-29)
+- Fixed drife issues for license resource attributes in state

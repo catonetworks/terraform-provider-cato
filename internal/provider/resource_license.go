@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -80,6 +81,9 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Required:    false,
 				Optional:    true,
 				Computed:    true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(), // avoid drift on refresh
+				},
 				Attributes: map[string]schema.Attribute{
 					"sku": schema.StringAttribute{
 						Computed: true,
@@ -122,7 +126,7 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						},
 					},
 					"last_updated": schema.StringAttribute{
-						// Computed: true,
+						Computed: true,
 						Optional: true,
 						Required: false,
 						PlanModifiers: []planmodifier.String{
@@ -130,7 +134,7 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						},
 					},
 					"total": schema.Int64Attribute{
-						// Computed: true,
+						Computed: true,
 						Required: false,
 						Optional: true,
 						PlanModifiers: []planmodifier.Int64{
