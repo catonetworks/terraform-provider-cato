@@ -240,19 +240,13 @@ func (m ifwExceptionsSetModifier) preserveNestedObjectIds(ctx context.Context, n
 	}
 
 	// Preserve IDs in nested sets (like host, site, etc.)
-	// For each attribute in the state object, ensure we also process it
-	// This ensures we handle null values properly
-	processedAttrs := make(map[string]bool)
-	for attrName := range plannedNestedAttrs {
-		m.preserveSetElementIds(ctx, newNestedAttrs, stateNestedAttrs, attrName)
-		processedAttrs[attrName] = true
-	}
-
-	// Also check state attributes that might not be in planned
-	for attrName := range stateNestedAttrs {
-		if !processedAttrs[attrName] {
-			m.preserveSetElementIds(ctx, newNestedAttrs, stateNestedAttrs, attrName)
+	// Only process attributes that are in the planned config and are not null
+	for attrName, plannedAttrValue := range plannedNestedAttrs {
+		// Skip if the planned attribute is null - we don't want to add state values for null plan values
+		if plannedSet, ok := plannedAttrValue.(types.Set); ok && plannedSet.IsNull() {
+			continue
 		}
+		m.preserveSetElementIds(ctx, newNestedAttrs, stateNestedAttrs, attrName)
 	}
 
 	// Recreate the nested object
@@ -401,7 +395,7 @@ func (m ifwExceptionsSetModifier) findElementByName(ctx context.Context, targetO
 	return nil
 }
 
-// preserveElementId creates a new element object with ID preserved from state
+// preserveElementId creates a new element object with ID and name preserved from state
 func (m ifwExceptionsSetModifier) preserveElementId(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
@@ -411,10 +405,17 @@ func (m ifwExceptionsSetModifier) preserveElementId(ctx context.Context, planned
 		newAttrs[k] = v
 	}
 
-	// Preserve ID from state if it exists
+	// Preserve ID from state if it exists and is known
 	if stateId, exists := stateAttrs["id"]; exists {
 		if stateIdStr, ok := stateId.(types.String); ok && !stateIdStr.IsNull() && !stateIdStr.IsUnknown() {
 			newAttrs["id"] = stateIdStr
+		}
+	}
+
+	// Preserve name from state if it exists and is known
+	if stateName, exists := stateAttrs["name"]; exists {
+		if stateNameStr, ok := stateName.(types.String); ok && !stateNameStr.IsNull() && !stateNameStr.IsUnknown() {
+			newAttrs["name"] = stateNameStr
 		}
 	}
 

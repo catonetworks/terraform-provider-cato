@@ -9,6 +9,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -96,6 +98,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Rule Index - computed value that may change due to rule reordering",
 						Computed:    true,
 						Optional:    false,
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.UseStateForUnknown(),
+						},
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Attribute to define rule status (enabled or disabled)",
@@ -1125,11 +1130,21 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "List of TCP/UDP port",
 											Optional:    true,
 											Required:    false,
+											Validators: []validator.List{
+												listvalidator.ConflictsWith(path.Expressions{
+													path.MatchRelative().AtParent().AtName("port_range"),
+												}...),
+											},
 										},
 										"port_range": schema.SingleNestedAttribute{
 											Description: "TCP/UDP port ranges",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Object{
+												objectvalidator.ConflictsWith(path.Expressions{
+													path.MatchRelative().AtParent().AtName("port"),
+												}...),
+											},
 											Attributes: map[string]schema.Attribute{
 												"from": schema.StringAttribute{
 													Description: "",
@@ -1400,9 +1415,6 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 							setvalidator.SizeAtLeast(1),
 						},
 						PlanModifiers: []planmodifier.Set{
-							// Temporarily disabled all plan modifiers to isolate issue
-							// planmodifiers.EmptySetDefault(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}), // Default empty set for new resources
-							setplanmodifier.UseStateForUnknown(),     // Avoid drift
 							planmodifiers.IfwExceptionsSetModifier(), // Handle ID correlation for Internet FW exceptions
 						},
 						NestedObject: schema.NestedAttributeObject{
@@ -2542,7 +2554,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		"OUTPUT": utils.InterfaceToJSONString(currentRule),
 	})
 
-	// Hydrate ruleInput from api respoonse
+	// Hydrate ruleInput from api response
 	ruleInputRead := hydrateIfwRuleState(ctx, plan, currentRule)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
 
@@ -2625,6 +2637,10 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
+	tflog.Warn(ctx, "TFLOG_WARN_IFW.readResponse", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(currentRule),
+	})
+
 	ruleInput := hydrateIfwRuleState(ctx, state, currentRule)
 	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
 	resp.Diagnostics.Append(diags...)
@@ -2635,7 +2651,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	// getting around state changes for the position field
 	positionValue := "LAST_IN_POLICY"
 	refValue := types.StringNull()
-	
+
 	if !state.At.IsNull() && !state.At.IsUnknown() {
 		statePosInput := PolicyRulePositionInput{}
 		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
@@ -2647,7 +2663,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 			}
 		}
 	}
-	
+
 	curAtObj, diagstmp := types.ObjectValue(
 		PositionAttrTypes,
 		map[string]attr.Value{

@@ -535,6 +535,10 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	// retrieving native-network range ID to update native range
 	siteID := socketSite.Site.AddSocketSite.GetSiteID()
 
+	// Lookup isDefault
+	// If not present return error indicating you can not reassign native range interface
+	// if present, create second interface, delete first interface, update second interface with original subnet
+
 	// Get native interface and subnet information
 	nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, string(input.ConnectionType), siteID, plan, interfaceByConnType)
 	if err != nil {
@@ -1140,53 +1144,85 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		return nil, err
 	}
 	isPresent := false
+	// Check for default interface to be present first
 	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
-		// find the socket site entry we need
 		curSiteId := cast.ToString(curIint.HelperFields["siteId"])
-		tflog.Warn(ctx, "for.queryInterfaceResult.EntityLookup.Items | siteID==siteID", map[string]interface{}{
-			"siteID":                          siteID,
-			"curSiteId":                       curSiteId,
-			"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
-			"curInterfaceId":                  curIint.HelperFields["interfaceId"],
-			"curInterfaceName":                curIint.HelperFields["interfaceName"],
-		})
 		if curSiteId == siteID {
-			// get current interfaceId from the API and use to map to interface index
 			curInterfaceId := curIint.HelperFields["interfaceId"]
-			curInterfaceName := curIint.HelperFields["interfaceName"]
+			// curInterfaceName := curIint.HelperFields["interfaceName"]
 			// Try to parse the interfaceId as int, otherwise prefix with "INT_"
 			if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
 				curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
 				curInterfaceId = curInterfaceIdStr
 			}
-			tflog.Warn(ctx, "defaultInterfaceIndexByConnType==curInterfaceId", map[string]interface{}{
-				"defaultInterfaceIndexByConnType": cast.ToString(defaultInterfaceIndexByConnType),
-				"curInterfaceId":                  curInterfaceId,
-				"curInterfaceName":                curInterfaceName,
-			})
-			if cast.ToString(defaultInterfaceIndexByConnType) == curInterfaceId {
-				isPresent = true
-				if _, err := cast.ToIntE(curInterfaceId); err == nil {
-					nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
-				} else {
-					nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+			isDefault := false
+			if v, ok := curIint.HelperFields["isDefault"]; ok && v != nil {
+				if b, err := cast.ToBoolE(v); err == nil {
+					isDefault = b
 				}
-				nativeRangeObj.InterfaceIndex = types.StringValue(defaultInterfaceIndexByConnType)
+			}
+			if isDefault {
+				isPresent = true
+				// if _, err := cast.ToIntE(curInterfaceId); err == nil {
+				// 	nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+				// } else {
+				// 	nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+				// }
+				nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+				// nativeRangeObj.InterfaceIndex = types.StringValue(curInterfaceId)
 				nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
 				nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
 				nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
-			} else {
-				tflog.Warn(ctx, "Skipping interface by connection type", map[string]interface{}{
-					"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
+			}
+		}
+	}
+	// If defaultInterface not found from flag, look for default
+	// This is due to bug/fix getting gradually pushed out where this default flag may not be present
+	// and the following can be purged after this is rolled out
+	if !isPresent {
+		for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+			// find the socket site entry we need
+			curSiteId := cast.ToString(curIint.HelperFields["siteId"])
+			tflog.Warn(ctx, "for.queryInterfaceResult.EntityLookup.Items | siteID==siteID", map[string]interface{}{
+				"siteID":                          siteID,
+				"curSiteId":                       curSiteId,
+				"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
+				"curInterfaceId":                  curIint.HelperFields["interfaceId"],
+				"curInterfaceName":                curIint.HelperFields["interfaceName"],
+			})
+			if curSiteId == siteID {
+				// get current interfaceId from the API and use to map to interface index
+				curInterfaceId := curIint.HelperFields["interfaceId"]
+				curInterfaceName := curIint.HelperFields["interfaceName"]
+				// Try to parse the interfaceId as int, otherwise prefix with "INT_"
+				if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
+					curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
+					curInterfaceId = curInterfaceIdStr
+				}
+				tflog.Warn(ctx, "defaultInterfaceIndexByConnType==curInterfaceId", map[string]interface{}{
+					"defaultInterfaceIndexByConnType": cast.ToString(defaultInterfaceIndexByConnType),
 					"curInterfaceId":                  curInterfaceId,
 					"curInterfaceName":                curInterfaceName,
 				})
+				if cast.ToString(defaultInterfaceIndexByConnType) == curInterfaceId {
+					isPresent = true
+					if _, err := cast.ToIntE(curInterfaceId); err == nil {
+						nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+					} else {
+						nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+					}
+					nativeRangeObj.InterfaceIndex = types.StringValue(defaultInterfaceIndexByConnType)
+					nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
+					nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
+					nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
+				} else {
+					tflog.Warn(ctx, "Skipping interface by connection type", map[string]interface{}{
+						"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
+						"curInterfaceId":                  curInterfaceId,
+						"curInterfaceName":                curInterfaceName,
+					})
+				}
 			}
-		} else {
-			tflog.Warn(ctx, "Skipping interface as siteId does not match", map[string]interface{}{
-				"siteID":    siteID,
-				"curSiteId": curSiteId,
-			})
 		}
 	}
 	if !isPresent {
@@ -1280,6 +1316,63 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		NativeRangeObj:       nativeRangeObj,
 	}, nil
 }
+
+// func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context, interfaceIndex cato_models.SocketInterfaceIDEnum, name string, localIp string, subnet SocketSite, siteID string, interfaceDestType string, lagMinLinks int64, translatedSubnet string) (*bool, error) {
+// 	// return isValid to return error if isDefault flag is not present on entityLookup interface query
+// 	isValid := false
+// 	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
+// 	zeroInt64 := int64(0)
+// 	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+// 	tflog.Warn(ctx, "Read.EntityLookupInterfaceRangeResult.response", map[string]interface{}{
+// 		"response": utils.InterfaceToJSONString(queryInterfaceResult),
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	// Lookup current interface index from what is returned in entityLookup
+// 	curInterfaceId := nil
+// 	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+// 		curSubnet := cast.ToString(curIint.HelperFields["siteId"])
+// 		if _, ok := first.HelperFields["isDefault"]; ok && first.HelperFields["isDefault"] != nil {
+// 			isValid = true
+// 		}
+// 	}
+// 	if isValid {
+// 		// Create placeholder interface
+// 		tmpInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{}
+// 		tmpName := name + "_tmp"
+// 		tmpInputUpdateSocketInterface.Name = &tmpName
+// 		tmpInputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType("LAN")
+// 		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && lagMinLinks != 0 {
+// 			tmpLagConfig := cato_models.SocketInterfaceLagInput{
+// 				MinLinks: lagMinLinks,
+// 			}
+// 			tmpInputUpdateSocketInterface.Lag = &tmpLagConfig
+// 		}
+// 		tmpSocketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
+// 		tmpSocketInterfaceLanInput.LocalIP = "127.111.111.1"
+// 		tmpSocketInterfaceLanInput.Subnet = "127.111.111.0/24"
+// 		tmpSocketInterfaceLanInput.TranslatedSubnet = &translatedSubnet
+// 		tmpInputUpdateSocketInterface.Lan = &tmpSocketInterfaceLanInput
+// 		tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
+// 			"tmpRequest":        utils.InterfaceToJSONString(tmpInputUpdateSocketInterface),
+// 			"tmpInterfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
+// 		})
+// 		tmpSiteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceIndex, tmpInputUpdateSocketInterface, r.client.AccountId)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		tflog.Debug(ctx, "Create.tmpSiteUpdateSocketInterface.response", map[string]interface{}{
+// 			"response": utils.InterfaceToJSONString(tmpSiteUpdateSocketInterfaceResponse),
+// 		})
+// 		// Disable original native range interface
+// 		querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
+// 		tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
+// 			"response": utils.InterfaceToJSONString(querySiteResult),
+// 		})
+// 	}
+// 	return &isValid, err
+// }
 
 // hydrateSocketSiteState populates the SocketSite state with data from API responses
 func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state SocketSite, siteID string) (SocketSite, bool, error) {

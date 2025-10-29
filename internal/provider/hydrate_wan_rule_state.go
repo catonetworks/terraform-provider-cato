@@ -69,6 +69,20 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		},
 	)
 	diags = append(diags, diagstmp...)
+	// Ensure source.network_interface is never unknown after apply
+	srcAttrs := curRuleSourceObj.Attributes()
+	if v, ok := srcAttrs["network_interface"]; ok {
+		if setVal, ok2 := v.(types.Set); ok2 {
+			if setVal.IsUnknown() {
+				// Replace unknown with known null set to satisfy post-apply requirements
+				srcAttrs["network_interface"] = types.SetNull(NameIDObjectType)
+				var diagsTmp diag.Diagnostics
+				curRuleSourceObj, diagsTmp = types.ObjectValue(curRuleSourceObj.Type(ctx).(types.ObjectType).AttrTypes, srcAttrs)
+				diags = append(diags, diagsTmp...)
+			}
+		}
+	}
+
 	ruleInput.Source = curRuleSourceObj
 	////////////// end rule.source ///////////////
 
@@ -152,8 +166,19 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		)
 		diags = append(diags, diagstmp...)
 	} else {
-		// Set device_attributes to null when no attributes are present
-		deviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
+		// Return an empty object with null lists (to avoid drift vs. null object)
+		deviceAttributesObj, diagstmp = types.ObjectValue(
+			WanDeviceAttrAttrTypes,
+			map[string]attr.Value{
+				"category":     types.ListNull(types.StringType),
+				"type":         types.ListNull(types.StringType),
+				"model":        types.ListNull(types.StringType),
+				"manufacturer": types.ListNull(types.StringType),
+				"os":           types.ListNull(types.StringType),
+				"os_version":   types.ListNull(types.StringType),
+			},
+		)
+		diags = append(diags, diagstmp...)
 	}
 
 	tflog.Debug(ctx, "WAN_rule.read.currentRule.DeviceAttributes", map[string]interface{}{
@@ -259,11 +284,10 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			curExceptionSourceObj, diagstmp := types.ObjectValue(
 				WanSourceAttrTypes,
 				map[string]attr.Value{
-					"ip":     parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
-					"host":   parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host"),
-					"site":   parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site"),
-					"subnet": types.ListNull(types.StringType),
-					// "subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet"),
+					"ip":                  parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
+					"host":                parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host"),
+					"site":                parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site"),
+					"subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet"),
 					"ip_range":            parseFromToList(ctx, ruleException.Source.IPRange, "rule.exception.source.ip_range"),
 					"global_ip_range":     parseNameIDList(ctx, ruleException.Source.GlobalIPRange, "rule.exception.source.global_ip_range"),
 					"network_interface":   parseNameIDList(ctx, ruleException.Source.NetworkInterface, "rule.exception.source.network_interface"),
@@ -281,11 +305,10 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 			curExceptionDestObj, diagstmp := types.ObjectValue(
 				WanDestAttrTypes,
 				map[string]attr.Value{
-					"ip":     parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
-					"host":   parseNameIDList(ctx, ruleException.Destination.Host, "rule.exception.destination.host"),
-					"site":   parseNameIDList(ctx, ruleException.Destination.Site, "rule.exception.destination.site"),
-					"subnet": types.ListNull(types.StringType),
-					// "subnet":              parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
+					"ip":                  parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
+					"host":                parseNameIDList(ctx, ruleException.Destination.Host, "rule.exception.destination.host"),
+					"site":                parseNameIDList(ctx, ruleException.Destination.Site, "rule.exception.destination.site"),
+					"subnet":              parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
 					"ip_range":            parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range"),
 					"global_ip_range":     parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.exception.destination.global_ip_range"),
 					"network_interface":   parseNameIDList(ctx, ruleException.Destination.NetworkInterface, "rule.exception.destination.network_interface"),
@@ -375,8 +398,19 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 				)
 				diags = append(diags, diagstmp...)
 			} else {
-				// Set device_attributes to null when no attributes are present
-				exceptionDeviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
+				// Return an empty object with null lists (to avoid drift vs. null object)
+				exceptionDeviceAttributesObj, diagstmp = types.ObjectValue(
+					WanDeviceAttrAttrTypes,
+					map[string]attr.Value{
+						"category":     types.ListNull(types.StringType),
+						"type":         types.ListNull(types.StringType),
+						"model":        types.ListNull(types.StringType),
+						"manufacturer": types.ListNull(types.StringType),
+						"os":           types.ListNull(types.StringType),
+						"os_version":   types.ListNull(types.StringType),
+					},
+				)
+				diags = append(diags, diagstmp...)
 			}
 
 			// Initialize Exception object with populated values

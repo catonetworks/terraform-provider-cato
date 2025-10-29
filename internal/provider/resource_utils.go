@@ -224,9 +224,9 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrNa
 	tflog.Debug(ctx, "parseList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
-	//if items == nil || len(items) == 0 {
+	// Handle nil or empty list - return null
 	if items == nil || len(items) == 0 {
-		tflog.Info(ctx, "parseList() - nil list, returning null")
+		tflog.Info(ctx, "parseList() - nil or empty list, returning null")
 		return types.ListNull(elemType)
 	}
 
@@ -246,9 +246,9 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", items)),
 		"T": utils.InterfaceToJSONString(fmt.Sprintf("%T", items)),
 	})
-	// Handle nil or empty list
+	// Handle nil or empty list - return null
 	if items == nil || len(items) == 0 {
-		tflog.Debug(ctx, "parseNameIDList() - nil or empty input list")
+		tflog.Debug(ctx, "parseNameIDList() - nil or empty input list, returning null")
 		return types.SetNull(NameIDObjectType)
 	}
 
@@ -485,9 +485,9 @@ func parseFromToList[T any](ctx context.Context, items []T, attrName string) typ
 	tflog.Debug(ctx, "parseFromToList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
-	// Handle nil or empty list
+	// Handle nil or empty list - return null
 	if items == nil || len(items) == 0 {
-		tflog.Debug(ctx, "parseFromToList() - nil or empty input list")
+		tflog.Debug(ctx, "parseFromToList() - nil or empty input list, returning null")
 		return types.ListNull(FromToObjectType)
 	}
 	// Process each item into an attr.Value

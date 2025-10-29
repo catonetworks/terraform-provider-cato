@@ -175,15 +175,21 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				for _, item := range elementsSourceNetworkInterfaceInput {
 					diags = append(diags, item.As(ctx, &itemSourceNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
-					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceNetworkInterfaceInput)
-					if err != nil {
-						tflog.Error(ctx, err.Error())
+					// Prefer ID if present; only fall back to name when safe (no slashes)
+					if !itemSourceNetworkInterfaceInput.ID.IsNull() && !itemSourceNetworkInterfaceInput.ID.IsUnknown() {
+						ruleSourceInput.NetworkInterface = append(ruleSourceInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+							By:    cato_models.ObjectRefBy("ID"),
+							Input: itemSourceNetworkInterfaceInput.ID.ValueString(),
+						})
+					} else if !itemSourceNetworkInterfaceInput.Name.IsNull() && !itemSourceNetworkInterfaceInput.Name.IsUnknown() {
+						nameVal := itemSourceNetworkInterfaceInput.Name.ValueString()
+						ruleSourceInput.NetworkInterface = append(ruleSourceInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+							By:    cato_models.ObjectRefBy("NAME"),
+							Input: nameVal,
+						})
+					} else {
+						diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for a source.network_interface element."))
 					}
-
-					ruleSourceInput.NetworkInterface = append(ruleSourceInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
-						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-						Input: ObjectRefOutput.Input,
-					})
 				}
 				ruleSourceUpdateInput.NetworkInterface = ruleSourceInput.NetworkInterface
 			} else {
@@ -420,7 +426,7 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 		// setting device attributes
 		if !ruleInput.DeviceAttributes.IsNull() {
-			var curDeviceAttributes *DeviceAttributesInputIfw
+			var curDeviceAttributes *DeviceAttributesInput
 			diags = append(diags, ruleInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
 			if curDeviceAttributes != nil {
 				// Handle each field with proper null checking
@@ -618,15 +624,20 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				for _, item := range elementsDestinationNetworkInterfaceInput {
 					diags = append(diags, item.As(ctx, &itemDestinationNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
-					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationNetworkInterfaceInput)
-					if err != nil {
-						tflog.Error(ctx, err.Error())
+					if !itemDestinationNetworkInterfaceInput.ID.IsNull() && !itemDestinationNetworkInterfaceInput.ID.IsUnknown() {
+						ruleDestinationInput.NetworkInterface = append(ruleDestinationInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+							By:    cato_models.ObjectRefBy("ID"),
+							Input: itemDestinationNetworkInterfaceInput.ID.ValueString(),
+						})
+					} else if !itemDestinationNetworkInterfaceInput.Name.IsNull() && !itemDestinationNetworkInterfaceInput.Name.IsUnknown() {
+						nameVal := itemDestinationNetworkInterfaceInput.Name.ValueString()
+						ruleDestinationInput.NetworkInterface = append(ruleDestinationInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+							By:    cato_models.ObjectRefBy("NAME"),
+							Input: nameVal,
+						})
+					} else {
+						diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for a destination.network_interface element."))
 					}
-
-					ruleDestinationInput.NetworkInterface = append(ruleDestinationInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
-						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-						Input: ObjectRefOutput.Input,
-					})
 				}
 				ruleDestinationUpdateInput.NetworkInterface = ruleDestinationInput.NetworkInterface
 			} else {
@@ -1035,6 +1046,7 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 					// setting service custom port
 					if !itemServiceCustomInput.Port.IsNull() {
+						tflog.Debug(ctx, "Processing port field")
 						elementsPort := make([]types.String, 0, len(itemServiceCustomInput.Port.Elements()))
 						diags = append(diags, itemServiceCustomInput.Port.ElementsAs(ctx, &elementsPort, false)...)
 
@@ -1044,10 +1056,14 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						}
 
 						customInput.Port = inputPort
+						tflog.Debug(ctx, "Set port field", map[string]interface{}{
+							"port_count": len(inputPort),
+						})
 					}
 
 					// setting service custom port range
 					if !itemServiceCustomInput.PortRange.IsNull() {
+						tflog.Debug(ctx, "Processing port_range field")
 						var itemPortRange Policy_Policy_WanFirewall_Policy_Rules_Rule_Service_Custom_PortRange
 						diags = append(diags, itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
@@ -1057,9 +1073,11 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						}
 
 						customInput.PortRange = &inputPortRange
+						tflog.Debug(ctx, "Set port_range field", map[string]interface{}{
+							"from": itemPortRange.From.ValueString(),
+							"to":   itemPortRange.To.ValueString(),
+						})
 					}
-
-					// append custom service
 					ruleServiceInput.Custom = append(ruleServiceInput.Custom, customInput)
 				}
 				ruleServiceUpdateInput.Custom = ruleServiceInput.Custom
@@ -1413,15 +1431,20 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						for _, item := range elementsSourceNetworkInterfaceInput {
 							diags = append(diags, item.As(ctx, &itemSourceNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
-							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceNetworkInterfaceInput)
-							if err != nil {
-								tflog.Error(ctx, err.Error())
+							if !itemSourceNetworkInterfaceInput.ID.IsNull() && !itemSourceNetworkInterfaceInput.ID.IsUnknown() {
+								exceptionAddInput.Source.NetworkInterface = append(exceptionAddInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+									By:    cato_models.ObjectRefBy("ID"),
+									Input: itemSourceNetworkInterfaceInput.ID.ValueString(),
+								})
+							} else if !itemSourceNetworkInterfaceInput.Name.IsNull() && !itemSourceNetworkInterfaceInput.Name.IsUnknown() {
+								nameVal := itemSourceNetworkInterfaceInput.Name.ValueString()
+								exceptionAddInput.Source.NetworkInterface = append(exceptionAddInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+									By:    cato_models.ObjectRefBy("NAME"),
+									Input: nameVal,
+								})
+							} else {
+								diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for an exception.source.network_interface element."))
 							}
-
-							exceptionAddInput.Source.NetworkInterface = append(exceptionAddInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
 						}
 						exceptionUpdateInput.Source.NetworkInterface = exceptionAddInput.Source.NetworkInterface
 					} else {
@@ -1631,7 +1654,7 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 				// setting device attributes
 				if !itemExceptionsInput.DeviceAttributes.IsNull() {
-					var curDeviceAttributes *cato_models.DeviceAttributesInput
+					var curDeviceAttributes *DeviceAttributesInput
 					diags = append(diags, itemExceptionsInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
 					if curDeviceAttributes != nil {
 						exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
@@ -1815,15 +1838,20 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						for _, item := range elementsDestinationNetworkInterfaceInput {
 							diags = append(diags, item.As(ctx, &itemDestinationNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
-							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationNetworkInterfaceInput)
-							if err != nil {
-								tflog.Error(ctx, err.Error())
+							if !itemDestinationNetworkInterfaceInput.ID.IsNull() && !itemDestinationNetworkInterfaceInput.ID.IsUnknown() {
+								exceptionAddInput.Destination.NetworkInterface = append(exceptionAddInput.Destination.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+									By:    cato_models.ObjectRefBy("ID"),
+									Input: itemDestinationNetworkInterfaceInput.ID.ValueString(),
+								})
+							} else if !itemDestinationNetworkInterfaceInput.Name.IsNull() && !itemDestinationNetworkInterfaceInput.Name.IsUnknown() {
+								nameVal := itemDestinationNetworkInterfaceInput.Name.ValueString()
+								exceptionAddInput.Destination.NetworkInterface = append(exceptionAddInput.Destination.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
+									By:    cato_models.ObjectRefBy("NAME"),
+									Input: nameVal,
+								})
+							} else {
+								diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for an exception.destination.network_interface element."))
 							}
-
-							exceptionAddInput.Destination.NetworkInterface = append(exceptionAddInput.Destination.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
 						}
 						exceptionUpdateInput.Destination.NetworkInterface = exceptionAddInput.Destination.NetworkInterface
 					} else {

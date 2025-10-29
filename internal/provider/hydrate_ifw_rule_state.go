@@ -220,257 +220,99 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	ruleInput.Schedule = curRuleScheduleObj
 	////////////// end Rule -> Schedule ///////////////
 
-	// ////////////// start Rule -> Exceptions ///////////////
-	// Only populate exceptions if they are configured in the plan
-	// First check if the plan has exceptions configured
-	planHasExceptions := false
-	if !ruleInput.Exceptions.IsNull() && !ruleInput.Exceptions.IsUnknown() {
-		planHasExceptions = true
-	}
-
-	tflog.Warn(ctx, "hydrateIFRuleState() planHasExceptions - "+fmt.Sprintf("%v", planHasExceptions))
-	tflog.Warn(ctx, "hydrateIFRuleState() currentRule.Exceptions - "+fmt.Sprintf("%v", currentRule.Exceptions))
+	////////////// start Rule -> Exceptions ///////////////
+	tflog.Warn(ctx, "TFLOG_WARN_IFW.currentRule.Exceptions", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(currentRule.Exceptions),
+	})
 
 	exceptions := []attr.Value{}
-
-	// Process exceptions if they exist in the API response (needed for import and state refresh)
-	if currentRule.Exceptions != nil && len(currentRule.Exceptions) > 0 {
+	if len(currentRule.Exceptions) > 0 {
 		for _, ruleException := range currentRule.Exceptions {
 			// Rule -> Exceptions -> Source
-			// Build source object using conditional fields to match config logic
-			sourceAttrs := map[string]attr.Value{
-				// Initialize all fields with null values to match schema
-				"ip":                  types.ListNull(types.StringType),
-				"host":                types.SetNull(NameIDObjectType),
-				"site":                types.SetNull(NameIDObjectType),
-				"subnet":              types.ListNull(types.StringType),
-				"ip_range":            types.ListNull(FromToObjectType),
-				"global_ip_range":     types.SetNull(NameIDObjectType),
-				"network_interface":   types.SetNull(NameIDObjectType),
-				"site_network_subnet": types.SetNull(NameIDObjectType),
-				"floating_subnet":     types.SetNull(NameIDObjectType),
-				"user":                types.SetNull(NameIDObjectType),
-				"users_group":         types.SetNull(NameIDObjectType),
-				"group":               types.SetNull(NameIDObjectType),
-				"system_group":        types.SetNull(NameIDObjectType),
-			}
-
-			// Only override with actual values if data exists
-			if len(ruleException.Source.IP) > 0 {
-				sourceAttrs["ip"] = parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip")
-			}
-			if len(ruleException.Source.Host) > 0 {
-				sourceAttrs["host"] = parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host")
-			}
-			if len(ruleException.Source.Site) > 0 {
-				sourceAttrs["site"] = parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site")
-			}
-			if len(ruleException.Source.Subnet) > 0 {
-				sourceAttrs["subnet"] = parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet")
-			}
-			if len(ruleException.Source.IPRange) > 0 {
-				sourceAttrs["ip_range"] = parseFromToList(ctx, ruleException.Source.IPRange, "rule.exception.source.ip_range")
-			}
-			if len(ruleException.Source.GlobalIPRange) > 0 {
-				sourceAttrs["global_ip_range"] = parseNameIDList(ctx, ruleException.Source.GlobalIPRange, "rule.exception.source.global_ip_range")
-			}
-			if len(ruleException.Source.NetworkInterface) > 0 {
-				sourceAttrs["network_interface"] = parseNameIDList(ctx, ruleException.Source.NetworkInterface, "rule.exception.source.network_interface")
-			}
-			if len(ruleException.Source.SiteNetworkSubnet) > 0 {
-				sourceAttrs["site_network_subnet"] = parseNameIDList(ctx, ruleException.Source.SiteNetworkSubnet, "rule.exception.source.site_network_subnet")
-			}
-			if len(ruleException.Source.FloatingSubnet) > 0 {
-				sourceAttrs["floating_subnet"] = parseNameIDList(ctx, ruleException.Source.FloatingSubnet, "rule.exception.source.floating_subnet")
-			}
-			if len(ruleException.Source.User) > 0 {
-				sourceAttrs["user"] = parseNameIDList(ctx, ruleException.Source.User, "rule.exception.source.user")
-			}
-			if len(ruleException.Source.UsersGroup) > 0 {
-				sourceAttrs["users_group"] = parseNameIDList(ctx, ruleException.Source.UsersGroup, "rule.exception.source.users_group")
-			}
-			if len(ruleException.Source.Group) > 0 {
-				sourceAttrs["group"] = parseNameIDList(ctx, ruleException.Source.Group, "rule.exception.source.group")
-			}
-			if len(ruleException.Source.SystemGroup) > 0 {
-				sourceAttrs["system_group"] = parseNameIDList(ctx, ruleException.Source.SystemGroup, "rule.exception.source.system_group")
-			}
-
-			// Create source object - always required by schema
 			curExceptionSourceObj, diagstmp := types.ObjectValue(
 				IfwSourceAttrTypes,
-				sourceAttrs,
+				map[string]attr.Value{
+					"ip":                  parseList(ctx, types.StringType, ruleException.Source.IP, "rule.exception.source.ip"),
+					"host":                parseNameIDList(ctx, ruleException.Source.Host, "rule.exception.source.host"),
+					"site":                parseNameIDList(ctx, ruleException.Source.Site, "rule.exception.source.site"),
+					"subnet":              parseList(ctx, types.StringType, ruleException.Source.Subnet, "rule.exception.source.subnet"),
+					"ip_range":            parseFromToList(ctx, ruleException.Source.IPRange, "rule.exception.source.ip_range"),
+					"global_ip_range":     parseNameIDList(ctx, ruleException.Source.GlobalIPRange, "rule.exception.source.global_ip_range"),
+					"network_interface":   parseNameIDList(ctx, ruleException.Source.NetworkInterface, "rule.exception.source.network_interface"),
+					"site_network_subnet": parseNameIDList(ctx, ruleException.Source.SiteNetworkSubnet, "rule.exception.source.site_network_subnet"),
+					"floating_subnet":     parseNameIDList(ctx, ruleException.Source.FloatingSubnet, "rule.exception.source.floating_subnet"),
+					"user":                parseNameIDList(ctx, ruleException.Source.User, "rule.exception.source.user"),
+					"users_group":         parseNameIDList(ctx, ruleException.Source.UsersGroup, "rule.exception.source.users_group"),
+					"group":               parseNameIDList(ctx, ruleException.Source.Group, "rule.exception.source.group"),
+					"system_group":        parseNameIDList(ctx, ruleException.Source.SystemGroup, "rule.exception.source.system_group"),
+				},
 			)
+			tflog.Warn(ctx, "TFLOG_WARN_IFW.curExceptionSourceObj", map[string]interface{}{
+				"curExceptionSourceObj": utils.InterfaceToJSONString(curExceptionSourceObj),
+			})
+
 			diags = append(diags, diagstmp...)
 
 			// Rule -> Exceptions -> Destination
-			// Build destination object using conditional fields to match config logic
-			destAttrs := map[string]attr.Value{
-				// Initialize all fields with null values to match schema
-				"application":              types.SetNull(NameIDObjectType),
-				"custom_app":               types.SetNull(NameIDObjectType),
-				"app_category":             types.SetNull(NameIDObjectType),
-				"custom_category":          types.SetNull(NameIDObjectType),
-				"sanctioned_apps_category": types.SetNull(NameIDObjectType),
-				"country":                  types.SetNull(NameIDObjectType),
-				"domain":                   types.ListNull(types.StringType),
-				"fqdn":                     types.ListNull(types.StringType),
-				"ip":                       types.ListNull(types.StringType),
-				"subnet":                   types.ListNull(types.StringType),
-				"ip_range":                 types.ListNull(FromToObjectType),
-				"global_ip_range":          types.SetNull(NameIDObjectType),
-				"remote_asn":               types.ListNull(types.StringType),
-			}
-
-			// Only override with actual values if data exists
-			if len(ruleException.Destination.Application) > 0 {
-				destAttrs["application"] = parseNameIDList(ctx, ruleException.Destination.Application, "rule.exception.destination.application")
-			}
-			if len(ruleException.Destination.CustomApp) > 0 {
-				destAttrs["custom_app"] = parseNameIDList(ctx, ruleException.Destination.CustomApp, "rule.exception.destination.custom_app")
-			}
-			if len(ruleException.Destination.AppCategory) > 0 {
-				destAttrs["app_category"] = parseNameIDList(ctx, ruleException.Destination.AppCategory, "rule.exception.destination.app_category")
-			}
-			if len(ruleException.Destination.CustomCategory) > 0 {
-				destAttrs["custom_category"] = parseNameIDList(ctx, ruleException.Destination.CustomCategory, "rule.exception.destination.custom_category")
-			}
-			if len(ruleException.Destination.SanctionedAppsCategory) > 0 {
-				destAttrs["sanctioned_apps_category"] = parseNameIDList(ctx, ruleException.Destination.SanctionedAppsCategory, "rule.exception.destination.sanctioned_apps_category")
-			}
-			if len(ruleException.Destination.Country) > 0 {
-				destAttrs["country"] = parseNameIDList(ctx, ruleException.Destination.Country, "rule.exception.destination.country")
-			}
-			if len(ruleException.Destination.Domain) > 0 {
-				destAttrs["domain"] = parseList(ctx, types.StringType, ruleException.Destination.Domain, "rule.exception.destination.domain")
-			}
-			if len(ruleException.Destination.Fqdn) > 0 {
-				destAttrs["fqdn"] = parseList(ctx, types.StringType, ruleException.Destination.Fqdn, "rule.exception.destination.fqdn")
-			}
-			// Note: Skip ip, subnet, remote_asn as they are computed/API-only fields per original comment
-			if len(ruleException.Destination.IPRange) > 0 {
-				destAttrs["ip_range"] = parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range")
-			}
-			if len(ruleException.Destination.GlobalIPRange) > 0 {
-				destAttrs["global_ip_range"] = parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.exception.destination.global_ip_range")
-			}
-
-			// Destination object is always required by schema
-
 			curExceptionDestObj, diagstmp := types.ObjectValue(
 				IfwDestAttrTypes,
-				destAttrs,
+				map[string]attr.Value{
+					"application":              parseNameIDList(ctx, ruleException.Destination.Application, "rule.exception.destination.application"),
+					"custom_app":               parseNameIDList(ctx, ruleException.Destination.CustomApp, "rule.exception.destination.custom_app"),
+					"app_category":             parseNameIDList(ctx, ruleException.Destination.AppCategory, "rule.exception.destination.app_category"),
+					"custom_category":          parseNameIDList(ctx, ruleException.Destination.CustomCategory, "rule.exception.destination.custom_category"),
+					"sanctioned_apps_category": parseNameIDList(ctx, ruleException.Destination.SanctionedAppsCategory, "rule.exception.destination.sanctioned_apps_category"),
+					"country":                  parseNameIDList(ctx, ruleException.Destination.Country, "rule.exception.destination.country"),
+					"domain":                   parseList(ctx, types.StringType, ruleException.Destination.Domain, "rule.exception.destination.domain"),
+					"fqdn":                     parseList(ctx, types.StringType, ruleException.Destination.Fqdn, "rule.exception.destination.fqdn"),
+					"ip":                       parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
+					"subnet":                   parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
+					"ip_range":                 parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range"),
+					"global_ip_range":          parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.exception.destination.global_ip_range"),
+					"remote_asn":               parseList(ctx, types.StringType, ruleException.Destination.RemoteAsn, "rule.exception.destination.remote_asn"),
+				},
 			)
 			diags = append(diags, diagstmp...)
 
 			////////////// start Rule -> Service ///////////////
-			// Build service object using conditional fields to match config logic
-			serviceAttrs := map[string]attr.Value{
-				// Initialize all fields with null values to match schema
-				"standard": types.SetNull(NameIDObjectType),
-				"custom":   types.ListNull(CustomServiceObjectType),
-			}
-
-			// Only override with actual values if data exists
-			if len(ruleException.Service.Standard) > 0 {
-				serviceAttrs["standard"] = parseNameIDList(ctx, ruleException.Service.Standard, "rule.exception.service.standard")
-			}
-
-			if ruleException.Service.Custom != nil && len(ruleException.Service.Custom) > 0 {
-				var curExceptionCustomServices []types.Object
-				tflog.Info(ctx, "ruleException.Service.Custom - "+fmt.Sprintf("%v", ruleException.Service.Custom))
-				for _, item := range ruleException.Service.Custom {
-					curExceptionCustomServices = append(curExceptionCustomServices, parseCustomService(ctx, item, "rule.exception.service.custom"))
-				}
-				serviceAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curExceptionCustomServices)
-				diags = append(diags, diagstmp...)
-			}
-
-			// Service object is always required by schema
-
-			curExceptionServiceObj, diagstmp := types.ObjectValue(IfwServiceAttrTypes, serviceAttrs)
-			diags = append(diags, diagstmp...)
-			////////////// end Rule -> Service ///////////////
-
-			// // Check if DeviceAttributes in exception has any non-empty fields (not in zero state)
-			// hasExceptionDeviceAttributes := len(ruleException.DeviceAttributes.Category) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Type) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Model) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Manufacturer) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Os) > 0 ||
-			// 	len(ruleException.DeviceAttributes.OsVersion) > 0
-
-			// tflog.Debug(ctx, "IFW_rule.read.exception.DeviceAttributes DEBUG", map[string]interface{}{
-			// 	"hasExceptionDeviceAttributes": hasExceptionDeviceAttributes,
-			// 	"Category":                     len(ruleException.DeviceAttributes.Category),
-			// 	"Type":                         len(ruleException.DeviceAttributes.Type),
-			// 	"Model":                        len(ruleException.DeviceAttributes.Model),
-			// 	"Manufacturer":                 len(ruleException.DeviceAttributes.Manufacturer),
-			// 	"Os":                           len(ruleException.DeviceAttributes.Os),
-			// 	"OsVersion":                    len(ruleException.DeviceAttributes.OsVersion),
-			// 	"DeviceAttributes":             utils.InterfaceToJSONString(fmt.Sprintf("%v", ruleException.DeviceAttributes)),
-			// })
-
-			var exceptionDeviceAttributesObj types.Object
-			// if hasExceptionDeviceAttributes {
-			// 	exceptionDeviceAttributesObj, diagstmp = types.ObjectValue(
-			// 		IfwDeviceAttrAttrTypes,
-			// 		map[string]attr.Value{
-			// 			"category":     parseList(ctx, types.StringType, ruleException.DeviceAttributes.Category, "rule.exception.deviceattributes.category"),
-			// 			"type":         parseList(ctx, types.StringType, ruleException.DeviceAttributes.Type, "rule.exception.deviceattributes.type"),
-			// 			"model":        parseList(ctx, types.StringType, ruleException.DeviceAttributes.Model, "rule.exception.deviceattributes.model"),
-			// 			"manufacturer": parseList(ctx, types.StringType, ruleException.DeviceAttributes.Manufacturer, "rule.exception.deviceattributes.manufacturer"),
-			// 			"os":           parseList(ctx, types.StringType, ruleException.DeviceAttributes.Os, "rule.exception.deviceattributes.os"),
-			// 			"os_version":   parseList(ctx, types.StringType, ruleException.DeviceAttributes.OsVersion, "rule.exception.deviceattributes.os_version"),
-			// 		},
-			// 	)
-			// 	diags = append(diags, diagstmp...)
-			// } else {
-			// 	// For exceptions, create empty device attributes object to match config structure
-			// 	// The API doesn't return device attributes for exceptions reliably, so we maintain config structure
-			exceptionDeviceAttributesObj, diagstmp = types.ObjectValue(
-				IfwDeviceAttrAttrTypes,
+			// Initialize Service object with null values (matching WAN pattern)
+			curExceptionServiceObj, diagstmp := types.ObjectValue(
+				IfwServiceAttrTypes,
 				map[string]attr.Value{
-					"category":     types.ListValueMust(types.StringType, []attr.Value{}),
-					"type":         types.ListValueMust(types.StringType, []attr.Value{}),
-					"model":        types.ListValueMust(types.StringType, []attr.Value{}),
-					"manufacturer": types.ListValueMust(types.StringType, []attr.Value{}),
-					"os":           types.ListValueMust(types.StringType, []attr.Value{}),
-					"os_version":   types.ListValueMust(types.StringType, []attr.Value{}),
+					"standard": types.SetNull(NameIDObjectType),
+					"custom":   types.ListNull(CustomServiceObjectType),
 				},
 			)
 			diags = append(diags, diagstmp...)
-			// }
+			curExceptionServiceObjAttrs := curExceptionServiceObj.Attributes()
+			if len(ruleException.Service.Custom) > 0 || len(ruleException.Service.Standard) > 0 {
+				// Rule -> Service -> Standard (use regular parseNameIDList like WAN firewall)
+				curExceptionServiceObjAttrs["standard"] = parseNameIDList(ctx, ruleException.Service.Standard, "rule.exception.service.standard")
 
-			// // Check if DeviceAttributes has any non-empty fields for exceptions (similar to main rule logic)
-			// exceptionHasDeviceAttributes := len(ruleException.DeviceAttributes.Category) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Type) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Model) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Manufacturer) > 0 ||
-			// 	len(ruleException.DeviceAttributes.Os) > 0 ||
-			// 	len(ruleException.DeviceAttributes.OsVersion) > 0
+				// Rule -> Service -> Custom
+				if ruleException.Service.Custom != nil {
+					if len(ruleException.Service.Custom) > 0 {
+						var curExceptionCustomServices []types.Object
+						tflog.Info(ctx, "ruleException.Service.Custom - "+fmt.Sprintf("%v", ruleException.Service.Custom))
+						for _, item := range ruleException.Service.Custom {
+							// Exceptions use PortRangeCustomService in the API; match WAN behavior
+							curExceptionCustomServices = append(curExceptionCustomServices, parseExceptionCustomService(ctx, item, "rule.exception.service.custom"))
+						}
+						curExceptionServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curExceptionCustomServices)
+						diags = append(diags, diagstmp...)
+					}
+				}
 
-			// var exceptionDeviceAttributesObj types.Object
-			// if exceptionHasDeviceAttributes {
-			// 	exceptionDeviceAttributesObj, diagstmp = types.ObjectValue(
-			// 		WanDeviceAttrAttrTypes,
-			// 		map[string]attr.Value{
-			// 			"category":     parseList(ctx, types.StringType, ruleException.DeviceAttributes.Category, "rule.exception.deviceattributes.category"),
-			// 			"type":         parseList(ctx, types.StringType, ruleException.DeviceAttributes.Type, "rule.exception.deviceattributes.type"),
-			// 			"model":        parseList(ctx, types.StringType, ruleException.DeviceAttributes.Model, "rule.exception.deviceattributes.model"),
-			// 			"manufacturer": parseList(ctx, types.StringType, ruleException.DeviceAttributes.Manufacturer, "rule.exception.deviceattributes.manufacturer"),
-			// 			"os":           parseList(ctx, types.StringType, ruleException.DeviceAttributes.Os, "rule.exception.deviceattributes.os"),
-			// 			"os_version":   parseList(ctx, types.StringType, ruleException.DeviceAttributes.OsVersion, "rule.exception.deviceattributes.os_version"),
-			// 		},
-			// 	)
-			// 	diags = append(diags, diagstmp...)
-			// } else {
-			// 	// Set device_attributes to null when no attributes are present
-			// 	exceptionDeviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
-			// }
+				curExceptionServiceObj, diagstmp = types.ObjectValue(curExceptionServiceObj.AttributeTypes(ctx), curExceptionServiceObjAttrs)
+				diags = append(diags, diagstmp...)
+			}
+			////////////// end Rule -> Service ///////////////
 
-			// Initialize Exception object with populated values
-			// Build complete exception attributes to match schema - always include all fields
+			// Note: Internet Firewall exceptions do not have DeviceAttributes in the API response
+			// Always set device_attributes to null for IFW exceptions
+			exceptionDeviceAttributesObj := types.ObjectNull(IfwDeviceAttrAttrTypes)
+
+			// Initialize Exception object with populated values (use regular parseNameIDList like WAN firewall)
 			exceptionAttrs := map[string]attr.Value{
 				"name":              types.StringValue(ruleException.Name),
 				"source":            curExceptionSourceObj,
@@ -481,43 +323,6 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 				"destination":       curExceptionDestObj,
 				"service":           curExceptionServiceObj,
 				"connection_origin": types.StringValue(ruleException.ConnectionOrigin.String()),
-
-				// "name":              types.StringValue(ruleException.Name),
-				// "source":            curExceptionSourceObj,
-				// "destination":       curExceptionDestObj,
-				// "service":           curExceptionServiceObj,
-				// "device_attributes": types.ObjectNull(IfwDeviceAttrAttrTypes), // Set to null for now as device attributes are not reliably returned for exceptions
-				// "device_os": func() types.List {
-				// 	// Handle device_os to match planned state: return null when not specified in exception config or empty
-				// 	if ruleException.DeviceOs == nil || len(ruleException.DeviceOs) == 0 {
-				// 		// Return null to match planned state when device_os is not configured or empty in exception
-				// 		return types.ListNull(types.StringType)
-				// 	}
-				// 	// Create list from actual data
-				// 	actualList, _ := types.ListValueFrom(ctx, types.StringType, ruleException.DeviceOs)
-				// 	return actualList
-				// }(),
-				// // Always include all fields to match schema exactly
-				// "connection_origin": types.StringValue(ruleException.ConnectionOrigin.String()),
-				// // "connection_origin": func() types.String {
-				// // 	if ruleException.ConnectionOrigin.String() != "" {
-				// // 		return types.StringValue(ruleException.ConnectionOrigin.String())
-				// // 	}
-				// // 	return types.StringNull()
-				// // }(),
-				// "country": func() types.Set {
-				// 	if len(ruleException.Country) > 0 {
-				// 		// Use parseNameIDList to return known values for exception country
-				// 		return parseNameIDList(ctx, ruleException.Country, "rule.exception.country")
-				// 	}
-				// 	return types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes})
-				// }(),
-				// "device": func() types.Set {
-				// 	if len(ruleException.Device) > 0 {
-				// 		return parseNameIDList(ctx, ruleException.Device, "rule.exception.device")
-				// 	}
-				// 	return types.SetNull(types.ObjectType{AttrTypes: NameIDAttrTypes})
-				// }(),
 			}
 
 			curException, diagstmp := types.ObjectValue(
@@ -532,7 +337,10 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
 	} else {
-		ruleInput.Exceptions = types.SetNull(types.ObjectType{AttrTypes: IfwExceptionAttrTypes})
+		// Use empty set instead of null to match schema expectations
+		curRuleExceptionsObj, diagstmp := types.SetValue(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}, []attr.Value{})
+		diags = append(diags, diagstmp...)
+		ruleInput.Exceptions = curRuleExceptionsObj
 	}
 	////////////// end Rule -> Exceptions ///////////////
 

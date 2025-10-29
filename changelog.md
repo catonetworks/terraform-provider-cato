@@ -164,3 +164,9 @@
 
 ## 0.0.47 (2025-09-24)
 - Minor fix for state drift for at.position for IF_RULES and WAN_RULES for imports vs create/update
+
+## 0.0.48 (2025-10-28)
+- Added support for isDefault for native range interface
+- Fixed exceptions for IFW rules and WAN rules
+- Fixed subnet predicate in source, destination and exceoption source/destination
+- Fixed custom service port and port range issue 

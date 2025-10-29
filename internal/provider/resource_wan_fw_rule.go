@@ -9,6 +9,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -93,6 +95,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "Rule Index - computed value that may change due to rule reordering",
 						Computed:    true,
 						Optional:    false,
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.UseStateForUnknown(),
+						},
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Attribute to define rule status (enabled or disabled)",
@@ -359,14 +364,13 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 											Computed: true,
 										},
-										"id": schema.StringAttribute{
+"id": schema.StringAttribute{
 											Description: "Network Interface ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
 												stringplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
-											Computed: true,
 										},
 									},
 								},
@@ -787,14 +791,13 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 											Computed: true,
 										},
-										"id": schema.StringAttribute{
+"id": schema.StringAttribute{
 											Description: "Network Interface ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
 												stringplanmodifier.UseStateForUnknown(), // Avoid drift
 											},
-											Computed: true,
 										},
 									},
 								},
@@ -1521,11 +1524,21 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Description: "List of TCP/UDP port",
 											Optional:    true,
 											Required:    false,
+											Validators: []validator.List{
+												listvalidator.ConflictsWith(path.Expressions{
+													path.MatchRelative().AtParent().AtName("port_range"),
+												}...),
+											},
 										},
 										"port_range": schema.SingleNestedAttribute{
 											Description: "TCP/UDP port ranges",
 											Required:    false,
 											Optional:    true,
+											Validators: []validator.Object{
+												objectvalidator.ConflictsWith(path.Expressions{
+													path.MatchRelative().AtParent().AtName("port"),
+												}...),
+											},
 											Attributes: map[string]schema.Attribute{
 												"from": schema.StringAttribute{
 													Description: "",
@@ -2431,15 +2444,14 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														},
 														Computed: true,
 													},
-													"id": schema.StringAttribute{
-														Description: "Network Interface ID",
-														Required:    false,
-														Optional:    true,
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
-														Computed: true,
-													},
+"id": schema.StringAttribute{
+											Description: "Network Interface ID",
+											Required:    false,
+											Optional:    true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(), // Avoid drift
+											},
+										},
 												},
 											},
 										},
@@ -3494,7 +3506,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	// getting around state changes for the position field
 	positionValue := "LAST_IN_POLICY"
 	refValue := types.StringNull()
-	
+
 	if !state.At.IsNull() && !state.At.IsUnknown() {
 		statePosInput := PolicyRulePositionInput{}
 		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
@@ -3506,7 +3518,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 			}
 		}
 	}
-	
+
 	curAtObj, diagstmp := types.ObjectValue(
 		PositionAttrTypes,
 		map[string]attr.Value{

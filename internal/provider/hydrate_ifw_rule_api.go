@@ -742,12 +742,19 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				for _, item := range elementsServiceCustomInput {
 					diags = append(diags, item.As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})...)
 
+					tflog.Debug(ctx, "Processing custom service entry", map[string]interface{}{
+						"port_is_null":       itemServiceCustomInput.Port.IsNull(),
+						"port_range_is_null": itemServiceCustomInput.PortRange.IsNull(),
+						"protocol":           itemServiceCustomInput.Protocol.ValueString(),
+					})
+
 					customInput := &cato_models.CustomServiceInput{
 						Protocol: cato_models.IPProtocol(itemServiceCustomInput.Protocol.ValueString()),
 					}
 
 					// setting service custom port
 					if !itemServiceCustomInput.Port.IsNull() {
+						tflog.Debug(ctx, "Processing port field")
 						elementsPort := make([]types.String, 0, len(itemServiceCustomInput.Port.Elements()))
 						diags = append(diags, itemServiceCustomInput.Port.ElementsAs(ctx, &elementsPort, false)...)
 
@@ -757,10 +764,14 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						}
 
 						customInput.Port = inputPort
+						tflog.Debug(ctx, "Set port field", map[string]interface{}{
+							"port_count": len(inputPort),
+						})
 					}
 
 					// setting service custom port range
 					if !itemServiceCustomInput.PortRange.IsNull() {
+						tflog.Debug(ctx, "Processing port_range field")
 						var itemPortRange Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange
 						diags = append(diags, itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
@@ -770,6 +781,10 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						}
 
 						customInput.PortRange = &inputPortRange
+						tflog.Debug(ctx, "Set port_range field", map[string]interface{}{
+							"from": itemPortRange.From.ValueString(),
+							"to":   itemPortRange.To.ValueString(),
+						})
 					}
 
 					// append custom service
@@ -1674,12 +1689,19 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						for _, item := range elementsServiceCustomInput {
 							diags = append(diags, item.As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})...)
 
+							tflog.Debug(ctx, "Processing exception custom service entry", map[string]interface{}{
+								"port_is_null":       itemServiceCustomInput.Port.IsNull(),
+								"port_range_is_null": itemServiceCustomInput.PortRange.IsNull(),
+								"protocol":           itemServiceCustomInput.Protocol.ValueString(),
+							})
+
 							customInput := &cato_models.CustomServiceInput{
 								Protocol: cato_models.IPProtocol(itemServiceCustomInput.Protocol.ValueString()),
 							}
 
 							// setting service custom port
 							if !itemServiceCustomInput.Port.IsUnknown() && !itemServiceCustomInput.Port.IsNull() {
+								tflog.Debug(ctx, "Processing exception port field")
 								var elementsPort []types.String
 								diags = append(diags, itemServiceCustomInput.Port.ElementsAs(ctx, &elementsPort, false)...)
 
@@ -1688,6 +1710,9 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 									inputPort = append(inputPort, cato_scalars.Port(item.ValueString()))
 								}
 								customInput.Port = inputPort
+								tflog.Debug(ctx, "Set exception port field", map[string]interface{}{
+									"port_count": len(inputPort),
+								})
 
 							} else {
 								tflog.Info(ctx, "Port is either unknown or null; skipping assignment")
@@ -1695,6 +1720,7 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							// setting service custom port range
 							if !itemServiceCustomInput.PortRange.IsNull() {
+								tflog.Debug(ctx, "Processing exception port_range field")
 								var itemPortRange Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange
 								diags = append(diags, itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
@@ -1704,6 +1730,10 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 								}
 
 								customInput.PortRange = &inputPortRange
+								tflog.Debug(ctx, "Set exception port_range field", map[string]interface{}{
+									"from": itemPortRange.From.ValueString(),
+									"to":   itemPortRange.To.ValueString(),
+								})
 							}
 
 							// append custom service
