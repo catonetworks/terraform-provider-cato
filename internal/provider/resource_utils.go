@@ -224,9 +224,9 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrNa
 	tflog.Debug(ctx, "parseList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
-	// Handle nil or empty list - return null
-	if items == nil || len(items) == 0 {
-		tflog.Info(ctx, "parseList() - nil or empty list, returning null")
+	// Handle empty list - return null (len(nil) == 0 so nil check is redundant)
+	if len(items) == 0 {
+		tflog.Info(ctx, "parseList() - empty list, returning null")
 		return types.ListNull(elemType)
 	}
 
@@ -246,9 +246,9 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", items)),
 		"T": utils.InterfaceToJSONString(fmt.Sprintf("%T", items)),
 	})
-	// Handle nil or empty list - return null
-	if items == nil || len(items) == 0 {
-		tflog.Debug(ctx, "parseNameIDList() - nil or empty input list, returning null")
+	// Handle empty list - return null (len(nil) == 0 so nil check is redundant)
+	if len(items) == 0 {
+		tflog.Debug(ctx, "parseNameIDList() - empty input list, returning null")
 		return types.SetNull(NameIDObjectType)
 	}
 
@@ -279,9 +279,9 @@ func parseNameIDListWithUnknownName[T any](ctx context.Context, items []T, attrN
 		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", items)),
 		"T": utils.InterfaceToJSONString(fmt.Sprintf("%T", items)),
 	})
-	// Handle nil or empty list
-	if items == nil || len(items) == 0 {
-		tflog.Debug(ctx, "parseNameIDListWithUnknownName() - nil or empty input list")
+	// Handle empty list (len(nil) == 0 so nil check is redundant)
+	if len(items) == 0 {
+		tflog.Debug(ctx, "parseNameIDListWithUnknownName() - empty input list")
 		return types.SetNull(NameIDObjectType)
 	}
 
@@ -485,9 +485,9 @@ func parseFromToList[T any](ctx context.Context, items []T, attrName string) typ
 	tflog.Debug(ctx, "parseFromToList() "+attrName+" - "+fmt.Sprintf("%v", items))
 	diags := make(diag.Diagnostics, 0)
 
-	// Handle nil or empty list - return null
-	if items == nil || len(items) == 0 {
-		tflog.Debug(ctx, "parseFromToList() - nil or empty input list, returning null")
+	// Handle empty list - return null (len(nil) == 0 so nil check is redundant)
+	if len(items) == 0 {
+		tflog.Debug(ctx, "parseFromToList() - empty input list, returning null")
 		return types.ListNull(FromToObjectType)
 	}
 	// Process each item into an attr.Value
@@ -754,6 +754,107 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 		},
 	)
 	tflog.Debug(ctx, "parseCustomService() obj - "+fmt.Sprintf("%v", obj))
+	diags = append(diags, diagstmp...)
+	return obj
+}
+
+// parseCustomServiceIp handles the custom service IP object from API response
+func parseCustomServiceIp(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Debug(ctx, "parseCustomServiceIp() "+attrName+" - "+fmt.Sprintf("%v", item))
+	diags := make(diag.Diagnostics, 0)
+
+	// Get the reflect.Value of the input
+	itemValue := reflect.ValueOf(item)
+
+	// Handle nil or invalid input
+	if item == nil || itemValue.Kind() != reflect.Struct {
+		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			itemValue = itemValue.Elem()
+			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+				itemValue = itemValue.Elem()
+			}
+			if itemValue.Kind() != reflect.Struct {
+				return types.ObjectNull(CustomServiceIpAttrTypes)
+			}
+		} else {
+			return types.ObjectNull(CustomServiceIpAttrTypes)
+		}
+	}
+
+	// Handle pointer to struct
+	if itemValue.Kind() == reflect.Ptr {
+		if itemValue.IsNil() {
+			return types.ObjectNull(CustomServiceIpAttrTypes)
+		}
+		itemValue = itemValue.Elem()
+	}
+
+	// Get fields
+	nameField := itemValue.FieldByName("Name")
+	ipField := itemValue.FieldByName("IP")
+	ipRangeField := itemValue.FieldByName("IPRange")
+
+	// Handle name
+	var nameVal types.String
+	if nameField.IsValid() && nameField.String() != "" {
+		nameVal = types.StringValue(nameField.String())
+	} else {
+		nameVal = types.StringNull()
+	}
+
+	// Handle IP
+	var ipVal types.String
+	if ipField.IsValid() && ipField.String() != "" {
+		ipVal = types.StringValue(ipField.String())
+	} else {
+		ipVal = types.StringNull()
+	}
+
+	// Handle IP range
+	var ipRangeVal types.Object
+	if ipRangeField.Kind() == reflect.Ptr {
+		if ipRangeField.IsNil() {
+			ipRangeVal = types.ObjectNull(FromToAttrTypes)
+		} else {
+			ipRangeField = ipRangeField.Elem()
+			from := ipRangeField.FieldByName("From")
+			to := ipRangeField.FieldByName("To")
+			var diagsTmp diag.Diagnostics
+			ipRangeVal, diagsTmp = types.ObjectValue(
+				FromToAttrTypes,
+				map[string]attr.Value{
+					"from": types.StringValue(from.String()),
+					"to":   types.StringValue(to.String()),
+				},
+			)
+			diags = append(diags, diagsTmp...)
+		}
+	} else if ipRangeField.IsValid() {
+		from := ipRangeField.FieldByName("From")
+		to := ipRangeField.FieldByName("To")
+		var diagsTmp diag.Diagnostics
+		ipRangeVal, diagsTmp = types.ObjectValue(
+			FromToAttrTypes,
+			map[string]attr.Value{
+				"from": types.StringValue(from.String()),
+				"to":   types.StringValue(to.String()),
+			},
+		)
+		diags = append(diags, diagsTmp...)
+	} else {
+		ipRangeVal = types.ObjectNull(FromToAttrTypes)
+	}
+
+	// Create final custom service IP object
+	obj, diagstmp := types.ObjectValue(
+		CustomServiceIpAttrTypes,
+		map[string]attr.Value{
+			"name":     nameVal,
+			"ip":       ipVal,
+			"ip_range": ipRangeVal,
+		},
+	)
+	tflog.Debug(ctx, "parseCustomServiceIp() obj - "+fmt.Sprintf("%v", obj))
 	diags = append(diags, diagstmp...)
 	return obj
 }

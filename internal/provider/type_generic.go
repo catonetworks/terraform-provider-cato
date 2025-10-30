@@ -67,3 +67,10 @@ var ActivePeriodAttrTypes = map[string]attr.Type{
 	"use_effective_from": types.BoolType,
 	"use_expires_at":     types.BoolType,
 }
+
+var CustomServiceIpObjectType = types.ObjectType{AttrTypes: CustomServiceIpAttrTypes}
+var CustomServiceIpAttrTypes = map[string]attr.Type{
+	"name":     types.StringType,
+	"ip":       types.StringType,
+	"ip_range": FromToObjectType,
+}

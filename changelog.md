@@ -172,4 +172,8 @@
 - Fixed custom service port and port range issue 
 
 ## 0.0.49 (2025-10-29)
-- Fixed drife issues for license resource attributes in state
+- Fixed drift issues for license resource attributes in state
+
+## 0.0.50 (2025-10-30)
+- Added updated version of the SDK include TLS Inpection and WAN Network rule operations
+- Added TLS Inspection Rule and section resources  

@@ -192,7 +192,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	if !plan.Email.IsNull() && !plan.Email.IsUnknown() {
-		input.Email = plan.Email.ValueString()
+		input.Email = plan.Email.ValueStringPointer()
 	}
 
 	// Set optional fields
@@ -263,7 +263,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 		}
 	}
 	mfaEnabled := true
-	input.MfaEnabled = mfaEnabled // Always true for admin users
+	input.MfaEnabled = &mfaEnabled // Always true for admin users
 
 	// Log the request
 	tflog.Info(ctx, "Create.admin")

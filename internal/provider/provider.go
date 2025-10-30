@@ -185,6 +185,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewSiteIpsecResource,
 		NewSocketSiteResource,
 		NewStaticHostResource,
+		NewTlsInspectionRuleResource,
 		NewWanFwRuleResource,
 		NewWanFwSectionResource,
 		NewWanInterfaceResource,

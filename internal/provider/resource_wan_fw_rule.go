@@ -364,7 +364,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 											Computed: true,
 										},
-"id": schema.StringAttribute{
+										"id": schema.StringAttribute{
 											Description: "Network Interface ID",
 											Required:    false,
 											Optional:    true,
@@ -791,7 +791,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 											Computed: true,
 										},
-"id": schema.StringAttribute{
+										"id": schema.StringAttribute{
 											Description: "Network Interface ID",
 											Required:    false,
 											Optional:    true,
@@ -2444,14 +2444,14 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 														},
 														Computed: true,
 													},
-"id": schema.StringAttribute{
-											Description: "Network Interface ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-										},
+													"id": schema.StringAttribute{
+														Description: "Network Interface ID",
+														Required:    false,
+														Optional:    true,
+														PlanModifiers: []planmodifier.String{
+															stringplanmodifier.UseStateForUnknown(), // Avoid drift
+														},
+													},
 												},
 											},
 										},
