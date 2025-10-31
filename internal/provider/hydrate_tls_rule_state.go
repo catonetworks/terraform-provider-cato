@@ -115,6 +115,73 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 
 	// //////////// Rule -> Application ///////////////
 	// Note: RemoteAsn is []scalars.Asn32 (which is type string in SDK), so parseList handles it directly
+	
+// Handle custom_service - only parse if it exists in API response
+// API returns an array, but schema expects a single object - take first element
+var customServiceValue attr.Value
+if currentRule.Application.CustomService != nil && len(currentRule.Application.CustomService) > 0 {
+	customServiceValue = parseCustomService(ctx, currentRule.Application.CustomService[0], "rule.application.custom_service")
+} else {
+	// Fallback to state/plan value if present to avoid drift
+	if !ruleInput.Application.IsNull() && !ruleInput.Application.IsUnknown() {
+		if appAttrs := ruleInput.Application.Attributes(); appAttrs != nil {
+			if v, ok := appAttrs["custom_service"]; ok && !v.IsNull() && !v.IsUnknown() {
+				customServiceValue = v
+			} else {
+				customServiceValue = types.ObjectNull(CustomServiceAttrTypes)
+			}
+		} else {
+			customServiceValue = types.ObjectNull(CustomServiceAttrTypes)
+		}
+	} else {
+		customServiceValue = types.ObjectNull(CustomServiceAttrTypes)
+	}
+}
+
+// Handle custom_service_ip - only parse if it exists in API response
+// API returns an array, but schema expects a single object - take first element
+var customServiceIpValue attr.Value
+if currentRule.Application.CustomServiceIP != nil && len(currentRule.Application.CustomServiceIP) > 0 {
+	customServiceIpValue = parseCustomServiceIp(ctx, currentRule.Application.CustomServiceIP[0], "rule.application.custom_service_ip")
+} else {
+	// Fallback to state/plan value if present to avoid drift
+	if !ruleInput.Application.IsNull() && !ruleInput.Application.IsUnknown() {
+		if appAttrs := ruleInput.Application.Attributes(); appAttrs != nil {
+			if v, ok := appAttrs["custom_service_ip"]; ok && !v.IsNull() && !v.IsUnknown() {
+				customServiceIpValue = v
+			} else {
+				customServiceIpValue = types.ObjectNull(CustomServiceIpAttrTypes)
+			}
+		} else {
+			customServiceIpValue = types.ObjectNull(CustomServiceIpAttrTypes)
+		}
+	} else {
+		customServiceIpValue = types.ObjectNull(CustomServiceIpAttrTypes)
+	}
+}
+
+// Handle tls_inspect_category - only parse if it exists in API response
+// API returns an array, but schema expects a single string - take first element
+var tlsInspectCategoryValue attr.Value
+if currentRule.Application.TLSInspectCategory != nil && len(currentRule.Application.TLSInspectCategory) > 0 {
+	tlsInspectCategoryValue = parseTlsInspectCategory(ctx, currentRule.Application.TLSInspectCategory[0])
+} else {
+	// Fallback to state/plan value if present to avoid drift
+	if !ruleInput.Application.IsNull() && !ruleInput.Application.IsUnknown() {
+		if appAttrs := ruleInput.Application.Attributes(); appAttrs != nil {
+			if v, ok := appAttrs["tls_inspect_category"]; ok && !v.IsNull() && !v.IsUnknown() {
+				tlsInspectCategoryValue = v
+			} else {
+				tlsInspectCategoryValue = types.StringNull()
+			}
+		} else {
+			tlsInspectCategoryValue = types.StringNull()
+		}
+	} else {
+		tlsInspectCategoryValue = types.StringNull()
+	}
+}
+
 	curRuleApplicationObj, diagstmp := types.ObjectValue(
 		TlsApplicationAttrTypes,
 		map[string]attr.Value{
@@ -130,9 +197,9 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 			"global_ip_range":      parseNameIDList(ctx, currentRule.Application.GlobalIPRange, "rule.application.global_ip_range"),
 			"remote_asn":           parseList(ctx, types.StringType, currentRule.Application.RemoteAsn, "rule.application.remote_asn"),
 			"service":              parseNameIDList(ctx, currentRule.Application.Service, "rule.application.service"),
-			"custom_service":       parseCustomService(ctx, currentRule.Application.CustomService, "rule.application.custom_service"),
-			"custom_service_ip":    parseCustomServiceIp(ctx, currentRule.Application.CustomServiceIP, "rule.application.custom_service_ip"),
-			"tls_inspect_category": parseTlsInspectCategory(ctx, currentRule.Application.TLSInspectCategory),
+			"custom_service":       customServiceValue,
+			"custom_service_ip":    customServiceIpValue,
+			"tls_inspect_category": tlsInspectCategoryValue,
 			"country":              parseNameIDList(ctx, currentRule.Application.Country, "rule.application.country"),
 		},
 	)

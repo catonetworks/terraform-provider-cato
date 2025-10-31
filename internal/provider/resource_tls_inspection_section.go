@@ -20,26 +20,26 @@ import (
 )
 
 var (
-	_ resource.Resource                = &internetFwSectionResource{}
-	_ resource.ResourceWithConfigure   = &internetFwSectionResource{}
-	_ resource.ResourceWithImportState = &internetFwSectionResource{}
+	_ resource.Resource                = &tlsInspectionSectionResource{}
+	_ resource.ResourceWithConfigure   = &tlsInspectionSectionResource{}
+	_ resource.ResourceWithImportState = &tlsInspectionSectionResource{}
 )
 
-func NewInternetFwSectionResource() resource.Resource {
-	return &internetFwSectionResource{}
+func NewTlsInspectionSectionResource() resource.Resource {
+	return &tlsInspectionSectionResource{}
 }
 
-type internetFwSectionResource struct {
+type tlsInspectionSectionResource struct {
 	client *catoClientData
 }
 
-func (r *internetFwSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_if_section"
+func (r *tlsInspectionSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_tls_section"
 }
 
-func (r *internetFwSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *tlsInspectionSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_if_section` resource contains the configuration parameters necessary to Internet firewall section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at[mutation.policy.internetFirewall.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addSection).",
+		Description: "The `cato_tls_section` resource contains the configuration parameters necessary to add TLS Inspection section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addSection).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Section ID",
@@ -94,7 +94,7 @@ func (r *internetFwSectionResource) Schema(_ context.Context, _ resource.SchemaR
 	}
 }
 
-func (r *internetFwSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -102,14 +102,14 @@ func (r *internetFwSectionResource) Configure(_ context.Context, req resource.Co
 	r.client = req.ProviderData.(*catoClientData)
 }
 
-func (r *internetFwSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *tlsInspectionSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
-func (r *internetFwSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 
-	var plan InternetFirewallSection
+	var plan TlsInspectionSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -135,107 +135,69 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 		sectionInput := PolicyAddSectionInfoInput{}
 		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
-
 		input.Section.Name = sectionInput.Name.ValueString()
 	}
 
-	sectionIndexApiData, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndexInCreate.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(sectionIndexApiData),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API EntityLookup error",
-			err.Error(),
-		)
-		return
-	}
-	if len(sectionIndexApiData.Policy.InternetFirewall.Policy.Sections) == 0 {
-		input := cato_models.PolicyAddSectionInput{
-			At: &cato_models.PolicySectionPositionInput{
-				Position: cato_models.PolicySectionPositionEnumLastInPolicy,
-			},
-			Section: &cato_models.PolicyAddSectionInfoInput{
-				Name: "Default Outbound Internet",
-			}}
-		sectionCreateApiData, err := r.client.catov2.PolicyInternetFirewallAddSection(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, input, r.client.AccountId)
-		tflog.Debug(ctx, "Write.PolicyInternetFirewallAddSectionWithinSection.response", map[string]interface{}{
-			"reason":   "creating new section as IFW does not have a default listed",
-			"response": utils.InterfaceToJSONString(sectionCreateApiData),
-		})
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Catov2 API EntityLookup error",
-				err.Error(),
-			)
-			return
-		}
-	}
-
-	tflog.Debug(ctx, "Create.PolicyInternetFirewallAddSection.request", map[string]interface{}{
+	tflog.Debug(ctx, "Create.PolicyTLSInspectAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.catov2.PolicyInternetFirewallAddSection(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, input, r.client.AccountId)
-	tflog.Debug(ctx, "Create.PolicyInternetFirewallAddSection.response", map[string]interface{}{
+	policyChange, err := r.client.catov2.PolicyTLSInspectAddSection(ctx, input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.PolicyTLSInspectAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
+
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallAddSection error",
-			err.Error(),
-		)
+		resp.Diagnostics.AddError("Catov2 API PolicyTLSInspectAddSection error", err.Error())
 		return
 	}
-	if len(policyChange.Policy.InternetFirewall.AddSection.Errors) > 0 {
-		for _, e := range policyChange.Policy.InternetFirewall.AddSection.Errors {
+	if len(policyChange.Policy.TLSInspect.AddSection.Errors) > 0 {
+		for _, e := range policyChange.Policy.TLSInspect.AddSection.Errors {
 			resp.Diagnostics.AddError("ERROR: "+*e.ErrorCode, *e.ErrorMessage)
 			return
 		}
 	}
 
 	//publishing new section
-	tflog.Info(ctx, "Create.publishing-rule")
-	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyInternetFirewallPublishPolicyRevision(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, publishDataIfEnabled, r.client.AccountId)
-	tflog.Debug(ctx, "Create.PolicyInternetFirewallPublishPolicyRevision.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(input),
-	})
+	tflog.Info(ctx, "publishing new section")
+	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallPublishPolicyRevision error",
+			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",
 			err.Error(),
 		)
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetInternetFirewall().GetAddSection().Section.GetSection().ID)
+	plan.Id = types.StringValue(policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// overiding state with rule id
+	// overiding state with section id
 	resp.State.SetAttribute(
 		ctx,
 		path.Root("section").AtName("id"),
-		policyChange.GetPolicy().GetInternetFirewall().GetAddSection().Section.GetSection().ID,
+		policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID,
 	)
+
 }
 
-func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
-	var state InternetFirewallSection
+	var state TlsInspectionSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
-	tflog.Debug(ctx, "Read.PolicyInternetFirewall.response", map[string]interface{}{
+
+	body, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Read.Tlsinspectpolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API error",
@@ -252,7 +214,7 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	sectionList := body.GetPolicy().InternetFirewall.Policy.GetSections()
+	sectionList := body.GetPolicy().TLSInspect.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
 		if sectionListItem.GetSection().ID == section.Id.ValueString() {
@@ -285,7 +247,7 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 
 	// remove resource if it doesn't exist anymore
 	if !sectionExist {
-		tflog.Warn(ctx, "internet section not found, resource removed")
+		tflog.Warn(ctx, "tls inspection section not found, resource removed")
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -295,11 +257,12 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
 }
 
-func (r *internetFwSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
-	var plan InternetFirewallSection
+	var plan TlsInspectionSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -332,68 +295,64 @@ func (r *internetFwSectionResource) Update(ctx context.Context, req resource.Upd
 		inputMoveSection.ID = inputUpdateSection.ID
 	}
 
-	//move section
-	tflog.Debug(ctx, "Update.PolicyInternetFirewallMoveSection.request", map[string]interface{}{
+	tflog.Debug(ctx, "Update.PolicyTLSInspectMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.catov2.PolicyInternetFirewallMoveSection(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, inputMoveSection, r.client.AccountId)
-	tflog.Debug(ctx, "Update.PolicyInternetFirewallMoveSection.response", map[string]interface{}{
+	moveSection, err := r.client.catov2.PolicyTLSInspectMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	tflog.Debug(ctx, "Update.PolicyTLSInspectMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallAddSection error",
+			"Catov2 API PolicyTLSInspectMoveSection error",
 			err.Error(),
 		)
 		return
 	}
 
 	// check for errors
-	if moveSection.Policy.InternetFirewall.MoveSection.Status != "SUCCESS" {
-		for _, item := range moveSection.Policy.InternetFirewall.MoveSection.GetErrors() {
+	if moveSection.Policy.TLSInspect.MoveSection.Status != "SUCCESS" {
+		for _, item := range moveSection.Policy.TLSInspect.MoveSection.GetErrors() {
 			resp.Diagnostics.AddError(
-				"API Error Moving Section Resource",
+				"API Error Moving Section",
 				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
 			)
 		}
 		return
 	}
 
-	//update section
-	tflog.Debug(ctx, "Update.PolicyInternetFirewallUpdateSection.request", map[string]interface{}{
+	tflog.Debug(ctx, "Update.PolicyTLSInspectUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.catov2.PolicyInternetFirewallUpdateSection(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, inputUpdateSection, r.client.AccountId)
-	tflog.Debug(ctx, "Update.PolicyInternetFirewallUpdateSection.response", map[string]interface{}{
+	updateSection, err := r.client.catov2.PolicyTLSInspectUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	tflog.Debug(ctx, "Update.PolicyTLSInspectUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallAddSection error",
+			"Catov2 API PolicyTLSInspectUpdateSection error",
 			err.Error(),
 		)
 		return
 	}
 
 	// check for errors
-	if updateSection.Policy.InternetFirewall.UpdateSection.Status != "SUCCESS" {
-		for _, item := range updateSection.Policy.InternetFirewall.UpdateSection.GetErrors() {
+	if updateSection.Policy.TLSInspect.UpdateSection.Status != "SUCCESS" {
+		for _, item := range updateSection.Policy.TLSInspect.UpdateSection.GetErrors() {
 			resp.Diagnostics.AddError(
-				"API Error Creating Resource",
+				"API Error Updating Section",
 				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
 			)
 		}
 		return
 	}
 
-	//publishing new section
-	tflog.Info(ctx, "Update.publishing-rule")
-	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyInternetFirewallPublishPolicyRevision(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, publishDataIfEnabled, r.client.AccountId)
-
+	//publishing updated section
+	tflog.Info(ctx, "publishing updated section")
+	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallPublishPolicyRevision error",
+			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",
 			err.Error(),
 		)
 		return
@@ -406,9 +365,9 @@ func (r *internetFwSectionResource) Update(ctx context.Context, req resource.Upd
 	}
 }
 
-func (r *internetFwSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
-	var state InternetFirewallSection
+	var state TlsInspectionSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -427,11 +386,13 @@ func (r *internetFwSectionResource) Delete(ctx context.Context, req resource.Del
 		ID: section.Id.ValueString(),
 	}
 
-	PolicyInternetFirewallRemoveSectionResponse, err := r.client.catov2.PolicyInternetFirewallRemoveSection(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, removeSection, r.client.AccountId)
-	tflog.Debug(ctx, "Delete.PolicyInternetFirewallRemoveSection.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(PolicyInternetFirewallRemoveSectionResponse),
+	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(removeSection),
 	})
-
+	policyTLSInspectRemoveSectionResponse, err := r.client.catov2.PolicyTLSInspectRemoveSection(ctx, removeSection, r.client.AccountId)
+	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(policyTLSInspectRemoveSectionResponse),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to connect or request the Catov2 API",
@@ -440,12 +401,10 @@ func (r *internetFwSectionResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	tflog.Info(ctx, "Delete.publishing-rule")
-	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyInternetFirewallPublishPolicyRevision(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API Delete/PolicyInternetFirewallPublishPolicyRevision error",
+			"Catov2 API Delete/PolicyTLSInspectPublishPolicyRevision error",
 			err.Error(),
 		)
 		return

@@ -802,9 +802,9 @@ func parseCustomServiceIp(ctx context.Context, item interface{}, attrName string
 		nameVal = types.StringNull()
 	}
 
-	// Handle IP
+	// Handle IP - only include if it has a value
 	var ipVal types.String
-	if ipField.IsValid() && ipField.String() != "" {
+	if ipField.IsValid() && !ipField.IsZero() && ipField.String() != "" {
 		ipVal = types.StringValue(ipField.String())
 	} else {
 		ipVal = types.StringNull()

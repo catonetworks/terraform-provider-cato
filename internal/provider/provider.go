@@ -165,6 +165,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		SiteLocationDataSource,
 		IfwRulesIndexDataSource,
 		WanRulesIndexDataSource,
+		TlsRulesIndexDataSource,
 		IfRuleSectionsDataSource,
 		WfRuleSectionsDataSource,
 		NetworkRangesDataSource,
@@ -186,10 +187,12 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewSocketSiteResource,
 		NewStaticHostResource,
 		NewTlsInspectionRuleResource,
+		NewTlsInspectionSectionResource,
 		NewWanFwRuleResource,
 		NewWanFwSectionResource,
 		NewWanInterfaceResource,
 		NewIfwRulesIndexResource,
 		NewWanRulesIndexResource,
+		NewTlsRulesIndexResource,
 	}
 }

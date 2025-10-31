@@ -1,3 +1,5 @@
+
+
 // internet firewall allowing all & logs
 resource "cato_if_rule" "allow_all_and_log" {
   at = {
@@ -79,200 +81,91 @@ resource "cato_if_rule" "example_min" {
   }
 }
 
-# cato_if_rule.kitchen_sink:
-resource "cato_if_rule" "example_kitchen_sink" {
+# cato_tls_rule.kitchen_sink:
+resource "cato_tls_rule" "kitchen_sink" {
     at   = {
-      position = "LAST_IN_SECTION"
-      ref      = cato_if_section.if_section.section.id
+        position = "LAST_IN_POLICY"
     }
     rule = {
-        name              = "Internet Firewall Test Kitchen Sink"
-        action            = "ALLOW"
-        active_period     = {
-          effective_from = "2025-08-09T00:00:00"
-          expires_at     = "2026-12-31T23:57:59"
-        }
-        connection_origin = "REMOTE"
-        country           = [
-            {
-                id   = "AG"
-                # name = "Antigua and Barbuda"
-            },
-            {
-                # id   = "AW"
-                name = "Aruba"
-            },
-        ]
-        description       = "test description"
-        destination       = {
-            app_category             = [
+        enabled                      = true
+        name                         = "Kitchen Sink New"
+        platform                     = "EMBEDDED"
+        action                       = "INSPECT"
+        application                  = {
+            app_category    = [
                 {
-                    # id   = "anonymizers"
-                    name = "Anonymizers"
-                },
-                {
-                    # id   = "authentication_services"
-                    name = "Authentication Services"
+                    # id   = "advertisements"
+                    name = "Advertisements"
                 },
             ]
-            application              = [
+            application     = [
                 {
-                    # id   = "ebix"
-                    name = "Ebix Inc."
-                },
-                {
-                    id   = "fotocasa"
-                    # name = "Fotocasa"
+                    # id   = "buildmyteam"
+                    name = "buildmyteam"
                 },
             ]
-            country                  = [
+            country         = [
                 {
-                    # id   = "AI"
-                    name = "Anguilla"
-                },
-                {
-                    # id   = "AQ"
-                    name = "Antarctica"
+                    # id   = "AF"
+                    name = "Afghanistan"
                 },
             ]
-            custom_app               = [
+            custom_app      = [
                 {
                     # id   = "CustomApp_11362_34188"
                     name = "Test Custom App"
                 },
             ]
-            custom_category          = [
+            custom_category = [
                 {
                     # id   = "24255"
                     name = "Test Custom Category"
                 },
-                {
-                    # id   = "27782"
-                    name = "RBI-URLs"
-                },
             ]
-            domain                   = [
-                "test.com",
+            domain          = [
+                "something.com",
+                "www.something.com",
             ]
-            fqdn                     = [
-                "www.test.com",
+            fqdn            = [
+                "www.something.com",
             ]
-            global_ip_range          = [
+            global_ip_range = [
                 {
                     # id   = "1757826"
                     name = "global_ip_range"
                 },
-                {
-                    # id   = "1910542"
-                    name = "global_ip_range2"
-                },
             ]
-            ip                       = [
+            ip              = [
                 "1.2.3.4",
             ]
-            ip_range                 = [
+            ip_range        = [
                 {
                     from = "1.2.3.4"
                     to   = "1.2.3.5"
                 },
             ]
-            remote_asn               = [
-                "12",
+            remote_asn      = [
+                "1234",
             ]
-            sanctioned_apps_category = [
+            service         = [
                 {
-                    # id   = "22736"
-                    name = "Sanctioned Apps"
+                    # id   = "THREEPC"
+                    name = "3PC"
                 },
             ]
-            subnet                   = [
+            subnet          = [
                 "1.2.3.0/24",
             ]
         }
-        device            = [
+        connection_origin            = "REMOTE"
+        description                  = "test"
+        device_posture_profile       = [
             {
-                # id   = "4202"
+                id   = "4202"
                 name = "Test Device Posture Profile"
             },
         ]
-        device_attributes = {
-            category     = [
-                "IoT",
-                "Mobile",
-            ]
-            manufacturer = [
-                "ADTRAN",
-                "ACTi",
-            ]
-            model        = [
-                " 9",
-                " 7+",
-            ]
-            os           = [
-                "Aruba OS",
-                "Arch Linux",
-            ]
-            type         = [
-                "Appliance",
-                "Analog Telephone Adapter",
-            ]
-        }
-        device_os         = [
-            "WINDOWS",
-            "MACOS",
-        ]
-        enabled           = true
-        schedule          = {
-            active_on        = "CUSTOM_RECURRING"
-            custom_recurring = {
-                days = [
-                    "SUNDAY",
-                    "WEDNESDAY",
-                    "SATURDAY",
-                    "THURSDAY",
-                    "MONDAY",
-                    "TUESDAY",
-                    "FRIDAY",
-                ]
-                from = "02:02:00"
-                to   = "03:03:00"
-            }
-        }
-        service           = {
-            custom   = [
-                {
-                    port       = []
-                    port_range = {
-                        from = "10"
-                        to   = "50"
-                    }
-                    protocol   = "UDP"
-                },
-                {
-                    port     = [
-                        "22",
-                    ]
-                    protocol = "UDP"
-                },
-            ]
-            standard = [
-                {
-                    # id   = "amazon_ec2"
-                    name = "Amazon EC2"
-                },
-            ]
-        }
-        source            = {
-            floating_subnet     = [
-                {
-                    id   = "1474041"
-                    # name = "floating_range"
-                },
-                {
-                    id   = "1910541"
-                    # name = "floating_range2"
-                },
-            ]
+        source                       = {
             global_ip_range     = [
                 {
                     # id   = "1757826"
@@ -291,10 +184,6 @@ resource "cato_if_rule" "example_kitchen_sink" {
             ]
             host                = [
                 {
-                    # id   = "1700335"
-                    name = "my.hostname25"
-                },
-                {
                     # id   = "1778359"
                     name = "host31"
                 },
@@ -311,41 +200,27 @@ resource "cato_if_rule" "example_kitchen_sink" {
             network_interface   = [
                 {
                     id   = "124986"
-                    # name = "ipsec-dev-site \\ Default"
-                },
-                {
-                    id   = "175651"
-                    # name = "TestSite001 \\ Default"
+                    # name = "ipsec-dev-site \\ Default" 
+                    # API does not like \\ charaacters in name values
                 },
             ]
             site                = [
                 {
-                    # id   = "144904"
-                    name = "1600LTE"
-                },
-                {
                     # id   = "144905"
-                    name = "1600"
+                    # name = "1600"
                 },
             ]
             site_network_subnet = [
                 {
-                    id   = "TjE3MDE0NDI="
-                    # name = "aws-site \\ LAN \\ Native Range"
-                },
-                {
-                    id   = "TjIyMzcxODI="
-                    # name = "Cato-X1600 \\ LAN88 \\ Native Range"
+                    id   = "UzU4OTI1Mw=="
+                    # name = "1600LTE \\ INT_5 \\ Direct Network Range" 
+                    # API does not like \\ charaacters in name values
                 },
             ]
             subnet              = [
                 "1.2.3.0/24",
             ]
             system_group        = [
-                {
-                    # id   = "2S"
-                    name = "All SDP Users"
-                },
                 {
                     # id   = "7S"
                     name = "All Floating Ranges"
@@ -359,25 +234,11 @@ resource "cato_if_rule" "example_kitchen_sink" {
             ]
             users_group         = [
                 {
-                    # id   = "500000001"
-                    name = "Operations Team"
+                    # id   = "500000000"
+                    name = "Test User Group"
                 },
             ]
         }
-        tracking          = {
-            alert = {
-                enabled      = true
-                frequency    = "WEEKLY"
-                mailing_list = [
-                    {
-                        id   = "-100"
-                        # name = "All Admins"
-                    },
-                ]
-            }
-            event = {
-                enabled = true
-            }
-        }
+        untrusted_certificate_action = "ALLOW"
     }
 }
