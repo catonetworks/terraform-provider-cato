@@ -166,19 +166,8 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		)
 		diags = append(diags, diagstmp...)
 	} else {
-		// Return an empty object with null lists (to avoid drift vs. null object)
-		deviceAttributesObj, diagstmp = types.ObjectValue(
-			WanDeviceAttrAttrTypes,
-			map[string]attr.Value{
-				"category":     types.ListNull(types.StringType),
-				"type":         types.ListNull(types.StringType),
-				"model":        types.ListNull(types.StringType),
-				"manufacturer": types.ListNull(types.StringType),
-				"os":           types.ListNull(types.StringType),
-				"os_version":   types.ListNull(types.StringType),
-			},
-		)
-		diags = append(diags, diagstmp...)
+		// No device attributes present: keep this attribute null to avoid plan/result mismatch
+		deviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
 	}
 
 	tflog.Debug(ctx, "WAN_rule.read.currentRule.DeviceAttributes", map[string]interface{}{
@@ -398,19 +387,8 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 				)
 				diags = append(diags, diagstmp...)
 			} else {
-				// Return an empty object with null lists (to avoid drift vs. null object)
-				exceptionDeviceAttributesObj, diagstmp = types.ObjectValue(
-					WanDeviceAttrAttrTypes,
-					map[string]attr.Value{
-						"category":     types.ListNull(types.StringType),
-						"type":         types.ListNull(types.StringType),
-						"model":        types.ListNull(types.StringType),
-						"manufacturer": types.ListNull(types.StringType),
-						"os":           types.ListNull(types.StringType),
-						"os_version":   types.ListNull(types.StringType),
-					},
-				)
-				diags = append(diags, diagstmp...)
+				// No device attributes present in exception: keep null
+				exceptionDeviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
 			}
 
 			// Initialize Exception object with populated values
