@@ -1,0 +1,90 @@
+provider "cato" {
+  baseurl    = "https://api.catonetworks.com/api/v1/graphql2"
+  token      = var.cato_token_sase
+  account_id = var.account_id_sase
+}
+
+# --------------------------------------------------------------------------------
+# README: Example CSV syntax for sections: sections.csv
+# section_index,section_name
+# 1,My First Section Here
+# 2,My Second Section Name
+# 3,My Third Section Name
+
+# README: Example CSV syntax for sections: rules.csv
+# index_in_section,section_name,rule_name
+# 1,My First Section Here,My First Section 1 Rule
+# 2,My First Section Here,My Second Section 1 Rule
+# 1,My Second Section Name,My First Section 2 Rule
+# 2,My Second Section Name,My Second Section 2 Rule
+# 1,My Third Section Name,My First Section 3 Rule
+# 2,My Third Section Name,My Second Section 3 Rule
+# 3,My Third Section Name,My Third Section 3 Rule
+# --------------------------------------------------------------------------------
+
+locals {
+  # Read CSV data
+  rule_data_list    = csvdecode(file("rules.csv"))
+  section_data_list = csvdecode(file("sections.csv"))
+  
+  # Convert sections list to map keyed by section_name for provider schema compatibility
+  section_data = {
+    for section in local.section_data_list :
+    section.section_name => section
+  }
+  
+  # Convert rules list to map keyed by rule_name for provider schema compatibility
+  rule_data = {
+    for rule in local.rule_data_list :
+    rule.rule_name => rule
+  }
+}
+
+resource "cato_wnw_section" "all_wnw_sections" {
+  for_each = { for section in local.section_data : section.section_index => section }
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = each.value.section_name
+  }
+}
+
+resource "cato_wnw_rule" "all_wnw_rules" {
+  depends_on = [cato_if_section.all_wnw_sections]
+  for_each   = { for rule in local.rule_data : rule.rule_name => rule }
+  at = {
+    position = "LAST_IN_POLICY" // adding last, to reorder in cato_bulk_wnw_move_rule
+  }
+  rule = {
+    name        = each.value.rule_name
+    description = each.value.rule_name
+    enabled     = true
+    action      = "ALLOW"
+    source      = {}
+    destination = {}
+    tracking = {
+      alert = {
+        enabled   = false
+        frequency = "DAILY"
+      }
+      event = {
+        enabled = true
+      }
+    }
+  }
+}
+
+resource "cato_bulk_wnw_move_rule" "all_wnw_rules" {
+  depends_on   = [cato_wnw_section.all_if_sections, cato_if_rule.all_wnw_rules]
+  rule_data    = local.rule_data
+  section_data = local.section_data
+}
+
+output "section_data" {
+  value = local.section_data
+}
+
+output "rule_data" {
+  value = local.rule_data
+}
