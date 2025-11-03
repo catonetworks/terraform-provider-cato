@@ -42,7 +42,7 @@ type wanNetworkRuleResource struct {
 }
 
 func (r *wanNetworkRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_wan_nw_rule"
+	resp.TypeName = req.ProviderTypeName + "_wnw_rule"
 }
 
 func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
