@@ -1100,6 +1100,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "Device attributes matching criteria for the rule.",
 						Required:    false,
 						Optional:    true,
+						Computed:    true,
 						PlanModifiers: []planmodifier.Object{
 							objectplanmodifier.UseStateForUnknown(), // Avoid drift
 						},
@@ -2759,6 +2760,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									Description: "Device attributes matching criteria for the exception.",
 									Required:    false,
 									Optional:    true,
+									Computed:    true,
 									PlanModifiers: []planmodifier.Object{
 										objectplanmodifier.UseStateForUnknown(), // Avoid drift
 									},

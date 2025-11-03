@@ -189,6 +189,38 @@ func (m wanExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedO
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "destination")
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "application")
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "service")
+	
+	// Preserve device_attributes from state if both are null or both are objects
+	// This prevents correlation issues when device_attributes transitions
+	if stateDeviceAttrs, exists := stateAttrs["device_attributes"]; exists {
+		if plannedDeviceAttrs, plannedExists := newAttrs["device_attributes"]; plannedExists {
+			// If planned is an object with all null fields and state is null, use state's null
+			plannedObj, plannedIsObj := plannedDeviceAttrs.(types.Object)
+			stateObj, stateIsObj := stateDeviceAttrs.(types.Object)
+			
+			if plannedIsObj && stateIsObj {
+				// Both are objects - check if planned is effectively empty (all nulls)
+				plannedAttrsMap := plannedObj.Attributes()
+				allNull := true
+				for _, v := range plannedAttrsMap {
+					if listVal, ok := v.(types.List); ok {
+						if !listVal.IsNull() {
+							allNull = false
+							break
+						}
+					}
+				}
+				
+				// If state is also all null or if state is null, preserve state value
+				if stateObj.IsNull() && allNull {
+					newAttrs["device_attributes"] = stateDeviceAttrs
+				}
+			} else if plannedIsObj && !plannedObj.IsNull() && stateObj.IsNull() {
+				// Planned is object but state is null - preserve state's null
+				newAttrs["device_attributes"] = stateDeviceAttrs
+			}
+		}
+	}
 
 	// Create the new object
 	objectType := plannedObj.Type(ctx).(types.ObjectType)

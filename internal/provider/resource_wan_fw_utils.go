@@ -165,6 +165,7 @@ func correlateWanExceptionElement(ctx context.Context, planObj types.Object, res
 	correlateWanNestedObjects(ctx, newAttrs, planAttrs, responseAttrs, "source")
 	correlateWanNestedObjects(ctx, newAttrs, planAttrs, responseAttrs, "destination")
 	correlateWanNestedObjects(ctx, newAttrs, planAttrs, responseAttrs, "application")
+	correlateWanNestedObjects(ctx, newAttrs, planAttrs, responseAttrs, "service")
 
 	// Create the new object
 	objectType := responseObj.Type(ctx).(types.ObjectType)

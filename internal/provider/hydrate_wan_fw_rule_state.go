@@ -166,8 +166,26 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		)
 		diags = append(diags, diagstmp...)
 	} else {
-		// No device attributes present: keep this attribute null to avoid plan/result mismatch
-		deviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
+		// Check if plan/state has device_attributes as an object (even if empty)
+		// If so, preserve the object structure with null lists instead of returning null object
+		if !ruleInput.DeviceAttributes.IsNull() && !ruleInput.DeviceAttributes.IsUnknown() {
+			// Plan has device_attributes object, preserve structure with null lists
+			deviceAttributesObj, diagstmp = types.ObjectValue(
+				WanDeviceAttrAttrTypes,
+				map[string]attr.Value{
+					"category":     types.ListNull(types.StringType),
+					"type":         types.ListNull(types.StringType),
+					"model":        types.ListNull(types.StringType),
+					"manufacturer": types.ListNull(types.StringType),
+					"os":           types.ListNull(types.StringType),
+					"os_version":   types.ListNull(types.StringType),
+				},
+			)
+			diags = append(diags, diagstmp...)
+		} else {
+			// No device attributes in plan: keep null
+			deviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
+		}
 	}
 
 	tflog.Debug(ctx, "WAN_rule.read.currentRule.DeviceAttributes", map[string]interface{}{
@@ -387,7 +405,8 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 				)
 				diags = append(diags, diagstmp...)
 			} else {
-				// No device attributes present in exception: keep null
+				// Set to null when no device attributes data from API
+				// This prevents drift when device_attributes is not specified in config
 				exceptionDeviceAttributesObj = types.ObjectNull(WanDeviceAttrAttrTypes)
 			}
 

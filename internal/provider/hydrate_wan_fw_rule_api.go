@@ -1073,6 +1073,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 						}
 
 						customInput.PortRange = &inputPortRange
+						// API bug workaround: send empty port array when port_range is specified
+						if customInput.Port == nil {
+							customInput.Port = []cato_scalars.Port{}
+						}
 						tflog.Debug(ctx, "Set port_range field", map[string]interface{}{
 							"from": itemPortRange.From.ValueString(),
 							"to":   itemPortRange.To.ValueString(),
@@ -2278,6 +2282,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 								}
 
 								customInput.PortRange = &inputPortRange
+								// API bug workaround: send empty port array when port_range is specified
+								if customInput.Port == nil {
+									customInput.Port = []cato_scalars.Port{}
+								}
 							}
 
 							// append custom service

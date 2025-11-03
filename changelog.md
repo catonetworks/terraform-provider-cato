@@ -177,3 +177,8 @@
 ## 0.0.50 (2025-10-30)
 - Added updated version of the SDK include TLS Inpection and WAN Network rule operations
 - Added TLS Inspection Rule and section resources  
+
+## 0.0.51 (2025-13-03)
+- Added support for WanNetwork rule resource, section and bulk move resource
+- Fixed a few minor state management issues with IFW and WAN rules for device_attribues, custom_service, etc.
+
