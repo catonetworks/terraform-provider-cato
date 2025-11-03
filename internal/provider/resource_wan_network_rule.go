@@ -2507,6 +2507,9 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Description: "Bandwidth Priority ID",
 								Optional:    true,
 								Computed:    true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"name": schema.StringAttribute{
 								Description: "Bandwidth Priority Name",
@@ -2516,6 +2519,9 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									stringvalidator.ConflictsWith(path.Expressions{
 										path.MatchRelative().AtParent().AtName("id"),
 									}...),
+								},
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
 								},
 							},
 						},
@@ -2817,6 +2823,10 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 		Rule: input.update.Rule,
 	}
 
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_NW_input.update", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(updateInput),
+	})
+
 	updateRuleResponse, err := r.client.catov2.PolicyWanNetworkUpdateRule(ctx, updateInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -2825,6 +2835,10 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 		)
 		return
 	}
+
+	tflog.Warn(ctx, "TFLOG_WARN_WAN_NW_input.update.response", map[string]interface{}{
+		"OUTPUT": utils.InterfaceToJSONString(updateRuleResponse),
+	})
 
 	if updateRuleResponse.Policy.WanNetwork.UpdateRule.Status != "SUCCESS" {
 		for _, item := range updateRuleResponse.Policy.WanNetwork.UpdateRule.GetErrors() {
