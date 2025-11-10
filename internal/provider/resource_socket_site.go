@@ -101,10 +101,17 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"native_range": schema.SingleNestedAttribute{
 				Description: "Site lan native range settings",
 				Required:    true,
+				Validators: []validator.Object{
+					socketSiteNativeRangeValidator{},
+				},
 				Attributes: map[string]schema.Attribute{
 					"interface_index": schema.StringAttribute{
 						Description: "LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models",
+						Optional:    true,
 						Computed:    true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("LAN1", "LAN2", "INT_1", "INT_2", "INT_3", "INT_4", "INT_5", "INT_6", "INT_7", "INT_8", "INT_9", "INT_10", "INT_11", "INT_12"),
+						},
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
@@ -112,9 +119,6 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"interface_id": schema.StringAttribute{
 						Description: "LAN native range interface id",
 						Computed:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
 					},
 					"native_network_range": schema.StringAttribute{
 						Description: "Site native IP range (CIDR)",
@@ -124,17 +128,11 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Description: "ID of native range LAN interface (for additional network range update purposes)",
 						Optional:    true,
 						Computed:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
 					},
 					"native_network_range_id": schema.StringAttribute{
 						Description: "Site native IP range ID (for update purpose)",
 						Optional:    true,
 						Computed:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
 					},
 					"interface_name": schema.StringAttribute{
 						Description: "LAN native range interface name (e.g., 'LAN 01')",
@@ -152,9 +150,9 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"range_id": schema.StringAttribute{
 						Description: "Native range ID (base64 encoded identifier)",
 						Computed:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
+						// PlanModifiers: []planmodifier.String{
+						// 	stringplanmodifier.UseStateForUnknown(),
+						// },
 					},
 					"gateway": schema.StringAttribute{
 						Description: "Gateway IP address for the native range",
@@ -531,13 +529,63 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		)
 		return
 	}
-
-	// retrieving native-network range ID to update native range
 	siteID := socketSite.Site.AddSocketSite.GetSiteID()
 
-	// Lookup isDefault
-	// If not present return error indicating you can not reassign native range interface
-	// if present, create second interface, delete first interface, update second interface with original subnet
+	// Added section to handle isDefault where socket site is not able to define custom index for lan
+	// Logic to move the interface by creating a secondary lan interface disabling the default after
+	// retrieving native-network range ID to update native range
+	// Lookup default lan index by socket connection type
+	var defaultLanInterfaceIndex *string
+	if val, ok := interfaceByConnType[plan.ConnectionType.ValueString()]; ok {
+		defaultLanInterfaceIndex = &val
+	}
+
+	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
+		nativeRangeCheck := NativeRange{}
+		diags = plan.NativeRange.As(ctx, &nativeRangeCheck, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if defaultLanInterfaceIndex != nil && !nativeRangeCheck.InterfaceIndex.IsNull() && !nativeRangeCheck.InterfaceIndex.IsUnknown() &&
+			*defaultLanInterfaceIndex != nativeRangeCheck.InterfaceIndex.ValueString() {
+			// Move the default interface by creating a new interface, disabling the original
+			// then updating the new interface with the desired range
+			//cato_models.SocketInterfaceIDEnum
+			interfaceIndex := nativeRangeCheck.InterfaceIndex.ValueString()
+			interfaceName := nativeRangeCheck.InterfaceName.ValueString()
+			localIp := nativeRangeCheck.LocalIp.ValueString()
+			nativeNetworkRange := nativeRangeCheck.NativeNetworkRange.ValueString()
+			interfaceDestType := nativeRangeCheck.InterfaceDestType.ValueString()
+			lagMinLinks := nativeRangeCheck.LagMinLinks.ValueInt64()
+			translatedSubnet := nativeRangeCheck.TranslatedSubnet.ValueString()
+			tflog.Debug(ctx, "Create.nativeRangeCheck", map[string]interface{}{
+				"interfaceIndex":     utils.InterfaceToJSONString(interfaceIndex),
+				"interfaceName":      utils.InterfaceToJSONString(interfaceName),
+				"localIp":            utils.InterfaceToJSONString(localIp),
+				"nativeNetworkRange": utils.InterfaceToJSONString(nativeNetworkRange),
+				"interfaceDestType":  utils.InterfaceToJSONString(interfaceDestType),
+				"lagMinLinks":        utils.InterfaceToJSONString(lagMinLinks),
+				"translatedSubnet":   utils.InterfaceToJSONString(translatedSubnet),
+			})
+			isDefaultPresent, err := r.attemptReassignNativeRangeIndex(ctx, cato_models.SocketInterfaceIDEnum(interfaceIndex), interfaceName, localIp, nativeNetworkRange, siteID, interfaceDestType, lagMinLinks, translatedSubnet)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API SiteAddSocketSite error - create.attemptReassignNativeRangeIndex()",
+					err.Error(),
+				)
+				return
+			}
+			if isDefaultPresent == nil || !*isDefaultPresent {
+				resp.Diagnostics.AddError(
+					"Configuration Error",
+					"Invalid interface configuration, the api to support moving the lan interface index to '"+interfaceIndex+"' from the default index of '"+*defaultLanInterfaceIndex+"' for the socket connectionType of "+plan.ConnectionType.ValueString()+"' is not yet supported.  This API is being gradually rolled out.",
+				)
+				return
+			}
+		}
+	}
 
 	// Get native interface and subnet information
 	nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, string(input.ConnectionType), siteID, plan, interfaceByConnType)
@@ -945,16 +993,98 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(inputUpdateSocketInterface),
-	})
-	_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.Id.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeState.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API SiteUpdateSocketInterface error",
-			err.Error(),
-		)
-		return
+	// Added section to handle isDefault where socket site is not able to define custom index for lan
+	// if the interface identified as isDefault=true is different from the plan.NativeRange.InterfaceIndex
+	// Move the interface by creating a secondary lan interface disabling the default after
+	// retrieving native-network range ID to update native range
+	// Lookup default lan index by socket connection type
+	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
+		nativeRangeCheck := NativeRange{}
+		diags = plan.NativeRange.As(ctx, &nativeRangeCheck, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		// Check if interface_index changed from state to plan
+		interfaceIndexChanged := false
+		if !nativeRangeState.InterfaceIndex.Equal(nativeRangeCheck.InterfaceIndex) {
+			interfaceIndexChanged = true
+			tflog.Info(ctx, "Update: interface_index changed", map[string]interface{}{
+				"state_value": nativeRangeState.InterfaceIndex.ValueString(),
+				"plan_value":  nativeRangeCheck.InterfaceIndex.ValueString(),
+			})
+		}
+
+		// Only perform interface reassignment if interface_index actually changed
+		if interfaceIndexChanged {
+			// Interface index changed - need to reassign it via create/disable/update sequence
+			// Move the default interface by creating a new interface, disabling the original
+			// then updating the new interface with the desired range
+			//cato_models.SocketInterfaceIDEnum
+			interfaceIndex := nativeRangeCheck.InterfaceIndex.ValueString()
+			interfaceName := nativeRangeCheck.InterfaceName.ValueString()
+			if interfaceName == "" {
+				interfaceName = interfaceIndex
+			}
+			localIp := nativeRangeCheck.LocalIp.ValueString()
+			nativeNetworkRange := nativeRangeCheck.NativeNetworkRange.ValueString()
+			interfaceDestType := nativeRangeCheck.InterfaceDestType.ValueString()
+			lagMinLinks := nativeRangeCheck.LagMinLinks.ValueInt64()
+			translatedSubnet := nativeRangeCheck.TranslatedSubnet.ValueString()
+			tflog.Debug(ctx, "Update.nativeRangeCheck", map[string]interface{}{
+				"interfaceIndex":     utils.InterfaceToJSONString(interfaceIndex),
+				"interfaceName":      utils.InterfaceToJSONString(interfaceName),
+				"localIp":            utils.InterfaceToJSONString(localIp),
+				"nativeNetworkRange": utils.InterfaceToJSONString(nativeNetworkRange),
+				"interfaceDestType":  utils.InterfaceToJSONString(interfaceDestType),
+				"lagMinLinks":        utils.InterfaceToJSONString(lagMinLinks),
+				"translatedSubnet":   utils.InterfaceToJSONString(translatedSubnet),
+			})
+			isDefaultPresent, err := r.attemptReassignNativeRangeIndex(ctx, cato_models.SocketInterfaceIDEnum(interfaceIndex), interfaceName, localIp, nativeNetworkRange, plan.Id.ValueString(), interfaceDestType, lagMinLinks, translatedSubnet)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API SiteAddSocketSite error",
+					err.Error(),
+				)
+				return
+			}
+			if isDefaultPresent == nil || !*isDefaultPresent {
+				resp.Diagnostics.AddError(
+					"Configuration Error",
+					"Invalid interface configuration, the API to support moving the lan interface index to '"+interfaceIndex+"' from the previous index is not yet supported.  This API is being gradually rolled out.",
+				)
+				return
+			}
+			// Interface was reassigned - clear computed IDs from plan so they can be refreshed
+			var nativeRangePlan NativeRange
+			diags := plan.NativeRange.As(ctx, &nativeRangePlan, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			nativeRangePlan.InterfaceId = types.StringNull()
+			nativeRangePlan.NativeNetworkLanInterfaceId = types.StringNull()
+			nativeRangePlan.NativeNetworkRangeId = types.StringNull()
+			plan.NativeRange, diags = types.ObjectValueFrom(ctx, plan.NativeRange.AttributeTypes(ctx), nativeRangePlan)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		} else {
+			// interface_index didn't change, just update the interface normally
+			tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request (no index change)", map[string]interface{}{
+				"request": utils.InterfaceToJSONString(inputUpdateSocketInterface),
+			})
+			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.Id.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeState.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API SiteUpdateSocketInterface error",
+					err.Error(),
+				)
+				return
+			}
+		}
 	}
 
 	// if err != nil {
@@ -1144,7 +1274,7 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		return nil, err
 	}
 	isPresent := false
-	// Check for default interface to be present first
+	// Check for isDefault flag to be present first
 	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
 		curSiteId := cast.ToString(curIint.HelperFields["siteId"])
 		if curSiteId == siteID {
@@ -1163,20 +1293,14 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 			}
 			if isDefault {
 				isPresent = true
-				// if _, err := cast.ToIntE(curInterfaceId); err == nil {
-				// 	nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
-				// } else {
-				// 	nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
-				// }
 				nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
-				// nativeRangeObj.InterfaceIndex = types.StringValue(curInterfaceId)
 				nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
 				nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
 				nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
 			}
 		}
 	}
-	// If defaultInterface not found from flag, look for default
+	// If isDefault flag not found, look for default by index
 	// This is due to bug/fix getting gradually pushed out where this default flag may not be present
 	// and the following can be purged after this is rolled out
 	if !isPresent {
@@ -1226,7 +1350,7 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		}
 	}
 	if !isPresent {
-		return nil, fmt.Errorf("Site does not contain configuration for default LAN interface index %s for connection type %s", defaultInterfaceIndexByConnType, connType)
+		return nil, fmt.Errorf("Site does not contain configuration for default LAN interface index %s for connection type %s, please update this site configuratation once either in the cato management application or via API, and the correct interface should be marked as default resolving this issue.", defaultInterfaceIndexByConnType, connType)
 	}
 
 	// Retrieve default site range attributes
@@ -1317,62 +1441,169 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 	}, nil
 }
 
-// func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context, interfaceIndex cato_models.SocketInterfaceIDEnum, name string, localIp string, subnet SocketSite, siteID string, interfaceDestType string, lagMinLinks int64, translatedSubnet string) (*bool, error) {
-// 	// return isValid to return error if isDefault flag is not present on entityLookup interface query
-// 	isValid := false
-// 	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
-// 	zeroInt64 := int64(0)
-// 	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
-// 	tflog.Warn(ctx, "Read.EntityLookupInterfaceRangeResult.response", map[string]interface{}{
-// 		"response": utils.InterfaceToJSONString(queryInterfaceResult),
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// Lookup current interface index from what is returned in entityLookup
-// 	curInterfaceId := nil
-// 	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
-// 		curSubnet := cast.ToString(curIint.HelperFields["siteId"])
-// 		if _, ok := first.HelperFields["isDefault"]; ok && first.HelperFields["isDefault"] != nil {
-// 			isValid = true
-// 		}
-// 	}
-// 	if isValid {
-// 		// Create placeholder interface
-// 		tmpInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{}
-// 		tmpName := name + "_tmp"
-// 		tmpInputUpdateSocketInterface.Name = &tmpName
-// 		tmpInputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType("LAN")
-// 		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && lagMinLinks != 0 {
-// 			tmpLagConfig := cato_models.SocketInterfaceLagInput{
-// 				MinLinks: lagMinLinks,
-// 			}
-// 			tmpInputUpdateSocketInterface.Lag = &tmpLagConfig
-// 		}
-// 		tmpSocketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
-// 		tmpSocketInterfaceLanInput.LocalIP = "127.111.111.1"
-// 		tmpSocketInterfaceLanInput.Subnet = "127.111.111.0/24"
-// 		tmpSocketInterfaceLanInput.TranslatedSubnet = &translatedSubnet
-// 		tmpInputUpdateSocketInterface.Lan = &tmpSocketInterfaceLanInput
-// 		tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
-// 			"tmpRequest":        utils.InterfaceToJSONString(tmpInputUpdateSocketInterface),
-// 			"tmpInterfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
-// 		})
-// 		tmpSiteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceIndex, tmpInputUpdateSocketInterface, r.client.AccountId)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		tflog.Debug(ctx, "Create.tmpSiteUpdateSocketInterface.response", map[string]interface{}{
-// 			"response": utils.InterfaceToJSONString(tmpSiteUpdateSocketInterfaceResponse),
-// 		})
-// 		// Disable original native range interface
-// 		querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
-// 		tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
-// 			"response": utils.InterfaceToJSONString(querySiteResult),
-// 		})
-// 	}
-// 	return &isValid, err
-// }
+func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context, interfaceIndex cato_models.SocketInterfaceIDEnum, name string, localIp string, subnet string, siteID string, interfaceDestType string, lagMinLinks int64, translatedSubnet string) (*bool, error) {
+	// Attempt to create a lan interface on non default index
+	// checking first for the isDefault flag to be present, if not present return false for isDefaultPresent
+	// return isValid or error if isDefault flag is not present on entityLookup interface query
+	isDefaultPresent := false
+	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
+	zeroInt64 := int64(0)
+	tflog.Warn(ctx, "attemptReassignNativeRangeIndex.EntityLookupInterfaceRange", map[string]interface{}{
+		"siteEntity": utils.InterfaceToJSONString(siteEntity),
+	})
+	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+	tflog.Warn(ctx, "attemptReassignNativeRangeIndex.EntityLookupInterfaceRange.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(queryInterfaceResult),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Lookup current interface index from what is returned in entityLookup
+	// Check for an interface already present on that desired index
+	// If present update that interface with the native range config from the config
+	// if there is no interface there, attempt to create and disable the default
+	// curInterfaceId := nil
+	var curInterfaceIndex *string
+	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+		tflog.Warn(ctx, "Read.EntityLookupInterfaceRangeResult.curIint.interator", map[string]interface{}{
+			"interfaceIndex":    utils.InterfaceToJSONString(interfaceIndex),
+			"curInterfaceId":    utils.InterfaceToJSONString(curIint.Entity.ID),
+			"curInterfaceIndex": utils.InterfaceToJSONString(curIint.HelperFields["interfaceId"]),
+		})
+		if isDefaultVal, ok := curIint.HelperFields["isDefault"]; ok && isDefaultVal != nil {
+			isDefault := false
+			if b, err := cast.ToBoolE(isDefaultVal); err == nil {
+				isDefault = b
+			}
+			if isDefault {
+				curInterfaceIndexStr := cast.ToString(curIint.HelperFields["interfaceId"])
+				if idxInt, err := cast.ToIntE(curInterfaceIndexStr); err == nil {
+					curInterfaceIndexStr = fmt.Sprintf("INT_%d", idxInt)
+				}
+				curInterfaceIndex = &curInterfaceIndexStr
+				tflog.Warn(ctx, "Read.EntityLookupInterfaceRangeResult.curIint.isDefault", map[string]interface{}{
+					"isDefault":         utils.InterfaceToJSONString(isDefault),
+					"interfaceIndex":    utils.InterfaceToJSONString(interfaceIndex),
+					"curInterfaceId":    utils.InterfaceToJSONString(curIint.Entity.ID),
+					"curInterfaceIndex": utils.InterfaceToJSONString(curInterfaceIndex),
+				})
+				isDefaultPresent = true
+			}
+		}
+	}
+	if isDefaultPresent {
+		// Create placeholder interface
+		tmpInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{}
+		tmpName := name + "_tmp"
+		tmpInputUpdateSocketInterface.Name = &tmpName
+		tmpInputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType("LAN")
+		tmpSocketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
+		tmpSocketInterfaceLanInput.LocalIP = "127.111.111.1"
+		tmpSocketInterfaceLanInput.Subnet = "127.111.111.0/24"
+		if translatedSubnet != "" {
+			tmpSocketInterfaceLanInput.TranslatedSubnet = &translatedSubnet
+		}
+		tmpInputUpdateSocketInterface.Lan = &tmpSocketInterfaceLanInput
+		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.SiteUpdateSocketInterface.tmp.request", map[string]interface{}{
+			"tmpRequest":        utils.InterfaceToJSONString(tmpInputUpdateSocketInterface),
+			"tmpInterfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
+		})
+		tmpSiteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceIndex, tmpInputUpdateSocketInterface, r.client.AccountId)
+		if err != nil {
+			return nil, err
+		}
+		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.tmpSiteUpdateSocketInterface.tmp.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(tmpSiteUpdateSocketInterfaceResponse),
+		})
+
+		// Disable original native range interface
+		// First check to see if exisitng default interface is configured as LAG, disable all members before disabling the interface directly
+		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && lagMinLinks != 0 {
+			// Get the site's accountSnapshot to find the LAG master
+			siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
+			tflog.Debug(ctx, "Create.AccountSnapshot.response looking for LAN_LAG_MEMBERs", map[string]interface{}{
+				"response": utils.InterfaceToJSONString(siteAccountSnapshotApiData),
+			})
+			for _, site := range siteAccountSnapshotApiData.AccountSnapshot.GetSites() {
+				siteSiteID := site.GetID()
+				if siteSiteID != nil && *siteSiteID == siteID {
+					for _, iface := range site.InfoSiteSnapshot.Interfaces {
+						if iface.DestType != nil && *iface.DestType == "LAN_LAG_MEMBER" {
+							tflog.Debug(ctx, "Create.AccountSnapshot.response found LAN_LAG_MEMBER", map[string]interface{}{
+								"response": utils.InterfaceToJSONString(iface),
+							})
+							curInterfaceId := iface.ID
+							if _, err := cast.ToIntE(curInterfaceId); err == nil {
+								curInterfaceId = fmt.Sprintf("INT_%v", curInterfaceId)
+							}
+							input := cato_models.UpdateSocketInterfaceInput{
+								Name:     &curInterfaceId,
+								DestType: "INTERFACE_DISABLED",
+							}
+
+							tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request LAN_LAG_MEMBER", map[string]interface{}{
+								"request": utils.InterfaceToJSONString(input),
+							})
+							_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, cato_models.SocketInterfaceIDEnum(curInterfaceId), input, r.client.AccountId)
+							if err != nil {
+								return nil, err
+							}
+						}
+					}
+				}
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		disabledInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{
+			Name:     curInterfaceIndex,
+			DestType: "INTERFACE_DISABLED",
+		}
+		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.DisableDefaultInterface.request", map[string]interface{}{
+			"disabledInputUpdateSocketInterface": utils.InterfaceToJSONString(disabledInputUpdateSocketInterface),
+		})
+		siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, cato_models.SocketInterfaceIDEnum(*curInterfaceIndex), disabledInputUpdateSocketInterface, r.client.AccountId)
+		if err != nil {
+			return nil, err
+		}
+		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.DisableDefaultInterface.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
+		})
+
+		// Update new lan interface with the correct native range subnet
+		curInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{}
+		curInputUpdateSocketInterface.Name = &name
+		curInputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
+		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && lagMinLinks != 0 {
+			tmpLagConfig := cato_models.SocketInterfaceLagInput{
+				MinLinks: lagMinLinks,
+			}
+			curInputUpdateSocketInterface.Lag = &tmpLagConfig
+		}
+		curSocketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
+		curSocketInterfaceLanInput.LocalIP = localIp
+		curSocketInterfaceLanInput.Subnet = subnet
+		if translatedSubnet != "" {
+			curSocketInterfaceLanInput.TranslatedSubnet = &translatedSubnet
+		}
+		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.SiteUpdateSocketInterface.current.request", map[string]interface{}{
+			"tmpRequest":        utils.InterfaceToJSONString(curInputUpdateSocketInterface),
+			"tmpInterfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
+		})
+		curInputUpdateSocketInterface.Lan = &curSocketInterfaceLanInput
+		curSiteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceIndex, curInputUpdateSocketInterface, r.client.AccountId)
+		if err != nil {
+			return nil, err
+		}
+		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.tmpSiteUpdateSocketInterface.current.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(curSiteUpdateSocketInterfaceResponse),
+		})
+	}
+	return &isDefaultPresent, err
+}
 
 // hydrateSocketSiteState populates the SocketSite state with data from API responses
 func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state SocketSite, siteID string) (SocketSite, bool, error) {
@@ -1578,7 +1809,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 						"interface_index":                 nativeRangeObj.InterfaceIndex,
 						"interface_id":                    nativeRangeObj.InterfaceId,
 						"interface_name":                  nativeRangeObj.InterfaceName,
-						"native_network_lan_interface_id": types.StringValue(resultNativeNetworkRangeId),
+						"native_network_lan_interface_id": nativeRangeObj.InterfaceId,
 						"native_network_range":            types.StringValue(subnet),
 						"native_network_range_id":         types.StringValue(resultNativeNetworkRangeId),
 						"range_name": func() attr.Value {
@@ -1719,4 +1950,58 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 		}
 	}
 	return state, true, nil
+}
+
+// socketSiteNativeRangeValidator validates that interface_index can only be specified
+// for certain connection types
+type socketSiteNativeRangeValidator struct{}
+
+func (v socketSiteNativeRangeValidator) Description(ctx context.Context) string {
+	return "interface_index can only be specified for SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700"
+}
+
+func (v socketSiteNativeRangeValidator) MarkdownDescription(ctx context.Context) string {
+	return "interface_index can only be specified for SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700"
+}
+
+func (v socketSiteNativeRangeValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
+	// Get the connection_type value from the config
+	var connectionType types.String
+	diags := req.Config.GetAttribute(ctx, path.Root("connection_type"), &connectionType)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get the native_range object
+	var nativeRange types.Object
+	diags = req.Config.GetAttribute(ctx, path.Root("native_range"), &nativeRange)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() || nativeRange.IsNull() {
+		return
+	}
+
+	// Get interface_index from native_range
+	var interfaceIndex types.String
+	diags = req.Config.GetAttribute(ctx, path.Root("native_range").AtName("interface_index"), &interfaceIndex)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() || interfaceIndex.IsNull() || interfaceIndex.IsUnknown() {
+		return
+	}
+
+	// Check if connection_type allows interface_index to be specified
+	allowedTypes := map[string]bool{
+		"SOCKET_X1500":     true,
+		"SOCKET_X1600":     true,
+		"SOCKET_X1600_LTE": true,
+		"SOCKET_X1700":     true,
+	}
+
+	if !allowedTypes[connectionType.ValueString()] {
+		resp.Diagnostics.AddAttributeError(
+			req.Path.AtName("interface_index"),
+			"Invalid Configuration",
+			fmt.Sprintf("interface_index can only be specified when connection_type is one of: SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1700. Current connection_type: %s", connectionType.ValueString()),
+		)
+	}
 }

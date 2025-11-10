@@ -111,6 +111,7 @@ Optional:
 - `dhcp_settings` (Attributes) Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type) (see [below for nested schema](#nestedatt--native_range--dhcp_settings))
 - `gateway` (String) Gateway IP address for the native range
 - `interface_dest_type` (String) Socket interface destination type for the native interface
+- `interface_index` (String) LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models
 - `interface_name` (String) LAN native range interface name (e.g., 'LAN 01')
 - `lag_min_links` (Number) Number of interfaces to include in the link aggregation, only relevant for LAN_LAG_MASTER and LAN_LAG_MASTER_AND_VRRP interface destination types
 - `mdns_reflector` (Boolean) Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.
@@ -123,7 +124,6 @@ Optional:
 Read-Only:
 
 - `interface_id` (String) LAN native range interface id
-- `interface_index` (String) LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models
 - `range_id` (String) Native range ID (base64 encoded identifier)
 - `range_name` (String) Native range name (typically 'Native Range')
 
