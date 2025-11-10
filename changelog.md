@@ -182,6 +182,6 @@
 - Added support for WanNetwork rule resource, section and bulk move resource
 - Fixed a few minor state management issues with IFW and WAN rules for device_attribues, custom_service, etc.
 
-## 0.0.52 (2025-11-10)
+## 0.0.53 (2025-11-10)
 - Update socket_site resource to support custom default lan interface index for the native range
-
+- Added all enum values to dest type for socket site resource
