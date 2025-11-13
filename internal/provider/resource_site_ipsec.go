@@ -6,12 +6,16 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -64,6 +68,13 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"native_network_range_id": schema.StringAttribute{
 				Description: "Site native IP range ID (for update purpose)",
 				Optional:    true,
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"interface_id": schema.StringAttribute{
+				Description: "IPSec interface ID",
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -267,6 +278,112 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 							},
 						},
 					},
+					"connection_mode": schema.StringAttribute{
+						Description: "Connection mode for IPSec tunnel. Valid values: RESPONDER_ONLY, BIDIRECTIONAL",
+						Optional:    true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("RESPONDER_ONLY", "BIDIRECTIONAL"),
+						},
+					},
+					"identification_type": schema.StringAttribute{
+						Description: "Identification type for IPSec. Only applicable when connection_mode is RESPONDER_ONLY. Valid values: IPV4, FQDN, EMAIL, KEY_ID",
+						Optional:    true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("IPV4", "FQDN", "EMAIL", "KEY_ID"),
+						},
+						PlanModifiers: []planmodifier.String{
+							planmodifiers.IdentificationTypeValidator(),
+						},
+					},
+					"init_message": schema.SingleNestedAttribute{
+						Description: "IKE initialization message configuration",
+						Optional:    true,
+						Attributes: map[string]schema.Attribute{
+							"cipher": schema.StringAttribute{
+								Description: "Cipher algorithm. Valid values: NONE, AUTOMATIC, AES_CBC_128, AES_CBC_256, AES_GCM_128, AES_GCM_256, DES3_CBC",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "AES_CBC_128", "AES_CBC_256", "AES_GCM_128", "AES_GCM_256", "DES3_CBC"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+							"dh_group": schema.StringAttribute{
+								Description: "Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, DH_20_ECP384, DH_21_ECP521",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "DH_2_MODP1024", "DH_5_MODP1536", "DH_14_MODP2048", "DH_15_MODP3072", "DH_16_MODP4096", "DH_19_ECP256", "DH_20_ECP384", "DH_21_ECP521"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+							"integrity": schema.StringAttribute{
+								Description: "Integrity algorithm. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+							"prf": schema.StringAttribute{
+								Description: "Pseudo-Random Function. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+						},
+					},
+					"auth_message": schema.SingleNestedAttribute{
+						Description: "IKE authentication message configuration",
+						Optional:    true,
+						Attributes: map[string]schema.Attribute{
+							"cipher": schema.StringAttribute{
+								Description: "Cipher algorithm. Valid values: NONE, AUTOMATIC, AES_CBC_128, AES_CBC_256, AES_GCM_128, AES_GCM_256, DES3_CBC",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "AES_CBC_128", "AES_CBC_256", "AES_GCM_128", "AES_GCM_256", "DES3_CBC"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+							"dh_group": schema.StringAttribute{
+								Description: "Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, DH_20_ECP384, DH_21_ECP521",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "DH_2_MODP1024", "DH_5_MODP1536", "DH_14_MODP2048", "DH_15_MODP3072", "DH_16_MODP4096", "DH_19_ECP256", "DH_20_ECP384", "DH_21_ECP521"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+							"integrity": schema.StringAttribute{
+								Description: "Integrity algorithm. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+							"prf": schema.StringAttribute{
+								Description: "Pseudo-Random Function. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512",
+								Optional:    true,
+								Computed:    true,
+								Validators: []validator.String{
+									stringvalidator.OneOf("NONE", "AUTOMATIC", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"),
+								},
+								Default: stringdefault.StaticString("AUTOMATIC"),
+							},
+						},
+					},
+					"network_ranges": schema.ListAttribute{
+						Description: "List of network ranges (e.g., ['servers:192.168.11.0/24', 'desktops:192.169.11.0/24'])",
+						Optional:    true,
+						ElementType: types.StringType,
+					},
 				},
 			},
 		},
@@ -295,33 +412,15 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	// setting input
-	input := cato_models.AddIpsecIkeV2SiteInput{}
-	input_ipsec := &cato_models.AddIpsecIkeV2SiteTunnelsInput{}
-	varSiteId := ""
-
-	// setting input site location
-	if !plan.SiteLocation.IsNull() {
-		input.SiteLocation = &cato_models.AddSiteLocationInput{}
-		siteLocationInput := AddIpsecSiteLocationInput{}
-		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		input.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
-		input.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
-		input.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueString()
-		input.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
-		input.SiteLocation.Timezone = siteLocationInput.Timezone.ValueString()
+	// Hydrate API input for site creation
+	input, diags := hydrateAddIpsecIkeV2Site(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	// setting input other attributes
-	input.Name = plan.Name.ValueString()
-	input.SiteType = (cato_models.SiteType)(plan.SiteType.ValueString())
-	input.NativeNetworkRange = plan.NativeNetworkRange.ValueString()
-	input.Description = plan.Description.ValueStringPointer()
-
 	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2Site.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input_ipsec),
+		"request": utils.InterfaceToJSONString(input),
 	})
 	ipsecSite, err := r.client.catov2.SiteAddIpsecIkeV2Site(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2Site.response", map[string]interface{}{
@@ -363,110 +462,41 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	if !plan.IPSec.IsNull() {
-		planIPSec := AddIpsecIkeV2SiteTunnelsInput{}
-		diags = plan.IPSec.As(ctx, &planIPSec, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
+	siteID := ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()
 
-		// setting primary
-		if !planIPSec.Primary.IsNull() {
-			input_ipsec.Primary = &cato_models.AddIpsecIkeV2TunnelsInput{}
-			primaryInput := &AddIpsecIkeV2TunnelsInput{}
-			diags = planIPSec.Primary.As(ctx, &primaryInput, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-
-			input_ipsec.Primary.DestinationType = (*cato_models.DestinationType)(primaryInput.DestinationType.ValueStringPointer())
-			input_ipsec.Primary.PopLocationID = primaryInput.PopLocationID.ValueStringPointer()
-			input_ipsec.Primary.PublicCatoIPID = primaryInput.PublicCatoIPID.ValueStringPointer()
-
-			// setting tunnels
-			if !primaryInput.Tunnels.IsNull() {
-				elementsTunnels := make([]types.Object, 0, len(primaryInput.Tunnels.Elements()))
-				diags = primaryInput.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
-				resp.Diagnostics.Append(diags...)
-
-				var itemTunnels AddIpsecIkeV2TunnelInput
-				for _, item := range elementsTunnels {
-					diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
-					resp.Diagnostics.Append(diags...)
-
-					// setting lastMileBw
-					var itemTunnelLastMileBw LastMileBwInput
-					diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
-					resp.Diagnostics.Append(diags...)
-
-					// append tunnels
-					input_ipsec.Primary.Tunnels = append(input_ipsec.Primary.Tunnels, &cato_models.AddIpsecIkeV2TunnelInput{
-						LastMileBw: &cato_models.LastMileBwInput{
-							Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
-							Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
-						},
-						PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
-						PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
-						Psk:           itemTunnels.Psk.ValueString(),
-						PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
-					})
-				}
-			}
-
-			// setting secondary
-			if !planIPSec.Secondary.IsNull() {
-				input_ipsec.Secondary = &cato_models.AddIpsecIkeV2TunnelsInput{}
-				secondaryInput := &AddIpsecIkeV2TunnelsInput{}
-				diags = planIPSec.Secondary.As(ctx, &secondaryInput, basetypes.ObjectAsOptions{})
-				resp.Diagnostics.Append(diags...)
-
-				input_ipsec.Secondary.DestinationType = (*cato_models.DestinationType)(secondaryInput.DestinationType.ValueStringPointer())
-				input_ipsec.Secondary.PopLocationID = secondaryInput.PopLocationID.ValueStringPointer()
-				input_ipsec.Secondary.PublicCatoIPID = secondaryInput.PublicCatoIPID.ValueStringPointer()
-
-				// setting tunnels
-				if !secondaryInput.Tunnels.IsNull() {
-					elementsTunnels := make([]types.Object, 0, len(secondaryInput.Tunnels.Elements()))
-					diags = secondaryInput.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
-					resp.Diagnostics.Append(diags...)
-
-					var itemTunnels AddIpsecIkeV2TunnelInput
-					for _, item := range elementsTunnels {
-						diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
-						resp.Diagnostics.Append(diags...)
-
-						// setting lastMileBw
-						var itemTunnelLastMileBw LastMileBwInput
-						diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
-						resp.Diagnostics.Append(diags...)
-
-						// append tunnels
-						input_ipsec.Secondary.Tunnels = append(input_ipsec.Secondary.Tunnels, &cato_models.AddIpsecIkeV2TunnelInput{
-							LastMileBw: &cato_models.LastMileBwInput{
-								Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
-								Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
-							},
-							PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
-							PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
-							Psk:           itemTunnels.Psk.ValueString(),
-							PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
-						})
-					}
-				}
-
-			}
-		}
-
-		diags = plan.IPSec.As(ctx, &planIPSec, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-	}
-
+	// Hydrate API input for IPSec general details
+	inputIpsecGeneralDetails, diags := hydrateUpdateIpsecIkeV2SiteGeneralDetails(ctx, plan)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	varSiteId = ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()
+	tflog.Debug(ctx, "Create.SiteUpdateIpsecIkeV2SiteGeneralDetails.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputIpsecGeneralDetails),
+	})
+	ipsecGeneralDetailsResponse, err := r.client.catov2.SiteUpdateIpsecIkeV2SiteGeneralDetails(ctx, siteID, inputIpsecGeneralDetails, r.client.AccountId)
+	tflog.Debug(ctx, "Create.SiteUpdateIpsecIkeV2SiteGeneralDetails.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(ipsecGeneralDetailsResponse),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API SiteUpdateIpsecIkeV2SiteGeneralDetails error",
+			err.Error(),
+		)
+		return
+	}
+
+	// Hydrate API input for tunnels
+	tunnelInputs, diags := hydrateAddIpsecIkeV2SiteTunnels(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(*input_ipsec),
+		"request": utils.InterfaceToJSONString(tunnelInputs.add),
 	})
-	tunnelData, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, varSiteId, *input_ipsec, r.client.AccountId)
+	tunnelData, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(tunnelData),
 	})
@@ -490,31 +520,40 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		tunnelsSecondaryData = tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
 	}
 
-	diags = resp.State.Set(ctx, plan)
+	// Hydrate the state with API data to ensure consistency
+	hydratedState, _, hydrateErr := r.hydrateIpsecSiteState(ctx, plan, siteID)
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating IPSec site state",
+			hydrateErr.Error(),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// supports multiple primary ipsec tunnels
-	if input_ipsec.Primary != nil {
+	if tunnelInputs.add.Primary != nil {
 		for x := 0; x < len(tunnelsPrimaryData); x++ {
 			resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id"), tunnelsPrimaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
 		}
 	}
 
 	// supports multiple secondary ipsec tunnels
-	if input_ipsec.Secondary != nil {
+	if tunnelInputs.add.Secondary != nil {
 		for x := 0; x < len(tunnelsSecondaryData); x++ {
 			resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("secondary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id"), tunnelsSecondaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
 		}
 	}
 
-	// overiding state with socket site id
-	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), types.StringValue(ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID()))
-	// overiding state with native network range id
+	// Override computed fields that hydrate might not get from AccountSnapshot
+	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), types.StringValue(siteID))
 	resp.State.SetAttribute(ctx, path.Empty().AtName("native_network_range_id"), networkRangeEntity.ID)
-	resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("site_id"), varSiteId)
+	resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("site_id"), siteID)
 }
 
 func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -526,38 +565,24 @@ func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	// check if site exist, else remove resource
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
-	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(querySiteResult),
-	})
+	// Hydrate the state with API data
+	hydratedState, siteExists, err := r.hydrateIpsecSiteState(ctx, state, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API error",
+			"Error hydrating IPSec site state",
 			err.Error(),
 		)
 		return
 	}
 
-	// read in the ipsec site entries
-	for _, v := range querySiteResult.EntityLookup.Items {
-		if v.Entity.ID == state.ID.ValueString() {
-			resp.State.SetAttribute(
-				ctx,
-				path.Root("id"),
-				v.Entity.ID,
-			)
-		}
-	}
-
-	// check if site exist before refreshing
-	if len(querySiteResult.EntityLookup.GetItems()) != 1 {
+	// Check if site was found, else remove resource
+	if !siteExists {
 		tflog.Warn(ctx, "site not found, site resource removed")
 		resp.State.RemoveResource(ctx)
 		return
 	}
 
-	diags = resp.State.Set(ctx, &state)
+	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -577,8 +602,6 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 	inputSiteGeneral := cato_models.UpdateSiteGeneralDetailsInput{
 		SiteLocation: &cato_models.UpdateSiteLocationInput{},
 	}
-
-	input_ipsec := cato_models.UpdateIpsecIkeV2SiteTunnelsInput{}
 
 	inputUpdateNetworkRange := cato_models.UpdateNetworkRangeInput{}
 
@@ -630,96 +653,63 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	// Hydrate API input for IPSec general details
+	inputIpsecGeneralDetails, diags := hydrateUpdateIpsecIkeV2SiteGeneralDetails(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get site ID from plan
 	planIPSec := AddIpsecIkeV2SiteTunnelsInput{}
 	diags = plan.IPSec.As(ctx, &planIPSec, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
-	varSiteId := planIPSec.SiteId.ValueString()
+	siteID := planIPSec.SiteId.ValueString()
+
+	tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteGeneralDetails.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputIpsecGeneralDetails),
+	})
+	ipsecGeneralDetailsResponse, err := r.client.catov2.SiteUpdateIpsecIkeV2SiteGeneralDetails(ctx, siteID, inputIpsecGeneralDetails, r.client.AccountId)
+	tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteGeneralDetails.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(ipsecGeneralDetailsResponse),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API SiteUpdateIpsecIkeV2SiteGeneralDetails error",
+			err.Error(),
+		)
+		return
+	}
+
+	// Hydrate the state with API data to ensure consistency
+	hydratedState, siteExists, hydrateErr := r.hydrateIpsecSiteState(ctx, plan, plan.ID.ValueString())
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating IPSec site state",
+			hydrateErr.Error(),
+		)
+		return
+	}
+
+	// Check if site was found, else remove resource
+	if !siteExists {
+		tflog.Warn(ctx, "site not found after update, site resource removed")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	// Hydrate API input for tunnels
+	tunnelInputs, diags := hydrateAddIpsecIkeV2SiteTunnels(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	if !plan.IPSec.IsNull() {
-		if !planIPSec.Primary.IsNull() {
-			input_ipsec.Primary = &cato_models.UpdateIpsecIkeV2TunnelsInput{}
-			planIPSecPrimary := AddIpsecIkeV2TunnelsInput{}
-			diags = planIPSec.Primary.As(ctx, &planIPSecPrimary, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-			input_ipsec.Primary.DestinationType = (*cato_models.DestinationType)(planIPSecPrimary.DestinationType.ValueStringPointer())
-			input_ipsec.Primary.PopLocationID = planIPSecPrimary.PopLocationID.ValueStringPointer()
-			input_ipsec.Primary.PublicCatoIPID = planIPSecPrimary.PublicCatoIPID.ValueStringPointer()
-
-			if !planIPSecPrimary.Tunnels.IsNull() {
-				elementsTunnels := make([]types.Object, 0, len(planIPSecPrimary.Tunnels.Elements()))
-				diags = planIPSecPrimary.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
-				resp.Diagnostics.Append(diags...)
-
-				var itemTunnels AddIpsecIkeV2TunnelInput
-				for _, item := range elementsTunnels {
-					diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
-					resp.Diagnostics.Append(diags...)
-
-					// setting lastMileBw
-					var itemTunnelLastMileBw LastMileBwInput
-					diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
-					resp.Diagnostics.Append(diags...)
-
-					// append tunnels
-					input_ipsec.Primary.Tunnels = append(input_ipsec.Primary.Tunnels, &cato_models.UpdateIpsecIkeV2TunnelInput{
-						LastMileBw: &cato_models.LastMileBwInput{
-							Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
-							Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
-						},
-						PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
-						PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
-						Psk:           itemTunnels.Psk.ValueStringPointer(),
-						PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
-						TunnelID:      cato_models.IPSecV2InterfaceID(itemTunnels.TunnelID.ValueString()),
-					})
-				}
-			}
-		}
-
-		if !planIPSec.Secondary.IsNull() {
-			input_ipsec.Secondary = &cato_models.UpdateIpsecIkeV2TunnelsInput{}
-			planIPSecSecondary := AddIpsecIkeV2TunnelsInput{}
-			diags = planIPSec.Secondary.As(ctx, &planIPSecSecondary, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-			input_ipsec.Secondary.DestinationType = (*cato_models.DestinationType)(planIPSecSecondary.DestinationType.ValueStringPointer())
-			input_ipsec.Secondary.PopLocationID = planIPSecSecondary.PopLocationID.ValueStringPointer()
-			input_ipsec.Secondary.PublicCatoIPID = planIPSecSecondary.PublicCatoIPID.ValueStringPointer()
-
-			if !planIPSecSecondary.Tunnels.IsNull() {
-				elementsTunnels := make([]types.Object, 0, len(planIPSecSecondary.Tunnels.Elements()))
-				diags = planIPSecSecondary.Tunnels.ElementsAs(ctx, &elementsTunnels, false)
-				resp.Diagnostics.Append(diags...)
-
-				var itemTunnels AddIpsecIkeV2TunnelInput
-				for _, item := range elementsTunnels {
-					diags = item.As(ctx, &itemTunnels, basetypes.ObjectAsOptions{})
-					resp.Diagnostics.Append(diags...)
-
-					// setting lastMileBw
-					var itemTunnelLastMileBw LastMileBwInput
-					diags = itemTunnels.LastMileBw.As(ctx, &itemTunnelLastMileBw, basetypes.ObjectAsOptions{})
-					resp.Diagnostics.Append(diags...)
-
-					// append tunnels
-					input_ipsec.Secondary.Tunnels = append(input_ipsec.Secondary.Tunnels, &cato_models.UpdateIpsecIkeV2TunnelInput{
-						LastMileBw: &cato_models.LastMileBwInput{
-							Downstream: itemTunnelLastMileBw.Downstream.ValueInt64Pointer(),
-							Upstream:   itemTunnelLastMileBw.Upstream.ValueInt64Pointer(),
-						},
-						PrivateCatoIP: itemTunnels.PrivateCatoIP.ValueStringPointer(),
-						PrivateSiteIP: itemTunnels.PrivateSiteIP.ValueStringPointer(),
-						Psk:           itemTunnels.Psk.ValueStringPointer(),
-						PublicSiteIP:  itemTunnels.PublicSiteIP.ValueStringPointer(),
-						TunnelID:      cato_models.IPSecV2InterfaceID(itemTunnels.TunnelID.ValueString()),
-					})
-				}
-			}
-		}
-
 		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.request", map[string]interface{}{
-			"request": utils.InterfaceToJSONString(input_ipsec),
+			"request": utils.InterfaceToJSONString(tunnelInputs.update),
 		})
-		tunnelData, err_ipsec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, varSiteId, input_ipsec, r.client.AccountId)
+		tunnelData, err_ipsec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.update, r.client.AccountId)
 		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(tunnelData),
 		})
@@ -745,10 +735,9 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 				resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id"), tunnelsSecondaryData[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
 			}
 		}
-
 	}
 
-	diags = resp.State.Set(ctx, plan)
+	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

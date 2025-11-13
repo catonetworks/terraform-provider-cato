@@ -99,6 +99,7 @@ resource "cato_ipsec_site" "test-dev-site" {
 ### Read-Only
 
 - `id` (String) Identifier for Ipsec Site
+- `interface_id` (String) IPSec interface ID
 
 <a id="nestedatt--ipsec"></a>
 ### Nested Schema for `ipsec`
@@ -109,6 +110,11 @@ Required:
 
 Optional:
 
+- `auth_message` (Attributes) IKE authentication message configuration (see [below for nested schema](#nestedatt--ipsec--auth_message))
+- `connection_mode` (String) Connection mode for IPSec tunnel. Valid values: RESPONDER_ONLY, BIDIRECTIONAL
+- `identification_type` (String) Identification type for IPSec. Only applicable when connection_mode is RESPONDER_ONLY. Valid values: IPV4, FQDN, EMAIL, KEY_ID
+- `init_message` (Attributes) IKE initialization message configuration (see [below for nested schema](#nestedatt--ipsec--init_message))
+- `network_ranges` (List of String) List of network ranges (e.g., ['servers:192.168.11.0/24', 'desktops:192.169.11.0/24'])
 - `secondary` (Attributes) secondary (see [below for nested schema](#nestedatt--ipsec--secondary))
 
 Read-Only:
@@ -157,6 +163,28 @@ Optional:
 - `upstream_mbps_precision` (Number) upstreamMbpsPrecision
 
 
+
+
+<a id="nestedatt--ipsec--auth_message"></a>
+### Nested Schema for `ipsec.auth_message`
+
+Optional:
+
+- `cipher` (String) Cipher algorithm. Valid values: NONE, AUTOMATIC, AES_CBC_128, AES_CBC_256, AES_GCM_128, AES_GCM_256, DES3_CBC
+- `dh_group` (String) Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, DH_20_ECP384, DH_21_ECP521
+- `integrity` (String) Integrity algorithm. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512
+- `prf` (String) Pseudo-Random Function. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512
+
+
+<a id="nestedatt--ipsec--init_message"></a>
+### Nested Schema for `ipsec.init_message`
+
+Optional:
+
+- `cipher` (String) Cipher algorithm. Valid values: NONE, AUTOMATIC, AES_CBC_128, AES_CBC_256, AES_GCM_128, AES_GCM_256, DES3_CBC
+- `dh_group` (String) Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, DH_20_ECP384, DH_21_ECP521
+- `integrity` (String) Integrity algorithm. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512
+- `prf` (String) Pseudo-Random Function. Valid values: NONE, AUTOMATIC, MD5, SHA1, SHA256, SHA384, SHA512
 
 
 <a id="nestedatt--ipsec--secondary"></a>
