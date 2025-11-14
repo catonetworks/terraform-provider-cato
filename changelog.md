@@ -185,3 +185,9 @@
 ## 0.0.53 (2025-11-10)
 - Update socket_site resource to support custom default lan interface index for the native range
 - Added all enum values to dest type for socket site resource
+
+## 0.0.54 (2025-11-13)
+- Updated ipsec resource to support init_message, auth_message and network_ranges as well as added interface_id as native output for the resource. 
+
+## 0.0.55 (2025-11-14)
+- Added guide for managing site licenses in bulk from csv
