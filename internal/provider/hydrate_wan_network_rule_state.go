@@ -266,15 +266,10 @@ func parseWanNetworkCustomService(ctx context.Context, item *cato_models.CustomS
 		"protocol":   types.StringNull(),
 	}
 
-	if len(item.Port) > 0 {
-		var ports []attr.Value
-		for _, p := range item.Port {
-			ports = append(ports, types.StringValue(fmt.Sprintf("%v", p)))
-		}
-		attrs["port"], _ = types.ListValue(types.StringType, ports)
-	}
-
-	if item.PortRange != nil {
+	// Check if port_range is set first
+	hasPortRange := item.PortRange != nil
+	
+	if hasPortRange {
 		attrs["port_range"], _ = types.ObjectValue(
 			FromToAttrTypes,
 			map[string]attr.Value{
@@ -282,6 +277,15 @@ func parseWanNetworkCustomService(ctx context.Context, item *cato_models.CustomS
 				"to":   types.StringValue(fmt.Sprintf("%v", item.PortRange.To)),
 			},
 		)
+		// When port_range is set, port must remain null
+		attrs["port"] = types.ListNull(types.StringType)
+	} else if len(item.Port) > 0 {
+		// Only populate port if port_range is not set
+		var ports []attr.Value
+		for _, p := range item.Port {
+			ports = append(ports, types.StringValue(fmt.Sprintf("%v", p)))
+		}
+		attrs["port"], _ = types.ListValue(types.StringType, ports)
 	}
 
 	if item.Protocol != "" {
@@ -524,15 +528,10 @@ func parseWanNetworkExceptionCustomServiceListSDK(ctx context.Context, items []*
 			"protocol":   types.StringNull(),
 		}
 
-		if len(item.Port) > 0 {
-			var ports []attr.Value
-			for _, p := range item.Port {
-				ports = append(ports, types.StringValue(fmt.Sprintf("%v", p)))
-			}
-			attrs["port"], _ = types.ListValue(types.StringType, ports)
-		}
-
-		if item.PortRangeCustomService != nil && (item.PortRangeCustomService.From != "" || item.PortRangeCustomService.To != "") {
+		// Check if port_range is set first
+		hasPortRange := item.PortRangeCustomService != nil && (item.PortRangeCustomService.From != "" || item.PortRangeCustomService.To != "")
+		
+		if hasPortRange {
 			attrs["port_range"], _ = types.ObjectValue(
 				FromToAttrTypes,
 				map[string]attr.Value{
@@ -540,6 +539,15 @@ func parseWanNetworkExceptionCustomServiceListSDK(ctx context.Context, items []*
 					"to":   types.StringValue(fmt.Sprintf("%v", item.PortRangeCustomService.To)),
 				},
 			)
+			// When port_range is set, port must remain null
+			attrs["port"] = types.ListNull(types.StringType)
+		} else if len(item.Port) > 0 {
+			// Only populate port if port_range is not set
+			var ports []attr.Value
+			for _, p := range item.Port {
+				ports = append(ports, types.StringValue(fmt.Sprintf("%v", p)))
+			}
+			attrs["port"], _ = types.ListValue(types.StringType, ports)
 		}
 
 		if item.Protocol != "" {

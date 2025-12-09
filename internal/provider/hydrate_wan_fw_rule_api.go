@@ -51,7 +51,7 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 		diags = append(diags, plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})...)
 
 		// setting source
-		if !ruleInput.Source.IsNull() {
+		if !ruleInput.Source.IsNull() && !ruleInput.Source.IsUnknown() {
 
 			ruleSourceInput := &cato_models.WanFirewallSourceInput{}
 			ruleSourceUpdateInput := &cato_models.WanFirewallSourceUpdateInput{}
@@ -345,34 +345,34 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 		} else {
 			tflog.Warn(ctx, "TFLOG_SOURCE_WANFW_IS_NULL")
 			// rootAddRule.Source = &cato_models.WanFirewallSourceInput{
-			// 	FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
-			// 	GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
-			// 	Group:             make([]*cato_models.GroupRefInput, 0),
-			// 	Host:              make([]*cato_models.HostRefInput, 0),
-			// 	IP:                make([]string, 0),
-			// 	IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
-			// 	NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
-			// 	Site:              make([]*cato_models.SiteRefInput, 0),
-			// 	SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
-			// 	Subnet:            make([]string, 0),
-			// 	SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
-			// 	User:              make([]*cato_models.UserRefInput, 0),
-			// 	UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
+			//      FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
+			//      GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
+			//      Group:             make([]*cato_models.GroupRefInput, 0),
+			//      Host:              make([]*cato_models.HostRefInput, 0),
+			//      IP:                make([]string, 0),
+			//      IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
+			//      NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
+			//      Site:              make([]*cato_models.SiteRefInput, 0),
+			//      SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
+			//      Subnet:            make([]string, 0),
+			//      SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
+			//      User:              make([]*cato_models.UserRefInput, 0),
+			//      UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
 			// }
 			// rootUpdateRule.Source = &cato_models.WanFirewallSourceUpdateInput{
-			// 	FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
-			// 	GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
-			// 	Group:             make([]*cato_models.GroupRefInput, 0),
-			// 	Host:              make([]*cato_models.HostRefInput, 0),
-			// 	IP:                make([]string, 0),
-			// 	IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
-			// 	NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
-			// 	Site:              make([]*cato_models.SiteRefInput, 0),
-			// 	SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
-			// 	Subnet:            make([]string, 0),
-			// 	SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
-			// 	User:              make([]*cato_models.UserRefInput, 0),
-			// 	UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
+			//      FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
+			//      GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
+			//      Group:             make([]*cato_models.GroupRefInput, 0),
+			//      Host:              make([]*cato_models.HostRefInput, 0),
+			//      IP:                make([]string, 0),
+			//      IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
+			//      NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
+			//      Site:              make([]*cato_models.SiteRefInput, 0),
+			//      SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
+			//      Subnet:            make([]string, 0),
+			//      SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
+			//      User:              make([]*cato_models.UserRefInput, 0),
+			//      UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
 			// }
 		}
 
@@ -425,57 +425,56 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 		}
 
 		// setting device attributes
-		if !ruleInput.DeviceAttributes.IsNull() {
-			var curDeviceAttributes *DeviceAttributesInput
+		if !ruleInput.DeviceAttributes.IsNull() && !ruleInput.DeviceAttributes.IsUnknown() {
+			var curDeviceAttributes Policy_Policy_WanFirewall_Policy_Rules_Rule_DeviceAttributes
 			diags = append(diags, ruleInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
-			if curDeviceAttributes != nil {
-				// Handle each field with proper null checking
-				categoryValues := make([]string, 0)
-				if curDeviceAttributes.Category != nil {
-					categoryValues = curDeviceAttributes.Category
-				}
+			
+			// Handle each field with proper null checking
+			categoryValues := make([]string, 0)
+			if !curDeviceAttributes.Category.IsNull() && !curDeviceAttributes.Category.IsUnknown() {
+				diags = append(diags, curDeviceAttributes.Category.ElementsAs(ctx, &categoryValues, false)...)
+			}
 
-				manufacturerValues := make([]string, 0)
-				if curDeviceAttributes.Manufacturer != nil {
-					manufacturerValues = curDeviceAttributes.Manufacturer
-				}
+			manufacturerValues := make([]string, 0)
+			if !curDeviceAttributes.Manufacturer.IsNull() && !curDeviceAttributes.Manufacturer.IsUnknown() {
+				diags = append(diags, curDeviceAttributes.Manufacturer.ElementsAs(ctx, &manufacturerValues, false)...)
+			}
 
-				modelValues := make([]string, 0)
-				if curDeviceAttributes.Model != nil {
-					modelValues = curDeviceAttributes.Model
-				}
+			modelValues := make([]string, 0)
+			if !curDeviceAttributes.Model.IsNull() && !curDeviceAttributes.Model.IsUnknown() {
+				diags = append(diags, curDeviceAttributes.Model.ElementsAs(ctx, &modelValues, false)...)
+			}
 
-				osValues := make([]string, 0)
-				if curDeviceAttributes.Os != nil {
-					osValues = curDeviceAttributes.Os
-				}
+			osValues := make([]string, 0)
+			if !curDeviceAttributes.Os.IsNull() && !curDeviceAttributes.Os.IsUnknown() {
+				diags = append(diags, curDeviceAttributes.Os.ElementsAs(ctx, &osValues, false)...)
+			}
 
-				osVersionValues := make([]string, 0)
-				if curDeviceAttributes.OsVersion != nil {
-					osVersionValues = curDeviceAttributes.OsVersion
-				}
+			osVersionValues := make([]string, 0)
+			if !curDeviceAttributes.OsVersion.IsNull() && !curDeviceAttributes.OsVersion.IsUnknown() {
+				diags = append(diags, curDeviceAttributes.OsVersion.ElementsAs(ctx, &osVersionValues, false)...)
+			}
 
-				typeValues := make([]string, 0)
-				if curDeviceAttributes.Type != nil {
-					typeValues = curDeviceAttributes.Type
-				}
+			typeValues := make([]string, 0)
+			if !curDeviceAttributes.Type.IsNull() && !curDeviceAttributes.Type.IsUnknown() {
+				diags = append(diags, curDeviceAttributes.Type.ElementsAs(ctx, &typeValues, false)...)
+			}
 
-				rootAddRule.DeviceAttributes = &cato_models.DeviceAttributesInput{
-					Category:     categoryValues,
-					Manufacturer: manufacturerValues,
-					Model:        modelValues,
-					Os:           osValues,
-					OsVersion:    osVersionValues,
-					Type:         typeValues,
-				}
-				rootUpdateRule.DeviceAttributes = &cato_models.DeviceAttributesUpdateInput{
-					Category:     categoryValues,
-					Manufacturer: manufacturerValues,
-					Model:        modelValues,
-					Os:           osValues,
-					OsVersion:    osVersionValues,
-					Type:         typeValues,
-				}
+			rootAddRule.DeviceAttributes = &cato_models.DeviceAttributesInput{
+				Category:     categoryValues,
+				Manufacturer: manufacturerValues,
+				Model:        modelValues,
+				Os:           osValues,
+				OsVersion:    osVersionValues,
+				Type:         typeValues,
+			}
+			rootUpdateRule.DeviceAttributes = &cato_models.DeviceAttributesUpdateInput{
+				Category:     categoryValues,
+				Manufacturer: manufacturerValues,
+				Model:        modelValues,
+				Os:           osValues,
+				OsVersion:    osVersionValues,
+				Type:         typeValues,
 			}
 		} else {
 			// DeviceAttributes should never be null in API - always provide empty arrays
@@ -499,8 +498,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 			rootUpdateRule.DeviceOs = make([]cato_models.OperatingSystem, 0)
 		}
 
-		// setting destination
-		if !ruleInput.Destination.IsUnknown() && !ruleInput.Destination.IsNull() {
+		// setting destination (required, but can be empty)
+		if !ruleInput.Destination.IsNull() && !ruleInput.Destination.IsUnknown() {
 
 			ruleDestinationInput := &cato_models.WanFirewallDestinationInput{}
 			ruleDestinationUpdateInput := &cato_models.WanFirewallDestinationUpdateInput{}
@@ -790,10 +789,12 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 			rootAddRule.Destination = ruleDestinationInput
 			rootUpdateRule.Destination = ruleDestinationUpdateInput
+		} else {
+			tflog.Warn(ctx, "TFLOG_DESTINATION_WANFW_IS_NULL")
 		}
 
-		// setting application
-		if !ruleInput.Application.IsUnknown() && !ruleInput.Application.IsNull() {
+		// setting application (required, but can be empty)
+		if !ruleInput.Application.IsNull() && !ruleInput.Application.IsUnknown() {
 			ruleApplicationInput := &cato_models.WanFirewallApplicationInput{}
 			ruleApplicationUpdateInput := &cato_models.WanFirewallApplicationUpdateInput{}
 
@@ -997,6 +998,8 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 			rootAddRule.Application = ruleApplicationInput
 			rootUpdateRule.Application = ruleApplicationUpdateInput
+		} else {
+			tflog.Warn(ctx, "TFLOG_APPLICATION_WANFW_IS_NULL")
 		}
 
 		// setting service
@@ -1657,26 +1660,56 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				}
 
 				// setting device attributes
-				if !itemExceptionsInput.DeviceAttributes.IsNull() {
-					var curDeviceAttributes *DeviceAttributesInput
+				if !itemExceptionsInput.DeviceAttributes.IsNull() && !itemExceptionsInput.DeviceAttributes.IsUnknown() {
+					var curDeviceAttributes Policy_Policy_WanFirewall_Policy_Rules_Rule_DeviceAttributes
 					diags = append(diags, itemExceptionsInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
-					if curDeviceAttributes != nil {
-						exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
-							Category:     curDeviceAttributes.Category,
-							Manufacturer: curDeviceAttributes.Manufacturer,
-							Model:        curDeviceAttributes.Model,
-							Os:           curDeviceAttributes.Os,
-							OsVersion:    curDeviceAttributes.OsVersion,
-							Type:         curDeviceAttributes.Type,
-						}
-						exceptionUpdateInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
-							Category:     curDeviceAttributes.Category,
-							Manufacturer: curDeviceAttributes.Manufacturer,
-							Model:        curDeviceAttributes.Model,
-							Os:           curDeviceAttributes.Os,
-							OsVersion:    curDeviceAttributes.OsVersion,
-							Type:         curDeviceAttributes.Type,
-						}
+					
+					// Handle each field with proper null checking
+					categoryValues := make([]string, 0)
+					if !curDeviceAttributes.Category.IsNull() && !curDeviceAttributes.Category.IsUnknown() {
+						diags = append(diags, curDeviceAttributes.Category.ElementsAs(ctx, &categoryValues, false)...)
+					}
+
+					manufacturerValues := make([]string, 0)
+					if !curDeviceAttributes.Manufacturer.IsNull() && !curDeviceAttributes.Manufacturer.IsUnknown() {
+						diags = append(diags, curDeviceAttributes.Manufacturer.ElementsAs(ctx, &manufacturerValues, false)...)
+					}
+
+					modelValues := make([]string, 0)
+					if !curDeviceAttributes.Model.IsNull() && !curDeviceAttributes.Model.IsUnknown() {
+						diags = append(diags, curDeviceAttributes.Model.ElementsAs(ctx, &modelValues, false)...)
+					}
+
+					osValues := make([]string, 0)
+					if !curDeviceAttributes.Os.IsNull() && !curDeviceAttributes.Os.IsUnknown() {
+						diags = append(diags, curDeviceAttributes.Os.ElementsAs(ctx, &osValues, false)...)
+					}
+
+					osVersionValues := make([]string, 0)
+					if !curDeviceAttributes.OsVersion.IsNull() && !curDeviceAttributes.OsVersion.IsUnknown() {
+						diags = append(diags, curDeviceAttributes.OsVersion.ElementsAs(ctx, &osVersionValues, false)...)
+					}
+
+					typeValues := make([]string, 0)
+					if !curDeviceAttributes.Type.IsNull() && !curDeviceAttributes.Type.IsUnknown() {
+						diags = append(diags, curDeviceAttributes.Type.ElementsAs(ctx, &typeValues, false)...)
+					}
+
+					exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+						Category:     categoryValues,
+						Manufacturer: manufacturerValues,
+						Model:        modelValues,
+						Os:           osValues,
+						OsVersion:    osVersionValues,
+						Type:         typeValues,
+					}
+					exceptionUpdateInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
+						Category:     categoryValues,
+						Manufacturer: manufacturerValues,
+						Model:        modelValues,
+						Os:           osValues,
+						OsVersion:    osVersionValues,
+						Type:         typeValues,
 					}
 				} else {
 					// DeviceAttributes should never be null in API - always provide empty arrays

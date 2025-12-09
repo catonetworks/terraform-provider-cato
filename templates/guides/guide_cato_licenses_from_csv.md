@@ -64,6 +64,6 @@ resource "cato_license" "licenses" {
   for_each = { for license in local.license_csv : license.site_id => license }
   site_id    = each.value.site_id
   license_id = each.value.license_id
-  bw         = each.value.license_bw
+  bw         = each.value.license_bw == "" ? null : each.value.license_bw
 }
 ```

@@ -416,8 +416,8 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 				map[string]attr.Value{
 					"name":              types.StringValue(ruleException.Name),
 					"source":            curExceptionSourceObj,
-					"country":           parseNameIDList(ctx, ruleException.Country, "rule.exception.country"),
-					"device":            parseNameIDList(ctx, ruleException.Device, "rule.exception.device"),
+					"country":           parseNameIDListOrEmptySet(ctx, ruleException.Country, "rule.exception.country"),
+					"device":            parseNameIDListOrEmptySet(ctx, ruleException.Device, "rule.exception.device"),
 					"device_attributes": exceptionDeviceAttributesObj,
 					"device_os":         parseList(ctx, types.StringType, ruleException.DeviceOs, "rule.exception.device_os"),
 					"destination":       curExceptionDestObj,

@@ -167,6 +167,19 @@ func correlateWanExceptionElement(ctx context.Context, planObj types.Object, res
 	correlateWanNestedObjects(ctx, newAttrs, planAttrs, responseAttrs, "application")
 	correlateWanNestedObjects(ctx, newAttrs, planAttrs, responseAttrs, "service")
 
+	// Correlate top-level sets like country and device - preserve plan's null if response has empty set
+	preserveNullOrCorrelateSet(ctx, newAttrs, planAttrs, "country")
+	preserveNullOrCorrelateSet(ctx, newAttrs, planAttrs, "device")
+
+	// Handle device_attributes - preserve plan's structure but resolve any Unknown values
+	// This is critical: if plan has an object with all null fields, we must preserve that exact structure
+	if planDeviceAttrs, exists := planAttrs["device_attributes"]; exists {
+		// Resolve any Unknown values to Null to prevent "unknown value after apply" errors
+		resolvedDeviceAttrs := resolveDeviceAttributesUnknowns(ctx, planDeviceAttrs)
+		newAttrs["device_attributes"] = resolvedDeviceAttrs
+		tflog.Debug(ctx, "correlateWanExceptionElement: Preserving plan's device_attributes structure (resolved unknowns)")
+	}
+
 	// Create the new object
 	objectType := responseObj.Type(ctx).(types.ObjectType)
 	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
@@ -176,6 +189,84 @@ func correlateWanExceptionElement(ctx context.Context, planObj types.Object, res
 	}
 
 	return newObj
+}
+
+// resolveDeviceAttributesUnknowns resolves Unknown values in device_attributes to Null
+func resolveDeviceAttributesUnknowns(ctx context.Context, deviceAttrs attr.Value) attr.Value {
+	// If it's null or unknown at the top level, return null
+	if deviceAttrs == nil {
+		return nil
+	}
+
+	deviceAttrsObj, ok := deviceAttrs.(types.Object)
+	if !ok {
+		return deviceAttrs
+	}
+
+	// If device_attributes is null, return null
+	if deviceAttrsObj.IsNull() {
+		return types.ObjectNull(deviceAttrsObj.Type(ctx).(types.ObjectType).AttrTypes)
+	}
+
+	// If device_attributes is unknown, convert to null
+	if deviceAttrsObj.IsUnknown() {
+		return types.ObjectNull(deviceAttrsObj.Type(ctx).(types.ObjectType).AttrTypes)
+	}
+
+	// Resolve Unknown values in nested lists
+	attrs := deviceAttrsObj.Attributes()
+	newAttrs := make(map[string]attr.Value, len(attrs))
+
+	for k, v := range attrs {
+		if listVal, ok := v.(types.List); ok {
+			if listVal.IsUnknown() {
+				// Convert Unknown list to Null list
+				newAttrs[k] = types.ListNull(types.StringType)
+				tflog.Debug(ctx, "resolveDeviceAttributesUnknowns: Resolved unknown list to null", map[string]interface{}{"field": k})
+			} else {
+				newAttrs[k] = v
+			}
+		} else {
+			newAttrs[k] = v
+		}
+	}
+
+	objectType := deviceAttrsObj.Type(ctx).(types.ObjectType)
+	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
+	if !diags.HasError() {
+		return newObj
+	}
+	return deviceAttrs
+}
+
+// preserveNullOrCorrelateSet preserves plan's null value if response has empty set, otherwise correlates
+func preserveNullOrCorrelateSet(ctx context.Context, newAttrs map[string]attr.Value, planAttrs map[string]attr.Value, fieldName string) {
+	planField, planExists := planAttrs[fieldName]
+	if !planExists {
+		return
+	}
+
+	planSetVal, ok := planField.(types.Set)
+	if !ok {
+		return
+	}
+
+	// If plan has null, preserve it regardless of response
+	if planSetVal.IsNull() {
+		newAttrs[fieldName] = planSetVal
+		tflog.Debug(ctx, "preserveNullOrCorrelateSet: Preserving null from plan", map[string]interface{}{"field": fieldName})
+		return
+	}
+
+	// If plan has empty set, preserve it
+	if !planSetVal.IsUnknown() && len(planSetVal.Elements()) == 0 {
+		newAttrs[fieldName] = planSetVal
+		tflog.Debug(ctx, "preserveNullOrCorrelateSet: Preserving empty set from plan", map[string]interface{}{"field": fieldName})
+		return
+	}
+
+	// Otherwise, correlate the set elements
+	correlateWanSetElements(ctx, newAttrs, planAttrs, fieldName)
 }
 
 // correlateWanNestedObjects correlates nested objects like source, destination, application
@@ -281,39 +372,68 @@ func correlateWanSetElements(ctx context.Context, newNestedAttrs map[string]attr
 	}
 }
 
-// findWanElementByName finds an element in the list by matching the name field
+// findWanElementByName finds an element in the list by matching the name or ID field
 func findWanElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
-	targetName, exists := targetAttrs["name"]
-	if !exists {
-		return nil
+
+	// First try to match by name
+	targetName, nameExists := targetAttrs["name"]
+	if nameExists {
+		targetNameStr, ok := targetName.(types.String)
+		if ok && !targetNameStr.IsNull() && !targetNameStr.IsUnknown() {
+			for _, element := range elements {
+				elementObj, ok := element.(types.Object)
+				if !ok {
+					continue
+				}
+
+				elementAttrs := elementObj.Attributes()
+				elementName, exists := elementAttrs["name"]
+				if !exists {
+					continue
+				}
+
+				elementNameStr, ok := elementName.(types.String)
+				if !ok {
+					continue
+				}
+
+				if !elementNameStr.IsNull() && !elementNameStr.IsUnknown() &&
+					elementNameStr.ValueString() == targetNameStr.ValueString() {
+					return &elementObj
+				}
+			}
+		}
 	}
 
-	targetNameStr, ok := targetName.(types.String)
-	if !ok || targetNameStr.IsNull() || targetNameStr.IsUnknown() {
-		return nil
-	}
+	// If name matching failed, try to match by ID
+	targetId, idExists := targetAttrs["id"]
+	if idExists {
+		targetIdStr, ok := targetId.(types.String)
+		if ok && !targetIdStr.IsNull() && !targetIdStr.IsUnknown() {
+			for _, element := range elements {
+				elementObj, ok := element.(types.Object)
+				if !ok {
+					continue
+				}
 
-	for _, element := range elements {
-		elementObj, ok := element.(types.Object)
-		if !ok {
-			continue
-		}
+				elementAttrs := elementObj.Attributes()
+				elementId, exists := elementAttrs["id"]
+				if !exists {
+					continue
+				}
 
-		elementAttrs := elementObj.Attributes()
-		elementName, exists := elementAttrs["name"]
-		if !exists {
-			continue
-		}
+				elementIdStr, ok := elementId.(types.String)
+				if !ok {
+					continue
+				}
 
-		elementNameStr, ok := elementName.(types.String)
-		if !ok {
-			continue
-		}
-
-		if !elementNameStr.IsNull() && !elementNameStr.IsUnknown() &&
-			elementNameStr.ValueString() == targetNameStr.ValueString() {
-			return &elementObj
+				if !elementIdStr.IsNull() && !elementIdStr.IsUnknown() &&
+					elementIdStr.ValueString() == targetIdStr.ValueString() {
+					tflog.Debug(ctx, "findWanElementByName: Found element by ID", map[string]interface{}{"id": targetIdStr.ValueString()})
+					return &elementObj
+				}
+			}
 		}
 	}
 
@@ -321,7 +441,9 @@ func findWanElementByName(ctx context.Context, targetObj types.Object, elements 
 }
 
 // correlateWanSetElement creates a correlated set element that uses plan structure with response data
+// It preserves null values from the plan for computed fields (like name when user only specified id)
 func correlateWanSetElement(ctx context.Context, planObj types.Object, responseObj types.Object) types.Object {
+	planAttrs := planObj.Attributes()
 	responseAttrs := responseObj.Attributes()
 
 	newAttrs := make(map[string]attr.Value, len(responseAttrs))
@@ -330,9 +452,25 @@ func correlateWanSetElement(ctx context.Context, planObj types.Object, responseO
 		newAttrs[k] = v
 	}
 
-	// If plan had unknown ID and response has known ID, but we want to preserve the unknown
-	// structure for consistency, we could do additional logic here.
-	// For now, we use response data which should have correct IDs.
+	// Preserve null values from plan for computed fields
+	// If plan had name=null and user specified id, keep name=null in state
+	// to match the planned value and avoid correlation issues
+	if planName, exists := planAttrs["name"]; exists {
+		if planNameStr, ok := planName.(types.String); ok && planNameStr.IsNull() {
+			// Plan had null name (user specified only id), preserve null
+			newAttrs["name"] = types.StringNull()
+			tflog.Debug(ctx, "correlateWanSetElement: Preserving null name from plan")
+		}
+	}
+
+	// Similarly, if plan had id=null and user specified name, preserve null id
+	if planId, exists := planAttrs["id"]; exists {
+		if planIdStr, ok := planId.(types.String); ok && planIdStr.IsNull() {
+			// Plan had null id (user specified only name), preserve null
+			newAttrs["id"] = types.StringNull()
+			tflog.Debug(ctx, "correlateWanSetElement: Preserving null id from plan")
+		}
+	}
 
 	objectType := responseObj.Type(ctx).(types.ObjectType)
 	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)

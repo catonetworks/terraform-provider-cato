@@ -269,6 +269,37 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 	return setValue
 }
 
+// parseNameIDListOrEmptySet is like parseNameIDList but returns an empty set instead of null for empty lists
+// This is used when the configuration explicitly has an empty set (e.g. country = []) to preserve that intent
+func parseNameIDListOrEmptySet[T any](ctx context.Context, items []T, attrName string) types.Set {
+	tflog.Debug(ctx, "parseNameIDListOrEmptySet() "+attrName+" - "+fmt.Sprintf("%v", items))
+	diags := make(diag.Diagnostics, 0)
+
+	// Handle empty list - return empty set instead of null
+	if len(items) == 0 {
+		tflog.Debug(ctx, "parseNameIDListOrEmptySet() - empty input list, returning empty set")
+		emptySet, diagstmp := types.SetValue(NameIDObjectType, []attr.Value{})
+		diags = append(diags, diagstmp...)
+		return emptySet
+	}
+
+	// Process each item into an attr.Value
+	nameIDValues := make([]attr.Value, 0, len(items))
+	for i, item := range items {
+		obj := parseNameID(ctx, item, attrName)
+		if !obj.IsNull() && !obj.IsUnknown() { // Include only non-null/unknown values, adjust as needed
+			nameIDValues = append(nameIDValues, obj)
+		} else {
+			tflog.Debug(ctx, "parseNameIDList() - skipping null/unknown item at index "+fmt.Sprintf("%d", i))
+		}
+	}
+
+	// Convert to types.List using SetValueFrom
+	setValue, diagstmp := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
+	diags = append(diags, diagstmp...)
+	return setValue
+}
+
 // parseNameIDListWithUnknownName creates a Set of NameID objects but keeps all names as unknown
 // This is used for computed name fields with UseStateForUnknown() to prevent spurious diffs
 func parseNameIDListWithUnknownName[T any](ctx context.Context, items []T, attrName string) types.Set {
@@ -674,18 +705,49 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 	tflog.Debug(ctx, "parseCustomService() portField - "+fmt.Sprintf("%v", portField))
 	tflog.Debug(ctx, "parseCustomService() protocolField - "+fmt.Sprintf("%v", protocolField))
 	tflog.Debug(ctx, "parseCustomService() portRangeField - "+fmt.Sprintf("%v", portRangeField))
+	// Handle port_range first to check if it's set
+	var portRangeVal types.Object
+	var hasPortRange bool
+	if portRangeField.Kind() == reflect.Ptr {
+		if portRangeField.IsNil() {
+			portRangeVal = types.ObjectNull(FromToAttrTypes)
+			hasPortRange = false
+		} else {
+			portRangeField = portRangeField.Elem()
+			hasPortRange = true
+		}
+	}
+	if portRangeField.IsValid() && hasPortRange {
+		from := portRangeField.FieldByName("From")
+		to := portRangeField.FieldByName("To")
+		var diagsTmp diag.Diagnostics
+		portRangeVal, diagsTmp = types.ObjectValue(
+			FromToAttrTypes,
+			map[string]attr.Value{
+				"from": types.StringValue(from.String()),
+				"to":   types.StringValue(to.String()),
+			},
+		)
+		diags = append(diags, diagsTmp...)
+	} else if !hasPortRange {
+		portRangeVal = types.ObjectNull(FromToAttrTypes)
+	}
+
 	// Handle port field - match config logic behavior
+	// When port_range is set, port should always be null even if API returns empty array
 	var portList types.List
-	if portField.IsValid() && portField.Kind() == reflect.Slice {
-		// Check if this is a null pointer to slice vs empty slice
+	if hasPortRange {
+		// When port_range is present, port must be null to match schema validation
+		portList = types.ListNull(types.StringType)
+	} else if portField.IsValid() && portField.Kind() == reflect.Slice {
+		// Only process port field if port_range is not set
 		if portField.IsNil() {
 			// Source data was null - don't include port field in state to match config
 			portList = types.ListNull(types.StringType)
 		} else if portField.Len() == 0 {
-			// Source data was empty array [] - include as empty list in state
-			var diagsTmp diag.Diagnostics
-			portList, diagsTmp = types.ListValue(types.StringType, []attr.Value{})
-			diags = append(diags, diagsTmp...)
+			// Source data was empty array [] - treat as null to avoid inconsistency
+			// Note: empty array from API likely means port_range is set
+			portList = types.ListNull(types.StringType)
 		} else {
 			// Source data has values - include them
 			ports := make([]attr.Value, portField.Len())
@@ -718,30 +780,6 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 		protocolVal = types.StringValue(protocolField.String())
 	} else {
 		protocolVal = types.StringNull()
-	}
-
-	// Handle port_range
-	var portRangeVal types.Object
-	if portRangeField.Kind() == reflect.Ptr {
-		if portRangeField.IsNil() {
-			portRangeVal = types.ObjectNull(FromToAttrTypes)
-		}
-		portRangeField = portRangeField.Elem()
-	}
-	if portRangeField.IsValid() {
-		from := portRangeField.FieldByName("From")
-		to := portRangeField.FieldByName("To")
-		var diagsTmp diag.Diagnostics
-		portRangeVal, diagsTmp = types.ObjectValue(
-			FromToAttrTypes,
-			map[string]attr.Value{
-				"from": types.StringValue(from.String()),
-				"to":   types.StringValue(to.String()),
-			},
-		)
-		diags = append(diags, diagsTmp...)
-	} else {
-		portRangeVal = types.ObjectNull(FromToAttrTypes)
 	}
 
 	// Create final custom service object
@@ -902,18 +940,54 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 	tflog.Debug(ctx, "parseExceptionCustomService() protocolField - "+fmt.Sprintf("%v", protocolField))
 	tflog.Debug(ctx, "parseExceptionCustomService() portRangeField - "+fmt.Sprintf("%v", portRangeField))
 
+	// Handle port_range first (from PortRangeCustomService field) to check if it's set
+	var portRangeVal types.Object
+	var hasPortRange bool
+	if portRangeField.Kind() == reflect.Ptr {
+		if portRangeField.IsNil() {
+			portRangeVal = types.ObjectNull(FromToAttrTypes)
+			hasPortRange = false
+		} else {
+			portRangeField = portRangeField.Elem()
+			hasPortRange = true
+		}
+	}
+	if portRangeField.IsValid() && !portRangeField.IsZero() && hasPortRange {
+		from := portRangeField.FieldByName("From")
+		to := portRangeField.FieldByName("To")
+		if from.IsValid() && to.IsValid() {
+			var diagsTmp diag.Diagnostics
+			portRangeVal, diagsTmp = types.ObjectValue(
+				FromToAttrTypes,
+				map[string]attr.Value{
+					"from": types.StringValue(from.String()),
+					"to":   types.StringValue(to.String()),
+				},
+			)
+			diags = append(diags, diagsTmp...)
+		} else {
+			portRangeVal = types.ObjectNull(FromToAttrTypes)
+			hasPortRange = false
+		}
+	} else if !hasPortRange {
+		portRangeVal = types.ObjectNull(FromToAttrTypes)
+	}
+
 	// Handle port field - match config logic behavior
+	// When port_range is set, port should always be null even if API returns empty array
 	var portList types.List
-	if portField.IsValid() && portField.Kind() == reflect.Slice {
-		// Check if this is a null pointer to slice vs empty slice
+	if hasPortRange {
+		// When port_range is present, port must be null to match schema validation
+		portList = types.ListNull(types.StringType)
+	} else if portField.IsValid() && portField.Kind() == reflect.Slice {
+		// Only process port field if port_range is not set
 		if portField.IsNil() {
 			// Source data was null - don't include port field in state to match config
 			portList = types.ListNull(types.StringType)
 		} else if portField.Len() == 0 {
-			// Source data was empty array [] - include as empty list in state
-			var diagsTmp diag.Diagnostics
-			portList, diagsTmp = types.ListValue(types.StringType, []attr.Value{})
-			diags = append(diags, diagsTmp...)
+			// Source data was empty array [] - treat as null to avoid inconsistency
+			// Note: empty array from API likely means port_range is set
+			portList = types.ListNull(types.StringType)
 		} else {
 			// Source data has values - include them
 			ports := make([]attr.Value, portField.Len())
@@ -946,35 +1020,6 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 		protocolVal = types.StringValue(protocolField.String())
 	} else {
 		protocolVal = types.StringNull()
-	}
-
-	// Handle port_range (from PortRangeCustomService field)
-	var portRangeVal types.Object
-	if portRangeField.Kind() == reflect.Ptr {
-		if portRangeField.IsNil() {
-			portRangeVal = types.ObjectNull(FromToAttrTypes)
-		} else {
-			portRangeField = portRangeField.Elem()
-		}
-	}
-	if portRangeField.IsValid() && !portRangeField.IsZero() {
-		from := portRangeField.FieldByName("From")
-		to := portRangeField.FieldByName("To")
-		if from.IsValid() && to.IsValid() {
-			var diagsTmp diag.Diagnostics
-			portRangeVal, diagsTmp = types.ObjectValue(
-				FromToAttrTypes,
-				map[string]attr.Value{
-					"from": types.StringValue(from.String()),
-					"to":   types.StringValue(to.String()),
-				},
-			)
-			diags = append(diags, diagsTmp...)
-		} else {
-			portRangeVal = types.ObjectNull(FromToAttrTypes)
-		}
-	} else {
-		portRangeVal = types.ObjectNull(FromToAttrTypes)
 	}
 
 	// Create final custom service object

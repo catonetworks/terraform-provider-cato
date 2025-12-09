@@ -1343,70 +1343,74 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					exceptionUpdateInput.DeviceOs = make([]cato_models.OperatingSystem, 0)
 				}
 
-				// if !itemExceptionsInput.DeviceAttributes.IsNull() {
-				// 	var curExceptionDeviceAttributes *DeviceAttributesInputIfw
-				// 	diags = append(diags, itemExceptionsInput.DeviceAttributes.As(ctx, &curExceptionDeviceAttributes, basetypes.ObjectAsOptions{})...)
-				// 	if curExceptionDeviceAttributes != nil {
-				// 		// Handle each field with proper null checking
-				// 		categoryValues := make([]string, 0)
-				// 		if curExceptionDeviceAttributes.Category != nil {
-				// 			categoryValues = curExceptionDeviceAttributes.Category
-				// 		}
+				// setting device_attributes
+				if !itemExceptionsInput.DeviceAttributes.IsNull() {
 
-				// 		manufacturerValues := make([]string, 0)
-				// 		if curExceptionDeviceAttributes.Manufacturer != nil {
-				// 			manufacturerValues = curExceptionDeviceAttributes.Manufacturer
-				// 		}
+					exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{}
+					exceptionUpdateInput.DeviceAttributes = &cato_models.DeviceAttributesInput{}
 
-				// 		modelValues := make([]string, 0)
-				// 		if curExceptionDeviceAttributes.Model != nil {
-				// 			modelValues = curExceptionDeviceAttributes.Model
-				// 		}
+					deviceAttributesInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule_DeviceAttributes{}
+					diags = append(diags, itemExceptionsInput.DeviceAttributes.As(ctx, &deviceAttributesInput, basetypes.ObjectAsOptions{})...)
 
-				// 		osValues := make([]string, 0)
-				// 		if curExceptionDeviceAttributes.Os != nil {
-				// 			osValues = curExceptionDeviceAttributes.Os
-				// 		}
+					// setting device_attributes category
+					if !deviceAttributesInput.Category.IsUnknown() && !deviceAttributesInput.Category.IsNull() {
+						diags = append(diags, deviceAttributesInput.Category.ElementsAs(ctx, &exceptionAddInput.DeviceAttributes.Category, false)...)
+						exceptionUpdateInput.DeviceAttributes.Category = exceptionAddInput.DeviceAttributes.Category
+					} else {
+						exceptionUpdateInput.DeviceAttributes.Category = make([]string, 0)
+					}
 
-				// 		osVersionValues := make([]string, 0)
-				// 		if curExceptionDeviceAttributes.OsVersion != nil {
-				// 			osVersionValues = curExceptionDeviceAttributes.OsVersion
-				// 		}
+					// setting device_attributes manufacturer
+					if !deviceAttributesInput.Manufacturer.IsUnknown() && !deviceAttributesInput.Manufacturer.IsNull() {
+						diags = append(diags, deviceAttributesInput.Manufacturer.ElementsAs(ctx, &exceptionAddInput.DeviceAttributes.Manufacturer, false)...)
+						exceptionUpdateInput.DeviceAttributes.Manufacturer = exceptionAddInput.DeviceAttributes.Manufacturer
+					} else {
+						exceptionUpdateInput.DeviceAttributes.Manufacturer = make([]string, 0)
+					}
 
-				// 		typeValues := make([]string, 0)
-				// 		if curExceptionDeviceAttributes.Type != nil {
-				// 			typeValues = curExceptionDeviceAttributes.Type
-				// 		}
+					// setting device_attributes model
+					if !deviceAttributesInput.Model.IsUnknown() && !deviceAttributesInput.Model.IsNull() {
+						diags = append(diags, deviceAttributesInput.Model.ElementsAs(ctx, &exceptionAddInput.DeviceAttributes.Model, false)...)
+						exceptionUpdateInput.DeviceAttributes.Model = exceptionAddInput.DeviceAttributes.Model
+					} else {
+						exceptionUpdateInput.DeviceAttributes.Model = make([]string, 0)
+					}
 
-				// 		exceptionAddInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
-				// 			Category:     categoryValues,
-				// 			Manufacturer: manufacturerValues,
-				// 			Model:        modelValues,
-				// 			Os:           osValues,
-				// 			OsVersion:    osVersionValues,
-				// 			Type:         typeValues,
-				// 		}
-				// 		exceptionUpdateInput.DeviceAttributes = &cato_models.DeviceAttributesInput{
-				// 			Category:     categoryValues,
-				// 			Manufacturer: manufacturerValues,
-				// 			Model:        modelValues,
-				// 			Os:           osValues,
-				// 			OsVersion:    osVersionValues,
-				// 			Type:         typeValues,
-				// 		}
-				// 	}
-				// } else {
-				// emptyExceptionDeviceAttributes := &cato_models.DeviceAttributesInput{
-				// 	Category:     make([]string, 0),
-				// 	Manufacturer: make([]string, 0),
-				// 	Model:        make([]string, 0),
-				// 	Os:           make([]string, 0),
-				// 	OsVersion:    make([]string, 0),
-				// 	Type:         make([]string, 0),
-				// }
-				// exceptionUpdateInput.DeviceAttributes = (*cato_models.DeviceAttributesInput)(emptyExceptionDeviceAttributes)
-				// exceptionAddInput.DeviceAttributes = emptyExceptionDeviceAttributes
-				// }
+					// setting device_attributes os
+					if !deviceAttributesInput.Os.IsUnknown() && !deviceAttributesInput.Os.IsNull() {
+						diags = append(diags, deviceAttributesInput.Os.ElementsAs(ctx, &exceptionAddInput.DeviceAttributes.Os, false)...)
+						exceptionUpdateInput.DeviceAttributes.Os = exceptionAddInput.DeviceAttributes.Os
+					} else {
+						exceptionUpdateInput.DeviceAttributes.Os = make([]string, 0)
+					}
+
+					// setting device_attributes os_version
+					if !deviceAttributesInput.OsVersion.IsUnknown() && !deviceAttributesInput.OsVersion.IsNull() {
+						diags = append(diags, deviceAttributesInput.OsVersion.ElementsAs(ctx, &exceptionAddInput.DeviceAttributes.OsVersion, false)...)
+						exceptionUpdateInput.DeviceAttributes.OsVersion = exceptionAddInput.DeviceAttributes.OsVersion
+					} else {
+						exceptionUpdateInput.DeviceAttributes.OsVersion = make([]string, 0)
+					}
+
+					// setting device_attributes type
+					if !deviceAttributesInput.Type.IsUnknown() && !deviceAttributesInput.Type.IsNull() {
+						diags = append(diags, deviceAttributesInput.Type.ElementsAs(ctx, &exceptionAddInput.DeviceAttributes.Type, false)...)
+						exceptionUpdateInput.DeviceAttributes.Type = exceptionAddInput.DeviceAttributes.Type
+					} else {
+						exceptionUpdateInput.DeviceAttributes.Type = make([]string, 0)
+					}
+				} else {
+					emptyExceptionDeviceAttributes := &cato_models.DeviceAttributesInput{
+						Category:     make([]string, 0),
+						Manufacturer: make([]string, 0),
+						Model:        make([]string, 0),
+						Os:           make([]string, 0),
+						OsVersion:    make([]string, 0),
+						Type:         make([]string, 0),
+					}
+					exceptionUpdateInput.DeviceAttributes = emptyExceptionDeviceAttributes
+					exceptionAddInput.DeviceAttributes = emptyExceptionDeviceAttributes
+				}
 
 				// setting destination
 				if !itemExceptionsInput.Destination.IsNull() {

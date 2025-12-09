@@ -35,12 +35,6 @@ func (m wanExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmod
 		return
 	}
 
-	// If state doesn't exist (first apply), use plan as-is but log it
-	if req.StateValue.IsNull() || req.StateValue.IsUnknown() {
-		tflog.Debug(ctx, "ExceptionsSetModifier: State is null or unknown (first apply), using plan as-is")
-		return
-	}
-
 	// If plan is null or unknown, use default behavior
 	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
 		tflog.Debug(ctx, "ExceptionsSetModifier: Plan is null or unknown, using default behavior")
@@ -54,11 +48,12 @@ func (m wanExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmod
 		"config_type": req.ConfigValue.Type(ctx).String(),
 	})
 
-	tflog.Warn(ctx, "ExceptionsSetModifier: Processing exceptions set correlation")
-
 	// Get the planned value elements
 	plannedElements := req.PlanValue.Elements()
-	stateElements := req.StateValue.Elements()
+	stateElements := []attr.Value{}
+	if !req.StateValue.IsNull() && !req.StateValue.IsUnknown() {
+		stateElements = req.StateValue.Elements()
+	}
 	configElements := req.ConfigValue.Elements()
 
 	tflog.Warn(ctx, "ExceptionsSetModifier: Element counts", map[string]interface{}{
@@ -67,25 +62,38 @@ func (m wanExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmod
 		"config":  len(configElements),
 	})
 
-	// If the number of elements differs significantly, let the default behavior handle it
-	// Allow for small variations due to ordering or correlation issues
-	if len(plannedElements) != len(stateElements) {
-		tflog.Warn(ctx, "ExceptionsSetModifier: Element count mismatch between plan and state, using default behavior", map[string]interface{}{
-			"planned_count": len(plannedElements),
-			"state_count":   len(stateElements),
-		})
+	// Handle the case where state is empty (first apply or new exceptions being added)
+	// In this case, we need to resolve Unknown values to Null to enable correlation
+	if len(stateElements) == 0 {
+		tflog.Warn(ctx, "ExceptionsSetModifier: No state elements (first apply), resolving Unknown values")
+		modifiedElements := make([]attr.Value, 0, len(plannedElements))
+		for _, plannedElement := range plannedElements {
+			plannedObj, ok := plannedElement.(types.Object)
+			if !ok {
+				modifiedElements = append(modifiedElements, plannedElement)
+				continue
+			}
+			// Resolve Unknown values to Null for first apply
+			modifiedElement := m.resolveUnknownToNull(ctx, plannedObj)
+			modifiedElements = append(modifiedElements, modifiedElement)
+		}
+		if len(modifiedElements) > 0 {
+			modifiedSet, diags := types.SetValue(req.PlanValue.ElementType(ctx), modifiedElements)
+			resp.Diagnostics.Append(diags...)
+			if !resp.Diagnostics.HasError() {
+				resp.PlanValue = modifiedSet
+				tflog.Warn(ctx, "ExceptionsSetModifier: Resolved Unknown values for first apply")
+			}
+		}
 		return
 	}
 
-	// If there are no state elements to correlate with, use plan as-is
-	if len(stateElements) == 0 {
-		tflog.Debug(ctx, "ExceptionsSetModifier: No state elements to correlate with")
-		return
-	}
+	tflog.Warn(ctx, "ExceptionsSetModifier: Processing exceptions set correlation")
 
 	// Create a new set of elements where we preserve state IDs for matching elements
 	modifiedElements := make([]attr.Value, 0, len(plannedElements))
 	correlationSuccessCount := 0
+	newExceptionsCount := 0
 
 	for i, plannedElement := range plannedElements {
 		plannedObj, ok := plannedElement.(types.Object)
@@ -105,15 +113,19 @@ func (m wanExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmod
 			modifiedElements = append(modifiedElements, modifiedElement)
 			correlationSuccessCount++
 		} else {
-			tflog.Debug(ctx, "ExceptionsSetModifier: No corresponding state element found, using planned as-is", map[string]interface{}{"index": i})
-			// No corresponding state element found, use planned as-is
-			modifiedElements = append(modifiedElements, plannedObj)
+			tflog.Debug(ctx, "ExceptionsSetModifier: No corresponding state element found (new exception), resolving Unknown values", map[string]interface{}{"index": i})
+			// No corresponding state element found - this is a new exception being added
+			// Resolve Unknown values to Null to enable proper correlation after apply
+			modifiedElement := m.resolveUnknownToNull(ctx, plannedObj)
+			modifiedElements = append(modifiedElements, modifiedElement)
+			newExceptionsCount++
 		}
 	}
 
 	tflog.Warn(ctx, "ExceptionsSetModifier: Correlation summary", map[string]interface{}{
 		"total_elements":     len(plannedElements),
 		"correlations_found": correlationSuccessCount,
+		"new_exceptions":     newExceptionsCount,
 	})
 
 	// Create the modified set
@@ -189,6 +201,10 @@ func (m wanExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedO
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "destination")
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "application")
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "service")
+	
+	// Preserve empty sets from config to prevent null/empty set correlation issues
+	m.preserveEmptySet(ctx, newAttrs, stateAttrs, "country")
+	m.preserveEmptySet(ctx, newAttrs, stateAttrs, "device")
 	
 	// Preserve device_attributes from state if both are null or both are objects
 	// This prevents correlation issues when device_attributes transitions
@@ -366,46 +382,75 @@ func (m wanExceptionsSetModifier) preserveSetElementIds(ctx context.Context, new
 	}
 }
 
-// findElementByName finds an element in the list by matching the name field
+// findElementByName finds an element in the list by matching the name field, or by ID if name is unknown
 func (m wanExceptionsSetModifier) findElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
-	targetName, exists := targetAttrs["name"]
-	if !exists {
-		return nil
-	}
+	
+	// First try to match by name
+	targetName, nameExists := targetAttrs["name"]
+	if nameExists {
+		targetNameStr, ok := targetName.(types.String)
+		if ok && !targetNameStr.IsNull() && !targetNameStr.IsUnknown() {
+			for _, element := range elements {
+				elementObj, ok := element.(types.Object)
+				if !ok {
+					continue
+				}
 
-	targetNameStr, ok := targetName.(types.String)
-	if !ok || targetNameStr.IsNull() || targetNameStr.IsUnknown() {
-		return nil
-	}
+				elementAttrs := elementObj.Attributes()
+				elementName, exists := elementAttrs["name"]
+				if !exists {
+					continue
+				}
 
-	for _, element := range elements {
-		elementObj, ok := element.(types.Object)
-		if !ok {
-			continue
-		}
+				elementNameStr, ok := elementName.(types.String)
+				if !ok {
+					continue
+				}
 
-		elementAttrs := elementObj.Attributes()
-		elementName, exists := elementAttrs["name"]
-		if !exists {
-			continue
-		}
-
-		elementNameStr, ok := elementName.(types.String)
-		if !ok {
-			continue
-		}
-
-		if !elementNameStr.IsNull() && !elementNameStr.IsUnknown() &&
-			elementNameStr.ValueString() == targetNameStr.ValueString() {
-			return &elementObj
+				if !elementNameStr.IsNull() && !elementNameStr.IsUnknown() &&
+					elementNameStr.ValueString() == targetNameStr.ValueString() {
+					return &elementObj
+				}
+			}
 		}
 	}
+	
+	// If name matching failed (or name is unknown), try to match by ID
+	targetId, idExists := targetAttrs["id"]
+	if idExists {
+		targetIdStr, ok := targetId.(types.String)
+		if ok && !targetIdStr.IsNull() && !targetIdStr.IsUnknown() {
+			for _, element := range elements {
+				elementObj, ok := element.(types.Object)
+				if !ok {
+					continue
+				}
 
+				elementAttrs := elementObj.Attributes()
+				elementId, exists := elementAttrs["id"]
+				if !exists {
+					continue
+				}
+
+				elementIdStr, ok := elementId.(types.String)
+				if !ok {
+					continue
+				}
+
+				if !elementIdStr.IsNull() && !elementIdStr.IsUnknown() &&
+					elementIdStr.ValueString() == targetIdStr.ValueString() {
+					tflog.Debug(ctx, "ExceptionsSetModifier: Found element by ID", map[string]interface{}{"id": targetIdStr.ValueString()})
+					return &elementObj
+				}
+			}
+		}
+	}
+	
 	return nil
 }
 
-// preserveElementId creates a new element object with ID preserved from state
+// preserveElementId creates a new element object with ID and name preserved from state
 func (m wanExceptionsSetModifier) preserveElementId(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
@@ -421,6 +466,18 @@ func (m wanExceptionsSetModifier) preserveElementId(ctx context.Context, planned
 			newAttrs["id"] = stateIdStr
 		}
 	}
+	
+	// Preserve name from state if planned name is unknown
+	if plannedName, exists := newAttrs["name"]; exists {
+		if plannedNameStr, ok := plannedName.(types.String); ok && plannedNameStr.IsUnknown() {
+			if stateName, stateExists := stateAttrs["name"]; stateExists {
+				if stateNameStr, ok := stateName.(types.String); ok && !stateNameStr.IsNull() && !stateNameStr.IsUnknown() {
+					newAttrs["name"] = stateNameStr
+					tflog.Debug(ctx, "ExceptionsSetModifier: Preserved name from state", map[string]interface{}{"name": stateNameStr.ValueString()})
+				}
+			}
+		}
+	}
 
 	objectType := plannedObj.Type(ctx).(types.ObjectType)
 	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
@@ -429,6 +486,189 @@ func (m wanExceptionsSetModifier) preserveElementId(ctx context.Context, planned
 	}
 
 	return newObj
+}
+
+// preserveEmptySet
+// instead of being converted to null by the state hydration
+func (m wanExceptionsSetModifier) preserveEmptySet(ctx context.Context, newAttrs map[string]attr.Value, stateAttrs map[string]attr.Value, fieldName string) {
+	plannedField, plannedExists := newAttrs[fieldName]
+	if !plannedExists {
+		return
+	}
+	
+	stateField, stateExists := stateAttrs[fieldName]
+	if !stateExists {
+		return
+	}
+	
+	// Check if planned is an empty set and state is null
+	plannedSet, plannedIsSet := plannedField.(types.Set)
+	stateSet, stateIsSet := stateField.(types.Set)
+	
+	if plannedIsSet && stateIsSet {
+		// If planned is empty set and state is null, preserve the empty set from plan
+		if !plannedSet.IsNull() && !plannedSet.IsUnknown() && len(plannedSet.Elements()) == 0 &&
+			stateSet.IsNull() {
+			tflog.Debug(ctx, "ExceptionsSetModifier: Preserving empty set from plan",
+				map[string]interface{}{"field": fieldName})
+			// Keep the planned empty set
+			newAttrs[fieldName] = plannedSet
+		}
+	}
+}
+
+// resolveUnknownToNull recursively resolves Unknown values to Null in an exception object
+// This enables proper correlation between planned and actual values during first apply
+func (m wanExceptionsSetModifier) resolveUnknownToNull(ctx context.Context, plannedObj types.Object) types.Object {
+	plannedAttrs := plannedObj.Attributes()
+
+	// Start with planned attributes
+	newAttrs := make(map[string]attr.Value, len(plannedAttrs))
+	for k, v := range plannedAttrs {
+		newAttrs[k] = v
+	}
+
+	// Process nested objects (source, destination, application, service)
+	m.resolveNestedObjectUnknowns(ctx, newAttrs, "source")
+	m.resolveNestedObjectUnknowns(ctx, newAttrs, "destination")
+	m.resolveNestedObjectUnknowns(ctx, newAttrs, "application")
+	m.resolveNestedObjectUnknowns(ctx, newAttrs, "service")
+
+	// Handle device_attributes - if it has all Unknown/Null fields, set to Null
+	if deviceAttrs, exists := newAttrs["device_attributes"]; exists {
+		if deviceAttrsObj, ok := deviceAttrs.(types.Object); ok && !deviceAttrsObj.IsNull() && !deviceAttrsObj.IsUnknown() {
+			newAttrs["device_attributes"] = m.resolveDeviceAttributesUnknowns(ctx, deviceAttrsObj)
+		}
+	}
+
+	// Create the new object
+	objectType := plannedObj.Type(ctx).(types.ObjectType)
+	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
+	if diags.HasError() {
+		tflog.Error(ctx, "ExceptionsSetModifier: Failed to create resolved object, using planned")
+		return plannedObj
+	}
+
+	return newObj
+}
+
+// resolveNestedObjectUnknowns resolves Unknown values to Null in nested objects
+func (m wanExceptionsSetModifier) resolveNestedObjectUnknowns(ctx context.Context, newAttrs map[string]attr.Value, fieldName string) {
+	nestedField, exists := newAttrs[fieldName]
+	if !exists {
+		return
+	}
+
+	nestedObj, ok := nestedField.(types.Object)
+	if !ok || nestedObj.IsNull() || nestedObj.IsUnknown() {
+		return
+	}
+
+	nestedAttrs := nestedObj.Attributes()
+	newNestedAttrs := make(map[string]attr.Value, len(nestedAttrs))
+	for k, v := range nestedAttrs {
+		newNestedAttrs[k] = v
+	}
+
+	// Process each attribute in the nested object
+	for attrName, attrValue := range nestedAttrs {
+		// Handle sets (like host, site, floating_subnet, etc.)
+		if setVal, ok := attrValue.(types.Set); ok {
+			if !setVal.IsNull() && !setVal.IsUnknown() {
+				newNestedAttrs[attrName] = m.resolveSetUnknowns(ctx, setVal)
+			}
+		}
+		// Handle lists (like ip, subnet, etc.)
+		if listVal, ok := attrValue.(types.List); ok {
+			if listVal.IsUnknown() {
+				newNestedAttrs[attrName] = types.ListNull(listVal.ElementType(ctx))
+			}
+		}
+	}
+
+	// Recreate the nested object
+	nestedObjectType := nestedObj.Type(ctx).(types.ObjectType)
+	newNestedObj, diags := types.ObjectValue(nestedObjectType.AttrTypes, newNestedAttrs)
+	if !diags.HasError() {
+		newAttrs[fieldName] = newNestedObj
+	}
+}
+
+// resolveSetUnknowns resolves Unknown values in set elements to Null
+func (m wanExceptionsSetModifier) resolveSetUnknowns(ctx context.Context, setVal types.Set) types.Set {
+	elements := setVal.Elements()
+	if len(elements) == 0 {
+		return setVal
+	}
+
+	modifiedElements := make([]attr.Value, 0, len(elements))
+	for _, element := range elements {
+		elementObj, ok := element.(types.Object)
+		if !ok {
+			modifiedElements = append(modifiedElements, element)
+			continue
+		}
+
+		// Resolve Unknown name/id to Null
+		elementAttrs := elementObj.Attributes()
+		newElementAttrs := make(map[string]attr.Value, len(elementAttrs))
+		for k, v := range elementAttrs {
+			newElementAttrs[k] = v
+		}
+
+		// If name is Unknown, set it to Null
+		if nameVal, exists := newElementAttrs["name"]; exists {
+			if nameStr, ok := nameVal.(types.String); ok && nameStr.IsUnknown() {
+				newElementAttrs["name"] = types.StringNull()
+			}
+		}
+
+		// If id is Unknown, set it to Null
+		if idVal, exists := newElementAttrs["id"]; exists {
+			if idStr, ok := idVal.(types.String); ok && idStr.IsUnknown() {
+				newElementAttrs["id"] = types.StringNull()
+			}
+		}
+
+		elementObjectType := elementObj.Type(ctx).(types.ObjectType)
+		newElementObj, diags := types.ObjectValue(elementObjectType.AttrTypes, newElementAttrs)
+		if !diags.HasError() {
+			modifiedElements = append(modifiedElements, newElementObj)
+		} else {
+			modifiedElements = append(modifiedElements, element)
+		}
+	}
+
+	newSet, diags := types.SetValue(setVal.ElementType(ctx), modifiedElements)
+	if !diags.HasError() {
+		return newSet
+	}
+	return setVal
+}
+
+// resolveDeviceAttributesUnknowns resolves Unknown values in device_attributes
+func (m wanExceptionsSetModifier) resolveDeviceAttributesUnknowns(ctx context.Context, deviceAttrsObj types.Object) types.Object {
+	attrs := deviceAttrsObj.Attributes()
+	newAttrs := make(map[string]attr.Value, len(attrs))
+	
+	for k, v := range attrs {
+		if listVal, ok := v.(types.List); ok {
+			if listVal.IsUnknown() {
+				newAttrs[k] = types.ListNull(types.StringType)
+			} else {
+				newAttrs[k] = v
+			}
+		} else {
+			newAttrs[k] = v
+		}
+	}
+
+	objectType := deviceAttrsObj.Type(ctx).(types.ObjectType)
+	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
+	if !diags.HasError() {
+		return newObj
+	}
+	return deviceAttrsObj
 }
 
 // ExceptionsSetModifier returns a new exceptions set plan modifier

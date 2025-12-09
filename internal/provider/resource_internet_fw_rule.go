@@ -2354,13 +2354,12 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 								},
 								"service": schema.SingleNestedAttribute{
-									Description: "Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
-									Required:    false,
-									Optional:    true,
+									Description: "Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. This field is required when defining exceptions.",
+									Required:    true,
+									Optional:    false,
 									PlanModifiers: []planmodifier.Object{
 										objectplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
-									Computed: true,
 									Attributes: map[string]schema.Attribute{
 										"standard": schema.SetNestedAttribute{
 											Description: "Standard Service to which this Internet Firewall rule applies",

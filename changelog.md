@@ -191,3 +191,10 @@
 
 ## 0.0.55 (2025-11-14)
 - Added guide for managing site licenses in bulk from csv
+
+## 0.0.56 (2025-12-08)
+- Added resource for new advanced groups (cato_group, cato_group_members) along with data source 
+- Added comprehensive unit tests for IFW and WAN FW resources, fixed exceptions  
+- Updated readmes for index and for csv license import guide
+
+

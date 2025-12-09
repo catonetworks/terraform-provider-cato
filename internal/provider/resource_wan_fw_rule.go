@@ -176,9 +176,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"source": schema.SingleNestedAttribute{
-						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
-						Required:    false,
-						Optional:    true,
+						Description: "Source traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. Can be an empty object {} to match any source.",
+						Required:    true,
+						Optional:    false,
 						PlanModifiers: []planmodifier.Object{
 							objectplanmodifier.UseStateForUnknown(),  // Avoid drift
 							planmodifiers.SourceDestObjectModifier(), // Handle ID correlation for nested sets
@@ -606,9 +606,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"destination": schema.SingleNestedAttribute{
-						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
-						Required:    false,
-						Optional:    true,
+						Description: "Destination traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. Can be an empty object {} to match any destination.",
+						Required:    true,
+						Optional:    false,
 						PlanModifiers: []planmodifier.Object{
 							objectplanmodifier.UseStateForUnknown(),  // Avoid drift
 							planmodifiers.SourceDestObjectModifier(), // Handle ID correlation for nested sets
@@ -1189,9 +1189,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"application": schema.SingleNestedAttribute{
-						Description: "Application traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
-						Optional:    true,
-						Required:    false,
+						Description: "Application traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. Can be an empty object {} to match any application.",
+						Required:    true,
+						Optional:    false,
 						Attributes: map[string]schema.Attribute{
 							"application": schema.SetNestedAttribute{
 								Description: "Applications for the rule (pre-defined)",
@@ -2681,14 +2681,11 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 								"country": schema.SetNestedAttribute{
-									Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
+									Description: "Source country traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
 									Required:    false,
 									Optional:    true,
 									PlanModifiers: []planmodifier.Set{
 										setplanmodifier.UseStateForUnknown(), // Avoid drift
-									},
-									Validators: []validator.Set{
-										setvalidator.SizeAtLeast(1),
 									},
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
@@ -3168,9 +3165,9 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 								},
 								"service": schema.SingleNestedAttribute{
-									Description: "Destination service matching criteria for the exception.",
-									Required:    false,
-									Optional:    true,
+									Description: "Destination service matching criteria for the exception. This field is required when defining exceptions.",
+									Required:    true,
+									Optional:    false,
 									Attributes: map[string]schema.Attribute{
 										"standard": schema.SetNestedAttribute{
 											Required: false,

@@ -628,6 +628,7 @@ Optional:
 Required:
 
 - `destination` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--destination))
+- `service` (Attributes) Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. This field is required when defining exceptions. (see [below for nested schema](#nestedatt--rule--exceptions--service))
 
 Optional:
 
@@ -637,7 +638,6 @@ Optional:
 - `device_attributes` (Attributes) Device attributes matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--device_attributes))
 - `device_os` (List of String) Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `name` (String) A unique name of the rule exception.
-- `service` (Attributes) Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--service))
 - `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
 
 <a id="nestedatt--rule--exceptions--destination"></a>
@@ -732,37 +732,6 @@ Optional:
 
 
 
-<a id="nestedatt--rule--exceptions--country"></a>
-### Nested Schema for `rule.exceptions.country`
-
-Optional:
-
-- `id` (String) Country ID
-- `name` (String) Country Name
-
-
-<a id="nestedatt--rule--exceptions--device"></a>
-### Nested Schema for `rule.exceptions.device`
-
-Optional:
-
-- `id` (String) Device ID
-- `name` (String) Device Name
-
-
-<a id="nestedatt--rule--exceptions--device_attributes"></a>
-### Nested Schema for `rule.exceptions.device_attributes`
-
-Optional:
-
-- `category` (List of String) Device category matching criteria for the exception.
-- `manufacturer` (List of String) Device manufacturer matching criteria for the exception.
-- `model` (List of String) Device model matching criteria for the exception.
-- `os` (List of String) Device OS matching criteria for the exception.
-- `os_version` (List of String) Device OS version matching criteria for the exception.
-- `type` (List of String) Device type matching criteria for the exception.
-
-
 <a id="nestedatt--rule--exceptions--service"></a>
 ### Nested Schema for `rule.exceptions.service`
 
@@ -798,6 +767,37 @@ Optional:
 - `id` (String) Service Standard ID
 - `name` (String) Service Standard Name
 
+
+
+<a id="nestedatt--rule--exceptions--country"></a>
+### Nested Schema for `rule.exceptions.country`
+
+Optional:
+
+- `id` (String) Country ID
+- `name` (String) Country Name
+
+
+<a id="nestedatt--rule--exceptions--device"></a>
+### Nested Schema for `rule.exceptions.device`
+
+Optional:
+
+- `id` (String) Device ID
+- `name` (String) Device Name
+
+
+<a id="nestedatt--rule--exceptions--device_attributes"></a>
+### Nested Schema for `rule.exceptions.device_attributes`
+
+Optional:
+
+- `category` (List of String) Device category matching criteria for the exception.
+- `manufacturer` (List of String) Device manufacturer matching criteria for the exception.
+- `model` (List of String) Device model matching criteria for the exception.
+- `os` (List of String) Device OS matching criteria for the exception.
+- `os_version` (List of String) Device OS version matching criteria for the exception.
+- `type` (List of String) Device type matching criteria for the exception.
 
 
 <a id="nestedatt--rule--exceptions--source"></a>
