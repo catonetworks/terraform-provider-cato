@@ -197,4 +197,7 @@
 - Added comprehensive unit tests for IFW and WAN FW resources, fixed exceptions  
 - Updated readmes for index and for csv license import guide
 
+## 0.0.57 (2025-12-10)
+- Updated group data-source to support id, and name filters, and updated readmes for new resources to provide examples for all
+
 

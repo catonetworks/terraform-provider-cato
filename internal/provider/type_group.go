@@ -31,3 +31,18 @@ var GroupMemberAttrTypes = map[string]attr.Type{
 }
 
 var GroupMemberObjectType = types.ObjectType{AttrTypes: GroupMemberAttrTypes}
+
+// GroupsLookup is the type for the groups data source with filters
+type GroupsLookup struct {
+	IdFilter   types.List `tfsdk:"id_filter"`
+	NameFilter types.List `tfsdk:"name_filter"`
+	Items      types.List `tfsdk:"items"`
+}
+
+// GroupItemAttrTypes defines the attribute types for a group item in the lookup results
+var GroupItemAttrTypes = map[string]attr.Type{
+	"id":          types.StringType,
+	"name":        types.StringType,
+	"description": types.StringType,
+	"members":     types.SetType{ElemType: GroupMemberObjectType},
+}
