@@ -1011,24 +1011,35 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 			}
 
 			if translatedSubnetVal, ok := curRange.HelperFields["translated_subnet"]; ok {
-				state.TranslatedSubnet = types.StringValue(cast.ToString(translatedSubnetVal))
-			}
-
-			if vlanVal, ok := curRange.HelperFields["vlan"]; ok {
-				state.Vlan = types.Int64Value(cast.ToInt64(vlanVal))
-			}
-
-			// Only populate DHCP settings if they were configured in the plan or if this is for VLAN/Native range types
-			// This prevents drift detection when DHCP settings are not configured
-			if !state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown() {
-				// DHCP settings are configured in the plan/state, so we should populate them
-				// First, extract the current DHCP settings from state to preserve user-configured values
-				var currentDhcpSettings DhcpSettings
-				diags := state.DhcpSettings.As(ctx, &currentDhcpSettings, basetypes.ObjectAsOptions{})
-				if diags.HasError() {
-					return state, false, fmt.Errorf("failed to read current dhcp settings: %v", diags)
+				translatedSubnetStr := cast.ToString(translatedSubnetVal)
+				if translatedSubnetStr != "" {
+					state.TranslatedSubnet = types.StringValue(translatedSubnetStr)
+				} else {
+					state.TranslatedSubnet = types.StringNull()
 				}
+			}
 
+			// Always populate VLAN from API if available
+			// API returns this as 'vlanTag' not 'vlan'
+			if vlanVal, ok := curRange.HelperFields["vlanTag"]; ok {
+				vlanInt64 := cast.ToInt64(vlanVal)
+				if vlanInt64 > 0 {
+					state.Vlan = types.Int64Value(vlanInt64)
+				} else {
+					state.Vlan = types.Int64Null()
+				}
+			} else {
+				state.Vlan = types.Int64Null()
+			}
+
+			// Always populate DHCP settings from API for VLAN and Native range types
+			// Check if DHCP settings exist in API response
+			_, hasDhcpType := curRange.HelperFields["dhcpType"]
+			
+			// Populate DHCP settings if:
+			// 1. They were already in state (preserve user config)
+			// 2. OR the API returns dhcpType (meaning DHCP is configured)
+			if (!state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown()) || hasDhcpType {
 				// Start with null values as defaults - unknown values MUST be resolved to known values
 				dhcpType := types.StringNull()
 				ipRange := types.StringNull()
@@ -1036,21 +1047,30 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 				relayGroupName := types.StringNull()
 				dhcpMicrosegmentation := types.BoolValue(false)
 
-				// Preserve concrete values from state (not null/unknown)
-				if !currentDhcpSettings.DhcpType.IsNull() && !currentDhcpSettings.DhcpType.IsUnknown() {
-					dhcpType = currentDhcpSettings.DhcpType
-				}
-				if !currentDhcpSettings.IpRange.IsNull() && !currentDhcpSettings.IpRange.IsUnknown() {
-					ipRange = currentDhcpSettings.IpRange
-				}
-				if !currentDhcpSettings.RelayGroupId.IsNull() && !currentDhcpSettings.RelayGroupId.IsUnknown() {
-					relayGroupId = currentDhcpSettings.RelayGroupId
-				}
-				if !currentDhcpSettings.RelayGroupName.IsNull() && !currentDhcpSettings.RelayGroupName.IsUnknown() {
-					relayGroupName = currentDhcpSettings.RelayGroupName
-				}
-				if !currentDhcpSettings.DhcpMicrosegmentation.IsNull() && !currentDhcpSettings.DhcpMicrosegmentation.IsUnknown() {
-					dhcpMicrosegmentation = currentDhcpSettings.DhcpMicrosegmentation
+				// Extract current DHCP settings from state if present (not null/unknown)
+				if !state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown() {
+					var currentDhcpSettings DhcpSettings
+					diags := state.DhcpSettings.As(ctx, &currentDhcpSettings, basetypes.ObjectAsOptions{})
+					if diags.HasError() {
+						return state, false, fmt.Errorf("failed to read current dhcp settings: %v", diags)
+					}
+
+					// Preserve concrete values from state (not null/unknown)
+					if !currentDhcpSettings.DhcpType.IsNull() && !currentDhcpSettings.DhcpType.IsUnknown() {
+						dhcpType = currentDhcpSettings.DhcpType
+					}
+					if !currentDhcpSettings.IpRange.IsNull() && !currentDhcpSettings.IpRange.IsUnknown() {
+						ipRange = currentDhcpSettings.IpRange
+					}
+					if !currentDhcpSettings.RelayGroupId.IsNull() && !currentDhcpSettings.RelayGroupId.IsUnknown() {
+						relayGroupId = currentDhcpSettings.RelayGroupId
+					}
+					if !currentDhcpSettings.RelayGroupName.IsNull() && !currentDhcpSettings.RelayGroupName.IsUnknown() {
+						relayGroupName = currentDhcpSettings.RelayGroupName
+					}
+					if !currentDhcpSettings.DhcpMicrosegmentation.IsNull() && !currentDhcpSettings.DhcpMicrosegmentation.IsUnknown() {
+						dhcpMicrosegmentation = currentDhcpSettings.DhcpMicrosegmentation
+					}
 				}
 
 				// Override with API values if available (API values take precedence when present)
@@ -1090,11 +1110,10 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 				}
 
 				state.DhcpSettings = dhcpSettingsObject
-			} else if state.DhcpSettings.IsUnknown() {
-				// DhcpSettings is unknown (computed), set to null to make it known
+			} else {
+				// No DHCP settings in API or state, set to null
 				state.DhcpSettings = types.ObjectNull(DhcpSettingsAttrTypes)
 			}
-			// else: DHCP settings are null, keep them null to avoid drift
 		}
 	}
 	return state, true, nil
