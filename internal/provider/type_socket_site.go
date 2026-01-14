@@ -25,6 +25,7 @@ type NativeRange struct {
 	RangeName                   types.String `tfsdk:"range_name"`
 	RangeId                     types.String `tfsdk:"range_id"`
 	LocalIp                     types.String `tfsdk:"local_ip"`
+	TranslatedSubnet            types.String `tfsdk:"translated_subnet"`
 	Gateway                     types.String `tfsdk:"gateway"`
 	RangeType                   types.String `tfsdk:"range_type"`
 	DhcpSettings                types.Object `tfsdk:"dhcp_settings"`
@@ -53,6 +54,7 @@ var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
 	"range_name":                      types.StringType,
 	"range_id":                        types.StringType,
 	"local_ip":                        types.StringType,
+	"translated_subnet":               types.StringType,
 	"gateway":                         types.StringType,
 	"range_type":                      types.StringType,
 	"vlan":                            types.Int64Type,

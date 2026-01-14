@@ -402,7 +402,14 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 		if plan.RangeType == types.StringValue("VLAN") {
 			if plan.DhcpSettings.IsNull() {
+				// Set default DHCP settings when null for VLAN ranges
 				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
+				dhcpSettings.DhcpMicrosegmentation = types.BoolValue(false)
+				dhcpSettings.IpRange = types.StringNull()
+				dhcpSettings.RelayGroupId = types.StringNull()
+				dhcpSettings.RelayGroupName = types.StringNull()
+				// Update the plan with default values to prevent inconsistency errors
+				plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
 			} else {
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
@@ -610,6 +617,23 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		curMdnsReflector = nil
 	}
 
+	// Validate and set vlan value
+	var vlanValue *int64
+	if plan.RangeType == types.StringValue("VLAN") {
+		// Only set vlan if range type is VLAN
+		vlanValue = plan.Vlan.ValueInt64Pointer()
+	} else {
+		// For non-VLAN types, vlan must not be set
+		if !plan.Vlan.IsNull() && !plan.Vlan.IsUnknown() {
+			resp.Diagnostics.AddError(
+				"Invalid configuration",
+				fmt.Sprintf("vlan can only be configured for VLAN range types, but range_type is %s", plan.RangeType.ValueString()),
+			)
+			return
+		}
+		vlanValue = nil
+	}
+
 	// setting input
 	input := cato_models.UpdateNetworkRangeInput{
 		Name:             plan.Name.ValueStringPointer(),
@@ -618,7 +642,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		LocalIP:          plan.LocalIp.ValueStringPointer(),
 		TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),
 		Gateway:          plan.Gateway.ValueStringPointer(),
-		Vlan:             plan.Vlan.ValueInt64Pointer(),
+		Vlan:             vlanValue,
 		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
 		MdnsReflector:    curMdnsReflector,
 	}
@@ -684,6 +708,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	}
 
+	// Set Gateway or LocalIP based on range type
 	if plan.RangeType == types.StringValue("Routed") {
 		if !plan.LocalIp.IsNull() && !plan.LocalIp.IsUnknown() && plan.LocalIp.ValueString() != "" {
 			resp.Diagnostics.AddError(
@@ -693,6 +718,8 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 		input.Gateway = plan.Gateway.ValueStringPointer()
+		// Explicitly clear LocalIP for routed ranges
+		input.LocalIP = nil
 	} else if plan.RangeType == types.StringValue("VLAN") || plan.RangeType == types.StringValue("Direct") {
 		if !plan.Gateway.IsNull() && !plan.Gateway.IsUnknown() && plan.Gateway.ValueString() != "" {
 			resp.Diagnostics.AddError(
@@ -702,7 +729,8 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 		input.LocalIP = plan.LocalIp.ValueStringPointer()
-
+		// Explicitly clear Gateway for non-routed ranges
+		input.Gateway = nil
 		if plan.RangeType == types.StringValue("VLAN") {
 			if plan.DhcpSettings.IsNull() {
 				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
@@ -1019,27 +1047,36 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 				}
 			}
 
-			// Always populate VLAN from API if available
+			// Populate VLAN from API based on range type
 			// API returns this as 'vlanTag' not 'vlan'
-			if vlanVal, ok := curRange.HelperFields["vlanTag"]; ok {
-				vlanInt64 := cast.ToInt64(vlanVal)
-				if vlanInt64 > 0 {
-					state.Vlan = types.Int64Value(vlanInt64)
+			// Only populate vlan if this is a VLAN type range
+			if curRangeTypeVal == "VLAN" {
+				if vlanVal, ok := curRange.HelperFields["vlanTag"]; ok {
+					vlanInt64 := cast.ToInt64(vlanVal)
+					if vlanInt64 > 0 {
+						state.Vlan = types.Int64Value(vlanInt64)
+					} else {
+						state.Vlan = types.Int64Null()
+					}
 				} else {
 					state.Vlan = types.Int64Null()
 				}
 			} else {
+				// For non-VLAN types, always set to null regardless of API response
+				// This prevents inconsistency when changing from VLAN to other types
 				state.Vlan = types.Int64Null()
 			}
 
-			// Always populate DHCP settings from API for VLAN and Native range types
-			// Check if DHCP settings exist in API response
+			// Only populate DHCP settings for VLAN and Native range types
+			// DHCP settings are not supported for Direct or Routed ranges
 			_, hasDhcpType := curRange.HelperFields["dhcpType"]
-			
-			// Populate DHCP settings if:
+
+			// Populate DHCP settings ONLY if this is a VLAN or Native range type
+			// AND one of the following is true:
 			// 1. They were already in state (preserve user config)
 			// 2. OR the API returns dhcpType (meaning DHCP is configured)
-			if (!state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown()) || hasDhcpType {
+			isVlanOrNative := curRangeTypeVal == "VLAN" || curRangeTypeVal == "NATIVE"
+			if isVlanOrNative && ((!state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown()) || hasDhcpType) {
 				// Start with null values as defaults - unknown values MUST be resolved to known values
 				dhcpType := types.StringNull()
 				ipRange := types.StringNull()
