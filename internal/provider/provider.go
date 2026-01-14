@@ -170,6 +170,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		IfRuleSectionsDataSource,
 		WfRuleSectionsDataSource,
 		NetworkRangesDataSource,
+		HostDataSource,
 	}
 }
 
