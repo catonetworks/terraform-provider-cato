@@ -63,6 +63,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
@@ -221,6 +222,31 @@ func (r *networkRangeResource) Configure(_ context.Context, req resource.Configu
 func (r *networkRangeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
+	// Hydrate the state from the API
+	var state NetworkRange
+	state.Id = types.StringValue(req.ID)
+
+	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, state, req.ID)
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating network range state during import",
+			hydrateErr.Error(),
+		)
+		return
+	}
+
+	if !rangeExists {
+		resp.Diagnostics.AddError(
+			"Network Range Not Found",
+			fmt.Sprintf("Network range with ID %q not found during import", req.ID),
+		)
+		return
+	}
+
+	// Set the hydrated state
+	diags := resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
 }
 
 func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

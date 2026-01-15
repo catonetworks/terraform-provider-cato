@@ -40,6 +40,9 @@ func (r *wanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "The WAN interface ID, which is a combination of the site ID and the interface ID (e.g., `site_id:interface_id`, 12345:INT_1). This is used to identify the WAN interface resource.",
 				Required:    false,
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"interface_id": schema.StringAttribute{
 				Description: "The interface ID, which is a unique identifier for the WAN interface (e.g., `INT_1`, `INT_2`, etc.). This is used to identify the specific WAN interface resource.",
@@ -107,6 +110,15 @@ func (r *wanInterfaceResource) Configure(_ context.Context, req resource.Configu
 func (r *wanInterfaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
+	// Call Read to hydrate the full state from the API
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State, Diagnostics: resp.Diagnostics}
+	r.Read(ctx, readReq, &readResp)
+
+	// Copy diagnostics and state back to the import response
+	resp.Diagnostics = readResp.Diagnostics
+	resp.State = readResp.State
 }
 
 func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

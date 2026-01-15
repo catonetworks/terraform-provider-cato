@@ -122,6 +122,15 @@ func (r *lanInterfaceResource) Configure(_ context.Context, req resource.Configu
 func (r *lanInterfaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
+	// Call Read to hydrate the full state from the API
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State, Diagnostics: resp.Diagnostics}
+	r.Read(ctx, readReq, &readResp)
+
+	// Copy diagnostics and state back to the import response
+	resp.Diagnostics = readResp.Diagnostics
+	resp.State = readResp.State
 }
 
 func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

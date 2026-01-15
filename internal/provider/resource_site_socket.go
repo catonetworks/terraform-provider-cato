@@ -151,9 +151,6 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"range_id": schema.StringAttribute{
 						Description: "Native range ID (base64 encoded identifier)",
 						Computed:    true,
-						// PlanModifiers: []planmodifier.String{
-						// 	stringplanmodifier.UseStateForUnknown(),
-						// },
 					},
 					"gateway": schema.StringAttribute{
 						Description: "Gateway IP address for the native range",
@@ -315,6 +312,15 @@ func (r *socketSiteResource) Configure(_ context.Context, req resource.Configure
 func (r *socketSiteResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
+	// Call Read to hydrate the full state from the API
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State, Diagnostics: resp.Diagnostics}
+	r.Read(ctx, readReq, &readResp)
+
+	// Copy diagnostics and state back to the import response
+	resp.Diagnostics = readResp.Diagnostics
+	resp.State = readResp.State
 }
 
 func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
