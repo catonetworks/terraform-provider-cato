@@ -200,4 +200,7 @@
 ## 0.0.57 (2025-12-10)
 - Updated group data-source to support id, and name filters, and updated readmes for new resources to provide examples for all
 
+## 0.0.58 (2025-12-10)
+- Updated socket_site, lan_interface, wan_interface, and network_range resources to add all read attributes now available in the API to hystrate state.
+- Added data source for host lookup
 
