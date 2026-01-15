@@ -9,6 +9,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -62,6 +63,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
@@ -178,10 +180,17 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 					"relay_group_id": schema.StringAttribute{
 						Description: "Network range dhcp relay group id",
 						Optional:    true,
+						Computed:    true,
 					},
 					"relay_group_name": schema.StringAttribute{
 						Description: "Network range dhcp relay group name",
 						Optional:    true,
+						Computed:    true,
+						Validators: []validator.String{
+							stringvalidator.ConflictsWith(path.Expressions{
+								path.MatchRelative().AtParent().AtName("relay_group_id"),
+							}...),
+						},
 					},
 					"dhcp_microsegmentation": schema.BoolAttribute{
 						Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
@@ -213,6 +222,31 @@ func (r *networkRangeResource) Configure(_ context.Context, req resource.Configu
 func (r *networkRangeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
+	// Hydrate the state from the API
+	var state NetworkRange
+	state.Id = types.StringValue(req.ID)
+
+	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, state, req.ID)
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating network range state during import",
+			hydrateErr.Error(),
+		)
+		return
+	}
+
+	if !rangeExists {
+		resp.Diagnostics.AddError(
+			"Network Range Not Found",
+			fmt.Sprintf("Network range with ID %q not found during import", req.ID),
+		)
+		return
+	}
+
+	// Set the hydrated state
+	diags := resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
 }
 
 func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -394,7 +428,14 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 		if plan.RangeType == types.StringValue("VLAN") {
 			if plan.DhcpSettings.IsNull() {
+				// Set default DHCP settings when null for VLAN ranges
 				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
+				dhcpSettings.DhcpMicrosegmentation = types.BoolValue(false)
+				dhcpSettings.IpRange = types.StringNull()
+				dhcpSettings.RelayGroupId = types.StringNull()
+				dhcpSettings.RelayGroupName = types.StringNull()
+				// Update the plan with default values to prevent inconsistency errors
+				plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
 			} else {
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
@@ -411,7 +452,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 				input.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
 				input.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
-				input.DhcpSettings.RelayGroupID = dhcpSettingsInput.RelayGroupId.ValueStringPointer()
+				// Note: RelayGroupID is only set for DHCP_RELAY type below
 				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE
 				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
 					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpSettingsInput.DhcpType.ValueString() != "DHCP_RANGE" {
@@ -458,6 +499,11 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 					// Set the resolved relay group ID
 					input.DhcpSettings.RelayGroupID = &resolvedRelayGroupId
+
+					// Update the plan's DhcpSettings with the resolved relay group ID
+					// This ensures the value is known after apply
+					dhcpSettingsInput.RelayGroupId = types.StringValue(resolvedRelayGroupId)
+					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettingsInput)
 				}
 			}
 		}
@@ -597,6 +643,23 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		curMdnsReflector = nil
 	}
 
+	// Validate and set vlan value
+	var vlanValue *int64
+	if plan.RangeType == types.StringValue("VLAN") {
+		// Only set vlan if range type is VLAN
+		vlanValue = plan.Vlan.ValueInt64Pointer()
+	} else {
+		// For non-VLAN types, vlan must not be set
+		if !plan.Vlan.IsNull() && !plan.Vlan.IsUnknown() {
+			resp.Diagnostics.AddError(
+				"Invalid configuration",
+				fmt.Sprintf("vlan can only be configured for VLAN range types, but range_type is %s", plan.RangeType.ValueString()),
+			)
+			return
+		}
+		vlanValue = nil
+	}
+
 	// setting input
 	input := cato_models.UpdateNetworkRangeInput{
 		Name:             plan.Name.ValueStringPointer(),
@@ -605,7 +668,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		LocalIP:          plan.LocalIp.ValueStringPointer(),
 		TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),
 		Gateway:          plan.Gateway.ValueStringPointer(),
-		Vlan:             plan.Vlan.ValueInt64Pointer(),
+		Vlan:             vlanValue,
 		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
 		MdnsReflector:    curMdnsReflector,
 	}
@@ -671,6 +734,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	}
 
+	// Set Gateway or LocalIP based on range type
 	if plan.RangeType == types.StringValue("Routed") {
 		if !plan.LocalIp.IsNull() && !plan.LocalIp.IsUnknown() && plan.LocalIp.ValueString() != "" {
 			resp.Diagnostics.AddError(
@@ -680,6 +744,8 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 		input.Gateway = plan.Gateway.ValueStringPointer()
+		// Explicitly clear LocalIP for routed ranges
+		input.LocalIP = nil
 	} else if plan.RangeType == types.StringValue("VLAN") || plan.RangeType == types.StringValue("Direct") {
 		if !plan.Gateway.IsNull() && !plan.Gateway.IsUnknown() && plan.Gateway.ValueString() != "" {
 			resp.Diagnostics.AddError(
@@ -689,7 +755,8 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 		input.LocalIP = plan.LocalIp.ValueStringPointer()
-
+		// Explicitly clear Gateway for non-routed ranges
+		input.Gateway = nil
 		if plan.RangeType == types.StringValue("VLAN") {
 			if plan.DhcpSettings.IsNull() {
 				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
@@ -709,7 +776,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 
 				input.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
 				input.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
-				input.DhcpSettings.RelayGroupID = dhcpSettingsInput.RelayGroupId.ValueStringPointer()
+				// Note: RelayGroupID is only set for DHCP_RELAY type below
 				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE
 				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
 					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpSettingsInput.DhcpType.ValueString() != "DHCP_RANGE" {
@@ -756,6 +823,11 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 
 					// Set the resolved relay group ID
 					input.DhcpSettings.RelayGroupID = &resolvedRelayGroupId
+
+					// Update the plan's DhcpSettings with the resolved relay group ID
+					// This ensures the value is known after apply
+					dhcpSettingsInput.RelayGroupId = types.StringValue(resolvedRelayGroupId)
+					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettingsInput)
 				}
 			}
 		}
@@ -885,7 +957,9 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 
 	for _, curRange := range querySiteRangeResult.EntityLookup.Items {
 		// find the siteRange entry we need
-		if curRange.Entity.ID == state.Id.ValueString() {
+		// Compare against networkRangeID (the parameter), not state.Id, because during Create
+		// state.Id is unknown/empty - we need to match using the ID returned from the API
+		if curRange.Entity.ID == networkRangeID {
 			state.Id = types.StringValue(curRange.Entity.ID)
 			helperFields := curRange.GetHelperFields()
 			siteIdStr := cast.ToString(helperFields["siteId"])
@@ -937,25 +1011,9 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 				state.InterfaceIndex = types.StringValue(curInterfaceIndex)
 			}
 
-			// Field missing, add when supported by API
-			// if gatewayVal, ok := curRange.HelperFields["gateway"]; ok {
-			// 	state.Gateway = types.StringValue(cast.ToString(gatewayVal))
-			// }
-
-			// Field missing, add when supported by API
-			// if gatewayVal, ok := curRange.HelperFields["gateway"]; ok {
-			// 	state.Gateway = types.StringValue(cast.ToString(gatewayVal))
-			// }
-
-			// Field missing, add when supported by API
-			// if internetOnlyVal, ok := curRange.HelperFields["internetOnly"]; ok {
-			// 	state.InternetOnly = types.BoolValue(cast.ToBool(internetOnlyVal))
-			// }
-
-			// Field missing, add when supported by API
-			// if localIpVal, ok := curRange.HelperFields["local_ip"]; ok {
-			// 	state.LocalIp = types.StringValue(cast.ToString(localIpVal))
-			// }
+			if internetOnlyVal, ok := curRange.HelperFields["internetOnly"]; ok {
+				state.InternetOnly = types.BoolValue(cast.ToBool(internetOnlyVal))
+			}
 
 			// MdnsReflector is not supported for routed subnets, and the rangeType is not available or known via API response
 			// Preserve mdnsReflector value from plan/state, only set to null if not present in state
@@ -972,10 +1030,32 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 				state.Name = types.StringValue(nameParts[len(nameParts)-1])
 			}
 
-			// Field missing, add when supported by API
-			// if rangeTypeVal, ok := curRange.HelperFields["range_type"]; ok {
-			// 	state.RangeType = types.StringValue(cast.ToString(rangeTypeVal))
-			// }
+			// Retrieve current rangeType from the API response, and translate for what API is expecting for updates
+			curRangeTypeVal := "VLAN"
+			if rangeTypeVal, ok := curRange.HelperFields["rangeType"]; ok {
+				curRangeTypeVal = cast.ToString(rangeTypeVal)
+			}
+
+			// Parse gateway value, used for both localIp and gateway
+			gatewayLocalIpVal := types.StringNull()
+			if gatewayVal, ok := curRange.HelperFields["gateway"]; ok {
+				gatewayLocalIpVal = types.StringValue(cast.ToString(gatewayVal))
+			}
+
+			// Assign gatewayLocalIpVal to gateway or localIp
+			switch curRangeTypeVal {
+			case "ROUTED_ROUTE":
+				state.RangeType = types.StringValue("Routed")
+				state.Gateway = gatewayLocalIpVal
+			case "DIRECT_ROUTE":
+				state.RangeType = types.StringValue("Direct")
+				state.LocalIp = gatewayLocalIpVal
+			case "VLAN":
+				state.RangeType = types.StringValue("VLAN")
+				state.LocalIp = gatewayLocalIpVal
+			default:
+				state.RangeType = types.StringValue(curRangeTypeVal)
+			}
 
 			if siteIdVal, ok := curRange.HelperFields["siteId"]; ok {
 				state.SiteId = types.StringValue(cast.ToString(siteIdVal))
@@ -984,47 +1064,117 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 				state.Subnet = types.StringValue(cast.ToString(subnetVal))
 			}
 
-			// Field missing, add when supported by API
-			// if translatedSubnetVal, ok := curRange.HelperFields["translated_subnet"]; ok {
-			// 	state.TranslatedSubnet = types.StringValue(cast.ToString(translatedSubnetVal))
-			// }
+			if translatedSubnetVal, ok := curRange.HelperFields["translated_subnet"]; ok {
+				translatedSubnetStr := cast.ToString(translatedSubnetVal)
+				if translatedSubnetStr != "" {
+					state.TranslatedSubnet = types.StringValue(translatedSubnetStr)
+				} else {
+					state.TranslatedSubnet = types.StringNull()
+				}
+			}
 
-			// if vlanVal, ok := curRange.HelperFields["vlan"]; ok {
-			// 	state.Vlan = types.Int64Value(cast.ToInt64(vlanVal))
-			// }
+			// Populate VLAN from API based on range type
+			// API returns this as 'vlanTag' not 'vlan'
+			// Only populate vlan if this is a VLAN type range
+			if curRangeTypeVal == "VLAN" {
+				if vlanVal, ok := curRange.HelperFields["vlanTag"]; ok {
+					vlanInt64 := cast.ToInt64(vlanVal)
+					if vlanInt64 > 0 {
+						state.Vlan = types.Int64Value(vlanInt64)
+					} else {
+						state.Vlan = types.Int64Null()
+					}
+				} else {
+					state.Vlan = types.Int64Null()
+				}
+			} else {
+				// For non-VLAN types, always set to null regardless of API response
+				// This prevents inconsistency when changing from VLAN to other types
+				state.Vlan = types.Int64Null()
+			}
 
-			// Only populate DHCP settings if they were configured in the plan or if this is for VLAN/Native range types
-			// This prevents drift detection when DHCP settings are not configured
-			if !state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown() {
-				// DHCP settings are configured in the plan, so we should populate them
-				var dhcpSettings DhcpSettings
+			// Only populate DHCP settings for VLAN and Native range types
+			// DHCP settings are not supported for Direct or Routed ranges
+			_, hasDhcpType := curRange.HelperFields["dhcpType"]
 
-				// Get current plan values to preserve them
-				diags := state.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
-				if diags.HasError() {
-					// If we can't read the plan, initialize with defaults
-					dhcpSettings.DhcpType = types.StringNull()
-					dhcpSettings.IpRange = types.StringNull()
-					dhcpSettings.RelayGroupId = types.StringNull()
-					dhcpSettings.RelayGroupName = types.StringNull()
-					dhcpSettings.DhcpMicrosegmentation = types.BoolValue(false)
+			// Populate DHCP settings ONLY if this is a VLAN or Native range type
+			// AND one of the following is true:
+			// 1. They were already in state (preserve user config)
+			// 2. OR the API returns dhcpType (meaning DHCP is configured)
+			isVlanOrNative := curRangeTypeVal == "VLAN" || curRangeTypeVal == "NATIVE"
+			if isVlanOrNative && ((!state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown()) || hasDhcpType) {
+				// Start with null values as defaults - unknown values MUST be resolved to known values
+				dhcpType := types.StringNull()
+				ipRange := types.StringNull()
+				relayGroupId := types.StringNull()
+				relayGroupName := types.StringNull()
+				dhcpMicrosegmentation := types.BoolValue(false)
+
+				// Extract current DHCP settings from state if present (not null/unknown)
+				if !state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown() {
+					var currentDhcpSettings DhcpSettings
+					diags := state.DhcpSettings.As(ctx, &currentDhcpSettings, basetypes.ObjectAsOptions{})
+					if diags.HasError() {
+						return state, false, fmt.Errorf("failed to read current dhcp settings: %v", diags)
+					}
+
+					// Preserve concrete values from state (not null/unknown)
+					if !currentDhcpSettings.DhcpType.IsNull() && !currentDhcpSettings.DhcpType.IsUnknown() {
+						dhcpType = currentDhcpSettings.DhcpType
+					}
+					if !currentDhcpSettings.IpRange.IsNull() && !currentDhcpSettings.IpRange.IsUnknown() {
+						ipRange = currentDhcpSettings.IpRange
+					}
+					if !currentDhcpSettings.RelayGroupId.IsNull() && !currentDhcpSettings.RelayGroupId.IsUnknown() {
+						relayGroupId = currentDhcpSettings.RelayGroupId
+					}
+					if !currentDhcpSettings.RelayGroupName.IsNull() && !currentDhcpSettings.RelayGroupName.IsUnknown() {
+						relayGroupName = currentDhcpSettings.RelayGroupName
+					}
+					if !currentDhcpSettings.DhcpMicrosegmentation.IsNull() && !currentDhcpSettings.DhcpMicrosegmentation.IsUnknown() {
+						dhcpMicrosegmentation = currentDhcpSettings.DhcpMicrosegmentation
+					}
 				}
 
-				// Update microsegmentation from API if available
+				// Override with API values if available (API values take precedence when present)
+				if dhcpTypeVal, ok := curRange.HelperFields["dhcpType"]; ok {
+					dhcpType = types.StringValue(cast.ToString(dhcpTypeVal))
+				}
+
+				if dhcpRangeVal, ok := curRange.HelperFields["dhcpRange"]; ok {
+					ipRange = types.StringValue(cast.ToString(dhcpRangeVal))
+				}
+
+				if dhcpRelayGroupIdVal, ok := curRange.HelperFields["dhcpRelayGroupId"]; ok {
+					relayGroupId = types.StringValue(cast.ToString(dhcpRelayGroupIdVal))
+				}
+
+				if dhcpRelayGroupNameVal, ok := curRange.HelperFields["dhcpRelayGroupName"]; ok {
+					relayGroupName = types.StringValue(cast.ToString(dhcpRelayGroupNameVal))
+				}
+
 				if microsegmentationVal, ok := curRange.HelperFields["microsegmentation"]; ok {
-					dhcpSettings.DhcpMicrosegmentation = types.BoolValue(cast.ToBool(microsegmentationVal))
+					dhcpMicrosegmentation = types.BoolValue(cast.ToBool(microsegmentationVal))
 				}
 
-				// Convert DhcpSettings struct to types.Object with all attributes
-				dhcpSettingsObject, dErr := types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
+				// Manually construct Object to ensure no Unknown values persist
+				dhcpSettingsObject, dErr := types.ObjectValue(
+					DhcpSettingsAttrTypes,
+					map[string]attr.Value{
+						"dhcp_type":              dhcpType,
+						"ip_range":               ipRange,
+						"relay_group_id":         relayGroupId,
+						"relay_group_name":       relayGroupName,
+						"dhcp_microsegmentation": dhcpMicrosegmentation,
+					},
+				)
 				if dErr.HasError() {
 					return state, false, fmt.Errorf("failed to convert dhcp settings to object: %v", dErr)
 				}
 
 				state.DhcpSettings = dhcpSettingsObject
 			} else {
-				// DHCP settings are not configured in the plan, keep them null to avoid drift
-				// This handles both regular reads and import operations
+				// No DHCP settings in API or state, set to null
 				state.DhcpSettings = types.ObjectNull(DhcpSettingsAttrTypes)
 			}
 		}

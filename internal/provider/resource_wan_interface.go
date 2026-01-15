@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -40,6 +41,9 @@ func (r *wanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "The WAN interface ID, which is a combination of the site ID and the interface ID (e.g., `site_id:interface_id`, 12345:INT_1). This is used to identify the WAN interface resource.",
 				Required:    false,
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"interface_id": schema.StringAttribute{
 				Description: "The interface ID, which is a unique identifier for the WAN interface (e.g., `INT_1`, `INT_2`, etc.). This is used to identify the specific WAN interface resource.",
@@ -107,6 +111,15 @@ func (r *wanInterfaceResource) Configure(_ context.Context, req resource.Configu
 func (r *wanInterfaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
+	// Call Read to hydrate the full state from the API
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State, Diagnostics: resp.Diagnostics}
+	r.Read(ctx, readReq, &readResp)
+
+	// Copy diagnostics and state back to the import response
+	resp.Diagnostics = readResp.Diagnostics
+	resp.State = readResp.State
 }
 
 func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -151,7 +164,24 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	siteId := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
 	plan.ID = types.StringValue(siteId.ValueString() + ":" + intId.ValueString())
 
-	diags = resp.State.Set(ctx, plan)
+	// Hydrate the state from the API to get the latest values including precedence
+	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteId.ValueString(), intId.ValueString())
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating WAN interface state after create",
+			hydrateErr.Error(),
+		)
+		return
+	}
+	if !interfaceExists {
+		resp.Diagnostics.AddError(
+			"WAN Interface Not Found",
+			fmt.Sprintf("WAN interface with ID %q not found after create", intId.ValueString()),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -178,64 +208,25 @@ func (r *wanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 	siteId := parts[0]
 	interfaceId := parts[1]
 
-	// Get accoutnSnapshot data to check if site exists and has interfaces
-	siteAccountSnapshotData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteId}, nil, &r.client.AccountId)
-	tflog.Warn(ctx, "Read.AccountSnapshot/siteAccountSnapshotData.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(siteAccountSnapshotData),
-	})
+	// Hydrate the state from the API
+	hydratedState, interfaceExists, err := r.hydrateWanInterfaceState(ctx, state, siteId, interfaceId)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API error",
+			"Error hydrating WAN interface state during read",
 			err.Error(),
 		)
 		return
 	}
 
-	if len(siteAccountSnapshotData.AccountSnapshot.Sites) == 0 {
+	if !interfaceExists {
 		resp.Diagnostics.AddError(
-			"Site not found",
-			"Site with ID "+siteId+" not found in the account snapshot.",
+			"WAN Interface Not Found",
+			fmt.Sprintf("WAN interface with ID %q not found in site %q", interfaceId, siteId),
 		)
 		return
 	}
 
-	site := siteAccountSnapshotData.AccountSnapshot.Sites[0]
-	if len(site.InfoSiteSnapshot.Interfaces) == 0 {
-		resp.Diagnostics.AddError(
-			"No WAN interfaces found",
-			"Site with ID "+siteId+" has no WAN interfaces.",
-		)
-		return
-	}
-
-	// Find the interface with the specified interface ID
-	isPresent := false
-	for _, iface := range site.InfoSiteSnapshot.Interfaces {
-		if "INT_"+iface.ID == interfaceId || iface.ID == interfaceId {
-			isPresent = true
-			if strings.HasPrefix(iface.ID, "WAN") || strings.HasPrefix(iface.ID, "LTE") || strings.HasPrefix(iface.ID, "USB") {
-				state.InterfaceID = types.StringValue(iface.ID)
-			} else {
-				state.InterfaceID = types.StringValue("INT_" + iface.ID)
-			}
-			state.SiteId = types.StringValue(siteId)
-			state.Name = types.StringValue(*iface.Name)
-			state.UpstreamBandwidth = types.Int64Value(*iface.UpstreamBandwidth)
-			state.DownstreamBandwidth = types.Int64Value(*iface.DownstreamBandwidth)
-			state.Role = types.StringValue(string(*iface.WanRoleInterfaceInfo))
-			// state.Precedence = types.StringValue(string(iface.Precedence))
-			break
-		}
-	}
-	if !isPresent {
-		resp.Diagnostics.AddError(
-			"Interface not found",
-			"Interface with ID "+interfaceId+" not found in site "+siteId+".",
-		)
-		return
-	}
-
-	diags = resp.State.Set(ctx, &state)
+	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -284,7 +275,24 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	siteId := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
 	plan.ID = types.StringValue(siteId.ValueString() + ":" + intId.ValueString())
 
-	diags = resp.State.Set(ctx, plan)
+	// Hydrate the state from the API to get the latest values including precedence
+	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteId.ValueString(), intId.ValueString())
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating WAN interface state after update",
+			hydrateErr.Error(),
+		)
+		return
+	}
+	if !interfaceExists {
+		resp.Diagnostics.AddError(
+			"WAN Interface Not Found",
+			fmt.Sprintf("WAN interface with ID %q not found after update", intId.ValueString()),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -374,4 +382,93 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	}
 
+}
+
+// hydrateWanInterfaceState fetches the current state of a WAN interface from the API
+// and populates the state object with the latest values, including precedence mapping
+func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, state WanInterface, siteId string, interfaceId string) (WanInterface, bool, error) {
+	// Get accountSnapshot data to check if site exists and has interfaces
+	siteAccountSnapshotData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteId}, nil, &r.client.AccountId)
+	tflog.Debug(ctx, "hydrateWanInterfaceState.AccountSnapshot.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteAccountSnapshotData),
+	})
+	if err != nil {
+		return WanInterface{}, false, fmt.Errorf("catov2 API AccountSnapshot error: %w", err)
+	}
+
+	// Check if site exists
+	if len(siteAccountSnapshotData.AccountSnapshot.Sites) == 0 {
+		return state, false, nil
+	}
+
+	site := siteAccountSnapshotData.AccountSnapshot.Sites[0]
+
+	// Find the interface in InfoSiteSnapshot.Interfaces
+	foundInterfaceIndex := -1
+	for i := range site.InfoSiteSnapshot.Interfaces {
+		iface := site.InfoSiteSnapshot.Interfaces[i]
+		if "INT_"+iface.ID == interfaceId || iface.ID == interfaceId {
+			foundInterfaceIndex = i
+			break
+		}
+	}
+
+	if foundInterfaceIndex == -1 {
+		return state, false, nil
+	}
+
+	foundInterface := site.InfoSiteSnapshot.Interfaces[foundInterfaceIndex]
+
+	// Populate basic interface information
+	if strings.HasPrefix(foundInterface.ID, "WAN") || strings.HasPrefix(foundInterface.ID, "LTE") || strings.HasPrefix(foundInterface.ID, "USB") {
+		state.InterfaceID = types.StringValue(foundInterface.ID)
+	} else {
+		state.InterfaceID = types.StringValue("INT_" + foundInterface.ID)
+	}
+	state.SiteId = types.StringValue(siteId)
+	state.ID = types.StringValue(siteId + ":" + state.InterfaceID.ValueString())
+	state.Name = types.StringValue(*foundInterface.Name)
+	state.UpstreamBandwidth = types.Int64Value(*foundInterface.UpstreamBandwidth)
+	state.DownstreamBandwidth = types.Int64Value(*foundInterface.DownstreamBandwidth)
+	state.Role = types.StringValue(string(*foundInterface.WanRoleInterfaceInfo))
+
+	// Map precedence from naturalOrder in devices.interfaces
+	// naturalOrder: 1 = ACTIVE, 2 = PASSIVE, 3 = LAST_RESORT
+	if len(site.Devices) > 0 {
+		for _, device := range site.Devices {
+			for _, deviceIface := range device.Interfaces {
+				// Match interface by ID - deviceIface.ID is a pointer to string
+				deviceIfaceID := ""
+				if deviceIface.ID != nil {
+					deviceIfaceID = *deviceIface.ID
+				}
+				if deviceIfaceID == foundInterface.ID || "INT_"+deviceIfaceID == state.InterfaceID.ValueString() {
+					// Map naturalOrder to precedence - naturalOrder is a pointer to int64
+					if deviceIface.NaturalOrder != nil {
+						switch *deviceIface.NaturalOrder {
+						case 1:
+							state.Precedence = types.StringValue("ACTIVE")
+						case 2:
+							state.Precedence = types.StringValue("PASSIVE")
+						case 3:
+							state.Precedence = types.StringValue("LAST_RESORT")
+						default:
+							// If naturalOrder is not 1, 2, or 3, preserve existing precedence or set to null
+							if state.Precedence.IsNull() || state.Precedence.IsUnknown() {
+								state.Precedence = types.StringNull()
+							}
+						}
+					}
+					break
+				}
+			}
+		}
+	} else {
+		// No devices data available, preserve existing precedence or set to null
+		if state.Precedence.IsNull() || state.Precedence.IsUnknown() {
+			state.Precedence = types.StringNull()
+		}
+	}
+
+	return state, true, nil
 }

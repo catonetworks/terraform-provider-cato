@@ -122,6 +122,15 @@ func (r *lanInterfaceResource) Configure(_ context.Context, req resource.Configu
 func (r *lanInterfaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
+	// Call Read to hydrate the full state from the API
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State, Diagnostics: resp.Diagnostics}
+	r.Read(ctx, readReq, &readResp)
+
+	// Copy diagnostics and state back to the import response
+	resp.Diagnostics = readResp.Diagnostics
+	resp.State = readResp.State
 }
 
 func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -195,61 +204,44 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
 
-	// Not using hydrateLanInterfaceState fucntion looling up interface in create as we need to resolve the numeric interface ID as it is not in update API response
+	// Resolve numeric interface ID by querying entityLookup
 	siteEntity := &cato_models.EntityInput{Type: "site", ID: plan.SiteId.ValueString()}
 	zeroInt64 := int64(0)
 	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
-	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
+	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryInterfaceResult),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API error", err.Error())
 		return
 	}
-	tflog.Warn(ctx, "Interate over network interfaces from entityLookup to match name against defatult interfaceID (name) '"+*plan.InterfaceID.ValueStringPointer()+"' to retrieve numeric networkInterfaceID")
+
+	// Find matching interface to get numeric ID
+	tflog.Debug(ctx, "Iterate over network interfaces to match interfaceID '"+plan.InterfaceID.ValueString()+"' to retrieve numeric networkInterfaceID")
 	for _, item := range queryInterfaceResult.GetEntityLookup().GetItems() {
-		tflog.Debug(ctx, "queryInterfaceResult.GetEntityLookup().GetItems()", map[string]interface{}{
-			"item": utils.InterfaceToJSONString(item),
-		})
-		entityFields := item.GetEntity()
 		helperFields := item.GetHelperFields()
-		interfaceName := cast.ToString(helperFields["interfaceName"])
 		interfaceId := cast.ToString(helperFields["interfaceId"])
 		if _, err := cast.ToIntE(interfaceId); err == nil {
 			interfaceId = fmt.Sprintf("INT_%v", interfaceId)
 		}
-		if plan.InterfaceID.ValueStringPointer() != nil && interfaceId == *plan.InterfaceID.ValueStringPointer() {
-			tflog.Warn(ctx, "Network interface name matched! "+interfaceName+", setting plan.ID "+fmt.Sprintf("%v", entityFields.GetID()))
-			plan.ID = types.StringValue(entityFields.GetID())
-			if siteIdVal, ok := item.HelperFields["siteId"]; ok {
-				plan.SiteId = types.StringValue(cast.ToString(siteIdVal))
-			}
-			if _, ok := item.HelperFields["interfaceId"]; ok {
-				if idxInt, err := cast.ToIntE(item.HelperFields["interfaceId"]); err == nil {
-					plan.InterfaceID = types.StringValue(fmt.Sprintf("INT_%d", idxInt))
-				} else {
-					plan.InterfaceID = types.StringValue(cast.ToString(item.HelperFields["interfaceId"]))
-				}
-			}
-			if nameVal, ok := item.HelperFields["interfaceName"]; ok {
-				plan.Name = types.StringValue(cast.ToString(nameVal))
-			}
-			if destTypeVal, ok := item.HelperFields["destType"]; ok {
-				plan.DestType = types.StringValue(cast.ToString(destTypeVal))
-			}
-			if subnetVal, ok := item.HelperFields["subnet"]; ok {
-				plan.Subnet = types.StringValue(cast.ToString(subnetVal))
-			}
-			// translatedSubnet is missing from API
-			// localIp is missing from API
-			// vrrpType is missing from API
-			// lag_min_links is missing from API - preserve existing value from state
+		if interfaceId == plan.InterfaceID.ValueString() {
+			plan.ID = types.StringValue(item.GetEntity().GetID())
+			tflog.Debug(ctx, "Network interface matched! Setting plan.ID="+plan.ID.ValueString())
 			break
 		}
 	}
 
-	diags = resp.State.Set(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	// Use hydration function to populate all state from API (including translated_subnet and local_ip from siteRange)
+	updatedPlan, err := r.hydrateLanInterfaceState(ctx, &plan)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating interface state",
+			err.Error(),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, updatedPlan)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -516,7 +508,9 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 		"state":    utils.InterfaceToJSONString(state),
 		"state.ID": utils.InterfaceToJSONString(state.ID.ValueString()),
 	})
-	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
+	zeroInt64 := int64(0)
+	thouInt64 := int64(1000)
+	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &thouInt64, &zeroInt64, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryInterfaceResult),
 	})
@@ -554,10 +548,20 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 			if subnetVal, ok := curIint.HelperFields["subnet"]; ok {
 				state.Subnet = types.StringValue(cast.ToString(subnetVal))
 			}
-			// translatedSubnet is missing from API
-			// localIp is missing from API
-			// vrrpType is missing from API
-			// lag_min_links is missing from API - preserve existing value from state
+
+			// Populate vrrp_type from networkInterface if available
+			if vrrpTypeVal, ok := curIint.HelperFields["vrrpType"]; ok {
+				vrrpTypeStr := cast.ToString(vrrpTypeVal)
+				if vrrpTypeStr != "" {
+					state.VrrpType = types.StringValue(vrrpTypeStr)
+				} else {
+					state.VrrpType = types.StringNull()
+				}
+			} else {
+				state.VrrpType = types.StringNull()
+			}
+
+			// lag_min_links will be populated below if this is a LAG master interface
 			break
 		}
 	}
@@ -592,6 +596,60 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 	if !isPresent {
 		tflog.Warn(ctx, "networkInterface not found, networkInterface resource removed")
 		return *state, fmt.Errorf("interface not found")
+	}
+
+	// Query siteRange to get translated_subnet and local_ip (gateway)
+	// These fields are not available in networkInterface entityLookup, but are in siteRange
+	if !state.Subnet.IsNull() && !state.Subnet.IsUnknown() && state.Subnet.ValueString() != "" {
+		siteEntity := &cato_models.EntityInput{Type: "site", ID: state.SiteId.ValueString()}
+		zeroInt64 := int64(0)
+		thouInt64 := int64(1000)
+		querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &thouInt64, &zeroInt64, siteEntity, nil, nil, nil, nil, nil)
+		tflog.Debug(ctx, "hydrateLanInterfaceState.EntityLookupSiteRange.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(querySiteRangeResult),
+		})
+		if err == nil {
+			// Find the siteRange that matches this interface's subnet
+			for _, v := range querySiteRangeResult.GetEntityLookup().GetItems() {
+				curSubnet := ""
+				if subnetVal, ok := v.GetHelperFields()["subnet"]; ok {
+					curSubnet = cast.ToString(subnetVal)
+				}
+
+				if curSubnet == state.Subnet.ValueString() {
+					// Populate translated_subnet from siteRange
+					if translatedSubnetVal, ok := v.HelperFields["translatedSubnet"]; ok {
+						translatedSubnetStr := cast.ToString(translatedSubnetVal)
+						if translatedSubnetStr != "" && translatedSubnetStr != state.Subnet.ValueString() {
+							state.TranslatedSubnet = types.StringValue(translatedSubnetStr)
+						} else {
+							state.TranslatedSubnet = types.StringNull()
+						}
+					} else {
+						state.TranslatedSubnet = types.StringNull()
+					}
+
+					// Populate local_ip from gateway field in siteRange
+					// For LAN interfaces, localIp is the same as gateway
+					if gatewayVal, ok := v.HelperFields["gateway"]; ok && gatewayVal != nil {
+						gatewayStr := cast.ToString(gatewayVal)
+						if gatewayStr != "" {
+							state.LocalIp = types.StringValue(gatewayStr)
+						} else {
+							state.LocalIp = types.StringNull()
+						}
+					} else {
+						state.LocalIp = types.StringNull()
+					}
+
+					break
+				}
+			}
+		} else {
+			tflog.Warn(ctx, "Failed to query siteRange for translated_subnet and local_ip", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
 	}
 
 	return *state, nil
