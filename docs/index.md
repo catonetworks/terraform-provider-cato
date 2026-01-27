@@ -14,6 +14,12 @@ The current API that the Cato provider is calling requires sequential execution.
 
 Use the navigation to the left to read about the available resources.
 
+**NOTE** Please ensure you are referencing the correct API endpoint for the instance of the Cato Management Application (CMA) instnace you are using. 
+- Ireland: https://api.catonetworks.com/api/v1/graphql2
+- US: https://api.us1.catonetworks.com/api/v1/graphql2
+- Japan: https://api.jp1.catonetworks.com/api/v1/graphql2
+- India: https://api.in1.catonetworks.com/api/v1/graphql2
+
 ## Example Usage
 
 ```terraform
@@ -49,8 +55,11 @@ resource "cato_socket_site" "site1" {
   }
 
   site_location = {
-    country_code = "FR"
-    timezone     = "Europe/Paris"
+    city         = "New York City"
+    country_code = "US"
+    state_code   = "US-NY"
+    timezone     = "America/New_York"
+    address      = "555 That Way"
   }
 }
 

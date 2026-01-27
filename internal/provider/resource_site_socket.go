@@ -36,6 +36,7 @@ const defaultInterfaceByConnType = `{
 	"SOCKET_X1500":     "LAN1",
 	"SOCKET_X1600":     "INT_5",
 	"SOCKET_X1600_LTE": "INT_5",
+	"SOCKET_X1600_5G":  "INT_5",
 	"SOCKET_X1700":     "INT_3"
 }`
 
@@ -87,6 +88,7 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						"SOCKET_X1500",
 						"SOCKET_X1600",
 						"SOCKET_X1600_LTE",
+						"SOCKET_X1600_5G",
 						"SOCKET_X1700",
 					),
 				},
@@ -107,7 +109,7 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				},
 				Attributes: map[string]schema.Attribute{
 					"interface_index": schema.StringAttribute{
-						Description: "LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models",
+						Description: "LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600, SOCKET_X1600_LTE, and SOCKET_X1600_5G, and INT_3 for SOCKET_X1700 models",
 						Optional:    true,
 						Computed:    true,
 						Validators: []validator.String{
@@ -462,12 +464,12 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 			defaultInterface, hasDefault := interfaceByConnType[connType]
 
 			// Only validate if trying to set a non-default interface_index for non-X1600/X1700 types
-			if connType != "SOCKET_X1600" && connType != "SOCKET_X1600_LTE" && connType != "SOCKET_X1700" {
+			if connType != "SOCKET_X1600" && connType != "SOCKET_X1600_LTE" && connType != "SOCKET_X1600_5G" && connType != "SOCKET_X1700" {
 				// Allow if it's the default interface for this connection type
 				if !hasDefault || interfaceIndexValue != defaultInterface {
 					resp.Diagnostics.AddError(
 						"Invalid Interface Index Configuration",
-						fmt.Sprintf("interface_index can only be explicitly configured for SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700 connection types, but connection_type is %s", connType),
+						fmt.Sprintf("interface_index can only be explicitly configured for SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1600_5G, or SOCKET_X1700 connection types, but connection_type is %s", connType),
 					)
 					return
 				}
@@ -942,12 +944,12 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			defaultInterface, hasDefault := interfaceByConnType[connType]
 
 			// Only validate if trying to set a non-default interface_index for non-X1600/X1700 types
-			if connType != "SOCKET_X1600" && connType != "SOCKET_X1600_LTE" && connType != "SOCKET_X1700" {
+			if connType != "SOCKET_X1600" && connType != "SOCKET_X1600_LTE" && connType != "SOCKET_X1600_5G" && connType != "SOCKET_X1700" {
 				// Allow if it's the default interface for this connection type
 				if !hasDefault || interfaceIndexValue != defaultInterface {
 					resp.Diagnostics.AddError(
 						"Invalid Interface Index Configuration",
-						fmt.Sprintf("interface_index can only be explicitly configured for SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700 connection types, but connection_type is %s", connType),
+						fmt.Sprintf("interface_index can only be explicitly configured for SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1600_5G, or SOCKET_X1700 connection types, but connection_type is %s", connType),
 					)
 					return
 				}
@@ -2202,11 +2204,11 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 type socketSiteNativeRangeValidator struct{}
 
 func (v socketSiteNativeRangeValidator) Description(ctx context.Context) string {
-	return "interface_index can only be specified for SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700; local_ip must be within the native_network_range subnet"
+	return "interface_index can only be specified for SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1600_5G, or SOCKET_X1700; local_ip must be within the native_network_range subnet"
 }
 
 func (v socketSiteNativeRangeValidator) MarkdownDescription(ctx context.Context) string {
-	return "interface_index can only be specified for SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700; local_ip must be within the native_network_range subnet"
+	return "interface_index can only be specified for SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1600_5G, or SOCKET_X1700; local_ip must be within the native_network_range subnet"
 }
 
 func (v socketSiteNativeRangeValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
@@ -2239,6 +2241,7 @@ func (v socketSiteNativeRangeValidator) ValidateObject(ctx context.Context, req 
 		"SOCKET_X1500":     true,
 		"SOCKET_X1600":     true,
 		"SOCKET_X1600_LTE": true,
+		"SOCKET_X1600_5G":  true,
 		"SOCKET_X1700":     true,
 	}
 
@@ -2246,7 +2249,7 @@ func (v socketSiteNativeRangeValidator) ValidateObject(ctx context.Context, req 
 		resp.Diagnostics.AddAttributeError(
 			req.Path.AtName("interface_index"),
 			"Invalid Configuration",
-			fmt.Sprintf("interface_index can only be specified when connection_type is one of: SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1700. Current connection_type: %s", connectionType.ValueString()),
+			fmt.Sprintf("interface_index can only be specified when connection_type is one of: SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1600_5G, SOCKET_X1700. Current connection_type: %s", connectionType.ValueString()),
 		)
 	}
 

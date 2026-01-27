@@ -73,8 +73,11 @@ resource "cato_socket_site" "branch_site" {
   }
 
   site_location = {
-    country_code = "FR"
-    timezone     = "Europe/Paris"
+    city         = "New York City"
+    country_code = "US"
+    state_code   = "US-NY"
+    timezone     = "America/New_York"
+    address      = "555 That Way"
   }
 }
 ```
@@ -110,7 +113,7 @@ Optional:
 
 - `dhcp_settings` (Attributes) Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type) (see [below for nested schema](#nestedatt--native_range--dhcp_settings))
 - `interface_dest_type` (String) Socket interface destination type for the native interface, example values: LAN, LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP, LAN_AND_HA, VRRP, VRRP_AND_LAN
-- `interface_index` (String) LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models
+- `interface_index` (String) LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600, SOCKET_X1600_LTE, and SOCKET_X1600_5G, and INT_3 for SOCKET_X1700 models
 - `interface_name` (String) LAN native range interface name (e.g., 'LAN 01')
 - `lag_min_links` (Number) Number of interfaces to include in the link aggregation, only relevant for LAN_LAG_MASTER and LAN_LAG_MASTER_AND_VRRP interface destination types
 - `mdns_reflector` (Boolean) Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.

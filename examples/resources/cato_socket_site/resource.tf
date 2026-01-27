@@ -55,7 +55,10 @@ resource "cato_socket_site" "branch_site" {
   }
 
   site_location = {
-    country_code = "FR"
-    timezone     = "Europe/Paris"
+    city         = "New York City"
+    country_code = "US"
+    state_code   = "US-NY"
+    timezone     = "America/New_York"
+    address      = "555 That Way"
   }
 }
