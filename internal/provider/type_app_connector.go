@@ -35,6 +35,6 @@ type IdNameRefModel struct {
 type PreferredPopLocationModel struct {
 	PreferredOnly types.Bool     `tfsdk:"preferred_only"`
 	Automatic     types.Bool     `tfsdk:"automatic"`
-	Primary       idNameRefModel `tfsdk:"primary"`
-	Secondary     idNameRefModel `tfsdk:"secondary"`
+	Primary       IdNameRefModel `tfsdk:"primary"`
+	Secondary     IdNameRefModel `tfsdk:"secondary"`
 }

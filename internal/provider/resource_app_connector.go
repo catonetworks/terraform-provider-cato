@@ -445,13 +445,13 @@ func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, app
 		},
 	}
 	if pref.Primary != nil {
-		state.PreferredPopLocation.Primary = idNameRefModel{
+		state.PreferredPopLocation.Primary = IdNameRefModel{
 			ID:   types.StringValue(pref.Primary.ID),
 			Name: types.StringValue(pref.Primary.Name),
 		}
 	}
 	if pref.Secondary != nil {
-		state.PreferredPopLocation.Secondary = idNameRefModel{
+		state.PreferredPopLocation.Secondary = IdNameRefModel{
 			ID:   types.StringValue(pref.Secondary.ID),
 			Name: types.StringValue(pref.Secondary.Name),
 		}
@@ -471,7 +471,7 @@ func (v appConTypeValidator) ValidateString(ctx context.Context, req validator.S
 	value := strings.Trim(req.ConfigValue.String(), `"`)
 	connType := cato_models.ZtnaAppConnectorType(value)
 	if !connType.IsValid() {
-		resp.Diagnostics.AddError("Cato API CreateConnector error", fmt.Sprintf("invalid connector type (%s: %s)\n - valid options: %+v", req.Path.String(),
+		resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid connector type (%s: %s)\n - valid options: %+v", req.Path.String(),
 			value, cato_models.AllZtnaAppConnectorType))
 		return
 	}

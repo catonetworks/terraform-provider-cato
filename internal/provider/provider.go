@@ -171,7 +171,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		WfRuleSectionsDataSource,
 		NetworkRangesDataSource,
 		HostDataSource,
-		AppConnectorDataSource,
+		AppConnectorGroupDataSource,
 	}
 }
 
@@ -203,5 +203,6 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewWanNetworkRulesIndexResource,
 		NewTlsRulesIndexResource,
 		NewAppConnectorResource,
+		NewPrivateAppResource,
 	}
 }
