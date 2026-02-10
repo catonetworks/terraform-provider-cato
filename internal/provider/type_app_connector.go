@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// TODO: merge with datasource models?
 type AppConnectorModel struct {
 	ID                   types.String               `tfsdk:"id"`
 	Name                 types.String               `tfsdk:"name"`
