@@ -42,3 +42,10 @@ func parseStringList[T fmt.Stringer](stringers []T) []types.String {
 	}
 	return out
 }
+
+type hasValuer interface {
+	IsUnknown() bool
+	IsNull() bool
+}
+
+func hasValue(v hasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }

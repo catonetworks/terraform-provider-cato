@@ -7,6 +7,7 @@ import (
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -20,6 +21,8 @@ var (
 	_ resource.ResourceWithConfigure   = &appConnectorResource{}
 	_ resource.ResourceWithImportState = &appConnectorResource{}
 )
+
+const optional = true
 
 func NewAppConnectorResource() resource.Resource {
 	return &appConnectorResource{}
@@ -208,33 +211,30 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Country
-	idNameSet, idNameBy, idNameInput, err := IdNameInput(plan.PostalAddress.Country.ID, plan.PostalAddress.Country.Name)
-	if err != nil {
-		resp.Diagnostics.AddError("invalid country config", err.Error())
+	refBy, refInput, _ := prepareIdName(plan.PostalAddress.Country.ID, plan.PostalAddress.Country.Name, &resp.Diagnostics, "address.country")
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	if !idNameSet {
-		resp.Diagnostics.AddError("missing country configuration", "address.country.[id | name] must be set")
-		return
-	}
-	input.Address.Country = &cato_models.CountryRefInput{By: idNameBy, Input: idNameInput}
+	input.Address.Country = &cato_models.CountryRefInput{By: refBy, Input: refInput}
 
 	// Primary pop location
-	if idNameSet, idNameBy, idNameInput, err = IdNameInput(plan.PreferredPopLocation.Primary.ID, plan.PreferredPopLocation.Primary.Name); err != nil {
-		resp.Diagnostics.AddError("invalid primary preferred_pop_location config", err.Error())
+	refBy, refInput, idNameSet := prepareIdName(plan.PreferredPopLocation.Primary.ID, plan.PreferredPopLocation.Primary.Name,
+		&resp.Diagnostics, "primary preferred_pop_location", optional)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	if idNameSet {
-		input.PreferredPopLocation.Primary = &cato_models.PopLocationRefInput{By: idNameBy, Input: idNameInput}
+		input.PreferredPopLocation.Primary = &cato_models.PopLocationRefInput{By: refBy, Input: refInput}
 	}
 
 	// Secondary pop location
-	if idNameSet, idNameBy, idNameInput, err = IdNameInput(plan.PreferredPopLocation.Secondary.ID, plan.PreferredPopLocation.Secondary.Name); err != nil {
-		resp.Diagnostics.AddError("invalid secondary preferred_pop_location config", err.Error())
+	refBy, refInput, idNameSet = prepareIdName(plan.PreferredPopLocation.Secondary.ID, plan.PreferredPopLocation.Secondary.Name,
+		&resp.Diagnostics, "secondary preferred_pop_location", optional)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	if idNameSet {
-		input.PreferredPopLocation.Secondary = &cato_models.PopLocationRefInput{By: idNameBy, Input: idNameInput}
+		input.PreferredPopLocation.Secondary = &cato_models.PopLocationRefInput{By: refBy, Input: refInput}
 	}
 
 	// Call Cato API to create a new connector
@@ -279,6 +279,27 @@ func IdNameInput(id, name types.String) (isSet bool, by cato_models.ObjectRefBy,
 		return true, cato_models.ObjectRefByID, id.ValueString(), nil
 	}
 	return true, cato_models.ObjectRefByName, name.ValueString(), nil
+}
+
+// prepareIdName prepares the id and name input for the Cato API
+// on error it sets the diagnostics error
+func prepareIdName(id, name types.String, diags *diag.Diagnostics, fieldName string, optional ...bool) (by cato_models.ObjectRefBy, input string, isSet bool) {
+	idNameSet, by, input, err := IdNameInput(id, name)
+	if err != nil {
+		diags.AddError("invalid configuration of "+fieldName, err.Error())
+		return
+	}
+
+	if idNameSet {
+		return by, input, true
+	}
+
+	// not set and it is mandatory
+	if len(optional) == 0 || (!optional[0]) {
+		diags.AddError("missing configuration of "+fieldName, "id or name must be set on "+fieldName)
+	}
+
+	return by, input, false
 }
 
 func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
