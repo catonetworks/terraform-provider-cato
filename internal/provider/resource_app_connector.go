@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -13,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -20,6 +23,8 @@ var (
 	_ resource.Resource                = &appConnectorResource{}
 	_ resource.ResourceWithConfigure   = &appConnectorResource{}
 	_ resource.ResourceWithImportState = &appConnectorResource{}
+
+	ErrAppConnectorNotFound = errors.New("app-connector not found")
 )
 
 const optional = true
@@ -184,6 +189,50 @@ func (r *appConnectorResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+func (r *appConnectorResource) prepareAddress(ctx context.Context, addr types.Object, diags *diag.Diagnostics) *cato_models.PostalAddressInput {
+	if !hasValue(addr) {
+		return nil
+	}
+
+	var tfAddress PostalAddressModel
+	diags.Append(addr.As(ctx, &tfAddress, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+
+	sdkAddress := cato_models.PostalAddressInput{
+		CityName:  tfAddress.City.ValueStringPointer(),
+		Country:   prepareIDRef[cato_models.CountryRefInput](ctx, tfAddress.Country, diags, "address.country"),
+		StateName: tfAddress.State.ValueStringPointer(),
+		Street:    tfAddress.Street.ValueStringPointer(),
+		ZipCode:   tfAddress.ZipCode.ValueStringPointer(),
+	}
+
+	return &sdkAddress
+}
+
+func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types.Object, diags *diag.Diagnostics,
+) *cato_models.ZtnaAppConnectorPreferredPopLocationInput {
+	if !hasValue(loc) {
+		return nil
+	}
+
+	var tfLocation PreferredPopLocationModel
+	diags.Append(loc.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+
+	sdkLocation := cato_models.ZtnaAppConnectorPreferredPopLocationInput{
+		PreferredOnly: tfLocation.PreferredOnly.ValueBool(),
+		Automatic:     tfLocation.Automatic.ValueBool(),
+		Primary:       prepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags, "preferred_pop_location.primary"),
+		Secondary:     prepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Secondary, diags, "preferred_pop_location.secondary"),
+	}
+
+	return &sdkLocation
+}
+
 func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan AppConnectorModel
 	diags := req.Plan.Get(ctx, &plan)
@@ -193,48 +242,13 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	input := cato_models.AddZtnaAppConnectorInput{
-		Name:        plan.Name.ValueString(),
-		Description: plan.Description.ValueStringPointer(),
-		GroupName:   plan.GroupName.ValueString(),
-		Type:        cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
-		Address: &cato_models.PostalAddressInput{
-			CityName:  plan.PostalAddress.City.ValueStringPointer(),
-			StateName: plan.PostalAddress.State.ValueStringPointer(),
-			Street:    plan.PostalAddress.Street.ValueStringPointer(),
-			ZipCode:   plan.PostalAddress.ZipCode.ValueStringPointer(),
-		},
-		Timezone: plan.Timezone.ValueString(),
-		PreferredPopLocation: &cato_models.ZtnaAppConnectorPreferredPopLocationInput{
-			PreferredOnly: plan.PreferredPopLocation.PreferredOnly.ValueBool(),
-			Automatic:     plan.PreferredPopLocation.Automatic.ValueBool(),
-		},
-	}
-
-	// Country
-	refBy, refInput, _ := prepareIdName(plan.PostalAddress.Country.ID, plan.PostalAddress.Country.Name, &resp.Diagnostics, "address.country")
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	input.Address.Country = &cato_models.CountryRefInput{By: refBy, Input: refInput}
-
-	// Primary pop location
-	refBy, refInput, idNameSet := prepareIdName(plan.PreferredPopLocation.Primary.ID, plan.PreferredPopLocation.Primary.Name,
-		&resp.Diagnostics, "primary preferred_pop_location", optional)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if idNameSet {
-		input.PreferredPopLocation.Primary = &cato_models.PopLocationRefInput{By: refBy, Input: refInput}
-	}
-
-	// Secondary pop location
-	refBy, refInput, idNameSet = prepareIdName(plan.PreferredPopLocation.Secondary.ID, plan.PreferredPopLocation.Secondary.Name,
-		&resp.Diagnostics, "secondary preferred_pop_location", optional)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if idNameSet {
-		input.PreferredPopLocation.Secondary = &cato_models.PopLocationRefInput{By: refBy, Input: refInput}
+		Name:                 plan.Name.ValueString(),
+		Description:          plan.Description.ValueStringPointer(),
+		GroupName:            plan.GroupName.ValueString(),
+		Type:                 cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
+		Address:              r.prepareAddress(ctx, plan.PostalAddress, &diags),
+		Timezone:             plan.Timezone.ValueString(),
+		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
 	}
 
 	// Call Cato API to create a new connector
@@ -254,8 +268,9 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	plan.ID = types.StringValue(result.GetZtnaAppConnector().GetAddZtnaAppConnector().GetZtnaAppConnector().GetID())
 
 	// Hydrate state from API
-	hydratedState, hydrateErr := r.hydrateAppConnectorState(ctx, plan.ID.ValueString(), plan)
+	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, plan.ID.ValueString(), plan)
 	if hydrateErr != nil {
+		resp.Diagnostics.Append(diags...)
 		resp.Diagnostics.AddError("Error hydrating appConnector state", hydrateErr.Error())
 		return
 	}
@@ -265,41 +280,6 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-}
-
-func IdNameInput(id, name types.String) (isSet bool, by cato_models.ObjectRefBy, input string, err error) {
-	if id.IsUnknown() && name.IsUnknown() {
-		return false, "", "", nil // not set
-	}
-	if !id.IsUnknown() && !name.IsUnknown() {
-		return false, "", "", fmt.Errorf("Only one of 'id' or 'name' can be specified")
-	}
-
-	if !id.IsUnknown() {
-		return true, cato_models.ObjectRefByID, id.ValueString(), nil
-	}
-	return true, cato_models.ObjectRefByName, name.ValueString(), nil
-}
-
-// prepareIdName prepares the id and name input for the Cato API
-// on error it sets the diagnostics error
-func prepareIdName(id, name types.String, diags *diag.Diagnostics, fieldName string, optional ...bool) (by cato_models.ObjectRefBy, input string, isSet bool) {
-	idNameSet, by, input, err := IdNameInput(id, name)
-	if err != nil {
-		diags.AddError("invalid configuration of "+fieldName, err.Error())
-		return
-	}
-
-	if idNameSet {
-		return by, input, true
-	}
-
-	// not set and it is mandatory
-	if len(optional) == 0 || (!optional[0]) {
-		diags.AddError("missing configuration of "+fieldName, "id or name must be set on "+fieldName)
-	}
-
-	return by, input, false
 }
 
 func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -345,8 +325,9 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// Hydrate state from API
-	hydratedState, hydrateErr := r.hydrateAppConnectorState(ctx, id, plan)
+	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, id, plan)
 	if hydrateErr != nil {
+		resp.Diagnostics.Append(diags...)
 		resp.Diagnostics.AddError("Error hydrating app-connector state", hydrateErr.Error())
 		return
 	}
@@ -366,10 +347,11 @@ func (r *appConnectorResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	hydratedState, hydrateErr := r.hydrateAppConnectorState(ctx, state.ID.ValueString(), state)
+	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, state.ID.ValueString(), state)
 	if hydrateErr != nil {
+		resp.Diagnostics.Append(diags...)
 		// Check if app-connector not found
-		if hydrateErr.Error() == "app_connector not found" { // TODO: check the actual error
+		if errors.Is(hydrateErr, ErrAppConnectorNotFound) {
 			tflog.Warn(ctx, "app_connector not found, resource removed")
 			resp.State.RemoveResource(ctx)
 			return
@@ -416,9 +398,66 @@ func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
+func (r *appConnectorResource) parsePostalAddress(ctx context.Context, addr cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Address,
+	diags *diag.Diagnostics,
+) types.Object {
+	var diag diag.Diagnostics
+
+	// Prepare PostalAddressModel object
+	tfAddress := PostalAddressModel{
+		AddressValidated: types.StringValue(string(addr.AddressValidated)),
+		City:             types.StringPointerValue(addr.CityName),
+		Country:          parseIDRef(ctx, addr.Country, diags),
+		State:            types.StringPointerValue(addr.StateName),
+		Street:           types.StringPointerValue(addr.Street),
+		ZipCode:          types.StringPointerValue(addr.ZipCode),
+	}
+	addrObj, diag := types.ObjectValueFrom(ctx, PostalAddressModelTypes, tfAddress)
+	diags.Append(diag...)
+	if diags.HasError() {
+		return types.ObjectNull(PolicyScheduleTypes)
+	}
+
+	return addrObj
+}
+
+func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation,
+	diags *diag.Diagnostics,
+) types.Object {
+	var diag diag.Diagnostics
+
+	if loc == nil {
+		return types.ObjectNull(PreferredPopLocationModelTypes)
+	}
+
+	// Prepare PreferredPopLocationModel object
+	tfLocation := PreferredPopLocationModel{
+		PreferredOnly: types.BoolValue(loc.PreferredOnly),
+		Automatic:     types.BoolValue(loc.Automatic),
+		Primary:       types.ObjectNull(IdNameRefModelTypes),
+		Secondary:     types.ObjectNull(IdNameRefModelTypes),
+	}
+	if loc.Primary != nil {
+		tfLocation.Primary = parseIDRef(ctx, *loc.Primary, diags)
+	}
+	if loc.Secondary != nil {
+		tfLocation.Secondary = parseIDRef(ctx, *loc.Secondary, diags)
+	}
+
+	locObj, diag := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
+	diags.Append(diag...)
+	if diags.HasError() {
+		return types.ObjectNull(PreferredPopLocationModelTypes)
+	}
+
+	return locObj
+}
+
 // hydrateAppConnectorState fetches the current state of a appConnector from the API
 // It takes a plan parameter to match config members with API members correctly
-func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, appConnectorID string, plan AppConnectorModel) (*AppConnectorModel, error) {
+func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, appConnectorID string, plan AppConnectorModel) (*AppConnectorModel, diag.Diagnostics, error) {
+	var diags diag.Diagnostics
+
 	input := cato_models.ZtnaAppConnectorRefInput{
 		By:    cato_models.ObjectRefByID,
 		Input: appConnectorID,
@@ -433,13 +472,15 @@ func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, app
 		"response": utils.InterfaceToJSONString(result),
 	})
 	if err != nil {
-		return nil, err
+		return nil, diags, err
 	}
 
 	// Map API response to AppConnectorModel
 	con := result.GetZtnaAppConnector().GetZtnaAppConnector()
-	addr := con.Address
-	pref := con.PreferredPopLocation
+	if con == nil {
+		return nil, diags, ErrAppConnectorNotFound
+	}
+
 	state := &AppConnectorModel{
 		ID:   types.StringValue(con.ID),
 		Name: types.StringValue(con.Name),
@@ -447,41 +488,18 @@ func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, app
 		SerialNumber: types.StringPointerValue(con.SerialNumber),
 		Type:         types.StringValue(con.Type.String()),
 		// SocketModel:  types.StringPointerValue(c.SocketModel), // TODO: add socket model
-		GroupName: types.StringValue(con.GroupName),
-		PostalAddress: &PostalAddressModel{
-			AddressValidated: types.StringValue(addr.AddressValidated.String()),
-			City:             types.StringPointerValue(addr.GetCityName()),
-			Country: IdNameRefModel{
-				ID:   types.StringValue(addr.Country.ID),
-				Name: types.StringValue(addr.Country.Name),
-			},
-			State:   types.StringPointerValue(addr.StateName),
-			Street:  types.StringPointerValue(addr.Street),
-			ZipCode: types.StringPointerValue(addr.ZipCode),
-		},
-		Timezone: types.StringValue(con.Timezone),
-		PreferredPopLocation: &PreferredPopLocationModel{
-			PreferredOnly: types.BoolValue(pref.PreferredOnly),
-			Automatic:     types.BoolValue(pref.Automatic),
-		},
-	}
-	if pref.Primary != nil {
-		state.PreferredPopLocation.Primary = IdNameRefModel{
-			ID:   types.StringValue(pref.Primary.ID),
-			Name: types.StringValue(pref.Primary.Name),
-		}
-	}
-	if pref.Secondary != nil {
-		state.PreferredPopLocation.Secondary = IdNameRefModel{
-			ID:   types.StringValue(pref.Secondary.ID),
-			Name: types.StringValue(pref.Secondary.Name),
-		}
+		GroupName:            types.StringValue(con.GroupName),
+		PostalAddress:        r.parsePostalAddress(ctx, con.Address, &diags),
+		Timezone:             types.StringValue(con.Timezone),
+		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
 	}
 
-	return state, nil
+	if diags.HasError() {
+		return nil, diags, ErrAPIResponseParse
+	}
+
+	return state, nil, nil
 }
-
-func ptr[T any](x T) *T { return &x }
 
 type appConTypeValidator struct{}
 
