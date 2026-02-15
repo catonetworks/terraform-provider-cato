@@ -34,20 +34,6 @@ type idRefInputs interface {
 	}
 }
 
-func IdNameInput(id, name types.String) (isSet bool, by cato_models.ObjectRefBy, input string, err error) {
-	if id.IsUnknown() && name.IsUnknown() {
-		return false, "", "", nil // not set
-	}
-	if !id.IsUnknown() && !name.IsUnknown() {
-		return false, "", "", fmt.Errorf("Only one of 'id' or 'name' can be specified")
-	}
-
-	if !id.IsUnknown() {
-		return true, cato_models.ObjectRefByID, id.ValueString(), nil
-	}
-	return true, cato_models.ObjectRefByName, name.ValueString(), nil
-}
-
 // prepareIdName prepares the id and name input for the Cato API
 // on error it sets the diagnostics error
 func prepareIdName(ctx context.Context, idName types.Object, diags *diag.Diagnostics, fieldName string, optional ...bool) (by cato_models.ObjectRefBy, input string, isSet bool) {
@@ -58,23 +44,11 @@ func prepareIdName(ctx context.Context, idName types.Object, diags *diag.Diagnos
 	if checkErr(diags, idName.As(ctx, &tfIdName, basetypes.ObjectAsOptions{})) {
 		return by, input, false
 	}
-
-	idNameSet, by, input, err := IdNameInput(tfIdName.ID, tfIdName.Name)
-	if err != nil {
-		diags.AddError("invalid configuration of "+fieldName, err.Error())
-		return
+	if tfIdName.Name.IsUnknown() {
+		return by, input, false
 	}
 
-	if idNameSet {
-		return by, input, true
-	}
-
-	// not set and it is mandatory
-	if len(optional) == 0 || (!optional[0]) {
-		diags.AddError("missing configuration of "+fieldName, "id or name must be set on "+fieldName)
-	}
-
-	return by, input, false
+	return cato_models.ObjectRefByName, tfIdName.Name.ValueString(), true
 }
 
 func prepareIDRef[T idRefInputs](ctx context.Context, tfObj types.Object, diags *diag.Diagnostics, fieldName string) (sdkRef *T) {

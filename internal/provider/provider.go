@@ -159,6 +159,9 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 }
 
 func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
+	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" {
+		return
+	}
 	resp, err := d.catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
 	if err != nil {
 		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"err": err})
