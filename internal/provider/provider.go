@@ -223,9 +223,10 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewWanRulesIndexResource,
 		NewWanNetworkRulesIndexResource,
 		NewTlsRulesIndexResource,
-		// NewAppConnectorResource,
+		NewAppConnectorResource,
 		NewPrivateAppResource,
 		NewPrivAccessPolicyResource,
 		NewPrivAccessRuleResource,
+		NewPrivAccessRuleBulkResource,
 	}
 }
