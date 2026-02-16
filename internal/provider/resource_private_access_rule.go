@@ -83,13 +83,6 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Description: "Rule description",
 				Optional:    true,
 			},
-			"index": schema.Int64Attribute{
-				Description: "Rule index",
-				Required:    true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
-			},
 			"cma_index": schema.Int64Attribute{
 				Description: "Rule index in CMA before bulk is applied",
 				Computed:    true,
@@ -222,7 +215,6 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-	hydratedState.Index = plan.Index
 
 	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
@@ -293,8 +285,6 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	hydratedState.Index = plan.Index
-
 	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -323,8 +313,6 @@ func (r *privAccessRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-
-	hydratedState.Index = state.Index
 
 	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)

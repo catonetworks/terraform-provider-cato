@@ -9,7 +9,6 @@ type PrivateAccessRuleModel struct {
 	ID                types.String `tfsdk:"id"`
 	Name              types.String `tfsdk:"name"`
 	Description       types.String `tfsdk:"description"`
-	Index             types.Int64  `tfsdk:"index"`
 	CMAIndex          types.Int64  `tfsdk:"cma_index"`
 	Enabled           types.Bool   `tfsdk:"enabled"`
 	Source            types.Object `tfsdk:"source"`             // Source
