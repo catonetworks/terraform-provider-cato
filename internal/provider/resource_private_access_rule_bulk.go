@@ -7,37 +7,48 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"time"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
-	_ resource.Resource              = &privAccessRuleBulkResource{}
-	_ resource.ResourceWithConfigure = &privAccessRuleBulkResource{}
+	_ resource.Resource               = &privAccessRuleBulkResource{}
+	_ resource.ResourceWithConfigure  = &privAccessRuleBulkResource{}
+	_ resource.ResourceWithModifyPlan = &privAccessRuleBulkResource{}
 
 	ErrConvertError = errors.New("failed convert terraform types to go")
 )
 
-func NewPrivAccessRuleBulkResource() resource.Resource {
-	return &privAccessRuleBulkResource{}
-}
-
 type privAccessRuleBulkResource struct {
 	client *catoClientData
+}
+
+func NewPrivAccessRuleBulkResource() resource.Resource {
+	return &privAccessRuleBulkResource{}
 }
 
 func (r *privAccessRuleBulkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_private_access_rule_bulk"
 }
 
-func (r *privAccessRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *privAccessRuleBulkResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	r.client = req.ProviderData.(*catoClientData)
+}
+
+func (r *privAccessRuleBulkResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages ordering and publishng private access policy rules.",
 		Attributes: map[string]schema.Attribute{
@@ -66,9 +77,27 @@ func (r *privAccessRuleBulkResource) Schema(_ context.Context, _ resource.Schema
 					},
 				},
 			},
+			"publish": schema.Int64Attribute{
+				Description: "publish policy revision if there is a change",
+				Computed:    true,
+				Optional:    true,
+			},
 		},
 	}
+}
 
+type revisionPlanModifier struct{}
+
+func (m revisionPlanModifier) Description(_ context.Context) string {
+	return "publish policy revision if there is a change"
+}
+func (m revisionPlanModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+func (m revisionPlanModifier) PlanModifyInt64(ctx context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
+	// Always set to current time in microseconds
+	nowMicro := time.Now().Unix()
+	resp.PlanValue = types.Int64Value(nowMicro)
 }
 
 func (r *privAccessRuleBulkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -82,13 +111,54 @@ func (r *privAccessRuleBulkResource) Create(ctx context.Context, req resource.Cr
 	}
 
 	// Hydrate state from API
-	hydratedState, _, diags, hydrateErr := r.hydratePrivAccessRuleBulkState(ctx, &plan)
+	hydratedState, ruleMap, diags, hydrateErr := r.hydratePrivAccessRuleBulkState(ctx, &plan)
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError("Error hydrating privateAccessRuleBulk state", hydrateErr.Error())
 		resp.Diagnostics.Append(diags...)
 		return
 	}
 
+	if checkErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
+		return
+	}
+
+	// publish the changes
+	if err := r.publish(ctx); err != nil {
+		resp.Diagnostics.AddError("Error publishing privateAcces policy", err.Error())
+		return
+	}
+
+	// get final state from API
+	hydratedState, ruleMap, diags, hydrateErr = r.hydratePrivAccessRuleBulkState(ctx, &plan)
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError("Error hydrating privateAccessRuleBulk state", hydrateErr.Error())
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+func (r *privAccessRuleBulkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	XXX(ctx, "Bulk Read")
+	var state PrivateAccessRuleBulkModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Hydrate state from API
+	hydratedState, _, diags, hydrateErr := r.hydratePrivAccessRuleBulkState(ctx, &state)
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError("Error hydrating privateAccessRuleBulk state", hydrateErr.Error())
+		resp.Diagnostics.Append(diags...)
+		return
+	}
 	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -125,7 +195,10 @@ func (r *privAccessRuleBulkResource) Update(ctx context.Context, req resource.Up
 	}
 
 	// publish the changes
-	// TODO: implement
+	if err := r.publish(ctx); err != nil {
+		resp.Diagnostics.AddError("Error publishing privateAcces policy", err.Error())
+		return
+	}
 
 	// get final state from API
 	hydratedState, ruleMap, diags, hydrateErr = r.hydratePrivAccessRuleBulkState(ctx, &plan)
@@ -142,30 +215,17 @@ func (r *privAccessRuleBulkResource) Update(ctx context.Context, req resource.Up
 	}
 }
 
-func (r *privAccessRuleBulkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	XXX(ctx, "Bulk Read")
-	var state PrivateAccessRuleBulkModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+func (r *privAccessRuleBulkResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	var plan PrivateAccessRuleBulkModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	XXX(ctx, "Bulk Modify Plan current state: state: %v", plan.Publish)
 
-	// Hydrate state from API
-	hydratedState, _, diags, hydrateErr := r.hydratePrivAccessRuleBulkState(ctx, &state)
-	if hydrateErr != nil {
-		if errors.Is(hydrateErr, ErrPrivateAcccessRuleNotFound) {
-			// tflog.Warn(ctx, fmt.Sprintf("Private access rule %s not found, resource removed", state.ID.ValueString()))
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError("Error hydrating privateAccessRuleBulk state", hydrateErr.Error())
-		resp.Diagnostics.Append(diags...)
-		return
-	}
-
-	diags = resp.State.Set(ctx, &hydratedState)
-	resp.Diagnostics.Append(diags...)
+	plan.Publish = types.Int64Value(plan.Publish.ValueInt64() + 1)
+	XXX(ctx, "Bulk Modify Plan new state: %v", plan.Publish)
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -173,14 +233,6 @@ func (r *privAccessRuleBulkResource) Read(ctx context.Context, req resource.Read
 
 func (r *privAccessRuleBulkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	XXX(ctx, "Bulk Delete")
-}
-
-func (r *privAccessRuleBulkResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*catoClientData)
 }
 
 // hydratePrivAccessRuleBulkState fetches the current state of a privAccessRuleBulk from the API
@@ -248,8 +300,10 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(ctx context.
 	if diags.HasError() {
 		return nil, nil, diags, ErrAPIResponseParse
 	}
+	XXX(ctx, "Hydrate:  plan.Publish=%v", plan.Publish)
 	state := &PrivateAccessRuleBulkModel{
 		RuleData: rulesMap,
+		Publish:  types.Int64Value(plan.Publish.ValueInt64()),
 	}
 
 	return state, apiRulesGo, nil, nil
@@ -334,6 +388,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(ctx context.Context, current
 		}
 	}
 	// Call the API to move the rule
+	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
@@ -346,6 +401,27 @@ func (r *privAccessRuleBulkResource) moveToPosition(ctx context.Context, current
 			return fmt.Errorf("error moving rule '%s' [%s] - %s", ruleName, *errors[0].GetErrorCode(), *errors[0].GetErrorMessage())
 		}
 		return fmt.Errorf("error moving rule '%s'", ruleName)
+	}
+	return nil
+}
+
+// publish calls the API to publish the draft policy revision
+func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
+	result, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Bulk PolicyPrivateAccessPublishRevision", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	if err != nil {
+		return err
+	}
+	res := result.GetPolicy().GetPrivateAccess().GetPublishPolicyRevision()
+	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+		errors := res.GetErrors()
+		if len(errors) > 0 {
+			if *errors[0].GetErrorCode() == "PolicyRevisionNotFound" {
+				return nil // there was nothing to publish
+			}
+			return fmt.Errorf("error publishing policy - %s", *errors[0].GetErrorMessage())
+		}
+		return fmt.Errorf("error publishing policy")
 	}
 	return nil
 }

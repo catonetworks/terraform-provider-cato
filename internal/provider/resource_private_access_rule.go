@@ -144,9 +144,6 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 
 func (r *privAccessRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan PrivateAccessRuleModel
-
-	tflog.Info(ctx, "XXX Rule Create")
-
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -178,14 +175,11 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
 	// Call Cato API to create a new rule
-	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
+	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PolicyPrivateAccessAddRule(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := fmt.Sprintf("failed to add private access rule '%s'", ruleName)
 	if err != nil {
 		resp.Diagnostics.AddError(errMsg, err.Error())
@@ -195,7 +189,7 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 	if respRule.Status != cato_models.PolicyMutationStatusSuccess {
 		resp.Diagnostics.AddError(errMsg, "returned status: "+string(respRule.Status))
 		for _, e := range respRule.Errors {
-			resp.Diagnostics.AddError(errMsg, *e.ErrorMessage)
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
 		}
 		return
 	}
@@ -264,16 +258,24 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 		},
 	}
 
-	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
+	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PolicyPrivateAccessUpdateRule(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
-
+	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	errMsg := fmt.Sprintf("failed to update private access rule '%s'", plan.Name.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyPrivateAccessUpdateRule error", err.Error())
+		resp.Diagnostics.AddError(errMsg, err.Error())
+		return
+	}
+	res := result.GetPolicy().GetPrivateAccess().GetUpdateRule()
+	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+		errors := res.GetErrors()
+		if len(errors) == 0 {
+			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*res.GetStatus()))
+			return
+		}
+		for _, e := range errors {
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
+		}
 		return
 	}
 
@@ -323,6 +325,35 @@ func (r *privAccessRuleResource) Read(ctx context.Context, req resource.ReadRequ
 
 func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	tflog.Info(ctx, "XXX Rule Delete")
+	var state PrivateAccessRuleModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	input := cato_models.PrivateAccessRemoveRuleInput{ID: state.ID.ValueString()}
+
+	// Call Cato API to delete a connector
+	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
+	result, err := r.client.catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	errMsg := fmt.Sprintf("failed to delete private access rule '%s'", state.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(errMsg, err.Error())
+		return
+	}
+	res := result.GetPolicy().GetPrivateAccess().GetRemoveRule()
+	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+		errors := res.GetErrors()
+		if len(errors) == 0 {
+			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*res.GetStatus()))
+			return
+		}
+		for _, e := range errors {
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
+		}
+		return
+	}
 }
 
 func (r *privAccessRuleResource) parseSource(ctx context.Context, src cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source,
@@ -983,9 +1014,7 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(ctx context.Context,
 
 	// Call Cato API to get the policy
 	result, err := r.client.catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "PolicyReadPrivateAccessPolicy", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	tflog.Debug(ctx, "PolicyReadPrivateAccessPolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, nil, err
 	}
