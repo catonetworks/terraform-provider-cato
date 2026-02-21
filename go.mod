@@ -3,7 +3,7 @@ module github.com/catonetworks/terraform-provider-cato
 go 1.23.1
 
 require (
-	github.com/catonetworks/cato-go-sdk v0.2.6-0.20251126214958-705a235a822a
+	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260219233530-e1ba531ad500
 	github.com/fatih/structs v1.1.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
@@ -13,11 +13,11 @@ require (
 )
 
 require (
-	github.com/99designs/gqlgen v0.17.61 // indirect
-	github.com/Yamashou/gqlgenc v0.30.2 // indirect
+	github.com/99designs/gqlgen v0.17.73 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gqlgo/gqlgenc v0.33.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-plugin v1.6.2 // indirect
@@ -27,18 +27,20 @@ require (
 	github.com/hashicorp/terraform-registry-address v0.2.4 // indirect
 	github.com/hashicorp/terraform-svchost v0.1.1 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.20 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.26 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/grpc v1.69.4 // indirect
-	google.golang.org/protobuf v1.36.3 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 )
+
+replace github.com/catonetworks/cato-go-sdk => /Users/briananderson/Documents/Dev/github.com/catonetworks/cato-go-sdk

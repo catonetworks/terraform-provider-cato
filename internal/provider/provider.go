@@ -201,5 +201,8 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewWanRulesIndexResource,
 		NewWanNetworkRulesIndexResource,
 		NewTlsRulesIndexResource,
+		NewSocketLanSectionResource,
+		NewSocketLanNetworkRuleResource,
+		NewSocketLanFirewallRuleResource,
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -157,10 +158,14 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Computed:    true,
 					},
 					"vlan": schema.Int64Attribute{
-						Description: "VLAN ID for the site native range (optional)",
+						Description: "VLAN ID for the site native range (optional). If not specified, defaults to 1.",
 						Optional:    true,
+						Computed:    true,
 						Validators: []validator.Int64{
 							int64validator.AtLeast(1),
+						},
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.UseStateForUnknown(),
 						},
 					},
 					// "internet_only": schema.BoolAttribute{
@@ -280,9 +285,8 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Required:    true,
 					},
 					"city": schema.StringAttribute{
-						Description: "Optionnal city",
-						Optional:    true,
-						Computed:    true,
+						Description: "City",
+						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.LengthAtLeast(1),
 						},
@@ -487,7 +491,9 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
 		inputUpdateNetworkRange.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
-		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
+		if !nativeRangeInput.Vlan.IsNull() && !nativeRangeInput.Vlan.IsUnknown() {
+			inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
+		}
 		inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
 		inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceName.ValueStringPointer()
 		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && hasLagMinLinks {
@@ -988,7 +994,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		inputUpdateNetworkRange.Subnet = nativeRangeInput.NativeNetworkRange.ValueStringPointer()
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
-		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
+		if !nativeRangeInput.Vlan.IsNull() && !nativeRangeInput.Vlan.IsUnknown() {
+			inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
+		}
 
 		// Handle interface name changes/removals
 		if interfaceNameRemovedFromConfig {
@@ -1636,6 +1644,8 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 			// siteNetRangeApiData = v.GetHelperFields()
 			// Pull ID from entity attributes
 			siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
+			// Set vlan from API - vlan is Optional+Computed with UseStateForUnknown
+			// This allows imports to read the value and subsequent plans to preserve it
 			if vlanTag, ok := v.HelperFields["vlanTag"]; ok && vlanTag != nil {
 				if vlanInt, err := cast.ToInt64E(vlanTag); err == nil {
 					nativeRangeObj.Vlan = types.Int64Value(vlanInt)
@@ -1680,7 +1690,8 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 
 			// Check if API returned a non-default dhcp type
 			dhcpTypeVal, hasDhcpType := v.HelperFields["dhcpType"]
-			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && cast.ToString(dhcpTypeVal) != "DHCP_DISABLED"
+			dhcpTypeStr := cast.ToString(dhcpTypeVal)
+			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && dhcpTypeStr != "DHCP_DISABLED" && dhcpTypeStr != "ACCOUNT_DEFAULT"
 
 			// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
 			// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
@@ -2157,16 +2168,35 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					"resolvedLocation": utils.InterfaceToJSONString(resolvedLocation),
 				})
 
-				// Resolve timezone locally from location data
-				timezoneValue := types.StringNull()
-				if resolvedLocation.Timezone != "" {
-					timezoneValue = types.StringValue(resolvedLocation.Timezone)
+				// Check what was in the original state/plan for site_location
+				// Preserve user-configured values instead of overwriting with resolved values
+				var origSiteLocation SiteLocation
+				timezoneInPlan := false
+				stateCodeInPlan := false
+				var userTimezone types.String
+				var userStateCode types.String
+				if !state.SiteLocation.IsNull() && !state.SiteLocation.IsUnknown() {
+					diags := state.SiteLocation.As(ctx, &origSiteLocation, basetypes.ObjectAsOptions{})
+					if diags == nil || !diags.HasError() {
+						timezoneInPlan = !origSiteLocation.Timezone.IsNull() && !origSiteLocation.Timezone.IsUnknown()
+						stateCodeInPlan = !origSiteLocation.StateCode.IsNull() && !origSiteLocation.StateCode.IsUnknown()
+						userTimezone = origSiteLocation.Timezone
+						userStateCode = origSiteLocation.StateCode
+					}
 				}
 
-				// Resolve state_code locally from location data
+				// Resolve timezone: use user-configured value if provided, otherwise keep null
+				// Do NOT use resolved value as it may be incorrect (random match from location data)
+				timezoneValue := types.StringNull()
+				if timezoneInPlan {
+					timezoneValue = userTimezone
+				}
+
+				// Resolve state_code: use user-configured value if provided, otherwise keep null
+				// Do NOT use resolved value as it may be incorrect (random match from location data)
 				stateCodeValue := types.StringNull()
-				if resolvedLocation.StateCode != "" {
-					stateCodeValue = types.StringValue(resolvedLocation.StateCode)
+				if stateCodeInPlan {
+					stateCodeValue = userStateCode
 				}
 
 				// All location values from API, timezone and state_code resolved locally
