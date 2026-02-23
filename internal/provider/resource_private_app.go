@@ -469,7 +469,6 @@ func (r *privateAppResource) parsePublishedAppDomain(ctx context.Context, domain
 		ID:                 types.StringValue(domain.ID),
 		CreationTime:       types.StringValue(domain.CreationTime),
 		PublishedAppDomain: types.StringValue(domain.PublishedAppDomain),
-		CatoIP:             types.StringPointerValue(domain.CatoIP),
 		ConnectorGroupName: types.StringPointerValue(domain.ConnectorGroupName),
 	}
 
@@ -521,7 +520,6 @@ func (r *privateAppResource) preparePublishedAppDomain(ctx context.Context, appD
 		ID:                 knownStringPointer(tfAppDomain.ID),
 		CreationTime:       knownStringPointer(tfAppDomain.CreationTime),
 		PublishedAppDomain: knownStringPointer(tfAppDomain.PublishedAppDomain),
-		CatoIP:             knownStringPointer(tfAppDomain.CatoIP),
 		ConnectorGroupName: knownStringPointer(tfAppDomain.ConnectorGroupName),
 	}
 }

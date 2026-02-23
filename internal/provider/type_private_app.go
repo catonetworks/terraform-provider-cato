@@ -24,7 +24,6 @@ type PublishedAppDomain struct {
 	ID                 types.String `tfsdk:"id"`
 	CreationTime       types.String `tfsdk:"creation_time"`
 	PublishedAppDomain types.String `tfsdk:"published_app_domain"`
-	CatoIP             types.String `tfsdk:"cato_ip"`
 	ConnectorGroupName types.String `tfsdk:"connector_group_name"`
 }
 
