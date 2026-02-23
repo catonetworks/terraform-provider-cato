@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -153,6 +154,26 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	resp.DataSourceData = dataSourceData
 	resp.ResourceData = dataSourceData
 
+	// cleanup stale rules
+	p.cleanupDrafts(ctx, dataSourceData)
+}
+
+func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
+	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" {
+		return
+	}
+	resp, err := d.catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
+	if err != nil {
+		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"err": err})
+		return
+	}
+	errors := resp.GetPolicy().GetPrivateAccess().DiscardPolicyRevision.Errors
+	if len(errors) > 0 {
+		if errors[0].ErrorCode != nil && *errors[0].ErrorCode == "PolicyRevisionNotFound" {
+			return // no policy draft to discard; OK
+		}
+		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"errors": errors})
+	}
 }
 
 func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSource {
@@ -171,7 +192,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		WfRuleSectionsDataSource,
 		NetworkRangesDataSource,
 		HostDataSource,
-		AppConnectorDataSource,
+		AppConnectorGroupDataSource,
 	}
 }
 
@@ -203,5 +224,9 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewWanNetworkRulesIndexResource,
 		NewTlsRulesIndexResource,
 		NewAppConnectorResource,
+		NewPrivateAppResource,
+		NewPrivAccessPolicyResource,
+		NewPrivAccessRuleResource,
+		NewPrivAccessRuleBulkResource,
 	}
 }
