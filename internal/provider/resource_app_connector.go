@@ -46,21 +46,40 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 		Description: "The `cato_app_connector` resource contains the configuration parameters necessary to manage a group. Groups can contain various member types including sites, hosts, network ranges, and more. Documentation for the underlying API used in this resource can be found at [mutation.groups.createGroup()](https://api.catonetworks.com/documentation/#mutation-groups.createGroup).",
 
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "The unique ID of the ZTNA App Connector",
-				Computed:    true,
-			},
-
-			"name": schema.StringAttribute{
-				Description: "The unique name of the ZTNA App Connector",
-				Required:    true,
-			},
 			"description": schema.StringAttribute{
 				Description: "Optional description of the ZTNA App Connector (max 250 characters)",
 				Optional:    true,
 			},
+			"group_name": schema.StringAttribute{
+				Description: "Name of the ZTNA App Connector group",
+				Required:    true,
+			},
+			"id": schema.StringAttribute{
+				Description: "The unique ID of the ZTNA App Connector",
+				Computed:    true,
+			},
+			"location": r.schemaLocation(),
+			"name": schema.StringAttribute{
+				Description: "The unique name of the ZTNA App Connector",
+				Required:    true,
+			},
+			"preferred_pop_location": r.schemaPreferredPopLocation(),
+			"private_apps": schema.ListNestedAttribute{
+				Description:  "Private application name or id",
+				Computed:     true,
+				NestedObject: schema.NestedAttributeObject{Attributes: schemaNameID("Private app")},
+			},
+
 			"serial_number": schema.StringAttribute{
 				Description: "Unique serial number of the ZTNA App Connector",
+				Computed:    true,
+			},
+			"socket_id": schema.StringAttribute{
+				Description: "Connector type (virtual, physical)",
+				Computed:    true,
+			},
+			"socket_model": schema.StringAttribute{
+				Description: "Socket model of the ZTNA App Connector",
 				Computed:    true,
 			},
 			"type": schema.StringAttribute{
@@ -68,109 +87,83 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 				Validators:  []validator.String{appConTypeValidator{}},
 			},
-			"socket_model": schema.StringAttribute{
-				Description: "Socket model of the ZTNA App Connector",
+		},
+	}
+}
+
+func (r *appConnectorResource) schemaLocation() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "App connector location",
+		Required:    true,
+		Attributes: map[string]schema.Attribute{
+			"address": schema.StringAttribute{
+				Description: "Street, number",
 				Optional:    true,
 			},
-			"group": schema.StringAttribute{
-				Description: "Name of the ZTNA App Connector group",
-				Required:    true,
+			"city_name": schema.StringAttribute{
+				Description: "City name",
+				Optional:    true,
 			},
-			"address": resSchemaPostalAddress("Physical location of the connector"),
+			"country_code": schema.StringAttribute{
+				Description: "Country code",
+				Optional:    true,
+			},
+			"state_code": schema.StringAttribute{
+				Description: "State code",
+				Optional:    true,
+			},
 			"timezone": schema.StringAttribute{
-				Description: "Time zone",
-				Required:    true,
-			},
-			"preferred_pop_location": schema.SingleNestedAttribute{
-				Description: "Preferred PoP locations settings",
-				Required:    true,
-				Attributes: map[string]schema.Attribute{
-					"preferred_only": schema.BoolAttribute{
-						Description: "Restrict connector attachment exclusively to the configured pop locations",
-						Required:    true,
-					},
-					"automatic": schema.BoolAttribute{
-						Description: "Automatic PoP location",
-						Required:    true,
-					},
-					"primary": schema.SingleNestedAttribute{
-						Description: "Physical location of the pripary Pop",
-						Optional:    true,
-						Attributes: map[string]schema.Attribute{
-							"name": schema.StringAttribute{
-								Description: "Location name",
-								Optional:    true,
-								Computed:    true,
-							},
-							"id": schema.StringAttribute{
-								Description: "Location ID",
-								Optional:    true,
-								Computed:    true,
-							},
-						},
-					},
-					"secondary": schema.SingleNestedAttribute{
-						Description: "Physical location of the secondary Pop",
-						Optional:    true,
-						Attributes: map[string]schema.Attribute{
-							"name": schema.StringAttribute{
-								Description: "Location name",
-								Optional:    true,
-								Computed:    true,
-							},
-							"id": schema.StringAttribute{
-								Description: "Location ID",
-								Optional:    true,
-								Computed:    true,
-							},
-						},
-					},
-				},
+				Description: "Timezone",
+				Optional:    true,
 			},
 		},
 	}
 }
 
-func resSchemaPostalAddress(description string) schema.SingleNestedAttribute {
+func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Description: description,
-		Optional:    true,
+		Description: "Preferred PoP locations settings",
+		Required:    true,
 		Attributes: map[string]schema.Attribute{
-			"address_validated": schema.StringAttribute{
-				Description: "Address validation status",
-				Computed:    true,
-			},
-			"city": schema.StringAttribute{
-				Description: "City name",
+			"preferred_only": schema.BoolAttribute{
+				Description: "Restrict connector attachment exclusively to the configured pop locations",
 				Required:    true,
 			},
-			"country": schema.SingleNestedAttribute{
-				Description: "Country name or id",
+			"automatic": schema.BoolAttribute{
+				Description: "Automatic PoP location",
 				Required:    true,
+			},
+			"primary": schema.SingleNestedAttribute{
+				Description: "Physical location of the pripary Pop",
+				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"name": schema.StringAttribute{
-						Description: "Country name",
+						Description: "Location name",
 						Optional:    true,
 						Computed:    true,
 					},
 					"id": schema.StringAttribute{
-						Description: "Country code",
+						Description: "Location ID",
 						Optional:    true,
 						Computed:    true,
 					},
 				},
 			},
-			"state": schema.StringAttribute{
-				Description: "State name (required for the USA)",
+			"secondary": schema.SingleNestedAttribute{
+				Description: "Physical location of the secondary Pop",
 				Optional:    true,
-			},
-			"street": schema.StringAttribute{
-				Description: "Street name and number",
-				Optional:    true,
-			},
-			"zip_code": schema.StringAttribute{
-				Description: "Zip code",
-				Optional:    true,
+				Attributes: map[string]schema.Attribute{
+					"name": schema.StringAttribute{
+						Description: "Location name",
+						Optional:    true,
+						Computed:    true,
+					},
+					"id": schema.StringAttribute{
+						Description: "Location ID",
+						Optional:    true,
+						Computed:    true,
+					},
+				},
 			},
 		},
 	}
@@ -189,26 +182,26 @@ func (r *appConnectorResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *appConnectorResource) prepareAddress(ctx context.Context, addr types.Object, diags *diag.Diagnostics) *cato_models.PostalAddressInput {
+func (r *appConnectorResource) prepareLocation(ctx context.Context, addr types.Object, diags *diag.Diagnostics) *cato_models.ZtnaAppConnectorLocationInput {
 	if !hasValue(addr) {
 		return nil
 	}
 
-	var tfAddress PostalAddressModel
-	diags.Append(addr.As(ctx, &tfAddress, basetypes.ObjectAsOptions{})...)
+	var tfLocation AppConnectorLocation
+	diags.Append(addr.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
 		return nil
 	}
 
-	sdkAddress := cato_models.PostalAddressInput{
-		CityName:  tfAddress.City.ValueStringPointer(),
-		Country:   prepareIDRef[cato_models.CountryRefInput](ctx, tfAddress.Country, diags, "address.country"),
-		StateName: tfAddress.State.ValueStringPointer(),
-		Street:    tfAddress.Street.ValueStringPointer(),
-		ZipCode:   tfAddress.ZipCode.ValueStringPointer(),
+	sdkLocation := cato_models.ZtnaAppConnectorLocationInput{
+		Address:     knownStringPointer(tfLocation.Address),
+		City:        tfLocation.CityName.ValueString(),
+		CountryCode: tfLocation.CountryCode.ValueString(),
+		StateCode:   knownStringPointer(tfLocation.StateCode),
+		Timezone:    tfLocation.Timezone.ValueString(),
 	}
 
-	return &sdkAddress
+	return &sdkLocation
 }
 
 func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types.Object, diags *diag.Diagnostics,
@@ -242,13 +235,12 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	input := cato_models.AddZtnaAppConnectorInput{
-		Name:                 plan.Name.ValueString(),
-		Description:          plan.Description.ValueStringPointer(),
+		Description:          knownStringPointer(plan.Description),
 		GroupName:            plan.GroupName.ValueString(),
-		Type:                 cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
-		Address:              r.prepareAddress(ctx, plan.PostalAddress, &diags),
-		Timezone:             plan.Timezone.ValueString(),
+		Location:             r.prepareLocation(ctx, plan.Location, &diags),
+		Name:                 plan.Name.ValueString(),
 		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
+		Type:                 cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
 	}
 
 	// Call Cato API to create a new connector
@@ -302,12 +294,11 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 	input := cato_models.UpdateZtnaAppConnectorInput{
-		ID:          id,
-		Name:        plan.Name.ValueStringPointer(),
-		Description: plan.Description.ValueStringPointer(),
-		GroupName:   plan.GroupName.ValueStringPointer(),
-		// Address:
-		Timezone:             plan.Timezone.ValueStringPointer(),
+		Description:          knownStringPointer(plan.Description),
+		GroupName:            knownStringPointer(plan.GroupName),
+		ID:                   id,
+		Location:             &cato_models.ZtnaAppConnectorLocationInput{},
+		Name:                 knownStringPointer(plan.Name),
 		PreferredPopLocation: nil,
 	}
 
@@ -398,27 +389,25 @@ func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
-func (r *appConnectorResource) parsePostalAddress(ctx context.Context, addr cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Address,
+func (r *appConnectorResource) parseLocation(ctx context.Context, addr cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
-
-	// Prepare PostalAddressModel object
-	tfAddress := PostalAddressModel{
-		AddressValidated: types.StringValue(string(addr.AddressValidated)),
-		City:             types.StringPointerValue(addr.CityName),
-		Country:          parseIDRef(ctx, addr.Country, diags),
-		State:            types.StringPointerValue(addr.StateName),
-		Street:           types.StringPointerValue(addr.Street),
-		ZipCode:          types.StringPointerValue(addr.ZipCode),
+	// Prepare AppConnectorLocation object
+	tfLocation := AppConnectorLocation{
+		Address:     types.StringPointerValue(addr.Address),
+		CityName:    types.StringValue(addr.CityName),
+		CountryCode: types.StringValue(addr.CountryCode),
+		StateCode:   types.StringPointerValue(addr.StateCode),
+		Timezone:    types.StringValue(addr.Timezone),
 	}
-	addrObj, diag := types.ObjectValueFrom(ctx, PostalAddressModelTypes, tfAddress)
+
+	locObj, diag := types.ObjectValueFrom(ctx, AppConnectorLocationTypes, tfLocation)
 	diags.Append(diag...)
 	if diags.HasError() {
-		return types.ObjectNull(PolicyScheduleTypes)
+		return types.ObjectNull(AppConnectorLocationTypes)
 	}
 
-	return addrObj
+	return locObj
 }
 
 func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation,
@@ -482,16 +471,17 @@ func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, app
 	}
 
 	state := &AppConnectorModel{
-		ID:   types.StringValue(con.ID),
-		Name: types.StringValue(con.Name),
-		// Description:  types.StringPointerValue(c.Description), TODO: add description
-		SerialNumber: types.StringPointerValue(con.SerialNumber),
-		Type:         types.StringValue(con.Type.String()),
-		// SocketModel:  types.StringPointerValue(c.SocketModel), // TODO: add socket model
+		Description:          types.StringPointerValue(con.Description),
 		GroupName:            types.StringValue(con.GroupName),
-		PostalAddress:        r.parsePostalAddress(ctx, con.Address, &diags),
-		Timezone:             types.StringValue(con.Timezone),
+		ID:                   types.StringValue(con.ID),
+		Location:             r.parseLocation(ctx, con.Location, &diags),
+		Name:                 types.StringValue(con.Name),
 		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
+		PrivateAppRef:        parseIDRefList(ctx, con.PrivateAppRef, &diags),
+		SerialNumber:         types.StringPointerValue(con.SerialNumber),
+		SocketID:             types.StringPointerValue(con.SocketID),
+		SocketModel:          types.StringPointerValue((*string)(con.SocketModel)),
+		Type:                 types.StringValue(con.Type.String()),
 	}
 
 	if diags.HasError() {

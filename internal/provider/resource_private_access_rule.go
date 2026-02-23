@@ -241,9 +241,9 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 	input := cato_models.PrivateAccessUpdateRuleInput{
 		ID: id,
 		Rule: &cato_models.PrivateAccessUpdateRuleDataInput{
-			Enabled:          plan.Enabled.ValueBoolPointer(),
-			Name:             plan.Name.ValueStringPointer(),
-			Description:      plan.Description.ValueStringPointer(),
+			Enabled:          knownBoolPointer(plan.Enabled),
+			Name:             knownStringPointer(plan.Name),
+			Description:      knownStringPointer(plan.Description),
 			Source:           r.prepareSourceUpdate(ctx, plan.Source, &resp.Diagnostics),
 			Platform:         r.preparePlatforms(ctx, plan.Platforms, &resp.Diagnostics),
 			Country:          r.prepareCountries(ctx, plan.Countries, &resp.Diagnostics),
@@ -698,9 +698,9 @@ func (r *privAccessRuleResource) prepareTrackingUpdate(ctx context.Context, t ty
 	}
 }
 
-func (r *privAccessRuleResource) prepareUserAttributes(ctx context.Context, uas types.Object, diags *diag.Diagnostics) *cato_models.UserAttributesInput {
+func (r *privAccessRuleResource) prepareUserAttributes(ctx context.Context, uas types.Object, diags *diag.Diagnostics) *cato_models.PrivateAccessUserAttributesInput {
 	// Default values
-	attr := cato_models.UserAttributesInput{
+	attr := cato_models.PrivateAccessUserAttributesInput{
 		RiskScore: &cato_models.RiskScoreConditionInput{
 			Category: cato_models.RiskScoreCategoryAny,
 			Operator: cato_models.RiskScoreOperatorGte,
@@ -729,12 +729,12 @@ func (r *privAccessRuleResource) prepareUserAttributes(ctx context.Context, uas 
 	attr.RiskScore.Operator = cato_models.RiskScoreOperator(tfRiskScore.Operator.ValueString())
 	return &attr
 }
-func (r *privAccessRuleResource) prepareUserAttributesUpdate(ctx context.Context, uas types.Object, diags *diag.Diagnostics) *cato_models.UserAttributesUpdateInput {
+func (r *privAccessRuleResource) prepareUserAttributesUpdate(ctx context.Context, uas types.Object, diags *diag.Diagnostics) *cato_models.PrivateAccessUserAttributesUpdateInput {
 	upd := r.prepareUserAttributes(ctx, uas, diags)
 	if upd == nil {
 		return nil
 	}
-	return &cato_models.UserAttributesUpdateInput{
+	return &cato_models.PrivateAccessUserAttributesUpdateInput{
 		RiskScore: &cato_models.RiskScoreConditionUpdateInput{
 			Category: &upd.RiskScore.Category,
 			Operator: &upd.RiskScore.Operator,
@@ -763,6 +763,7 @@ func (r *privAccessRuleResource) prepareSchedule(ctx context.Context, sch types.
 		if checkErr(diags, tfSchedule.CustomRecurring.As(ctx, &tfRecuring, basetypes.ObjectAsOptions{})) {
 			return nil
 		}
+		schedule.CustomRecurring = &cato_models.PolicyCustomRecurringInput{}
 
 		// From
 		schedule.CustomRecurring.From = scalars.Time(tfRecuring.From.ValueString())
@@ -788,6 +789,7 @@ func (r *privAccessRuleResource) prepareSchedule(ctx context.Context, sch types.
 		if checkErr(diags, tfSchedule.CustomTimeframe.As(ctx, &tfTimeframe, basetypes.ObjectAsOptions{})) {
 			return nil
 		}
+		schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeInput{}
 
 		// From
 		schedule.CustomTimeframe.From = tfTimeframe.From.ValueString()
@@ -818,8 +820,8 @@ func (r *privAccessRuleResource) prepareActivePeriod(ctx context.Context, ap typ
 	diags.Append(ap.As(ctx, &tfPeriod, basetypes.ObjectAsOptions{})...)
 
 	sdkPeriod := cato_models.PolicyRuleActivePeriodInput{
-		EffectiveFrom:    tfPeriod.EffectiveFrom.ValueStringPointer(),
-		ExpiresAt:        tfPeriod.ExpiresAt.ValueStringPointer(),
+		EffectiveFrom:    knownStringPointer(tfPeriod.EffectiveFrom),
+		ExpiresAt:        knownStringPointer(tfPeriod.ExpiresAt),
 		UseEffectiveFrom: tfPeriod.UseEffectiveFrom.ValueBool(),
 		UseExpiresAt:     tfPeriod.UseExpiresAt.ValueBool(),
 	}
@@ -964,7 +966,7 @@ func (r *privAccessRuleResource) parsePolicySchedule(ctx context.Context, sch ca
 			From: types.StringValue(string(sch.CustomTimeframe.From)),
 			To:   types.StringValue(string(sch.CustomTimeframe.To)),
 		}
-		timeframeObj, diag = types.ObjectValueFrom(ctx, PolicyCustomRecurringTypes, tfTimeframe)
+		timeframeObj, diag = types.ObjectValueFrom(ctx, PolicyCustomTimeframeTypes, tfTimeframe)
 		diags.Append(diag...)
 		if diags.HasError() {
 			return types.ObjectNull(PolicyScheduleTypes)

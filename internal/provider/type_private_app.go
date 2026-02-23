@@ -32,7 +32,6 @@ var PublishedAppDomainTypes = map[string]attr.Type{
 	"id":                   types.StringType,
 	"creation_time":        types.StringType,
 	"published_app_domain": types.StringType,
-	"cato_ip":              types.StringType,
 	"connector_group_name": types.StringType,
 }
 

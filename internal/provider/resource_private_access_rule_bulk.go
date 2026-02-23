@@ -216,9 +216,13 @@ func (r *privAccessRuleBulkResource) Update(ctx context.Context, req resource.Up
 }
 
 func (r *privAccessRuleBulkResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	var plan PrivateAccessRuleBulkModel
+	var plan *PrivateAccessRuleBulkModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if plan == nil {
+		XXX(ctx, "Bulk Modify Plan is NULL")
 		return
 	}
 	XXX(ctx, "Bulk Modify Plan current state: state: %v", plan.Publish)

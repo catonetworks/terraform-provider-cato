@@ -60,10 +60,13 @@ func prepareIDRef[T idRefInputs](ctx context.Context, tfObj types.Object, diags 
 }
 
 func parseIDRef[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnostics) types.Object {
-	type idn struct{ ID, Name string }
+	type idn struct {
+		ID   string `json:"id" tfsdk:"id"`
+		Name string `json:"name" tfsdk:"name"`
+	}
 
 	// make IdNameRefModel Object
-	obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, ref)
+	obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, idn(ref))
 	if checkErr(diags, diag) {
 		return types.ObjectNull(IdNameRefModelTypes)
 	}
@@ -167,5 +170,25 @@ type hasValuer interface {
 }
 
 func hasValue(v hasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }
+
+func knownStringPointer(s types.String) *string {
+	if s.IsUnknown() {
+		return nil
+	}
+	return s.ValueStringPointer()
+}
+
+func knownInt64Pointer(s types.Int64) *int64 {
+	if s.IsUnknown() {
+		return nil
+	}
+	return s.ValueInt64Pointer()
+}
+func knownBoolPointer(s types.Bool) *bool {
+	if s.IsUnknown() {
+		return nil
+	}
+	return s.ValueBoolPointer()
+}
 
 func ptr[T any](x T) *T { return &x }

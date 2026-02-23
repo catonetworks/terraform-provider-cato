@@ -82,6 +82,7 @@ func (r *privateAppResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"published_app_domain": schema.SingleNestedAttribute{
 				Description: "Domain information about the published private app",
 				Optional:    true,
+				Computed:    true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
 						Description: "ID of the private app domain",
@@ -94,10 +95,6 @@ func (r *privateAppResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"published_app_domain": schema.StringAttribute{
 						Description: "Published app domain",
 						Required:    true,
-					},
-					"cato_ip": schema.StringAttribute{
-						Description: "Cato IP address",
-						Optional:    true,
 					},
 					"connector_group_name": schema.StringAttribute{
 						Description: "Connector group name",
@@ -131,6 +128,7 @@ func (r *privateAppResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"protocol_ports": schema.ListNestedAttribute{
 				Description: "List ports and protocols",
 				Optional:    true,
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"ports": schema.ListAttribute{
@@ -187,8 +185,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 	input := cato_models.CreatePrivateApplicationInput{
 		Name:               plan.Name.ValueString(),
-		Description:        plan.Description.ValueStringPointer(),
-		ConnectorGroupName: plan.ConnectorGroupName.ValueStringPointer(),
+		Description:        knownStringPointer(plan.Description),
 		InternalAppAddress: plan.InternalAppAddress.ValueString(),
 		ProbingEnabled:     plan.ProbingEnabled.ValueBool(),
 		Published:          plan.Published.ValueBool(),
@@ -251,12 +248,12 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	input := cato_models.UpdatePrivateApplicationInput{
 		ID:                 id,
-		Name:               plan.Name.ValueStringPointer(),
-		Description:        plan.Description.ValueStringPointer(),
-		InternalAppAddress: plan.InternalAppAddress.ValueStringPointer(),
-		ProbingEnabled:     plan.ProbingEnabled.ValueBoolPointer(),
-		Published:          plan.Published.ValueBoolPointer(),
-		AllowICMPProtocol:  plan.AllowIcmpProtocol.ValueBoolPointer(),
+		Name:               knownStringPointer(plan.Name),
+		Description:        knownStringPointer(plan.Description),
+		InternalAppAddress: knownStringPointer(plan.InternalAppAddress),
+		ProbingEnabled:     knownBoolPointer(plan.ProbingEnabled),
+		Published:          knownBoolPointer(plan.Published),
+		AllowICMPProtocol:  knownBoolPointer(plan.AllowIcmpProtocol),
 		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
 		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
@@ -521,11 +518,11 @@ func (r *privateAppResource) preparePublishedAppDomain(ctx context.Context, appD
 	}
 
 	return &cato_models.PublishedAppDomainInput{
-		ID:                 tfAppDomain.ID.ValueStringPointer(),
-		CreationTime:       tfAppDomain.CreationTime.ValueStringPointer(),
-		PublishedAppDomain: tfAppDomain.PublishedAppDomain.ValueStringPointer(),
-		CatoIP:             tfAppDomain.CatoIP.ValueStringPointer(),
-		ConnectorGroupName: tfAppDomain.ConnectorGroupName.ValueStringPointer(),
+		ID:                 knownStringPointer(tfAppDomain.ID),
+		CreationTime:       knownStringPointer(tfAppDomain.CreationTime),
+		PublishedAppDomain: knownStringPointer(tfAppDomain.PublishedAppDomain),
+		CatoIP:             knownStringPointer(tfAppDomain.CatoIP),
+		ConnectorGroupName: knownStringPointer(tfAppDomain.ConnectorGroupName),
 	}
 }
 
@@ -541,10 +538,10 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 
 	return &cato_models.PrivateAppProbingInput{
-		ID:                 tfProbing.ID.ValueStringPointer(),
-		Type:               tfProbing.Type.ValueStringPointer(),
-		Interval:           tfProbing.Interval.ValueInt64Pointer(),
-		FaultThresholdDown: tfProbing.FaultThresholdDown.ValueInt64Pointer(),
+		ID:                 knownStringPointer(tfProbing.ID),
+		Type:               knownStringPointer(tfProbing.Type),
+		Interval:           knownInt64Pointer(tfProbing.Interval),
+		FaultThresholdDown: knownInt64Pointer(tfProbing.FaultThresholdDown),
 	}
 }
 
@@ -625,3 +622,5 @@ func (v privAppProtocolValidator) Description(ctx context.Context) string {
 func (v privAppProtocolValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
 }
+
+// TODO: knownStringPointer on inputs
