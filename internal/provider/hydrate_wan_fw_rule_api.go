@@ -53,7 +53,21 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 		// setting source
 		if !ruleInput.Source.IsNull() && !ruleInput.Source.IsUnknown() {
 
-			ruleSourceInput := &cato_models.WanFirewallSourceInput{}
+			ruleSourceInput := &cato_models.WanFirewallSourceInput{
+				IP:                make([]string, 0),
+				Subnet:            make([]string, 0),
+				Host:              make([]*cato_models.HostRefInput, 0),
+				Site:              make([]*cato_models.SiteRefInput, 0),
+				IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
+				GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
+				NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
+				SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
+				FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
+				User:              make([]*cato_models.UserRefInput, 0),
+				UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
+				Group:             make([]*cato_models.GroupRefInput, 0),
+				SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
+			}
 			ruleSourceUpdateInput := &cato_models.WanFirewallSourceUpdateInput{}
 
 			sourceInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Source{}
@@ -501,7 +515,21 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 		// setting destination (required, but can be empty)
 		if !ruleInput.Destination.IsNull() && !ruleInput.Destination.IsUnknown() {
 
-			ruleDestinationInput := &cato_models.WanFirewallDestinationInput{}
+			ruleDestinationInput := &cato_models.WanFirewallDestinationInput{
+				IP:                make([]string, 0),
+				Subnet:            make([]string, 0),
+				Host:              make([]*cato_models.HostRefInput, 0),
+				Site:              make([]*cato_models.SiteRefInput, 0),
+				IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
+				GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
+				NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
+				SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
+				FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
+				User:              make([]*cato_models.UserRefInput, 0),
+				UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
+				Group:             make([]*cato_models.GroupRefInput, 0),
+				SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
+			}
 			ruleDestinationUpdateInput := &cato_models.WanFirewallDestinationUpdateInput{}
 
 			destinationInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Destination{}
@@ -795,7 +823,19 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 		// setting application (required, but can be empty)
 		if !ruleInput.Application.IsNull() && !ruleInput.Application.IsUnknown() {
-			ruleApplicationInput := &cato_models.WanFirewallApplicationInput{}
+			ruleApplicationInput := &cato_models.WanFirewallApplicationInput{
+				IP:                     make([]string, 0),
+				Subnet:                 make([]string, 0),
+				Domain:                 make([]string, 0),
+				Fqdn:                   make([]string, 0),
+				Application:            make([]*cato_models.ApplicationRefInput, 0),
+				CustomApp:              make([]*cato_models.CustomApplicationRefInput, 0),
+				IPRange:                make([]*cato_models.IPAddressRangeInput, 0),
+				GlobalIPRange:          make([]*cato_models.GlobalIPRangeRefInput, 0),
+				AppCategory:            make([]*cato_models.ApplicationCategoryRefInput, 0),
+				CustomCategory:         make([]*cato_models.CustomCategoryRefInput, 0),
+				SanctionedAppsCategory: make([]*cato_models.SanctionedAppsCategoryRefInput, 0),
+			}
 			ruleApplicationUpdateInput := &cato_models.WanFirewallApplicationUpdateInput{}
 
 			applicationInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Application{}
@@ -1004,7 +1044,10 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 
 		// setting service
 		if !ruleInput.Service.IsUnknown() && !ruleInput.Service.IsNull() {
-			ruleServiceInput := &cato_models.WanFirewallServiceTypeInput{}
+			ruleServiceInput := &cato_models.WanFirewallServiceTypeInput{
+				Custom:   make([]*cato_models.CustomServiceInput, 0),
+				Standard: make([]*cato_models.ServiceRefInput, 0),
+			}
 			ruleServiceUpdateInput := &cato_models.WanFirewallServiceTypeUpdateInput{}
 
 			serviceInput := Policy_Policy_WanFirewall_Policy_Rules_Rule_Service{}
