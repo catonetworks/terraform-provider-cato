@@ -29,6 +29,9 @@ builds:
   ignore:
     - goos: darwin
       goarch: '386'
+    # modernc.org/libc (dependency of modernc.org/sqlite) has type issues on freebsd arm
+    - goos: freebsd
+      goarch: arm
   binary: '{{ .ProjectName }}_v{{ .Version }}'
 archives:
 - format: zip
