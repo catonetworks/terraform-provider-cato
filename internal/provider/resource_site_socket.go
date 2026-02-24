@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -158,14 +157,10 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Computed:    true,
 					},
 					"vlan": schema.Int64Attribute{
-						Description: "VLAN ID for the site native range (optional). If not specified, defaults to 1.",
+						Description: "VLAN ID for the site native range (optional)",
 						Optional:    true,
-						Computed:    true,
 						Validators: []validator.Int64{
 							int64validator.AtLeast(1),
-						},
-						PlanModifiers: []planmodifier.Int64{
-							int64planmodifier.UseStateForUnknown(),
 						},
 					},
 					// "internet_only": schema.BoolAttribute{
@@ -285,8 +280,9 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Required:    true,
 					},
 					"city": schema.StringAttribute{
-						Description: "City",
-						Required:    true,
+						Description: "Optionnal city",
+						Optional:    true,
+						Computed:    true,
 						Validators: []validator.String{
 							stringvalidator.LengthAtLeast(1),
 						},
@@ -491,9 +487,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
 		inputUpdateNetworkRange.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
-		if !nativeRangeInput.Vlan.IsNull() && !nativeRangeInput.Vlan.IsUnknown() {
-			inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
-		}
+		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
 		inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
 		inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceName.ValueStringPointer()
 		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && hasLagMinLinks {
@@ -850,7 +844,19 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		inputSiteGeneral.SiteLocation.CityName = cityPtr
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
-		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
+
+		// Handle state_code field
+		stateCodePtr := siteLocationInput.StateCode.ValueStringPointer()
+		if (stateCodePtr == nil || (stateCodePtr != nil && *stateCodePtr == "")) &&
+			!stateLocationInput.StateCode.IsNull() && !stateLocationInput.StateCode.IsUnknown() && stateLocationInput.StateCode.ValueString() != "" {
+			// If state_code had a value in state and is now blank/null in plan,
+			// send "" (empty string) to clear the field
+			stateCodePtr = nil
+		} else if stateCodePtr != nil && *stateCodePtr == "" {
+			// Normal case: empty string becomes nil
+			stateCodePtr = nil
+		}
+		inputSiteGeneral.SiteLocation.StateCode = stateCodePtr
 
 		// Handle address field
 		addrPtr := siteLocationInput.Address.ValueStringPointer()
@@ -994,9 +1000,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		inputUpdateNetworkRange.Subnet = nativeRangeInput.NativeNetworkRange.ValueStringPointer()
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
-		if !nativeRangeInput.Vlan.IsNull() && !nativeRangeInput.Vlan.IsUnknown() {
-			inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
-		}
+		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
 
 		// Handle interface name changes/removals
 		if interfaceNameRemovedFromConfig {
@@ -1535,33 +1539,80 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		return nil, err
 	}
 	isPresent := false
-	// Check for isDefault flag to be present first
-	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
-		curSiteId := cast.ToString(curIint.HelperFields["siteId"])
-		if curSiteId == siteID {
-			curInterfaceId := curIint.HelperFields["interfaceId"]
-			// curInterfaceName := curIint.HelperFields["interfaceName"]
-			// Try to parse the interfaceId as int, otherwise prefix with "INT_"
-			if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
-				curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
-				curInterfaceId = curInterfaceIdStr
-			}
-			isDefault := false
-			if v, ok := curIint.HelperFields["isDefault"]; ok && v != nil {
-				if b, err := cast.ToBoolE(v); err == nil {
-					isDefault = b
+
+	// Check if user specified a different interface index than the default
+	// If so, look for that interface first (this handles the case where attemptReassignNativeRangeIndex
+	// has already moved the native range to the user-specified interface)
+	userSpecifiedInterfaceIndex := ""
+	if !nativeRangeObj.InterfaceIndex.IsNull() && !nativeRangeObj.InterfaceIndex.IsUnknown() {
+		userSpecifiedInterfaceIndex = nativeRangeObj.InterfaceIndex.ValueString()
+	}
+	if userSpecifiedInterfaceIndex != "" && userSpecifiedInterfaceIndex != defaultInterfaceIndexByConnType {
+		tflog.Debug(ctx, "getNativeInterfaceAndSubnet: User specified non-default interface index", map[string]interface{}{
+			"userSpecifiedInterfaceIndex":     userSpecifiedInterfaceIndex,
+			"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
+		})
+		for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+			curSiteId := cast.ToString(curIint.HelperFields["siteId"])
+			if curSiteId == siteID {
+				curInterfaceId := curIint.HelperFields["interfaceId"]
+				// Try to parse the interfaceId as int, otherwise prefix with "INT_"
+				if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
+					curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
+					curInterfaceId = curInterfaceIdStr
+				}
+				// Check if this is the user-specified interface
+				if cast.ToString(curInterfaceId) == userSpecifiedInterfaceIndex {
+					isPresent = true
+					nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+					nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
+					nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
+					nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
+					if destType, ok := curIint.HelperFields["destType"]; ok && destType != nil {
+						nativeRangeObj.InterfaceDestType = types.StringValue(cast.ToString(destType))
+					} else {
+						nativeRangeObj.InterfaceDestType = types.StringNull()
+					}
+					tflog.Debug(ctx, "getNativeInterfaceAndSubnet: Found user-specified interface", map[string]interface{}{
+						"interfaceIndex": userSpecifiedInterfaceIndex,
+						"interfaceId":    curIint.Entity.ID,
+						"interfaceName":  curIint.HelperFields["interfaceName"],
+					})
+					break
 				}
 			}
-			if isDefault {
-				isPresent = true
-				nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
-				nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
-				nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
-				nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
-				if destType, ok := curIint.HelperFields["destType"]; ok && destType != nil {
-					nativeRangeObj.InterfaceDestType = types.StringValue(cast.ToString(destType))
-				} else {
-					nativeRangeObj.InterfaceDestType = types.StringNull()
+		}
+	}
+
+	// If user-specified interface not found or not specified, check for isDefault flag
+	if !isPresent {
+		for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+			curSiteId := cast.ToString(curIint.HelperFields["siteId"])
+			if curSiteId == siteID {
+				curInterfaceId := curIint.HelperFields["interfaceId"]
+				// curInterfaceName := curIint.HelperFields["interfaceName"]
+				// Try to parse the interfaceId as int, otherwise prefix with "INT_"
+				if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
+					curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
+					curInterfaceId = curInterfaceIdStr
+				}
+				isDefault := false
+				if v, ok := curIint.HelperFields["isDefault"]; ok && v != nil {
+					if b, err := cast.ToBoolE(v); err == nil {
+						isDefault = b
+					}
+				}
+				if isDefault {
+					isPresent = true
+					nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+					nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
+					nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
+					nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
+					if destType, ok := curIint.HelperFields["destType"]; ok && destType != nil {
+						nativeRangeObj.InterfaceDestType = types.StringValue(cast.ToString(destType))
+					} else {
+						nativeRangeObj.InterfaceDestType = types.StringNull()
+					}
 				}
 			}
 		}
@@ -1644,8 +1695,6 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 			// siteNetRangeApiData = v.GetHelperFields()
 			// Pull ID from entity attributes
 			siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
-			// Set vlan from API - vlan is Optional+Computed with UseStateForUnknown
-			// This allows imports to read the value and subsequent plans to preserve it
 			if vlanTag, ok := v.HelperFields["vlanTag"]; ok && vlanTag != nil {
 				if vlanInt, err := cast.ToInt64E(vlanTag); err == nil {
 					nativeRangeObj.Vlan = types.Int64Value(vlanInt)
@@ -1690,8 +1739,7 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 
 			// Check if API returned a non-default dhcp type
 			dhcpTypeVal, hasDhcpType := v.HelperFields["dhcpType"]
-			dhcpTypeStr := cast.ToString(dhcpTypeVal)
-			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && dhcpTypeStr != "DHCP_DISABLED" && dhcpTypeStr != "ACCOUNT_DEFAULT"
+			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && cast.ToString(dhcpTypeVal) != "DHCP_DISABLED"
 
 			// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
 			// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
@@ -1983,6 +2031,15 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 		return state, false, err
 	}
 
+	// Get site general details for location data
+	siteGeneralDetailsData, err := r.client.catov2.SiteGeneralDetails(ctx, cato_models.SiteRefInput{By: cato_models.ObjectRefBy("ID"), Input: siteID}, r.client.AccountId)
+	tflog.Debug(ctx, "Read.SiteGeneralDetails.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteGeneralDetailsData),
+	})
+	if err != nil {
+		return state, false, err
+	}
+
 	// check if site exist before refreshing
 	// we should only have one entry since we are filtering on site ID
 	if len(querySiteResult.EntityLookup.GetItems()) != 1 {
@@ -2141,80 +2198,57 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 				)
 				state.NativeRange = stateNativeRange
 
-				// Extract location data from API response
-				countryName := ""
-				if thisSiteAccountSnapshot.InfoSiteSnapshot.CountryName != nil {
-					countryName = *thisSiteAccountSnapshot.InfoSiteSnapshot.CountryName
-				}
-				stateName := ""
-				if thisSiteAccountSnapshot.InfoSiteSnapshot.CountryStateName != nil {
-					stateName = *thisSiteAccountSnapshot.InfoSiteSnapshot.CountryStateName
-				}
-				cityName := ""
-				if thisSiteAccountSnapshot.InfoSiteSnapshot.CityName != nil {
-					cityName = *thisSiteAccountSnapshot.InfoSiteSnapshot.CityName
-				}
+				// Extract location data from siteGeneralDetails API response
+				siteLocation := siteGeneralDetailsData.GetSite().GetSiteGeneralDetails().GetSiteLocation()
 
-				// Resolve location data using the new function
-				resolvedLocation := populateSiteLocationData(countryName, stateName, cityName)
-
-				tflog.Debug(ctx, "Read.populateSiteLocationData.input", map[string]interface{}{
-					"countryName": countryName,
-					"stateName":   stateName,
-					"cityName":    cityName,
+				tflog.Debug(ctx, "Read.SiteGeneralDetails.siteLocation", map[string]interface{}{
+					"siteLocation": utils.InterfaceToJSONString(siteLocation),
 				})
 
-				tflog.Debug(ctx, "Read.populateSiteLocationData.result", map[string]interface{}{
-					"resolvedLocation": utils.InterfaceToJSONString(resolvedLocation),
-				})
-
-				// Check what was in the original state/plan for site_location
-				// Preserve user-configured values instead of overwriting with resolved values
-				var origSiteLocation SiteLocation
-				timezoneInPlan := false
-				stateCodeInPlan := false
-				var userTimezone types.String
-				var userStateCode types.String
+				// Get input state's site location to preserve null values
+				// This prevents API values from overriding user's explicit null values
+				var inputSiteLocation SiteLocation
 				if !state.SiteLocation.IsNull() && !state.SiteLocation.IsUnknown() {
-					diags := state.SiteLocation.As(ctx, &origSiteLocation, basetypes.ObjectAsOptions{})
-					if diags == nil || !diags.HasError() {
-						timezoneInPlan = !origSiteLocation.Timezone.IsNull() && !origSiteLocation.Timezone.IsUnknown()
-						stateCodeInPlan = !origSiteLocation.StateCode.IsNull() && !origSiteLocation.StateCode.IsUnknown()
-						userTimezone = origSiteLocation.Timezone
-						userStateCode = origSiteLocation.StateCode
-					}
+					state.SiteLocation.As(ctx, &inputSiteLocation, basetypes.ObjectAsOptions{})
 				}
 
-				// Resolve timezone: use user-configured value if provided, otherwise keep null
-				// Do NOT use resolved value as it may be incorrect (random match from location data)
-				timezoneValue := types.StringNull()
-				if timezoneInPlan {
-					timezoneValue = userTimezone
-				}
-
-				// Resolve state_code: use user-configured value if provided, otherwise keep null
-				// Do NOT use resolved value as it may be incorrect (random match from location data)
-				stateCodeValue := types.StringNull()
-				if stateCodeInPlan {
-					stateCodeValue = userStateCode
-				}
-
-				// All location values from API, timezone and state_code resolved locally
+				// Build state location from siteGeneralDetails response
+				// Preserve null values from input state for optional fields (state_code, address, city)
 				stateSiteLocation, _ = types.ObjectValue(
 					SiteLocationResourceAttrTypes,
 					map[string]attr.Value{
-						"country_code": types.StringValue(*thisSiteAccountSnapshot.GetInfoSiteSnapshot().CountryCode),
-						"state_code":   stateCodeValue,
-						"timezone":     timezoneValue,
+						"country_code": types.StringValue(siteLocation.GetCountryCode()),
+						"state_code": func() types.String {
+							// If input state had state_code as null, preserve null
+							if inputSiteLocation.StateCode.IsNull() {
+								return types.StringNull()
+							}
+							// Otherwise use API value
+							if siteLocation.GetStateCode() != nil && *siteLocation.GetStateCode() != "" {
+								return types.StringValue(*siteLocation.GetStateCode())
+							}
+							return types.StringNull()
+						}(),
+						"timezone": types.StringValue(siteLocation.GetTimezone()),
 						"address": func() types.String {
-							if thisSiteAccountSnapshot.InfoSiteSnapshot.Address != nil && *thisSiteAccountSnapshot.InfoSiteSnapshot.Address != "" {
-								return types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.Address)
+							// If input state had address as null, preserve null
+							if inputSiteLocation.Address.IsNull() {
+								return types.StringNull()
+							}
+							// Otherwise use API value
+							if siteLocation.GetAddress() != nil && *siteLocation.GetAddress() != "" {
+								return types.StringValue(*siteLocation.GetAddress())
 							}
 							return types.StringNull()
 						}(),
 						"city": func() types.String {
-							if thisSiteAccountSnapshot.InfoSiteSnapshot.CityName != nil && *thisSiteAccountSnapshot.InfoSiteSnapshot.CityName != "" {
-								return types.StringValue(*thisSiteAccountSnapshot.InfoSiteSnapshot.CityName)
+							// If input state had city as null, preserve null
+							if inputSiteLocation.City.IsNull() {
+								return types.StringNull()
+							}
+							// Otherwise use API value
+							if siteLocation.GetCityName() != nil && *siteLocation.GetCityName() != "" {
+								return types.StringValue(*siteLocation.GetCityName())
 							}
 							return types.StringNull()
 						}(),

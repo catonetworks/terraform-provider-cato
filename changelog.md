@@ -204,3 +204,11 @@
 - Updated socket_site, lan_interface, wan_interface, and network_range resources to add all read attributes now available in the API to hystrate state.
 - Added data source for host lookup
 
+## 0.0.59 (2025-02-24)
+- Added resources for socketLan network and firewall with section.
+- Updated network_range to support microsegmentation for DHCP_RELAY (previously not supported by API)
+- Updated socket_site resource to read timezone from API instead of from local dataset, and fixed logic around interface mapping
+- Updated siteLocation data to use SQL DB locally
+
+
+
