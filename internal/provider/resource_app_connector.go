@@ -297,7 +297,7 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 		Description:          knownStringPointer(plan.Description),
 		GroupName:            knownStringPointer(plan.GroupName),
 		ID:                   id,
-		Location:             &cato_models.ZtnaAppConnectorLocationInput{},
+		Location:             r.prepareLocation(ctx, plan.Location, &diags),
 		Name:                 knownStringPointer(plan.Name),
 		PreferredPopLocation: nil,
 	}
