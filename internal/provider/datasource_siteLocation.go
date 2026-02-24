@@ -2,10 +2,13 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
+	_ "embed"
 	"fmt"
-	"reflect"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -15,7 +18,48 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	_ "modernc.org/sqlite"
 )
+
+//go:embed type_site_location_data.db
+var siteLocationDB []byte
+
+var (
+	dbOnce     sync.Once
+	dbPath     string
+	dbInitErr  error
+	locationDB *sql.DB
+)
+
+func initSiteLocationDB() error {
+	dbOnce.Do(func() {
+		// Create temp file for the database
+		tmpDir := os.TempDir()
+		dbPath = filepath.Join(tmpDir, "cato_site_location.db")
+
+		// Write embedded database to temp file
+		if err := os.WriteFile(dbPath, siteLocationDB, 0644); err != nil {
+			dbInitErr = fmt.Errorf("failed to write site location database: %w", err)
+			return
+		}
+
+		// Open database connection
+		db, err := sql.Open("sqlite", dbPath+"?mode=ro")
+		if err != nil {
+			dbInitErr = fmt.Errorf("failed to open site location database: %w", err)
+			return
+		}
+
+		// Test connection
+		if err := db.Ping(); err != nil {
+			dbInitErr = fmt.Errorf("failed to ping site location database: %w", err)
+			return
+		}
+
+		locationDB = db
+	})
+	return dbInitErr
+}
 
 func SiteLocationDataSource() datasource.DataSource {
 	return &siteLocationDataSource{}
@@ -89,29 +133,65 @@ var SiteLocationAttrTypes = map[string]attr.Type{
 type filtersValidator struct{}
 
 func (v filtersValidator) Description(ctx context.Context) string {
-	return "Ensures at least one filter is set with field city, state_name, or country_name"
+	return "Validates filter configuration: use state_code OR state_name (not both), and country_code OR country_name (not both)"
 }
 
 func (v filtersValidator) MarkdownDescription(ctx context.Context) string {
-	return "Ensures at least one filter is set with field `city`, `state_name`, or `country_name`"
+	return "Validates filter configuration: use `state_code` OR `state_name` (not both), and `country_code` OR `country_name` (not both)"
 }
 
 func (v filtersValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		resp.Diagnostics.Append(diag.NewErrorDiagnostic(
-			"Invalid Filters Configuration",
-			"At least one filter must be specified with field city, state_name, or country_name",
-		))
 		return
 	}
 
 	elements := req.ConfigValue.Elements()
 	if len(elements) == 0 {
+		return
+	}
+
+	// Track which fields are used
+	hasStateCode := false
+	hasStateName := false
+	hasCountryCode := false
+	hasCountryName := false
+
+	for _, elem := range elements {
+		obj, ok := elem.(types.Object)
+		if !ok {
+			continue
+		}
+		attrs := obj.Attributes()
+		if fieldAttr, exists := attrs["field"]; exists {
+			if fieldStr, ok := fieldAttr.(types.String); ok && !fieldStr.IsNull() && !fieldStr.IsUnknown() {
+				field := fieldStr.ValueString()
+				switch field {
+				case "state_code":
+					hasStateCode = true
+				case "state_name":
+					hasStateName = true
+				case "country_code":
+					hasCountryCode = true
+				case "country_name":
+					hasCountryName = true
+				}
+			}
+		}
+	}
+
+	// Validate mutually exclusive fields
+	if hasStateCode && hasStateName {
 		resp.Diagnostics.Append(diag.NewErrorDiagnostic(
 			"Invalid Filters Configuration",
-			"At least one filter must be specified with field city, state_name, or country_name",
+			"Cannot use both 'state_code' and 'state_name' filters. Use one or the other.",
 		))
-		return
+	}
+
+	if hasCountryCode && hasCountryName {
+		resp.Diagnostics.Append(diag.NewErrorDiagnostic(
+			"Invalid Filters Configuration",
+			"Cannot use both 'country_code' and 'country_name' filters. Use one or the other.",
+		))
 	}
 }
 
@@ -124,19 +204,19 @@ func (d *siteLocationDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 		Description: "Retrieves account site locations.",
 		Attributes: map[string]schema.Attribute{
 			"filters": schema.ListNestedAttribute{
-				Description: "Field to filter on (city, stateName, countryName)",
+				Description: "Field to filter on (city, state_code/state_name, country_code/country_name). Note: use state_code OR state_name, not both; use country_code OR country_name, not both.",
 				Required:    false,
 				Optional:    true,
-				// Validators: []validator.List{
-				// 	filtersValidator{},
-				// },
+				Validators: []validator.List{
+					filtersValidator{},
+				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"field": schema.StringAttribute{
-							Description: "Field to filter on (city, stateName, countryName)",
+							Description: "Field to filter on (city, state_code, state_name, country_code, country_name). Use state_code OR state_name (not both), and country_code OR country_name (not both).",
 							Required:    true,
 							Validators: []validator.String{
-								stringvalidator.OneOf("state_name", "country_name", "city"),
+								stringvalidator.OneOf("state_code", "state_name", "country_code", "country_name", "city"),
 							},
 						},
 						"search": schema.StringAttribute{
@@ -198,9 +278,9 @@ func (d *siteLocationDataSource) Configure(_ context.Context, req datasource.Con
 }
 
 func (d *siteLocationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var allLocations map[string]SiteLocationJsonObj
-	if err := json.Unmarshal([]byte(siteLocationJson), &allLocations); err != nil {
-		resp.Diagnostics.Append(diag.NewErrorDiagnostic("Error unmarshalling site location JSON", err.Error()))
+	// Initialize database
+	if err := initSiteLocationDB(); err != nil {
+		resp.Diagnostics.Append(diag.NewErrorDiagnostic("Error initializing site location database", err.Error()))
 		return
 	}
 
@@ -221,89 +301,115 @@ func (d *siteLocationDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	allLocationFiltersExact := true
-	for _, filter := range filterList {
-		if filter.Operation.ValueString() != "exact" {
-			allLocationFiltersExact = false
-			break
-		}
+	// Build SQL query based on filters
+	filteredLocations, err := queryLocationsFromDB(ctx, filterList)
+	if err != nil {
+		resp.Diagnostics.Append(diag.NewErrorDiagnostic("Error querying site locations", err.Error()))
+		return
 	}
 
-	filteredLocations := make([]SiteLocationJsonObj, 0)
-	if allLocationFiltersExact {
-		filterMap := make(map[string]string)
-		for _, filter := range filterList {
-			filterMap[filter.Field.ValueString()] = filter.Search.ValueString()
-		}
-		var parts []string
-		for _, field := range []string{"country_name", "state_name", "city"} {
-			if value, exists := filterMap[field]; exists && value != "" {
-				parts = append(parts, value)
-			}
-		}
-		locationString := strings.Join(parts, "___")
-		tflog.Debug(ctx, "allLocationFiltersExact is true, str: "+locationString)
+	tflog.Debug(ctx, "Filtered locations from SQLite", map[string]interface{}{
+		"count": len(filteredLocations),
+	})
 
-		if location, exists := allLocations[locationString]; exists {
-			tflog.Debug(ctx, "location found in allLocations - "+fmt.Sprintf("%v", location))
-			filteredLocations = append(filteredLocations, location)
-		}
-	}
-
-	if !allLocationFiltersExact || len(filteredLocations) == 0 {
-		for _, location := range allLocations {
-			tflog.Debug(ctx, "filteredLocations.location - "+fmt.Sprintf("%v", location))
-			matches := true
-			for _, filter := range filterList {
-				field := filter.Field.ValueString()
-				search := filter.Search.ValueString()
-				operation := filter.Operation.ValueString()
-				tflog.Debug(ctx, "location.field - "+fmt.Sprintf("%v", field))
-
-				var value string
-				switch field {
-				case "city":
-					tflog.Info(ctx, "city present - "+fmt.Sprintf("%v", location.City))
-					value = location.City
-				case "state_name":
-					if location.StateName == "" {
-						tflog.Debug(ctx, "state_name is not present on location - "+fmt.Sprintf("%v", location))
-						matches = false
-					}
-					tflog.Debug(ctx, "state_name present - "+fmt.Sprintf("%v", location.StateName))
-					value = location.StateName
-				case "country_name":
-					tflog.Debug(ctx, "country_name present - "+fmt.Sprintf("%v", location.CountryName))
-					value = location.CountryName
-				default:
-					continue
-				}
-
-				if matches {
-					if operation == "exact" && !(value == search) {
-						tflog.Debug(ctx, "field '"+field+"' exact not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(value == search)))
-						matches = false
-					} else if operation == "startsWith" && !(strings.HasPrefix(value, search)) {
-						tflog.Debug(ctx, "field '"+field+"' startsWith not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.HasPrefix(value, search))))
-						matches = false
-					} else if operation == "endsWith" && !(strings.HasSuffix(value, search)) {
-						tflog.Debug(ctx, "field '"+field+"' endsWith not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.HasSuffix(value, search))))
-						matches = false
-					} else if operation == "contains" && !(strings.Contains(value, search)) {
-						tflog.Debug(ctx, "field '"+field+"' contains not matched - value '"+value+"' and search '"+search+"' "+fmt.Sprintf("%v", !(strings.Contains(value, search))))
-						matches = false
-					}
-				}
-			}
-
-			tflog.Debug(ctx, "field match - "+fmt.Sprintf("%v", matches)+"' "+fmt.Sprintf("%v", location)+"'")
-			if matches {
-				filteredLocations = append(filteredLocations, location)
-			}
-		}
-	}
-	tflog.Debug(ctx, "field match filteredLocations - "+fmt.Sprintf("%v", filteredLocations))
 	setLocations(ctx, resp, state.Filters, filteredLocations)
+}
+
+// queryLocationsFromDB queries the SQLite database with the given filters
+func queryLocationsFromDB(ctx context.Context, filterList []filters) ([]SiteLocationJsonObj, error) {
+	if locationDB == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+
+	// Build WHERE clause from filters
+	var conditions []string
+	var args []interface{}
+
+	for _, filter := range filterList {
+		field := filter.Field.ValueString()
+		search := filter.Search.ValueString()
+		operation := filter.Operation.ValueString()
+
+		// Map Terraform field names to database column names
+		var dbColumn string
+		switch field {
+		case "city":
+			dbColumn = "city"
+		case "state_code":
+			dbColumn = "stateCode"
+		case "state_name":
+			dbColumn = "stateName"
+		case "country_code":
+			dbColumn = "countryCode"
+		case "country_name":
+			dbColumn = "countryName"
+		default:
+			continue
+		}
+
+		// Build condition based on operation
+		switch operation {
+		case "exact":
+			conditions = append(conditions, fmt.Sprintf("%s = ?", dbColumn))
+			args = append(args, search)
+		case "startsWith":
+			conditions = append(conditions, fmt.Sprintf("%s LIKE ?", dbColumn))
+			args = append(args, search+"%")
+		case "endsWith":
+			conditions = append(conditions, fmt.Sprintf("%s LIKE ?", dbColumn))
+			args = append(args, "%"+search)
+		case "contains":
+			conditions = append(conditions, fmt.Sprintf("%s LIKE ?", dbColumn))
+			args = append(args, "%"+search+"%")
+		}
+	}
+
+	// Build query
+	query := "SELECT city, countryCode, countryName, stateCode, stateName, timezone FROM locations"
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	query += " LIMIT 1000" // Limit results to prevent excessive data
+
+	tflog.Debug(ctx, "Executing SQLite query", map[string]interface{}{
+		"query": query,
+		"args":  args,
+	})
+
+	rows, err := locationDB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer rows.Close()
+
+	var results []SiteLocationJsonObj
+	for rows.Next() {
+		var loc SiteLocationJsonObj
+		var stateCode, stateName, timezone sql.NullString
+
+		if err := rows.Scan(&loc.City, &loc.CountryCode, &loc.CountryName, &stateCode, &stateName, &timezone); err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+
+		if stateCode.Valid {
+			loc.StateCode = stateCode.String
+		}
+		if stateName.Valid {
+			loc.StateName = stateName.String
+		}
+		if timezone.Valid && timezone.String != "" {
+			// Database stores single timezone, convert to slice for compatibility
+			loc.Timezone = []string{timezone.String}
+		}
+
+		results = append(results, loc)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	return results, nil
 }
 
 func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters types.List, allLocations []SiteLocationJsonObj) {
@@ -321,33 +427,36 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 	}
 
 	for _, loc := range allLocations {
-		tflog.Info(ctx, "allLocations.StateCode - "+fmt.Sprintf("%v", loc.StateCode))
-		tflog.Info(ctx, "reflect.TypeOf(loc.StateCode) - "+fmt.Sprintf("%v", reflect.TypeOf(loc.StateCode)))
+		tflog.Debug(ctx, "Processing location", map[string]interface{}{
+			"city":        loc.City,
+			"countryCode": loc.CountryCode,
+			"stateCode":   loc.StateCode,
+		})
 
 		locObj, diags := types.ObjectValue(
 			SiteLocationAttrTypes,
 			map[string]attr.Value{
 				"country_code": func() attr.Value {
 					if loc.CountryCode != "" {
-						return types.StringValue(string(loc.CountryCode))
+						return types.StringValue(loc.CountryCode)
 					}
 					return types.StringNull()
 				}(),
 				"country_name": func() attr.Value {
 					if loc.CountryName != "" {
-						return types.StringValue(string(loc.CountryName))
+						return types.StringValue(loc.CountryName)
 					}
 					return types.StringNull()
 				}(),
 				"state_code": func() attr.Value {
 					if loc.StateCode != "" {
-						return types.StringValue(string(loc.StateCode))
+						return types.StringValue(loc.StateCode)
 					}
 					return types.StringNull()
 				}(),
 				"state_name": func() attr.Value {
 					if loc.StateName != "" {
-						return types.StringValue(string(loc.StateName))
+						return types.StringValue(loc.StateName)
 					}
 					return types.StringNull()
 				}(),
@@ -364,11 +473,11 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 						}
 						return listValue
 					}
-					return types.StringNull()
+					return types.ListNull(types.StringType)
 				}(),
 				"city": func() attr.Value {
 					if loc.City != "" {
-						return types.StringValue(string(loc.City))
+						return types.StringValue(loc.City)
 					}
 					return types.StringNull()
 				}(),
@@ -381,7 +490,6 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 		locationsOut = append(locationsOut, locObj)
 	}
 
-	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
 	locationsListVal, diags := types.ListValueFrom(
 		ctx,
 		types.ObjectType{AttrTypes: SiteLocationAttrTypes},
@@ -392,7 +500,6 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 		return
 	}
 
-	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
 	state, diags := types.ObjectValue(
 		SiteLocationQueryAttrTypes,
 		map[string]attr.Value{
