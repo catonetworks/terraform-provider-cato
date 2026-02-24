@@ -406,11 +406,11 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 		// Ports
 		tfPortList := types.ListNull(types.Int64Type)
 		if pp.Port != nil {
-			stringSlice := make([]types.String, 0, len(pp.Port))
+			intSlice := make([]types.Int64, 0, len(pp.Port))
 			for _, p := range pp.Port {
-				stringSlice = append(stringSlice, types.StringValue(string(p)))
+				intSlice = append(intSlice, types.Int64Value(p.GetInt64()))
 			}
-			tfPortList, diag = types.ListValueFrom(ctx, types.StringType, stringSlice)
+			tfPortList, diag = types.ListValueFrom(ctx, types.StringType, intSlice)
 			diags.Append(diag...)
 			if diags.HasError() {
 				return listNull

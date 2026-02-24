@@ -299,7 +299,7 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 		ID:                   id,
 		Location:             r.prepareLocation(ctx, plan.Location, &diags),
 		Name:                 knownStringPointer(plan.Name),
-		PreferredPopLocation: nil,
+		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
 	}
 
 	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{
