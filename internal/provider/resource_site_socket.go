@@ -1522,7 +1522,15 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		return nil, fmt.Errorf("connection type %s not found in interfaceByConnType", connType)
 	}
 	var nativeRangeObj NativeRange
+	// Track if dhcp_settings was actually present in the original state/plan (before deserialization)
+	dhcpSettingsWasInOriginalState := false
 	if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
+		// Check if dhcp_settings attribute exists and is not null in the original object
+		if attrs := state.NativeRange.Attributes(); attrs != nil {
+			if dhcpAttr, exists := attrs["dhcp_settings"]; exists && !dhcpAttr.IsNull() && !dhcpAttr.IsUnknown() {
+				dhcpSettingsWasInOriginalState = true
+			}
+		}
 		state.NativeRange.As(ctx, &nativeRangeObj, basetypes.ObjectAsOptions{})
 	}
 	// if nativeRangeObj.InterfaceIndex.IsNull() || nativeRangeObj.InterfaceIndex.ValueString() == "" {
@@ -1734,16 +1742,17 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 			// (already set when nativeRangeObj was extracted from state at the top of this function)
 
 			// Hydrate DHCP settings ONLY if they were present in the state/plan
-			// Check if dhcp_settings was in the original state/plan
-			dhcpSettingsInState := !nativeRangeObj.DhcpSettings.IsNull() && !nativeRangeObj.DhcpSettings.IsUnknown()
+			// Use the flag captured at the top of this function that checked the original state object
+			// before deserialization (avoids issues with zero-valued types.Object{})
 
 			// Check if API returned a non-default dhcp type
 			dhcpTypeVal, hasDhcpType := v.HelperFields["dhcpType"]
-			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && cast.ToString(dhcpTypeVal) != "DHCP_DISABLED"
+			dhcpTypeStr := cast.ToString(dhcpTypeVal)
+			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && dhcpTypeStr != "DHCP_DISABLED" && dhcpTypeStr != "ACCOUNT_DEFAULT"
 
 			// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
 			// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
-			if dhcpSettingsInState || hasNonDefaultDhcp {
+			if dhcpSettingsWasInOriginalState || hasNonDefaultDhcp {
 				// Hydrate DHCP settings - resolve unknown values to known values
 				// Start with null values as defaults - unknown values MUST be resolved to known values
 				dhcpType := types.StringNull()
