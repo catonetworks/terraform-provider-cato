@@ -58,10 +58,9 @@ func schemaNameID(prefix string) map[string]schema.Attribute {
 			Required:    true,
 		},
 		"id": schema.StringAttribute{
-			Description:   prefix + "ID",
-			Optional:      false,
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			Description: prefix + "ID",
+			Optional:    false,
+			Computed:    true,
 		},
 	}
 }

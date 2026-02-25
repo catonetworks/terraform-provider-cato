@@ -43,8 +43,7 @@ func (r *appConnectorResource) Metadata(_ context.Context, req resource.Metadata
 
 func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_app_connector` resource contains the configuration parameters necessary to manage a group. Groups can contain various member types including sites, hosts, network ranges, and more. Documentation for the underlying API used in this resource can be found at [mutation.groups.createGroup()](https://api.catonetworks.com/documentation/#mutation-groups.createGroup).",
-
+		Description: "The `cato_app_connector` resource contains the configuration parameters necessary to manage an app connector.",
 		Attributes: map[string]schema.Attribute{
 			"description": schema.StringAttribute{
 				Description: "Optional description of the ZTNA App Connector (max 250 characters)",
@@ -65,11 +64,10 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"preferred_pop_location": r.schemaPreferredPopLocation(),
 			"private_apps": schema.ListNestedAttribute{
-				Description:  "Private application name or id",
+				Description:  "List of private applications",
 				Computed:     true,
 				NestedObject: schema.NestedAttributeObject{Attributes: schemaNameID("Private app")},
 			},
-
 			"serial_number": schema.StringAttribute{
 				Description: "Unique serial number of the ZTNA App Connector",
 				Computed:    true,
@@ -102,11 +100,11 @@ func (r *appConnectorResource) schemaLocation() schema.SingleNestedAttribute {
 			},
 			"city_name": schema.StringAttribute{
 				Description: "City name",
-				Optional:    true,
+				Required:    true,
 			},
 			"country_code": schema.StringAttribute{
 				Description: "Country code",
-				Optional:    true,
+				Required:    true,
 			},
 			"state_code": schema.StringAttribute{
 				Description: "State code",
@@ -114,7 +112,7 @@ func (r *appConnectorResource) schemaLocation() schema.SingleNestedAttribute {
 			},
 			"timezone": schema.StringAttribute{
 				Description: "Timezone",
-				Optional:    true,
+				Required:    true,
 			},
 		},
 	}
@@ -123,47 +121,25 @@ func (r *appConnectorResource) schemaLocation() schema.SingleNestedAttribute {
 func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		Description: "Preferred PoP locations settings",
-		Required:    true,
+		Optional:    true,
 		Attributes: map[string]schema.Attribute{
-			"preferred_only": schema.BoolAttribute{
-				Description: "Restrict connector attachment exclusively to the configured pop locations",
-				Required:    true,
-			},
 			"automatic": schema.BoolAttribute{
 				Description: "Automatic PoP location",
+				Required:    true,
+			},
+			"preferred_only": schema.BoolAttribute{
+				Description: "Restrict connector attachment exclusively to the configured pop locations",
 				Required:    true,
 			},
 			"primary": schema.SingleNestedAttribute{
 				Description: "Physical location of the pripary Pop",
 				Optional:    true,
-				Attributes: map[string]schema.Attribute{
-					"name": schema.StringAttribute{
-						Description: "Location name",
-						Optional:    true,
-						Computed:    true,
-					},
-					"id": schema.StringAttribute{
-						Description: "Location ID",
-						Optional:    true,
-						Computed:    true,
-					},
-				},
+				Attributes:  schemaNameID("Primary location"),
 			},
 			"secondary": schema.SingleNestedAttribute{
 				Description: "Physical location of the secondary Pop",
 				Optional:    true,
-				Attributes: map[string]schema.Attribute{
-					"name": schema.StringAttribute{
-						Description: "Location name",
-						Optional:    true,
-						Computed:    true,
-					},
-					"id": schema.StringAttribute{
-						Description: "Location ID",
-						Optional:    true,
-						Computed:    true,
-					},
-				},
+				Attributes:  schemaNameID("Secondary location"),
 			},
 		},
 	}
@@ -180,6 +156,165 @@ func (r *appConnectorResource) Configure(_ context.Context, req resource.Configu
 func (r *appConnectorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// Create a new app connector
+func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan AppConnectorModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	input := cato_models.AddZtnaAppConnectorInput{
+		Description:          knownStringPointer(plan.Description),
+		GroupName:            plan.GroupName.ValueString(),
+		Location:             r.prepareLocation(ctx, plan.Location, &diags),
+		Name:                 plan.Name.ValueString(),
+		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
+		Type:                 cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
+	}
+
+	// Call Cato API to create a new connector
+	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
+	result, err := r.client.catov2.AppConnectorCreateConnector(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API AppConnectorCreateConnector error", err.Error())
+		return
+	}
+
+	// Set the ID from the response
+	plan.ID = types.StringValue(result.GetZtnaAppConnector().GetAddZtnaAppConnector().GetZtnaAppConnector().GetID())
+
+	// Hydrate state from API
+	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, plan.ID.ValueString(), plan)
+	if hydrateErr != nil {
+		resp.Diagnostics.Append(diags...)
+		resp.Diagnostics.AddError("Error hydrating appConnector state", hydrateErr.Error())
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Read app connector data from Cato API
+func (r *appConnectorResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state AppConnectorModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, state.ID.ValueString(), state)
+	if hydrateErr != nil {
+		resp.Diagnostics.Append(diags...)
+		// Check if app-connector not found
+		if errors.Is(hydrateErr, ErrAppConnectorNotFound) {
+			tflog.Warn(ctx, "app_connector not found, resource removed")
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError(
+			"Error hydrating group state",
+			hydrateErr.Error(),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Update app connector configuration
+func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan AppConnectorModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var state AppConnectorModel
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	id := strings.Trim(state.ID.String(), `"`)
+	if id == "" {
+		resp.Diagnostics.AddError("AppConnectorUpdateConnector: ID in unknown", "AppConnector ID is not set in TF state")
+		return
+	}
+	input := cato_models.UpdateZtnaAppConnectorInput{
+		Description:          knownStringPointer(plan.Description),
+		GroupName:            knownStringPointer(plan.GroupName),
+		ID:                   id,
+		Location:             r.prepareLocation(ctx, plan.Location, &diags),
+		Name:                 knownStringPointer(plan.Name),
+		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
+	}
+
+	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
+	result, err := r.client.catov2.AppConnectorUpdateConnector(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API AppConnectorUpdateConnector error", err.Error())
+		return
+	}
+
+	// Hydrate state from API
+	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, id, plan)
+	if hydrateErr != nil {
+		resp.Diagnostics.Append(diags...)
+		resp.Diagnostics.AddError("Error hydrating app-connector state", hydrateErr.Error())
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Delete app connector
+func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state AppConnectorModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	input := cato_models.RemoveZtnaAppConnectorInput{
+		ZtnaAppConnector: &cato_models.ZtnaAppConnectorRefInput{
+			By:    cato_models.ObjectRefByID,
+			Input: state.ID.ValueString(),
+		},
+	}
+
+	// Call Cato API to delete a connector
+	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
+	result, err := r.client.catov2.AppConnectorDeleteConnector(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(result),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API AppConnectorDeleteConnector error", err.Error())
+		return
+	}
 }
 
 func (r *appConnectorResource) prepareLocation(ctx context.Context, addr types.Object, diags *diag.Diagnostics) *cato_models.ZtnaAppConnectorLocationInput {
@@ -224,169 +359,6 @@ func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types
 	}
 
 	return &sdkLocation
-}
-
-func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan AppConnectorModel
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	input := cato_models.AddZtnaAppConnectorInput{
-		Description:          knownStringPointer(plan.Description),
-		GroupName:            plan.GroupName.ValueString(),
-		Location:             r.prepareLocation(ctx, plan.Location, &diags),
-		Name:                 plan.Name.ValueString(),
-		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
-		Type:                 cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
-	}
-
-	// Call Cato API to create a new connector
-	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
-	result, err := r.client.catov2.AppConnectorCreateConnector(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API AppConnectorCreateConnector error", err.Error())
-		return
-	}
-
-	// Set the ID from the response
-	plan.ID = types.StringValue(result.GetZtnaAppConnector().GetAddZtnaAppConnector().GetZtnaAppConnector().GetID())
-
-	// Hydrate state from API
-	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, plan.ID.ValueString(), plan)
-	if hydrateErr != nil {
-		resp.Diagnostics.Append(diags...)
-		resp.Diagnostics.AddError("Error hydrating appConnector state", hydrateErr.Error())
-		return
-	}
-
-	diags = resp.State.Set(ctx, &hydratedState)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-}
-
-func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan AppConnectorModel
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	var state AppConnectorModel
-	diags = req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	id := strings.Trim(state.ID.String(), `"`)
-	if id == "" {
-		resp.Diagnostics.AddError("AppConnectorUpdateConnector: ID in unknown", "AppConnector ID is not set in TF state")
-		return
-	}
-	input := cato_models.UpdateZtnaAppConnectorInput{
-		Description:          knownStringPointer(plan.Description),
-		GroupName:            knownStringPointer(plan.GroupName),
-		ID:                   id,
-		Location:             r.prepareLocation(ctx, plan.Location, &diags),
-		Name:                 knownStringPointer(plan.Name),
-		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
-	}
-
-	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
-	result, err := r.client.catov2.AppConnectorUpdateConnector(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
-
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API AppConnectorUpdateConnector error", err.Error())
-		return
-	}
-
-	// Hydrate state from API
-	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, id, plan)
-	if hydrateErr != nil {
-		resp.Diagnostics.Append(diags...)
-		resp.Diagnostics.AddError("Error hydrating app-connector state", hydrateErr.Error())
-		return
-	}
-
-	diags = resp.State.Set(ctx, &hydratedState)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-}
-
-func (r *appConnectorResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state AppConnectorModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, state.ID.ValueString(), state)
-	if hydrateErr != nil {
-		resp.Diagnostics.Append(diags...)
-		// Check if app-connector not found
-		if errors.Is(hydrateErr, ErrAppConnectorNotFound) {
-			tflog.Warn(ctx, "app_connector not found, resource removed")
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Error hydrating group state",
-			hydrateErr.Error(),
-		)
-		return
-	}
-
-	diags = resp.State.Set(ctx, &hydratedState)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-}
-
-func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state AppConnectorModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	input := cato_models.RemoveZtnaAppConnectorInput{
-		ZtnaAppConnector: &cato_models.ZtnaAppConnectorRefInput{
-			By:    cato_models.ObjectRefByID,
-			Input: state.ID.ValueString(),
-		},
-	}
-
-	// Call Cato API to delete a connector
-	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
-	result, err := r.client.catov2.AppConnectorDeleteConnector(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API AppConnectorDeleteConnector error", err.Error())
-		return
-	}
 }
 
 func (r *appConnectorResource) parseLocation(ctx context.Context, addr cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location,
@@ -453,13 +425,9 @@ func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, app
 	}
 
 	// Call Cato API to get a connector
-	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
+	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.AppConnectorReadConnector(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, diags, err
 	}

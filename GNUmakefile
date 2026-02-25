@@ -18,6 +18,8 @@ MIRROR_DIR=${HOME}/.terraform.d/mirror/${HOSTNAME}/${NAMESPACE}/${PKG_NAME}/${VE
 
 default: install
 
+.PHONY: build install install-mirror sync-provider clean docs
+
 build:
 	export GO111MODULE="on"
 	go mod vendor
@@ -88,3 +90,6 @@ sync-provider:
 
 clean: install
 	go clean -cache -modcache -i -r
+
+docs:
+	tfplugindocs generate --provider-dir . -provider-name terraform-provider-cato

@@ -1,19 +1,20 @@
-resource "cato_app_connector" "test100" {
-  name  = "test-connector-200"
-  type  = "VIRTUAL"
-  group = "conn-group-2"
-  address = {
-    country = { id = "US" }
-    state   = "Virginia"
-    city    = "Richmond"
-    street  = null
-    zipCode = null
+resource "cato_app_connector" "example" {
+  name = "example-app-connector"
+  description = "example-app-connector description"
+  group_name  = "example-group"
+  location = {
+    address      = "123 Main St"
+    city_name    = "Chicago"
+    country_code = "US"
+    state_code   = "US-CA"
+    timezone     = "America/New_York"
   }
-  timezone = "America/New_York"
   preferred_pop_location = {
-    preferred_only = true
     automatic      = false
-    primary        = { name = "New York_Sta" }
-    secondary      = { name = "Los Angeles Sta" }
+    preferred_only = true
+    primary        = { name = "New York" }
+    secondary      = { name = "Chicago" }
   }
+  type = "VIRTUAL"
 }
+
