@@ -387,7 +387,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(ctx context.Context, current
 			ID: ruleID,
 			To: &cato_models.PolicyRulePositionInput{
 				Position: ptr(cato_models.PolicyRulePositionEnumAfterRule),
-				Ref:      currentRules[newPosition-1].ID.ValueStringPointer(),
+				Ref:      knownStringPointer(currentRules[newPosition-1].ID),
 			},
 		}
 	}

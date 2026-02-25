@@ -6,57 +6,56 @@ import (
 )
 
 type PrivateAppModel struct {
-	ID                 types.String `tfsdk:"id"`
-	CreationTime       types.String `tfsdk:"creation_time"`
-	Name               types.String `tfsdk:"name"`
-	Description        types.String `tfsdk:"description"`
-	ConnectorGroupName types.String `tfsdk:"connector_group_name"`
-	InternalAppAddress types.String `tfsdk:"internal_app_address"`
-	ProbingEnabled     types.Bool   `tfsdk:"probing_enabled"`
-	Published          types.Bool   `tfsdk:"published"`
 	AllowIcmpProtocol  types.Bool   `tfsdk:"allow_icmp_protocol"`
-	ProtocolPorts      types.Set    `tfsdk:"protocol_ports"`       // []ProtocolPort
+	CreationTime       types.String `tfsdk:"creation_time"`
+	Description        types.String `tfsdk:"description"`
+	ID                 types.String `tfsdk:"id"`
+	InternalAppAddress types.String `tfsdk:"internal_app_address"`
+	Name               types.String `tfsdk:"name"`
+	PrivateAppProbing  types.Object `tfsdk:"private_app_probing"` // PrivateAppProbing
+	ProbingEnabled     types.Bool   `tfsdk:"probing_enabled"`
+	ProtocolPorts      types.Set    `tfsdk:"protocol_ports"` // []ProtocolPort
+	Published          types.Bool   `tfsdk:"published"`
 	PublishedAppDomain types.Object `tfsdk:"published_app_domain"` // PublishedAppDomain
-	PrivateAppProbing  types.Object `tfsdk:"private_app_probing"`  // PrivateAppProbing
 }
 
 type PublishedAppDomain struct {
-	ID                 types.String `tfsdk:"id"`
-	CreationTime       types.String `tfsdk:"creation_time"`
-	PublishedAppDomain types.String `tfsdk:"published_app_domain"`
 	ConnectorGroupName types.String `tfsdk:"connector_group_name"`
+	CreationTime       types.String `tfsdk:"creation_time"`
+	ID                 types.String `tfsdk:"id"`
+	PublishedAppDomain types.String `tfsdk:"published_app_domain"`
 }
 
 var PublishedAppDomainTypes = map[string]attr.Type{
-	"id":                   types.StringType,
-	"creation_time":        types.StringType,
-	"published_app_domain": types.StringType,
 	"connector_group_name": types.StringType,
+	"creation_time":        types.StringType,
+	"id":                   types.StringType,
+	"published_app_domain": types.StringType,
 }
 
 type PrivateAppProbing struct {
-	ID                 types.String `tfsdk:"id"`
-	Type               types.String `tfsdk:"type"`
-	Interval           types.Int64  `tfsdk:"interval"`
 	FaultThresholdDown types.Int64  `tfsdk:"fault_threshold_down"`
+	ID                 types.String `tfsdk:"id"`
+	Interval           types.Int64  `tfsdk:"interval"`
+	Type               types.String `tfsdk:"type"`
 }
 
 var PrivateAppProbingTypes = map[string]attr.Type{
-	"id":                   types.StringType,
-	"type":                 types.StringType,
-	"interval":             types.Int64Type,
 	"fault_threshold_down": types.Int64Type,
+	"id":                   types.StringType,
+	"interval":             types.Int64Type,
+	"type":                 types.StringType,
 }
 
 type ProtocolPort struct {
-	Ports     types.Set    `tfsdk:"ports"`      // []types.Int64
 	PortRange types.Object `tfsdk:"port_range"` // PortRange
+	Ports     types.Set    `tfsdk:"ports"`      // []types.Int64
 	Protocol  types.String `tfsdk:"protocol"`
 }
 
 var ProtocolPortTypes = map[string]attr.Type{
-	"ports":      types.SetType{ElemType: types.Int64Type},
 	"port_range": types.ObjectType{AttrTypes: PortRangeTypes},
+	"ports":      types.SetType{ElemType: types.Int64Type},
 	"protocol":   types.StringType,
 }
 

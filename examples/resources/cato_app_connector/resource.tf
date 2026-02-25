@@ -1,5 +1,5 @@
 resource "cato_app_connector" "example" {
-  name = "example-app-connector"
+  name        = "example-app-connector"
   description = "example-app-connector description"
   group_name  = "example-group"
   location = {

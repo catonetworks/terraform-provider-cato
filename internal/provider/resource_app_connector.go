@@ -215,16 +215,13 @@ func (r *appConnectorResource) Read(ctx context.Context, req resource.ReadReques
 	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, state.ID.ValueString(), state)
 	if hydrateErr != nil {
 		resp.Diagnostics.Append(diags...)
-		// Check if app-connector not found
+		// Check if app-connector was found
 		if errors.Is(hydrateErr, ErrAppConnectorNotFound) {
 			tflog.Warn(ctx, "app_connector not found, resource removed")
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError(
-			"Error hydrating group state",
-			hydrateErr.Error(),
-		)
+		resp.Diagnostics.AddError("Error hydrating group state", hydrateErr.Error())
 		return
 	}
 
@@ -252,7 +249,7 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 	id := strings.Trim(state.ID.String(), `"`)
 	if id == "" {
-		resp.Diagnostics.AddError("AppConnectorUpdateConnector: ID in unknown", "AppConnector ID is not set in TF state")
+		resp.Diagnostics.AddError("AppConnectorUpdateConnector: ID is unknown", "AppConnector ID is not set in TF state")
 		return
 	}
 	input := cato_models.UpdateZtnaAppConnectorInput{

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -25,6 +26,8 @@ var (
 	_ resource.ResourceWithImportState = &privateAppResource{}
 )
 
+var ErrPrivateAppNotFound = errors.New("private-app not found")
+
 func NewPrivateAppResource() resource.Resource {
 	return &privateAppResource{}
 }
@@ -39,124 +42,131 @@ func (r *privateAppResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *privateAppResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_private_app` resource contains the configuration parameters necessary to manage a private apps.",
+		Description: "The `cato_private_app` resource contains the configuration parameters necessary to manage a private app.",
 
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "The unique ID of the Private App",
-				Computed:    true,
+			"allow_icmp_protocol": schema.BoolAttribute{
+				Description: "Is ICMP enabled?",
+				Required:    true,
 			},
 			"creation_time": schema.StringAttribute{
 				Description: "Creation time",
 				Computed:    true,
 			},
-
-			"name": schema.StringAttribute{
-				Description: "The unique name of the private App",
-				Required:    true,
-			},
 			"description": schema.StringAttribute{
 				Description: "Optional description of the private App",
 				Optional:    true,
 			},
-			"connector_group_name": schema.StringAttribute{
-				Description: "Connector group name",
-				Optional:    true,
+			"id": schema.StringAttribute{
+				Description: "The unique ID of the Private App",
+				Computed:    true,
 			},
 			"internal_app_address": schema.StringAttribute{
-				Description: "The local address of the application",
+				Description: "The local address of the application, IPv4 address or FQDN",
 				Required:    true,
 			},
+			"name": schema.StringAttribute{
+				Description: "The unique name of the private App",
+				Required:    true,
+			},
+			"private_app_probing": r.schemaPrivateAppProbing(),
 			"probing_enabled": schema.BoolAttribute{
 				Description: "Is probing is enabled?",
 				Required:    true,
 			},
+			"protocol_ports": r.schemaProtocolPorts(),
 			"published": schema.BoolAttribute{
 				Description: "Is the private app published?",
 				Required:    true,
 			},
-			"allow_icmp_protocol": schema.BoolAttribute{
-				Description: "Is ICMP enabled?",
+			"published_app_domain": r.schemaPublishedAppDomain(),
+		},
+	}
+}
+
+func (r *privateAppResource) schemaPrivateAppProbing() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Private app probing settings",
+		Optional:    true,
+		Attributes: map[string]schema.Attribute{
+			"fault_threshold_down": schema.Int64Attribute{
+				Description: "Fault threshold",
 				Required:    true,
 			},
-			"published_app_domain": schema.SingleNestedAttribute{
-				Description: "Domain information about the published private app",
-				Optional:    true,
+			"id": schema.StringAttribute{
+				Description: "Probing ID",
 				Computed:    true,
-				Attributes: map[string]schema.Attribute{
-					"id": schema.StringAttribute{
-						Description: "ID of the private app domain",
-						Computed:    true,
-					},
-					"creation_time": schema.StringAttribute{
-						Description: "Creation time",
-						Computed:    true,
-					},
-					"published_app_domain": schema.StringAttribute{
-						Description: "Published app domain",
-						Required:    true,
-					},
-					"connector_group_name": schema.StringAttribute{
-						Description: "Connector group name",
-						Required:    true,
-					},
-				},
 			},
+			"interval": schema.Int64Attribute{
+				Description: "Probing interval",
+				Required:    true,
+			},
+			"type": schema.StringAttribute{
+				Description: "Probing type",
+				Required:    true,
+			},
+		},
+	}
+}
 
-			"private_app_probing": schema.SingleNestedAttribute{
-				Description: "Private app probing settings",
-				Optional:    true,
-				Attributes: map[string]schema.Attribute{
-					"id": schema.StringAttribute{
-						Description: "Probing ID",
-						Computed:    true,
+func (r *privateAppResource) schemaProtocolPorts() schema.SetNestedAttribute {
+	return schema.SetNestedAttribute{
+		Description: "List of ports and protocols",
+		Optional:    true,
+		Computed:    true,
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				"ports": schema.SetAttribute{
+					ElementType: types.Int64Type,
+					Description: "List of TCP or UDP ports",
+					Optional:    true,
+				},
+				"port_range": schema.SingleNestedAttribute{
+					Description: "Port range",
+					Optional:    true,
+					Attributes: map[string]schema.Attribute{
+						"from": schema.Int64Attribute{
+							Description: "From",
+							Required:    true,
+						},
+						"to": schema.Int64Attribute{
+							Description: "To",
+							Required:    true,
+						},
 					},
-					"type": schema.StringAttribute{
-						Description: "Probing type",
-						Required:    true,
-					},
-					"interval": schema.Int64Attribute{
-						Description: "Probing interval",
-						Required:    true,
-					},
-					"fault_threshold_down": schema.Int64Attribute{
-						Description: "Fault threshold",
-						Required:    true,
-					},
+				},
+				"protocol": schema.StringAttribute{
+					Description: "Protocol; e.g.: TCP, UDP, ICMP",
+					Required:    true,
+					Validators:  []validator.String{privAppProtocolValidator{}},
 				},
 			},
-			"protocol_ports": schema.SetNestedAttribute{
-				Description: "List ports and protocols",
-				Optional:    true,
+		},
+	}
+}
+
+func (r *privateAppResource) schemaPublishedAppDomain() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Domain information about the published private app",
+		Optional:    true,
+		Computed:    true,
+		Attributes: map[string]schema.Attribute{
+			// Note: "catoIP" is to be removed
+			"connector_group_name": schema.StringAttribute{
+				Description: "Connector group name",
+				Required:    true,
+			},
+			"creation_time": schema.StringAttribute{
+				Description: "Creation time",
 				Computed:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"ports": schema.SetAttribute{
-							ElementType: types.Int64Type,
-							Description: "List of TCP or UDP ports",
-							Optional:    true,
-						},
-						"port_range": schema.SingleNestedAttribute{
-							Description: "Port range",
-							Optional:    true,
-							Attributes: map[string]schema.Attribute{
-								"from": schema.Int64Attribute{
-									Description: "From",
-									Required:    true,
-								},
-								"to": schema.Int64Attribute{
-									Description: "To",
-									Required:    true,
-								},
-							},
-						},
-						"protocol": schema.StringAttribute{
-							Description: "Protocol; e.g.: TCP, UDP, ICMP",
-							Required:    true,
-							Validators:  []validator.String{privAppProtocolValidator{}},
-						},
-					},
-				},
+			},
+			"id": schema.StringAttribute{
+				Description: "ID of the private app domain",
+				Computed:    true,
+			},
+			"published_app_domain": schema.StringAttribute{
+				Description: "Published app domain",
+				Required:    true,
 			},
 		},
 	}
@@ -175,6 +185,7 @@ func (r *privateAppResource) ImportState(ctx context.Context, req resource.Impor
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// Create a new private app
 func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan PrivateAppModel
 	diags := req.Plan.Get(ctx, &plan)
@@ -184,25 +195,21 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	input := cato_models.CreatePrivateApplicationInput{
-		Name:               plan.Name.ValueString(),
+		AllowICMPProtocol:  plan.AllowIcmpProtocol.ValueBool(),
 		Description:        knownStringPointer(plan.Description),
 		InternalAppAddress: plan.InternalAppAddress.ValueString(),
-		ProbingEnabled:     plan.ProbingEnabled.ValueBool(),
-		Published:          plan.Published.ValueBool(),
-		AllowICMPProtocol:  plan.AllowIcmpProtocol.ValueBool(),
-		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
-		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
+		Name:               plan.Name.ValueString(),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
+		ProbingEnabled:     plan.ProbingEnabled.ValueBool(),
+		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
+		Published:          plan.Published.ValueBool(),
+		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
 	}
 
 	// Call Cato API to create a new private app
-	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
+	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PrivateAppCreatePrivateApp(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PrivateAppCreatePrivateApp error", err.Error())
 		return
@@ -212,7 +219,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 	plan.ID = types.StringValue(result.GetPrivateApplication().GetCreatePrivateApplication().GetApplication().GetID())
 
 	// Hydrate state from API
-	hydratedState, diags, hydrateErr := r.hydratePrivateAppState(ctx, plan.ID.ValueString(), plan)
+	hydratedState, diags, hydrateErr := r.hydratePrivateAppState(ctx, plan.ID.ValueString())
 	if hydrateErr != nil {
 		resp.Diagnostics.Append(diags...)
 		resp.Diagnostics.AddError("Error hydrating privateApp state", hydrateErr.Error())
@@ -226,6 +233,36 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 }
 
+// Read the private app
+func (r *privateAppResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state PrivateAppModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	hydratedState, diags, hydrateErr := r.hydratePrivateAppState(ctx, state.ID.ValueString())
+	if hydrateErr != nil {
+		resp.Diagnostics.Append(diags...)
+		// Check if private-app was found
+		if errors.Is(hydrateErr, ErrPrivateAppNotFound) {
+			tflog.Warn(ctx, "private app not found, resource removed")
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error hydrating group state", hydrateErr.Error())
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Update the private app
 func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan PrivateAppModel
 	diags := req.Plan.Get(ctx, &plan)
@@ -242,30 +279,26 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 	id := strings.Trim(state.ID.String(), `"`)
 	if id == "" {
-		resp.Diagnostics.AddError("PrivateAppUpdatePrivateApp: ID in unknown", "PrivateApp ID is not set in TF state")
+		resp.Diagnostics.AddError("PrivateAppUpdatePrivateApp: ID is unknown", "PrivateApp ID is not set in TF state")
 		return
 	}
 
 	input := cato_models.UpdatePrivateApplicationInput{
-		ID:                 id,
-		Name:               knownStringPointer(plan.Name),
-		Description:        knownStringPointer(plan.Description),
-		InternalAppAddress: knownStringPointer(plan.InternalAppAddress),
-		ProbingEnabled:     knownBoolPointer(plan.ProbingEnabled),
-		Published:          knownBoolPointer(plan.Published),
 		AllowICMPProtocol:  knownBoolPointer(plan.AllowIcmpProtocol),
-		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
-		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
+		Description:        knownStringPointer(plan.Description),
+		ID:                 id,
+		InternalAppAddress: knownStringPointer(plan.InternalAppAddress),
+		Name:               knownStringPointer(plan.Name),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
+		ProbingEnabled:     knownBoolPointer(plan.ProbingEnabled),
+		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
+		Published:          knownBoolPointer(plan.Published),
+		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
 	}
 
-	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
+	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PrivateAppUpdatePrivateApp(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PrivateAppUpdatePrivateApp error", err.Error())
@@ -273,7 +306,7 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Hydrate state from API
-	hydratedState, diags, hydrateErr := r.hydratePrivateAppState(ctx, id, plan)
+	hydratedState, diags, hydrateErr := r.hydratePrivateAppState(ctx, id)
 	if hydrateErr != nil {
 		resp.Diagnostics.Append(diags...)
 		resp.Diagnostics.AddError("Error hydrating private-app state", hydrateErr.Error())
@@ -287,37 +320,7 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 }
 
-func (r *privateAppResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state PrivateAppModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	hydratedState, diags, hydrateErr := r.hydratePrivateAppState(ctx, state.ID.ValueString(), state)
-	if hydrateErr != nil {
-		resp.Diagnostics.Append(diags...)
-		// Check if private-app not found
-		if hydrateErr.Error() == "private_app not found" { // TODO: check the actual error
-			tflog.Warn(ctx, "private_app not found, resource removed")
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Error hydrating group state",
-			hydrateErr.Error(),
-		)
-		return
-	}
-
-	diags = resp.State.Set(ctx, &hydratedState)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-}
-
+// Delete the private app
 func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state PrivateAppModel
 	diags := req.State.Get(ctx, &state)
@@ -333,13 +336,10 @@ func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 
 	// Call Cato API to delete a connector
-	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
+	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PrivateAppDeletePrivateApp(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PrivateAppDeletePrivateApp error", err.Error())
 		return
@@ -348,7 +348,7 @@ func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 // hydratePrivateAppState fetches the current state of a privateApp from the API
 // It takes a plan parameter to match config members with API members correctly
-func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, privateAppID string, plan PrivateAppModel) (*PrivateAppModel, diag.Diagnostics, error) {
+func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, privateAppID string) (*PrivateAppModel, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	input := cato_models.PrivateApplicationRefInput{
@@ -357,31 +357,31 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 	}
 
 	// Call Cato API to get a private-app
-	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{
-		"request": utils.InterfaceToJSONString(input),
-	})
+	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, diags, err
 	}
 
 	// Map API response to PrivateAppModel
 	app := result.GetPrivateApplication().GetPrivateApplication()
+	if app == nil {
+		return nil, diags, ErrPrivateAppNotFound
+	}
+
 	state := &PrivateAppModel{
-		ID:                 types.StringValue(app.ID),
-		CreationTime:       types.StringValue(app.CreationTime),
-		Name:               types.StringValue(app.Name),
-		Description:        types.StringPointerValue(app.Description),
-		InternalAppAddress: types.StringValue(app.InternalAppAddress),
-		ProbingEnabled:     types.BoolValue(app.ProbingEnabled),
-		Published:          types.BoolValue(app.Published),
 		AllowIcmpProtocol:  types.BoolValue(app.AllowICMPProtocol),
-		ProtocolPorts:      r.parseProtocolPorts(ctx, app.ProtocolPorts, &diags),
-		PublishedAppDomain: r.parsePublishedAppDomain(ctx, app.PublishedAppDomain, &diags),
+		CreationTime:       types.StringValue(app.CreationTime),
+		Description:        types.StringPointerValue(app.Description),
+		ID:                 types.StringValue(app.ID),
+		InternalAppAddress: types.StringValue(app.InternalAppAddress),
+		Name:               types.StringValue(app.Name),
 		PrivateAppProbing:  r.parsePrivateAppProbing(ctx, app.PrivateAppProbing, &diags),
+		ProbingEnabled:     types.BoolValue(app.ProbingEnabled),
+		ProtocolPorts:      r.parseProtocolPorts(ctx, app.ProtocolPorts, &diags),
+		Published:          types.BoolValue(app.Published),
+		PublishedAppDomain: r.parsePublishedAppDomain(ctx, app.PublishedAppDomain, &diags),
 	}
 	return state, diags, nil
 }
@@ -466,10 +466,10 @@ func (r *privateAppResource) parsePublishedAppDomain(ctx context.Context, domain
 	}
 
 	tfDomain := PublishedAppDomain{
-		ID:                 types.StringValue(domain.ID),
-		CreationTime:       types.StringValue(domain.CreationTime),
-		PublishedAppDomain: types.StringValue(domain.PublishedAppDomain),
 		ConnectorGroupName: types.StringPointerValue(domain.ConnectorGroupName),
+		CreationTime:       types.StringValue(domain.CreationTime),
+		ID:                 types.StringValue(domain.ID),
+		PublishedAppDomain: types.StringValue(domain.PublishedAppDomain),
 	}
 
 	domainObj, diag := types.ObjectValueFrom(ctx, PublishedAppDomainTypes, tfDomain)
@@ -491,10 +491,10 @@ func (r *privateAppResource) parsePrivateAppProbing(ctx context.Context, probing
 	}
 
 	tfProbing := PrivateAppProbing{
-		ID:                 types.StringValue(probing.ID),
-		Type:               types.StringValue(probing.Type),
-		Interval:           types.Int64Value(probing.Interval),
 		FaultThresholdDown: types.Int64Value(probing.FaultThresholdDown),
+		ID:                 types.StringValue(probing.ID),
+		Interval:           types.Int64Value(probing.Interval),
+		Type:               types.StringValue(probing.Type),
 	}
 
 	probingObj, diag := types.ObjectValueFrom(ctx, PrivateAppProbingTypes, tfProbing)
@@ -517,10 +517,10 @@ func (r *privateAppResource) preparePublishedAppDomain(ctx context.Context, appD
 	}
 
 	return &cato_models.PublishedAppDomainInput{
-		ID:                 knownStringPointer(tfAppDomain.ID),
-		CreationTime:       knownStringPointer(tfAppDomain.CreationTime),
-		PublishedAppDomain: knownStringPointer(tfAppDomain.PublishedAppDomain),
 		ConnectorGroupName: knownStringPointer(tfAppDomain.ConnectorGroupName),
+		CreationTime:       knownStringPointer(tfAppDomain.CreationTime),
+		ID:                 knownStringPointer(tfAppDomain.ID),
+		PublishedAppDomain: knownStringPointer(tfAppDomain.PublishedAppDomain),
 	}
 }
 
@@ -536,10 +536,10 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 
 	return &cato_models.PrivateAppProbingInput{
-		ID:                 knownStringPointer(tfProbing.ID),
-		Type:               knownStringPointer(tfProbing.Type),
-		Interval:           knownInt64Pointer(tfProbing.Interval),
 		FaultThresholdDown: knownInt64Pointer(tfProbing.FaultThresholdDown),
+		ID:                 knownStringPointer(tfProbing.ID),
+		Interval:           knownInt64Pointer(tfProbing.Interval),
+		Type:               knownStringPointer(tfProbing.Type),
 	}
 }
 
@@ -620,5 +620,3 @@ func (v privAppProtocolValidator) Description(ctx context.Context) string {
 func (v privAppProtocolValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
 }
-
-// TODO: knownStringPointer on inputs
