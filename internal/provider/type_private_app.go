@@ -15,7 +15,7 @@ type PrivateAppModel struct {
 	ProbingEnabled     types.Bool   `tfsdk:"probing_enabled"`
 	Published          types.Bool   `tfsdk:"published"`
 	AllowIcmpProtocol  types.Bool   `tfsdk:"allow_icmp_protocol"`
-	ProtocolPorts      types.List   `tfsdk:"protocol_ports"`       // []ProtocolPort
+	ProtocolPorts      types.Set    `tfsdk:"protocol_ports"`       // []ProtocolPort
 	PublishedAppDomain types.Object `tfsdk:"published_app_domain"` // PublishedAppDomain
 	PrivateAppProbing  types.Object `tfsdk:"private_app_probing"`  // PrivateAppProbing
 }
@@ -49,13 +49,13 @@ var PrivateAppProbingTypes = map[string]attr.Type{
 }
 
 type ProtocolPort struct {
-	Ports     types.List   `tfsdk:"ports"`      // []types.Int64
+	Ports     types.Set    `tfsdk:"ports"`      // []types.Int64
 	PortRange types.Object `tfsdk:"port_range"` // PortRange
 	Protocol  types.String `tfsdk:"protocol"`
 }
 
 var ProtocolPortTypes = map[string]attr.Type{
-	"ports":      types.ListType{ElemType: types.Int64Type},
+	"ports":      types.SetType{ElemType: types.Int64Type},
 	"port_range": types.ObjectType{AttrTypes: PortRangeTypes},
 	"protocol":   types.StringType,
 }

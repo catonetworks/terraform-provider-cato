@@ -125,13 +125,13 @@ func (r *privateAppResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					},
 				},
 			},
-			"protocol_ports": schema.ListNestedAttribute{
+			"protocol_ports": schema.SetNestedAttribute{
 				Description: "List ports and protocols",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"ports": schema.ListAttribute{
+						"ports": schema.SetAttribute{
 							ElementType: types.Int64Type,
 							Description: "List of TCP or UDP ports",
 							Optional:    true,
@@ -388,12 +388,12 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 
 func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts []*cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_ProtocolPorts,
 	diags *diag.Diagnostics,
-) types.List {
+) types.Set {
 	var diag diag.Diagnostics
-	listNull := types.ListNull(types.ObjectType{AttrTypes: ProtocolPortTypes})
+	setNull := types.SetNull(types.ObjectType{AttrTypes: ProtocolPortTypes})
 
 	if protoPorts == nil {
-		return listNull
+		return setNull
 	}
 
 	protoPortsObjects := make([]types.Object, 0, len(protoPorts))
@@ -404,16 +404,16 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 		}
 
 		// Ports
-		tfPortList := types.ListNull(types.Int64Type)
+		tfPortSet := types.SetNull(types.Int64Type)
 		if pp.Port != nil {
 			intSlice := make([]types.Int64, 0, len(pp.Port))
 			for _, p := range pp.Port {
 				intSlice = append(intSlice, types.Int64Value(p.GetInt64()))
 			}
-			tfPortList, diag = types.ListValueFrom(ctx, types.StringType, intSlice)
+			tfPortSet, diag = types.SetValueFrom(ctx, types.Int64Type, intSlice)
 			diags.Append(diag...)
 			if diags.HasError() {
-				return listNull
+				return setNull
 			}
 		}
 
@@ -427,32 +427,32 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 			tfPortRangeObj, diag = types.ObjectValueFrom(ctx, PortRangeTypes, tfPortRange)
 			diags.Append(diag...)
 			if diags.HasError() {
-				return listNull
+				return setNull
 			}
 		}
 
 		// ProtocolPorts item
 		tfPPort := ProtocolPort{
-			Ports:     tfPortList,
+			Ports:     tfPortSet,
 			PortRange: tfPortRangeObj,
 			Protocol:  types.StringValue(string(pp.Protocol)),
 		}
 		tfPPortObj, diag := types.ObjectValueFrom(ctx, ProtocolPortTypes, tfPPort)
 		diags.Append(diag...)
 		if diags.HasError() {
-			return listNull
+			return setNull
 		}
 		protoPortsObjects = append(protoPortsObjects, tfPPortObj)
 	}
 
-	// convert slice to types.List
-	tfProtoPortList, diag := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ProtocolPortTypes}, protoPortsObjects)
+	// convert slice to types.Set
+	tfProtoPortSet, diag := types.SetValueFrom(ctx, types.ObjectType{AttrTypes: ProtocolPortTypes}, protoPortsObjects)
 	diags.Append(diag...)
 	if diags.HasError() {
-		return listNull
+		return setNull
 	}
 
-	return tfProtoPortList
+	return tfProtoPortSet
 }
 
 func (r *privateAppResource) parsePublishedAppDomain(ctx context.Context, domain *cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PublishedAppDomain,
@@ -543,7 +543,7 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 }
 
-func (r *privateAppResource) prepareProtocolPorts(ctx context.Context, protPorts types.List, diags *diag.Diagnostics) []*cato_models.CustomServiceInput {
+func (r *privateAppResource) prepareProtocolPorts(ctx context.Context, protPorts types.Set, diags *diag.Diagnostics) []*cato_models.CustomServiceInput {
 	if !hasValue(protPorts) {
 		return nil
 	}
