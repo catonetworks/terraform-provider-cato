@@ -66,10 +66,6 @@ func (r *privAccessRuleBulkResource) Schema(ctx context.Context, _ resource.Sche
 							Description: "Requierd position of the rule",
 							Required:    true,
 						},
-						"cma_index": schema.Int64Attribute{
-							Description: "Rule index in CMA before bulk is applied",
-							Computed:    true,
-						},
 						"name": schema.StringAttribute{
 							Description: "IFW rule name housing rule",
 							Required:    true,
@@ -282,7 +278,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(ctx context.
 		tfRule := &PrivateAccessBulkRule{
 			ID:       types.StringValue(apiRule.ID),
 			Name:     types.StringValue(apiRule.Name),
-			CMAIndex: types.Int64Value(apiRule.Index),
+			CMAIndex: apiRule.Index,
 		}
 		stateRule, ok := stateRules[apiRule.Name]
 		if !ok {
@@ -328,7 +324,7 @@ func (r *privAccessRuleBulkResource) moveRules(ctx context.Context, ruleMap map[
 	}
 	// rules as currently ordered in the draft state in CMA
 	slices.SortFunc(currentRules, func(a, b *PrivateAccessBulkRule) int {
-		return cmp.Compare(a.CMAIndex.ValueInt64(), b.CMAIndex.ValueInt64())
+		return cmp.Compare(a.CMAIndex, b.CMAIndex)
 	})
 	// rules in the order we want
 	slices.SortFunc(targetRules, func(a, b *PrivateAccessBulkRule) int {

@@ -14,12 +14,11 @@ type PrivateAccessBulkRule struct {
 	ID       types.String `tfsdk:"id"`
 	Name     types.String `tfsdk:"name"`
 	Index    types.Int64  `tfsdk:"index"`
-	CMAIndex types.Int64  `tfsdk:"cma_index"`
+	CMAIndex int64        `tfsdk:"-"`
 }
 
 var PrivateAccessBulkRuleTypes = map[string]attr.Type{
-	"id":        types.StringType,
-	"name":      types.StringType,
-	"index":     types.Int64Type,
-	"cma_index": types.Int64Type,
+	"id":    types.StringType,
+	"name":  types.StringType,
+	"index": types.Int64Type,
 }

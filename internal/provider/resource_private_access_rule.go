@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -81,13 +80,6 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"description": schema.StringAttribute{
 				Description: "Rule description",
 				Optional:    true,
-			},
-			"cma_index": schema.Int64Attribute{
-				Description: "Rule index in CMA before bulk is applied",
-				Computed:    true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
 			},
 			// "section": r.schemaSection(), -- not available in the 1st phase
 			"enabled": schema.BoolAttribute{
@@ -1033,7 +1025,6 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(ctx context.Context,
 			ID:                types.StringValue(apiRule.ID),
 			Name:              types.StringValue(apiRule.Name),
 			Description:       types.StringValue(apiRule.Description),
-			CMAIndex:          types.Int64Value(apiRule.Index),
 			Enabled:           types.BoolValue(apiRule.Enabled),
 			Source:            r.parseSource(ctx, apiRule.Source, &diags),
 			Platforms:         parseStringList(ctx, apiRule.Platform, &diags),
