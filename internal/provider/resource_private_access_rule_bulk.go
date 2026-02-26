@@ -53,7 +53,7 @@ func (r *privAccessRuleBulkResource) Schema(ctx context.Context, _ resource.Sche
 		Description: "Manages ordering and publishng private access policy rules.",
 		Attributes: map[string]schema.Attribute{
 			"rule_data": schema.MapNestedAttribute{
-				Description: "Map of private access rule policy Indexes keyed by rule_name",
+				Description: "Map of private access policy rules keyed by name",
 				Required:    false,
 				Optional:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -63,11 +63,11 @@ func (r *privAccessRuleBulkResource) Schema(ctx context.Context, _ resource.Sche
 							Computed:    true,
 						},
 						"index": schema.Int64Attribute{
-							Description: "Requierd position of the rule",
+							Description: "Required position of the rule",
 							Required:    true,
 						},
 						"name": schema.StringAttribute{
-							Description: "IFW rule name housing rule",
+							Description: "Private access rule name",
 							Required:    true,
 						},
 					},
@@ -76,7 +76,6 @@ func (r *privAccessRuleBulkResource) Schema(ctx context.Context, _ resource.Sche
 			"publish": schema.Int64Attribute{
 				Description: "publish policy revision if there is a change",
 				Computed:    true,
-				Optional:    true,
 			},
 		},
 	}
@@ -99,7 +98,6 @@ func (m revisionPlanModifier) PlanModifyInt64(ctx context.Context, req planmodif
 func (r *privAccessRuleBulkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan PrivateAccessRuleBulkModel
 
-	XXX(ctx, "Bulk Create")
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -140,7 +138,6 @@ func (r *privAccessRuleBulkResource) Create(ctx context.Context, req resource.Cr
 }
 
 func (r *privAccessRuleBulkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	XXX(ctx, "Bulk Read")
 	var state PrivateAccessRuleBulkModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -163,7 +160,6 @@ func (r *privAccessRuleBulkResource) Read(ctx context.Context, req resource.Read
 }
 
 func (r *privAccessRuleBulkResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	XXX(ctx, "Bulk Update")
 	var plan PrivateAccessRuleBulkModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -218,13 +214,10 @@ func (r *privAccessRuleBulkResource) ModifyPlan(ctx context.Context, req resourc
 		return
 	}
 	if plan == nil {
-		XXX(ctx, "Bulk Modify Plan is NULL")
 		return
 	}
-	XXX(ctx, "Bulk Modify Plan current state: state: %v", plan.Publish)
 
 	plan.Publish = types.Int64Value(plan.Publish.ValueInt64() + 1)
-	XXX(ctx, "Bulk Modify Plan new state: %v", plan.Publish)
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -232,7 +225,6 @@ func (r *privAccessRuleBulkResource) ModifyPlan(ctx context.Context, req resourc
 }
 
 func (r *privAccessRuleBulkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	XXX(ctx, "Bulk Delete")
 }
 
 // hydratePrivAccessRuleBulkState fetches the current state of a privAccessRuleBulk from the API
@@ -300,7 +292,6 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(ctx context.
 	if diags.HasError() {
 		return nil, nil, diags, ErrAPIResponseParse
 	}
-	XXX(ctx, "Hydrate:  plan.Publish=%v", plan.Publish)
 	state := &PrivateAccessRuleBulkModel{
 		RuleData: rulesMap,
 		Publish:  types.Int64Value(plan.Publish.ValueInt64()),
@@ -346,10 +337,10 @@ func (r *privAccessRuleBulkResource) moveRules(ctx context.Context, ruleMap map[
 
 // moveToPosition moves the rule with given ID to the given position in	[]currentRules (shifting the rest down)
 // and calls the API to move the rule in the CMA
+// Warning: it only moves the rule up, moving down is not supported!
 func (r *privAccessRuleBulkResource) moveToPosition(ctx context.Context, currentRules []*PrivateAccessBulkRule, ruleID, ruleName string, newPosition int) error {
 	var myRule *PrivateAccessBulkRule
 	tflog.Debug(ctx, "moving private-access rule '"+ruleName+"' to position "+strconv.Itoa(newPosition))
-	XXX(ctx, "moving private-access rule '"+ruleName+"' to position "+strconv.Itoa(newPosition))
 
 	curPossition := -1
 	for i := len(currentRules) - 1; i >= 0; i-- {
@@ -387,6 +378,10 @@ func (r *privAccessRuleBulkResource) moveToPosition(ctx context.Context, current
 			},
 		}
 	}
+	if r.client == nil {
+		return nil
+	}
+
 	// Call the API to move the rule
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
@@ -424,10 +419,6 @@ func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
 		return fmt.Errorf("error publishing policy")
 	}
 	return nil
-}
-
-func XXX(ctx context.Context, msg string, args ...any) {
-	tflog.Warn(ctx, fmt.Sprintf("\033[0;33mXXX "+msg+"\033[0m", args...))
 }
 
 // TODO: check status": "SUCCESS" on API calls
