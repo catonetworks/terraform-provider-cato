@@ -58,9 +58,12 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 			},
 			"active_period": r.schemaActivePeriod(),
 			"applications": schema.ListNestedAttribute{
-				Description:  "Application name or id",
-				Required:     true,
-				NestedObject: schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Application")},
+				Description: "Application name or id",
+				Required:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Application"),
+					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				},
 			},
 			"connection_origins": schema.ListAttribute{
 				Description:   "Origin of the connection",
@@ -71,10 +74,13 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"countries": schema.ListNestedAttribute{
-				Description:   "List of countries",
-				Optional:      true,
-				Computed:      true,
-				NestedObject:  schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Country")},
+				Description: "List of countries",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Country"),
+					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				},
 				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"description": schema.StringAttribute{
@@ -82,10 +88,13 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Optional:    true,
 			},
 			"devices": schema.ListNestedAttribute{
-				Description:   "List of devices",
-				Optional:      true,
-				Computed:      true,
-				NestedObject:  schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Device")},
+				Description: "List of devices",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Device"),
+					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				},
 				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"enabled": schema.BoolAttribute{
@@ -141,19 +150,28 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Validators:  []validator.String{validators.PolicyTrackingFrequency{}},
 					},
 					"mailing_list": schema.ListNestedAttribute{
-						Description:  "Mailing list name or id",
-						Optional:     true,
-						NestedObject: schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Mailing list")},
+						Description: "Mailing list name or id",
+						Optional:    true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes:    parse.SchemaNameID("Mailing list"),
+							PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+						},
 					},
 					"subscription_group": schema.ListNestedAttribute{
-						Description:  "Subscription group name or id",
-						Optional:     true,
-						NestedObject: schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Subscription group")},
+						Description: "Subscription group name or id",
+						Optional:    true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes:    parse.SchemaNameID("Subscription group"),
+							PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+						},
 					},
 					"webhook": schema.ListNestedAttribute{
-						Description:  "Webhook name or id",
-						Optional:     true,
-						NestedObject: schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Webhook")},
+						Description: "Webhook name or id",
+						Optional:    true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes:    parse.SchemaNameID("Webhook"),
+							PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+						},
 					},
 				},
 			},
@@ -289,17 +307,23 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 		Required:    true,
 		Attributes: map[string]schema.Attribute{
 			"users": schema.ListNestedAttribute{
-				Description:   "Users",
-				Optional:      true,
-				Computed:      true,
-				NestedObject:  schema.NestedAttributeObject{Attributes: parse.SchemaNameID("User")},
+				Description: "Users",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("User"),
+					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				},
 				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"user_groups": schema.ListNestedAttribute{
-				Description:   "User groups",
-				Optional:      true,
-				Computed:      true,
-				NestedObject:  schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Group")},
+				Description: "User groups",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Group"),
+					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				},
 				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 		},

@@ -20,11 +20,18 @@ func PrepareIdName(ctx context.Context, idName types.Object, diags *diag.Diagnos
 	if utils.CheckErr(diags, idName.As(ctx, &tfIdName, basetypes.ObjectAsOptions{})) {
 		return by, input, false
 	}
-	if tfIdName.Name.IsUnknown() {
-		return by, input, false
+
+	// ref by ID
+	if !tfIdName.ID.IsUnknown() {
+		return cato_models.ObjectRefByID, tfIdName.ID.ValueString(), true
 	}
 
-	return cato_models.ObjectRefByName, tfIdName.Name.ValueString(), true
+	// ref by Name
+	if !tfIdName.Name.IsUnknown() {
+		return cato_models.ObjectRefByName, tfIdName.Name.ValueString(), true
+	}
+
+	return by, input, false
 }
 
 func PrepareIDRef[T idRefInputs](ctx context.Context, tfObj types.Object, diags *diag.Diagnostics, fieldName string) (sdkRef *T) {

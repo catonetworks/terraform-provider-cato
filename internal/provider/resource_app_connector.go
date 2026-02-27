@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -65,9 +66,12 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"preferred_pop_location": r.schemaPreferredPopLocation(),
 			"private_apps": schema.ListNestedAttribute{
-				Description:  "List of private applications",
-				Computed:     true,
-				NestedObject: schema.NestedAttributeObject{Attributes: parse.SchemaNameID("Private app")},
+				Description: "List of private applications",
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Private app"),
+					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				},
 			},
 			"serial_number": schema.StringAttribute{
 				Description: "Unique serial number of the ZTNA App Connector",
@@ -133,14 +137,16 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 				Required:    true,
 			},
 			"primary": schema.SingleNestedAttribute{
-				Description: "Physical location of the pripary Pop",
-				Optional:    true,
-				Attributes:  parse.SchemaNameID("Primary location"),
+				Description:   "Physical location of the pripary Pop",
+				Optional:      true,
+				Attributes:    parse.SchemaNameID("Primary location"),
+				PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
 			},
 			"secondary": schema.SingleNestedAttribute{
-				Description: "Physical location of the secondary Pop",
-				Optional:    true,
-				Attributes:  parse.SchemaNameID("Secondary location"),
+				Description:   "Physical location of the secondary Pop",
+				Optional:      true,
+				Attributes:    parse.SchemaNameID("Secondary location"),
+				PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
 			},
 		},
 	}
