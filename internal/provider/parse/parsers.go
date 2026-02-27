@@ -1,12 +1,14 @@
-package provider
+package parse
 
 import (
 	"context"
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
@@ -16,15 +18,6 @@ type idRefTypes interface {
 		ID   string `json:"id" graphql:"id"`
 		Name string `json:"name" graphql:"name"`
 	}
-
-	// cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Country |
-	// 	cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source_UsersGroup |
-	// 	cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source_User |
-	// 	cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Applications_Application |
-	// 	cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking_Alert_MailingList |
-	// 	cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking_Alert_Webhook |
-	// 	cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Device |
-	// 	cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking_Alert_SubscriptionGroup
 }
 
 type idRefInputs interface {
@@ -36,12 +29,12 @@ type idRefInputs interface {
 
 // prepareIdName prepares the id and name input for the Cato API
 // on error it sets the diagnostics error
-func prepareIdName(ctx context.Context, idName types.Object, diags *diag.Diagnostics, fieldName string, optional ...bool) (by cato_models.ObjectRefBy, input string, isSet bool) {
+func PrepareIdName(ctx context.Context, idName types.Object, diags *diag.Diagnostics, fieldName string, optional ...bool) (by cato_models.ObjectRefBy, input string, isSet bool) {
 	var tfIdName IdNameRefModel
-	if !hasValue(idName) {
+	if !utils.HasValue(idName) {
 		return by, input, false
 	}
-	if checkErr(diags, idName.As(ctx, &tfIdName, basetypes.ObjectAsOptions{})) {
+	if utils.CheckErr(diags, idName.As(ctx, &tfIdName, basetypes.ObjectAsOptions{})) {
 		return by, input, false
 	}
 	if tfIdName.Name.IsUnknown() {
@@ -51,15 +44,15 @@ func prepareIdName(ctx context.Context, idName types.Object, diags *diag.Diagnos
 	return cato_models.ObjectRefByName, tfIdName.Name.ValueString(), true
 }
 
-func prepareIDRef[T idRefInputs](ctx context.Context, tfObj types.Object, diags *diag.Diagnostics, fieldName string) (sdkRef *T) {
-	refBy, refInput, isSet := prepareIdName(ctx, tfObj, diags, fieldName)
+func PrepareIDRef[T idRefInputs](ctx context.Context, tfObj types.Object, diags *diag.Diagnostics, fieldName string) (sdkRef *T) {
+	refBy, refInput, isSet := PrepareIdName(ctx, tfObj, diags, fieldName)
 	if !isSet {
 		return nil
 	}
 	return &T{By: refBy, Input: refInput}
 }
 
-func parseIDRef[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnostics) types.Object {
+func ParseIDRef[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnostics) types.Object {
 	type idn struct {
 		ID   string `json:"id" tfsdk:"id"`
 		Name string `json:"name" tfsdk:"name"`
@@ -67,19 +60,19 @@ func parseIDRef[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnostic
 
 	// make IdNameRefModel Object
 	obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, idn(ref))
-	if checkErr(diags, diag) {
+	if utils.CheckErr(diags, diag) {
 		return types.ObjectNull(IdNameRefModelTypes)
 	}
 	return obj
 }
 
-func prepareIDRefList[T idRefInputs](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []*T) {
-	if !hasValue(tfList) {
+func PrepareIDRefList[T idRefInputs](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []*T) {
+	if !utils.HasValue(tfList) {
 		return nil
 	}
 
 	for _, idName := range tfList.Elements() {
-		refBy, refInput, isSet := prepareIdName(ctx, idName.(types.Object), diags, fieldName)
+		refBy, refInput, isSet := PrepareIdName(ctx, idName.(types.Object), diags, fieldName)
 		if diags.HasError() {
 			return nil
 		}
@@ -90,7 +83,7 @@ func prepareIDRefList[T idRefInputs](ctx context.Context, tfList types.List, dia
 	return sdkList
 }
 
-func parseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.List {
+func ParseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.List {
 	type idn struct{ ID, Name string }
 
 	// null value
@@ -108,7 +101,7 @@ func parseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 		ref := IdNameRefModel{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
 		// make IdNameRefModel Object
 		obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, ref)
-		if checkErr(diags, diag) {
+		if utils.CheckErr(diags, diag) {
 			return types.ListNull(types.ObjectType{AttrTypes: IdNameRefModelTypes})
 		}
 		// append to Object slice
@@ -121,25 +114,25 @@ func parseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 	return list
 }
 
-func prepareStrings[T ~string](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []T) {
-	if !hasValue(tfList) {
+func PrepareStrings[T ~string](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []T) {
+	if !utils.HasValue(tfList) {
 		return nil
 	}
 	var tfStrings []types.String
-	if checkErr(diags, tfList.ElementsAs(ctx, &tfStrings, false)) {
+	if utils.CheckErr(diags, tfList.ElementsAs(ctx, &tfStrings, false)) {
 		return nil
 	}
 
 	sdkList = make([]T, 0, len(tfStrings))
 	for _, s := range tfStrings {
-		if hasValue(s) {
+		if utils.HasValue(s) {
 			sdkList = append(sdkList, T(s.ValueString()))
 		}
 	}
 	return sdkList
 }
 
-func parseStringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.List {
+func ParseStringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.List {
 	// null value
 	if stringers == nil {
 		return types.ListNull(types.StringType)
@@ -164,31 +157,41 @@ func parseStringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *
 	return stringList
 }
 
-type hasValuer interface {
-	IsUnknown() bool
-	IsNull() bool
-}
-
-func hasValue(v hasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }
-
-func knownStringPointer(s types.String) *string {
+func KnownStringPointer(s types.String) *string {
 	if s.IsUnknown() {
 		return nil
 	}
 	return s.ValueStringPointer()
 }
 
-func knownInt64Pointer(s types.Int64) *int64 {
+func KnownInt64Pointer(s types.Int64) *int64 {
 	if s.IsUnknown() {
 		return nil
 	}
 	return s.ValueInt64Pointer()
 }
-func knownBoolPointer(s types.Bool) *bool {
+func KnownBoolPointer(s types.Bool) *bool {
 	if s.IsUnknown() {
 		return nil
 	}
 	return s.ValueBoolPointer()
 }
 
-func ptr[T any](x T) *T { return &x }
+func SchemaNameID(prefix string) map[string]schema.Attribute {
+	if prefix != "" {
+		prefix += " "
+	}
+	return map[string]schema.Attribute{
+		"name": schema.StringAttribute{
+			Description: prefix + "name",
+			Required:    true,
+		},
+		"id": schema.StringAttribute{
+			Description: prefix + "ID",
+			Optional:    false,
+			Computed:    true,
+		},
+	}
+}
+
+func Ptr[T any](x T) *T { return &x }

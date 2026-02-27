@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -97,3 +98,15 @@ func ConvertOptionalString(input *string) types.String {
 	}
 	return types.StringNull()
 }
+
+func CheckErr(diags *diag.Diagnostics, in diag.Diagnostics) bool {
+	diags.Append(in...)
+	return diags.HasError()
+}
+
+type hasValuer interface {
+	IsUnknown() bool
+	IsNull() bool
+}
+
+func HasValue(v hasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }

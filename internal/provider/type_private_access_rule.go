@@ -1,26 +1,27 @@
 package provider
 
 import (
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 type PrivateAccessRuleModel struct {
-	ID                types.String `tfsdk:"id"`
-	Name              types.String `tfsdk:"name"`
-	Description       types.String `tfsdk:"description"`
-	Enabled           types.Bool   `tfsdk:"enabled"`
-	Source            types.Object `tfsdk:"source"`             // Source
-	Platforms         types.List   `tfsdk:"platforms"`          // []string
-	Countries         types.List   `tfsdk:"countries"`          // []IdNameRefModel
+	Action            types.String `tfsdk:"action"`             // e.g. "ALLOW"
+	ActivePeriod      types.Object `tfsdk:"active_period"`      // PolicyRuleActivePeriod
 	Applications      types.List   `tfsdk:"applications"`       // []IdNameRefModel
 	ConnectionOrigins types.List   `tfsdk:"connection_origins"` // []string
-	Action            types.String `tfsdk:"action"`             // e.g. "ALLOW"
-	Tracking          types.Object `tfsdk:"tracking"`           // Tracking
-	Devices           types.List   `tfsdk:"devices"`            // []IdNameRefModel
-	UserAttributes    types.Object `tfsdk:"user_attributes"`    // UserAttributes
-	Schedule          types.Object `tfsdk:"schedule"`           // PolicySchedule
-	ActivePeriod      types.Object `tfsdk:"active_period"`      // PolicyRuleActivePeriod
+	Countries         types.List   `tfsdk:"countries"`          // []IdNameRefModel
+	Description       types.String `tfsdk:"description"`
+	Devices           types.List   `tfsdk:"devices"` // []IdNameRefModel
+	Enabled           types.Bool   `tfsdk:"enabled"`
+	ID                types.String `tfsdk:"id"`
+	Name              types.String `tfsdk:"name"`
+	Platforms         types.List   `tfsdk:"platforms"`       // []string
+	Schedule          types.Object `tfsdk:"schedule"`        // PolicySchedule
+	Source            types.Object `tfsdk:"source"`          // Source
+	Tracking          types.Object `tfsdk:"tracking"`        // Tracking
+	UserAttributes    types.Object `tfsdk:"user_attributes"` // UserAttributes
 
 	// Section          *PrivAccessPolicySection `tfsdk:"section"` -- not available in the 1st phase
 }
@@ -43,8 +44,8 @@ type Source struct {
 }
 
 var SourceTypes = map[string]attr.Type{
-	"users":       types.ListType{ElemType: types.ObjectType{AttrTypes: IdNameRefModelTypes}},
-	"user_groups": types.ListType{ElemType: types.ObjectType{AttrTypes: IdNameRefModelTypes}},
+	"users":       types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"user_groups": types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
 }
 
 type UserAttributes struct {
@@ -142,7 +143,7 @@ type PoliciRuleTrackingAlert struct {
 var PolicyRuleTrackingAlertTypes = map[string]attr.Type{
 	"enabled":            types.BoolType,
 	"frequency":          types.StringType,
-	"mailing_list":       types.ListType{ElemType: types.ObjectType{AttrTypes: IdNameRefModelTypes}},
-	"subscription_group": types.ListType{ElemType: types.ObjectType{AttrTypes: IdNameRefModelTypes}},
-	"webhook":            types.ListType{ElemType: types.ObjectType{AttrTypes: IdNameRefModelTypes}},
+	"mailing_list":       types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"subscription_group": types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"webhook":            types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
 }

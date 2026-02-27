@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -44,16 +45,6 @@ type PostalAddressModel struct {
 	ZipCode          types.String `tfsdk:"zip_code"`
 }
 
-type IdNameRefModel struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
-}
-
-var IdNameRefModelTypes = map[string]attr.Type{
-	"id":   types.StringType,
-	"name": types.StringType,
-}
-
 type PreferredPopLocationModel struct {
 	PreferredOnly types.Bool   `tfsdk:"preferred_only"`
 	Automatic     types.Bool   `tfsdk:"automatic"`
@@ -64,6 +55,6 @@ type PreferredPopLocationModel struct {
 var PreferredPopLocationModelTypes = map[string]attr.Type{
 	"preferred_only": types.BoolType,
 	"automatic":      types.BoolType,
-	"primary":        types.ObjectType{AttrTypes: IdNameRefModelTypes},
-	"secondary":      types.ObjectType{AttrTypes: IdNameRefModelTypes},
+	"primary":        types.ObjectType{AttrTypes: parse.IdNameRefModelTypes},
+	"secondary":      types.ObjectType{AttrTypes: parse.IdNameRefModelTypes},
 }

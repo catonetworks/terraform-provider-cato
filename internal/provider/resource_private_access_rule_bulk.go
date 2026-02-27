@@ -10,6 +10,7 @@ import (
 	"time"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -112,7 +113,7 @@ func (r *privAccessRuleBulkResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
-	if checkErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
+	if utils.CheckErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
 		return
 	}
 
@@ -182,7 +183,7 @@ func (r *privAccessRuleBulkResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
-	if checkErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
+	if utils.CheckErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
 		return
 	}
 
@@ -234,9 +235,9 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(ctx context.
 
 	// Create a Go map[rule-name]PrivateAccessBulkRule{...} from the plan/state
 	stateRules := make(map[string]PrivateAccessBulkRule)
-	if hasValue(plan.RuleData) {
+	if utils.HasValue(plan.RuleData) {
 		var tfBulk map[string]types.Object
-		if checkErr(&diags, plan.RuleData.ElementsAs(ctx, &tfBulk, false)) {
+		if utils.CheckErr(&diags, plan.RuleData.ElementsAs(ctx, &tfBulk, false)) {
 			return nil, nil, diags, ErrConvertError
 		}
 		for name, obj := range tfBulk {
@@ -374,7 +375,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(ctx context.Context, current
 			ID: ruleID,
 			To: &cato_models.PolicyRulePositionInput{
 				Position: ptr(cato_models.PolicyRulePositionEnumAfterRule),
-				Ref:      knownStringPointer(currentRules[newPosition-1].ID),
+				Ref:      parse.KnownStringPointer(currentRules[newPosition-1].ID),
 			},
 		}
 	}
@@ -420,5 +421,3 @@ func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
 	}
 	return nil
 }
-
-// TODO: check status": "SUCCESS" on API calls

@@ -3,12 +3,13 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -138,7 +139,7 @@ func (r *privateAppResource) schemaProtocolPorts() schema.SetNestedAttribute {
 				"protocol": schema.StringAttribute{
 					Description: "Protocol; e.g.: TCP, UDP, ICMP",
 					Required:    true,
-					Validators:  []validator.String{privAppProtocolValidator{}},
+					Validators:  []validator.String{validators.IPProtocolValidator{}},
 				},
 			},
 		},
@@ -196,7 +197,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 	input := cato_models.CreatePrivateApplicationInput{
 		AllowICMPProtocol:  plan.AllowIcmpProtocol.ValueBool(),
-		Description:        knownStringPointer(plan.Description),
+		Description:        parse.KnownStringPointer(plan.Description),
 		InternalAppAddress: plan.InternalAppAddress.ValueString(),
 		Name:               plan.Name.ValueString(),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
@@ -284,15 +285,15 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	input := cato_models.UpdatePrivateApplicationInput{
-		AllowICMPProtocol:  knownBoolPointer(plan.AllowIcmpProtocol),
-		Description:        knownStringPointer(plan.Description),
+		AllowICMPProtocol:  parse.KnownBoolPointer(plan.AllowIcmpProtocol),
+		Description:        parse.KnownStringPointer(plan.Description),
 		ID:                 id,
-		InternalAppAddress: knownStringPointer(plan.InternalAppAddress),
-		Name:               knownStringPointer(plan.Name),
+		InternalAppAddress: parse.KnownStringPointer(plan.InternalAppAddress),
+		Name:               parse.KnownStringPointer(plan.Name),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
-		ProbingEnabled:     knownBoolPointer(plan.ProbingEnabled),
+		ProbingEnabled:     parse.KnownBoolPointer(plan.ProbingEnabled),
 		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
-		Published:          knownBoolPointer(plan.Published),
+		Published:          parse.KnownBoolPointer(plan.Published),
 		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
 	}
 
@@ -507,44 +508,44 @@ func (r *privateAppResource) parsePrivateAppProbing(ctx context.Context, probing
 
 func (r *privateAppResource) preparePublishedAppDomain(ctx context.Context, appDomain types.Object, diags *diag.Diagnostics,
 ) *cato_models.PublishedAppDomainInput {
-	if !hasValue(appDomain) {
+	if !utils.HasValue(appDomain) {
 		return nil
 	}
 
 	var tfAppDomain PublishedAppDomain
-	if checkErr(diags, appDomain.As(ctx, &tfAppDomain, basetypes.ObjectAsOptions{})) {
+	if utils.CheckErr(diags, appDomain.As(ctx, &tfAppDomain, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 
 	return &cato_models.PublishedAppDomainInput{
-		ConnectorGroupName: knownStringPointer(tfAppDomain.ConnectorGroupName),
-		CreationTime:       knownStringPointer(tfAppDomain.CreationTime),
-		ID:                 knownStringPointer(tfAppDomain.ID),
-		PublishedAppDomain: knownStringPointer(tfAppDomain.PublishedAppDomain),
+		ConnectorGroupName: parse.KnownStringPointer(tfAppDomain.ConnectorGroupName),
+		CreationTime:       parse.KnownStringPointer(tfAppDomain.CreationTime),
+		ID:                 parse.KnownStringPointer(tfAppDomain.ID),
+		PublishedAppDomain: parse.KnownStringPointer(tfAppDomain.PublishedAppDomain),
 	}
 }
 
 func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probing types.Object, diags *diag.Diagnostics,
 ) *cato_models.PrivateAppProbingInput {
-	if !hasValue(probing) {
+	if !utils.HasValue(probing) {
 		return nil
 	}
 
 	var tfProbing PrivateAppProbing
-	if checkErr(diags, probing.As(ctx, &tfProbing, basetypes.ObjectAsOptions{})) {
+	if utils.CheckErr(diags, probing.As(ctx, &tfProbing, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 
 	return &cato_models.PrivateAppProbingInput{
-		FaultThresholdDown: knownInt64Pointer(tfProbing.FaultThresholdDown),
-		ID:                 knownStringPointer(tfProbing.ID),
-		Interval:           knownInt64Pointer(tfProbing.Interval),
-		Type:               knownStringPointer(tfProbing.Type),
+		FaultThresholdDown: parse.KnownInt64Pointer(tfProbing.FaultThresholdDown),
+		ID:                 parse.KnownStringPointer(tfProbing.ID),
+		Interval:           parse.KnownInt64Pointer(tfProbing.Interval),
+		Type:               parse.KnownStringPointer(tfProbing.Type),
 	}
 }
 
 func (r *privateAppResource) prepareProtocolPorts(ctx context.Context, protPorts types.Set, diags *diag.Diagnostics) []*cato_models.CustomServiceInput {
-	if !hasValue(protPorts) {
+	if !utils.HasValue(protPorts) {
 		return nil
 	}
 
@@ -553,33 +554,33 @@ func (r *privateAppResource) prepareProtocolPorts(ctx context.Context, protPorts
 	for _, p := range protPorts.Elements() {
 		var svcInput cato_models.CustomServiceInput
 
-		if !hasValue(p) {
+		if !utils.HasValue(p) {
 			continue
 		}
 		port := p.(types.Object)
 
 		var tfProtoPort ProtocolPort
-		if checkErr(diags, port.As(ctx, &tfProtoPort, basetypes.ObjectAsOptions{})) {
+		if utils.CheckErr(diags, port.As(ctx, &tfProtoPort, basetypes.ObjectAsOptions{})) {
 			return nil
 		}
 
 		// Port numbers
-		if hasValue(tfProtoPort.Ports) {
+		if utils.HasValue(tfProtoPort.Ports) {
 			var tfPortNumbers []types.Int64
-			if checkErr(diags, tfProtoPort.Ports.ElementsAs(ctx, &tfPortNumbers, false)) {
+			if utils.CheckErr(diags, tfProtoPort.Ports.ElementsAs(ctx, &tfPortNumbers, false)) {
 				return nil
 			}
 			for _, portNum := range tfPortNumbers {
-				if hasValue(portNum) {
+				if utils.HasValue(portNum) {
 					svcInput.Port = append(svcInput.Port, scalars.Port(portNum.String()))
 				}
 			}
 		}
 
 		// Port range
-		if hasValue(tfProtoPort.PortRange) {
+		if utils.HasValue(tfProtoPort.PortRange) {
 			var tfProtoRange PortRange
-			if checkErr(diags, tfProtoPort.PortRange.As(ctx, &tfProtoRange, basetypes.ObjectAsOptions{})) {
+			if utils.CheckErr(diags, tfProtoPort.PortRange.As(ctx, &tfProtoRange, basetypes.ObjectAsOptions{})) {
 				return nil
 			}
 			svcInput.PortRange = &cato_models.PortRangeInput{
@@ -597,26 +598,4 @@ func (r *privateAppResource) prepareProtocolPorts(ctx context.Context, protPorts
 	return out
 }
 
-// Validators
-type (
-	privAppProtocolValidator struct{}
-)
-
-func (v privAppProtocolValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	if req.ConfigValue.IsUnknown() {
-		return
-	}
-	value := strings.Trim(req.ConfigValue.String(), `"`)
-	protoName := cato_models.IPProtocol(value)
-	if !protoName.IsValid() {
-		resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid protocol (%s: %s)\n - valid options: %+v", req.Path.String(),
-			value, cato_models.AllIPProtocol))
-		return
-	}
-}
-func (v privAppProtocolValidator) Description(ctx context.Context) string {
-	return fmt.Sprintf("Protocol must be one of: %v", cato_models.AllIPProtocol)
-}
-func (v privAppProtocolValidator) MarkdownDescription(ctx context.Context) string {
-	return v.Description(ctx)
-}
+func ptr[T any](x T) *T { return &x }
