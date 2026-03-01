@@ -27,9 +27,9 @@ The `cato_private_access_rule` resource contains the configuration parameters fo
 
 - `active_period` (Attributes) Time period during which the rule is active (see [below for nested schema](#nestedatt--active_period))
 - `connection_origins` (List of String) Origin of the connection
-- `countries` (Attributes List) Country name or id (see [below for nested schema](#nestedatt--countries))
+- `countries` (Attributes List) List of countries (see [below for nested schema](#nestedatt--countries))
 - `description` (String) Rule description
-- `devices` (Attributes List) Device group name or id (see [below for nested schema](#nestedatt--devices))
+- `devices` (Attributes List) List of devices (see [below for nested schema](#nestedatt--devices))
 - `platforms` (List of String) Platforms, operating systems
 - `schedule` (Attributes) Schedule (see [below for nested schema](#nestedatt--schedule))
 - `tracking` (Attributes) Rule tracking (see [below for nested schema](#nestedatt--tracking))
@@ -37,19 +37,15 @@ The `cato_private_access_rule` resource contains the configuration parameters fo
 
 ### Read-Only
 
-- `cma_index` (Number) Rule index in CMA before bulk is applied
 - `id` (String) Rule ID
 
 <a id="nestedatt--applications"></a>
 ### Nested Schema for `applications`
 
-Required:
-
-- `name` (String) Application name
-
-Read-Only:
+Optional:
 
 - `id` (String) Application ID
+- `name` (String) Application name
 
 
 <a id="nestedatt--source"></a>
@@ -63,25 +59,19 @@ Optional:
 <a id="nestedatt--source--user_groups"></a>
 ### Nested Schema for `source.user_groups`
 
-Required:
-
-- `name` (String) Group name
-
-Read-Only:
+Optional:
 
 - `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--source--users"></a>
 ### Nested Schema for `source.users`
 
-Required:
-
-- `name` (String) User name
-
-Read-Only:
+Optional:
 
 - `id` (String) User ID
+- `name` (String) User name
 
 
 
@@ -99,25 +89,19 @@ Optional:
 <a id="nestedatt--countries"></a>
 ### Nested Schema for `countries`
 
-Required:
-
-- `name` (String) Country name
-
-Read-Only:
+Optional:
 
 - `id` (String) Country ID
+- `name` (String) Country name
 
 
 <a id="nestedatt--devices"></a>
 ### Nested Schema for `devices`
 
-Required:
+Optional:
 
-- `name` (String) Device group name
-
-Read-Only:
-
-- `id` (String) Device group ID
+- `id` (String) Device ID
+- `name` (String) Device name
 
 
 <a id="nestedatt--schedule"></a>
@@ -138,11 +122,8 @@ Optional:
 Required:
 
 - `days` (List of String) Days of the week
-
-Optional:
-
-- `from` (String) From
-- `to` (String) To
+- `from` (String) From time (12:34)
+- `to` (String) To time (12:34)
 
 
 <a id="nestedatt--schedule--custom_timeframe"></a>
@@ -150,8 +131,8 @@ Optional:
 
 Required:
 
-- `from` (String) From
-- `to` (String) To
+- `from` (String) From datetime (2006-01-02T15:04:05Z)
+- `to` (String) To datetime (2006-01-02T15:04:05Z)
 
 
 
@@ -180,37 +161,28 @@ Optional:
 <a id="nestedatt--tracking--alert--mailing_list"></a>
 ### Nested Schema for `tracking.alert.mailing_list`
 
-Required:
-
-- `name` (String) Mailing list name
-
-Read-Only:
+Optional:
 
 - `id` (String) Mailing list ID
+- `name` (String) Mailing list name
 
 
 <a id="nestedatt--tracking--alert--subscription_group"></a>
 ### Nested Schema for `tracking.alert.subscription_group`
 
-Required:
-
-- `name` (String) Subscription group name
-
-Read-Only:
+Optional:
 
 - `id` (String) Subscription group ID
+- `name` (String) Subscription group name
 
 
 <a id="nestedatt--tracking--alert--webhook"></a>
 ### Nested Schema for `tracking.alert.webhook`
 
-Required:
-
-- `name` (String) Webhook name
-
-Read-Only:
+Optional:
 
 - `id` (String) Webhook ID
+- `name` (String) Webhook name
 
 
 

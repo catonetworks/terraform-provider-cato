@@ -88,35 +88,26 @@ Optional:
 <a id="nestedatt--preferred_pop_location--primary"></a>
 ### Nested Schema for `preferred_pop_location.primary`
 
-Required:
-
-- `name` (String) Primary location name
-
-Read-Only:
+Optional:
 
 - `id` (String) Primary location ID
+- `name` (String) Primary location name
 
 
 <a id="nestedatt--preferred_pop_location--secondary"></a>
 ### Nested Schema for `preferred_pop_location.secondary`
 
-Required:
-
-- `name` (String) Secondary location name
-
-Read-Only:
+Optional:
 
 - `id` (String) Secondary location ID
+- `name` (String) Secondary location name
 
 
 
 <a id="nestedatt--private_apps"></a>
 ### Nested Schema for `private_apps`
 
-Required:
-
-- `name` (String) Private app name
-
-Read-Only:
+Optional:
 
 - `id` (String) Private app ID
+- `name` (String) Private app name

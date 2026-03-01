@@ -95,4 +95,4 @@ docs:
 	tfplugindocs generate --provider-dir . -provider-name terraform-provider-cato
 
 acctest:
-	TF_ACC=1 go test -count=1 -json ./internal/tests/... | go tool tparse --follow -trimpath github.com/catonetworks/terraform-provider-cato/
+	TF_ACC=1 go test -count=1 -json ./internal/tests/... | go tool tparse --follow -trimpath github.com/catonetworks/terraform-provider-cato/ --all

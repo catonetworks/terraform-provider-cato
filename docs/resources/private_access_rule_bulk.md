@@ -17,18 +17,20 @@ Manages ordering and publishng private access policy rules.
 
 ### Optional
 
+- `rule_data` (Attributes Map) Map of private access policy rules keyed by name (see [below for nested schema](#nestedatt--rule_data))
+
+### Read-Only
+
 - `publish` (Number) publish policy revision if there is a change
-- `rule_data` (Attributes Map) Map of private access rule policy Indexes keyed by rule_name (see [below for nested schema](#nestedatt--rule_data))
 
 <a id="nestedatt--rule_data"></a>
 ### Nested Schema for `rule_data`
 
 Required:
 
-- `index` (Number) Requierd position of the rule
-- `name` (String) IFW rule name housing rule
+- `index` (Number) Required position of the rule
+- `name` (String) Private access rule name
 
 Read-Only:
 
-- `cma_index` (Number) Rule index in CMA before bulk is applied
 - `id` (String) Rule id
