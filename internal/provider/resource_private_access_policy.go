@@ -40,6 +40,10 @@ func (r *privAccessPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 		Description: "The `cato_private_access_policy` resource contains the configuration parameters for private access policies in the Cato platform.",
 
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "ID of the policy, always set to 0",
+				Computed:    true,
+			},
 			"enabled": schema.BoolAttribute{
 				Description: "Is the private access policy enabled?",
 				Required:    true,
@@ -203,8 +207,9 @@ func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Cont
 	// Map API response to PrivAccessPolicyModel
 	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
 	state := &PrivAccessPolicyModel{
-		Enabled: types.BoolValue(policy.Enabled),
 		Audit:   r.parseAudit(ctx, policy.Audit, &diags),
+		Enabled: types.BoolValue(policy.Enabled),
+		ID:      types.StringValue("0"), // there is just 1 default policy, the ID is used in automated tests
 	}
 	if diags.HasError() {
 		return nil, diags, ErrAPIResponseParse

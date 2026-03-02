@@ -3,6 +3,7 @@ package parse
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -77,17 +78,19 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		return
 	}
 
-	var cfg, state, plan IdNameRefModel
+	var cfg, state *IdNameRefModel
+	var plan IdNameRefModel
 	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &cfg, basetypes.ObjectAsOptions{})) {
 		return
 	}
 	if utils.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
 		return
 	}
-	if utils.CheckErr(&resp.Diagnostics, req.PlanValue.As(ctx, &plan, basetypes.ObjectAsOptions{})) {
+
+	if cfg == nil { // removed from the config, return null
+		resp.PlanValue = types.ObjectNull(IdNameRefModelTypes)
 		return
 	}
-
 	// Ensure there is exactly one name or id in the config
 	if cfg.Name.IsNull() && cfg.ID.IsNull() {
 		resp.Diagnostics.AddError("idName reference error in "+req.Path.String(), "'name' or 'id' must be defined in the config ")
@@ -100,7 +103,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 	// Name is configured
 	if !cfg.Name.IsNull() {
 		// if Name is in the state and it is the same, use the known ID value (if available)
-		if utils.HasValue(state.Name) && state.Name.ValueString() == cfg.Name.ValueString() {
+		if state != nil && utils.HasValue(state.Name) && state.Name.ValueString() == cfg.Name.ValueString() {
 			resp.PlanValue = req.StateValue
 			return
 		}
@@ -117,7 +120,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 
 	// ID is configured
 	// if ID is in the state and it is the same, use the known Name value (if available)
-	if utils.HasValue(state.ID) && state.ID.ValueString() == cfg.ID.ValueString() {
+	if state != nil && utils.HasValue(state.ID) && state.ID.ValueString() == cfg.ID.ValueString() {
 		resp.PlanValue = req.StateValue
 		return
 	}
@@ -129,4 +132,20 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		return
 	}
 	resp.PlanValue = planObj
+}
+
+var dateTimeRE = regexp.MustCompile(`(^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?`)
+
+func NormalizeDateTimePtr(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	t := NormalizeDateTime(*s)
+	return &t
+}
+func NormalizeDateTime(s string) string {
+	if m := dateTimeRE.FindStringSubmatch(s); m != nil {
+		return m[1] + "Z"
+	}
+	return s
 }

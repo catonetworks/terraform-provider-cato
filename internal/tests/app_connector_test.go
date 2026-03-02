@@ -55,8 +55,35 @@ func TestAccAppConnector(t *testing.T) {
 				ResourceName: res,
 			},
 			{
-				// Update the resource
+				// Update the resource - USA state
 				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					printAttributes(res),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName),
+					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
+					resource.TestCheckResourceAttr(res, "group_name", "example-group"),
+					resource.TestCheckResourceAttr(res, "type", "VIRTUAL"),
+
+					resource.TestCheckResourceAttr(res, "location.%", "5"),
+					resource.TestCheckResourceAttr(res, "location.address", "123 Main St"),
+					resource.TestCheckResourceAttr(res, "location.city_name", "San Francisco"),
+					resource.TestCheckResourceAttr(res, "location.country_code", "US"),
+					resource.TestCheckResourceAttr(res, "location.state_code", "US-CA"),
+					resource.TestCheckResourceAttr(res, "location.timezone", "America/Los_Angeles"),
+
+					resource.TestCheckResourceAttr(res, "preferred_pop_location.%", "4"),
+					resource.TestCheckResourceAttr(res, "preferred_pop_location.automatic", "true"),
+					resource.TestCheckResourceAttr(res, "preferred_pop_location.preferred_only", "false"),
+
+					resource.TestCheckResourceAttr(res, "private_apps.#", "0"),
+					resource.TestCheckResourceAttrSet(res, "serial_number"),
+					resource.TestCheckResourceAttrSet(res, "socket_id"),
+				),
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					printAttributes(res),
 					resource.TestCheckResourceAttrSet(res, "id"),
@@ -69,6 +96,7 @@ func TestAccAppConnector(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "location.address", "123 Main St new"),
 					resource.TestCheckResourceAttr(res, "location.city_name", "London"),
 					resource.TestCheckResourceAttr(res, "location.country_code", "GB"),
+					resource.TestCheckNoResourceAttr(res, "location.state_code"), // Not set
 					resource.TestCheckResourceAttr(res, "location.timezone", "Europe/London"),
 
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.%", "4"),
@@ -136,6 +164,24 @@ var appConnectorTFs = []string{`
 			preferred_only = true
 			primary        = { name = "{{(index .Location 0).Name}}" }
 			secondary      = { name = "{{(index .Location 1).Name}}" }
+		}
+		type = "VIRTUAL"
+	}`,
+
+	`resource "cato_app_connector" "this" {
+		name        = "{{.Name}}"
+		description = "{{.Name}} description"
+		group_name  = "example-group"
+		location = {
+			address      = "123 Main St"
+			city_name    = "San Francisco"
+			country_code = "US"
+			state_code   = "US-CA"
+			timezone     = "America/Los_Angeles"
+		}
+		preferred_pop_location = {
+			automatic      = true
+			preferred_only = false
 		}
 		type = "VIRTUAL"
 	}`,

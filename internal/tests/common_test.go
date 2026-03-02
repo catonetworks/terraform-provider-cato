@@ -172,6 +172,14 @@ func getConnectorGroups(t *testing.T) testConnectorGroups {
 	return catoConnectorGroups
 }
 
+func publisPrivateAccessPolicy(t *testing.T) {
+	client := getClient(t)
+	_, err := client.PolicyPrivateAccessPublishRevision(ctx, CatoAccountID)
+	if err != nil {
+		t.Fatalf("Cato API PolicyPrivateAccessPublishRevision error: %v", err.Error())
+	}
+}
+
 func providerCfg() string {
 	return fmt.Sprintf("provider \"cato\" {\n  account_id = \"%s\"\n}\n", CatoAccountID)
 }

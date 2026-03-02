@@ -53,6 +53,10 @@ func (r *privAccessRuleBulkResource) Schema(ctx context.Context, _ resource.Sche
 	resp.Schema = schema.Schema{
 		Description: "Manages ordering and publishng private access policy rules.",
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "ID of the bulk, always set to 0",
+				Computed:    true,
+			},
 			"rule_data": schema.MapNestedAttribute{
 				Description: "Map of private access policy rules keyed by name",
 				Required:    false,
@@ -226,6 +230,7 @@ func (r *privAccessRuleBulkResource) ModifyPlan(ctx context.Context, req resourc
 }
 
 func (r *privAccessRuleBulkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	fmt.Println("bulk Delete")
 }
 
 // hydratePrivAccessRuleBulkState fetches the current state of a privAccessRuleBulk from the API
@@ -296,6 +301,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(ctx context.
 	state := &PrivateAccessRuleBulkModel{
 		RuleData: rulesMap,
 		Publish:  types.Int64Value(plan.Publish.ValueInt64()),
+		ID:       types.StringValue("0"),
 	}
 
 	return state, apiRulesGo, nil, nil

@@ -6,8 +6,9 @@ import (
 )
 
 type PrivateAccessRuleBulkModel struct {
-	RuleData types.Map   `tfsdk:"rule_data"` // map[rule_name]PrivateAccessBulkRule
-	Publish  types.Int64 `tfsdk:"publish"`
+	RuleData types.Map    `tfsdk:"rule_data"` // map[rule_name]PrivateAccessBulkRule
+	Publish  types.Int64  `tfsdk:"publish"`
+	ID       types.String `tfsdk:"id"`
 }
 
 type PrivateAccessBulkRule struct {

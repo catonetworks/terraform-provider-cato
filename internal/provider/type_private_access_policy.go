@@ -6,8 +6,9 @@ import (
 )
 
 type PrivAccessPolicyModel struct {
-	Enabled types.Bool   `tfsdk:"enabled"`
 	Audit   types.Object `tfsdk:"audit"` // PolicyAudit
+	Enabled types.Bool   `tfsdk:"enabled"`
+	ID      types.String `tfsdk:"id"`
 }
 
 type PolicyAudit struct {

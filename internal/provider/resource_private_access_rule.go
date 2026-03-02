@@ -261,10 +261,12 @@ func (r *privAccessRuleResource) schemaSchedule() schema.SingleNestedAttribute {
 					"from": schema.StringAttribute{
 						Description: "From datetime (2006-01-02T15:04:05Z)",
 						Required:    true,
+						Validators:  []validator.String{validators.DateTimeValidator{}},
 					},
 					"to": schema.StringAttribute{
 						Description: "To datetime (2006-01-02T15:04:05Z)",
 						Required:    true,
+						Validators:  []validator.String{validators.DateTimeValidator{}},
 					},
 				},
 			},
@@ -282,12 +284,14 @@ func (r *privAccessRuleResource) schemaActivePeriod() schema.SingleNestedAttribu
 		},
 		Attributes: map[string]schema.Attribute{
 			"effective_from": schema.StringAttribute{
-				Description: "Effective from",
+				Description: "Effective from (2006-01-02T15:04:05Z)",
 				Optional:    true,
+				Validators:  []validator.String{validators.DateTimeValidator{}},
 			},
 			"expires_at": schema.StringAttribute{
-				Description: "Expires at",
+				Description: "Expires at (2006-01-02T15:04:05Z)",
 				Optional:    true,
+				Validators:  []validator.String{validators.DateTimeValidator{}},
 			},
 			"use_effective_from": schema.BoolAttribute{
 				Description: "Use effective from",
@@ -969,8 +973,8 @@ func (r *privAccessRuleResource) parsePolicySchedule(ctx context.Context, sch ca
 	var timeframeObj types.Object = types.ObjectNull(PolicyCustomTimeframeTypes)
 	if sch.CustomTimeframe != nil {
 		tfTimeframe := PolicyCustomTimeframe{
-			From: types.StringValue(string(sch.CustomTimeframe.From)),
-			To:   types.StringValue(string(sch.CustomTimeframe.To)),
+			From: types.StringValue(parse.NormalizeDateTime(string(sch.CustomTimeframe.From))),
+			To:   types.StringValue(parse.NormalizeDateTime(string(sch.CustomTimeframe.To))),
 		}
 		timeframeObj, diag = types.ObjectValueFrom(ctx, PolicyCustomTimeframeTypes, tfTimeframe)
 		diags.Append(diag...)
@@ -1001,8 +1005,8 @@ func (r *privAccessRuleResource) parsePolicyActivePeriod(ctx context.Context, ap
 
 	// Prepare Active Period
 	tfActivePeriod := PolicyRuleActivePeriod{
-		EffectiveFrom:    types.StringPointerValue(ap.EffectiveFrom),
-		ExpiresAt:        types.StringPointerValue(ap.ExpiresAt),
+		EffectiveFrom:    types.StringPointerValue(parse.NormalizeDateTimePtr(ap.EffectiveFrom)),
+		ExpiresAt:        types.StringPointerValue(parse.NormalizeDateTimePtr(ap.ExpiresAt)),
 		UseEffectiveFrom: types.BoolValue(ap.UseEffectiveFrom),
 		UseExpiresAt:     types.BoolValue(ap.UseExpiresAt),
 	}
