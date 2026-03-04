@@ -20,12 +20,12 @@ default: install
 
 .PHONY: build install install-mirror sync-provider clean docs
 
-build:
+build: ## Build the terraform-provider
 	export GO111MODULE="on"
 	go mod vendor
 	go build -o ${BINARY}
 
-install: build
+install: build ## Install the provider, update config
 	mkdir -p ${PLUGINS_DIR}
 	cp ${BINARY} ${PLUGINS_DIR}/${BINARY}
 	chmod 755 ${PLUGINS_DIR}/${BINARY}
@@ -39,7 +39,7 @@ install: build
 	@echo "✓ Provider v${VERSION} installed to plugins directory"
 	@echo "  Run 'tfsync dev' to use dev_overrides mode"
 
-install-mirror: build
+install-mirror: build ## Install the provider, update config in mirror mode
 	@# Install to plugins directory (for dev mode with dev_overrides)
 	mkdir -p ${PLUGINS_DIR}
 	cp ${BINARY} ${PLUGINS_DIR}/${BINARY}
@@ -88,11 +88,25 @@ sync-provider:
 		$$TARGET_DIR/.terraform/providers/${HOSTNAME}/${NAMESPACE}/${PKG_NAME}/${VERSION}/${OS_ARCH}/${BINARY}; \
 	echo "✓ Provider symlinked to $$TARGET_DIR/.terraform/providers"
 
-clean: install
+clean: install ## install and clean caches
 	go clean -cache -modcache -i -r
 
-docs:
+docs: ## Generate documentation
 	tfplugindocs generate --provider-dir . -provider-name terraform-provider-cato
 
-acctest:
-	TF_ACC=1 go test -count=1 -json ./internal/tests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
+test: ## Run unit tests
+	@unset TF_ACC; go test -json ./... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
+acctest: ## Run acceptance tests (real API calls)
+	TF_ACC=1 go test -count=1 -json ./internal/tests/... | go tool tparse --follow -trimpath github.com/catonetworks/terraform-provider-cato/ --all
+
+lint:  ## Run the linters configured in .golangci.yml locally
+	@go tool golangci-lint run ./... -v --timeout=60m
+
+##@ Help
+.PHONY: help
+help: ## Display this help screen
+	@awk -F ':.*##' '/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5); next } \
+	/^[a-zA-Z0-9_ -]+:.*?## .*$$/ { \
+	        split($$1, targets, " "); \
+	        for (target in targets) { printf "  \033[36m%-30s\033[0m %s\n", targets[target], substr($$0, index($$0,"##")+3) } \
+	}' $(MAKEFILE_LIST)

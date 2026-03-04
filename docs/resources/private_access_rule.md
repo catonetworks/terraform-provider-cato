@@ -138,7 +138,7 @@ resource "cato_private_access_rule_bulk" "this" {
 ### Required
 
 - `action` (String) ALLOW or BLOCK
-- `applications` (Attributes List) Application name or id (see [below for nested schema](#nestedatt--applications))
+- `applications` (Attributes Set) Application name or id (see [below for nested schema](#nestedatt--applications))
 - `enabled` (Boolean) TRUE = Rule is enabled FALSE = Rule is disabled
 - `name` (String) Rule name
 - `source` (Attributes) Source (see [below for nested schema](#nestedatt--source))
@@ -146,11 +146,11 @@ resource "cato_private_access_rule_bulk" "this" {
 ### Optional
 
 - `active_period` (Attributes) Time period during which the rule is active (see [below for nested schema](#nestedatt--active_period))
-- `connection_origins` (List of String) Origin of the connection
-- `countries` (Attributes List) List of countries (see [below for nested schema](#nestedatt--countries))
+- `connection_origins` (Set of String) Origin of the connection
+- `countries` (Attributes Set) List of countries (see [below for nested schema](#nestedatt--countries))
 - `description` (String) Rule description
-- `devices` (Attributes List) List of devices (see [below for nested schema](#nestedatt--devices))
-- `platforms` (List of String) Platforms, operating systems
+- `devices` (Attributes Set) List of devices (see [below for nested schema](#nestedatt--devices))
+- `platforms` (Set of String) Platforms, operating systems
 - `schedule` (Attributes) Schedule (see [below for nested schema](#nestedatt--schedule))
 - `tracking` (Attributes) Rule tracking (see [below for nested schema](#nestedatt--tracking))
 - `user_attributes` (Attributes) User attributes (see [below for nested schema](#nestedatt--user_attributes))
@@ -173,8 +173,8 @@ Optional:
 
 Optional:
 
-- `user_groups` (Attributes List) User groups (see [below for nested schema](#nestedatt--source--user_groups))
-- `users` (Attributes List) Users (see [below for nested schema](#nestedatt--source--users))
+- `user_groups` (Attributes Set) User groups (see [below for nested schema](#nestedatt--source--user_groups))
+- `users` (Attributes Set) Users (see [below for nested schema](#nestedatt--source--users))
 
 <a id="nestedatt--source--user_groups"></a>
 ### Nested Schema for `source.user_groups`
@@ -241,7 +241,7 @@ Optional:
 
 Required:
 
-- `days` (List of String) Days of the week
+- `days` (Set of String) Days of the week
 - `from` (String) From time (12:34)
 - `to` (String) To time (12:34)
 
@@ -274,9 +274,9 @@ Required:
 
 Optional:
 
-- `mailing_list` (Attributes List) Mailing list name or id (see [below for nested schema](#nestedatt--tracking--alert--mailing_list))
-- `subscription_group` (Attributes List) Subscription group name or id (see [below for nested schema](#nestedatt--tracking--alert--subscription_group))
-- `webhook` (Attributes List) Webhook name or id (see [below for nested schema](#nestedatt--tracking--alert--webhook))
+- `mailing_list` (Attributes Set) Mailing list name or id (see [below for nested schema](#nestedatt--tracking--alert--mailing_list))
+- `subscription_group` (Attributes Set) Subscription group name or id (see [below for nested schema](#nestedatt--tracking--alert--subscription_group))
+- `webhook` (Attributes Set) Webhook name or id (see [below for nested schema](#nestedatt--tracking--alert--webhook))
 
 <a id="nestedatt--tracking--alert--mailing_list"></a>
 ### Nested Schema for `tracking.alert.mailing_list`

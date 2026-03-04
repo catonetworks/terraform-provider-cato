@@ -52,7 +52,7 @@ resource "cato_app_connector" "example" {
 ### Read-Only
 
 - `id` (String) The unique ID of the ZTNA App Connector
-- `private_apps` (Attributes List) List of private applications (see [below for nested schema](#nestedatt--private_apps))
+- `private_apps` (Attributes Set) List of private applications (see [below for nested schema](#nestedatt--private_apps))
 - `serial_number` (String) Unique serial number of the ZTNA App Connector
 - `socket_id` (String) Connector type (virtual, physical)
 - `socket_model` (String) Socket model of the ZTNA App Connector
