@@ -20,9 +20,9 @@ locals {
       {
         "action": "BLOCK",
         "active_period": {
-          "effective_from": "2026-01-20T03:04:00.000Z",
+          "effective_from": "2026-01-20T03:04:00Z",
           "use_effective_from": true,
-          "expires_at": "2027-02-20T03:04:00.000Z",
+          "expires_at": "2027-02-20T03:04:00Z",
           "use_expires_at": true
         },
         "applications": [
@@ -42,8 +42,8 @@ locals {
         "schedule": {
           "active_on": "WORKING_HOURS",
           "custom_timeframe": {
-            "from": "2026-02-20T01:02:00.000-08:00",
-            "to": "2026-02-20T03:04:00.000Z"
+            "from": "2026-02-20T01:02:00Z",
+            "to": "2026-02-20T03:04:00Z"
           },
           "custom_recurring": {
             "days": [ "MONDAY", "FRIDAY" ],
@@ -141,6 +141,7 @@ resource "cato_private_access_rule_bulk" "this" {
 
 ### Read-Only
 
+- `id` (String) ID of the bulk, always set to 0
 - `publish` (Number) publish policy revision if there is a change
 
 <a id="nestedatt--rule_data"></a>

@@ -20,9 +20,9 @@ locals {
       {
         "action": "BLOCK",
         "active_period": {
-          "effective_from": "2026-01-20T03:04:00.000Z",
+          "effective_from": "2026-01-20T03:04:00Z",
           "use_effective_from": true,
-          "expires_at": "2027-02-20T03:04:00.000Z",
+          "expires_at": "2027-02-20T03:04:00Z",
           "use_expires_at": true
         },
         "applications": [
@@ -42,8 +42,8 @@ locals {
         "schedule": {
           "active_on": "WORKING_HOURS",
           "custom_timeframe": {
-            "from": "2026-02-20T01:02:00.000-08:00",
-            "to": "2026-02-20T03:04:00.000Z"
+            "from": "2026-02-20T01:02:00Z",
+            "to": "2026-02-20T03:04:00Z"
           },
           "custom_recurring": {
             "days": [ "MONDAY", "FRIDAY" ],
@@ -200,8 +200,8 @@ Optional:
 
 Optional:
 
-- `effective_from` (String) Effective from
-- `expires_at` (String) Expires at
+- `effective_from` (String) Effective from (2006-01-02T15:04:05Z)
+- `expires_at` (String) Expires at (2006-01-02T15:04:05Z)
 - `use_effective_from` (Boolean) Use effective from
 - `use_expires_at` (Boolean) Use expires at
 

@@ -2,10 +2,14 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -30,17 +34,38 @@ var (
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
+type entityResp struct {
+	Data entityData `json:"data"`
+}
+type entityData struct {
+	EntityLookup entityLookup `json:"entityLookup"`
+}
+type entityLookup struct {
+	Items []entityItem `json:"items"`
+}
+type entityItem struct {
+	Entity entityDetail `json:"entity"`
+}
+type entityDetail struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type ref struct {
 	Name string
 	ID   string
 }
 type testLocations []ref
+type testUsers []ref
+type testPrivateApps []ref
 type testConnectorGroups []string
 
 var (
 	catoClient          *cato.Client
 	catoLocations       testLocations
 	catoConnectorGroups testConnectorGroups
+	catoUsers           testUsers
+	catoPrivateApps     testPrivateApps
 	mu                  sync.Mutex
 	ctx                 = context.Background()
 )
@@ -128,6 +153,7 @@ func getLocations(t *testing.T) testLocations {
 	}
 	return catoLocations
 }
+
 func getConnectorGroups(t *testing.T) testConnectorGroups {
 	const testAppConn1 = "acctest_app_connector_1"
 	const testAppConnGroup1 = "acctest_app_connector_group_1"
@@ -172,7 +198,91 @@ func getConnectorGroups(t *testing.T) testConnectorGroups {
 	return catoConnectorGroups
 }
 
-func publisPrivateAccessPolicy(t *testing.T) {
+func getUsers(t *testing.T) testUsers {
+	mu.Lock()
+	defer mu.Unlock()
+	if catoUsers == nil {
+		// try to fetch users
+		// result, err := client.EntityLookup(ctx, CatoAccountID, cato_models.EntityTypeVpnUser, ptr(int64(5)), ptr(int64(0)), nil, nil, nil, nil, nil, nil)
+
+		var res entityResp
+		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) {entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
+			"variables": {"accountID": "` + CatoAccountID + `","type": "vpnUser"},
+			"operationName": "entityLookup"}`
+
+		// Create request
+		req, err := http.NewRequest(http.MethodPost, CatoEndpoint, strings.NewReader(query))
+		if err != nil {
+			panic(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Api-Key", CatoToken)
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("ERROR fetching users: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Read response
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("ERROR reading users: %v", err)
+		}
+		if err = json.Unmarshal(body, &res); err != nil {
+			t.Fatalf("ERROR unmarshalling response: %v", err)
+		}
+		for _, u := range res.Data.EntityLookup.Items {
+			catoUsers = append(catoUsers, ref{ID: u.Entity.ID, Name: u.Entity.Name})
+		}
+	}
+
+	return catoUsers
+}
+
+func getPrivateApps(t *testing.T) testPrivateApps {
+	const privateAppName1 = "acctest_private_app_1"
+	const privateAppName2 = "acctest_private_app_2"
+	// client := getClient(t)
+	mu.Lock()
+	defer mu.Unlock()
+	if catoPrivateApps == nil {
+		// TODO: enable when API gets fixed!
+		return []ref{{ID: "219", Name: "acctest_private_app_1"}, {ID: "220", Name: "acctest_private_app_2"}}
+	}
+
+	/*
+			// try to fetch private apps
+			for _, paName := range []string{privateAppName1, privateAppName2} {
+				readInput := cato_models.PrivateApplicationRefInput{By: cato_models.ObjectRefByName, Input: paName}
+				result, err := client.PrivateAppReadPrivateApp(ctx, CatoAccountID, readInput)
+				if err == nil {
+					pa := result.GetPrivateApplication().GetPrivateApplication()
+					if pa.GetID() != "" {
+						catoPrivateApps = append(catoPrivateApps, ref{ID: pa.GetID(), Name: pa.GetName()})
+						continue
+					}
+				}
+				// create the app
+				input := cato_models.CreatePrivateApplicationInput{
+					Description:        ptr(paName + " description"),
+					InternalAppAddress: getRandIP(),
+					Name:               paName,
+				}
+				res, err := client.PrivateAppCreatePrivateApp(ctx, CatoAccountID, input)
+				if err != nil {
+					t.Fatalf("ERROR creating test private app: %v", err)
+				}
+				pa := res.GetPrivateApplication().GetCreatePrivateApplication().GetApplication()
+				catoPrivateApps = append(catoPrivateApps, ref{ID: pa.GetID(), Name: paName})
+			}
+		}
+
+	*/
+	return catoPrivateApps
+}
+
+func publishPrivateAccessPolicy(t *testing.T) {
 	client := getClient(t)
 	_, err := client.PolicyPrivateAccessPublishRevision(ctx, CatoAccountID)
 	if err != nil {

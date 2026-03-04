@@ -56,6 +56,23 @@ func ParseIDRef[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnostic
 	return obj
 }
 
+func PrepareIDRefSet[T idRefInputs](ctx context.Context, tfSet types.Set, diags *diag.Diagnostics, fieldName string) (sdkList []*T) {
+	if !utils.HasValue(tfSet) {
+		return nil
+	}
+
+	for _, idName := range tfSet.Elements() {
+		refBy, refInput, isSet := PrepareIdName(ctx, idName.(types.Object), diags, fieldName)
+		if diags.HasError() {
+			return nil
+		}
+		if isSet {
+			sdkList = append(sdkList, &T{By: refBy, Input: refInput})
+		}
+	}
+	return sdkList
+}
+
 func PrepareIDRefList[T idRefInputs](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []*T) {
 	if !utils.HasValue(tfList) {
 		return nil

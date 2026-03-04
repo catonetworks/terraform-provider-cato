@@ -13,7 +13,7 @@ type AppConnectorModel struct {
 	Location             types.Object `tfsdk:"location"` // AppConnectorLocation
 	Name                 types.String `tfsdk:"name"`
 	PreferredPopLocation types.Object `tfsdk:"preferred_pop_location"` // PreferredPopLocationModel
-	PrivateAppRef        types.List   `tfsdk:"private_apps"`           // []IdNameRefModel
+	PrivateAppRef        types.Set    `tfsdk:"private_apps"`           // []IdNameRefModel
 	SerialNumber         types.String `tfsdk:"serial_number"`
 	SocketID             types.String `tfsdk:"socket_id"`
 	SocketModel          types.String `tfsdk:"socket_model"`

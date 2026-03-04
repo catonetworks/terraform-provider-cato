@@ -13,7 +13,7 @@ import (
 // DaysValidator validate days of week
 type DaysValidator struct{}
 
-func (v DaysValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
+func (v DaysValidator) ValidateSet(ctx context.Context, req validator.SetRequest, resp *validator.SetResponse) {
 	var diags diag.Diagnostics
 	if req.ConfigValue.IsUnknown() {
 		return

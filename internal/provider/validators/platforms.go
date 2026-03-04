@@ -13,7 +13,7 @@ import (
 // Platform validator
 type PlatformValidator struct{}
 
-func (v PlatformValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
+func (v PlatformValidator) ValidateSet(ctx context.Context, req validator.SetRequest, resp *validator.SetResponse) {
 	var diags diag.Diagnostics
 	if req.ConfigValue.IsUnknown() {
 		return

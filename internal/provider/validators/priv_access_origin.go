@@ -13,7 +13,7 @@ import (
 // Connection origins validator
 type PrivAccPolicyConnOriginValidator struct{}
 
-func (v PrivAccPolicyConnOriginValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
+func (v PrivAccPolicyConnOriginValidator) ValidateSet(ctx context.Context, req validator.SetRequest, resp *validator.SetResponse) {
 	var diags diag.Diagnostics
 	if req.ConfigValue.IsUnknown() {
 		return

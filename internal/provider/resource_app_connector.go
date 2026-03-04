@@ -65,12 +65,11 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"preferred_pop_location": r.schemaPreferredPopLocation(),
-			"private_apps": schema.ListNestedAttribute{
+			"private_apps": schema.SetNestedAttribute{
 				Description: "List of private applications",
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Private app"),
-					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+					Attributes: parse.SchemaNameID("Private app"),
 				},
 			},
 			"serial_number": schema.StringAttribute{
@@ -449,7 +448,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, app
 		Location:             r.parseLocation(ctx, con.Location, &diags),
 		Name:                 types.StringValue(con.Name),
 		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
-		PrivateAppRef:        parse.ParseIDRefList(ctx, con.PrivateAppRef, &diags),
+		PrivateAppRef:        parse.ParseIDRefSet(ctx, con.PrivateAppRef, &diags),
 		SerialNumber:         types.StringPointerValue(con.SerialNumber),
 		SocketID:             types.StringPointerValue(con.SocketID),
 		SocketModel:          types.StringPointerValue((*string)(con.SocketModel)),

@@ -9,15 +9,15 @@ import (
 type PrivateAccessRuleModel struct {
 	Action            types.String `tfsdk:"action"`             // e.g. "ALLOW"
 	ActivePeriod      types.Object `tfsdk:"active_period"`      // PolicyRuleActivePeriod
-	Applications      types.List   `tfsdk:"applications"`       // []IdNameRefModel
-	ConnectionOrigins types.List   `tfsdk:"connection_origins"` // []string
-	Countries         types.List   `tfsdk:"countries"`          // []IdNameRefModel
+	Applications      types.Set    `tfsdk:"applications"`       // []IdNameRefModel
+	ConnectionOrigins types.Set    `tfsdk:"connection_origins"` // []string
+	Countries         types.Set    `tfsdk:"countries"`          // []IdNameRefModel
 	Description       types.String `tfsdk:"description"`
-	Devices           types.List   `tfsdk:"devices"` // []IdNameRefModel
+	Devices           types.Set    `tfsdk:"devices"` // []IdNameRefModel
 	Enabled           types.Bool   `tfsdk:"enabled"`
 	ID                types.String `tfsdk:"id"`
 	Name              types.String `tfsdk:"name"`
-	Platforms         types.List   `tfsdk:"platforms"`       // []string
+	Platforms         types.Set    `tfsdk:"platforms"`       // []string
 	Schedule          types.Object `tfsdk:"schedule"`        // PolicySchedule
 	Source            types.Object `tfsdk:"source"`          // Source
 	Tracking          types.Object `tfsdk:"tracking"`        // Tracking
@@ -39,13 +39,13 @@ var PrivAccessPolicySectionTypes = map[string]attr.Type{
 }
 
 type Source struct {
-	Users      types.List `tfsdk:"users"`       // IdNameRefModel
-	UserGroups types.List `tfsdk:"user_groups"` // IdNameRefModel
+	Users      types.Set `tfsdk:"users"`       // IdNameRefModel
+	UserGroups types.Set `tfsdk:"user_groups"` // IdNameRefModel
 }
 
 var SourceTypes = map[string]attr.Type{
-	"users":       types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
-	"user_groups": types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"users":       types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"user_groups": types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
 }
 
 type UserAttributes struct {
@@ -79,13 +79,13 @@ var PolicyScheduleTypes = map[string]attr.Type{
 }
 
 type PolicyCustomRecurring struct {
-	Days types.List   `tfsdk:"days"` // []string
+	Days types.Set    `tfsdk:"days"` // []string
 	From types.String `tfsdk:"from"`
 	To   types.String `tfsdk:"to"`
 }
 
 var PolicyCustomRecurringTypes = map[string]attr.Type{
-	"days": types.ListType{ElemType: types.StringType},
+	"days": types.SetType{ElemType: types.StringType},
 	"from": types.StringType,
 	"to":   types.StringType,
 }
@@ -135,15 +135,15 @@ var PolicyRuleTrackingEventTypes = map[string]attr.Type{
 type PoliciRuleTrackingAlert struct {
 	Enabled           types.Bool   `tfsdk:"enabled"`
 	Frequency         types.String `tfsdk:"frequency"`
-	MailingList       types.List   `tfsdk:"mailing_list"`       // IdNameRefModel
-	SubscriptionGroup types.List   `tfsdk:"subscription_group"` // IdNameRefModel
-	Webhook           types.List   `tfsdk:"webhook"`            // IdNameRefModel
+	MailingList       types.Set    `tfsdk:"mailing_list"`       // IdNameRefModel
+	SubscriptionGroup types.Set    `tfsdk:"subscription_group"` // IdNameRefModel
+	Webhook           types.Set    `tfsdk:"webhook"`            // IdNameRefModel
 }
 
 var PolicyRuleTrackingAlertTypes = map[string]attr.Type{
 	"enabled":            types.BoolType,
 	"frequency":          types.StringType,
-	"mailing_list":       types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
-	"subscription_group": types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
-	"webhook":            types.ListType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"mailing_list":       types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"subscription_group": types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
+	"webhook":            types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IdNameRefModelTypes}},
 }

@@ -30,6 +30,7 @@ resource "cato_private_access_policy" "example" {
 ### Read-Only
 
 - `audit` (Attributes) Audit log record (see [below for nested schema](#nestedatt--audit))
+- `id` (String) ID of the policy, always set to 0
 
 <a id="nestedatt--audit"></a>
 ### Nested Schema for `audit`

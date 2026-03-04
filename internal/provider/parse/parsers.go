@@ -25,6 +25,37 @@ type idRefInputs interface {
 	}
 }
 
+func ParseIDRefSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.Set {
+	type idn struct{ ID, Name string }
+
+	// null value
+	if items == nil {
+		return types.SetNull(types.ObjectType{AttrTypes: IdNameRefModelTypes})
+	}
+
+	refObjects := make([]attr.Value, 0, len(items))
+	for _, i := range items {
+		if i == nil {
+			continue
+		}
+		// make IdNameRefModel struct
+		val := idn(*i)
+		ref := IdNameRefModel{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
+		// make IdNameRefModel Object
+		obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, ref)
+		if utils.CheckErr(diags, diag) {
+			return types.SetNull(types.ObjectType{AttrTypes: IdNameRefModelTypes})
+		}
+		// append to Object slice
+		refObjects = append(refObjects, obj)
+	}
+	// make Set value
+	setValues, diag := types.SetValue(types.ObjectType{AttrTypes: IdNameRefModelTypes}, refObjects)
+	diags.Append(diag...)
+
+	return setValues
+}
+
 func ParseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.List {
 	type idn struct{ ID, Name string }
 
@@ -56,7 +87,25 @@ func ParseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 	return list
 }
 
-func PrepareStrings[T ~string](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []T) {
+func PrepareStrings[T ~string](ctx context.Context, tfSet types.Set, diags *diag.Diagnostics, fieldName string) (sdkList []T) {
+	if !utils.HasValue(tfSet) {
+		return nil
+	}
+	var tfStrings []types.String
+	if utils.CheckErr(diags, tfSet.ElementsAs(ctx, &tfStrings, false)) {
+		return nil
+	}
+
+	sdkList = make([]T, 0, len(tfStrings))
+	for _, s := range tfStrings {
+		if utils.HasValue(s) {
+			sdkList = append(sdkList, T(s.ValueString()))
+		}
+	}
+	return sdkList
+}
+
+func PrepareStringList[T ~string](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []T) {
 	if !utils.HasValue(tfList) {
 		return nil
 	}
@@ -72,6 +121,31 @@ func PrepareStrings[T ~string](ctx context.Context, tfList types.List, diags *di
 		}
 	}
 	return sdkList
+}
+
+func ParseStringSet[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.Set {
+	// null value
+	if stringers == nil {
+		return types.SetNull(types.StringType)
+	}
+
+	// existing empty list
+	if len(stringers) == 0 {
+		val, diag := types.SetValue(types.StringType, nil)
+		diags.Append(diag...)
+		return val
+	}
+
+	// make []types.String
+	stringSlice := make([]types.String, 0, len(stringers))
+	for _, o := range stringers {
+		stringSlice = append(stringSlice, types.StringValue(o.String()))
+	}
+	// convert to types.Set
+	stringSet, diag := types.SetValueFrom(ctx, types.StringType, stringSlice)
+	diags.Append(diag...)
+
+	return stringSet
 }
 
 func ParseStringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.List {

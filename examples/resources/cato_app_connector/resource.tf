@@ -4,10 +4,10 @@ resource "cato_app_connector" "example" {
   group_name  = "example-group"
   location = {
     address      = "123 Main St"
-    city_name    = "Chicago"
+    city_name    = "San Francisco"
     country_code = "US"
     state_code   = "US-CA"
-    timezone     = "America/New_York"
+    timezone     = "America/Los_Angeles"
   }
   preferred_pop_location = {
     automatic      = false
