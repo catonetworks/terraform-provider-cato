@@ -1,0 +1,1 @@
+../cato_private_access_rule/resource.tf
