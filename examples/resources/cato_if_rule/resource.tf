@@ -64,7 +64,8 @@ resource "cato_if_section" "if_section" {
 
 resource "cato_if_rule" "example_min" {
   at = {
-    position = "LAST_IN_POLICY"
+    position = "FIRST_IN_SECTION"
+    ref      = cato_if_section.if_section.section.id
   }
   rule = {
     name        = "Internet Firewall Test Kitchen Sink"

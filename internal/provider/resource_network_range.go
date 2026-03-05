@@ -453,19 +453,21 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 				input.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
 				input.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
 				// Note: RelayGroupID is only set for DHCP_RELAY type below
-				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE
+				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE or DHCP_RELAY
 				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
-					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpSettingsInput.DhcpType.ValueString() != "DHCP_RANGE" {
+					dhcpType := dhcpSettingsInput.DhcpType.ValueString()
+					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpType != "DHCP_RANGE" && dhcpType != "DHCP_RELAY" {
 						resp.Diagnostics.AddError(
 							"Invalid DHCP Microsegmentation Configuration",
-							"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE",
+							"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE or DHCP_RELAY",
 						)
 						return
 					}
 				}
 
-				// Only set dhcpMicrosegmentation for DHCP_RANGE type
-				if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RANGE" {
+				// Set dhcpMicrosegmentation for DHCP_RANGE or DHCP_RELAY types
+				dhcpType := dhcpSettingsInput.DhcpType.ValueString()
+				if dhcpType == "DHCP_RANGE" || dhcpType == "DHCP_RELAY" {
 					input.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
 				}
 
@@ -777,19 +779,21 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 				input.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
 				input.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
 				// Note: RelayGroupID is only set for DHCP_RELAY type below
-				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE
+				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE or DHCP_RELAY
 				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
-					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpSettingsInput.DhcpType.ValueString() != "DHCP_RANGE" {
+					dhcpType := dhcpSettingsInput.DhcpType.ValueString()
+					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpType != "DHCP_RANGE" && dhcpType != "DHCP_RELAY" {
 						resp.Diagnostics.AddError(
 							"Invalid DHCP Microsegmentation Configuration",
-							"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE",
+							"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE or DHCP_RELAY",
 						)
 						return
 					}
 				}
 
-				// Only set dhcpMicrosegmentation for DHCP_RANGE type
-				if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RANGE" {
+				// Set dhcpMicrosegmentation for DHCP_RANGE or DHCP_RELAY types
+				dhcpType := dhcpSettingsInput.DhcpType.ValueString()
+				if dhcpType == "DHCP_RANGE" || dhcpType == "DHCP_RELAY" {
 					input.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
 				}
 

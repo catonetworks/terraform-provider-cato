@@ -3,7 +3,7 @@ module github.com/catonetworks/terraform-provider-cato
 go 1.25.0
 
 require (
-	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260223193043-8032f4342b02
+	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260305122236-99a4f6c7d3fd
 	github.com/fatih/structs v1.1.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/hashicorp/terraform-plugin-framework v1.18.0

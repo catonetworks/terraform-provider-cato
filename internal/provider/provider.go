@@ -228,5 +228,8 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewPrivAccessPolicyResource,
 		NewPrivAccessRuleResource,
 		NewPrivAccessRuleBulkResource,
+		NewSocketLanSectionResource,
+		NewSocketLanNetworkRuleResource,
+		NewSocketLanFirewallRuleResource,
 	}
 }

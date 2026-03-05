@@ -16,10 +16,20 @@ resource "cato_wf_rule" "allow_all_and_log" {
   }
 }
 
-// all SMBV3 for all domain users to the site named Datacenter
-resource "cato_wf_rule" "allow_smbv3_to_dc" {
+resource "cato_wf_section" "wf_section" {
   at = {
     position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "WF Section"
+  }
+}
+
+// all SMBV3 for all domain users to the site named Datacenter in section
+resource "cato_wf_rule" "allow_smbv3_to_dc" {
+  at = {
+    position = "FIRST_IN_SECTION"
+    ref      = cato_wf_section.wf_section.section.id
   }
   rule = {
     name      = "Allow SMBv3 to DC"
