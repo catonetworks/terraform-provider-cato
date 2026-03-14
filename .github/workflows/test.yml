@@ -11,6 +11,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      CATO_ACCOUNT_ID: ${{ vars.CATO_ACCOUNT_ID }}
+      CATO_ENDPOINT: ${{ vars.CATO_ENDPOINT }}
+      CATO_TOKEN: ${{ secrets.CATO_TOKEN }}
+      TFACC_TEST_VARS: ${{ vars.TFACC_TEST_VARS }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -19,5 +25,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run tests
+      - name: Run unit tests
         run: make test
+
+      - name: Run acceptance tests
+        run: make acctest
