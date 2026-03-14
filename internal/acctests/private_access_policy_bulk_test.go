@@ -1,4 +1,4 @@
-package tests
+package acctests
 
 import (
 	"bytes"
@@ -101,8 +101,8 @@ func TestAccPrivAccessPolicyBulk(t *testing.T) {
 }
 
 type privAccessPolicyBulkCfg struct {
-	users    []ref
-	privApps []ref
+	users    []Ref
+	privApps []Ref
 	t        *testing.T
 }
 

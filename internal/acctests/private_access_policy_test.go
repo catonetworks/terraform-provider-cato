@@ -1,4 +1,4 @@
-package tests
+package acctests
 
 import (
 	"bytes"
@@ -205,11 +205,11 @@ type privAccessPolicyCfg struct {
 	resName            string
 	applications       testPrivateApps
 	users              testUsers
-	userGroups         []ref
-	devices            []ref
-	subscriptionGroups []ref
-	webhooks           []ref
-	mailingLists       []ref
+	userGroups         []Ref
+	devices            []Ref
+	subscriptionGroups []Ref
+	webhooks           []Ref
+	mailingLists       []Ref
 	t                  *testing.T
 }
 
@@ -218,11 +218,11 @@ func newPrivAccessPolicyCfg(t *testing.T) privAccessPolicyCfg {
 		resName:            getRandName("private_access_policy"),
 		applications:       getPrivateApps(t),
 		users:              getUsers(t),
-		userGroups:         []ref{{Name: "group-1"}},               // TODO: fetch dynamically
-		devices:            []ref{{Name: "Test device posture 1"}}, // TODO: fetch dynamically
-		subscriptionGroups: []ref{{Name: "subscription_group"}},    // TODO: fetch dynamically
-		webhooks:           []ref{{Name: "webhook_1"}},             // TODO: fetch dynamically
-		mailingLists:       []ref{{Name: "mailing_list"}},          // TODO: fetch dynamically
+		userGroups:         []Ref{{Name: "group-1"}},               // TODO: fetch dynamically
+		devices:            []Ref{{Name: "Test device posture 1"}}, // TODO: fetch dynamically
+		subscriptionGroups: []Ref{{Name: "subscription_group"}},    // TODO: fetch dynamically
+		webhooks:           []Ref{{Name: "webhook_1"}},             // TODO: fetch dynamically
+		mailingLists:       []Ref{{Name: "mailing_list"}},          // TODO: fetch dynamically
 
 		t: t,
 	}

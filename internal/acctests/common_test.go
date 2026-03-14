@@ -1,4 +1,4 @@
-package tests
+package acctests
 
 import (
 	"context"
@@ -35,8 +35,14 @@ var (
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 type entityResp struct {
-	Data entityData `json:"data"`
+	Data   entityData  `json:"data"`
+	Errors []respError `json:"errors"`
 }
+type respError struct {
+	Msg  string   `json:"message"`
+	Path []string `json:"path"`
+}
+
 type entityData struct {
 	EntityLookup entityLookup `json:"entityLookup"`
 }
@@ -51,13 +57,13 @@ type entityDetail struct {
 	Name string `json:"name"`
 }
 
-type ref struct {
-	Name string
-	ID   string
+type Ref struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
 }
-type testLocations []ref
-type testUsers []ref
-type testPrivateApps []ref
+type testLocations []Ref
+type testUsers []Ref
+type testPrivateApps []Ref
 type testConnectorGroups []string
 
 var (
@@ -147,7 +153,7 @@ func getLocations(t *testing.T) testLocations {
 			if i == maxItems {
 				break
 			}
-			newLoc = append(newLoc, ref{Name: *item.Entity.Name, ID: item.Entity.ID})
+			newLoc = append(newLoc, Ref{Name: *item.Entity.Name, ID: item.Entity.ID})
 		}
 		catoLocations = newLoc
 	}
@@ -202,6 +208,9 @@ func getUsers(t *testing.T) testUsers {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoUsers == nil {
+		if cmaVars.Users != nil {
+			return cmaVars.Users
+		}
 		// try to fetch users
 		// result, err := client.EntityLookup(ctx, CatoAccountID, cato_models.EntityTypeVpnUser, ptr(int64(5)), ptr(int64(0)), nil, nil, nil, nil, nil, nil)
 
@@ -232,8 +241,14 @@ func getUsers(t *testing.T) testUsers {
 		if err = json.Unmarshal(body, &res); err != nil {
 			t.Fatalf("ERROR unmarshalling response: %v", err)
 		}
+		if len(res.Errors) > 0 {
+			t.Fatalf("ERROR: cannot fetch users: %v", res.Errors)
+		}
+		if len(res.Data.EntityLookup.Items) == 0 {
+			t.Fatalf("ERROR: failed to fetch users: res.Data.EntityLookup.Items is empty")
+		}
 		for _, u := range res.Data.EntityLookup.Items {
-			catoUsers = append(catoUsers, ref{ID: u.Entity.ID, Name: u.Entity.Name})
+			catoUsers = append(catoUsers, Ref{ID: u.Entity.ID, Name: u.Entity.Name})
 		}
 	}
 
@@ -247,10 +262,12 @@ func getPrivateApps(t *testing.T) testPrivateApps {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoPrivateApps == nil {
-		// TODO: enable when API gets fixed!
-		return []ref{{ID: "219", Name: "acctest_private_app_1"}, {ID: "220", Name: "acctest_private_app_2"}}
+		if cmaVars.PrivateApps != nil {
+			return cmaVars.PrivateApps
+		}
+		t.Fatalf("ERROR: env var %s with private_apps is not set and API is still broken", accTestVariable)
 	}
-
+	// TODO: enable when API gets fixed!
 	/*
 			// try to fetch private apps
 			for _, paName := range []string{privateAppName1, privateAppName2} {
@@ -259,7 +276,7 @@ func getPrivateApps(t *testing.T) testPrivateApps {
 				if err == nil {
 					pa := result.GetPrivateApplication().GetPrivateApplication()
 					if pa.GetID() != "" {
-						catoPrivateApps = append(catoPrivateApps, ref{ID: pa.GetID(), Name: pa.GetName()})
+						catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: pa.GetName()})
 						continue
 					}
 				}
@@ -274,7 +291,7 @@ func getPrivateApps(t *testing.T) testPrivateApps {
 					t.Fatalf("ERROR creating test private app: %v", err)
 				}
 				pa := res.GetPrivateApplication().GetCreatePrivateApplication().GetApplication()
-				catoPrivateApps = append(catoPrivateApps, ref{ID: pa.GetID(), Name: paName})
+				catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: paName})
 			}
 		}
 

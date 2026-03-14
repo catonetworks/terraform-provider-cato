@@ -1,4 +1,4 @@
-package tests
+package acctests
 
 import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider"
