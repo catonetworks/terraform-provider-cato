@@ -14,6 +14,7 @@ jobs:
     env:
       CATO_ACCOUNT_ID: ${{ vars.CATO_ACCOUNT_ID }}
       CATO_ENDPOINT: ${{ vars.CATO_ENDPOINT }}
+      CATO_BASEURL: ${{ vars.CATO_ENDPOINT }}
       CATO_TOKEN: ${{ secrets.CATO_TOKEN }}
       TFACC_TEST_VARS: ${{ vars.TFACC_TEST_VARS }}
 
