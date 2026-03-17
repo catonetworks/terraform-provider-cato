@@ -97,6 +97,9 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Rule Index - computed value that may change due to rule reordering",
 						Computed:    true,
 						Optional:    false,
+						PlanModifiers: []planmodifier.Int64{
+							planmodifiers.VolatileInt64(),
+						},
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Attribute to define rule status (enabled or disabled)",
@@ -1168,7 +1171,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT", "RBI"),
+							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT", "RBI", "CAPTIVE_PORTAL"),
 						},
 					},
 					"tracking": schema.SingleNestedAttribute{

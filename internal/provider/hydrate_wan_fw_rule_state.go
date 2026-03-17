@@ -41,11 +41,8 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 	}
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
 	ruleInput.ID = types.StringValue(currentRule.ID)
-	// Set index from API response when state index is null/unknown, otherwise preserve state index
-	if ruleInput.Index.IsNull() || ruleInput.Index.IsUnknown() {
-		ruleInput.Index = types.Int64Value(currentRule.Index)
-	}
-	// If ruleInput.Index has a value, we preserve it (no action needed)
+	// Always set index from API response - the index can change due to rule reordering
+	ruleInput.Index = types.Int64Value(currentRule.Index)
 	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
 

@@ -52,14 +52,11 @@ func hydrateSocketLanFirewallRuleState(ctx context.Context, plan SocketLanFirewa
 	var planRuleData SocketLanFirewallRuleData
 	plan.Rule.As(ctx, &planRuleData, basetypes.ObjectAsOptions{})
 	planHasApplication := !planRuleData.Application.IsNull()
+	planHasService := !planRuleData.Service.IsNull()
 	result.Application = hydrateSocketLanFirewallApplicationState(ctx, apiRule.Application, planHasApplication)
 
-	// Service - only create service object if there's actual content (following IFW pattern)
-	if len(apiRule.Service.Simple) > 0 || len(apiRule.Service.Standard) > 0 || len(apiRule.Service.Custom) > 0 {
-		result.Service = hydrateSocketLanFirewallServiceState(ctx, apiRule.Service)
-	} else {
-		result.Service = types.ObjectNull(SocketLanFirewallServiceAttrTypes)
-	}
+	// Service - check if plan had service block defined (following Application pattern)
+	result.Service = hydrateSocketLanFirewallServiceState(ctx, apiRule.Service, planHasService)
 
 	// Tracking
 	result.Tracking = hydrateSocketLanFirewallTrackingState(ctx, apiRule.Tracking)
@@ -554,7 +551,7 @@ func hydrateSocketLanFirewallApplicationState(ctx context.Context, apiApp cato_g
 	return appObj
 }
 
-func hydrateSocketLanFirewallServiceState(ctx context.Context, apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Service) types.Object {
+func hydrateSocketLanFirewallServiceState(ctx context.Context, apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Service, planHasService bool) types.Object {
 
 	serviceAttrs := map[string]attr.Value{
 		"simple":   types.SetNull(SimpleServiceObjectType),
@@ -623,6 +620,15 @@ func hydrateSocketLanFirewallServiceState(ctx context.Context, apiService cato_g
 		}
 		customList, _ := types.ListValue(CustomServiceObjectType, customServices)
 		serviceAttrs["custom"] = customList
+	}
+
+	// Check if there's any actual content from the API
+	hasContent := len(apiService.Simple) > 0 || len(apiService.Standard) > 0 || len(apiService.Custom) > 0
+
+	// If plan didn't have service block and API has no content, return null
+	// If plan had service block (even empty), always return object structure
+	if !planHasService && !hasContent {
+		return types.ObjectNull(SocketLanFirewallServiceAttrTypes)
 	}
 
 	serviceObj, _ := types.ObjectValue(SocketLanFirewallServiceAttrTypes, serviceAttrs)

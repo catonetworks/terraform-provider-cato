@@ -507,7 +507,7 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				diags = append(diags, destinationInput.RemoteAsn.ElementsAs(ctx, &ruleDestinationInput.RemoteAsn, false)...)
 				diags = append(diags, destinationInput.RemoteAsn.ElementsAs(ctx, &ruleDestinationUpdateInput.RemoteAsn, false)...)
 			} else {
-				ruleDestinationUpdateInput.RemoteAsn = make([]cato_scalars.Asn16, 0)
+				ruleDestinationUpdateInput.RemoteAsn = make([]cato_scalars.Asn32, 0)
 			}
 
 			// setting destination application
@@ -1458,7 +1458,7 @@ func hydrateIfwRuleApi(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						diags = append(diags, destinationInput.RemoteAsn.ElementsAs(ctx, &exceptionAddInput.Destination.RemoteAsn, false)...)
 						exceptionUpdateInput.Destination.RemoteAsn = exceptionAddInput.Destination.RemoteAsn
 					} else {
-						exceptionUpdateInput.Destination.RemoteAsn = make([]cato_scalars.Asn16, 0)
+						exceptionUpdateInput.Destination.RemoteAsn = make([]cato_scalars.Asn32, 0)
 					}
 
 					// setting destination application

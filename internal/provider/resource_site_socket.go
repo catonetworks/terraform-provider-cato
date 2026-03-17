@@ -1525,10 +1525,17 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 	// Track if dhcp_settings was actually present in the original state/plan (before deserialization)
 	dhcpSettingsWasInOriginalState := false
 	if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
-		// Check if dhcp_settings attribute exists and is not null in the original object
+		// Check if dhcp_settings attribute exists and has meaningful content (dhcp_type specified)
 		if attrs := state.NativeRange.Attributes(); attrs != nil {
 			if dhcpAttr, exists := attrs["dhcp_settings"]; exists && !dhcpAttr.IsNull() && !dhcpAttr.IsUnknown() {
-				dhcpSettingsWasInOriginalState = true
+				// Additional check: verify dhcp_type is specified (not null/unknown)
+				// This handles the case where an empty dhcp_settings object is passed
+				if dhcpObj, ok := dhcpAttr.(types.Object); ok && !dhcpObj.IsNull() {
+					dhcpAttrs := dhcpObj.Attributes()
+					if dhcpTypeAttr, hasType := dhcpAttrs["dhcp_type"]; hasType && !dhcpTypeAttr.IsNull() && !dhcpTypeAttr.IsUnknown() {
+						dhcpSettingsWasInOriginalState = true
+					}
+				}
 			}
 		}
 		state.NativeRange.As(ctx, &nativeRangeObj, basetypes.ObjectAsOptions{})
@@ -1896,113 +1903,25 @@ func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context
 		}
 	}
 	if isDefaultPresent {
-		// Create placeholder interface
-		tmpInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{}
-		tmpName := name + "_tmp"
-		tmpInputUpdateSocketInterface.Name = &tmpName
-		tmpInputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType("LAN")
-		tmpSocketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
-		tmpSocketInterfaceLanInput.LocalIP = "127.111.111.1"
-		tmpSocketInterfaceLanInput.Subnet = "127.111.111.0/24"
-		if translatedSubnet != "" {
-			tmpSocketInterfaceLanInput.TranslatedSubnet = &translatedSubnet
+		exchangeInput := cato_models.ExchangeSocketPortsInput{
+			Site: &cato_models.SiteRefInput{
+				By:    cato_models.ObjectRefByID,
+				Input: siteID,
+			},
+			FirstInterface: &cato_models.SocketInterfaceRefInput{
+				InterfaceID: cato_models.SocketInterfaceIDEnum(*curInterfaceIndex),
+			},
+			SecondInterface: &cato_models.SocketInterfaceRefInput{
+				InterfaceID: cato_models.SocketInterfaceIDEnum(interfaceIndex),
+			},
 		}
-		tmpInputUpdateSocketInterface.Lan = &tmpSocketInterfaceLanInput
-		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.SiteUpdateSocketInterface.tmp.request", map[string]interface{}{
-			"tmpRequest":        utils.InterfaceToJSONString(tmpInputUpdateSocketInterface),
-			"tmpInterfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
-		})
-		tmpSiteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceIndex, tmpInputUpdateSocketInterface, r.client.AccountId)
+
+		siteExchangeSocketPortsResponse, err := r.client.catov2.SiteExchangeSocketPorts(ctx, r.client.AccountId, exchangeInput)
 		if err != nil {
 			return nil, err
 		}
 		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.tmpSiteUpdateSocketInterface.tmp.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(tmpSiteUpdateSocketInterfaceResponse),
-		})
-
-		// Disable original native range interface
-		// First check to see if exisitng default interface is configured as LAG, disable all members before disabling the interface directly
-		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && lagMinLinks != 0 {
-			// Get the site's accountSnapshot to find the LAG master
-			siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
-			tflog.Debug(ctx, "Create.AccountSnapshot.response looking for LAN_LAG_MEMBERs", map[string]interface{}{
-				"response": utils.InterfaceToJSONString(siteAccountSnapshotApiData),
-			})
-			for _, site := range siteAccountSnapshotApiData.AccountSnapshot.GetSites() {
-				siteSiteID := site.GetID()
-				if siteSiteID != nil && *siteSiteID == siteID {
-					for _, iface := range site.InfoSiteSnapshot.Interfaces {
-						if iface.DestType != nil && *iface.DestType == "LAN_LAG_MEMBER" {
-							tflog.Debug(ctx, "Create.AccountSnapshot.response found LAN_LAG_MEMBER", map[string]interface{}{
-								"response": utils.InterfaceToJSONString(iface),
-							})
-							curInterfaceId := iface.ID
-							if _, err := cast.ToIntE(curInterfaceId); err == nil {
-								curInterfaceId = fmt.Sprintf("INT_%v", curInterfaceId)
-							}
-							input := cato_models.UpdateSocketInterfaceInput{
-								Name:     &curInterfaceId,
-								DestType: "INTERFACE_DISABLED",
-							}
-
-							tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request LAN_LAG_MEMBER", map[string]interface{}{
-								"request": utils.InterfaceToJSONString(input),
-							})
-							_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, cato_models.SocketInterfaceIDEnum(curInterfaceId), input, r.client.AccountId)
-							if err != nil {
-								return nil, err
-							}
-						}
-					}
-				}
-			}
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		disabledInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{
-			Name:     curInterfaceIndex,
-			DestType: "INTERFACE_DISABLED",
-		}
-		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.DisableDefaultInterface.request", map[string]interface{}{
-			"disabledInputUpdateSocketInterface": utils.InterfaceToJSONString(disabledInputUpdateSocketInterface),
-		})
-		siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, cato_models.SocketInterfaceIDEnum(*curInterfaceIndex), disabledInputUpdateSocketInterface, r.client.AccountId)
-		if err != nil {
-			return nil, err
-		}
-		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.DisableDefaultInterface.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
-		})
-
-		// Update new lan interface with the correct native range subnet
-		curInputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{}
-		curInputUpdateSocketInterface.Name = &name
-		curInputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
-		if (interfaceDestType == "LAN_LAG_MASTER" || interfaceDestType == "LAN_LAG_MASTER_AND_VRRP") && lagMinLinks != 0 {
-			tmpLagConfig := cato_models.SocketInterfaceLagInput{
-				MinLinks: lagMinLinks,
-			}
-			curInputUpdateSocketInterface.Lag = &tmpLagConfig
-		}
-		curSocketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
-		curSocketInterfaceLanInput.LocalIP = localIp
-		curSocketInterfaceLanInput.Subnet = subnet
-		if translatedSubnet != "" {
-			curSocketInterfaceLanInput.TranslatedSubnet = &translatedSubnet
-		}
-		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.SiteUpdateSocketInterface.current.request", map[string]interface{}{
-			"tmpRequest":        utils.InterfaceToJSONString(curInputUpdateSocketInterface),
-			"tmpInterfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
-		})
-		curInputUpdateSocketInterface.Lan = &curSocketInterfaceLanInput
-		curSiteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceIndex, curInputUpdateSocketInterface, r.client.AccountId)
-		if err != nil {
-			return nil, err
-		}
-		tflog.Debug(ctx, "attemptReassignNativeRangeIndex.tmpSiteUpdateSocketInterface.current.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(curSiteUpdateSocketInterfaceResponse),
+			"response": utils.InterfaceToJSONString(siteExchangeSocketPortsResponse),
 		})
 	}
 	return &isDefaultPresent, err

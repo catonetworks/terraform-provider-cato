@@ -296,6 +296,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 						diagstmp = svc.Port.ElementsAs(ctx, &ports, false)
 						diags.Append(diagstmp...)
 						for _, p := range ports {
+							// customSvc.Port = append(customSvc.Port, scalars.Port(p))
 							customSvc.Port = append(customSvc.Port, scalars.Port(p))
 						}
 					}
