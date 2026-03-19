@@ -1321,6 +1321,20 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 				return
 			}
 
+			// Update the socket interface properties on the new interface (destType, name, lag)
+			tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request (after interface reassignment)", map[string]interface{}{
+				"request":        utils.InterfaceToJSONString(inputUpdateSocketInterface),
+				"interfaceIndex": utils.InterfaceToJSONString(nativeRangeCheck.InterfaceIndex.ValueString()),
+			})
+			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.Id.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeCheck.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API SiteUpdateSocketInterface error (after interface reassignment)",
+					err.Error(),
+				)
+				return
+			}
+
 			// Clear computed IDs from plan so they can be refreshed during hydration
 			var nativeRangePlan NativeRange
 			diags := plan.NativeRange.As(ctx, &nativeRangePlan, basetypes.ObjectAsOptions{})
@@ -1555,49 +1569,49 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 	}
 	isPresent := false
 
-	// Check if user specified a different interface index than the default
-	// If so, look for that interface first (this handles the case where attemptReassignNativeRangeIndex
-	// has already moved the native range to the user-specified interface)
-	userSpecifiedInterfaceIndex := ""
-	if !nativeRangeObj.InterfaceIndex.IsNull() && !nativeRangeObj.InterfaceIndex.IsUnknown() {
-		userSpecifiedInterfaceIndex = nativeRangeObj.InterfaceIndex.ValueString()
-	}
-	if userSpecifiedInterfaceIndex != "" && userSpecifiedInterfaceIndex != defaultInterfaceIndexByConnType {
-		tflog.Debug(ctx, "getNativeInterfaceAndSubnet: User specified non-default interface index", map[string]interface{}{
-			"userSpecifiedInterfaceIndex":     userSpecifiedInterfaceIndex,
-			"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
-		})
-		for _, curIint := range queryInterfaceResult.EntityLookup.Items {
-			curSiteId := cast.ToString(curIint.HelperFields["siteId"])
-			if curSiteId == siteID {
-				curInterfaceId := curIint.HelperFields["interfaceId"]
-				// Try to parse the interfaceId as int, otherwise prefix with "INT_"
-				if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
-					curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
-					curInterfaceId = curInterfaceIdStr
-				}
-				// Check if this is the user-specified interface
-				if cast.ToString(curInterfaceId) == userSpecifiedInterfaceIndex {
-					isPresent = true
-					nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
-					nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
-					nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
-					nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
-					if destType, ok := curIint.HelperFields["destType"]; ok && destType != nil {
-						nativeRangeObj.InterfaceDestType = types.StringValue(cast.ToString(destType))
-					} else {
-						nativeRangeObj.InterfaceDestType = types.StringNull()
-					}
-					tflog.Debug(ctx, "getNativeInterfaceAndSubnet: Found user-specified interface", map[string]interface{}{
-						"interfaceIndex": userSpecifiedInterfaceIndex,
-						"interfaceId":    curIint.Entity.ID,
-						"interfaceName":  curIint.HelperFields["interfaceName"],
-					})
-					break
-				}
-			}
-		}
-	}
+	// // Check if user specified a different interface index than the default
+	// // If so, look for that interface first (this handles the case where attemptReassignNativeRangeIndex
+	// // has already moved the native range to the user-specified interface)
+	// userSpecifiedInterfaceIndex := ""
+	// if !nativeRangeObj.InterfaceIndex.IsNull() && !nativeRangeObj.InterfaceIndex.IsUnknown() {
+	// 	userSpecifiedInterfaceIndex = nativeRangeObj.InterfaceIndex.ValueString()
+	// }
+	// if userSpecifiedInterfaceIndex != "" && userSpecifiedInterfaceIndex != defaultInterfaceIndexByConnType {
+	// 	tflog.Debug(ctx, "getNativeInterfaceAndSubnet: User specified non-default interface index", map[string]interface{}{
+	// 		"userSpecifiedInterfaceIndex":     userSpecifiedInterfaceIndex,
+	// 		"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
+	// 	})
+	// 	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
+	// 		curSiteId := cast.ToString(curIint.HelperFields["siteId"])
+	// 		if curSiteId == siteID {
+	// 			curInterfaceId := curIint.HelperFields["interfaceId"]
+	// 			// Try to parse the interfaceId as int, otherwise prefix with "INT_"
+	// 			if idxInt, err := cast.ToIntE(curInterfaceId); err == nil {
+	// 				curInterfaceIdStr := fmt.Sprintf("INT_%d", idxInt)
+	// 				curInterfaceId = curInterfaceIdStr
+	// 			}
+	// 			// Check if this is the user-specified interface
+	// 			if cast.ToString(curInterfaceId) == userSpecifiedInterfaceIndex {
+	// 				isPresent = true
+	// 				nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceId))
+	// 				nativeRangeObj.InterfaceId = types.StringValue(curIint.Entity.ID)
+	// 				nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
+	// 				nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
+	// 				if destType, ok := curIint.HelperFields["destType"]; ok && destType != nil {
+	// 					nativeRangeObj.InterfaceDestType = types.StringValue(cast.ToString(destType))
+	// 				} else {
+	// 					nativeRangeObj.InterfaceDestType = types.StringNull()
+	// 				}
+	// 				tflog.Debug(ctx, "getNativeInterfaceAndSubnet: Found user-specified interface", map[string]interface{}{
+	// 					"interfaceIndex": userSpecifiedInterfaceIndex,
+	// 					"interfaceId":    curIint.Entity.ID,
+	// 					"interfaceName":  curIint.HelperFields["interfaceName"],
+	// 				})
+	// 				break
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	// If user-specified interface not found or not specified, check for isDefault flag
 	if !isPresent {
