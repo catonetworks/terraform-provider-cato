@@ -97,7 +97,12 @@ func (v filtersValidator) MarkdownDescription(ctx context.Context) string {
 }
 
 func (v filtersValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+	// Allow unknown values - they will be validated once resolved during planning
+	if req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	if req.ConfigValue.IsNull() {
 		resp.Diagnostics.Append(diag.NewErrorDiagnostic(
 			"Invalid Filters Configuration",
 			"At least one filter must be specified with field city, state_name, or country_name",
