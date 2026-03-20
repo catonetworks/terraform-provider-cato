@@ -3,12 +3,12 @@
 page_title: "cato_siteLocation Data Source - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Retrieves account site locations.
+  
 ---
 
 # cato_siteLocation (Data Source)
 
-Retrieves account site locations.
+
 
 ## Example Usage
 
@@ -135,7 +135,7 @@ data "cato_siteLocation" "diego" {
 
 ### Optional
 
-- `filters` (Attributes List) Field to filter on (city, state_code/state_name, country_code/country_name). Note: use state_code OR state_name, not both; use country_code OR country_name, not both. (see [below for nested schema](#nestedatt--filters))
+- `filters` (Attributes List) Field to filter on (city, stateName, countryName) (see [below for nested schema](#nestedatt--filters))
 
 ### Read-Only
 
@@ -146,7 +146,7 @@ data "cato_siteLocation" "diego" {
 
 Required:
 
-- `field` (String) Field to filter on (city, state_code, state_name, country_code, country_name). Use state_code OR state_name (not both), and country_code OR country_name (not both).
+- `field` (String) Field to filter on (city, stateName, countryName)
 - `operation` (String) Filter operation (exact, startsWith, endsWith, contains)
 - `search` (String) String value to search for
 
