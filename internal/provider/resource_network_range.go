@@ -427,15 +427,17 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		input.LocalIP = plan.LocalIp.ValueStringPointer()
 
 		if plan.RangeType == types.StringValue("VLAN") {
+			// Track if user actually specified dhcp_settings (for later hydration)
+			dhcpSettingsWasSpecified := !plan.DhcpSettings.IsNull() && !plan.DhcpSettings.IsUnknown()
+
 			if plan.DhcpSettings.IsNull() {
-				// Set default DHCP settings when null for VLAN ranges
+				// Set default DHCP settings for API when null for VLAN ranges
+				// NOTE: Do NOT modify plan.DhcpSettings - keep it null to match Terraform's expected state
 				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
 				dhcpSettings.DhcpMicrosegmentation = types.BoolValue(false)
 				dhcpSettings.IpRange = types.StringNull()
 				dhcpSettings.RelayGroupId = types.StringNull()
 				dhcpSettings.RelayGroupName = types.StringNull()
-				// Update the plan with default values to prevent inconsistency errors
-				plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
 			} else {
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
@@ -444,7 +446,8 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 				}
 			}
 
-			if !plan.DhcpSettings.IsNull() && !plan.DhcpSettings.IsUnknown() {
+			// Only send DHCP settings to API - either defaults or user-specified
+			if dhcpSettingsWasSpecified {
 				input.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
 				var dhcpSettingsInput DhcpSettings
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
@@ -1099,14 +1102,28 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 
 			// Only populate DHCP settings for VLAN and Native range types
 			// DHCP settings are not supported for Direct or Routed ranges
-			_, hasDhcpType := curRange.HelperFields["dhcpType"]
+			dhcpTypeVal, hasDhcpType := curRange.HelperFields["dhcpType"]
+			dhcpTypeStr := cast.ToString(dhcpTypeVal)
+
+			// Check if user actually configured dhcp_settings with a dhcp_type
+			// (not just an empty object passed from a module variable)
+			dhcpSettingsWasConfigured := false
+			if !state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown() {
+				dhcpAttrs := state.DhcpSettings.Attributes()
+				if dhcpTypeAttr, hasType := dhcpAttrs["dhcp_type"]; hasType && !dhcpTypeAttr.IsNull() && !dhcpTypeAttr.IsUnknown() {
+					dhcpSettingsWasConfigured = true
+				}
+			}
+
+			// Check if API returned a non-default DHCP type
+			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && dhcpTypeStr != "DHCP_DISABLED" && dhcpTypeStr != "ACCOUNT_DEFAULT"
 
 			// Populate DHCP settings ONLY if this is a VLAN or Native range type
 			// AND one of the following is true:
-			// 1. They were already in state (preserve user config)
-			// 2. OR the API returns dhcpType (meaning DHCP is configured)
+			// 1. User explicitly configured dhcp_settings with a dhcp_type
+			// 2. OR the API returns a non-default dhcp type (DHCP_RANGE, DHCP_RELAY)
 			isVlanOrNative := curRangeTypeVal == "VLAN" || curRangeTypeVal == "NATIVE"
-			if isVlanOrNative && ((!state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown()) || hasDhcpType) {
+			if isVlanOrNative && (dhcpSettingsWasConfigured || hasNonDefaultDhcp) {
 				// Start with null values as defaults - unknown values MUST be resolved to known values
 				dhcpType := types.StringNull()
 				ipRange := types.StringNull()

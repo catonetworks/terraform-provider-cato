@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
@@ -101,7 +100,7 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						Computed:    true,
 						Optional:    false,
 						PlanModifiers: []planmodifier.Int64{
-							int64planmodifier.UseStateForUnknown(),
+							planmodifiers.VolatileInt64(),
 						},
 					},
 					"enabled": schema.BoolAttribute{

@@ -211,5 +211,8 @@
 - Reverted siteLocation data to use local json dataset
 - Added fix for DHCP_SETTINGS as null in socket_site
 
+## 0.0.65 (2025-03-20)
+- FIxed issues in lan firewall, siteLocation and socket site logic (swap interface call)
+
 
 

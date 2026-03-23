@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -86,7 +85,7 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Rule Index - computed value that may change due to rule reordering",
 						Computed:    true,
 						PlanModifiers: []planmodifier.Int64{
-							int64planmodifier.UseStateForUnknown(),
+							planmodifiers.VolatileInt64(),
 						},
 					},
 					"enabled": schema.BoolAttribute{
