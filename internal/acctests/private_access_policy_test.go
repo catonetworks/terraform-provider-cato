@@ -189,7 +189,7 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resRule, "tracking.alert.webhook.0.id"),
 					resource.TestCheckResourceAttr(resRule, "tracking.alert.webhook.0.name", cfg.webhooks[0].Name),
 					resource.TestCheckResourceAttr(resRule, "tracking.event.%", "1"),
-					resource.TestCheckResourceAttr(resRule, "tracking.event.enabled", "true"),
+					resource.TestCheckResourceAttr(resRule, "tracking.event.enabled", "false"),
 					resource.TestCheckResourceAttr(resRule, "user_attributes.%", "1"),
 					resource.TestCheckResourceAttr(resRule, "user_attributes.risk_score.%", "2"),
 					resource.TestCheckResourceAttr(resRule, "user_attributes.risk_score.category", "LOW"),
@@ -389,7 +389,7 @@ var privAccessPolicyTFs = []string{`
 	  }
 	  tracking = {
 	    event = {
-	      enabled = true
+	      enabled = false
 	    },
 	    alert = {
 	      enabled   = true

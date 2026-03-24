@@ -702,7 +702,7 @@ func (r *privAccessRuleResource) prepareTrackingUpdate(ctx context.Context, t ty
 			Webhook:           upd.Alert.Webhook,
 		},
 		Event: &cato_models.PolicyRuleTrackingEventUpdateInput{
-			Enabled: ptr(upd.Alert.Enabled),
+			Enabled: ptr(upd.Event.Enabled),
 		},
 	}
 }
