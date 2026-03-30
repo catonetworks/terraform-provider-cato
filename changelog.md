@@ -214,5 +214,6 @@
 ## 0.0.65 (2025-03-20)
 - FIxed issues in lan firewall, siteLocation and socket site logic (swap interface call)
 
-
+## 0.0.66 (2025-03-30)
+- Adding SDK trace_id error logging with request body
 

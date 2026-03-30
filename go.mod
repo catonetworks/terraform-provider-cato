@@ -3,7 +3,7 @@ module github.com/catonetworks/terraform-provider-cato
 go 1.24.0
 
 require (
-	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260317185607-7d6d65350e78
+	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260327125119-47be6cb70174
 	github.com/fatih/structs v1.1.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
@@ -18,7 +18,6 @@ require (
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gqlgo/gqlgenc v0.33.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-plugin v1.6.2 // indirect
@@ -32,6 +31,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/oklog/run v1.0.0 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.26 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
