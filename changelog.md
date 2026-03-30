@@ -217,3 +217,6 @@
 ## 0.0.66 (2025-03-30)
 - Adding SDK trace_id error logging with request body
 
+## 0.0.67 (2025-03-30)
+- Incrementing provider
+
