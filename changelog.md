@@ -218,5 +218,7 @@
 - Adding SDK trace_id error logging with request body
 
 ## 0.0.67 (2025-03-30)
-- Incrementing provider
+- Incrementing provider, github runner service failed/unavailable
 
+## 0.0.68 (2025-03-30)
+- Incrementing provider, github runner service failed/unavailable
