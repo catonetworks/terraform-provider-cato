@@ -215,10 +215,4 @@
 - FIxed issues in lan firewall, siteLocation and socket site logic (swap interface call)
 
 ## 0.0.66 (2025-03-30)
-- Adding SDK trace_id error logging with request body
-
-## 0.0.67 (2025-03-30)
-- Incrementing provider, github runner service failed/unavailable
-
-## 0.0.68 (2025-03-30)
-- Incrementing provider, github runner service failed/unavailable
+- Adding SDK trace_id error logging with request body, rereleasing 0.0.66
