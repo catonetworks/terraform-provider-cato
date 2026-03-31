@@ -1704,6 +1704,8 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		return nil, fmt.Errorf("Site does not contain configuration for default LAN interface index %s for connection type %s, please update this site configuratation once either in the cato management application or via API, and the correct interface should be marked as default resolving this issue.", defaultInterfaceIndexByConnType, connType)
 	}
 
+	nativeRangeResp, err := r.getNativeRange(ctx, siteID, &nativeRangeObj)
+	_ = nativeRangeResp
 	// Retrieve default site range attributes
 	querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
 	tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
@@ -1863,6 +1865,22 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		SiteNetRangeApiData:  siteNetRangeApiData,
 		NativeRangeObj:       nativeRangeObj,
 	}, nil
+}
+
+func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, nativeRangeObj *NativeRange) (*string, error) {
+	input := cato_models.NetworkRangeListInput{Site: &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}}
+	queryNetworkRangeResult, err := r.client.catov2.NetworkRangeList(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "getNativeRange.response", map[string]interface{}{"response": utils.InterfaceToJSONString(queryNetworkRangeResult)})
+	if err != nil {
+		return nil, err
+	}
+	for _, netRange := range queryNetworkRangeResult.GetSite().GetNetworkRangeList().GetItems() {
+		if netRange.RangeType != cato_models.SubnetTypeNative {
+			continue
+		}
+		nativeRangeObj.Vlan = types.Int64PointerValue(netRange.Vlan)
+	}
+
 }
 
 func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context, interfaceIndex cato_models.SocketInterfaceIDEnum, name string, localIp string, subnet string, siteID string, interfaceDestType string, lagMinLinks int64, translatedSubnet string) (*bool, error) {
