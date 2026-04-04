@@ -196,10 +196,6 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 						Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
 						Optional:    true,
 						Computed:    true,
-						Default:     booldefault.StaticBool(false),
-						PlanModifiers: []planmodifier.Bool{
-							boolplanmodifier.UseStateForUnknown(),
-						},
 					},
 				},
 			},
@@ -434,7 +430,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 				// Set default DHCP settings for API when null for VLAN ranges
 				// NOTE: Do NOT modify plan.DhcpSettings - keep it null to match Terraform's expected state
 				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
-				dhcpSettings.DhcpMicrosegmentation = types.BoolValue(false)
+				dhcpSettings.DhcpMicrosegmentation = types.BoolNull()
 				dhcpSettings.IpRange = types.StringNull()
 				dhcpSettings.RelayGroupId = types.StringNull()
 				dhcpSettings.RelayGroupName = types.StringNull()
@@ -947,6 +943,15 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 
 // hydrateNetworkRangeState populates the NetworkRange state with data from API responses
 func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, state NetworkRange, networkRangeID string) (NetworkRange, bool, error) {
+	// Call: site.NetworkRange
+	// missing: site, interfaceIndex or interfaceId,  -> from state (another entity lookup for interface)
+	// SDK: add NetworkRange query
+	// call it
+	// DHCP magic:
+	//	- if disabled -> all null
+	// - if DHCP range -> IPRange required, ...
+	TODO
+
 	// check if site exist, else remove resource
 	querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityTypeSiteRange, nil, nil, nil, nil, []string{networkRangeID}, nil, nil, nil)
 	tflog.Debug(ctx, "hydrateNetworkRangeState.EntityLookup.response", map[string]interface{}{

@@ -254,10 +254,6 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 								Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
 								Optional:    true,
 								Computed:    true,
-								Default:     booldefault.StaticBool(false),
-								PlanModifiers: []planmodifier.Bool{
-									boolplanmodifier.UseStateForUnknown(),
-								},
 							},
 						},
 					},
@@ -555,7 +551,9 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 
 			// Only set dhcpMicrosegmentation for DHCP_RANGE type
 			if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RANGE" {
-				inputUpdateNetworkRange.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
+				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
+					inputUpdateNetworkRange.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
+				}
 			}
 
 			// Validate DHCP relay group configuration when dhcp_type is DHCP_RELAY
@@ -1515,6 +1513,7 @@ type NativeInterfaceAndSubnetResult struct {
 // getNativeInterfaceAndSubnet retrieves native interface and subnet information
 // Returns: NativeInterfaceAndSubnetResult, error
 func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, connType string, siteID string, state SocketSite, interfaceByConnType map[string]string) (*NativeInterfaceAndSubnetResult, error) {
+	var relayGroupName attr.Value = types.StringUnknown()
 	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
 	zeroInt64 := int64(0)
 	if connType != "" {
@@ -1535,6 +1534,7 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 	if _, ok := interfaceByConnType[connType]; !ok {
 		return nil, fmt.Errorf("connection type %s not found in interfaceByConnType", connType)
 	}
+	isMicrosegmentationKnown := false
 	var nativeRangeObj NativeRange
 	// Track if dhcp_settings was actually present in the original state/plan (before deserialization)
 	dhcpSettingsWasInOriginalState := false
@@ -1548,6 +1548,14 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 					dhcpAttrs := dhcpObj.Attributes()
 					if dhcpTypeAttr, hasType := dhcpAttrs["dhcp_type"]; hasType && !dhcpTypeAttr.IsNull() && !dhcpTypeAttr.IsUnknown() {
 						dhcpSettingsWasInOriginalState = true
+					}
+					if microSeg, ok := dhcpAttrs["dhcp_microsegmentation"]; ok {
+						if !microSeg.IsNull() && !microSeg.IsUnknown() {
+							isMicrosegmentationKnown = true
+						}
+					}
+					if grpName, ok := dhcpAttrs["relay_group_name"]; ok {
+						relayGroupName = grpName
 					}
 				}
 			}
@@ -1704,138 +1712,147 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		return nil, fmt.Errorf("Site does not contain configuration for default LAN interface index %s for connection type %s, please update this site configuratation once either in the cato management application or via API, and the correct interface should be marked as default resolving this issue.", defaultInterfaceIndexByConnType, connType)
 	}
 
-	nativeRangeResp, err := r.getNativeRange(ctx, siteID, &nativeRangeObj)
-	_ = nativeRangeResp
-	// Retrieve default site range attributes
-	querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
-	tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(querySiteRangeResult),
-	})
-	if err != nil {
+	// updates *nativeRangeObj
+	if err = r.getNativeRange(ctx, siteID, &nativeRangeObj, isMicrosegmentationKnown, dhcpSettingsWasInOriginalState, relayGroupName); err != nil {
 		return nil, err
 	}
-
 	siteNetRangeApiData := make(map[string]any)
-	for _, v := range querySiteRangeResult.GetEntityLookup().GetItems() {
-		curSubnet := v.GetHelperFields()["subnet"].(string)
-		if curSubnet == nativeRangeObj.NativeNetworkRange.ValueString() {
-			if v.GetEntity() != nil && v.GetEntity().Name != nil {
-				nameParts := strings.Split(*v.GetEntity().Name, " \\ ")
-				siteNetRangeApiData["rangeName"] = nameParts[len(nameParts)-1] // Store as string, not types.StringValue
-			}
-			// siteNetRangeApiData = v.GetHelperFields()
-			// Pull ID from entity attributes
-			siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
-			if vlanTag, ok := v.HelperFields["vlanTag"]; ok && vlanTag != nil {
-				if vlanInt, err := cast.ToInt64E(vlanTag); err == nil {
-					nativeRangeObj.Vlan = types.Int64Value(vlanInt)
+	nameParts := strings.Split(nativeRangeObj.RangeName.ValueString(), " \\ ")
+	siteNetRangeApiData["rangeName"] = nameParts[len(nameParts)-1] // Store as string, not types.StringValue
+	siteNetRangeApiData["native_network_range_id"] = nativeRangeObj.NativeNetworkRangeId.ValueString()
+
+	/*
+		// Retrieve default site range attributes
+		querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+		tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(querySiteRangeResult),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		siteNetRangeApiData := make(map[string]any)
+		for _, v := range querySiteRangeResult.GetEntityLookup().GetItems() {
+			curSubnet := v.GetHelperFields()["subnet"].(string)
+			if curSubnet == nativeRangeObj.NativeNetworkRange.ValueString() {
+				if v.GetEntity() != nil && v.GetEntity().Name != nil {
+					nameParts := strings.Split(*v.GetEntity().Name, " \\ ")
+					siteNetRangeApiData["rangeName"] = nameParts[len(nameParts)-1] // Store as string, not types.StringValue
+				}
+				// siteNetRangeApiData = v.GetHelperFields()
+				// Pull ID from entity attributes
+				siteNetRangeApiData["native_network_range_id"] = v.Entity.GetID()
+				if vlanTag, ok := v.HelperFields["vlanTag"]; ok && vlanTag != nil {
+					if vlanInt, err := cast.ToInt64E(vlanTag); err == nil {
+						nativeRangeObj.Vlan = types.Int64Value(vlanInt)
+					} else {
+						nativeRangeObj.Vlan = types.Int64Null()
+					}
 				} else {
 					nativeRangeObj.Vlan = types.Int64Null()
 				}
-			} else {
-				nativeRangeObj.Vlan = types.Int64Null()
-			}
-			// Set gateway from API
-			if gatewayVal, ok := v.HelperFields["gateway"]; ok && gatewayVal != nil {
-				nativeRangeObj.Gateway = types.StringValue(cast.ToString(gatewayVal))
-			} else {
-				nativeRangeObj.Gateway = types.StringNull()
-			}
-			// Set LocalIp to gateway value (they are the same in the API)
-			nativeRangeObj.LocalIp = nativeRangeObj.Gateway
-			// Set range_type from API
-			if rangeTypeVal, ok := v.HelperFields["rangeType"]; ok && rangeTypeVal != nil {
-				nativeRangeObj.RangeType = types.StringValue(cast.ToString(rangeTypeVal))
-			} else {
-				nativeRangeObj.RangeType = types.StringNull()
-			}
-			// Set mdns_reflector from API
-			if mdnsReflectorVal, ok := v.HelperFields["mdnsReflector"]; ok {
-				nativeRangeObj.MdnsReflector = types.BoolValue(cast.ToBool(mdnsReflectorVal))
-			} else {
-				nativeRangeObj.MdnsReflector = types.BoolValue(false)
-			}
-			// Set translated_subnet from API
-			if translatedSubnetVal, ok := v.HelperFields["translatedSubnet"]; ok && translatedSubnetVal != nil {
-				nativeRangeObj.TranslatedSubnet = types.StringValue(cast.ToString(translatedSubnetVal))
-			} else {
-				nativeRangeObj.TranslatedSubnet = types.StringNull()
-			}
-			// lag_min_links is not available in API - preserve from state if present
-			// (already set when nativeRangeObj was extracted from state at the top of this function)
-
-			// Hydrate DHCP settings ONLY if they were present in the state/plan
-			// Use the flag captured at the top of this function that checked the original state object
-			// before deserialization (avoids issues with zero-valued types.Object{})
-
-			// Check if API returned a non-default dhcp type
-			dhcpTypeVal, hasDhcpType := v.HelperFields["dhcpType"]
-			dhcpTypeStr := cast.ToString(dhcpTypeVal)
-			hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && dhcpTypeStr != "DHCP_DISABLED" && dhcpTypeStr != "ACCOUNT_DEFAULT"
-
-			// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
-			// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
-			if dhcpSettingsWasInOriginalState || hasNonDefaultDhcp {
-				// Hydrate DHCP settings - resolve unknown values to known values
-				// Start with null values as defaults - unknown values MUST be resolved to known values
-				dhcpType := types.StringNull()
-				ipRange := types.StringNull()
-				relayGroupId := types.StringNull()
-				relayGroupName := types.StringNull()
-				dhcpMicrosegmentation := types.BoolValue(false)
-
-				// Hydrate from API values (API is source of truth)
-				if dhcpTypeVal, ok := v.HelperFields["dhcpType"]; ok && dhcpTypeVal != nil {
-					dhcpType = types.StringValue(cast.ToString(dhcpTypeVal))
-				}
-
-				// Only hydrate relay group fields if dhcp_type is DHCP_RELAY
-				if dhcpType.ValueString() == "DHCP_RELAY" {
-					if dhcpRelayGroupIdVal, ok := v.HelperFields["dhcpRelayGroupId"]; ok && dhcpRelayGroupIdVal != nil {
-						relayGroupId = types.StringValue(cast.ToString(dhcpRelayGroupIdVal))
-					}
-					if dhcpRelayGroupNameVal, ok := v.HelperFields["dhcpRelayGroupName"]; ok && dhcpRelayGroupNameVal != nil {
-						relayGroupName = types.StringValue(cast.ToString(dhcpRelayGroupNameVal))
-					}
+				// Set gateway from API
+				if gatewayVal, ok := v.HelperFields["gateway"]; ok && gatewayVal != nil {
+					nativeRangeObj.Gateway = types.StringValue(cast.ToString(gatewayVal))
 				} else {
-					// If dhcp_type is not DHCP_RELAY, explicitly set relay fields to null
-					// This prevents drift when config doesn't specify them but they exist in state
-					relayGroupId = types.StringNull()
-					relayGroupName = types.StringNull()
+					nativeRangeObj.Gateway = types.StringNull()
 				}
-				// Only hydrate ip_range if dhcp_type is DHCP_RANGE
-				if dhcpType.ValueString() == "DHCP_RANGE" {
-					if dhcpRangeVal, ok := v.HelperFields["dhcpRange"]; ok && dhcpRangeVal != nil {
-						ipRange = types.StringValue(cast.ToString(dhcpRangeVal))
+				// Set LocalIp to gateway value (they are the same in the API)
+				nativeRangeObj.LocalIp = nativeRangeObj.Gateway
+				// Set range_type from API
+				if rangeTypeVal, ok := v.HelperFields["rangeType"]; ok && rangeTypeVal != nil {
+					nativeRangeObj.RangeType = types.StringValue(cast.ToString(rangeTypeVal))
+				} else {
+					nativeRangeObj.RangeType = types.StringNull()
+				}
+				// Set mdns_reflector from API
+				if mdnsReflectorVal, ok := v.HelperFields["mdnsReflector"]; ok {
+					nativeRangeObj.MdnsReflector = types.BoolValue(cast.ToBool(mdnsReflectorVal))
+				} else {
+					nativeRangeObj.MdnsReflector = types.BoolValue(false)
+				}
+				// Set translated_subnet from API
+				if translatedSubnetVal, ok := v.HelperFields["translatedSubnet"]; ok && translatedSubnetVal != nil {
+					nativeRangeObj.TranslatedSubnet = types.StringValue(cast.ToString(translatedSubnetVal))
+				} else {
+					nativeRangeObj.TranslatedSubnet = types.StringNull()
+				}
+				// lag_min_links is not available in API - preserve from state if present
+				// (already set when nativeRangeObj was extracted from state at the top of this function)
+
+				// Hydrate DHCP settings ONLY if they were present in the state/plan
+				// Use the flag captured at the top of this function that checked the original state object
+				// before deserialization (avoids issues with zero-valued types.Object{})
+
+				// Check if API returned a non-default dhcp type
+				dhcpTypeVal, hasDhcpType := v.HelperFields["dhcpType"]
+				dhcpTypeStr := cast.ToString(dhcpTypeVal)
+				hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && dhcpTypeStr != "DHCP_DISABLED" && dhcpTypeStr != "ACCOUNT_DEFAULT"
+
+				// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
+				// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
+				if dhcpSettingsWasInOriginalState || hasNonDefaultDhcp {
+					// Hydrate DHCP settings - resolve unknown values to known values
+					// Start with null values as defaults - unknown values MUST be resolved to known values
+					dhcpType := types.StringNull()
+					ipRange := types.StringNull()
+					relayGroupId := types.StringNull()
+					relayGroupName := types.StringNull()
+					dhcpMicrosegmentation := types.BoolValue(false)
+
+					// Hydrate from API values (API is source of truth)
+					if dhcpTypeVal, ok := v.HelperFields["dhcpType"]; ok && dhcpTypeVal != nil {
+						dhcpType = types.StringValue(cast.ToString(dhcpTypeVal))
 					}
-					if microsegmentationVal, ok := v.HelperFields["microsegmentation"]; ok && microsegmentationVal != nil {
-						dhcpMicrosegmentation = types.BoolValue(cast.ToBool(microsegmentationVal))
+
+					// Only hydrate relay group fields if dhcp_type is DHCP_RELAY
+					if dhcpType.ValueString() == "DHCP_RELAY" {
+						if dhcpRelayGroupIdVal, ok := v.HelperFields["dhcpRelayGroupId"]; ok && dhcpRelayGroupIdVal != nil {
+							relayGroupId = types.StringValue(cast.ToString(dhcpRelayGroupIdVal))
+						}
+						if dhcpRelayGroupNameVal, ok := v.HelperFields["dhcpRelayGroupName"]; ok && dhcpRelayGroupNameVal != nil {
+							relayGroupName = types.StringValue(cast.ToString(dhcpRelayGroupNameVal))
+						}
+					} else {
+						// If dhcp_type is not DHCP_RELAY, explicitly set relay fields to null
+						// This prevents drift when config doesn't specify them but they exist in state
+						relayGroupId = types.StringNull()
+						relayGroupName = types.StringNull()
 					}
+					// Only hydrate ip_range if dhcp_type is DHCP_RANGE
+					if dhcpType.ValueString() == "DHCP_RANGE" {
+						if dhcpRangeVal, ok := v.HelperFields["dhcpRange"]; ok && dhcpRangeVal != nil {
+							ipRange = types.StringValue(cast.ToString(dhcpRangeVal))
+						}
+						if microsegmentationVal, ok := v.HelperFields["microsegmentation"]; ok && microsegmentationVal != nil {
+							dhcpMicrosegmentation = types.BoolValue(cast.ToBool(microsegmentationVal))
+						}
+					}
+
+					// Manually construct Object to ensure no Unknown values persist
+					dhcpSettingsObject, dErr := types.ObjectValue(
+						SiteNativeRangeDhcpResourceAttrTypes,
+						map[string]attr.Value{
+							"dhcp_type":              dhcpType,
+							"ip_range":               ipRange,
+							"relay_group_id":         relayGroupId,
+							"relay_group_name":       relayGroupName,
+							"dhcp_microsegmentation": dhcpMicrosegmentation,
+						},
+					)
+					if dErr.HasError() {
+						return nil, fmt.Errorf("failed to convert dhcp settings to object: %v", dErr)
+					}
+					nativeRangeObj.DhcpSettings = dhcpSettingsObject
+				} else {
+					// dhcp_settings was not in state and API didn't return it - keep it null
+					nativeRangeObj.DhcpSettings = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
 				}
 
-				// Manually construct Object to ensure no Unknown values persist
-				dhcpSettingsObject, dErr := types.ObjectValue(
-					SiteNativeRangeDhcpResourceAttrTypes,
-					map[string]attr.Value{
-						"dhcp_type":              dhcpType,
-						"ip_range":               ipRange,
-						"relay_group_id":         relayGroupId,
-						"relay_group_name":       relayGroupName,
-						"dhcp_microsegmentation": dhcpMicrosegmentation,
-					},
-				)
-				if dErr.HasError() {
-					return nil, fmt.Errorf("failed to convert dhcp settings to object: %v", dErr)
-				}
-				nativeRangeObj.DhcpSettings = dhcpSettingsObject
-			} else {
-				// dhcp_settings was not in state and API didn't return it - keep it null
-				nativeRangeObj.DhcpSettings = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
+				break
 			}
-
-			break
 		}
-	}
+	*/
 
 	tflog.Debug(ctx, "Read.siteNetRangeApiData", map[string]interface{}{
 		"siteNetRangeApiData": utils.InterfaceToJSONString(siteNetRangeApiData),
@@ -1867,20 +1884,77 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 	}, nil
 }
 
-func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, nativeRangeObj *NativeRange) (*string, error) {
+func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, nativeRangeObj *NativeRange,
+	isMicrosegmentationKnown, isDhcpKnown bool, relayGroupName attr.Value,
+) error {
+	var microsegmentation attr.Value = types.BoolNull()
+	var dhcpRelayGroupID attr.Value = types.StringNull()
+	var dhcpRelayGroupName attr.Value = types.StringNull()
+	var dhcpIPRange attr.Value = types.StringNull()
+	var dhcpSettingsObj types.Object = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
+
 	input := cato_models.NetworkRangeListInput{Site: &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}}
 	queryNetworkRangeResult, err := r.client.catov2.NetworkRangeList(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "getNativeRange.response", map[string]interface{}{"response": utils.InterfaceToJSONString(queryNetworkRangeResult)})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, netRange := range queryNetworkRangeResult.GetSite().GetNetworkRangeList().GetItems() {
 		if netRange.RangeType != cato_models.SubnetTypeNative {
 			continue
 		}
+
+		rDhcp := netRange.GetDhcpSettings()
+		// Only set microsegmentation if it was already known to be present in the original state/plan
+		if isMicrosegmentationKnown {
+			microsegmentation = types.BoolValue(rDhcp.GetDhcpMicrosegmentation())
+		}
+
+		// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
+		// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
+		dhcpType := rDhcp.GetDhcpType()
+		if isDhcpKnown || (dhcpType != nil && *dhcpType != "" && *dhcpType != cato_models.DhcpTypeDhcpDisabled) {
+			dType := cato_models.DhcpType("")
+			if dhcpType != nil {
+				dType = cato_models.DhcpType(*dhcpType)
+			}
+			if dType == cato_models.DhcpTypeDhcpRelay { // Only hydrate relay group fields if dhcp_type is DHCP_RELAY
+				dhcpRelayGroupID = types.StringPointerValue((*string)(rDhcp.GetRelayGroupID()))
+				dhcpRelayGroupName = relayGroupName
+			}
+			if dType != cato_models.DhcpTypeDhcpDisabled { // Only hydrate ip range if dhcp is enabled
+				dhcpIPRange = types.StringPointerValue((*string)(rDhcp.GetIPRange()))
+			}
+
+			obj, dErr := types.ObjectValue(
+				SiteNativeRangeDhcpResourceAttrTypes,
+				map[string]attr.Value{
+					"dhcp_type":              types.StringPointerValue((*string)(rDhcp.GetDhcpType())),
+					"ip_range":               dhcpIPRange,
+					"relay_group_id":         dhcpRelayGroupID,
+					"relay_group_name":       dhcpRelayGroupName,
+					"dhcp_microsegmentation": microsegmentation,
+				},
+			)
+			if dErr.HasError() {
+				return fmt.Errorf("failed to convert dhcp settings to object: %v", dErr)
+			}
+			dhcpSettingsObj = obj
+		}
+
+		nativeRangeObj.Vlan = types.Int64PointerValue(netRange.Vlan)
+		nativeRangeObj.DhcpSettings = dhcpSettingsObj
+		nativeRangeObj.Gateway = types.StringPointerValue(netRange.Gateway)
+		nativeRangeObj.LocalIp = types.StringPointerValue(netRange.LocalIP)
+		nativeRangeObj.MdnsReflector = types.BoolValue(netRange.MdnsReflector)
+		nativeRangeObj.RangeName = types.StringValue(netRange.Name)
+		nativeRangeObj.RangeId = types.StringValue(netRange.NetworkRangeID)
+		nativeRangeObj.NativeNetworkRangeId = types.StringValue(netRange.NetworkRangeID)
+		nativeRangeObj.RangeType = types.StringValue(strings.ToUpper(string(netRange.RangeType)))
+		nativeRangeObj.TranslatedSubnet = types.StringPointerValue(netRange.TranslatedSubnet)
 		nativeRangeObj.Vlan = types.Int64PointerValue(netRange.Vlan)
 	}
-
+	return nil
 }
 
 func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context, interfaceIndex cato_models.SocketInterfaceIDEnum, name string, localIp string, subnet string, siteID string, interfaceDestType string, lagMinLinks int64, translatedSubnet string) (*bool, error) {
