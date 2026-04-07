@@ -1919,8 +1919,19 @@ func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, 
 				dType = cato_models.DhcpType(*dhcpType)
 			}
 			if dType == cato_models.DhcpTypeDhcpRelay { // Only hydrate relay group fields if dhcp_type is DHCP_RELAY
-				dhcpRelayGroupID = types.StringPointerValue((*string)(rDhcp.GetRelayGroupID()))
-				dhcpRelayGroupName = relayGroupName
+				gid := rDhcp.GetRelayGroupID()
+				dhcpRelayGroupID = types.StringPointerValue(gid)
+				dhcpRelayGroupName = relayGroupName // from state
+				if gid != nil {
+					rgName, success, err := checkForDhcpRelayGroup(ctx, r.client, "", *gid)
+					if err != nil {
+						return fmt.Errorf("failed to get dhcpSettings RelayGroup name for id '%s': %w", *gid, err)
+					}
+					if !success {
+						return fmt.Errorf("failed to find dhcpSettings RelayGroup name for id '%s'", *gid)
+					}
+					dhcpRelayGroupName = types.StringValue(rgName) // from response
+				}
 			}
 			if dType != cato_models.DhcpTypeDhcpDisabled { // Only hydrate ip range if dhcp is enabled
 				dhcpIPRange = types.StringPointerValue((*string)(rDhcp.GetIPRange()))

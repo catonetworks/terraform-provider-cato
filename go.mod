@@ -3,7 +3,8 @@ module github.com/catonetworks/terraform-provider-cato
 go 1.24.0
 
 require (
-	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260331134209-70c73f18f6fd
+	github.com/Yamashou/gqlgenc v0.30.2
+	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260405092049-2cc9cf89c67d
 	github.com/fatih/structs v1.1.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
@@ -14,7 +15,6 @@ require (
 
 require (
 	github.com/99designs/gqlgen v0.17.73 // indirect
-	github.com/Yamashou/gqlgenc v0.30.2 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
