@@ -52,7 +52,7 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 			},
 			"group_name": schema.StringAttribute{
-				Description: "Name of the ZTNA App Connector group",
+				Description: "Name of the ZTNA App Connector group. It will be created if it does not exist.",
 				Required:    true,
 			},
 			"id": schema.StringAttribute{

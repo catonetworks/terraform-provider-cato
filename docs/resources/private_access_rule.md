@@ -52,7 +52,7 @@ locals {
           }
         },
         "source": {
-          "user": [
+          "users": [
             { "name": "test user_1" },
             { "name": "test user_2" }
           ],

@@ -53,7 +53,7 @@ resource "cato_private_app" "example" {
 - `description` (String) Optional description of the private App
 - `private_app_probing` (Attributes) Private app probing settings (see [below for nested schema](#nestedatt--private_app_probing))
 - `protocol_ports` (Attributes Set) List of ports and protocols (see [below for nested schema](#nestedatt--protocol_ports))
-- `published_app_domain` (Attributes) Domain information about the published private app (see [below for nested schema](#nestedatt--published_app_domain))
+- `published_app_domain` (Attributes) Domain information about the published private app. Optional if the private app is not published. (see [below for nested schema](#nestedatt--published_app_domain))
 
 ### Read-Only
 

@@ -148,7 +148,7 @@ func (r *privateAppResource) schemaProtocolPorts() schema.SetNestedAttribute {
 
 func (r *privateAppResource) schemaPublishedAppDomain() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Description: "Domain information about the published private app",
+		Description: "Domain information about the published private app. Optional if the private app is not published.",
 		Optional:    true,
 		Computed:    true,
 		Attributes: map[string]schema.Attribute{

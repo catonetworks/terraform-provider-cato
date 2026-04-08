@@ -39,7 +39,7 @@ resource "cato_app_connector" "example" {
 
 ### Required
 
-- `group_name` (String) Name of the ZTNA App Connector group
+- `group_name` (String) Name of the ZTNA App Connector group. It will be created if it does not exist.
 - `location` (Attributes) App connector location (see [below for nested schema](#nestedatt--location))
 - `name` (String) The unique name of the ZTNA App Connector
 - `type` (String) Connector type (virtual, physical)
