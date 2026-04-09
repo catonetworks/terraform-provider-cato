@@ -44,7 +44,11 @@ func checkForDhcpRelayGroup(ctx context.Context, client *catoClientData, relayGr
 	for _, item := range dhcpRelayGroupResult.EntityLookup.Items {
 		if hasRelayGroupId {
 			if item.Entity.GetID() == relayGroupId {
-				return relayGroupId, true, nil
+				name := item.Entity.GetName()
+				if name == nil {
+					return "", false, fmt.Errorf("failed to get dhcpRelayGroup name for id " + relayGroupId)
+				}
+				return *name, true, nil
 			}
 		} else if hasRelayGroupName {
 			if namePtr := item.Entity.GetName(); namePtr != nil && *namePtr == relayGroupName {
