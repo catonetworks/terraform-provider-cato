@@ -377,7 +377,9 @@ func (m ifwExceptionsSetModifier) preserveSetElementIds(ctx context.Context, new
 			modifiedElement := m.preserveElementId(ctx, plannedElementObj, *correspondingStateElement)
 			modifiedElements = append(modifiedElements, modifiedElement)
 		} else {
-			modifiedElements = append(modifiedElements, plannedElement)
+			// No state row with the same name: prior-state id must not stick (e.g. user rename
+			// leaves plan {id:4, name:newUser} and breaks apply vs API id).
+			modifiedElements = append(modifiedElements, m.clearStaleIDForNameRefSet(ctx, plannedElementObj, setFieldName))
 		}
 	}
 
@@ -430,7 +432,55 @@ func (m ifwExceptionsSetModifier) findElementByName(ctx context.Context, targetO
 	return nil
 }
 
-// preserveElementId creates a new element object with ID and name preserved from state
+// clearStaleIDForNameRefSet marks id as unknown when the practitioner references an entity by
+// name but no state element shares that name (i.e., a new or renamed entity).
+// Using Unknown (not Null) ensures Terraform accepts any id the API returns after apply.
+// If the plan already has an explicit id (id-based reference), it is left untouched.
+func (m ifwExceptionsSetModifier) clearStaleIDForNameRefSet(ctx context.Context, plannedObj types.Object, setFieldName string) attr.Value {
+	attrs := plannedObj.Attributes()
+
+	// Only act when the element has both "id" and "name" fields (name/id ref pattern)
+	idVal, hasId := attrs["id"]
+	nameVal, nameOk := attrs["name"].(types.String)
+	if !hasId || !nameOk {
+		return plannedObj
+	}
+
+	// If id is already explicitly known (user specified it in config), leave as-is
+	if idStr, ok := idVal.(types.String); ok && !idStr.IsNull() && !idStr.IsUnknown() {
+		return plannedObj
+	}
+
+	// If name is null/unknown, this isn't a name-based reference; leave as-is
+	if nameVal.IsNull() || nameVal.IsUnknown() {
+		return plannedObj
+	}
+
+	newAttrs := make(map[string]attr.Value, len(attrs))
+	for k, v := range attrs {
+		newAttrs[k] = v
+	}
+	newAttrs["id"] = types.StringUnknown()
+	objectType := plannedObj.Type(ctx).(types.ObjectType)
+	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
+	if diags.HasError() {
+		return plannedObj
+	}
+	tflog.Debug(ctx, "IfwExceptionsSetModifier: Set id to unknown for new/renamed entity (no state name match)", map[string]interface{}{
+		"field": setFieldName,
+		"name":  nameVal.ValueString(),
+	})
+	return newObj
+}
+
+// preserveElementId merges planned values with state IDs when the same logical ref is unchanged.
+// Since UseStateForUnknown has been removed from exception id fields, the plan's id will be
+// unknown when not specified in config. We preserve the state's id when names match (same
+// entity) so the plan shows the correct id and avoids perpetual diff.
+//
+// IMPORTANT: id-based references are checked FIRST. When the plan already has a known non-null
+// id (explicitly from config), we must NOT override it — even if name is also known (name can
+// leak from UseStateForUnknown on the name field).
 func (m ifwExceptionsSetModifier) preserveElementId(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
@@ -440,17 +490,49 @@ func (m ifwExceptionsSetModifier) preserveElementId(ctx context.Context, planned
 		newAttrs[k] = v
 	}
 
-	// Preserve ID from state if it exists and is known
-	if stateId, exists := stateAttrs["id"]; exists {
-		if stateIdStr, ok := stateId.(types.String); ok && !stateIdStr.IsNull() && !stateIdStr.IsUnknown() {
-			newAttrs["id"] = stateIdStr
+	planIdKnown := false
+	if planId, exists := plannedAttrs["id"]; exists {
+		if planIdStr, ok := planId.(types.String); ok && !planIdStr.IsNull() && !planIdStr.IsUnknown() {
+			planIdKnown = true
 		}
 	}
 
-	// Preserve name from state if it exists and is known
-	if stateName, exists := stateAttrs["name"]; exists {
-		if stateNameStr, ok := stateName.(types.String); ok && !stateNameStr.IsNull() && !stateNameStr.IsUnknown() {
-			newAttrs["name"] = stateNameStr
+	planNameIsKnown := false
+	if plannedName, exists := plannedAttrs["name"]; exists {
+		if plannedNameStr, ok := plannedName.(types.String); ok && !plannedNameStr.IsNull() && !plannedNameStr.IsUnknown() {
+			planNameIsKnown = true
+		}
+	}
+
+	if planIdKnown {
+		// Id is explicitly set in config — keep it. Name may have leaked from
+		// UseStateForUnknown; preserve state name only when plan name is unknown/null.
+		if !planNameIsKnown {
+			if stateName, exists := stateAttrs["name"]; exists {
+				if stateNameStr, ok := stateName.(types.String); ok && !stateNameStr.IsNull() && !stateNameStr.IsUnknown() {
+					newAttrs["name"] = stateNameStr
+				}
+			}
+		}
+	} else if planNameIsKnown {
+		// Name-only reference (id is unknown since UseStateForUnknown was removed).
+		// Preserve state's id so the plan is correct and avoids drift.
+		if stateId, exists := stateAttrs["id"]; exists {
+			if stateIdStr, ok := stateId.(types.String); ok && !stateIdStr.IsNull() && !stateIdStr.IsUnknown() {
+				newAttrs["id"] = stateIdStr
+			}
+		}
+	} else {
+		// Neither id nor name known: preserve both from state.
+		if stateId, exists := stateAttrs["id"]; exists {
+			if stateIdStr, ok := stateId.(types.String); ok && !stateIdStr.IsNull() && !stateIdStr.IsUnknown() {
+				newAttrs["id"] = stateIdStr
+			}
+		}
+		if stateName, exists := stateAttrs["name"]; exists {
+			if stateNameStr, ok := stateName.(types.String); ok && !stateNameStr.IsNull() && !stateNameStr.IsUnknown() {
+				newAttrs["name"] = stateNameStr
+			}
 		}
 	}
 
