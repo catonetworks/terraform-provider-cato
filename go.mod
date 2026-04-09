@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260408220804-197083287849
+	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260409200057-6efec4035447
 	github.com/fatih/structs v1.1.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
