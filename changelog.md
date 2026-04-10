@@ -216,3 +216,7 @@
 
 ## 0.0.66 (2025-03-30)
 - Adding SDK trace_id error logging with request body, rereleasing 0.0.66
+
+## 0.0.69 (2025-03-10)
+- Added in new getSiterangeList API moving off of entityLookup for network_range and socket_site resources. 
+- Updated socket_site resource to accommodate state chagnes with default values for DHCP for native range

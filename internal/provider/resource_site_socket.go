@@ -1913,7 +1913,7 @@ func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, 
 		// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
 		// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
 		dhcpType := rDhcp.GetDhcpType()
-		if isDhcpKnown || (dhcpType != nil && *dhcpType != "" && *dhcpType != cato_models.DhcpTypeDhcpDisabled) {
+		if isDhcpKnown || (dhcpType != nil && *dhcpType != "" && *dhcpType != cato_models.DhcpTypeDhcpDisabled && *dhcpType != cato_models.DhcpTypeAccountDefault) {
 			dType := cato_models.DhcpType("")
 			if dhcpType != nil {
 				dType = cato_models.DhcpType(*dhcpType)
