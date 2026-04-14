@@ -10,6 +10,7 @@ import (
 	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/spf13/cast"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -962,56 +963,69 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 	}
 	responseRange := queryRangeResult.Site.NetworkRange
 
-	// parse DHCP settings
-	if !state.DhcpSettings.IsNull() {
+	// parse DHCP settings - handle both import (when state is null) and refresh cases
+	// For Routed and Direct range types, dhcp_settings should always be null
+	// The API returns DHCP values for these but they're not valid to submit
+	if responseRange.DhcpSettings == nil ||
+		responseRange.RangeType == cato_models.SubnetTypeRouted ||
+		responseRange.RangeType == cato_models.SubnetTypeDirect {
+		state.DhcpSettings = types.ObjectNull(DhcpSettingsAttrTypes)
+	} else {
+		// Get existing state values if available for preserving computed values
 		var stateDhcpSettings DhcpSettings
-		if state.DhcpSettings.As(ctx, &stateDhcpSettings, basetypes.ObjectAsOptions{}).HasError() {
-			return NetworkRange{}, false, fmt.Errorf("failed to parse existing dhcpSettings from state for network rangeID '%s'", networkRangeID)
+		hasExistingState := false
+		if !state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown() {
+			if state.DhcpSettings.As(ctx, &stateDhcpSettings, basetypes.ObjectAsOptions{}).HasError() {
+				return NetworkRange{}, false, fmt.Errorf("failed to parse existing dhcpSettings from state for network rangeID '%s'", networkRangeID)
+			}
+			hasExistingState = true
 		}
-		if responseRange.DhcpSettings == nil {
-			state.DhcpSettings = types.ObjectNull(DhcpSettingsAttrTypes)
-		} else {
-			dhcpSettings := DhcpSettings{
-				DhcpType:              types.StringValue(string(responseRange.DhcpSettings.DhcpType)),
-				IpRange:               types.StringNull(),
-				RelayGroupId:          types.StringNull(),
-				RelayGroupName:        types.StringNull(),
-				DhcpMicrosegmentation: stateDhcpSettings.DhcpMicrosegmentation,
-			}
-			if stateDhcpSettings.DhcpMicrosegmentation.IsUnknown() {
-				dhcpSettings.DhcpMicrosegmentation = types.BoolNull()
-			}
-			if responseRange.DhcpSettings.DhcpType != cato_models.DhcpTypeDhcpDisabled {
-				switch responseRange.DhcpSettings.DhcpType {
-				case cato_models.DhcpTypeDhcpRange:
-					dhcpSettings.IpRange = types.StringPointerValue(responseRange.DhcpSettings.IPRange)
-				case cato_models.DhcpTypeDhcpRelay:
-					if responseRange.DhcpSettings.RelayGroupID == nil { // for DHCP_RELAY, groupID muet be set
-						return NetworkRange{}, false, fmt.Errorf("dhcpSettings.RelayGroupID not returned by NetworkRange API for rangeID '%s'", networkRangeID)
-					}
-					dhcpSettings.RelayGroupId = types.StringValue(*responseRange.DhcpSettings.RelayGroupID)
-					relayGroupName, success, err := checkForDhcpRelayGroup(ctx, r.client, "", *responseRange.DhcpSettings.RelayGroupID)
-					if err != nil {
-						return NetworkRange{}, false, fmt.Errorf("failed to get dhcpSettings RelayGroup name for network rangeID '%s': %w", networkRangeID, err)
-					}
-					if !success {
-						return NetworkRange{}, false, fmt.Errorf("failed to find dhcpSettings RelayGroup name for network rangeID '%s'", networkRangeID)
-					}
-					dhcpSettings.RelayGroupName = types.StringValue(relayGroupName)
-				}
 
-				// only set DhcpMicrosegmentation if already configured
-				if !stateDhcpSettings.DhcpMicrosegmentation.IsNull() && !stateDhcpSettings.DhcpMicrosegmentation.IsUnknown() {
-					dhcpSettings.DhcpMicrosegmentation = types.BoolValue(responseRange.DhcpSettings.DhcpMicrosegmentation)
-				}
-			}
-
-			dhcpSettingsObj, diag := types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
-			if diag.HasError() {
-				return NetworkRange{}, false, fmt.Errorf("failed to create dhcpSettings object for network rangeID '%s'", networkRangeID)
-			}
-			state.DhcpSettings = dhcpSettingsObj
+		dhcpSettings := DhcpSettings{
+			DhcpType:              types.StringValue(string(responseRange.DhcpSettings.DhcpType)),
+			IpRange:               types.StringNull(),
+			RelayGroupId:          types.StringNull(),
+			RelayGroupName:        types.StringNull(),
+			DhcpMicrosegmentation: types.BoolNull(),
 		}
+
+		// Preserve DhcpMicrosegmentation from state if available and not unknown
+		if hasExistingState && !stateDhcpSettings.DhcpMicrosegmentation.IsUnknown() {
+			dhcpSettings.DhcpMicrosegmentation = stateDhcpSettings.DhcpMicrosegmentation
+		}
+
+		// Always set DhcpMicrosegmentation from API response for ALL DHCP types
+		// This ensures proper hydration during import when there's no existing state
+		dhcpSettings.DhcpMicrosegmentation = types.BoolValue(responseRange.DhcpSettings.DhcpMicrosegmentation)
+
+		// Handle type-specific fields
+		switch responseRange.DhcpSettings.DhcpType {
+		case cato_models.DhcpTypeDhcpRange:
+			dhcpSettings.IpRange = types.StringPointerValue(responseRange.DhcpSettings.IPRange)
+		case cato_models.DhcpTypeDhcpRelay:
+			if responseRange.DhcpSettings.RelayGroupID == nil { // for DHCP_RELAY, groupID must be set
+				return NetworkRange{}, false, fmt.Errorf("dhcpSettings.RelayGroupID not returned by NetworkRange API for rangeID '%s'", networkRangeID)
+			}
+			// Set BOTH relay_group_id and relay_group_name in state
+			// This ensures no drift regardless of which field the user specified in config
+			// ConflictsWith validator only applies to configuration, not state
+			dhcpSettings.RelayGroupId = types.StringValue(*responseRange.DhcpSettings.RelayGroupID)
+			relayGroupName, success, err := checkForDhcpRelayGroup(ctx, r.client, "", *responseRange.DhcpSettings.RelayGroupID)
+			if err != nil {
+				return NetworkRange{}, false, fmt.Errorf("failed to get dhcpSettings RelayGroup name for network rangeID '%s': %w", networkRangeID, err)
+			}
+			if !success {
+				return NetworkRange{}, false, fmt.Errorf("failed to find dhcpSettings RelayGroup name for network rangeID '%s'", networkRangeID)
+			}
+			dhcpSettings.RelayGroupName = types.StringValue(relayGroupName)
+		}
+		// For DHCP_DISABLED and ACCOUNT_DEFAULT, relay fields stay as StringNull() which is correct
+
+		dhcpSettingsObj, diag := types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
+		if diag.HasError() {
+			return NetworkRange{}, false, fmt.Errorf("failed to create dhcpSettings object for network rangeID '%s'", networkRangeID)
+		}
+		state.DhcpSettings = dhcpSettingsObj
 	}
 
 	state.Gateway = types.StringPointerValue(responseRange.Gateway)
@@ -1027,5 +1041,66 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 		state.Vlan = types.Int64Null()
 	}
 
+	// If SiteId or InterfaceId is not already set (e.g., during import), look it up via entityLookup
+	if state.SiteId.IsNull() || state.SiteId.IsUnknown() || state.InterfaceId.IsNull() || state.InterfaceId.IsUnknown() {
+		siteId, interfaceName, lookupErr := r.getSiteIdFromNetworkRange(ctx, networkRangeID)
+		if lookupErr != nil {
+			tflog.Warn(ctx, "Failed to lookup site_id for network range, keeping existing state value", map[string]interface{}{
+				"networkRangeID": networkRangeID,
+				"error":          lookupErr.Error(),
+			})
+		} else {
+			// Set SiteId if not already set
+			if state.SiteId.IsNull() || state.SiteId.IsUnknown() {
+				state.SiteId = types.StringValue(siteId)
+			}
+
+			// Set InterfaceId and InterfaceIndex if not already set and we have interfaceName
+			if (state.InterfaceId.IsNull() || state.InterfaceId.IsUnknown()) && interfaceName != "" {
+				// Look up the interface_id using the site_id and interface_name
+				interfaceId, interfaceIndex, interfaceErr := getSiteNetworkInterface(ctx, r.client, siteId, "", "", interfaceName)
+				if interfaceErr == nil {
+					state.InterfaceId = types.StringValue(interfaceId)
+					state.InterfaceIndex = types.StringValue(interfaceIndex)
+				} else {
+					tflog.Warn(ctx, "Failed to lookup interface_id for network range", map[string]interface{}{
+						"networkRangeID": networkRangeID,
+						"interfaceName":  interfaceName,
+						"error":          interfaceErr.Error(),
+					})
+				}
+			}
+		}
+	}
+
 	return state, true, nil
+}
+
+// getSiteIdFromNetworkRange retrieves the site_id and interface info for a network range using entityLookup
+func (r *networkRangeResource) getSiteIdFromNetworkRange(ctx context.Context, networkRangeID string) (siteId string, interfaceName string, err error) {
+	result, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, nil, nil, []string{networkRangeID}, nil, nil, nil)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to lookup network range site: %w", err)
+	}
+
+	if result == nil || len(result.EntityLookup.GetItems()) == 0 {
+		return "", "", fmt.Errorf("network range %s not found in entityLookup", networkRangeID)
+	}
+
+	item := result.EntityLookup.GetItems()[0]
+	helperFields := item.GetHelperFields()
+	if helperFields == nil {
+		return "", "", fmt.Errorf("no helperFields returned for network range %s", networkRangeID)
+	}
+
+	// Extract siteId from helperFields
+	siteId = cast.ToString(helperFields["siteId"])
+	if siteId == "" {
+		return "", "", fmt.Errorf("siteId not found in helperFields for network range %s", networkRangeID)
+	}
+
+	// Extract interfaceName from helperFields
+	interfaceName = cast.ToString(helperFields["interfaceName"])
+
+	return siteId, interfaceName, nil
 }

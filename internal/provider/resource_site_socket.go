@@ -1903,12 +1903,15 @@ func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, 
 		if netRange.RangeType != cato_models.SubnetTypeNative {
 			continue
 		}
+		// Only process the network range matching the default interface's subnet
+		// This prevents overwriting with data from other native-type ranges (e.g., LAN2 with is_native_range=TRUE)
+		if netRange.Subnet != nativeRangeObj.NativeNetworkRange.ValueString() {
+			continue
+		}
 
 		rDhcp := netRange.GetDhcpSettings()
-		// Only set microsegmentation if it was already known to be present in the original state/plan
-		if isMicrosegmentationKnown {
-			microsegmentation = types.BoolValue(rDhcp.GetDhcpMicrosegmentation())
-		}
+		// Always set microsegmentation from the API response to ensure proper hydration during import
+		microsegmentation = types.BoolValue(rDhcp.GetDhcpMicrosegmentation())
 
 		// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
 		// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
@@ -2162,50 +2165,13 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					state.Description = types.StringValue(descriptionStr)
 				}
 
-				// Determine the translated_subnet value to use in state
-				// If plan has translated_subnet different from native_network_range, use plan value
-				// If translated_subnet equals native_network_range, return null
-				// Otherwise, use API value
+				// Use translated_subnet value directly from API
+				// Always hydrate from API to ensure proper state during import and refresh
 				translatedSubnetValue := nativeRangeObj.TranslatedSubnet
-				if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
-					var planNativeRange NativeRange
-					diags := state.NativeRange.As(ctx, &planNativeRange, basetypes.ObjectAsOptions{})
-					if diags == nil || !diags.HasError() {
-						// Check if plan has translated_subnet
-						if !planNativeRange.TranslatedSubnet.IsNull() && !planNativeRange.TranslatedSubnet.IsUnknown() &&
-							!planNativeRange.NativeNetworkRange.IsNull() && !planNativeRange.NativeNetworkRange.IsUnknown() {
-							planTranslated := planNativeRange.TranslatedSubnet.ValueString()
-							planNative := planNativeRange.NativeNetworkRange.ValueString()
-							if planTranslated != "" && planTranslated != planNative {
-								// Plan has a different translated_subnet - preserve it
-								translatedSubnetValue = types.StringValue(planTranslated)
-								tflog.Debug(ctx, "Preserving plan translated_subnet value", map[string]interface{}{
-									"plan_translated":   planTranslated,
-									"plan_native":       planNative,
-									"api_translated":    nativeRangeObj.TranslatedSubnet.ValueString(),
-									"api_native_subnet": subnet,
-								})
-							} else if planTranslated == planNative {
-								// translated_subnet equals native_network_range - return null
-								translatedSubnetValue = types.StringNull()
-								tflog.Debug(ctx, "translated_subnet equals native_network_range, returning null", map[string]interface{}{
-									"plan_translated": planTranslated,
-									"plan_native":     planNative,
-								})
-							}
-						}
-					}
-				}
-				// Additionally check if API returned translated_subnet equals the native subnet
-				if !translatedSubnetValue.IsNull() && !translatedSubnetValue.IsUnknown() &&
-					translatedSubnetValue.ValueString() == subnet {
-					// API translated_subnet equals native subnet - return null
-					translatedSubnetValue = types.StringNull()
-					tflog.Debug(ctx, "API translated_subnet equals native subnet, returning null", map[string]interface{}{
-						"api_translated": translatedSubnetValue.ValueString(),
-						"native_subnet":  subnet,
-					})
-				}
+				tflog.Debug(ctx, "Using translated_subnet from API", map[string]interface{}{
+					"translated_subnet": translatedSubnetValue.ValueString(),
+					"native_subnet":     subnet,
+				})
 
 				// All values from API via nativeRangeObj
 				var stateNativeRange types.Object
@@ -2250,25 +2216,13 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					"siteLocation": utils.InterfaceToJSONString(siteLocation),
 				})
 
-				// Get input state's site location to preserve null values
-				// This prevents API values from overriding user's explicit null values
-				var inputSiteLocation SiteLocation
-				if !state.SiteLocation.IsNull() && !state.SiteLocation.IsUnknown() {
-					state.SiteLocation.As(ctx, &inputSiteLocation, basetypes.ObjectAsOptions{})
-				}
-
 				// Build state location from siteGeneralDetails response
-				// Preserve null values from input state for optional fields (state_code, address, city)
+				// Always hydrate from API to ensure proper state during import and refresh
 				stateSiteLocation, _ = types.ObjectValue(
 					SiteLocationResourceAttrTypes,
 					map[string]attr.Value{
 						"country_code": types.StringValue(siteLocation.GetCountryCode()),
 						"state_code": func() types.String {
-							// If input state had state_code as null, preserve null
-							if inputSiteLocation.StateCode.IsNull() {
-								return types.StringNull()
-							}
-							// Otherwise use API value
 							if siteLocation.GetStateCode() != nil && *siteLocation.GetStateCode() != "" {
 								return types.StringValue(*siteLocation.GetStateCode())
 							}
@@ -2276,22 +2230,12 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 						}(),
 						"timezone": types.StringValue(siteLocation.GetTimezone()),
 						"address": func() types.String {
-							// If input state had address as null, preserve null
-							if inputSiteLocation.Address.IsNull() {
-								return types.StringNull()
-							}
-							// Otherwise use API value
 							if siteLocation.GetAddress() != nil && *siteLocation.GetAddress() != "" {
 								return types.StringValue(*siteLocation.GetAddress())
 							}
 							return types.StringNull()
 						}(),
 						"city": func() types.String {
-							// If input state had city as null, preserve null
-							if inputSiteLocation.City.IsNull() {
-								return types.StringNull()
-							}
-							// Otherwise use API value
 							if siteLocation.GetCityName() != nil && *siteLocation.GetCityName() != "" {
 								return types.StringValue(*siteLocation.GetCityName())
 							}

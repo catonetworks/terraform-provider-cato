@@ -220,3 +220,13 @@
 ## 0.0.69 (2025-03-10)
 - Added in new getSiterangeList API moving off of entityLookup for network_range and socket_site resources. 
 - Updated socket_site resource to accommodate state chagnes with default values for DHCP for native range
+
+## 0.0.70 (2025-04-14)
+- Refactored network_range DHCP settings hydration to properly support import by handling null/unknown state, and always setting DhcpMicrosegmentation from API response for all DHCP types
+- Network_range now sets dhcp_settings to null for Routed and Direct range types (API returns values but they are not valid to submit)
+- Network_range DHCP_RELAY now writes both relay_group_id and relay_group_name to state to prevent drift regardless of which field the user specifies in config
+- Added getSiteIdFromNetworkRange helper using entityLookup to resolve site_id and interface_id during network_range import when not present in state
+- Fixed socket_site getNativeRange to filter by matching subnet, preventing overwrite from other native-type ranges (e.g., LAN2 with is_native_range=TRUE)
+- Simplified socket_site translated_subnet handling to always hydrate directly from API, removing complex plan/state comparison logic
+- Simplified socket_site site location hydration to always use API values for state_code, address, and city during import and refresh
+- Socket_site microsegmentation now always set from API response for proper hydration during import
