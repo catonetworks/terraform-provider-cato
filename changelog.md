@@ -204,24 +204,24 @@
 - Updated socket_site, lan_interface, wan_interface, and network_range resources to add all read attributes now available in the API to hystrate state.
 - Added data source for host lookup
 
-## 0.0.64 (2025-02-24)
+## 0.0.64 (2026-02-24)
 - Added resources for socketLan network and firewall with section.
 - Updated network_range to support microsegmentation for DHCP_RELAY (previously not supported by API)
 - Updated socket_site resource to read timezone from API instead of from local dataset, and fixed logic around interface mapping
 - Reverted siteLocation data to use local json dataset
 - Added fix for DHCP_SETTINGS as null in socket_site
 
-## 0.0.65 (2025-03-20)
+## 0.0.65 (2026-03-20)
 - FIxed issues in lan firewall, siteLocation and socket site logic (swap interface call)
 
-## 0.0.66 (2025-03-30)
+## 0.0.66 (2026-03-30)
 - Adding SDK trace_id error logging with request body, rereleasing 0.0.66
 
-## 0.0.69 (2025-03-10)
+## 0.0.69 (2026-04-10)
 - Added in new getSiterangeList API moving off of entityLookup for network_range and socket_site resources. 
 - Updated socket_site resource to accommodate state chagnes with default values for DHCP for native range
 
-## 0.0.70 (2025-04-14)
+## 0.0.70 (2026-04-14)
 - Refactored network_range DHCP settings hydration to properly support import by handling null/unknown state, and always setting DhcpMicrosegmentation from API response for all DHCP types
 - Network_range now sets dhcp_settings to null for Routed and Direct range types (API returns values but they are not valid to submit)
 - Network_range DHCP_RELAY now writes both relay_group_id and relay_group_name to state to prevent drift regardless of which field the user specifies in config
