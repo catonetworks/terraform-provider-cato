@@ -1036,22 +1036,39 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 	return obj
 }
 
-func parseTimeString(timeStr string) (string, error) {
+func parseFlexibleTimeString(timeStr string) (time.Time, error) {
 	t, err := time.Parse("2006-01-02T15:04:05", timeStr)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, timeStr)
+		if err != nil {
+			return time.Time{}, err
+		}
+	}
+	return t, nil
+}
+
+func parseTimeString(timeStr string, preserveWith ...string) (string, error) {
+	t, err := parseFlexibleTimeString(timeStr)
 	if err != nil {
 		return "", err
 	}
-	// If all formats fail, return an error
-	return t.Format("2006-01-02T15:04:05"), nil
+
+	if len(preserveWith) > 0 && preserveWith[0] != "" {
+		preservedTime, err := parseFlexibleTimeString(preserveWith[0])
+		if err == nil && preservedTime.UTC().Equal(t.UTC()) {
+			return preserveWith[0], nil
+		}
+	}
+
+	return t.UTC().Format(time.RFC3339), nil
 }
 
 func parseTimeStringWithTZ(timeStr string) (string, error) {
-	t, err := time.Parse("2006-01-02T15:04:05", timeStr)
+	t, err := parseFlexibleTimeString(timeStr)
 	if err != nil {
 		return "", err
 	}
-	// If all formats fail, return an error
-	return t.Format("2006-01-02T15:04:05+00:00"), nil
+	return t.UTC().Format("2006-01-02T15:04:05+00:00"), nil
 }
 
 // getActivePeriodString safely converts API active period string fields to Terraform string values
