@@ -2,7 +2,10 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strconv"
+	"time"
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -31,9 +34,12 @@ type catoProvider struct {
 }
 
 type catoProviderModel struct {
-	BaseURL   types.String `tfsdk:"baseurl"`
-	Token     types.String `tfsdk:"token"`
-	AccountId types.String `tfsdk:"account_id"`
+	BaseURL             types.String `tfsdk:"baseurl"`
+	Token               types.String `tfsdk:"token"`
+	AccountId           types.String `tfsdk:"account_id"`
+	RetryMax            types.Int64  `tfsdk:"retry_max"`
+	RetryWaitMinSeconds types.Int64  `tfsdk:"retry_wait_min_seconds"`
+	RetryWaitMaxSeconds types.Int64  `tfsdk:"retry_wait_max_seconds"`
 }
 
 // added by JF to support use of two different clients (long story....)
@@ -64,6 +70,18 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 			"account_id": schema.StringAttribute{
 				Description: "AccountId for the Cato API",
 				Required:    true,
+			},
+			"retry_max": schema.Int64Attribute{
+				Description: "Maximum number of retries for retryable API requests. Can be provided using CATO_RETRY_MAX environment variable.",
+				Optional:    true,
+			},
+			"retry_wait_min_seconds": schema.Int64Attribute{
+				Description: "Minimum backoff between retry attempts, in seconds. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.",
+				Optional:    true,
+			},
+			"retry_wait_max_seconds": schema.Int64Attribute{
+				Description: "Maximum backoff between retry attempts, in seconds. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.",
+				Optional:    true,
 			},
 		},
 	}
@@ -102,12 +120,39 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		)
 	}
 
+	if config.RetryMax.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_max"),
+			"Unknown Retry Max",
+			"The provider cannot create the CATO API client as there is an unknown configuration value for retry_max.",
+		)
+	}
+
+	if config.RetryWaitMinSeconds.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_wait_min_seconds"),
+			"Unknown Retry Minimum Wait",
+			"The provider cannot create the CATO API client as there is an unknown configuration value for retry_wait_min_seconds.",
+		)
+	}
+
+	if config.RetryWaitMaxSeconds.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_wait_max_seconds"),
+			"Unknown Retry Maximum Wait",
+			"The provider cannot create the CATO API client as there is an unknown configuration value for retry_wait_max_seconds.",
+		)
+	}
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	baseurl := os.Getenv("CATO_BASEURL")
 	token := os.Getenv("CATO_TOKEN")
+	retryMax, retryMaxErr := int64FromEnv("CATO_RETRY_MAX")
+	retryWaitMinSeconds, retryWaitMinErr := int64FromEnv("CATO_RETRY_WAIT_MIN_SECONDS")
+	retryWaitMaxSeconds, retryWaitMaxErr := int64FromEnv("CATO_RETRY_WAIT_MAX_SECONDS")
 
 	if !config.BaseURL.IsNull() {
 		baseurl = config.BaseURL.ValueString()
@@ -115,6 +160,21 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 
 	if !config.Token.IsNull() {
 		token = config.Token.ValueString()
+	}
+
+	if !config.RetryMax.IsNull() {
+		value := config.RetryMax.ValueInt64()
+		retryMax = &value
+	}
+
+	if !config.RetryWaitMinSeconds.IsNull() {
+		value := config.RetryWaitMinSeconds.ValueInt64()
+		retryWaitMinSeconds = &value
+	}
+
+	if !config.RetryWaitMaxSeconds.IsNull() {
+		value := config.RetryWaitMaxSeconds.ValueInt64()
+		retryWaitMaxSeconds = &value
 	}
 
 	accountId := config.AccountId.ValueString()
@@ -139,10 +199,82 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
+	if retryMaxErr != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_max"),
+			"Invalid Retry Max Environment Variable",
+			retryMaxErr.Error(),
+		)
+	}
+
+	if retryWaitMinErr != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_wait_min_seconds"),
+			"Invalid Retry Minimum Wait Environment Variable",
+			retryWaitMinErr.Error(),
+		)
+	}
+
+	if retryWaitMaxErr != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_wait_max_seconds"),
+			"Invalid Retry Maximum Wait Environment Variable",
+			retryWaitMaxErr.Error(),
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if retryMax != nil && *retryMax < 0 {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_max"),
+			"Invalid Retry Max",
+			"The provider retry_max value must be greater than or equal to 0.",
+		)
+	}
+
+	if retryWaitMinSeconds != nil && *retryWaitMinSeconds <= 0 {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_wait_min_seconds"),
+			"Invalid Retry Minimum Wait",
+			"The provider retry_wait_min_seconds value must be greater than 0.",
+		)
+	}
+
+	if retryWaitMaxSeconds != nil && *retryWaitMaxSeconds <= 0 {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_wait_max_seconds"),
+			"Invalid Retry Maximum Wait",
+			"The provider retry_wait_max_seconds value must be greater than 0.",
+		)
+	}
+
+	if retryWaitMinSeconds != nil && retryWaitMaxSeconds != nil && *retryWaitMinSeconds > *retryWaitMaxSeconds {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("retry_wait_min_seconds"),
+			"Invalid Retry Backoff Range",
+			"The provider retry_wait_min_seconds value must be less than or equal to retry_wait_max_seconds.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// newer client:
 	headers := map[string]string{}
 	headers["User-Agent"] = "cato-terraform-" + p.version
-	catoClient, _ := cato.New(baseurl, token, accountId, nil, headers)
+	retryConfig := buildRetryConfig(retryMax, retryWaitMinSeconds, retryWaitMaxSeconds)
+	catoClient, err := cato.NewWithRetryConfig(baseurl, token, accountId, nil, headers, retryConfig)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create Cato API Client",
+			err.Error(),
+		)
+		return
+	}
 
 	dataSourceData := &catoClientData{
 		BaseURL:   baseurl,
@@ -156,6 +288,39 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 
 	// cleanup stale rules
 	p.cleanupDrafts(ctx, dataSourceData)
+}
+
+func int64FromEnv(key string) (*int64, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return nil, nil
+	}
+
+	val, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("%s must be a valid integer, got %q", key, raw)
+	}
+
+	return &val, nil
+}
+
+func buildRetryConfig(retryMax, retryWaitMinSeconds, retryWaitMaxSeconds *int64) *cato.RetryConfig {
+	if retryMax == nil && retryWaitMinSeconds == nil && retryWaitMaxSeconds == nil {
+		return nil
+	}
+
+	config := &cato.RetryConfig{}
+	if retryMax != nil {
+		config.RetryMax = int(*retryMax)
+	}
+	if retryWaitMinSeconds != nil {
+		config.RetryWaitMin = time.Duration(*retryWaitMinSeconds) * time.Second
+	}
+	if retryWaitMaxSeconds != nil {
+		config.RetryWaitMax = time.Duration(*retryWaitMaxSeconds) * time.Second
+	}
+
+	return config
 }
 
 func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
