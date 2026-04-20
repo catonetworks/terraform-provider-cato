@@ -8,8 +8,6 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
 
-//go:generate go tool mockery
-
 type InternetFirewallPolicyClient interface {
 	PolicyInternetFirewallAddRule(ctx context.Context, internetFirewallAddRuleInput cato_models.InternetFirewallAddRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyInternetFirewallAddRule, error)
 	PolicyInternetFirewallPublishPolicyRevision(ctx context.Context, internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput, policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyInternetFirewallPublishPolicyRevision, error)

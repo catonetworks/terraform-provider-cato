@@ -18,7 +18,7 @@ MIRROR_DIR=${HOME}/.terraform.d/mirror/${HOSTNAME}/${NAMESPACE}/${PKG_NAME}/${VE
 
 default: install
 
-.PHONY: build install install-mirror sync-provider clean docs
+.PHONY: build install install-mirror sync-provider clean docs mocks
 
 build: ## Build the terraform-provider
 	export GO111MODULE="on"
@@ -93,6 +93,9 @@ clean: install ## install and clean caches
 
 docs: ## Generate documentation
 	tfplugindocs generate --provider-dir . -provider-name terraform-provider-cato
+
+mocks: ## Generate mockery mocks
+	go tool mockery
 
 test: ## Run unit tests
 	@unset TF_ACC; go test -json $$(go list ./... | grep -v terraform-provider-cato/internal/acctests) | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
