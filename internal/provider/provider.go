@@ -203,7 +203,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		retryWaitMaxSeconds = &value
 	}
 
-	accountId := config.AccountID.ValueString()
+	accountID := config.AccountID.ValueString()
 
 	if baseurl == "" {
 		resp.Diagnostics.AddAttributeError(
@@ -294,7 +294,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	headers["User-Agent"] = "cato-terraform-" + p.version
 	retryConfig := buildRetryConfig(retryMax, retryWaitMinSeconds, retryWaitMaxSeconds)
 	httpClient := buildRetryHTTPClient(retryConfig)
-	catoClient, err := cato.New(baseurl, token, accountId, httpClient, headers)
+	catoClient, err := cato.New(baseurl, token, accountID, httpClient, headers)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create Cato API Client",
@@ -306,7 +306,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	dataSourceData := &catoClientData{
 		BaseURL:   baseurl,
 		Token:     token,
-		AccountId: accountId,
+		AccountId: accountID,
 		catov2:    catoClient,
 	}
 
