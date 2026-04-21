@@ -3,11 +3,13 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
 
 	cato "github.com/catonetworks/cato-go-sdk"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -19,6 +21,12 @@ import (
 
 var (
 	_ provider.Provider = &catoProvider{}
+)
+
+const (
+	defaultRetryMax            int64 = 5
+	defaultRetryWaitMinSeconds int64 = 1
+	defaultRetryWaitMaxSeconds int64 = 30
 )
 
 func New(version string) func() provider.Provider {
@@ -72,15 +80,15 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 				Required:    true,
 			},
 			"retry_max": schema.Int64Attribute{
-				Description: "Maximum number of retries for retryable API requests. Can be provided using CATO_RETRY_MAX environment variable.",
+				Description: "Maximum number of retries for retryable API requests. Defaults to 5. Can be provided using CATO_RETRY_MAX environment variable.",
 				Optional:    true,
 			},
 			"retry_wait_min_seconds": schema.Int64Attribute{
-				Description: "Minimum backoff between retry attempts, in seconds. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.",
+				Description: "Minimum backoff between retry attempts, in seconds. Defaults to 1. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.",
 				Optional:    true,
 			},
 			"retry_wait_max_seconds": schema.Int64Attribute{
-				Description: "Maximum backoff between retry attempts, in seconds. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.",
+				Description: "Maximum backoff between retry attempts, in seconds. Defaults to 30. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.",
 				Optional:    true,
 			},
 		},
@@ -177,6 +185,21 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		retryWaitMaxSeconds = &value
 	}
 
+	if retryMax == nil {
+		value := defaultRetryMax
+		retryMax = &value
+	}
+
+	if retryWaitMinSeconds == nil {
+		value := defaultRetryWaitMinSeconds
+		retryWaitMinSeconds = &value
+	}
+
+	if retryWaitMaxSeconds == nil {
+		value := defaultRetryWaitMaxSeconds
+		retryWaitMaxSeconds = &value
+	}
+
 	accountId := config.AccountId.ValueString()
 
 	if baseurl == "" {
@@ -267,7 +290,8 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	headers := map[string]string{}
 	headers["User-Agent"] = "cato-terraform-" + p.version
 	retryConfig := buildRetryConfig(retryMax, retryWaitMinSeconds, retryWaitMaxSeconds)
-	catoClient, err := cato.NewWithRetryConfig(baseurl, token, accountId, nil, headers, retryConfig)
+	httpClient := buildRetryHTTPClient(retryConfig)
+	catoClient, err := cato.New(baseurl, token, accountId, httpClient, headers)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create Cato API Client",
@@ -304,23 +328,53 @@ func int64FromEnv(key string) (*int64, error) {
 	return &val, nil
 }
 
-func buildRetryConfig(retryMax, retryWaitMinSeconds, retryWaitMaxSeconds *int64) *cato.RetryConfig {
+type retryClientConfig struct {
+	retryMax     int
+	retryWaitMin time.Duration
+	retryWaitMax time.Duration
+}
+
+type retryableResponseErrors struct {
+	Errors        []retryableResponseError `json:"errors"`
+	NetworkErrors []retryableResponseError `json:"networkErrors"`
+	GraphQLErrors []retryableResponseError `json:"graphqlErrors"`
+}
+
+type retryableResponseError struct {
+	Message string `json:"message"`
+}
+
+func buildRetryConfig(retryMax, retryWaitMinSeconds, retryWaitMaxSeconds *int64) *retryClientConfig {
 	if retryMax == nil && retryWaitMinSeconds == nil && retryWaitMaxSeconds == nil {
 		return nil
 	}
 
-	config := &cato.RetryConfig{}
+	config := &retryClientConfig{}
 	if retryMax != nil {
-		config.RetryMax = int(*retryMax)
+		config.retryMax = int(*retryMax)
 	}
 	if retryWaitMinSeconds != nil {
-		config.RetryWaitMin = time.Duration(*retryWaitMinSeconds) * time.Second
+		config.retryWaitMin = time.Duration(*retryWaitMinSeconds) * time.Second
 	}
 	if retryWaitMaxSeconds != nil {
-		config.RetryWaitMax = time.Duration(*retryWaitMaxSeconds) * time.Second
+		config.retryWaitMax = time.Duration(*retryWaitMaxSeconds) * time.Second
 	}
 
 	return config
+}
+
+func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
+	if retryConfig == nil {
+		return nil
+	}
+
+	retryClient := retryablehttp.NewClient()
+	retryClient.CheckRetry = retryablehttp.DefaultRetryPolicy
+	retryClient.RetryMax = retryConfig.retryMax
+	retryClient.RetryWaitMin = retryConfig.retryWaitMin
+	retryClient.RetryWaitMax = retryConfig.retryWaitMax
+
+	return retryClient.StandardClient()
 }
 
 func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
