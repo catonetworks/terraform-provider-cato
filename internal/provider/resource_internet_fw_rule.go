@@ -2533,7 +2533,12 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 	//publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		publishDataIfEnabled,
+		r.client.AccountId,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewallPublishPolicyRevision error",
@@ -2728,7 +2733,12 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	input.update.ID = *ruleInput.ID.ValueStringPointer()
 
 	//move rule
-	moveRule, err := r.getIfwClient().PolicyInternetFirewallMoveRule(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, inputMoveRule, r.client.AccountId)
+	moveRule, err := r.getIfwClient().PolicyInternetFirewallMoveRule(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		inputMoveRule,
+		r.client.AccountId,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewallMoveRule error",
@@ -2753,7 +2763,12 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	})
 
 	//Update new rule
-	updateRuleResponse, err := r.getIfwClient().PolicyInternetFirewallUpdateRule(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, input.update, r.client.AccountId)
+	updateRuleResponse, err := r.getIfwClient().PolicyInternetFirewallUpdateRule(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		input.update,
+		r.client.AccountId,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewallUpdateRule error",
@@ -2776,7 +2791,12 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	//publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		publishDataIfEnabled,
+		r.client.AccountId,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewallPublishPolicyRevision error",
@@ -2877,7 +2897,12 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		publishDataIfEnabled,
+		r.client.AccountId,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyInternetFirewallPublishPolicyRevision error",

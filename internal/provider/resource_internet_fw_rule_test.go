@@ -20,14 +20,14 @@ import (
 )
 
 func TestNewInternetFwRuleResource(t *testing.T) {
-	resource := NewInternetFwRuleResource()
+	r := NewInternetFwRuleResource()
 
-	if resource == nil {
+	if r == nil {
 		t.Fatal("expected resource instance, got nil")
 	}
 
-	if _, ok := resource.(*internetFwRuleResource); !ok {
-		t.Fatalf("expected *internetFwRuleResource, got %T", resource)
+	if _, ok := r.(*internetFwRuleResource); !ok {
+		t.Fatalf("expected *internetFwRuleResource, got %T", r)
 	}
 }
 
@@ -76,7 +76,7 @@ func TestInternetFwRuleImportState(t *testing.T) {
 	ctx := context.Background()
 	r := &internetFwRuleResource{}
 	resp := &resource.ImportStateResponse{
-		State: tfsdk.State{Schema: getInternetFwRuleSchema(t, ctx)},
+		State: tfsdk.State{Schema: getInternetFwRuleSchema(ctx, t)},
 	}
 
 	diags := resp.State.Set(ctx, InternetFirewallRule{
@@ -113,7 +113,7 @@ func TestInternetFwRuleImportState(t *testing.T) {
 func TestInternetFwRuleDelete(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
-	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
+	resourceState := newInternetFwRuleStateWithID(ctx, t, "rule-123")
 
 	mockClient.EXPECT().
 		PolicyInternetFirewallRemoveRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
@@ -151,8 +151,8 @@ func TestInternetFwRuleCreate(t *testing.T) {
 		client:    &catoClientData{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
-	req := resource.CreateRequest{Plan: newInternetFwRulePlan(t, ctx, "")}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(t, ctx)}}
+	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(ctx, t)}}
 
 	r.Create(ctx, req, resp)
 
@@ -182,8 +182,8 @@ func TestInternetFwRuleCreateSuccess(t *testing.T) {
 		client:    &catoClientData{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
-	req := resource.CreateRequest{Plan: newInternetFwRulePlan(t, ctx, "")}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(t, ctx)}}
+	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(ctx, t)}}
 
 	r.Create(ctx, req, resp)
 
@@ -197,7 +197,7 @@ func TestInternetFwRuleCreateSuccess(t *testing.T) {
 func TestInternetFwRuleReadRemovesMissingResource(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
-	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
+	resourceState := newInternetFwRuleStateWithID(ctx, t, "rule-123")
 
 	mockClient.EXPECT().
 		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
@@ -224,7 +224,7 @@ func TestInternetFwRuleReadRemovesMissingResource(t *testing.T) {
 func TestInternetFwRuleReadSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
-	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
+	resourceState := newInternetFwRuleStateWithID(ctx, t, "rule-123")
 
 	mockClient.EXPECT().
 		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
@@ -250,7 +250,7 @@ func TestInternetFwRuleReadSuccess(t *testing.T) {
 func TestInternetFwRuleUpdate(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
-	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
+	resourceState := newInternetFwRuleStateWithID(ctx, t, "rule-123")
 
 	mockClient.EXPECT().
 		PolicyInternetFirewallMoveRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
@@ -262,10 +262,10 @@ func TestInternetFwRuleUpdate(t *testing.T) {
 		ifwClient: mockClient,
 	}
 	req := resource.UpdateRequest{
-		Plan:  newInternetFwRulePlan(t, ctx, "rule-123"),
+		Plan:  newInternetFwRulePlan(ctx, t, "rule-123"),
 		State: resourceState,
 	}
-	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(t, ctx)}}
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(ctx, t)}}
 
 	r.Update(ctx, req, resp)
 
@@ -277,7 +277,7 @@ func TestInternetFwRuleUpdate(t *testing.T) {
 func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
-	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
+	resourceState := newInternetFwRuleStateWithID(ctx, t, "rule-123")
 
 	mockClient.EXPECT().
 		PolicyInternetFirewallMoveRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
@@ -301,10 +301,10 @@ func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 		ifwClient: mockClient,
 	}
 	req := resource.UpdateRequest{
-		Plan:  newInternetFwRulePlan(t, ctx, "rule-123"),
+		Plan:  newInternetFwRulePlan(ctx, t, "rule-123"),
 		State: resourceState,
 	}
-	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(t, ctx)}}
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(ctx, t)}}
 
 	r.Update(ctx, req, resp)
 
@@ -474,7 +474,7 @@ func TestRuleAlertValidatorValidateObjectAcceptsValidAlert(t *testing.T) {
 	}
 }
 
-func getInternetFwRuleSchema(t *testing.T, ctx context.Context) schema.Schema {
+func getInternetFwRuleSchema(ctx context.Context, t *testing.T) schema.Schema {
 	t.Helper()
 
 	r := &internetFwRuleResource{}
@@ -484,10 +484,10 @@ func getInternetFwRuleSchema(t *testing.T, ctx context.Context) schema.Schema {
 	return resp.Schema
 }
 
-func newInternetFwRulePlan(t *testing.T, ctx context.Context, ruleID string) tfsdk.Plan {
+func newInternetFwRulePlan(ctx context.Context, t *testing.T, ruleID string) tfsdk.Plan {
 	t.Helper()
 
-	plan := tfsdk.Plan{Schema: getInternetFwRuleSchema(t, ctx)}
+	plan := tfsdk.Plan{Schema: getInternetFwRuleSchema(ctx, t)}
 	diags := plan.Set(ctx, newMinimalInternetFwRuleModel(ruleID))
 	if diags.HasError() {
 		t.Fatalf("unexpected plan diagnostics: %+v", diags)
@@ -527,10 +527,10 @@ func newMinimalInternetFwRuleModel(ruleID string) InternetFirewallRule {
 	}
 }
 
-func newInternetFwRuleStateWithID(t *testing.T, ctx context.Context, ruleID string) tfsdk.State {
+func newInternetFwRuleStateWithID(ctx context.Context, t *testing.T, ruleID string) tfsdk.State {
 	t.Helper()
 
-	state := tfsdk.State{Schema: getInternetFwRuleSchema(t, ctx)}
+	state := tfsdk.State{Schema: getInternetFwRuleSchema(ctx, t)}
 	diags := state.Set(ctx, newMinimalInternetFwRuleModel(ruleID))
 	if diags.HasError() {
 		t.Fatalf("unexpected seed state diagnostics: %+v", diags)
@@ -754,7 +754,7 @@ func getInternetFwRuleExceptionsAttribute(t *testing.T, ctx context.Context) sch
 func getInternetFwRuleRuleAttribute(t *testing.T, ctx context.Context) schema.SingleNestedAttribute {
 	t.Helper()
 
-	s := getInternetFwRuleSchema(t, ctx)
+	s := getInternetFwRuleSchema(ctx, t)
 	ruleAttr, ok := s.Attributes["rule"].(schema.SingleNestedAttribute)
 	if !ok {
 		t.Fatalf("rule attribute is not a SingleNestedAttribute")

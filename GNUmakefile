@@ -3,6 +3,7 @@ HOSTNAME=registry.terraform.io
 NAMESPACE=catonetworks
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
+GOLANGCI_LINT ?= golangci-lint
 # Whenever bumping provider version, please update the version in cato/client.go (line 27) as well.
 VERSION=0.0.70
 
@@ -103,7 +104,11 @@ acctest: ## Run acceptance tests (real API calls)
 	TF_ACC=1 go test -count=1 -json ./internal/acctests/... | go tool tparse --follow -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 
 lint:  ## Run the linters configured in .golangci.yml locally
-	@go tool golangci-lint run ./... -v --timeout=60m
+	@command -v ${GOLANGCI_LINT} >/dev/null 2>&1 || { \
+		echo "golangci-lint not found in PATH. Install v2.11.4 or run 'make lint GOLANGCI_LINT=/path/to/golangci-lint'"; \
+		exit 1; \
+	}
+	@${GOLANGCI_LINT} run ./... -v --timeout=60m
 
 ##@ Help
 .PHONY: help
