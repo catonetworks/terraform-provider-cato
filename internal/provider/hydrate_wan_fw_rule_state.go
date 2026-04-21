@@ -454,6 +454,12 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 		expiresAtValue = types.StringNull()
 	}
 
+	configuredActivePeriod := Policy_Policy_WanFirewall_Policy_Rules_Rule_ActivePeriod{}
+	if !ruleInput.ActivePeriod.IsNull() && !ruleInput.ActivePeriod.IsUnknown() {
+		diagstmp := ruleInput.ActivePeriod.As(ctx, &configuredActivePeriod, basetypes.ObjectAsOptions{})
+		diags = append(diags, diagstmp...)
+	}
+
 	// If API returned nil but we have configured values in state, preserve them
 	// Only attempt to preserve values if ActivePeriod is not null and not unknown
 	tflog.Warn(ctx, "TFLOG_WARN_WAN.ruleInput.ActivePeriod", map[string]interface{}{
@@ -466,7 +472,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 
 	// Preserve effective_from if API returned nil
 	if !effectiveFromValue.IsNull() && useEffectiveFromValue.ValueBool() == true {
-		parsedEffectiveFromStr, err := parseTimeString(effectiveFromValue.ValueString())
+		parsedEffectiveFromStr, err := parseTimeString(effectiveFromValue.ValueString(), configuredActivePeriod.EffectiveFrom.ValueString())
 		if err == nil {
 			tflog.Warn(ctx, "TFLOG_WARN_WAN.ruleInput.parsedEffectiveFromStr", map[string]interface{}{
 				"OUTPUT": utils.InterfaceToJSONString(parsedEffectiveFromStr),
@@ -481,7 +487,7 @@ func hydrateWanRuleState(ctx context.Context, state WanFirewallRule, currentRule
 
 	// Preserve expires_at if API returned nil
 	if !expiresAtValue.IsNull() && useExpiresAtValue.ValueBool() == true {
-		parsedExpiresAtStr, err := parseTimeString(expiresAtValue.ValueString())
+		parsedExpiresAtStr, err := parseTimeString(expiresAtValue.ValueString(), configuredActivePeriod.ExpiresAt.ValueString())
 		if err == nil {
 			tflog.Warn(ctx, "TFLOG_WARN_WAN.ruleInput.parsedExpiresAtStr", map[string]interface{}{
 				"OUTPUT": utils.InterfaceToJSONString(parsedExpiresAtStr),
