@@ -110,7 +110,7 @@ func TestInternetFwRuleImportState(t *testing.T) {
 	}
 }
 
-func TestInternetFwRuleDeleteUsesMockeryClient(t *testing.T) {
+func TestInternetFwRuleDelete(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
 	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
@@ -138,7 +138,7 @@ func TestInternetFwRuleDeleteUsesMockeryClient(t *testing.T) {
 	}
 }
 
-func TestInternetFwRuleCreateUsesMockeryClient(t *testing.T) {
+func TestInternetFwRuleCreate(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
 
@@ -161,7 +161,7 @@ func TestInternetFwRuleCreateUsesMockeryClient(t *testing.T) {
 	}
 }
 
-func TestInternetFwRuleCreateSuccessUsesMockeryClient(t *testing.T) {
+func TestInternetFwRuleCreateSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
 
@@ -221,7 +221,7 @@ func TestInternetFwRuleReadRemovesMissingResource(t *testing.T) {
 	}
 }
 
-func TestInternetFwRuleReadSuccessUsesMockeryClient(t *testing.T) {
+func TestInternetFwRuleReadSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
 	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
@@ -247,7 +247,7 @@ func TestInternetFwRuleReadSuccessUsesMockeryClient(t *testing.T) {
 	assertRuleState(t, ctx, resp.State, "rule-123", "updated-name", 11)
 }
 
-func TestInternetFwRuleUpdateUsesMockeryClient(t *testing.T) {
+func TestInternetFwRuleUpdate(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
 	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
@@ -274,7 +274,7 @@ func TestInternetFwRuleUpdateUsesMockeryClient(t *testing.T) {
 	}
 }
 
-func TestInternetFwRuleUpdateSuccessUsesMockeryClient(t *testing.T) {
+func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
 	resourceState := newInternetFwRuleStateWithID(t, ctx, "rule-123")
