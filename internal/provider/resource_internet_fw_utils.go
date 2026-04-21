@@ -636,39 +636,43 @@ func correlateIfwSetElements(ctx context.Context, newNestedAttrs map[string]attr
 	}
 }
 
-// findIfwElementByName finds an element in the list by matching the ID field first, then name field
-// This supports both create operations (name-based) and update operations (ID-based if present)
+// ifwNameIDStrings returns id/name strings if they are known (non-null, non-unknown).
+func ifwNameIDStrings(attrs map[string]attr.Value) (id, name string, idOk, nameOk bool) {
+	if v, ok := attrs["id"].(types.String); ok && !v.IsNull() && !v.IsUnknown() {
+		id, idOk = v.ValueString(), true
+	}
+	if v, ok := attrs["name"].(types.String); ok && !v.IsNull() && !v.IsUnknown() {
+		name, nameOk = v.ValueString(), true
+	}
+	return id, name, idOk, nameOk
+}
+
+// findIfwElementByName finds a plan element for a response element. ID match is used only when
+// names also agree (when both sides have known names), so a stale plan id cannot pair with an
+// API row that still has the old display name after a rename.
 func findIfwElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
+	tid, tname, tidOk, tnameOk := ifwNameIDStrings(targetAttrs)
 
-	// First, try to match by ID if both target and elements have IDs
-	targetId, targetIdExists := targetAttrs["id"]
-	if targetIdExists {
-		targetIdStr, ok := targetId.(types.String)
-		if ok && !targetIdStr.IsNull() && !targetIdStr.IsUnknown() {
-			// Target has a valid ID, try to find element with the same ID
-			for _, element := range elements {
-				elementObj, ok := element.(types.Object)
-				if !ok {
-					continue
-				}
-
-				elementAttrs := elementObj.Attributes()
-				elementId, elementIdExists := elementAttrs["id"]
-				if !elementIdExists {
-					continue
-				}
-
-				elementIdStr, ok := elementId.(types.String)
-				if !ok || elementIdStr.IsNull() || elementIdStr.IsUnknown() {
-					continue
-				}
-
-				// Match by ID (preferred)
-				if elementIdStr.ValueString() == targetIdStr.ValueString() {
-					return &elementObj
-				}
+	// First, try to match by ID when IDs match and names do not contradict
+	if tidOk {
+		for _, element := range elements {
+			elementObj, ok := element.(types.Object)
+			if !ok {
+				continue
 			}
+
+			elementAttrs := elementObj.Attributes()
+			eid, ename, eidOk, enameOk := ifwNameIDStrings(elementAttrs)
+			if !eidOk || eid != tid {
+				continue
+			}
+			// If both sides have known names, require they match — avoids plan {id:4,name:new} vs API {id:4,name:old}
+			if tnameOk && enameOk && tname != ename {
+				continue
+			}
+
+			return &elementObj
 		}
 	}
 
@@ -709,47 +713,43 @@ func findIfwElementByName(ctx context.Context, targetObj types.Object, elements 
 	return nil
 }
 
-// correlateIfwSetElement creates a correlated set element that uses plan structure with response data
-// It preserves IDs from the plan when they exist to maintain consistency during updates
+// correlateIfwSetElement creates a correlated set element from plan + API response.
+// Each attribute is handled independently:
+//   - id:   known in plan → preserve plan id;  unknown/null → use API id
+//   - name: known in plan → preserve plan name; null → preserve null; unknown → use API name
+//
+// This ensures the returned object always matches the plan for known values (preventing
+// "inconsistent result" errors) while filling in unknowns from the API response.
 func correlateIfwSetElement(ctx context.Context, planObj types.Object, responseObj types.Object) types.Object {
 	planAttrs := planObj.Attributes()
 	responseAttrs := responseObj.Attributes()
 
 	newAttrs := make(map[string]attr.Value, len(responseAttrs))
-	// Start with response attributes (they have the real data)
 	for k, v := range responseAttrs {
 		newAttrs[k] = v
 	}
 
-	// Preserve null values from plan for computed fields
-	// If plan had name=null and user specified id, keep name=null in state
-	if planName, exists := planAttrs["name"]; exists {
-		if planNameStr, ok := planName.(types.String); ok && planNameStr.IsNull() {
-			// Plan had null name (user specified only id), preserve null
-			newAttrs["name"] = types.StringNull()
-			tflog.Debug(ctx, "correlateIfwSetElement: Preserving null name from plan")
-		} else if !planNameStr.IsNull() && !planNameStr.IsUnknown() {
-			// Plan has a valid name, preserve it
-			newAttrs["name"] = planNameStr
+	if planId, ok := planAttrs["id"].(types.String); ok {
+		if !planId.IsNull() && !planId.IsUnknown() {
+			newAttrs["id"] = planId
+			tflog.Debug(ctx, "correlateIfwSetElement: using plan id", map[string]interface{}{"id": planId.ValueString()})
 		}
 	}
 
-	// Similarly, if plan had id=null and user specified name, preserve null id
-	if planId, exists := planAttrs["id"]; exists {
-		if planIdStr, ok := planId.(types.String); ok && planIdStr.IsNull() {
-			// Plan had null id (user specified only name), preserve null
-			newAttrs["id"] = types.StringNull()
-			tflog.Debug(ctx, "correlateIfwSetElement: Preserving null id from plan")
-		} else if !planIdStr.IsNull() && !planIdStr.IsUnknown() {
-			// Plan has a valid id, preserve it
-			newAttrs["id"] = planIdStr
+	if planName, ok := planAttrs["name"].(types.String); ok {
+		if planName.IsNull() {
+			newAttrs["name"] = types.StringNull()
+			tflog.Debug(ctx, "correlateIfwSetElement: preserving null name from plan")
+		} else if !planName.IsUnknown() {
+			newAttrs["name"] = planName
+			tflog.Debug(ctx, "correlateIfwSetElement: using plan name", map[string]interface{}{"name": planName.ValueString()})
 		}
 	}
 
 	objectType := responseObj.Type(ctx).(types.ObjectType)
 	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
 	if diags.HasError() {
-		tflog.Error(ctx, "correlateIfwSetElement: Failed to create correlated object, using response")
+		tflog.Error(ctx, "correlateIfwSetElement: failed to create correlated object, using response")
 		return responseObj
 	}
 
