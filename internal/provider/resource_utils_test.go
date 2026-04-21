@@ -3,13 +3,18 @@ package provider
 import "testing"
 
 func TestParseFlexibleTimeString(t *testing.T) {
+	const (
+		expectedNoTZParsed = "2024-01-02T03:04:05Z"
+		expectedTZParsed   = "2024-01-02T01:04:05Z"
+	)
+
 	t.Run("parses timestamp without timezone", func(t *testing.T) {
 		got, err := parseFlexibleTimeString("2024-01-02T03:04:05")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		if got.Format("2006-01-02T15:04:05Z07:00") != "2024-01-02T03:04:05Z" {
+		if got.Format("2006-01-02T15:04:05Z07:00") != expectedNoTZParsed {
 			t.Fatalf("unexpected parsed time: %s", got.Format("2006-01-02T15:04:05Z07:00"))
 		}
 	})
@@ -20,7 +25,7 @@ func TestParseFlexibleTimeString(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		if got.UTC().Format("2006-01-02T15:04:05Z07:00") != "2024-01-02T01:04:05Z" {
+		if got.UTC().Format("2006-01-02T15:04:05Z07:00") != expectedTZParsed {
 			t.Fatalf("unexpected parsed time: %s", got.UTC().Format("2006-01-02T15:04:05Z07:00"))
 		}
 	})
@@ -34,13 +39,15 @@ func TestParseFlexibleTimeString(t *testing.T) {
 }
 
 func TestParseTimeString(t *testing.T) {
+	const expectedNormalizedTime = "2024-01-02T01:04:05Z"
+
 	t.Run("normalizes timestamp to UTC RFC3339", func(t *testing.T) {
 		got, err := parseTimeString("2024-01-02T03:04:05+02:00")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		if got != "2024-01-02T01:04:05Z" {
+		if got != expectedNormalizedTime {
 			t.Fatalf("unexpected normalized time: %s", got)
 		}
 	})
