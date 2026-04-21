@@ -44,7 +44,7 @@ type catoProvider struct {
 type catoProviderModel struct {
 	BaseURL             types.String `tfsdk:"baseurl"`
 	Token               types.String `tfsdk:"token"`
-	AccountId           types.String `tfsdk:"account_id"`
+	AccountID           types.String `tfsdk:"account_id"`
 	RetryMax            types.Int64  `tfsdk:"retry_max"`
 	RetryWaitMinSeconds types.Int64  `tfsdk:"retry_wait_min_seconds"`
 	RetryWaitMaxSeconds types.Int64  `tfsdk:"retry_wait_max_seconds"`
@@ -80,16 +80,19 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 				Required:    true,
 			},
 			"retry_max": schema.Int64Attribute{
-				Description: "Maximum number of retries for retryable API requests. Defaults to 5. Can be provided using CATO_RETRY_MAX environment variable.",
-				Optional:    true,
+				Description: "Maximum number of retries for retryable API requests. " +
+					"Defaults to 5. Can be provided using CATO_RETRY_MAX environment variable.",
+				Optional: true,
 			},
 			"retry_wait_min_seconds": schema.Int64Attribute{
-				Description: "Minimum backoff between retry attempts, in seconds. Defaults to 1. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.",
-				Optional:    true,
+				Description: "Minimum backoff between retry attempts, in seconds. " +
+					"Defaults to 1. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.",
+				Optional: true,
 			},
 			"retry_wait_max_seconds": schema.Int64Attribute{
-				Description: "Maximum backoff between retry attempts, in seconds. Defaults to 30. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.",
-				Optional:    true,
+				Description: "Maximum backoff between retry attempts, in seconds. " +
+					"Defaults to 30. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.",
+				Optional: true,
 			},
 		},
 	}
@@ -120,7 +123,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		)
 	}
 
-	if config.AccountId.IsUnknown() {
+	if config.AccountID.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("account_id"),
 			"Unknown Cato API account_id",
@@ -200,7 +203,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		retryWaitMaxSeconds = &value
 	}
 
-	accountId := config.AccountId.ValueString()
+	accountId := config.AccountID.ValueString()
 
 	if baseurl == "" {
 		resp.Diagnostics.AddAttributeError(
@@ -332,16 +335,6 @@ type retryClientConfig struct {
 	retryMax     int
 	retryWaitMin time.Duration
 	retryWaitMax time.Duration
-}
-
-type retryableResponseErrors struct {
-	Errors        []retryableResponseError `json:"errors"`
-	NetworkErrors []retryableResponseError `json:"networkErrors"`
-	GraphQLErrors []retryableResponseError `json:"graphqlErrors"`
-}
-
-type retryableResponseError struct {
-	Message string `json:"message"`
 }
 
 func buildRetryConfig(retryMax, retryWaitMinSeconds, retryWaitMaxSeconds *int64) *retryClientConfig {
