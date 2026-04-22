@@ -41,6 +41,12 @@ Set the following 2 environment variables:
 export TF_VAR_token="abcde12345abcde12345"
 export TF_VAR_account_id="12345"
 ```
+Optional retry configuration:
+```
+export CATO_RETRY_MAX="5"
+export CATO_RETRY_WAIT_MIN_SECONDS="1"
+export CATO_RETRY_WAIT_MAX_SECONDS="30"
+```
 Sample terraform files can be found in the examples folder in this repository.  You can initialize and run these terraform files with the following commands:
 ```
 terraform init

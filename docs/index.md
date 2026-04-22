@@ -27,9 +27,12 @@ terraform {
 }
 
 provider "cato" {
-  baseurl    = "https://api.catonetworks.com/api/v1/graphql2"
-  token      = "xxxxxxx"
-  account_id = "xxxxxxx"
+  baseurl                = "https://api.catonetworks.com/api/v1/graphql2"
+  token                  = "xxxxxxx"
+  account_id             = "xxxxxxx"
+  retry_max              = 5
+  retry_wait_min_seconds = 1
+  retry_wait_max_seconds = 30
 }
 
 resource "cato_socket_site" "site1" {
@@ -71,4 +74,7 @@ resource "cato_static_host" "host" {
 ### Optional
 
 - `baseurl` (String) URL for the Cato API. Can be provided using CATO_BASEURL environment variable.
+- `retry_max` (Number) Maximum number of retries for retryable API requests. Defaults to 5. Can be provided using CATO_RETRY_MAX environment variable.
+- `retry_wait_max_seconds` (Number) Maximum backoff between retry attempts, in seconds. Defaults to 30. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.
+- `retry_wait_min_seconds` (Number) Minimum backoff between retry attempts, in seconds. Defaults to 1. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.
 - `token` (String, Sensitive) API Key for the Cato API. Can be provided using CATO_BASEURL environment variable.
