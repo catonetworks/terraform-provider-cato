@@ -428,7 +428,7 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 		if !ruleInput.DeviceAttributes.IsNull() && !ruleInput.DeviceAttributes.IsUnknown() {
 			var curDeviceAttributes Policy_Policy_WanFirewall_Policy_Rules_Rule_DeviceAttributes
 			diags = append(diags, ruleInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
-			
+
 			// Handle each field with proper null checking
 			categoryValues := make([]string, 0)
 			if !curDeviceAttributes.Category.IsNull() && !curDeviceAttributes.Category.IsUnknown() {
@@ -1663,7 +1663,7 @@ func hydrateWanRuleApi(ctx context.Context, plan WanFirewallRule) (hydrateWanApi
 				if !itemExceptionsInput.DeviceAttributes.IsNull() && !itemExceptionsInput.DeviceAttributes.IsUnknown() {
 					var curDeviceAttributes Policy_Policy_WanFirewall_Policy_Rules_Rule_DeviceAttributes
 					diags = append(diags, itemExceptionsInput.DeviceAttributes.As(ctx, &curDeviceAttributes, basetypes.ObjectAsOptions{})...)
-					
+
 					// Handle each field with proper null checking
 					categoryValues := make([]string, 0)
 					if !curDeviceAttributes.Category.IsNull() && !curDeviceAttributes.Category.IsUnknown() {
