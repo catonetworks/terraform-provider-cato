@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -17,35 +18,29 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-func SiteLocationDataSource() datasource.DataSource {
-	return &siteLocationDataSource{}
+//go:embed type_site_location_data.json
+var sldFilename string
+var sldCatalog map[string]SLDCatalogEntry
+var sldCatalogLoadError error
+
+//nolint:gochecknoinits
+func init() {
+	sldCatalogLoadError = json.Unmarshal([]byte(sldFilename), &sldCatalog)
 }
 
-type siteLocationDataSource struct {
-	client *catoClientData
-}
-
-type siteLocationQuery struct {
+type sldQuery struct {
 	Filters   types.List `tfsdk:"filters"`
 	Locations types.List `tfsdk:"locations"`
 }
 
-type filters struct {
+type sldFilters struct {
 	Field     types.String `tfsdk:"field"`
 	Search    types.String `tfsdk:"search"`
 	Operation types.String `tfsdk:"operation"`
 }
 
-type locations struct {
-	CountryCode types.String `tfsdk:"country_code"`
-	CountryName types.String `tfsdk:"country_name"`
-	StateCode   types.String `tfsdk:"state_code"`
-	StateName   types.String `tfsdk:"state_name"`
-	Timezone    types.List   `tfsdk:"timezone"`
-	City        types.String `tfsdk:"city"`
-}
-
-type SiteLocationJsonObj struct {
+// SLDCatalogEntry represents a single site location in the datasource catalog
+type SLDCatalogEntry struct {
 	City        string   `json:"city"`
 	CountryCode string   `json:"countryCode"`
 	CountryName string   `json:"countryName"`
@@ -54,49 +49,56 @@ type SiteLocationJsonObj struct {
 	Timezone    []string `json:"timezone"`
 }
 
-var SiteLocationQueryObjectType = types.ObjectType{AttrTypes: SiteLocationQueryAttrTypes}
-var SiteLocationQueryAttrTypes = map[string]attr.Type{
-	"filters": types.ListType{
-		ElemType: types.ObjectType{
-			AttrTypes: SiteLocationFilterAttrTypes,
+var (
+	SLDFilterAttrTypes = map[string]attr.Type{
+		"field":     types.StringType,
+		"search":    types.StringType,
+		"operation": types.StringType,
+	}
+	SLDFilterObjectType = types.ObjectType{AttrTypes: SLDFilterAttrTypes}
+
+	SLDAttrTypes = map[string]attr.Type{
+		"country_code": types.StringType,
+		"country_name": types.StringType,
+		"state_code":   types.StringType,
+		"state_name":   types.StringType,
+		"timezone":     types.ListType{ElemType: types.StringType},
+		"city":         types.StringType,
+	}
+	SLDObjectType = types.ObjectType{AttrTypes: SLDAttrTypes}
+
+	SLDQueryAttrTypes = map[string]attr.Type{
+		"filters": types.ListType{
+			ElemType: types.ObjectType{
+				AttrTypes: SLDFilterAttrTypes,
+			},
 		},
-	},
-	"locations": types.ListType{
-		ElemType: types.ObjectType{
-			AttrTypes: SiteLocationAttrTypes,
+		"locations": types.ListType{
+			ElemType: types.ObjectType{
+				AttrTypes: SLDAttrTypes,
+			},
 		},
-	},
+	}
+	SLDQueryObjectType = types.ObjectType{AttrTypes: SLDQueryAttrTypes}
+)
+
+type sldFilterValidator struct{}
+
+func (v sldFilterValidator) Description(_ context.Context) string {
+	return "Ensures at least one filter is set with " +
+		"field city, state_name, or country_name"
 }
 
-var SiteLocationFilterObjectType = types.ObjectType{AttrTypes: SiteLocationFilterAttrTypes}
-var SiteLocationFilterAttrTypes = map[string]attr.Type{
-	"field":     types.StringType,
-	"search":    types.StringType,
-	"operation": types.StringType,
+func (v sldFilterValidator) MarkdownDescription(_ context.Context) string {
+	return "Ensures at least one filter is set with " +
+		"field `city`, `state_name`, or `country_name`"
 }
 
-var SiteLocationObjectType = types.ObjectType{AttrTypes: SiteLocationAttrTypes}
-var SiteLocationAttrTypes = map[string]attr.Type{
-	"country_code": types.StringType,
-	"country_name": types.StringType,
-	"state_code":   types.StringType,
-	"state_name":   types.StringType,
-	"timezone":     types.ListType{ElemType: types.StringType},
-	"city":         types.StringType,
-}
-
-// Custom validator for filters
-type filtersValidator struct{}
-
-func (v filtersValidator) Description(ctx context.Context) string {
-	return "Ensures at least one filter is set with field city, state_name, or country_name"
-}
-
-func (v filtersValidator) MarkdownDescription(ctx context.Context) string {
-	return "Ensures at least one filter is set with field `city`, `state_name`, or `country_name`"
-}
-
-func (v filtersValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
+func (v sldFilterValidator) ValidateList(
+	_ context.Context,
+	req validator.ListRequest,
+	resp *validator.ListResponse,
+) {
 	// Allow unknown values - they will be validated once resolved during planning
 	if req.ConfigValue.IsUnknown() {
 		return
@@ -120,18 +122,34 @@ func (v filtersValidator) ValidateList(ctx context.Context, req validator.ListRe
 	}
 }
 
-func (d *siteLocationDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+type siteLocationDataSource struct {
+	client *catoClientData
+}
+
+func SiteLocationDataSource() datasource.DataSource {
+	return &siteLocationDataSource{}
+}
+
+func (d *siteLocationDataSource) Metadata(
+	_ context.Context,
+	req datasource.MetadataRequest,
+	resp *datasource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_siteLocation"
 }
 
-func (d *siteLocationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *siteLocationDataSource) Schema(
+	_ context.Context,
+	_ datasource.SchemaRequest,
+	resp *datasource.SchemaResponse,
+) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"filters": schema.ListNestedAttribute{
 				Description: "Field to filter on (city, stateName, countryName)",
 				Optional:    true,
 				Validators: []validator.List{
-					filtersValidator{},
+					sldFilterValidator{},
 				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -193,87 +211,133 @@ func (d *siteLocationDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 	}
 }
 
-func (d *siteLocationDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *siteLocationDataSource) Configure(
+	_ context.Context,
+	req datasource.ConfigureRequest,
+	_ *datasource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-func (d *siteLocationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var allLocations map[string]SiteLocationJsonObj
-	if err := json.Unmarshal([]byte(siteLocationJson), &allLocations); err != nil {
-		resp.Diagnostics.Append(diag.NewErrorDiagnostic("Error unmarshalling site location JSON", err.Error()))
-		return
-	}
-
-	var state siteLocationQuery
-	if diags := req.Config.Get(ctx, &state); diags.HasError() {
+func (d *siteLocationDataSource) Read(
+	ctx context.Context,
+	req datasource.ReadRequest,
+	resp *datasource.ReadResponse,
+) {
+	state := &sldQuery{}
+	if diags := req.Config.Get(ctx, state); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-
 	if state.Filters.IsNull() || state.Filters.IsUnknown() {
-		setLocations(ctx, resp, state.Filters, []SiteLocationJsonObj{})
+		setSiteLocations(ctx, resp, state.Filters, []SLDCatalogEntry{})
 		return
 	}
 
-	var filterList []filters
-	if diags := state.Filters.ElementsAs(ctx, &filterList, false); diags.HasError() {
+	if sldCatalogLoadError != nil {
+		resp.Diagnostics.Append(
+			diag.NewErrorDiagnostic(
+				"Site Location Catalog Load Error",
+				"Unable to read the site locations catalog file"+
+					"Error: "+sldCatalogLoadError.Error(),
+			),
+		)
+		return
+	}
+
+	filters := make([]sldFilters, 0)
+	if diags := state.Filters.ElementsAs(ctx, &filters, false); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
 	}
 
-	filteredLocations := make([]SiteLocationJsonObj, 0)
-	for _, location := range allLocations {
-
-		matches := true
-		for _, filter := range filterList {
-			field := filter.Field.ValueString()
-			search := filter.Search.ValueString()
-			operation := filter.Operation.ValueString()
-
-			var value string
-			switch field {
-			case "city":
-				value = location.City
-			case "state_name":
-				value = location.StateName
-			case "country_name":
-				value = location.CountryName
-			default:
-				continue
-			}
-
-			if matches {
-				if operation == "exact" && !(value == search) {
-					matches = false
-				} else if operation == "startsWith" && !(strings.HasPrefix(value, search)) {
-					matches = false
-				} else if operation == "endsWith" && !(strings.HasSuffix(value, search)) {
-					matches = false
-				} else if operation == "contains" && !(strings.Contains(value, search)) {
-					matches = false
-				}
-			}
-		}
-
-		if matches {
-			tflog.Debug(ctx, "field match "+fmt.Sprintf("%v", location))
-			filteredLocations = append(filteredLocations, location)
-		}
+	if locations := filterSiteLocations(ctx, filters); len(locations) > 0 {
+		setSiteLocations(ctx, resp, state.Filters, locations[:1])
+		return
 	}
 
-	setLocations(ctx, resp, state.Filters, filteredLocations)
+	setSiteLocations(ctx, resp, state.Filters, []SLDCatalogEntry{})
 }
 
-func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters types.List, allLocations []SiteLocationJsonObj) {
+func filterSiteLocations(
+	ctx context.Context,
+	filters []sldFilters,
+) []SLDCatalogEntry {
+	getLocationProperty := func(field string, location SLDCatalogEntry) string {
+		switch field {
+		case "city":
+			return location.City
+		case "state_name":
+			return location.StateName
+		case "country_name":
+			return location.CountryName
+		default:
+			return ""
+		}
+	}
+	getSearchOperation := func(op string, value string) func(string) bool {
+		return func(search string) bool {
+			switch op {
+			case "exact":
+				return search == value
+			case "startsWith":
+				return strings.HasPrefix(value, search)
+			case "endsWith":
+				return strings.HasSuffix(value, search)
+			case "contains":
+				return strings.Contains(value, search)
+			default:
+				return false
+			}
+		}
+	}
+	filteredSiteLocations := sldCatalog
+
+	tflog.Debug(ctx, "filtering locations")
+	for _, filter := range filters {
+		newFilteredSiteLocations := make(map[string]SLDCatalogEntry, 0)
+		for siteLocationKey, siteLocation := range filteredSiteLocations {
+			siteLocationProp := getLocationProperty(filter.Field.ValueString(), siteLocation)
+			if siteLocationProp == "" {
+				continue
+			}
+			searchOp := getSearchOperation(filter.Operation.ValueString(), siteLocationProp)
+
+			if searchOp(filter.Search.ValueString()) {
+				tflog.Debug(ctx, "location found", map[string]interface{}{
+					"field":    filter.Field.ValueString(),
+					"location": fmt.Sprintf("%v", siteLocation),
+				})
+				newFilteredSiteLocations[siteLocationKey] = siteLocation
+			}
+		}
+
+		filteredSiteLocations = newFilteredSiteLocations
+	}
+
+	siteLocations := make([]SLDCatalogEntry, 0, len(filteredSiteLocations))
+	for _, location := range filteredSiteLocations {
+		siteLocations = append(siteLocations, location)
+	}
+
+	return siteLocations
+}
+
+//nolint:funlen // legacy code
+func setSiteLocations(
+	ctx context.Context,
+	resp *datasource.ReadResponse,
+	filters types.List, allLocations []SLDCatalogEntry,
+) {
 	diags := make(diag.Diagnostics, 0)
 	locationsOut := make([]attr.Value, 0, len(allLocations))
 
 	filtersListVal, diags := types.ListValueFrom(
 		ctx,
-		types.ObjectType{AttrTypes: SiteLocationFilterAttrTypes},
+		types.ObjectType{AttrTypes: SLDFilterAttrTypes},
 		filters,
 	)
 	if diags.HasError() {
@@ -286,7 +350,7 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 		tflog.Info(ctx, "reflect.TypeOf(loc.StateCode) - "+fmt.Sprintf("%v", reflect.TypeOf(loc.StateCode)))
 
 		locObj, diags := types.ObjectValue(
-			SiteLocationAttrTypes,
+			SLDAttrTypes,
 			map[string]attr.Value{
 				"country_code": func() attr.Value {
 					if loc.CountryCode != "" {
@@ -345,7 +409,7 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
 	locationsListVal, diags := types.ListValueFrom(
 		ctx,
-		types.ObjectType{AttrTypes: SiteLocationAttrTypes},
+		types.ObjectType{AttrTypes: SLDAttrTypes},
 		locationsOut,
 	)
 	if diags.HasError() {
@@ -355,7 +419,7 @@ func setLocations(ctx context.Context, resp *datasource.ReadResponse, filters ty
 
 	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
 	state, diags := types.ObjectValue(
-		SiteLocationQueryAttrTypes,
+		SLDQueryAttrTypes,
 		map[string]attr.Value{
 			"filters":   filtersListVal,
 			"locations": locationsListVal,
