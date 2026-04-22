@@ -11,9 +11,9 @@ provider "cato" {
   baseurl                = "https://api.catonetworks.com/api/v1/graphql2"
   token                  = "xxxxxxx"
   account_id             = "xxxxxxx"
-  retry_max              = 8
-  retry_wait_min_seconds = 2
-  retry_wait_max_seconds = 20
+  retry_max              = 5
+  retry_wait_min_seconds = 1
+  retry_wait_max_seconds = 30
 }
 
 resource "cato_socket_site" "site1" {
