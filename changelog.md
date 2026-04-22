@@ -230,3 +230,8 @@
 - Simplified socket_site translated_subnet handling to always hydrate directly from API, removing complex plan/state comparison logic
 - Simplified socket_site site location hydration to always use API values for state_code, address, and city during import and refresh
 - Socket_site microsegmentation now always set from API response for proper hydration during import
+
+## 0.0.71 (2026-04-22)
+- Added configurable provider retry settings
+- Improved the siteLocation data source read path and added tests to better validate API-backed state handling
+- Fixed internet firewall rule index known-after-apply behavior
