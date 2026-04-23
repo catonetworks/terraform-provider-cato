@@ -1,0 +1,4 @@
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body: { "data": { "mock": { "id": "1000", "groupName": "example-group" } } }

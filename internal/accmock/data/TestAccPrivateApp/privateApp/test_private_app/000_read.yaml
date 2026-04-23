@@ -1,0 +1,49 @@
+# Response to a read request for a private app resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "privateApplication":
+            {
+              "privateApplication":
+                {
+                  "id": "1253",
+                  "creationTime": "2026-04-21T07:34:20.740",
+                  "name": "test_private_app",
+                  "description": "test_private_app description",
+                  "internalAppAddress": "10.175.148.170",
+                  "probingEnabled": true,
+                  "published": true,
+                  "allowIcmpProtocol": false,
+                  "publishedAppDomain":
+                    {
+                      "id": "1126",
+                      "creationTime": "2026-04-21T07:34:20.797",
+                      "publishedAppDomain": "test_private_app.example.com",
+                      "catoIp": "",
+                      "connectorGroupName": "acctest_app_connector_group_1",
+                    },
+                  "privateAppProbing":
+                    {
+                      "id": "997",
+                      "type": "ICMP_PING",
+                      "interval": 5,
+                      "faultThresholdDown": 10,
+                    },
+                  "protocolPorts":
+                    [
+                      {
+                        "port": null,
+                        "portRange": { "from": 6000, "to": 6010 },
+                        "protocol": "TCP",
+                      },
+                      { "port": [80], "portRange": null, "protocol": "TCP" },
+                      { "port": [443], "portRange": null, "protocol": "TCP" },
+                    ],
+                },
+            },
+        },
+    }

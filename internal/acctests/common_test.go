@@ -16,6 +16,7 @@ import (
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
@@ -23,13 +24,12 @@ import (
 const (
 	envCatoToken     = "CATO_TOKEN"
 	envCatoAccountID = "CATO_ACCOUNT_ID"
-	envCatoEndpoint  = "CATO_ENDPOINT"
+	envCatoEndpoint  = "CATO_BASEURL"
 )
 
 var (
 	CatoAccountID = os.Getenv(envCatoAccountID)
 	CatoToken     = os.Getenv(envCatoToken)
-	CatoEndpoint  = os.Getenv(envCatoEndpoint)
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -77,6 +77,9 @@ var (
 )
 
 func getRandName(resource string) string {
+	if accmock.ACCMockActive {
+		return "test_" + resource
+	}
 	const length = 10
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bytes := make([]byte, length)
@@ -122,7 +125,7 @@ func getClient(t *testing.T) *cato.Client {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoClient == nil {
-		newCatoClient, err := cato.New(CatoEndpoint, CatoToken, CatoAccountID, nil,
+		newCatoClient, err := cato.New(os.Getenv(envCatoEndpoint), CatoToken, CatoAccountID, nil,
 			map[string]string{"User-Agent": "cato-terraform-test"})
 		if err != nil {
 			t.Fatalf("ERROR creating cato client: %s", err)
@@ -220,7 +223,7 @@ func getUsers(t *testing.T) testUsers {
 			"operationName": "entityLookup"}`
 
 		// Create request
-		req, err := http.NewRequest(http.MethodPost, CatoEndpoint, strings.NewReader(query))
+		req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query))
 		if err != nil {
 			panic(err)
 		}
@@ -258,44 +261,36 @@ func getUsers(t *testing.T) testUsers {
 func getPrivateApps(t *testing.T) testPrivateApps {
 	const privateAppName1 = "acctest_private_app_1"
 	const privateAppName2 = "acctest_private_app_2"
-	// client := getClient(t)
+	client := getClient(t)
 	mu.Lock()
 	defer mu.Unlock()
 	if catoPrivateApps == nil {
-		if cmaVars.PrivateApps != nil {
-			return cmaVars.PrivateApps
-		}
-		t.Fatalf("ERROR: env var %s with private_apps is not set and API is still broken", accTestVariable)
-	}
-	// TODO: enable when API gets fixed!
-	/*
-			// try to fetch private apps
-			for _, paName := range []string{privateAppName1, privateAppName2} {
-				readInput := cato_models.PrivateApplicationRefInput{By: cato_models.ObjectRefByName, Input: paName}
-				result, err := client.PrivateAppReadPrivateApp(ctx, CatoAccountID, readInput)
-				if err == nil {
-					pa := result.GetPrivateApplication().GetPrivateApplication()
-					if pa.GetID() != "" {
-						catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: pa.GetName()})
-						continue
-					}
+		// try to fetch private apps
+		for _, paName := range []string{privateAppName1, privateAppName2} {
+			readInput := cato_models.PrivateApplicationRefInput{By: cato_models.ObjectRefByName, Input: paName}
+			result, err := client.PrivateAppReadPrivateApp(ctx, CatoAccountID, readInput)
+			if err == nil {
+				pa := result.GetPrivateApplication().GetPrivateApplication()
+				if pa.GetID() != "" {
+					catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: pa.GetName()})
+					continue
 				}
-				// create the app
-				input := cato_models.CreatePrivateApplicationInput{
-					Description:        ptr(paName + " description"),
-					InternalAppAddress: getRandIP(),
-					Name:               paName,
-				}
-				res, err := client.PrivateAppCreatePrivateApp(ctx, CatoAccountID, input)
-				if err != nil {
-					t.Fatalf("ERROR creating test private app: %v", err)
-				}
-				pa := res.GetPrivateApplication().GetCreatePrivateApplication().GetApplication()
-				catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: paName})
 			}
+			// create the app
+			input := cato_models.CreatePrivateApplicationInput{
+				Description:        ptr(paName + " description"),
+				InternalAppAddress: getRandIP(),
+				Name:               paName,
+			}
+			res, err := client.PrivateAppCreatePrivateApp(ctx, CatoAccountID, input)
+			if err != nil {
+				t.Fatalf("ERROR creating test private app: %v", err)
+			}
+			pa := res.GetPrivateApplication().GetCreatePrivateApplication().GetApplication()
+			catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: paName})
 		}
+	}
 
-	*/
 	return catoPrivateApps
 }
 

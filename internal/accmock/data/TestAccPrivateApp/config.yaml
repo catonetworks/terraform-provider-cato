@@ -1,0 +1,31 @@
+Operations:
+  privateAppCreatePrivateApp:
+    Type: CREATE
+    Resource: privateApp
+    NamePath: variables.input.name
+
+  privateAppReadPrivateApp:
+    Type: READ
+    Resource: privateApp
+    IDPath: variables.input.input
+    Static: false
+
+  privateAppUpdatePrivateApp:
+    Type: UPDATE
+    Resource: privateApp
+    IDPath: variables.input.id
+
+  privateAppDeletePrivateApp:
+    Type: DELETE
+    Resource: privateApp
+    IDPath: variables.input.privateApplication.input
+
+  # appConnector is a dependency of privateApp, so we need to read it to get the connector group name
+  appConnectorReadConnector:
+    Type: READ
+    Resource: appConnector
+    NamePath: variables.ref.input
+    Static: true
+
+  policyPrivateAccessDiscardRevision:
+    Type: NO_CONTENT

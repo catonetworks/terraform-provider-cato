@@ -6,10 +6,13 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 func TestAccAppConnector(t *testing.T) {
+	mockSrv := accmock.SetupMock(t, "TestAccAppConnector")
+	defer mockSrv.Close()
 	cfg := newAppConnectorCfg(t)
 	res := "cato_app_connector.this"
 
@@ -126,7 +129,7 @@ type appConnectorCfg struct {
 
 func newAppConnectorCfg(t *testing.T) appConnectorCfg {
 	return appConnectorCfg{
-		resName:   getRandName("private_app"),
+		resName:   getRandName("app_connector"),
 		locations: getLocations(t),
 		t:         t,
 	}

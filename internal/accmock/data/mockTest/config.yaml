@@ -1,0 +1,20 @@
+Operations:
+  createMock:
+    Type: CREATE
+    Resource: mockResource
+    NamePath: variables.newMock.name
+
+  readMock:
+    Type: READ
+    Resource: mockResource
+    IDPath: variables.ref.input
+
+  updateMock:
+    Type: UPDATE
+    Resource: mockResource
+    IDPath: variables.updateMock.id
+
+  deleteMock:
+    Type: DELETE
+    Resource: mockResource
+    IDPath: variables.ref.input

@@ -1,0 +1,12 @@
+# Response to a delete request for a private app resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "privateApplication":
+            { "deletePrivateApplication": { "application": "1253" } },
+        },
+    }

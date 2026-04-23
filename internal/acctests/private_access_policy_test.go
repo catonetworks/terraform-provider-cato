@@ -6,12 +6,15 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccPrivAccessPolicy(t *testing.T) {
 	// t.Skip("Skipping this test for now")
+	mockSrv := accmock.SetupMock(t, "TestAccPrivAccessPolicy")
+	defer mockSrv.Close()
 
 	cfg := newPrivAccessPolicyCfg(t)
 	resPol := "cato_private_access_policy.this"

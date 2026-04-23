@@ -7,10 +7,13 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 func TestAccPrivateApp(t *testing.T) {
+	mockSrv := accmock.SetupMock(t, "TestAccPrivateApp")
+	defer mockSrv.Close()
 	cfg := newPrivateAppCfg(t)
 	res := "cato_private_app.this"
 
@@ -104,9 +107,13 @@ type privateAppCfg struct {
 }
 
 func newPrivateAppCfg(t *testing.T) privateAppCfg {
+	ip := "10.175.148.170"
+	if !accmock.ACCMockActive {
+		ip = getRandIP()
+	}
 	return privateAppCfg{
 		resName:    getRandName("private_app"),
-		ipAddr:     getRandIP(),
+		ipAddr:     ip,
 		connGroups: getConnectorGroups(t),
 		t:          t,
 	}
