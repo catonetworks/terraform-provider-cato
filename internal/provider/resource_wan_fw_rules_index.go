@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 )
+
 var (
 	_ resource.Resource              = &wanRulesIndexResource{}
 	_ resource.ResourceWithConfigure = &wanRulesIndexResource{}

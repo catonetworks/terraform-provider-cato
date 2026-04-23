@@ -30,7 +30,7 @@ func (m activePeriodModifier) PlanModifyObject(ctx context.Context, req planmodi
 	// but we want to set default values
 	if req.ConfigValue.IsNull() {
 		tflog.Warn(ctx, "ActivePeriod plan modifier: Config is null, setting default values")
-		
+
 		// Create default object with use_effective_from = false and use_expires_at = false
 		defaultAttrs := map[string]attr.Value{
 			"effective_from":     types.StringNull(),
@@ -38,7 +38,7 @@ func (m activePeriodModifier) PlanModifyObject(ctx context.Context, req planmodi
 			"use_effective_from": types.BoolValue(false),
 			"use_expires_at":     types.BoolValue(false),
 		}
-		
+
 		// Define the object type for active_period
 		objectType := types.ObjectType{
 			AttrTypes: map[string]attr.Type{
@@ -48,17 +48,17 @@ func (m activePeriodModifier) PlanModifyObject(ctx context.Context, req planmodi
 				"use_expires_at":     types.BoolType,
 			},
 		}
-		
+
 		defaultObjectValue, diags := types.ObjectValue(objectType.AttrTypes, defaultAttrs)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		
+
 		resp.PlanValue = defaultObjectValue
 		return
 	}
-	
+
 	// Skip if we don't have state or state is unknown
 	if req.StateValue.IsNull() || req.StateValue.IsUnknown() {
 		return

@@ -4,7 +4,7 @@ go 1.25.8
 
 require (
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260423071932-10c081275d73
+	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260423133609-94633c4308a0
 	github.com/fatih/structs v1.1.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/hashicorp/go-retryablehttp v0.7.8

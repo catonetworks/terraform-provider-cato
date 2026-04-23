@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 	"sync/atomic"
+	"time"
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/go-retryablehttp"

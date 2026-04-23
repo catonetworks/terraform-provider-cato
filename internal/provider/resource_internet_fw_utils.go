@@ -51,8 +51,8 @@ func correlateIfwExceptions(ctx context.Context, planExceptions types.Set, respo
 
 		if correspondingResponseElement != nil {
 			tflog.Debug(ctx, "correlateIfwExceptions: Found corresponding response element", map[string]interface{}{
-				"index": i,
-				"plan_name": getPlanName(planObj),
+				"index":         i,
+				"plan_name":     getPlanName(planObj),
 				"response_name": getPlanName(*correspondingResponseElement),
 			})
 			// Create correlated element that preserves plan structure for unknowns
@@ -60,7 +60,7 @@ func correlateIfwExceptions(ctx context.Context, planExceptions types.Set, respo
 			correlatedElements = append(correlatedElements, correlatedElement)
 		} else {
 			tflog.Warn(ctx, "correlateIfwExceptions: No corresponding response element found", map[string]interface{}{
-				"index": i,
+				"index":     i,
 				"plan_name": getPlanName(planObj),
 			})
 			// No corresponding response element found, try to use the response element at the same index
@@ -68,8 +68,8 @@ func correlateIfwExceptions(ctx context.Context, planExceptions types.Set, respo
 			if i < len(responseElements) {
 				if responseObj, ok := responseElements[i].(types.Object); ok {
 					tflog.Debug(ctx, "correlateIfwExceptions: Using positional match", map[string]interface{}{
-						"index": i,
-						"plan_name": getPlanName(planObj),
+						"index":         i,
+						"plan_name":     getPlanName(planObj),
 						"response_name": getPlanName(responseObj),
 					})
 					correlatedElement := correlateIfwExceptionElement(ctx, planObj, responseObj)
@@ -212,11 +212,11 @@ func isComprehensiveMatch(ctx context.Context, planObj types.Object, responseObj
 	// First, check if both have the same name (if name exists)
 	planName, planHasName := planAttrs["name"]
 	responseName, responseHasName := responseAttrs["name"]
-	
+
 	if planHasName && responseHasName {
 		planNameStr, planOk := planName.(types.String)
 		responseNameStr, responseOk := responseName.(types.String)
-		
+
 		if planOk && responseOk && !planNameStr.IsNull() && !planNameStr.IsUnknown() &&
 			!responseNameStr.IsNull() && !responseNameStr.IsUnknown() {
 			// If names exist and are different, it's not a match
@@ -234,7 +234,7 @@ func isComprehensiveMatch(ctx context.Context, planObj types.Object, responseObj
 	for _, fieldName := range nested_fields {
 		planField, planExists := planAttrs[fieldName]
 		responseField, responseExists := responseAttrs[fieldName]
-		
+
 		if planExists && responseExists {
 			totalFields++
 			if compareNestedObjects(ctx, planField, responseField) {
@@ -248,8 +248,8 @@ func isComprehensiveMatch(ctx context.Context, planObj types.Object, responseObj
 		matchRatio := float64(matchingFields) / float64(totalFields)
 		tflog.Debug(ctx, "isComprehensiveMatch: Calculated match ratio", map[string]interface{}{
 			"matchingFields": matchingFields,
-			"totalFields": totalFields,
-			"matchRatio": matchRatio,
+			"totalFields":    totalFields,
+			"matchRatio":     matchRatio,
 		})
 		return matchRatio >= 0.6 // 60% match threshold
 	}
@@ -304,7 +304,7 @@ func compareNestedObjects(ctx context.Context, planField attr.Value, responseFie
 	}
 
 	tflog.Debug(ctx, "compareNestedObjects: Comparing object complexity", map[string]interface{}{
-		"planNonNullCount": planNonNullCount,
+		"planNonNullCount":     planNonNullCount,
 		"responseNonNullCount": responseNonNullCount,
 	})
 
@@ -548,9 +548,9 @@ func correlateIfwNestedObjects(ctx context.Context, newAttrs map[string]attr.Val
 	planNestedAttrs := planNestedObj.Attributes()
 
 	tflog.Debug(ctx, "correlateIfwNestedObjects: Correlating nested object", map[string]interface{}{
-		"field": nestedFieldName,
+		"field":               nestedFieldName,
 		"response_attr_count": len(responseNestedAttrs),
-		"plan_attr_count": len(planNestedAttrs),
+		"plan_attr_count":     len(planNestedAttrs),
 	})
 
 	newNestedAttrs := make(map[string]attr.Value, len(responseNestedAttrs))

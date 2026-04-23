@@ -223,7 +223,7 @@ func getUsers(t *testing.T) testUsers {
 			"operationName": "entityLookup"}`
 
 		// Create request
-		req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query))
+		req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query)) //nolint:gosec
 		if err != nil {
 			panic(err)
 		}
