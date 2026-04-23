@@ -95,14 +95,6 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						Required:    false,
 						Optional:    true,
 					},
-					"index": schema.Int64Attribute{
-						Description: "Rule Index - computed value that may change due to rule reordering",
-						Computed:    true,
-						Optional:    false,
-						PlanModifiers: []planmodifier.Int64{
-							planmodifiers.VolatileInt64(),
-						},
-					},
 					"enabled": schema.BoolAttribute{
 						Description: "Attribute to define rule status (enabled or disabled)",
 						Required:    true,
