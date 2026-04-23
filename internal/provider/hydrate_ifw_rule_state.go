@@ -30,7 +30,6 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	}
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
 	ruleInput.ID = types.StringValue(currentRule.ID)
-	ruleInput.Index = types.Int64Value(int64(currentRule.Index))
 	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
 
 	// //////////// Rule -> Source ///////////////
