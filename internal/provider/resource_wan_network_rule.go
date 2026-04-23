@@ -81,6 +81,13 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Description of the rule",
 						Optional:    true,
 					},
+					"index": schema.Int64Attribute{
+						Description: "Rule Index - computed value that may change due to rule reordering",
+						Computed:    true,
+						PlanModifiers: []planmodifier.Int64{
+							planmodifiers.VolatileInt64(),
+						},
+					},
 					"enabled": schema.BoolAttribute{
 						Description: "Whether the rule is enabled",
 						Required:    true,

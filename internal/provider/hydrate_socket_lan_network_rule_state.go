@@ -14,6 +14,7 @@ type SocketLanNetworkRuleStateOutput struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
+	Index       types.Int64  `tfsdk:"index"`
 	Enabled     types.Bool   `tfsdk:"enabled"`
 	Direction   types.String `tfsdk:"direction"`
 	Transport   types.String `tfsdk:"transport"`
@@ -28,6 +29,7 @@ func hydrateSocketLanNetworkRuleState(ctx context.Context, plan SocketLanNetwork
 	result := SocketLanNetworkRuleStateOutput{
 		ID:        types.StringValue(apiRule.ID),
 		Name:      types.StringValue(apiRule.Name),
+		Index:     types.Int64Value(int64(apiRule.Index)),
 		Enabled:   types.BoolValue(apiRule.Enabled),
 		Direction: types.StringValue(string(apiRule.Direction)),
 		Transport: types.StringValue(string(apiRule.Transport)),

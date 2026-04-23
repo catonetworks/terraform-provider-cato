@@ -39,6 +39,8 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 	}
 	ruleInput.Action = types.StringValue(currentRule.Action.String())
 	ruleInput.ID = types.StringValue(currentRule.ID)
+	// Always set index from API response - the index can change due to rule reordering
+	ruleInput.Index = types.Int64Value(currentRule.Index)
 	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 
 	// Handle optional fields

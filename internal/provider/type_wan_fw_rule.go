@@ -19,6 +19,7 @@ type Policy_Policy_WanFirewall_Policy_Rules_Rule struct {
 	ID          types.String `tfsdk:"id" json:"id,omitempty"`
 	Name        types.String `tfsdk:"name" json:"name,omitempty"`
 	Description types.String `tfsdk:"description" json:"description,omitempty"`
+	Index       types.Int64  `tfsdk:"index" json:"index,omitempty"`
 	Enabled     types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
 	// Section          types.Object `tfsdk:"section" json:"section,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Section
 	Source           types.Object `tfsdk:"source" json:"source,omitempty"` //Policy_Policy_WanFirewall_Policy_Rules_Rule_Source
@@ -366,6 +367,7 @@ var WanFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"id":          types.StringType,
 	"name":        types.StringType,
 	"description": types.StringType,
+	"index":       types.Int64Type,
 	"enabled":     types.BoolType,
 	// "section":           NameIDObjectType,
 	"source":            WanSourceObjectType,

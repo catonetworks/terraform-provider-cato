@@ -95,6 +95,14 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 							stringplanmodifier.UseStateForUnknown(),
 						},
 					},
+					"index": schema.Int64Attribute{
+						Description: "Rule Index - computed value that may change due to rule reordering",
+						Computed:    true,
+						Optional:    false,
+						PlanModifiers: []planmodifier.Int64{
+							planmodifiers.VolatileInt64(),
+						},
+					},
 					"enabled": schema.BoolAttribute{
 						Description: "Enable or disable the rule",
 						Required:    true,

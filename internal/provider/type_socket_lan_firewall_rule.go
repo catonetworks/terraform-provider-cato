@@ -22,6 +22,7 @@ type SocketLanFirewallRuleData struct {
 	ID          types.String `tfsdk:"id" json:"id,omitempty"`
 	Name        types.String `tfsdk:"name" json:"name,omitempty"`
 	Description types.String `tfsdk:"description" json:"description,omitempty"`
+	Index       types.Int64  `tfsdk:"index" json:"index,omitempty"`
 	Enabled     types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
 	Direction   types.String `tfsdk:"direction" json:"direction,omitempty"`
 	Action      types.String `tfsdk:"action" json:"action,omitempty"`
@@ -98,6 +99,7 @@ var SocketLanFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"id":          types.StringType,
 	"name":        types.StringType,
 	"description": types.StringType,
+	"index":       types.Int64Type,
 	"enabled":     types.BoolType,
 	"direction":   types.StringType,
 	"action":      types.StringType,

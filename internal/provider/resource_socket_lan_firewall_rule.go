@@ -6,6 +6,7 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
@@ -90,6 +91,14 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 						Description: "Description of the rule",
 						Required:    false,
 						Optional:    true,
+					},
+					"index": schema.Int64Attribute{
+						Description: "Rule Index - computed value that may change due to rule reordering",
+						Computed:    true,
+						Optional:    false,
+						PlanModifiers: []planmodifier.Int64{
+							planmodifiers.VolatileInt64(),
+						},
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Enable or disable the rule",

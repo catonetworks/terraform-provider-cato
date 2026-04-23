@@ -37,6 +37,8 @@ func hydrateWanNetworkRuleState(ctx context.Context, state WanNetworkRule, curre
 		ruleInput.Description = types.StringValue(currentRule.Description)
 	}
 	ruleInput.ID = types.StringValue(currentRule.ID)
+	// Always set index from API response - the index can change due to rule reordering
+	ruleInput.Index = types.Int64Value(currentRule.Index)
 	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 	ruleInput.RuleType = types.StringValue(currentRule.RuleType.String())
 	ruleInput.RouteType = types.StringValue(currentRule.RouteType.String())

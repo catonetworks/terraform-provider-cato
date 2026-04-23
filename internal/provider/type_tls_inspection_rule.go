@@ -17,6 +17,7 @@ type Policy_Policy_TlsInspect_Policy_Rules_Rule struct {
 	ID                         types.String `tfsdk:"id"`
 	Name                       types.String `tfsdk:"name"`
 	Description                types.String `tfsdk:"description"`
+	Index                      types.Int64  `tfsdk:"index"`
 	Enabled                    types.Bool   `tfsdk:"enabled"`
 	Action                     types.String `tfsdk:"action"`
 	UntrustedCertificateAction types.String `tfsdk:"untrusted_certificate_action"`
@@ -132,6 +133,7 @@ var TlsInspectionRuleRuleAttrTypes = map[string]attr.Type{
 	"id":                           types.StringType,
 	"name":                         types.StringType,
 	"description":                  types.StringType,
+	"index":                        types.Int64Type,
 	"enabled":                      types.BoolType,
 	"action":                       types.StringType,
 	"untrusted_certificate_action": types.StringType,

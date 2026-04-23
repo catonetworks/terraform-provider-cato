@@ -14,6 +14,7 @@ type SocketLanFirewallRuleStateOutput struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
+	Index       types.Int64  `tfsdk:"index"`
 	Enabled     types.Bool   `tfsdk:"enabled"`
 	Direction   types.String `tfsdk:"direction"`
 	Action      types.String `tfsdk:"action"`
@@ -28,6 +29,7 @@ func hydrateSocketLanFirewallRuleState(ctx context.Context, plan SocketLanFirewa
 	result := SocketLanFirewallRuleStateOutput{
 		ID:        types.StringValue(apiRule.ID),
 		Name:      types.StringValue(apiRule.Name),
+		Index:     types.Int64Value(int64(apiRule.Index)),
 		Enabled:   types.BoolValue(apiRule.Enabled),
 		Direction: types.StringValue(string(apiRule.Direction)),
 		Action:    types.StringValue(string(apiRule.Action)),
