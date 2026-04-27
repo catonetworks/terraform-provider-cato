@@ -1,0 +1,50 @@
+# Response to a read request for an app connector resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            {
+              "ztnaAppConnector":
+                {
+                  "description": null,
+                  "groupName": "acctest_app_connector_group_1",
+                  "id": "1500000191",
+                  "location":
+                    {
+                      "address": null,
+                      "cityName": "Prague",
+                      "countryCode": "CZ",
+                      "stateCode": null,
+                      "timezone": "Europe/Prague",
+                    },
+                  "name": "acctest_app_connector_1",
+                  "preferredPopLocation":
+                    {
+                      "automatic": true,
+                      "preferredOnly": false,
+                      "primary": null,
+                      "secondary": null,
+                    },
+                  "privateAppRef":
+                    [
+                      { "id": "533", "name": "test-private-app-100" },
+                      { "id": "485", "name": "test-private-app-101" },
+                      { "id": "538", "name": "test-private-app-102" },
+                      { "id": "552", "name": "test-private-app-103" },
+                      { "id": "544", "name": "test-private-app-112" },
+                      { "id": "547", "name": "test-private-app-109" },
+                      { "id": "550", "name": "test-private-app-105" },
+                      { "id": "551", "name": "test-private-app-108" },
+                    ],
+                  "serialNumber": "1D-11-BD-C1-FB-E0",
+                  "socketId": "174691",
+                  "socketModel": null,
+                  "type": "VIRTUAL",
+                },
+            },
+        },
+    }

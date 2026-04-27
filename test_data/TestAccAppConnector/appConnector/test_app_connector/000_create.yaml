@@ -1,0 +1,13 @@
+# Response to a create request for an app connector resource.
+ResourceID: 1000
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            { "addZtnaAppConnector": { "ztnaAppConnector": { "id": "1000" } } },
+        },
+    }

@@ -63,7 +63,7 @@ func hydrateWanNetworkRuleState(ctx context.Context, state WanNetworkRule, curre
 		},
 	)
 	diags = append(diags, diagstmp...)
-	
+
 	// Ensure source.network_interface is never unknown after apply
 	srcAttrs := curRuleSourceObj.Attributes()
 	if v, ok := srcAttrs["network_interface"]; ok {
@@ -114,8 +114,8 @@ func hydrateWanNetworkRuleState(ctx context.Context, state WanNetworkRule, curre
 			"domain":            parseList(ctx, types.StringType, currentRule.Application.Domain, "rule.application.domain"),
 			"fqdn":              parseList(ctx, types.StringType, currentRule.Application.Fqdn, "rule.application.fqdn"),
 			"service":           parseNameIDList(ctx, currentRule.Application.Service, "rule.application.service"),
-			"custom_service":     parseWanNetworkCustomServiceListSDK(ctx, currentRule.Application.CustomService, "rule.application.custom_service"),
-			"custom_service_ip":  parseWanNetworkCustomServiceIpListSDK(ctx, currentRule.Application.CustomServiceIP, "rule.application.custom_service_ip"),
+			"custom_service":    parseWanNetworkCustomServiceListSDK(ctx, currentRule.Application.CustomService, "rule.application.custom_service"),
+			"custom_service_ip": parseWanNetworkCustomServiceIpListSDK(ctx, currentRule.Application.CustomServiceIP, "rule.application.custom_service_ip"),
 		},
 	)
 	ruleInput.Application = curRuleApplicationObj
@@ -264,7 +264,7 @@ func parseWanNetworkCustomService(ctx context.Context, item *cato_models.CustomS
 
 	// Check if port_range is set first
 	hasPortRange := item.PortRange != nil
-	
+
 	if hasPortRange {
 		attrs["port_range"], _ = types.ObjectValue(
 			FromToAttrTypes,
@@ -396,23 +396,23 @@ func parseWanNetworkCustomServiceListSDK(ctx context.Context, items []*cato_go_s
 			"protocol":   types.StringNull(),
 		}
 
-	if len(item.Port) > 0 {
-		var ports []attr.Value
-		for _, p := range item.Port {
-			ports = append(ports, types.StringValue(fmt.Sprintf("%v", p)))
+		if len(item.Port) > 0 {
+			var ports []attr.Value
+			for _, p := range item.Port {
+				ports = append(ports, types.StringValue(fmt.Sprintf("%v", p)))
+			}
+			attrs["port"], _ = types.ListValue(types.StringType, ports)
 		}
-		attrs["port"], _ = types.ListValue(types.StringType, ports)
-	}
 
-	if item.PortRange != nil && (item.PortRange.From != "" || item.PortRange.To != "") {
-		attrs["port_range"], _ = types.ObjectValue(
-			FromToAttrTypes,
-			map[string]attr.Value{
-				"from": types.StringValue(fmt.Sprintf("%v", item.PortRange.From)),
-				"to":   types.StringValue(fmt.Sprintf("%v", item.PortRange.To)),
-			},
-		)
-	}
+		if item.PortRange != nil && (item.PortRange.From != "" || item.PortRange.To != "") {
+			attrs["port_range"], _ = types.ObjectValue(
+				FromToAttrTypes,
+				map[string]attr.Value{
+					"from": types.StringValue(fmt.Sprintf("%v", item.PortRange.From)),
+					"to":   types.StringValue(fmt.Sprintf("%v", item.PortRange.To)),
+				},
+			)
+		}
 
 		if item.Protocol != "" {
 			attrs["protocol"] = types.StringValue(string(item.Protocol))
@@ -526,7 +526,7 @@ func parseWanNetworkExceptionCustomServiceListSDK(ctx context.Context, items []*
 
 		// Check if port_range is set first
 		hasPortRange := item.PortRangeCustomService != nil && (item.PortRangeCustomService.From != "" || item.PortRangeCustomService.To != "")
-		
+
 		if hasPortRange {
 			attrs["port_range"], _ = types.ObjectValue(
 				FromToAttrTypes,

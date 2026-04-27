@@ -549,7 +549,6 @@ func hydrateTlsRuleApi(ctx context.Context, plan TlsInspectionRule) (hydrateTlsA
 				ruleApplicationUpdateInput.CustomCategory = make([]*cato_models.CustomCategoryRefInput, 0)
 			}
 
-
 			// setting application.domain
 			if !applicationInput.Domain.IsUnknown() && !applicationInput.Domain.IsNull() {
 				diags = append(diags, applicationInput.Domain.ElementsAs(ctx, &ruleApplicationInput.Domain, false)...)

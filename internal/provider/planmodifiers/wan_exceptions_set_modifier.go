@@ -201,11 +201,11 @@ func (m wanExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedO
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "destination")
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "application")
 	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "service")
-	
+
 	// Preserve empty sets from config to prevent null/empty set correlation issues
 	m.preserveEmptySet(ctx, newAttrs, stateAttrs, "country")
 	m.preserveEmptySet(ctx, newAttrs, stateAttrs, "device")
-	
+
 	// Preserve device_attributes from state if both are null or both are objects
 	// This prevents correlation issues when device_attributes transitions
 	if stateDeviceAttrs, exists := stateAttrs["device_attributes"]; exists {
@@ -213,7 +213,7 @@ func (m wanExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedO
 			// If planned is an object with all null fields and state is null, use state's null
 			plannedObj, plannedIsObj := plannedDeviceAttrs.(types.Object)
 			stateObj, stateIsObj := stateDeviceAttrs.(types.Object)
-			
+
 			if plannedIsObj && stateIsObj {
 				// Both are objects - check if planned is effectively empty (all nulls)
 				plannedAttrsMap := plannedObj.Attributes()
@@ -226,7 +226,7 @@ func (m wanExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedO
 						}
 					}
 				}
-				
+
 				// If state is also all null or if state is null, preserve state value
 				if stateObj.IsNull() && allNull {
 					newAttrs["device_attributes"] = stateDeviceAttrs
@@ -385,7 +385,7 @@ func (m wanExceptionsSetModifier) preserveSetElementIds(ctx context.Context, new
 // findElementByName finds an element in the list by matching the name field, or by ID if name is unknown
 func (m wanExceptionsSetModifier) findElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
-	
+
 	// First try to match by name
 	targetName, nameExists := targetAttrs["name"]
 	if nameExists {
@@ -415,7 +415,7 @@ func (m wanExceptionsSetModifier) findElementByName(ctx context.Context, targetO
 			}
 		}
 	}
-	
+
 	// If name matching failed (or name is unknown), try to match by ID
 	targetId, idExists := targetAttrs["id"]
 	if idExists {
@@ -446,7 +446,7 @@ func (m wanExceptionsSetModifier) findElementByName(ctx context.Context, targetO
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -466,7 +466,7 @@ func (m wanExceptionsSetModifier) preserveElementId(ctx context.Context, planned
 			newAttrs["id"] = stateIdStr
 		}
 	}
-	
+
 	// Preserve name from state if planned name is unknown
 	if plannedName, exists := newAttrs["name"]; exists {
 		if plannedNameStr, ok := plannedName.(types.String); ok && plannedNameStr.IsUnknown() {
@@ -495,16 +495,16 @@ func (m wanExceptionsSetModifier) preserveEmptySet(ctx context.Context, newAttrs
 	if !plannedExists {
 		return
 	}
-	
+
 	stateField, stateExists := stateAttrs[fieldName]
 	if !stateExists {
 		return
 	}
-	
+
 	// Check if planned is an empty set and state is null
 	plannedSet, plannedIsSet := plannedField.(types.Set)
 	stateSet, stateIsSet := stateField.(types.Set)
-	
+
 	if plannedIsSet && stateIsSet {
 		// If planned is empty set and state is null, preserve the empty set from plan
 		if !plannedSet.IsNull() && !plannedSet.IsUnknown() && len(plannedSet.Elements()) == 0 &&
@@ -650,7 +650,7 @@ func (m wanExceptionsSetModifier) resolveSetUnknowns(ctx context.Context, setVal
 func (m wanExceptionsSetModifier) resolveDeviceAttributesUnknowns(ctx context.Context, deviceAttrsObj types.Object) types.Object {
 	attrs := deviceAttrsObj.Attributes()
 	newAttrs := make(map[string]attr.Value, len(attrs))
-	
+
 	for k, v := range attrs {
 		if listVal, ok := v.(types.List); ok {
 			if listVal.IsUnknown() {

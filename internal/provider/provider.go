@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	cato "github.com/catonetworks/cato-go-sdk"
@@ -38,7 +39,8 @@ func New(version string) func() provider.Provider {
 }
 
 type catoProvider struct {
-	version string
+	version            string
+	hasBeenInitialized atomic.Bool
 }
 
 type catoProviderModel struct {
@@ -99,7 +101,6 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 }
 
 func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-
 	var config catoProviderModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
@@ -371,9 +372,10 @@ func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
 }
 
 func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
-	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" {
+	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" || p.hasBeenInitialized.Load() {
 		return
 	}
+	p.hasBeenInitialized.Store(true)
 	resp, err := d.catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
 	if err != nil {
 		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"err": err})

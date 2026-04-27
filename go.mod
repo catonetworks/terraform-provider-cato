@@ -4,7 +4,7 @@ go 1.25.8
 
 require (
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260410095755-1a7e19cb90c0
+	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260423133609-94633c4308a0
 	github.com/fatih/structs v1.1.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -15,6 +15,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.1
 	github.com/spf13/cast v1.7.1
 	github.com/stretchr/testify v1.11.1
+	go.yaml.in/yaml/v3 v3.0.4
 )
 
 require (
@@ -258,7 +259,6 @@ require (
 	go.augendre.info/fatcontext v0.9.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260209203927-2842357ff358 // indirect

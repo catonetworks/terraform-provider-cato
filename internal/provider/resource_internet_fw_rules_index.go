@@ -269,9 +269,9 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 				IfwRuleIndexResourceAttrTypes,
 				map[string]attr.Value{
 					"id":               types.StringValue(ruleIdMap[ruleName]),
-					"index_in_section": existingRule.IndexInSection, // Preserve planned value
-					"section_name":     existingRule.SectionName,    // Preserve planned value
-					"rule_name":        existingRule.RuleName,       // Preserve planned value
+					"index_in_section": existingRule.IndexInSection,                     // Preserve planned value
+					"section_name":     existingRule.SectionName,                        // Preserve planned value
+					"rule_name":        existingRule.RuleName,                           // Preserve planned value
 					"description":      types.StringValue(ruleDescriptionMap[ruleName]), // Update computed value
 					"enabled":          types.BoolValue(ruleEnabledMap[ruleName]),       // Update computed value
 				},
@@ -614,9 +614,9 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 				}
 
 				tflog.Debug(ctx, "Moving rule", map[string]interface{}{
-					"ruleName":      mapRuleIndexToRuleName[int64(x)],
-					"ruleIndex":     x,
-					"moveConfig":    utils.InterfaceToJSONString(moveRuleConfig),
+					"ruleName":   mapRuleIndexToRuleName[int64(x)],
+					"ruleIndex":  x,
+					"moveConfig": utils.InterfaceToJSONString(moveRuleConfig),
 				})
 
 				ruleMoveApiData, err := r.client.catov2.PolicyInternetFirewallMoveRule(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, moveRuleConfig, r.client.AccountId)

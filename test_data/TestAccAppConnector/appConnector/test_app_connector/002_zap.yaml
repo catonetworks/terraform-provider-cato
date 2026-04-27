@@ -1,0 +1,18 @@
+# Response to a read request for an app connector resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            {
+              "removeZtnaAppConnector":
+                {
+                  "ztnaAppConnector":
+                    { "id": "1000", "name": "test_app_connector new" },
+                },
+            },
+        },
+    }

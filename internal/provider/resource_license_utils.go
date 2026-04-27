@@ -77,7 +77,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 		"siteLicenseCurrentlyAssigned==true": fmt.Sprintf("%t", (siteLicenseCurrentlyAssigned == true)),
 	})
 	if siteLicenseCurrentlyAssigned == true {
-		if plan.SiteID.ValueString()==curLicenseSiteId.ValueString() {			
+		if plan.SiteID.ValueString() == curLicenseSiteId.ValueString() {
 			tflog.Warn(ctx, "License '"+fmt.Sprintf("%v", license.ID)+"', already assigned to site ID '"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', returning license successfully applied.")
 			return license, nil
 		} else {

@@ -1,0 +1,40 @@
+# Response to a read request for an app connector resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            {
+              "ztnaAppConnector":
+                {
+                  "id": "1000",
+                  "name": "test_app_connector new",
+                  "serialNumber": "C2-6E-62-9F-9E-F4",
+                  "type": "VIRTUAL",
+                  "groupName": "example-group-new",
+                  "description": "test_app_connector description new",
+                  "location":
+                    {
+                      "address": "123 Main St new",
+                      "cityName": "London",
+                      "countryCode": "GB",
+                      "stateCode": null,
+                      "timezone": "Europe/London",
+                    },
+                  "preferredPopLocation":
+                    {
+                      "preferredOnly": false,
+                      "automatic": false,
+                      "primary": { "id": "59", "name": "Atlanta" },
+                      "secondary": { "id": "13", "name": "Amsterdam" },
+                    },
+                  "privateAppRef": [],
+                  "socketId": "156778",
+                  "socketModel": null,
+                },
+            },
+        },
+    }

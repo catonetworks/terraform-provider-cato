@@ -1,0 +1,5 @@
+# Response to a read request for an app connector resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body: { "data": { "mock": { "id": "1000", "groupName": "new-group" } } }

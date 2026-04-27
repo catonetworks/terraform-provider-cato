@@ -1,3 +1,5 @@
+//go:build acctest
+
 package acctests
 
 import (
@@ -6,12 +8,16 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccPrivAccessPolicyBulk(t *testing.T) {
 	// t.Skip("Skipping this test for now")
+	mockSrv := accmock.NewMockServer(t, "TestAccPrivAccessPolicyBulk")
+	defer mockSrv.Close()
+	mockSrv.Run()
 
 	cfg := newPrivAccessPolicyBulkCfg(t)
 	resRule1 := "cato_private_access_rule.rule_1"

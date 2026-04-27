@@ -28,25 +28,25 @@ func (m sourceDestObjectModifier) MarkdownDescription(_ context.Context) string 
 func (m sourceDestObjectModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
 	// Log entry into the plan modifier
 	tflog.Warn(ctx, "SourceDestObjectModifier: Plan modifier invoked")
-	
+
 	// If config is null or unknown, use default behavior
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		tflog.Debug(ctx, "SourceDestObjectModifier: Config is null or unknown, using default behavior")
 		return
 	}
-	
+
 	// If state doesn't exist (first apply), use plan as-is but log it
 	if req.StateValue.IsNull() || req.StateValue.IsUnknown() {
 		tflog.Debug(ctx, "SourceDestObjectModifier: State is null or unknown (first apply), using plan as-is")
 		return
 	}
-	
+
 	// If plan is null or unknown, use default behavior
 	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
 		tflog.Debug(ctx, "SourceDestObjectModifier: Plan is null or unknown, using default behavior")
 		return
 	}
-	
+
 	tflog.Warn(ctx, "SourceDestObjectModifier: Processing source/destination object correlation")
 
 	// Get the planned, state, and config objects
@@ -55,7 +55,7 @@ func (m sourceDestObjectModifier) PlanModifyObject(ctx context.Context, req plan
 
 	// Create new object with preserved IDs for nested sets
 	modifiedObj := m.preserveNestedSetIds(ctx, plannedObj, stateObj)
-	
+
 	if !modifiedObj.Equal(plannedObj) {
 		resp.PlanValue = modifiedObj
 		tflog.Warn(ctx, "SourceDestObjectModifier: Successfully modified source/destination object")
@@ -68,7 +68,7 @@ func (m sourceDestObjectModifier) PlanModifyObject(ctx context.Context, req plan
 func (m sourceDestObjectModifier) preserveNestedSetIds(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
-	
+
 	// Start with planned attributes
 	newAttrs := make(map[string]attr.Value, len(plannedAttrs))
 	for k, v := range plannedAttrs {
@@ -77,15 +77,15 @@ func (m sourceDestObjectModifier) preserveNestedSetIds(ctx context.Context, plan
 
 	// Preserve IDs in nested sets that commonly have correlation issues
 	setFieldsToProcess := []string{
-		"host", "site", "global_ip_range", "network_interface", 
-		"site_network_subnet", "floating_subnet", "group", 
+		"host", "site", "global_ip_range", "network_interface",
+		"site_network_subnet", "floating_subnet", "group",
 		"system_group", "user", "users_group",
 	}
 
 	for _, fieldName := range setFieldsToProcess {
 		m.preserveSetElementIds(ctx, newAttrs, stateAttrs, fieldName)
 	}
-	
+
 	// Create the new object
 	objectType := plannedObj.Type(ctx).(types.ObjectType)
 	newObj, diags := types.ObjectValue(objectType.AttrTypes, newAttrs)
@@ -192,7 +192,7 @@ func (m sourceDestObjectModifier) findElementByName(ctx context.Context, targetO
 			continue
 		}
 
-		if !elementNameStr.IsNull() && !elementNameStr.IsUnknown() && 
+		if !elementNameStr.IsNull() && !elementNameStr.IsUnknown() &&
 			elementNameStr.ValueString() == targetNameStr.ValueString() {
 			return &elementObj
 		}

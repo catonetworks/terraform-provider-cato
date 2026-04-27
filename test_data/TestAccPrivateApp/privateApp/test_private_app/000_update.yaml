@@ -1,0 +1,12 @@
+# Response to an update request for a private app resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "privateApplication":
+            { "updatePrivateApplication": { "application": { "id": "1253" } } },
+        },
+    }

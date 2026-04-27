@@ -85,7 +85,6 @@ type SocketLanFirewallService struct {
 	Custom   types.List `tfsdk:"custom" json:"custom,omitempty"`
 }
 
-
 // Attr types for state management
 
 var SocketLanFirewallRuleObjectType = types.ObjectType{AttrTypes: SocketLanFirewallRuleAttrTypes}

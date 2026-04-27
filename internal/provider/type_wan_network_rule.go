@@ -20,12 +20,12 @@ type Policy_Policy_WanNetwork_Policy_Rules_Rule struct {
 	Enabled           types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
 	RuleType          types.String `tfsdk:"rule_type" json:"ruleType,omitempty"`
 	RouteType         types.String `tfsdk:"route_type" json:"routeType,omitempty"`
-	Source            types.Object `tfsdk:"source" json:"source,omitempty"`            //Policy_Policy_WanNetwork_Policy_Rules_Rule_Source
-	Destination       types.Object `tfsdk:"destination" json:"destination,omitempty"` //Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination
-	Application       types.Object `tfsdk:"application" json:"application,omitempty"` //Policy_Policy_WanNetwork_Policy_Rules_Rule_Application
-	Configuration     types.Object `tfsdk:"configuration" json:"configuration,omitempty"` //Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration
+	Source            types.Object `tfsdk:"source" json:"source,omitempty"`                        //Policy_Policy_WanNetwork_Policy_Rules_Rule_Source
+	Destination       types.Object `tfsdk:"destination" json:"destination,omitempty"`              //Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination
+	Application       types.Object `tfsdk:"application" json:"application,omitempty"`              //Policy_Policy_WanNetwork_Policy_Rules_Rule_Application
+	Configuration     types.Object `tfsdk:"configuration" json:"configuration,omitempty"`          //Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration
 	BandwidthPriority types.Object `tfsdk:"bandwidth_priority" json:"bandwidthPriority,omitempty"` //Policy_Policy_WanNetwork_Policy_Rules_Rule_BandwidthPriority
-	Exceptions        types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"` //[]*Policy_Policy_WanNetwork_Policy_Rules_Rule_Exceptions
+	Exceptions        types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"`                //[]*Policy_Policy_WanNetwork_Policy_Rules_Rule_Exceptions
 }
 
 // Policy_Policy_WanNetwork_Policy_Rules_Rule_Source represents source matching criteria
@@ -398,9 +398,9 @@ var WanNetworkConfigurationAttrTypes = map[string]attr.Type{
 
 var WanNetworkTransportObjectType = types.ObjectType{AttrTypes: WanNetworkTransportAttrTypes}
 var WanNetworkTransportAttrTypes = map[string]attr.Type{
-	"transport_type":            types.StringType,
-	"primary_interface_role":    types.StringType,
-	"secondary_interface_role":  types.StringType,
+	"transport_type":           types.StringType,
+	"primary_interface_role":   types.StringType,
+	"secondary_interface_role": types.StringType,
 }
 
 var BandwidthPriorityObjectType = types.ObjectType{AttrTypes: BandwidthPriorityAttrTypes}

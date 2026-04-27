@@ -1,0 +1,6 @@
+# Response to a create request for an app connector resource.
+ResourceID: 1000
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body: { "data": { "mock": { "addMock": { "mock": { "id": "1000" } } } } }

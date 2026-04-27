@@ -1,0 +1,13 @@
+# Response to a create request for a private app resource.
+ResourceID: 1253
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "privateApplication":
+            { "createPrivateApplication": { "application": { "id": "1253" } } },
+        },
+    }

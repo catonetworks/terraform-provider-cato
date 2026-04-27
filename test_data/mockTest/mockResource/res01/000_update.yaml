@@ -1,0 +1,5 @@
+# Response to an update request for an app connector resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body: { "data": { "mock": { "updateMock": { "mock": { "id": "1000" } } } } }
