@@ -279,9 +279,6 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						Description: "Optionnal city",
 						Optional:    true,
 						Computed:    true,
-						Validators: []validator.String{
-							stringvalidator.LengthAtLeast(1),
-						},
 					},
 					"address": schema.StringAttribute{
 						Description: "Optionnal address",
