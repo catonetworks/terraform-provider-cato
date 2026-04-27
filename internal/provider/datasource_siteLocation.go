@@ -255,7 +255,7 @@ func (d *siteLocationDataSource) Read(
 	}
 
 	if locations := filterSiteLocations(ctx, filters); len(locations) > 0 {
-		setSiteLocations(ctx, resp, state.Filters, locations[:1])
+		setSiteLocations(ctx, resp, state.Filters, locations)
 		return
 	}
 
@@ -320,7 +320,7 @@ func filterSiteLocations(
 
 	siteLocations := make([]SLDCatalogEntry, 0, len(filteredSiteLocations))
 	for _, location := range filteredSiteLocations {
-		siteLocations = append(siteLocations, location)
+		siteLocations = insertSLDCatalogEntry(siteLocations, location)
 	}
 
 	return siteLocations
@@ -433,4 +433,45 @@ func setSiteLocations(
 	if diags := resp.State.Set(ctx, &state); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
+}
+
+func insertSLDCatalogEntry(entries []SLDCatalogEntry, newEntry SLDCatalogEntry) []SLDCatalogEntry {
+	insertAt := len(entries)
+
+	compareSLDField := func(a, b string) int {
+		left := strings.TrimSpace(strings.ToLower(a))
+		right := strings.TrimSpace(strings.ToLower(b))
+
+		switch {
+		case left < right:
+			return -1
+		case left > right:
+			return 1
+		default:
+			return 0
+		}
+	}
+
+	isLess := func(a, b SLDCatalogEntry) bool {
+		if cmp := compareSLDField(a.City, b.City); cmp != 0 {
+			return cmp < 0
+		}
+		if cmp := compareSLDField(a.StateName, b.StateName); cmp != 0 {
+			return cmp < 0
+		}
+		return compareSLDField(a.CountryName, b.CountryName) < 0
+	}
+
+	for i, entry := range entries {
+		if isLess(newEntry, entry) {
+			insertAt = i
+			break
+		}
+	}
+
+	entries = append(entries, SLDCatalogEntry{})
+	copy(entries[insertAt+1:], entries[insertAt:])
+	entries[insertAt] = newEntry
+
+	return entries
 }
