@@ -5,7 +5,7 @@ PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
 GOLANGCI_LINT ?= golangci-lint
 # Whenever bumping provider version, please update the version in cato/client.go (line 27) as well.
-VERSION=0.0.70
+VERSION=0.0.71
 
 # Mac Intel Chip
 # OS_ARCH=darwin_amd64

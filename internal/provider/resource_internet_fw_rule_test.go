@@ -315,7 +315,7 @@ func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 	assertRuleState(ctx, t, resp.State, "rule-123", "test-ifw-rule", 12)
 }
 
-func TestInternetFwRuleIndexPlanModifierUsesStateForUnknown(t *testing.T) {
+func TestInternetFwRuleIndexPlanModifierMarksValueUnknownOnUpdate(t *testing.T) {
 	ctx := context.Background()
 	indexAttr := getInternetFwRuleIndexAttribute(ctx, t)
 
@@ -336,11 +336,8 @@ func TestInternetFwRuleIndexPlanModifierUsesStateForUnknown(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
 	}
-	if resp.PlanValue.IsUnknown() || resp.PlanValue.IsNull() {
-		t.Fatalf("expected known plan value copied from state, got %v", resp.PlanValue)
-	}
-	if got := resp.PlanValue.ValueInt64(); got != 10 {
-		t.Fatalf("expected index 10, got %d", got)
+	if !resp.PlanValue.IsUnknown() {
+		t.Fatalf("expected unknown plan value after modifier, got %v", resp.PlanValue)
 	}
 }
 
