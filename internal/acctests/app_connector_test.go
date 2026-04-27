@@ -1,3 +1,5 @@
+//go:build acctest
+
 package acctests
 
 import (
@@ -11,8 +13,9 @@ import (
 )
 
 func TestAccAppConnector(t *testing.T) {
-	mockSrv := accmock.SetupMock(t, "TestAccAppConnector")
+	mockSrv := accmock.NewMockServer(t, "TestAccAppConnector")
 	defer mockSrv.Close()
+	mockSrv.Run()
 	cfg := newAppConnectorCfg(t)
 	res := "cato_app_connector.this"
 

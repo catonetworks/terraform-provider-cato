@@ -1,3 +1,5 @@
+//go:build acctest
+
 package accmock
 
 import (

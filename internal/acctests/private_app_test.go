@@ -1,3 +1,5 @@
+//go:build acctest
+
 package acctests
 
 import (
@@ -12,8 +14,9 @@ import (
 )
 
 func TestAccPrivateApp(t *testing.T) {
-	mockSrv := accmock.SetupMock(t, "TestAccPrivateApp")
+	mockSrv := accmock.NewMockServer(t, "TestAccPrivateApp")
 	defer mockSrv.Close()
+	mockSrv.Run()
 	cfg := newPrivateAppCfg(t)
 	res := "cato_private_app.this"
 

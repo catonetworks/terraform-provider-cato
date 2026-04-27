@@ -1,3 +1,5 @@
+//go:build acctest
+
 /*
 Package accmock provides a mock HTTP server for testing Terraform providers that interact with APIs.
 The mock server is designed to simulate API responses based on predefined fixtures, allowing for consistent and repeatable tests
@@ -31,6 +33,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -43,12 +46,14 @@ import (
 var ACCMockActive bool
 
 type MockServer struct {
-	calls     []Call
-	resources resourceStates
-	baseDir   string
-	server    *httptest.Server
-	cfg       *config
-	mu        sync.Mutex
+	calls       []Call
+	resources   resourceStates
+	baseDir     string
+	recordedDir string
+	server      *httptest.Server
+	cfg         *config
+	t           *testing.T
+	mu          sync.Mutex
 }
 
 type resourceStates map[string]resourceState
@@ -104,48 +109,44 @@ type graphql struct {
 	Body       any           `yaml:"Body"`
 }
 
-func SetupMock(t *testing.T, testName string) *MockServer {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
+func NewMockServer(t *testing.T, testName string) *MockServer {
+	projectRoot := getProjectRoot()
+	baseDir := filepath.Join(projectRoot, "test_data", testName)
+	recordedDir := filepath.Join(projectRoot, "tmp_recorded", testName)
+	mockServer := &MockServer{
+		resources:   make(map[string]resourceState),
+		baseDir:     baseDir,
+		recordedDir: recordedDir,
+		t:           t,
 	}
-	recordedDir := filepath.Join(cwd, "..", "accmock", "tmp_recorded", testName)
-	if err := os.Setenv("TF_API_DUMP_DIR", recordedDir); err != nil {
-		t.Fatalf("failed to set env TF_API_DUMP_DIR: %v", err)
-	}
-	_ = os.RemoveAll(recordedDir)
-
-	if !ACCMockActive {
-		return nil
-	}
-
-	dataDir := filepath.Join(cwd, "..", "accmock", "data", testName)
-
-	server, err := RunMockServer(dataDir)
-	if err != nil {
-		t.Fatalf("RunMockServer() error = %v", err)
-	}
-	if err := os.Setenv("CATO_BASEURL", server.URL()); err != nil {
-		t.Fatalf("failed to set env CATO_BASEURL: %v", err)
-	}
-	return server
+	return mockServer
 }
 
-// RunMockServer initializes and starts the mock server based on the
-// configuration found in the specified base directory.
-func RunMockServer(baseDir string) (*MockServer, error) {
-	cfg, err := readConfig(filepath.Join(baseDir, "config.yaml"))
-	if err != nil {
-		return nil, err
+func (s *MockServer) Run() {
+	if s == nil {
+		return
 	}
-	mockServer := &MockServer{
-		resources: make(map[string]resourceState),
-		baseDir:   baseDir,
-		cfg:       cfg,
+	if err := os.Setenv("TF_API_DUMP_DIR", s.recordedDir); err != nil {
+		s.t.Fatalf("failed to set env TF_API_DUMP_DIR: %v", err)
+	}
+	_ = os.RemoveAll(s.recordedDir)
+
+	if !ACCMockActive {
+		return
 	}
 
-	mockServer.server = httptest.NewServer(mockServer)
-	return mockServer, nil
+	cfg, err := readConfig(filepath.Join(s.baseDir, "config.yaml"))
+	if err != nil {
+		s.t.Fatalf("failed to read config: %v", err)
+		return
+	}
+
+	s.cfg = cfg
+	s.server = httptest.NewServer(s)
+
+	if err := os.Setenv("CATO_BASEURL", s.URL()); err != nil {
+		s.t.Fatalf("failed to set env CATO_BASEURL: %v", err)
+	}
 }
 
 // URL returns the base URL of the mock server, which can be used to configure the API client in tests.
@@ -481,6 +482,11 @@ func (r resourceStates) ByID(id string) (resourceState, bool) {
 		}
 	}
 	return resourceState{}, false
+}
+
+func getProjectRoot() string {
+	_, filename, _, _ := runtime.Caller(0) //nolint:dogsled
+	return filepath.Join(filepath.Dir(filename), "..", "..")
 }
 
 func init() { //nolint:gochecknoinits

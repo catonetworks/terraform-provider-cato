@@ -39,8 +39,8 @@ func New(version string) func() provider.Provider {
 }
 
 type catoProvider struct {
-	version     string
-	initialized atomic.Bool
+	version            string
+	hasBeenInitialized atomic.Bool
 }
 
 type catoProviderModel struct {
@@ -372,10 +372,10 @@ func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
 }
 
 func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
-	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" || p.initialized.Load() {
+	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" || p.hasBeenInitialized.Load() {
 		return
 	}
-	p.initialized.Store(true)
+	p.hasBeenInitialized.Store(true)
 	resp, err := d.catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
 	if err != nil {
 		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"err": err})

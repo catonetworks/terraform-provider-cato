@@ -1,3 +1,5 @@
+//go:build acctest
+
 package acctests
 
 import (
@@ -13,8 +15,9 @@ import (
 
 func TestAccPrivAccessPolicy(t *testing.T) {
 	// t.Skip("Skipping this test for now")
-	mockSrv := accmock.SetupMock(t, "TestAccPrivAccessPolicy")
+	mockSrv := accmock.NewMockServer(t, "TestAccPrivAccessPolicy")
 	defer mockSrv.Close()
+	mockSrv.Run()
 
 	cfg := newPrivAccessPolicyCfg(t)
 	resPol := "cato_private_access_policy.this"

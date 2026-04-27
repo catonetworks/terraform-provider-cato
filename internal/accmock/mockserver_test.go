@@ -1,11 +1,10 @@
+//go:build acctest
+
 package accmock
 
 import (
 	"io"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -50,15 +49,14 @@ var mockItems = []mockItem{
 func TestMockServer(t *testing.T) {
 	t.Parallel()
 
-	server, err := RunMockServer(testMockDataDir())
-	if err != nil {
-		t.Fatalf("RunMockServer() error = %v", err)
-	}
-	defer server.Close()
+	ACCMockActive = true
+	mockServer := NewMockServer(t, "mockTest")
+	mockServer.Run()
+	defer mockServer.Close()
 
 	for _, tc := range mockItems {
 		t.Run(tc.name, func(t *testing.T) {
-			res, err := http.Post(server.URL(), "application/json", strings.NewReader(tc.request))
+			res, err := http.Post(mockServer.URL(), "application/json", strings.NewReader(tc.request))
 			require.NoError(t, err, "failed to send request for %q", tc.name)
 			got, err := io.ReadAll(res.Body)
 			require.NoError(t, err, "failed to read response body for %q", tc.name)
@@ -68,12 +66,4 @@ func TestMockServer(t *testing.T) {
 			assert.Equal(t, tc.exp, string(got))
 		})
 	}
-}
-
-func testMockDataDir() string {
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return filepath.Join(dir, "data", "mockTest")
 }
