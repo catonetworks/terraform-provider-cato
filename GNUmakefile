@@ -110,6 +110,9 @@ lint:  ## Run the linters configured in .golangci.yml locally
 	}
 	@${GOLANGCI_LINT} run ./... -v --timeout=60m
 
+vul: ## Vulnerability check
+	@go tool govulncheck ./...
+
 ##@ Help
 .PHONY: help
 help: ## Display this help screen
