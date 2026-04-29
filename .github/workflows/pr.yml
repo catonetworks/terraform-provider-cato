@@ -7,41 +7,26 @@ permissions:
     pull-requests: read
 
 jobs:
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-        - uses: actions/checkout@v6
-    
-        - uses: actions/setup-go@v6
-          with:
-            go-version: 1.25
-        
-        - name: golangci-lint
-          uses: golangci/golangci-lint-action@v9
-          with:
-            version: v2.11
-            only-new-issues: true
+  test:
+    runs-on: ubuntu-latest
 
-    build:
-        runs-on: ubuntu-latest
-        steps:
-        - uses: actions/checkout@v6
-    
-        - uses: actions/setup-go@v6
-          with:
-            go-version: 1.25
-        
-        - name: Build
-          run: go build -v ./...
-    
-    test:
-        runs-on: ubuntu-latest
-        steps:
-        - uses: actions/checkout@v6
-    
-        - uses: actions/setup-go@v6
-          with:
-            go-version: 1.25
-        
-        - name: Test
-          run: make test
+    env:
+      CATO_ACCOUNT_ID: ${{ vars.CATO_ACCOUNT_ID }}
+      CATO_ENDPOINT: ${{ vars.CATO_ENDPOINT }}
+      CATO_BASEURL: ${{ vars.CATO_ENDPOINT }}
+      CATO_TOKEN: ${{ secrets.CATO_TOKEN }}
+      TFACC_TEST_VARS: ${{ vars.TFACC_TEST_VARS }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run unit tests
+        run: make test
+
+      - name: Run acceptance tests
+        run: make acctest
