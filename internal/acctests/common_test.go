@@ -67,6 +67,7 @@ type testLocations []Ref
 type testUsers []Ref
 type testPrivateApps []Ref
 type testConnectorGroups []string
+type testDhcpRelayGroups []Ref
 
 var (
 	catoClient          *cato.Client
@@ -74,6 +75,7 @@ var (
 	catoConnectorGroups testConnectorGroups
 	catoUsers           testUsers
 	catoPrivateApps     testPrivateApps
+	catoDhcpRelayGroups testDhcpRelayGroups
 	mu                  sync.Mutex
 	ctx                 = context.Background()
 )
@@ -88,7 +90,7 @@ func getRandName(resource string) string {
 	for i := range bytes {
 		bytes[i] = charset[r.Intn(len(charset))]
 	}
-	return "test_" + resource + "_" + string(bytes)
+	return "acctest_" + resource + "_" + string(bytes)
 }
 
 func checkCMAVars(t *testing.T) func() {
@@ -306,6 +308,52 @@ func publishPrivateAccessPolicy(t *testing.T) {
 
 func providerCfg() string {
 	return fmt.Sprintf("provider \"cato\" {\n  account_id = \"%s\"\n}\n", CatoAccountID)
+}
+
+func getDhcpRelayGroups(t *testing.T) testDhcpRelayGroups {
+	mu.Lock()
+	defer mu.Unlock()
+	if catoDhcpRelayGroups == nil {
+
+		var res entityResp
+		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) {entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
+			"variables": {"accountID": "` + CatoAccountID + `","type": "dhcpRelayGroup"},
+			"operationName": "entityLookup"}`
+
+		// Create request
+		req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query)) //nolint:gosec
+		if err != nil {
+			panic(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Api-Key", CatoToken)
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("ERROR fetching DHCP relay groups: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Read response
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("ERROR reading DHCP relay groups: %v", err)
+		}
+		if err = json.Unmarshal(body, &res); err != nil {
+			t.Fatalf("ERROR unmarshalling response: %v", err)
+		}
+		if len(res.Errors) > 0 {
+			t.Fatalf("ERROR: cannot fetch DHCP relay groups: %v", res.Errors)
+		}
+		if len(res.Data.EntityLookup.Items) == 0 {
+			t.Fatalf("ERROR: failed to fetch DHCP relay groups: res.Data.EntityLookup.Items is empty")
+		}
+		for _, u := range res.Data.EntityLookup.Items {
+			catoDhcpRelayGroups = append(catoDhcpRelayGroups, Ref{ID: u.Entity.ID, Name: u.Entity.Name})
+		}
+	}
+
+	return catoDhcpRelayGroups
 }
 
 func ptr[T any](x T) *T { return &x }
