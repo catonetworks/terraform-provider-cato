@@ -3,7 +3,6 @@ HOSTNAME=registry.terraform.io
 NAMESPACE=catonetworks
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
-GOLANGCI_LINT ?= golangci-lint
 # Whenever bumping provider version, please update the version in cato/client.go (line 27) as well.
 VERSION=0.0.71
 
@@ -16,6 +15,8 @@ OS_ARCH=darwin_arm64
 # Directory paths
 PLUGINS_DIR=${HOME}/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${PKG_NAME}/${VERSION}/${OS_ARCH}
 MIRROR_DIR=${HOME}/.terraform.d/mirror/${HOSTNAME}/${NAMESPACE}/${PKG_NAME}/${VERSION}/${OS_ARCH}
+
+IMPORT_SORT_ORDER := -s standard -s default -s "prefix(github.com/softopus-io)" -s localModule
 
 default: install
 
@@ -104,14 +105,14 @@ acctest: ## Run acceptance tests (real API calls)
 	TF_ACC=1 go test -tags acctest -count=1 -json ./internal/acctests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 
 lint:  ## Run the linters configured in .golangci.yml locally
-	@command -v ${GOLANGCI_LINT} >/dev/null 2>&1 || { \
-		echo "golangci-lint not found in PATH. Install v2.11.4 or run 'make lint GOLANGCI_LINT=/path/to/golangci-lint'"; \
-		exit 1; \
-	}
-	@${GOLANGCI_LINT} run ./... -v --timeout=60m
+	@go tool golangci-lint run --build-tags acctest  ./internal/... -v --timeout=10m
 
 vul: ## Vulnerability check
 	@go tool govulncheck ./...
+
+sort-imports: ## Sort imports according to standard
+	@go tool goimports -w ./internal
+	@go tool gci write $(IMPORT_SORT_ORDER) ./internal
 
 ##@ Help
 .PHONY: help

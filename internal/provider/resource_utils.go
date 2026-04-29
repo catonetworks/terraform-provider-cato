@@ -8,7 +8,6 @@ import (
 	"time"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models" // Import the correct package
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/fatih/structs"
 	"github.com/gobeam/stringy"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -18,6 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 func contains(nameToIdMap map[string]struct{}, name string) bool {

@@ -1,6 +1,6 @@
 //go:build acctest
 
-package acctests
+package socket_site
 
 import (
 	"bytes"
@@ -8,8 +8,10 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
+	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 // TestAccSocketSite_Basic tests basic CRUD operations for cato_socket_site resource with connection type SOCKET_X1500 and update to SOCKET_AWS1500
@@ -19,17 +21,17 @@ func TestAccSocketSite_Basic(t *testing.T) {
 	defer mockSrv.Close()
 	mockSrv.Run()
 	cfg := newsocketSiteCfg(t)
-	res := "cato_socket_site.this"
+	const res = "cato_socket_site.this"
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
 				Config: cfg.getTfConfigBasic(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "%", "7"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
@@ -70,7 +72,7 @@ func TestAccSocketSite_Basic(t *testing.T) {
 				// Update the resource
 				Config: cfg.getTfConfigBasic(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "%", "7"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_AWS1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description 2"),
@@ -109,7 +111,7 @@ func TestAccSocketSite_ConnType(t *testing.T) {
 	defer mockSrv.Close()
 	mockSrv.Run()
 	cfg := newsocketSiteCfg(t)
-	res := "cato_socket_site.this"
+	const res = "cato_socket_site.this"
 
 	var steps []resource.TestStep
 	for i, connType := range cfg.connTypes {
@@ -117,7 +119,7 @@ func TestAccSocketSite_ConnType(t *testing.T) {
 		step := resource.TestStep{
 			Config: cfg.getTfConfigConnTypes(i),
 			Check: resource.ComposeAggregateTestCheckFunc(
-				printAttributes(res),
+				acc.PrintAttributes(res),
 				resource.TestCheckResourceAttr(res, "%", "7"),
 				resource.TestCheckResourceAttr(res, "connection_type", connType),
 				resource.TestCheckResourceAttr(res, "description", fmt.Sprintf("%s-%d description", cfg.resName, i)),
@@ -148,8 +150,8 @@ func TestAccSocketSite_ConnType(t *testing.T) {
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps:                    steps,
 	})
 }
@@ -163,17 +165,17 @@ func TestAccSocketSite_Location(t *testing.T) {
 	defer mockSrv.Close()
 	mockSrv.Run()
 	cfg := newsocketSiteCfg(t)
-	res := "cato_socket_site.this"
+	const res = "cato_socket_site.this"
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
 				Config: cfg.getTfConfigLocation(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "%", "7"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
@@ -205,7 +207,7 @@ func TestAccSocketSite_Location(t *testing.T) {
 				// Update the resource
 				Config: cfg.getTfConfigLocation(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 					resource.TestCheckResourceAttr(res, "site_location.%", "5"),
 					resource.TestCheckResourceAttr(res, "site_location.country_code", "FR"),
@@ -227,14 +229,14 @@ func TestAccSocketSite_DHCP(t *testing.T) {
 	res := "cato_socket_site.this"
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
 				// Create the resource DHCP-RANGE
 				Config: cfg.getTfConfigDHCP(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "%", "7"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
@@ -269,7 +271,7 @@ func TestAccSocketSite_DHCP(t *testing.T) {
 				// Create the resource DHCP-RANGE - microsegmentation enabled
 				Config: cfg.getTfConfigDHCP(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_microsegmentation", "true"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "DHCP_RANGE"),
 				),
@@ -278,7 +280,7 @@ func TestAccSocketSite_DHCP(t *testing.T) {
 				// Update the resource - DHCP-RELAY
 				Config: cfg.getTfConfigDHCP(2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "DHCP_RELAY"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.relay_group_id", cfg.dhcpRelayGroups[0].ID),
@@ -290,7 +292,7 @@ func TestAccSocketSite_DHCP(t *testing.T) {
 				// Update the resource - DHCP-DISABLED
 				Config: cfg.getTfConfigDHCP(3),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "DHCP_DISABLED"),
 				),
@@ -303,7 +305,7 @@ type socketSiteCfg struct {
 	resName         string
 	connTypes       []string
 	defaultIface    []string
-	dhcpRelayGroups []Ref
+	dhcpRelayGroups []acc.Ref
 	t               *testing.T
 }
 
@@ -330,10 +332,10 @@ func newsocketSiteCfg(t *testing.T) socketSiteCfg {
 		"INT_3",
 	}
 	return socketSiteCfg{
-		resName:         getRandName("socket_site"),
+		resName:         acc.GetRandName("socket_site"),
 		connTypes:       connTypes,
 		defaultIface:    defaultIface,
-		dhcpRelayGroups: getDhcpRelayGroups(t),
+		dhcpRelayGroups: acc.GetDhcpRelayGroups(t),
 		t:               t,
 	}
 }
@@ -347,7 +349,7 @@ func (p socketSiteCfg) prepareTfCfg(data map[string]any, tmplText string) string
 	if err := tmpl.Execute(&buf, data); err != nil {
 		p.t.Fatal(err)
 	}
-	cfg := providerCfg() + buf.String()
+	cfg := acc.ProviderCfg() + buf.String()
 	fmt.Println(cfg)
 	return cfg
 }

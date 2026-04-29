@@ -5,8 +5,9 @@ import (
 	"flag"
 	"log"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider"
 )
 
 var (

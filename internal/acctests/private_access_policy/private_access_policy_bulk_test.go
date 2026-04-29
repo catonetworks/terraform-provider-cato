@@ -1,6 +1,6 @@
 //go:build acctest
 
-package acctests
+package private_access_policy
 
 import (
 	"bytes"
@@ -8,13 +8,14 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
+	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 func TestAccPrivAccessPolicyBulk(t *testing.T) {
-	// t.Skip("Skipping this test for now")
 	mockSrv := accmock.NewMockServer(t, "TestAccPrivAccessPolicyBulk")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -28,16 +29,16 @@ func TestAccPrivAccessPolicyBulk(t *testing.T) {
 	resBulk := "cato_private_access_rule_bulk.this"
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
 				Config:             cfg.getTfConfig(0),
 				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(resRule1),
-					printAttributes(resBulk),
+					acc.PrintAttributes(resRule1),
+					acc.PrintAttributes(resBulk),
 					resource.TestCheckResourceAttr(resRule1, "description", "rule 1"),
 					resource.TestCheckResourceAttr(resRule2, "description", "rule 2"),
 
@@ -56,7 +57,7 @@ func TestAccPrivAccessPolicyBulk(t *testing.T) {
 				Config:             cfg.getTfConfig(1),
 				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(resBulk),
+					acc.PrintAttributes(resBulk),
 					resource.TestCheckResourceAttr(resRule1, "description", "rule 1 new"),
 					resource.TestCheckResourceAttr(resRule2, "description", "rule 2"),
 					resource.TestCheckResourceAttr(resRule3, "description", "rule 3"),
@@ -72,7 +73,7 @@ func TestAccPrivAccessPolicyBulk(t *testing.T) {
 				Config:             cfg.getTfConfig(2),
 				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(resBulk),
+					acc.PrintAttributes(resBulk),
 					resource.TestCheckResourceAttr(resRule1, "description", "rule 1"),
 					resource.TestCheckResourceAttr(resRule2, "description", "rule 2"),
 					resource.TestCheckResourceAttr(resRule3, "description", "rule 3"),
@@ -90,7 +91,7 @@ func TestAccPrivAccessPolicyBulk(t *testing.T) {
 				Config:             cfg.getTfConfig(3),
 				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(resBulk),
+					acc.PrintAttributes(resBulk),
 					resource.TestCheckResourceAttr(resRule2, "description", "rule 2"),
 					resource.TestCheckResourceAttr(resRule4, "description", "rule 4"),
 					resource.TestCheckResourceAttr(resRule5, "description", "rule 5"),
@@ -102,20 +103,20 @@ func TestAccPrivAccessPolicyBulk(t *testing.T) {
 				),
 			},
 		},
-		CheckDestroy: func(*terraform.State) error { publishPrivateAccessPolicy(t); return nil },
+		CheckDestroy: func(*terraform.State) error { acc.PublishPrivateAccessPolicy(t); return nil },
 	})
 }
 
 type privAccessPolicyBulkCfg struct {
-	users    []Ref
-	privApps []Ref
+	users    []acc.Ref
+	privApps []acc.Ref
 	t        *testing.T
 }
 
 func newPrivAccessPolicyBulkCfg(t *testing.T) privAccessPolicyBulkCfg {
 	return privAccessPolicyBulkCfg{
-		users:    getUsers(t),
-		privApps: getPrivateApps(t),
+		users:    acc.GetUsers(t),
+		privApps: acc.GetPrivateApps(t),
 		t:        t,
 	}
 }
@@ -162,7 +163,7 @@ func (p privAccessPolicyBulkCfg) getTfConfig(index int) string {
 		p.t.Fatal(err)
 	}
 
-	cfg := providerCfg() + buf.String()
+	cfg := acc.ProviderCfg() + buf.String()
 	fmt.Println(cfg)
 	return cfg
 }

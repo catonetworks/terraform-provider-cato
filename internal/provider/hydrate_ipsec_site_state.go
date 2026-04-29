@@ -6,12 +6,13 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state SiteIpsecIkeV2, siteID string) (SiteIpsecIkeV2, bool, error) {

@@ -1,6 +1,6 @@
 //go:build acctest
 
-package acctests
+package acc
 
 import (
 	"context"
@@ -18,8 +18,9 @@ import (
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 )
 
 // env. variables
@@ -63,29 +64,29 @@ type Ref struct {
 	Name string `json:"name"`
 	ID   string `json:"id"`
 }
-type testLocations []Ref
-type testUsers []Ref
-type testPrivateApps []Ref
-type testConnectorGroups []string
-type testDhcpRelayGroups []Ref
+type TestLocations []Ref
+type TestUsers []Ref
+type TestPrivateApps []Ref
+type TestConnectorGroups []string
+type TestDhcpRelayGroups []Ref
 
 var (
 	catoClient          *cato.Client
-	catoLocations       testLocations
-	catoConnectorGroups testConnectorGroups
-	catoUsers           testUsers
-	catoPrivateApps     testPrivateApps
-	catoDhcpRelayGroups testDhcpRelayGroups
+	catoLocations       TestLocations
+	catoConnectorGroups TestConnectorGroups
+	catoUsers           TestUsers
+	catoPrivateApps     TestPrivateApps
+	catoDhcpRelayGroups TestDhcpRelayGroups
 	mu                  sync.Mutex
 	ctx                 = context.Background()
 )
 
-func getRandName(resource string) string {
+func GetRandName(resource string) string {
 	if accmock.ACCMockActive {
 		return "test_" + resource
 	}
 	const length = 10
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
 	bytes := make([]byte, length)
 	for i := range bytes {
 		bytes[i] = charset[r.Intn(len(charset))]
@@ -93,7 +94,7 @@ func getRandName(resource string) string {
 	return "acctest_" + resource + "_" + string(bytes)
 }
 
-func checkCMAVars(t *testing.T) func() {
+func CheckCMAVars(t *testing.T) func() {
 	return func() {
 		for _, envVar := range []string{envCatoToken, envCatoAccountID, envCatoEndpoint} {
 			if os.Getenv(envVar) == "" {
@@ -103,12 +104,12 @@ func checkCMAVars(t *testing.T) func() {
 	}
 }
 
-func getRandIP() string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+func GetRandIP() string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
 	return fmt.Sprintf("10.%d.%d.%d", 2+r.Intn(252), 2+r.Intn(252), 2+r.Intn(252))
 }
 
-func printAttributes(resource string) func(st *terraform.State) error {
+func PrintAttributes(resource string) func(st *terraform.State) error {
 	return func(st *terraform.State) error {
 		attrs := st.Modules[0].Resources[resource].Primary.Attributes
 		keys := make([]string, 0, len(attrs))
@@ -125,7 +126,7 @@ func printAttributes(resource string) func(st *terraform.State) error {
 	}
 }
 
-func getClient(t *testing.T) *cato.Client {
+func GetClient(t *testing.T) *cato.Client {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoClient == nil {
@@ -140,13 +141,13 @@ func getClient(t *testing.T) *cato.Client {
 	return catoClient
 }
 
-func getLocations(t *testing.T) testLocations {
-	client := getClient(t)
+func GetLocations(t *testing.T) TestLocations {
+	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
 	if catoLocations == nil {
 		const maxItems = 5
-		var newLoc testLocations
+		var newLoc TestLocations
 		resp, err := client.EntityLookup(ctx, CatoAccountID, cato_models.EntityTypeLocation,
 			ptr(int64(5)), ptr(int64(0)), nil, ptr(""), nil, nil, nil, nil)
 		if err != nil {
@@ -167,10 +168,10 @@ func getLocations(t *testing.T) testLocations {
 	return catoLocations
 }
 
-func getConnectorGroups(t *testing.T) testConnectorGroups {
+func GetConnectorGroups(t *testing.T) TestConnectorGroups {
 	const testAppConn1 = "acctest_app_connector_1"
 	const testAppConnGroup1 = "acctest_app_connector_group_1"
-	client := getClient(t)
+	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
 	if catoConnectorGroups == nil {
@@ -211,18 +212,17 @@ func getConnectorGroups(t *testing.T) testConnectorGroups {
 	return catoConnectorGroups
 }
 
-func getUsers(t *testing.T) testUsers {
+func GetUsers(t *testing.T) TestUsers {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoUsers == nil {
 		if cmaVars.Users != nil {
 			return cmaVars.Users
 		}
-		// try to fetch users
-		// result, err := client.EntityLookup(ctx, CatoAccountID, cato_models.EntityTypeVpnUser, ptr(int64(5)), ptr(int64(0)), nil, nil, nil, nil, nil, nil)
 
 		var res entityResp
-		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) {entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
+		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) ` +
+			`{entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
 			"variables": {"accountID": "` + CatoAccountID + `","type": "vpnUser"},
 			"operationName": "entityLookup"}`
 
@@ -234,11 +234,15 @@ func getUsers(t *testing.T) testUsers {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Api-Key", CatoToken)
 		client := &http.Client{}
-		resp, err := client.Do(req)
+		resp, err := client.Do(req) //nolint:gosec
 		if err != nil {
 			t.Fatalf("ERROR fetching users: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if errClose := resp.Body.Close(); errClose != nil {
+				t.Logf("ERROR closing response body: %v", errClose)
+			}
+		}()
 
 		// Read response
 		body, err := io.ReadAll(resp.Body)
@@ -262,10 +266,10 @@ func getUsers(t *testing.T) testUsers {
 	return catoUsers
 }
 
-func getPrivateApps(t *testing.T) testPrivateApps {
+func GetPrivateApps(t *testing.T) TestPrivateApps {
 	const privateAppName1 = "acctest_private_app_1"
 	const privateAppName2 = "acctest_private_app_2"
-	client := getClient(t)
+	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
 	if catoPrivateApps == nil {
@@ -283,7 +287,7 @@ func getPrivateApps(t *testing.T) testPrivateApps {
 			// create the app
 			input := cato_models.CreatePrivateApplicationInput{
 				Description:        ptr(paName + " description"),
-				InternalAppAddress: getRandIP(),
+				InternalAppAddress: GetRandIP(),
 				Name:               paName,
 			}
 			res, err := client.PrivateAppCreatePrivateApp(ctx, CatoAccountID, input)
@@ -298,25 +302,25 @@ func getPrivateApps(t *testing.T) testPrivateApps {
 	return catoPrivateApps
 }
 
-func publishPrivateAccessPolicy(t *testing.T) {
-	client := getClient(t)
+func PublishPrivateAccessPolicy(t *testing.T) {
+	client := GetClient(t)
 	_, err := client.PolicyPrivateAccessPublishRevision(ctx, CatoAccountID)
 	if err != nil {
 		t.Fatalf("Cato API PolicyPrivateAccessPublishRevision error: %v", err.Error())
 	}
 }
 
-func providerCfg() string {
-	return fmt.Sprintf("provider \"cato\" {\n  account_id = \"%s\"\n}\n", CatoAccountID)
+func ProviderCfg() string {
+	return fmt.Sprintf("provider \"cato\" {\n  account_id = %q\n}\n", CatoAccountID)
 }
 
-func getDhcpRelayGroups(t *testing.T) testDhcpRelayGroups {
+func GetDhcpRelayGroups(t *testing.T) TestDhcpRelayGroups {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoDhcpRelayGroups == nil {
-
 		var res entityResp
-		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) {entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
+		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) ` +
+			`{entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
 			"variables": {"accountID": "` + CatoAccountID + `","type": "dhcpRelayGroup"},
 			"operationName": "entityLookup"}`
 
@@ -328,11 +332,15 @@ func getDhcpRelayGroups(t *testing.T) testDhcpRelayGroups {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Api-Key", CatoToken)
 		client := &http.Client{}
-		resp, err := client.Do(req)
+		resp, err := client.Do(req) //nolint:gosec
 		if err != nil {
 			t.Fatalf("ERROR fetching DHCP relay groups: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if errClose := resp.Body.Close(); errClose != nil {
+				t.Logf("ERROR closing response body: %v", errClose)
+			}
+		}()
 
 		// Read response
 		body, err := io.ReadAll(resp.Body)

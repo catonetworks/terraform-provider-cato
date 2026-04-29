@@ -1,9 +1,10 @@
 package provider
 
 import (
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 )
 
 type PrivateAccessRuleModel struct {
