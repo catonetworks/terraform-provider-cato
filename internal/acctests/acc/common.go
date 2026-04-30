@@ -69,6 +69,8 @@ type TestUsers []Ref
 type TestPrivateApps []Ref
 type TestConnectorGroups []string
 type TestDhcpRelayGroups []Ref
+type TestHosts []Ref
+type TestAdvancedGroups []Ref
 
 var (
 	catoClient          *cato.Client
@@ -77,8 +79,11 @@ var (
 	catoUsers           TestUsers
 	catoPrivateApps     TestPrivateApps
 	catoDhcpRelayGroups TestDhcpRelayGroups
-	mu                  sync.Mutex
-	ctx                 = context.Background()
+	catoHosts           TestHosts
+	catoAdvancedGroups  TestAdvancedGroups
+
+	mu  sync.Mutex
+	ctx = context.Background()
 )
 
 func GetRandName(resource string) string {
@@ -141,33 +146,6 @@ func GetClient(t *testing.T) *cato.Client {
 	return catoClient
 }
 
-func GetLocations(t *testing.T) TestLocations {
-	client := GetClient(t)
-	mu.Lock()
-	defer mu.Unlock()
-	if catoLocations == nil {
-		const maxItems = 5
-		var newLoc TestLocations
-		resp, err := client.EntityLookup(ctx, CatoAccountID, cato_models.EntityTypeLocation,
-			ptr(int64(5)), ptr(int64(0)), nil, ptr(""), nil, nil, nil, nil)
-		if err != nil {
-			t.Fatalf("ERROR getting locations: %s", err)
-		}
-		items := resp.GetEntityLookup().GetItems()
-		if len(items) < maxItems {
-			t.Fatal("ERROR getting locations: items < 5")
-		}
-		for i, item := range items {
-			if i == maxItems {
-				break
-			}
-			newLoc = append(newLoc, Ref{Name: *item.Entity.Name, ID: item.Entity.ID})
-		}
-		catoLocations = newLoc
-	}
-	return catoLocations
-}
-
 func GetConnectorGroups(t *testing.T) TestConnectorGroups {
 	const testAppConn1 = "acctest_app_connector_1"
 	const testAppConnGroup1 = "acctest_app_connector_group_1"
@@ -210,60 +188,6 @@ func GetConnectorGroups(t *testing.T) TestConnectorGroups {
 	catoConnectorGroups = []string{testAppConnGroup1} // TODO: is 1 group enough?
 
 	return catoConnectorGroups
-}
-
-func GetUsers(t *testing.T) TestUsers {
-	mu.Lock()
-	defer mu.Unlock()
-	if catoUsers == nil {
-		if cmaVars.Users != nil {
-			return cmaVars.Users
-		}
-
-		var res entityResp
-		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) ` +
-			`{entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
-			"variables": {"accountID": "` + CatoAccountID + `","type": "vpnUser"},
-			"operationName": "entityLookup"}`
-
-		// Create request
-		req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query)) //nolint:gosec
-		if err != nil {
-			panic(err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Api-Key", CatoToken)
-		client := &http.Client{}
-		resp, err := client.Do(req) //nolint:gosec
-		if err != nil {
-			t.Fatalf("ERROR fetching users: %v", err)
-		}
-		defer func() {
-			if errClose := resp.Body.Close(); errClose != nil {
-				t.Logf("ERROR closing response body: %v", errClose)
-			}
-		}()
-
-		// Read response
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("ERROR reading users: %v", err)
-		}
-		if err = json.Unmarshal(body, &res); err != nil {
-			t.Fatalf("ERROR unmarshalling response: %v", err)
-		}
-		if len(res.Errors) > 0 {
-			t.Fatalf("ERROR: cannot fetch users: %v", res.Errors)
-		}
-		if len(res.Data.EntityLookup.Items) == 0 {
-			t.Fatalf("ERROR: failed to fetch users: res.Data.EntityLookup.Items is empty")
-		}
-		for _, u := range res.Data.EntityLookup.Items {
-			catoUsers = append(catoUsers, Ref{ID: u.Entity.ID, Name: u.Entity.Name})
-		}
-	}
-
-	return catoUsers
 }
 
 func GetPrivateApps(t *testing.T) TestPrivateApps {
@@ -310,58 +234,144 @@ func PublishPrivateAccessPolicy(t *testing.T) {
 	}
 }
 
+func GetAdvancedGroups(t *testing.T) TestAdvancedGroups {
+	const groupName1 = "acctest_advanced_group_000"
+	const groupName2 = "acctest_advanced_group_001"
+	const groupRE = "^acctest_advanced_group_00[0-1]$"
+	client := GetClient(t)
+	mu.Lock()
+	defer mu.Unlock()
+	if catoAdvancedGroups == nil {
+		// try to fetch groups
+		groupsInput := &cato_models.GroupListInput{
+			Filter: []*cato_models.GroupListFilterInput{
+				{Name: []*cato_models.AdvancedStringFilterInput{{Regex: ptr(groupRE)}}},
+			},
+			Paging: &cato_models.PagingInput{From: 0, Limit: 10},
+			Sort:   &cato_models.GroupListSortInput{Name: &cato_models.SortOrderInput{Direction: cato_models.SortOrderAsc}},
+		}
+		result, err := client.GroupsList(ctx, groupsInput, CatoAccountID)
+		var groupsFound []string
+		if err != nil {
+			t.Fatalf("failed to load groups: %v", err)
+			return nil
+		}
+
+		items := result.GetGroups().GetGroupList().GetItems()
+		for _, item := range items {
+			catoAdvancedGroups = append(catoAdvancedGroups, Ref{ID: item.GetID(), Name: item.GetName()})
+			groupsFound = append(groupsFound, item.GetName())
+		}
+		for _, groupName := range []string{groupName1, groupName2} {
+			if slices.Contains(groupsFound, groupName) {
+				continue
+			}
+			// create the group
+			createGroupInput := cato_models.CreateGroupInput{Name: groupName, Description: ptr(groupName + " terraform tests")}
+			res, err := client.GroupsCreateGroup(ctx, createGroupInput, CatoAccountID)
+			if err != nil {
+				t.Fatalf("ERROR creating test group: %v", err)
+			}
+			catoAdvancedGroups = append(catoAdvancedGroups, Ref{ID: res.GetGroups().GetCreateGroup().GetGroup().GetID(), Name: groupName})
+		}
+	}
+
+	return catoAdvancedGroups
+}
+
 func ProviderCfg() string {
 	return fmt.Sprintf("provider \"cato\" {\n  account_id = %q\n}\n", CatoAccountID)
+}
+
+// getEntities is a generic function to call entityLookup API and return a []Ref (name and ID of the entities)
+func getEntities(t *testing.T, entityType string) (refs []Ref) {
+	var res entityResp
+	query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) ` +
+		`{entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
+			"variables": {"accountID": "` + CatoAccountID + `","type": "` + entityType + `"},
+			"operationName": "entityLookup"}`
+
+	// Create request
+	req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query)) //nolint:gosec
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Api-Key", CatoToken)
+	client := &http.Client{}
+	resp, err := client.Do(req) //nolint:gosec
+	if err != nil {
+		t.Fatalf("ERROR fetching %q: %v", entityType, err)
+	}
+	defer func() {
+		if errClose := resp.Body.Close(); errClose != nil {
+			t.Logf("ERROR closing response body: %v", errClose)
+		}
+	}()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("ERROR reading %q: %v", entityType, err)
+	}
+	if err = json.Unmarshal(body, &res); err != nil {
+		t.Fatalf("ERROR unmarshalling response: %v", err)
+	}
+	if len(res.Errors) > 0 {
+		t.Fatalf("ERROR: cannot fetch %q: %v", entityType, res.Errors)
+	}
+	if len(res.Data.EntityLookup.Items) == 0 {
+		t.Fatalf("ERROR: failed to fetch %q: res.Data.EntityLookup.Items is empty", entityType)
+	}
+	for _, u := range res.Data.EntityLookup.Items {
+		refs = append(refs, Ref{ID: u.Entity.ID, Name: u.Entity.Name})
+	}
+
+	return refs
+}
+
+func GetUsers(t *testing.T) TestUsers {
+	mu.Lock()
+	defer mu.Unlock()
+	if catoUsers == nil {
+		if cmaVars.Users != nil {
+			return cmaVars.Users
+		}
+		catoUsers = getEntities(t, "vpnUser")
+	}
+
+	return catoUsers
 }
 
 func GetDhcpRelayGroups(t *testing.T) TestDhcpRelayGroups {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoDhcpRelayGroups == nil {
-		var res entityResp
-		query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) ` +
-			`{entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
-			"variables": {"accountID": "` + CatoAccountID + `","type": "dhcpRelayGroup"},
-			"operationName": "entityLookup"}`
-
-		// Create request
-		req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query)) //nolint:gosec
-		if err != nil {
-			panic(err)
+		if cmaVars.Users != nil {
+			return cmaVars.Users
 		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Api-Key", CatoToken)
-		client := &http.Client{}
-		resp, err := client.Do(req) //nolint:gosec
-		if err != nil {
-			t.Fatalf("ERROR fetching DHCP relay groups: %v", err)
-		}
-		defer func() {
-			if errClose := resp.Body.Close(); errClose != nil {
-				t.Logf("ERROR closing response body: %v", errClose)
-			}
-		}()
-
-		// Read response
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("ERROR reading DHCP relay groups: %v", err)
-		}
-		if err = json.Unmarshal(body, &res); err != nil {
-			t.Fatalf("ERROR unmarshalling response: %v", err)
-		}
-		if len(res.Errors) > 0 {
-			t.Fatalf("ERROR: cannot fetch DHCP relay groups: %v", res.Errors)
-		}
-		if len(res.Data.EntityLookup.Items) == 0 {
-			t.Fatalf("ERROR: failed to fetch DHCP relay groups: res.Data.EntityLookup.Items is empty")
-		}
-		for _, u := range res.Data.EntityLookup.Items {
-			catoDhcpRelayGroups = append(catoDhcpRelayGroups, Ref{ID: u.Entity.ID, Name: u.Entity.Name})
-		}
+		catoDhcpRelayGroups = getEntities(t, "dhcpRelayGroup")
 	}
 
 	return catoDhcpRelayGroups
+}
+
+func GetLocations(t *testing.T) TestLocations {
+	mu.Lock()
+	defer mu.Unlock()
+	if catoLocations == nil {
+		catoLocations = getEntities(t, "location")
+	}
+	return catoLocations
+}
+
+func GetHosts(t *testing.T) TestHosts {
+	mu.Lock()
+	defer mu.Unlock()
+	if catoHosts == nil {
+		catoHosts = getEntities(t, "host")
+	}
+	return catoHosts
 }
 
 func ptr[T any](x T) *T { return &x }
