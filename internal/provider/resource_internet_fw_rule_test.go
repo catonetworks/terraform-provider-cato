@@ -191,7 +191,7 @@ func TestInternetFwRuleCreateSuccess(t *testing.T) {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
 	}
 
-	assertRuleState(ctx, t, resp.State, "rule-123", "test-ifw-rule", 10)
+	assertRuleState(ctx, t, resp.State, "rule-123", "test-ifw-rule")
 }
 
 func TestInternetFwRuleReadRemovesMissingResource(t *testing.T) {
@@ -244,7 +244,7 @@ func TestInternetFwRuleReadSuccess(t *testing.T) {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
 	}
 
-	assertRuleState(ctx, t, resp.State, "rule-123", "updated-name", 11)
+	assertRuleState(ctx, t, resp.State, "rule-123", "updated-name")
 }
 
 func TestInternetFwRuleUpdate(t *testing.T) {
@@ -312,33 +312,7 @@ func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
 	}
 
-	assertRuleState(ctx, t, resp.State, "rule-123", "test-ifw-rule", 12)
-}
-
-func TestInternetFwRuleIndexPlanModifierMarksValueUnknownOnUpdate(t *testing.T) {
-	ctx := context.Background()
-	indexAttr := getInternetFwRuleIndexAttribute(ctx, t)
-
-	if got := len(indexAttr.PlanModifiers); got != 1 {
-		t.Fatalf("expected exactly 1 index plan modifier, got %d", got)
-	}
-
-	req := planmodifier.Int64Request{
-		ConfigValue: types.Int64Null(),
-		PlanValue:   types.Int64Unknown(),
-		State:       tfsdk.State{Raw: tftypes.NewValue(tftypes.Bool, true)},
-		StateValue:  types.Int64Value(10),
-	}
-	resp := &planmodifier.Int64Response{PlanValue: req.PlanValue}
-
-	indexAttr.PlanModifiers[0].PlanModifyInt64(ctx, req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
-	}
-	if !resp.PlanValue.IsUnknown() {
-		t.Fatalf("expected unknown plan value after modifier, got %v", resp.PlanValue)
-	}
+	assertRuleState(ctx, t, resp.State, "rule-123", "test-ifw-rule")
 }
 
 func TestInternetFwRuleExceptionsPlanModifiersPreserveEmptyStateSet(t *testing.T) {
@@ -498,7 +472,6 @@ func newMinimalInternetFwRuleModel(ruleID string) InternetFirewallRule {
 		"id":                nullableString(ruleID),
 		"name":              types.StringValue("test-ifw-rule"),
 		"description":       types.StringNull(),
-		"index":             types.Int64Null(),
 		"enabled":           types.BoolValue(true),
 		"source":            emptyIfwSourceObject(),
 		"connection_origin": types.StringNull(),
@@ -678,7 +651,7 @@ func successfulUpdateRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFire
 	}
 }
 
-func assertRuleState(ctx context.Context, t *testing.T, state tfsdk.State, wantID, wantName string, wantIndex int64) {
+func assertRuleState(ctx context.Context, t *testing.T, state tfsdk.State, wantID, wantName string) {
 	t.Helper()
 
 	var model InternetFirewallRule
@@ -698,9 +671,6 @@ func assertRuleState(ctx context.Context, t *testing.T, state tfsdk.State, wantI
 	}
 	if got := rule.Name.ValueString(); got != wantName {
 		t.Fatalf("expected rule name %q, got %q", wantName, got)
-	}
-	if got := rule.Index.ValueInt64(); got != wantIndex {
-		t.Fatalf("expected rule index %d, got %d", wantIndex, got)
 	}
 }
 
@@ -722,18 +692,6 @@ type testError struct {
 
 func (e *testError) Error() string {
 	return e.message
-}
-
-func getInternetFwRuleIndexAttribute(ctx context.Context, t *testing.T) schema.Int64Attribute {
-	t.Helper()
-
-	ruleAttr := getInternetFwRuleRuleAttribute(ctx, t)
-	indexAttr, ok := ruleAttr.Attributes["index"].(schema.Int64Attribute)
-	if !ok {
-		t.Fatalf("rule.index attribute is not an Int64Attribute")
-	}
-
-	return indexAttr
 }
 
 func getInternetFwRuleExceptionsAttribute(ctx context.Context, t *testing.T) schema.SetNestedAttribute {

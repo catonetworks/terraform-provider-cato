@@ -16,7 +16,6 @@ type Policy_Policy_WanNetwork_Policy_Rules_Rule struct {
 	ID                types.String `tfsdk:"id" json:"id,omitempty"`
 	Name              types.String `tfsdk:"name" json:"name,omitempty"`
 	Description       types.String `tfsdk:"description" json:"description,omitempty"`
-	Index             types.Int64  `tfsdk:"index" json:"index,omitempty"`
 	Enabled           types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
 	RuleType          types.String `tfsdk:"rule_type" json:"ruleType,omitempty"`
 	RouteType         types.String `tfsdk:"route_type" json:"routeType,omitempty"`
@@ -297,7 +296,6 @@ var WanNetworkRuleRuleAttrTypes = map[string]attr.Type{
 	"id":                 types.StringType,
 	"name":               types.StringType,
 	"description":        types.StringType,
-	"index":              types.Int64Type,
 	"enabled":            types.BoolType,
 	"rule_type":          types.StringType,
 	"route_type":         types.StringType,
