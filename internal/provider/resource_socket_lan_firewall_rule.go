@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
@@ -92,14 +91,6 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 						Description: "Description of the rule",
 						Required:    false,
 						Optional:    true,
-					},
-					"index": schema.Int64Attribute{
-						Description: "Rule Index - computed value that may change due to rule reordering",
-						Computed:    true,
-						Optional:    false,
-						PlanModifiers: []planmodifier.Int64{
-							planmodifiers.VolatileInt64(),
-						},
 					},
 					"enabled": schema.BoolAttribute{
 						Description: "Enable or disable the rule",
