@@ -1,11 +1,13 @@
 template: testify
 dir: internal/provider/mocks
-filename: InternetFirewallPolicyClient.go
+filename: "{{.InterfaceName}}.go"
 pkgname: mocks
 structname: "{{.InterfaceName}}"
 force-file-write: true
 formatter: gofmt
 packages:
-  github.com/catonetworks/terraform-provider-cato/internal/provider:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/clientinterfaces:
     interfaces:
+      BulkInternetFirewallPolicyClient:
+      BulkWanFirewallPolicyClient:
       InternetFirewallPolicyClient:
