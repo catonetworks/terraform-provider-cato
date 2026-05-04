@@ -6,7 +6,9 @@ structname: "{{.InterfaceName}}"
 force-file-write: true
 formatter: gofmt
 packages:
-  github.com/catonetworks/terraform-provider-cato/internal/provider:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/clientinterfaces:
     interfaces:
+      BulkInternetFirewallPolicyClient:
+      BulkWanFirewallPolicyClient:
       InternetFirewallPolicyClient:
       SocketSiteClient:

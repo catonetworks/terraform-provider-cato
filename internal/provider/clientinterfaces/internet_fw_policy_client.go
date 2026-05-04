@@ -1,4 +1,4 @@
-package provider
+package clientinterfaces
 
 import (
 	"context"
