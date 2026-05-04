@@ -2,8 +2,6 @@ package provider
 
 import (
 	"context"
-	"errors"
-	"sort"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
@@ -16,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/spf13/cast"
 )
 
 var (
@@ -244,318 +241,146 @@ func (r *wanRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, plan WanRulesIndex) (basetypes.MapValue, basetypes.MapValue, diag.Diagnostics, error) {
 	diags := []diag.Diagnostic{}
 	ruleObjectMap := make(map[string]attr.Value)
+	sectionObjectMap := make(map[string]attr.Value)
 
-	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
-		result, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
-		tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndex.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(result),
-		})
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallSectionsIndex error", err.Error()))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
-		isPresent := false
-		for _, item := range result.Policy.WanFirewall.Policy.Sections {
-			section_id := cast.ToString(item.Section.ID)
-			if section_id == plan.SectionToStartAfterId.ValueString() {
-				isPresent = true
-				break
-			}
-		}
-		if !isPresent {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"SectionToStartAfterId '"+plan.SectionToStartAfterId.ValueString()+"' not found",
-				"Please check the section ID and try again.",
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, errors.New("sectionToStartAfterId not found")
-		}
-	}
-
-	// as the name indicates, a slice of string containing WF sections names
-	listOfSectionNames := make([]string, 0)
-
-	// maps section_name -> section_id
-	sectionIdList := make(map[string]string)
 	sectionIndexApiData, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
-	tflog.Warn(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
+	tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexApiData),
 	})
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
-			"Catov2 API EntityLookup error",
+			"Catov2 API PolicyWanFirewallSectionsIndex error",
 			err.Error(),
 		))
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	// for easier processing, a map of section name to ID is created
-	for _, v := range sectionIndexApiData.Policy.WanFirewall.Policy.Sections {
-		sectionIdList[v.Section.Name] = v.Section.ID
+	ruleIndexApiData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
+	if err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic(
+			"Catov2 API PolicyWanFirewallRulesIndex error",
+			err.Error(),
+		))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	sectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
-
-	// Convert map to slice for processing
-	sectionDataMapElements := plan.SectionData.Elements()
-	for _, sectionValue := range sectionDataMapElements {
+	sectionListFromPlan := make([]bulkPlanSection, 0, len(plan.SectionData.Elements()))
+	for _, sectionValue := range plan.SectionData.Elements() {
 		sectionObject := sectionValue.(types.Object)
 		var sectionSourceRuleIndex WanRulesSectionItemIndex
 		diags = append(diags, sectionObject.As(ctx, &sectionSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
-		sectionDataTmp := WanRulesSectionDataIndex{
-			SectionIndex: sectionSourceRuleIndex.SectionIndex.ValueInt64(),
-			SectionName:  sectionSourceRuleIndex.SectionName.ValueString(),
-		}
-		sectionListFromPlan = append(sectionListFromPlan, sectionDataTmp)
+		sectionListFromPlan = append(sectionListFromPlan, bulkPlanSection{
+			Index: sectionSourceRuleIndex.SectionIndex.ValueInt64(),
+			Name:  sectionSourceRuleIndex.SectionName.ValueString(),
+		})
 	}
 
-	// Sort sections by SectionIndex to ensure proper ordering
-	sort.Slice(sectionListFromPlan, func(i, j int) bool {
-		return sectionListFromPlan[i].SectionIndex < sectionListFromPlan[j].SectionIndex
-	})
+	ruleListFromPlan := make([]bulkPlanRule, 0, len(plan.RuleData.Elements()))
+	for _, ruleValue := range plan.RuleData.Elements() {
+		ruleObject := ruleValue.(types.Object)
+		var planSourceRuleIndex WanRulesRuleItemIndex
+		diags = append(diags, ruleObject.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
-	tflog.Debug(ctx, "Processing sections sorted by section_index", map[string]interface{}{
-		"sections": utils.InterfaceToJSONString(sectionListFromPlan),
-	})
-
-	currentSectionId := ""
-
-	sectionObjectMap := make(map[string]attr.Value)
-
-	// create the sections from the list provided following the section ID provided in firstSectionId
-	for _, workingSectionName := range sectionListFromPlan {
-
-		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
-		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
-			ID: sectionIdList[workingSectionName.SectionName],
-		}
-
-		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionId to the SectionToStartAfterId otherwise set to id of first section for next in list
-		if currentSectionId == "" {
-			if plan.SectionToStartAfterId.ValueString() != "" {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterId.ValueStringPointer(),
-					Position: "AFTER_SECTION",
-				}
-			} else {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Position: "LAST_IN_POLICY",
-				}
-			}
-		} else {
-			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionId,
-				Position: "AFTER_SECTION",
-			}
-		}
-		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
-			"sectionToStartAfterId":          plan.SectionToStartAfterId.ValueString(),
-			"moveFrom":                       workingSectionName.SectionName,
-			"toAfter":                        currentSectionId,
-			"sectionIdList":                  sectionIdList,
-			"workingSectionName.SectionName": workingSectionName.SectionName,
-			"sectionIdList[workingSectionName.SectionName]": sectionIdList[workingSectionName.SectionName],
-			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
+		ruleListFromPlan = append(ruleListFromPlan, bulkPlanRule{
+			Index:       planSourceRuleIndex.IndexInSection.ValueInt64(),
+			Name:        planSourceRuleIndex.RuleName.ValueString(),
+			SectionName: planSourceRuleIndex.SectionName.ValueString(),
+			Description: planSourceRuleIndex.Description.ValueString(),
+			Enabled:     planSourceRuleIndex.Enabled.ValueBool(),
 		})
-		sectionMoveApiData, err := r.client.catov2.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
-		// Check for API errors safely with nil checks
-		if sectionMoveApiData != nil && sectionMoveApiData.GetPolicy() != nil &&
-			sectionMoveApiData.GetPolicy().WanFirewall != nil &&
-			sectionMoveApiData.GetPolicy().WanFirewall.GetMoveSection() != nil &&
-			len(sectionMoveApiData.GetPolicy().WanFirewall.GetMoveSection().Errors) != 0 {
-			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSectionMoveSection.response", map[string]interface{}{
-				"response": utils.InterfaceToJSONString(sectionMoveApiData),
-			})
-			if err != nil {
-				diags = append(diags, diag.NewErrorDiagnostic(
-					"Catov2 API EntityLookup error",
-					err.Error(),
-				))
-				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
+
+	currentSections := make([]bulkPolicySection, 0, len(sectionIndexApiData.Policy.WanFirewall.Policy.Sections))
+	for _, item := range sectionIndexApiData.Policy.WanFirewall.Policy.Sections {
+		currentSections = append(currentSections, bulkPolicySection{
+			ID:         item.Section.ID,
+			Name:       item.Section.Name,
+			Properties: item.Properties,
+		})
+	}
+
+	currentRules := make([]bulkPolicyRule, 0, len(ruleIndexApiData.Policy.WanFirewall.Policy.Rules))
+	for _, item := range ruleIndexApiData.Policy.WanFirewall.Policy.Rules {
+		currentRules = append(currentRules, bulkPolicyRule{
+			ID:          item.Rule.ID,
+			Name:        item.Rule.Name,
+			SectionID:   item.Rule.Section.ID,
+			SectionName: item.Rule.Section.Name,
+			Description: item.Rule.Description,
+			Enabled:     item.Rule.Enabled,
+			Index:       item.Rule.Index,
+			Properties:  item.Properties,
+		})
+	}
+
+	reorderInput, sectionIDByName, ruleIDByName, err := buildBulkFirewallReorderInput(currentSections, currentRules, sectionListFromPlan, ruleListFromPlan, plan.SectionToStartAfterId.ValueString())
+	if err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic(
+			"Catov2 API PolicyWanFirewallReorderPolicy input error",
+			err.Error(),
+		))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
+
+	tflog.Debug(ctx, "Write.PolicyWanFirewallReorderPolicy.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(reorderInput),
+	})
+	reorderResponse, err := r.client.catov2.PolicyWanFirewallReorderPolicy(ctx, &cato_models.WanFirewallPolicyMutationInput{}, reorderInput, r.client.AccountId)
+	tflog.Debug(ctx, "Write.PolicyWanFirewallReorderPolicy.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(reorderResponse),
+	})
+	if err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic(
+			"Catov2 API PolicyWanFirewallReorderPolicy error",
+			err.Error(),
+		))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
+
+	reorderResult := reorderResponse.GetPolicy().GetWanFirewall().GetReorderPolicy()
+	if status := reorderResult.GetStatus(); status == nil || *status != cato_models.PolicyMutationStatusSuccess {
+		errorMessage := "reorderPolicy returned a non-success status"
+		for _, item := range reorderResult.GetErrors() {
+			if item.GetErrorCode() != nil || item.GetErrorMessage() != nil {
+				errorMessage = errorMessage + ": " + utils.InterfaceToJSONString(reorderResult.GetErrors())
+				break
 			}
 		}
-		tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(sectionMoveApiData),
-		})
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API EntityLookup error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
+		diags = append(diags, diag.NewErrorDiagnostic(
+			"Catov2 API PolicyWanFirewallReorderPolicy error",
+			errorMessage,
+		))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
 
-		sectionIndexStateData, diagsSection := types.ObjectValue(
+	for _, sectionFromPlan := range sectionListFromPlan {
+		sectionIndexStateData, sectionDiags := types.ObjectValue(
 			WanSectionIndexResourceAttrTypes,
 			map[string]attr.Value{
-				"id":            types.StringValue(sectionIdList[workingSectionName.SectionName]),
-				"section_name":  types.StringValue(workingSectionName.SectionName),
-				"section_index": types.Int64Value(workingSectionName.SectionIndex),
+				"id":            types.StringValue(sectionIDByName[sectionFromPlan.Name]),
+				"section_name":  types.StringValue(sectionFromPlan.Name),
+				"section_index": types.Int64Value(sectionFromPlan.Index),
 			},
 		)
-		diags = append(diags, diagsSection...)
-
-		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
-
-		currentSectionId = sectionIdList[workingSectionName.SectionName]
+		diags = append(diags, sectionDiags...)
+		sectionObjectMap[sectionFromPlan.Name] = sectionIndexStateData
 	}
 
-	// now that the sections are ordered properly, move the rules to the correct locations
-	if len(plan.RuleData.Elements()) > 0 {
-		// get all of the list elements from the plan
-		ruleListFromPlan := make([]WanRulesRuleDataIndex, 0)
-
-		// Convert map to slice for processing
-		ruleDataMapElements := plan.RuleData.Elements()
-		for _, ruleValue := range ruleDataMapElements {
-			ruleObject := ruleValue.(types.Object)
-			var planSourceRuleIndex WanRulesRuleItemIndex
-			diags = append(diags, ruleObject.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
-
-			rulenDataTmp := WanRulesRuleDataIndex{
-				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
-				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
-				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
-				Description:    planSourceRuleIndex.Description.ValueString(),
-				Enabled:        planSourceRuleIndex.Enabled.ValueBool(),
-			}
-			ruleListFromPlan = append(ruleListFromPlan, rulenDataTmp)
-			tflog.Warn(ctx, "Read.rulenDataTmp.response", map[string]interface{}{
-				"rulenDataTmp": utils.InterfaceToJSONString(rulenDataTmp),
-			})
-		}
-
-		// Sort rules by IndexInSection to ensure proper ordering within sections
-		sort.Slice(ruleListFromPlan, func(i, j int) bool {
-			// First sort by section name, then by index within section
-			if ruleListFromPlan[i].SectionName != ruleListFromPlan[j].SectionName {
-				return ruleListFromPlan[i].SectionName < ruleListFromPlan[j].SectionName
-			}
-			return ruleListFromPlan[i].IndexInSection < ruleListFromPlan[j].IndexInSection
-		})
-
-		tflog.Warn(ctx, "Read.ruleListFromPlan.response (sorted by section_name and index_in_section)", map[string]interface{}{
-			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
-		})
-
-		ruleNameIdData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
-		tflog.Warn(ctx, "Read.PolicyWanFirewallRulesIndex.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(ruleNameIdData),
-		})
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API EntityLookup error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
-		ruleNameIdMap := make(map[string]string)
-
-		// create map of IFW rule names from the API to their IDs for easy lookup
-		for _, ruleNameIdDataItem := range ruleNameIdData.Policy.WanFirewall.Policy.Rules {
-			ruleNameIdMap[ruleNameIdDataItem.Rule.Name] = ruleNameIdDataItem.Rule.ID
-		}
-
-		tflog.Warn(ctx, "Read.ruleNameIdMap.response", map[string]interface{}{
-			"ruleNameIdMap": utils.InterfaceToJSONString(ruleNameIdMap),
-		})
-
-		// loop through the ordered list of section names
-		for _, sectionNameItem := range listOfSectionNames {
-			tflog.Warn(ctx, "Read.ProcessingSectionFromList.response", map[string]interface{}{
-				"sectionNameItem": sectionNameItem,
-				"ruleNameIdMap":   utils.InterfaceToJSONString(listOfSectionNames),
-			})
-
-			// for easier processing and visualization, we are creating two maps
-			// 1 - mapRuleIndexToRuleName
-			//   this maps the rule index in section to the rule name
-			// 2 - mapRuleIndexToSectionName
-			//  this maps the rule index in section to the section name
-			mapRuleIndexToRuleName := make(map[int64]string)
-			mapRuleIndexToSectionName := make(map[int64]string)
-
-			for _, ruleItemFromPlan := range ruleListFromPlan {
-				tflog.Warn(ctx, "Read.CompareruleItemFromPlanAndruleListFromPlan", map[string]interface{}{
-					"ruleItemFromPlan.SectionName": ruleItemFromPlan.SectionName,
-					"sectionNameItem":              sectionNameItem,
-				})
-				if ruleItemFromPlan.SectionName == sectionNameItem {
-					// section name -> rule index order -> rule name
-					mapRuleIndexToRuleName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.RuleName
-					mapRuleIndexToSectionName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.SectionName
-					tflog.Warn(ctx, "Read.mapRuleIndexToRuleName.response", map[string]interface{}{
-						"ruleItemFromPlan.IndexInSection":   ruleItemFromPlan.IndexInSection,
-						"ruleItemFromPlan.RuleName":         ruleItemFromPlan.RuleName,
-						"mapInternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-					})
-				}
-			}
-
-			tflog.Warn(ctx, "Read.mapRuleIndexToSectionName.response", map[string]interface{}{
-				"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-			})
-
-			currentRuleId := ""
-			for x := 1; x < len(mapRuleIndexToRuleName)+1; x++ {
-				toPosition := &cato_models.PolicyRulePositionInput{}
-				if x == 1 {
-					pos := "FIRST_IN_SECTION"
-					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					firstSectionId := sectionIdList[mapRuleIndexToSectionName[1]]
-					toPosition.Ref = &firstSectionId
-				} else {
-					pos := "AFTER_RULE"
-					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					currentRuleId = ruleNameIdMap[mapRuleIndexToRuleName[int64(x)-1]]
-					toPosition.Ref = &currentRuleId
-					tflog.Warn(ctx, "Read.sectionIdList[mapRuleIndexToSectionName[1]].response", map[string]interface{}{
-						"mapRuleIndexToSectionName":         mapRuleIndexToRuleName,
-						"currentRuleId":                     currentRuleId,
-						"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-						"ruleNameIdMap":                     utils.InterfaceToJSONString(ruleNameIdMap),
-					})
-				}
-
-				moveRuleConfig := cato_models.PolicyMoveRuleInput{
-					ID: ruleNameIdMap[mapRuleIndexToRuleName[int64(x)]],
-					To: toPosition,
-				}
-				ruleMoveApiData, err := r.client.catov2.PolicyWanFirewallMoveRule(ctx, moveRuleConfig, r.client.AccountId)
-				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveRule.response", map[string]interface{}{
-					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIdMap),
-					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-					"moveRuleConfig":            utils.InterfaceToJSONString(moveRuleConfig),
-					"response":                  utils.InterfaceToJSONString(ruleMoveApiData),
-				})
-				if err != nil {
-					diags = append(diags, diag.NewErrorDiagnostic(
-						"Catov2 API EntityLookup error",
-						err.Error(),
-					))
-					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-				}
-			}
-		}
-
-		// Now create the rule objects map with proper IDs from the API
-		for _, ruleFromPlan := range ruleListFromPlan {
-			ruleId := ruleNameIdMap[ruleFromPlan.RuleName]
-			ruleIndexStateData, diagsSection := types.ObjectValue(
-				WanRuleIndexResourceAttrTypes,
-				map[string]attr.Value{
-					"id":               types.StringValue(ruleId),
-					"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
-					"section_name":     types.StringValue(ruleFromPlan.SectionName),
-					"rule_name":        types.StringValue(ruleFromPlan.RuleName),
-					"description":      types.StringValue(ruleFromPlan.Description),
-					"enabled":          types.BoolValue(ruleFromPlan.Enabled),
-				},
-			)
-			diags = append(diags, diagsSection...)
-			ruleObjectMap[ruleFromPlan.RuleName] = ruleIndexStateData
-		}
+	for _, ruleFromPlan := range ruleListFromPlan {
+		ruleIndexStateData, ruleDiags := types.ObjectValue(
+			WanRuleIndexResourceAttrTypes,
+			map[string]attr.Value{
+				"id":               types.StringValue(ruleIDByName[ruleFromPlan.Name]),
+				"index_in_section": types.Int64Value(ruleFromPlan.Index),
+				"section_name":     types.StringValue(ruleFromPlan.SectionName),
+				"rule_name":        types.StringValue(ruleFromPlan.Name),
+				"description":      types.StringValue(ruleFromPlan.Description),
+				"enabled":          types.BoolValue(ruleFromPlan.Enabled),
+			},
+		)
+		diags = append(diags, ruleDiags...)
+		ruleObjectMap[ruleFromPlan.Name] = ruleIndexStateData
 	}
 
 	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)

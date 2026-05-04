@@ -2,6 +2,8 @@ module github.com/catonetworks/terraform-provider-cato
 
 go 1.25.8
 
+replace github.com/catonetworks/cato-go-sdk => ../cato-go-sdk
+
 require (
 	github.com/Yamashou/gqlgenc v0.30.2
 	github.com/catonetworks/cato-go-sdk v0.2.6-0.20260423133609-94633c4308a0
