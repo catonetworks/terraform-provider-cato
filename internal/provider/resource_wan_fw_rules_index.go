@@ -4,6 +4,7 @@ import (
 	"context"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/clientinterfaces"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -27,7 +28,15 @@ func NewWanRulesIndexResource() resource.Resource {
 }
 
 type wanRulesIndexResource struct {
-	client *catoClientData
+	client    *catoClientData
+	wanClient clientinterfaces.BulkWanFirewallPolicyClient
+}
+
+func (r *wanRulesIndexResource) getWanClient() clientinterfaces.BulkWanFirewallPolicyClient {
+	if r.wanClient != nil {
+		return r.wanClient
+	}
+	return r.client.catov2
 }
 
 func (r *wanRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -243,7 +252,8 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 	ruleObjectMap := make(map[string]attr.Value)
 	sectionObjectMap := make(map[string]attr.Value)
 
-	sectionIndexApiData, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+	wanClient := r.getWanClient()
+	sectionIndexApiData, err := wanClient.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexApiData),
 	})
@@ -255,7 +265,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	ruleIndexApiData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
+	ruleIndexApiData, err := wanClient.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyWanFirewallRulesIndex error",
@@ -326,7 +336,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 	tflog.Debug(ctx, "Write.PolicyWanFirewallReorderPolicy.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(reorderInput),
 	})
-	reorderResponse, err := r.client.catov2.PolicyWanFirewallReorderPolicy(ctx, &cato_models.WanFirewallPolicyMutationInput{}, reorderInput, r.client.AccountId)
+	reorderResponse, err := wanClient.PolicyWanFirewallReorderPolicy(ctx, &cato_models.WanFirewallPolicyMutationInput{}, reorderInput, r.client.AccountId)
 	tflog.Debug(ctx, "Write.PolicyWanFirewallReorderPolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(reorderResponse),
 	})
@@ -383,7 +393,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		ruleObjectMap[ruleFromPlan.Name] = ruleIndexStateData
 	}
 
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
+	_, err = wanClient.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",

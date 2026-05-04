@@ -6,6 +6,7 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/clientinterfaces"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
@@ -38,14 +39,14 @@ var (
 
 type internetFwRuleResource struct {
 	client    *catoClientData
-	ifwClient InternetFirewallPolicyClient
+	ifwClient clientinterfaces.InternetFirewallPolicyClient
 }
 
 func NewInternetFwRuleResource() resource.Resource {
 	return &internetFwRuleResource{}
 }
 
-func (r *internetFwRuleResource) getIfwClient() InternetFirewallPolicyClient {
+func (r *internetFwRuleResource) getIfwClient() clientinterfaces.InternetFirewallPolicyClient {
 	if r.ifwClient != nil {
 		return r.ifwClient
 	}
