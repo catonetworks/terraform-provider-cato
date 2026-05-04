@@ -2,7 +2,7 @@ module github.com/catonetworks/terraform-provider-cato
 
 go 1.25.8
 
-replace github.com/catonetworks/cato-go-sdk => ../cato-go-sdk
+// replace github.com/catonetworks/cato-go-sdk => ../cato-go-sdk // for local development
 
 require (
 	github.com/Yamashou/gqlgenc v0.30.2
