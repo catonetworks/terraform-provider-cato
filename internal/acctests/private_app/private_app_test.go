@@ -1,6 +1,6 @@
 //go:build acctest
 
-package acctests
+package private_app
 
 import (
 	"bytes"
@@ -9,8 +9,10 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
+	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 func TestAccPrivateApp(t *testing.T) {
@@ -20,17 +22,17 @@ func TestAccPrivateApp(t *testing.T) {
 	cfg := newPrivateAppCfg(t)
 	res := "cato_private_app.this"
 
-	timeRE := regexp.MustCompile(`^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d`)
+	timeRE := regexp.MustCompile(`^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d`)
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
 				Config: cfg.getTfConfig(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "allow_icmp_protocol", "false"),
 					resource.TestMatchResourceAttr(res, "creation_time", timeRE),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
@@ -71,7 +73,7 @@ func TestAccPrivateApp(t *testing.T) {
 				// Update the resource
 				Config: cfg.getTfConfig(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "allow_icmp_protocol", "true"),
 					resource.TestMatchResourceAttr(res, "creation_time", timeRE),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description 2"),
@@ -112,12 +114,12 @@ type privateAppCfg struct {
 func newPrivateAppCfg(t *testing.T) privateAppCfg {
 	ip := "10.175.148.170"
 	if !accmock.ACCMockActive {
-		ip = getRandIP()
+		ip = acc.GetRandIP()
 	}
 	return privateAppCfg{
-		resName:    getRandName("private_app"),
+		resName:    acc.GetRandName("private_app"),
 		ipAddr:     ip,
-		connGroups: getConnectorGroups(t),
+		connGroups: acc.GetConnectorGroups(t),
 		t:          t,
 	}
 }
@@ -137,7 +139,7 @@ func (p privateAppCfg) getTfConfig(index int) string {
 		p.t.Fatal(err)
 	}
 
-	cfg := providerCfg() + buf.String()
+	cfg := acc.ProviderCfg() + buf.String()
 	fmt.Println(cfg)
 	return cfg
 }

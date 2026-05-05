@@ -6,12 +6,12 @@ import (
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	// Import the correct package
+
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 // hydrateIfwApiTypes create sub-types for both create and update calls to populate both entries

@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 type idRefTypes interface {

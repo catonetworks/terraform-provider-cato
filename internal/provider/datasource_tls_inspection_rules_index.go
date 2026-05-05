@@ -3,12 +3,13 @@ package provider
 import (
 	"context"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 func TlsRulesIndexDataSource() datasource.DataSource {

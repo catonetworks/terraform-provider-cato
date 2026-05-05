@@ -5,9 +5,10 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 )
 
 // Platform validator

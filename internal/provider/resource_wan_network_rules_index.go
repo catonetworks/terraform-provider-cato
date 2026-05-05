@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -17,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (

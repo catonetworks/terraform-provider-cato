@@ -1,6 +1,6 @@
 //go:build acctest
 
-package acctests
+package private_access_policy
 
 import (
 	"bytes"
@@ -8,32 +8,33 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
+	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 func TestAccPrivAccessPolicy(t *testing.T) {
-	// t.Skip("Skipping this test for now")
 	mockSrv := accmock.NewMockServer(t, "TestAccPrivAccessPolicy")
 	defer mockSrv.Close()
 	mockSrv.Run()
 
 	cfg := newPrivAccessPolicyCfg(t)
-	resPol := "cato_private_access_policy.this"
-	resRule := "cato_private_access_rule.rule_1"
+	const resPol = "cato_private_access_policy.this"
+	const resRule = "cato_private_access_rule.rule_1"
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
 				Config:             cfg.getTfConfig(0),
 				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(resPol),
-					printAttributes(resRule),
+					acc.PrintAttributes(resPol),
+					acc.PrintAttributes(resRule),
 					resource.TestCheckResourceAttrSet(resRule, "id"),
 					resource.TestCheckResourceAttr(resRule, "action", "BLOCK"),
 					resource.TestCheckResourceAttr(resRule, "active_period.%", "4"),
@@ -125,8 +126,8 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 				Config:             cfg.getTfConfig(1),
 				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(resPol),
-					printAttributes(resRule),
+					acc.PrintAttributes(resPol),
+					acc.PrintAttributes(resRule),
 					resource.TestCheckResourceAttrSet(resRule, "id"),
 					resource.TestCheckResourceAttr(resRule, "action", "ALLOW"),
 					resource.TestCheckResourceAttr(resRule, "active_period.%", "4"),
@@ -203,32 +204,32 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 				),
 			},
 		},
-		CheckDestroy: func(*terraform.State) error { publishPrivateAccessPolicy(t); return nil },
+		CheckDestroy: func(*terraform.State) error { acc.PublishPrivateAccessPolicy(t); return nil },
 	})
 }
 
 type privAccessPolicyCfg struct {
 	resName            string
-	applications       testPrivateApps
-	users              testUsers
-	userGroups         []Ref
-	devices            []Ref
-	subscriptionGroups []Ref
-	webhooks           []Ref
-	mailingLists       []Ref
+	applications       acc.TestPrivateApps
+	users              acc.TestUsers
+	userGroups         []acc.Ref
+	devices            []acc.Ref
+	subscriptionGroups []acc.Ref
+	webhooks           []acc.Ref
+	mailingLists       []acc.Ref
 	t                  *testing.T
 }
 
 func newPrivAccessPolicyCfg(t *testing.T) privAccessPolicyCfg {
 	return privAccessPolicyCfg{
-		resName:            getRandName("private_access_policy"),
-		applications:       getPrivateApps(t),
-		users:              getUsers(t),
-		userGroups:         []Ref{{Name: "group-1"}},               // TODO: fetch dynamically
-		devices:            []Ref{{Name: "Test device posture 1"}}, // TODO: fetch dynamically
-		subscriptionGroups: []Ref{{Name: "subscription_group"}},    // TODO: fetch dynamically
-		webhooks:           []Ref{{Name: "webhook_1"}},             // TODO: fetch dynamically
-		mailingLists:       []Ref{{Name: "mailing_list"}},          // TODO: fetch dynamically
+		resName:            acc.GetRandName("private_access_policy"),
+		applications:       acc.GetPrivateApps(t),
+		users:              acc.GetUsers(t),
+		userGroups:         []acc.Ref{{Name: "group-1"}},               // TODO: fetch dynamically
+		devices:            []acc.Ref{{Name: "Test device posture 1"}}, // TODO: fetch dynamically
+		subscriptionGroups: []acc.Ref{{Name: "subscription_group"}},    // TODO: fetch dynamically
+		webhooks:           []acc.Ref{{Name: "webhook_1"}},             // TODO: fetch dynamically
+		mailingLists:       []acc.Ref{{Name: "mailing_list"}},          // TODO: fetch dynamically
 
 		t: t,
 	}
@@ -254,7 +255,7 @@ func (p privAccessPolicyCfg) getTfConfig(index int) string {
 		p.t.Fatal(err)
 	}
 
-	cfg := providerCfg() + buf.String()
+	cfg := acc.ProviderCfg() + buf.String()
 	fmt.Println(cfg)
 	return cfg
 }

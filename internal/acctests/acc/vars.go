@@ -1,6 +1,6 @@
 //go:build acctest
 
-package acctests
+package acc
 
 import (
 	"encoding/json"
@@ -29,7 +29,7 @@ const (
 var cmaVars CMAVars
 
 // initialize the test package
-func init() {
+func init() { //nolint:gochecknoinits
 	readVarsFromEnv()
 }
 

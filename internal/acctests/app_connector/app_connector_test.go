@@ -1,6 +1,6 @@
 //go:build acctest
 
-package acctests
+package app_connector
 
 import (
 	"bytes"
@@ -8,8 +8,10 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
+	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 func TestAccAppConnector(t *testing.T) {
@@ -20,14 +22,14 @@ func TestAccAppConnector(t *testing.T) {
 	res := "cato_app_connector.this"
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		PreCheck:                 checkCMAVars(t),
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
 				Config: cfg.getTfConfig(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
@@ -64,7 +66,7 @@ func TestAccAppConnector(t *testing.T) {
 				// Update the resource - USA state
 				Config: cfg.getTfConfig(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
@@ -91,7 +93,7 @@ func TestAccAppConnector(t *testing.T) {
 				// Update the resource
 				Config: cfg.getTfConfig(2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					printAttributes(res),
+					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName+" new"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description new"),
@@ -126,14 +128,14 @@ func TestAccAppConnector(t *testing.T) {
 
 type appConnectorCfg struct {
 	resName   string
-	locations testLocations
+	locations acc.TestLocations
 	t         *testing.T
 }
 
 func newAppConnectorCfg(t *testing.T) appConnectorCfg {
 	return appConnectorCfg{
-		resName:   getRandName("app_connector"),
-		locations: getLocations(t),
+		resName:   acc.GetRandName("app_connector"),
+		locations: acc.GetLocations(t),
 		t:         t,
 	}
 }
@@ -149,7 +151,7 @@ func (p appConnectorCfg) getTfConfig(index int) string {
 		p.t.Fatal(err)
 	}
 
-	cfg := providerCfg() + buf.String()
+	cfg := acc.ProviderCfg() + buf.String()
 	fmt.Println(cfg)
 	return cfg
 }
