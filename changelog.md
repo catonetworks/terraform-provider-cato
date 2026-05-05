@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.73 (2026-05-05)
+- Removed length validator from Site Location Fields.
+
 ## 0.0.72 (2026-04-30)
 - Removed rules index from terraform state.
 
