@@ -14,12 +14,12 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-func TestAccGroupMembers(t *testing.T) {
-	mockSrv := accmock.NewMockServer(t, "TestAccGroupMembers")
+func TestAccGroup(t *testing.T) {
+	mockSrv := accmock.NewMockServer(t, "TestAccGroup")
 	defer mockSrv.Close()
 	mockSrv.Run()
-	cfg := newGroupMembersCfg(t)
-	res := "cato_group_members.this"
+	cfg := newGroupCfg(t)
+	res := "cato_group.this"
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
@@ -30,9 +30,10 @@ func TestAccGroupMembers(t *testing.T) {
 				Config: cfg.getTfConfig(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "3"),
-					resource.TestCheckResourceAttr(res, "group_name", cfg.groups[0].Name),
+					resource.TestCheckResourceAttr(res, "%", "4"),
 					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName),
+					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
 					resource.TestCheckResourceAttr(res, "members.#", "2"),
 					resource.TestCheckTypeSetElemNestedAttrs(res, "members.*", map[string]string{
 						"id":   cfg.hosts[0].ID,
@@ -49,49 +50,47 @@ func TestAccGroupMembers(t *testing.T) {
 				ImportState:  true,
 				ResourceName: res,
 			},
-			// TODO: re-enable and fix
-			// {
-			// 	// Update the resource
-			// 	Config: cfg.getTfConfig(1),
-			// 	Check: resource.ComposeAggregateTestCheckFunc(
-			// 		acc.PrintAttributes(res),
-			// 		resource.TestCheckResourceAttr(res, "%", "3"),
-			// 		resource.TestCheckResourceAttr(res, "group_name", cfg.groups[0].Name),
-			// 		resource.TestCheckResourceAttrSet(res, "id"),
-			// 		resource.TestCheckResourceAttr(res, "members.#", "1"),
-			// 		resource.TestCheckTypeSetElemNestedAttrs(res, "members.*", map[string]string{
-			// 			"id":   cfg.hosts[2].ID,
-			// 			"type": "HOST",
-			// 		}),
-			// 	),
-			// },
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "4"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+" 2"),
+					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description 2"),
+					resource.TestCheckResourceAttr(res, "members.#", "1"),
+					resource.TestCheckResourceAttr(res, "members.0.id", cfg.hosts[1].ID),
+					resource.TestCheckResourceAttrSet(res, "members.0.name"),
+				),
+			},
 		},
 	})
 }
 
-type groupMembersCfg struct {
-	groups []acc.Ref
-	hosts  []acc.Ref
-	t      *testing.T
+type groupCfg struct {
+	resName string
+	hosts   []acc.Ref
+	t       *testing.T
 }
 
-func newGroupMembersCfg(t *testing.T) groupMembersCfg {
-	return groupMembersCfg{
-		groups: acc.GetAdvancedGroups(t),
-		hosts:  acc.GetHosts(t),
-		t:      t,
+func newGroupCfg(t *testing.T) groupCfg {
+	return groupCfg{
+		resName: acc.GetRandName("group"),
+		hosts:   acc.GetHosts(t),
+		t:       t,
 	}
 }
 
-func (p groupMembersCfg) getTfConfig(index int) string {
-	tmpl, err := template.New("tmpl").Parse(groupMembersTFs[index])
+func (p groupCfg) getTfConfig(index int) string {
+	tmpl, err := template.New("tmpl").Parse(groupTFs[index])
 	if err != nil {
 		p.t.Fatal(err)
 	}
 	var buf bytes.Buffer
 	data := map[string]any{
-		"Groups": p.groups,
-		"Hosts":  p.hosts,
+		"Name":  p.resName,
+		"Hosts": p.hosts,
 	}
 	if err := tmpl.Execute(&buf, data); err != nil {
 		p.t.Fatal(err)
@@ -102,19 +101,22 @@ func (p groupMembersCfg) getTfConfig(index int) string {
 	return cfg
 }
 
-var groupMembersTFs = []string{
-	`resource "cato_group_members" "this" {
-		group_name  = "{{ (index .Groups 0).Name }}"
+var groupTFs = []string{
+	`resource "cato_group" "this" {
+		name         = "{{.Name}}"
+		description  = "{{.Name}} description"
 		members = [
             { type = "HOST", id   = "{{ (index .Hosts 0).ID }}" },
             { type = "HOST", id = "{{ (index .Hosts 1).ID }}" },
 		]
 	}
 	`,
-	`resource "cato_group_members" "this" {
-		group_name  = "{{ (index .Groups 0).Name }}"
+	// change name, description
+	`resource "cato_group" "this" {
+		name         = "{{.Name}} 2"
+		description  = "{{.Name}} description 2"
 		members = [
-            { type = "HOST", id = "{{ (index .Hosts 2).ID }}" },
+            { type = "HOST", id = "{{ (index .Hosts 1).ID }}" },
 		]
 	}
 	`,
