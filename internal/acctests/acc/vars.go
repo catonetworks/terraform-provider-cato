@@ -17,10 +17,18 @@ import (
 //	   "users": [ ]
 //	   ...
 //	}'
-type CMAVars struct {
-	PrivateApps []Ref `json:"private_apps"`
-	Users       []Ref `json:"users"`
-}
+type CMAVars map[string][]Ref
+
+// type CMAVars struct {
+// 	Users            []Ref `json:"users"`
+// 	GlobalIPRanges   []Ref `json:"global_ip_ranges"`
+// 	FloatingRanges   []Ref `json:"floating_ranges"`
+// 	UserGroups       []Ref `json:"user_groups"`
+// 	SystemGroups     []Ref `json:"system_groups"`
+// 	DevicePostures   []Ref `json:"device_postures"`
+// 	CustomApps       []Ref `json:"custom_apps"`
+// 	CustomCategories []Ref `json:"custom_categories"`
+// }
 
 const (
 	accTestVariable = "TFACC_TEST_VARS"

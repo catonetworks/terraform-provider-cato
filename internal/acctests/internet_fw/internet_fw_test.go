@@ -109,16 +109,40 @@ func TestAccInternetFw_Full(t *testing.T) {
 }
 
 type internetFwCfg struct {
-	resName string
-	hosts   []acc.Ref
-	t       *testing.T
+	resName          string
+	hosts            []acc.Ref
+	sites            []acc.Ref
+	globalIPRanges   []acc.Ref
+	siteRanges       []acc.Ref
+	floatingRanges   []acc.Ref
+	interfaces       []acc.Ref
+	users            []acc.Ref
+	usersGroups      []acc.Ref
+	groups           []acc.Ref
+	systemGroups     []acc.Ref
+	devicePostures   []acc.Ref
+	customApps       []acc.Ref
+	customCategories []acc.Ref
+	t                *testing.T
 }
 
 func newInternetFwCfg(t *testing.T) internetFwCfg {
 	return internetFwCfg{
-		resName: acc.GetRandName("internet_fw"),
-		hosts:   acc.GetHosts(t),
-		t:       t,
+		resName:          acc.GetRandName("internet_fw"),
+		hosts:            acc.GetHosts(t),
+		sites:            acc.GetSites(t),
+		globalIPRanges:   acc.GetGlobalIPRanges(t),
+		siteRanges:       acc.GetSiteRanges(t),
+		floatingRanges:   acc.GetFloatingRanges(t),
+		interfaces:       acc.GetInterfaces(t),
+		users:            acc.GetUsers(t),
+		usersGroups:      acc.GetUserGroups(t),
+		groups:           acc.GetAdvancedGroups(t),
+		systemGroups:     acc.GetSystemGroups(t),
+		devicePostures:   acc.GetDevicePostures(t),
+		customApps:       acc.GetCustomApps(t),
+		customCategories: acc.GetCustomCategories(t),
+		t:                t,
 	}
 }
 
@@ -195,171 +219,155 @@ var internetFwSimpleTFs = []string{
 // ------------------------------------------------------------------
 func (p internetFwCfg) getTfConfigFull(index int) string {
 	data := map[string]any{
-		"Name": p.resName,
+		"Name":             p.resName,
+		"Hosts":            p.hosts,
+		"Sites":            p.sites,
+		"GlobalIPRanges":   p.globalIPRanges,
+		"SiteRanges":       p.siteRanges,
+		"FloatingRanges":   p.floatingRanges,
+		"Interfaces":       p.interfaces,
+		"Users":            p.users,
+		"UserGroups":       p.usersGroups,
+		"Groups":           p.groups,
+		"SystemGroups":     p.systemGroups,
+		"DevicePostures":   p.devicePostures,
+		"CustomApps":       p.customApps,
+		"CustomCategories": p.customCategories,
 	}
+	fmt.Printf(".GlobalIPRanges=%#v", data["GlobalIPRanges"])
 	return p.prepareTfCfg(data, internetFwFullTFs[index])
 }
 
 var internetFwFullTFs = []string{
-	`resource "cato_tls_rule" "kitchen_sink" {
+	`resource "cato_if_rule" "full" {
 		at   = {
 			position = "LAST_IN_POLICY"
 		}
 		rule = {
-			enabled                      = true
 			name                         = "{{ .Name }}"
+			description                  = "{{ .Name }} description"
+			enabled                      = true
+			active_period = {
+				effective_from = "2024-01-01T00:00:00Z"
+				expires_at	 = "2124-12-31T23:59:59Z"
+			}
+			action                       = "BLOCK"
 			platform                     = "EMBEDDED"
-			action                       = "INSPECT"
-			application                  = {
-				app_category    = [
-					{
-						# id   = "advertisements"
-						name = "Advertisements"
-					},
+			tracking = {
+				event = { enabled = false }
+			}
+			destination = {
+				domain = [ "new.test.com" ]
+			}
+			source = {
+				ip = ["10.99.12.31"]
+				host = [
+					{ id   = "{{ (index .Hosts 0).ID }}" },
+					{ name = "{{ (index .Hosts 1).Name }}" },
 				]
-				application     = [
-					{
-						# id   = "buildmyteam"
-						name = "buildmyteam"
-					},
+				site = [
+					{ id   = "{{ (index .Sites 0).ID }}" },
+					{ name = "{{ (index .Sites 1).Name }}" },
 				]
-				country         = [
-					{
-						# id   = "AF"
-						name = "Afghanistan"
-					},
-				]
-				custom_app      = [
-					{
-						# id   = "CustomApp_11362_34188"
-						name = "Test Custom App"
-					},
-				]
-				custom_category = [
-					{
-						# id   = "24255"
-						name = "Test Custom Category"
-					},
-				]
-				domain          = [
-					"something.com",
-					"www.something.com",
-				]
-				fqdn            = [
-					"www.something.com",
+				subnet = [
+					"10.99.12.0/24"
+				]	
+				ip_range = [
+					{ from   = "10.99.12.10", to = "10.99.12.20" },
 				]
 				global_ip_range = [
-					{
-						# id   = "1757826"
-						name = "global_ip_range"
-					},
+					{ id   = "{{ (index .GlobalIPRanges 0).ID }}" },
+					{ name = "{{ (index .GlobalIPRanges 1).Name }}" }
 				]
-				ip              = [
-					"1.2.3.4",
-				]
-				ip_range        = [
-					{
-						from = "1.2.3.4"
-						to   = "1.2.3.5"
-					},
-				]
-				remote_asn      = [
-					"1234",
-				]
-				service         = [
-					{
-						# id   = "THREEPC"
-						name = "3PC"
-					},
-				]
-				subnet          = [
-					"1.2.3.0/24",
-				]
-			}
-			connection_origin            = "REMOTE"
-			description                  = "test"
-			device_posture_profile       = [
-				{
-					id   = "4202"
-					name = "Test Device Posture Profile"
-				},
-			]
-			source                       = {
-				global_ip_range     = [
-					{
-						# id   = "1757826"
-						name = "global_ip_range"
-					},
-					{
-						# id   = "1910542"
-						name = "global_ip_range2"
-					},
-				]
-				group               = [
-					{
-						# id   = "623603"
-						name = "test group"
-					},
-				]
-				host                = [
-					{
-						# id   = "1778359"
-						name = "host31"
-					},
-				]
-				ip                  = [
-					"1.2.3.4",
-				]
-				ip_range            = [
-					{
-						from = "1.2.3.4"
-						to   = "1.2.3.5"
-					},
-				]
-				network_interface   = [
-					{
-						id   = "124986"
-						# name = "ipsec-dev-site \\ Default" 
-						# API does not like \\ charaacters in name values
-					},
-				]
-				site                = [
-					{
-						# id   = "144905"
-						# name = "1600"
-					},
+				network_interface = [
+					{ id   = "{{ (index .Interfaces 0).ID }}" },
 				]
 				site_network_subnet = [
-					{
-						id   = "UzU4OTI1Mw=="
-						# name = "1600LTE \\ INT_5 \\ Direct Network Range" 
-						# API does not like \\ charaacters in name values
-					},
+					{ id   = "{{ (index .SiteRanges 0).ID }}" },
 				]
-				subnet              = [
-					"1.2.3.0/24",
+				floating_subnet = [
+					{ id   = "{{ (index .FloatingRanges 0).ID }}" },
+					{ name = "{{ (index .FloatingRanges 1).Name }}" },
 				]
-				system_group        = [
-					{
-						# id   = "7S"
-						name = "All Floating Ranges"
-					},
+				user = [
+					{ id   = "{{ (index .Users 0).ID }}" },
+					# { name = "{{ (index .Users 1).Name }}" },
 				]
-				user                = [
-					{
-						# id   = "0"
-						name = "test user"
-					},
+				users_group = [
+					{ id   = "{{ (index .UserGroups 0).ID }}" },
+					# { name = "{{ (index .UserGroups 1).Name }}" },
 				]
-				users_group         = [
-					{
-						# id   = "500000000"
-						name = "Test User Group"
-					},
+				group = [
+					{ id   = "{{ (index .Groups 0).ID }}" },
+					{ name = "{{ (index .Groups 1).Name }}" },
+				]
+				system_group = [
+					{ id   = "{{ (index .SystemGroups 0).ID }}" },
+					{ name = "{{ (index .SystemGroups 1).Name }}" },
 				]
 			}
-			untrusted_certificate_action = "ALLOW"
+			connection_origin = "SITE"
+			country = [
+				{ id   = "US" },
+				{ name = "France" },
+			]
+			device = [
+				{ id   = "{{ (index .DevicePostures 0).ID }}" },
+				{ name = "{{ (index .DevicePostures 1).Name }}" },
+			]
+			device_os = [
+				"WINDOWS",
+				"MACOS",
+			]
+			device_attributes = {
+				category     = [
+					"IoT",
+					"Mobile",
+				]
+				type         = [
+					"Appliance",
+					"Analog Telephone Adapter",
+				]
+				model        = [
+					" 9",
+					" 7+",
+				]
+				manufacturer = [
+					"ADTRAN",
+					"ACTi",
+				]
+				os = [
+					"Aruba OS",
+					"Arch Linux",
+				]
+				os_version = [
+					"10.0"
+				]
+			}
+			destination = {
+				application = [
+					{ name = "Gmail" },
+					{ id   = "zoom" },
+				]
+				custom_app = [
+					{ id   = "{{ (index .CustomApps 0).ID }}" },
+					{ name = "{{ (index .CustomApps 1).Name }}" },
+				]
+				app_category = [
+					{ id   = "business_systems" },
+					{ name = "Advertisements" },
+				]
+				custom_category = [
+					{ id   = "{{ (index .CustomCategories 0).ID }}" },
+					{ name = "{{ (index .CustomCategories 1).Name }}" },
+				]
+			}
 		}
 	}
 	`,
 }
+
+// TODO: fix source.network_interface.name  ("aws-site \ LAN 01" does not work)
+// TODO: fix source.site_network_subnet.name
+// TODO: fix API bug when source.user has both id and name
+// TODO: fix API bug when source.users_group has both id and name, there are also duplicate names

@@ -30,6 +30,29 @@ const (
 	envCatoEndpoint  = "CATO_BASEURL"
 )
 
+// named references to resources
+const (
+	// defined in TFACC_TEST_VARS
+	resPrivateApps      = "private_apps"
+	resAdvancedGroups   = "advanced_groups"
+	resGlobalIPRanges   = "global_ip_ranges"
+	resFloatingRanges   = "floating_ranges"
+	resUserGroups       = "user_groups"
+	resSystemGroups     = "system_groups"
+	resDevicePostures   = "device_postures"
+	resCustomApps       = "custom_apps"
+	resCustomCategories = "custom_categories"
+
+	// entity lookup types
+	resUsers            = "vpnUser"
+	resDhcpRelayGroup   = "dhcpRelayGroup"
+	resLocation         = "location"
+	resHost             = "host"
+	resSite             = "site"
+	resNetworkInterface = "networkInterface"
+	resSiteRange        = "siteRange"
+)
+
 var (
 	CatoAccountID = os.Getenv(envCatoAccountID)
 	CatoToken     = os.Getenv(envCatoToken)
@@ -64,23 +87,11 @@ type Ref struct {
 	Name string `json:"name"`
 	ID   string `json:"id"`
 }
-type TestLocations []Ref
-type TestUsers []Ref
-type TestPrivateApps []Ref
-type TestConnectorGroups []string
-type TestDhcpRelayGroups []Ref
-type TestHosts []Ref
-type TestAdvancedGroups []Ref
 
 var (
 	catoClient          *cato.Client
-	catoLocations       TestLocations
-	catoConnectorGroups TestConnectorGroups
-	catoUsers           TestUsers
-	catoPrivateApps     TestPrivateApps
-	catoDhcpRelayGroups TestDhcpRelayGroups
-	catoHosts           TestHosts
-	catoAdvancedGroups  TestAdvancedGroups
+	testConnectorGroups []string
+	resourceRefs        map[string][]Ref = make(map[string][]Ref)
 
 	mu  sync.Mutex
 	ctx = context.Background()
@@ -146,13 +157,13 @@ func GetClient(t *testing.T) *cato.Client {
 	return catoClient
 }
 
-func GetConnectorGroups(t *testing.T) TestConnectorGroups {
+func GetConnectorGroups(t *testing.T) []string {
 	const testAppConn1 = "acctest_app_connector_1"
 	const testAppConnGroup1 = "acctest_app_connector_group_1"
 	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
-	if catoConnectorGroups == nil {
+	if testConnectorGroups == nil {
 		// try to fetch appConnectors
 
 		input := cato_models.ZtnaAppConnectorRefInput{By: cato_models.ObjectRefByName, Input: testAppConn1}
@@ -162,8 +173,8 @@ func GetConnectorGroups(t *testing.T) TestConnectorGroups {
 			if group == "" {
 				t.Fatal("ERROR getting app-connector group: group is empty")
 			}
-			catoConnectorGroups = []string{group} // TODO: is 1 group enough?
-			return catoConnectorGroups
+			testConnectorGroups = []string{group} // TODO: is 1 group enough?
+			return testConnectorGroups
 		}
 	}
 
@@ -185,18 +196,19 @@ func GetConnectorGroups(t *testing.T) TestConnectorGroups {
 	if err != nil {
 		t.Fatalf("Cato API AppConnectorCreateConnector error: %v", err.Error())
 	}
-	catoConnectorGroups = []string{testAppConnGroup1} // TODO: is 1 group enough?
+	testConnectorGroups = []string{testAppConnGroup1} // TODO: is 1 group enough?
 
-	return catoConnectorGroups
+	return testConnectorGroups
 }
 
-func GetPrivateApps(t *testing.T) TestPrivateApps {
+func GetPrivateApps(t *testing.T) []Ref {
 	const privateAppName1 = "acctest_private_app_1"
 	const privateAppName2 = "acctest_private_app_2"
 	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
-	if catoPrivateApps == nil {
+	testPrivateApps := resourceRefs[resPrivateApps]
+	if testPrivateApps == nil {
 		// try to fetch private apps
 		for _, paName := range []string{privateAppName1, privateAppName2} {
 			readInput := cato_models.PrivateApplicationRefInput{By: cato_models.ObjectRefByName, Input: paName}
@@ -204,7 +216,7 @@ func GetPrivateApps(t *testing.T) TestPrivateApps {
 			if err == nil {
 				pa := result.GetPrivateApplication().GetPrivateApplication()
 				if pa.GetID() != "" {
-					catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: pa.GetName()})
+					testPrivateApps = append(testPrivateApps, Ref{ID: pa.GetID(), Name: pa.GetName()})
 					continue
 				}
 			}
@@ -219,11 +231,11 @@ func GetPrivateApps(t *testing.T) TestPrivateApps {
 				t.Fatalf("ERROR creating test private app: %v", err)
 			}
 			pa := res.GetPrivateApplication().GetCreatePrivateApplication().GetApplication()
-			catoPrivateApps = append(catoPrivateApps, Ref{ID: pa.GetID(), Name: paName})
+			testPrivateApps = append(testPrivateApps, Ref{ID: pa.GetID(), Name: paName})
 		}
 	}
-
-	return catoPrivateApps
+	resourceRefs[resPrivateApps] = testPrivateApps
+	return testPrivateApps
 }
 
 func PublishPrivateAccessPolicy(t *testing.T) {
@@ -234,14 +246,15 @@ func PublishPrivateAccessPolicy(t *testing.T) {
 	}
 }
 
-func GetAdvancedGroups(t *testing.T) TestAdvancedGroups {
+func GetAdvancedGroups(t *testing.T) []Ref {
 	const groupName1 = "acctest_advanced_group_000"
 	const groupName2 = "acctest_advanced_group_001"
 	const groupRE = "^acctest_advanced_group_00[0-1]$"
 	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
-	if catoAdvancedGroups == nil {
+	testAdvancedGroups := resourceRefs[resAdvancedGroups]
+	if testAdvancedGroups == nil {
 		// try to fetch groups
 		groupsInput := &cato_models.GroupListInput{
 			Filter: []*cato_models.GroupListFilterInput{
@@ -259,7 +272,7 @@ func GetAdvancedGroups(t *testing.T) TestAdvancedGroups {
 
 		items := result.GetGroups().GetGroupList().GetItems()
 		for _, item := range items {
-			catoAdvancedGroups = append(catoAdvancedGroups, Ref{ID: item.GetID(), Name: item.GetName()})
+			testAdvancedGroups = append(testAdvancedGroups, Ref{ID: item.GetID(), Name: item.GetName()})
 			groupsFound = append(groupsFound, item.GetName())
 		}
 		for _, groupName := range []string{groupName1, groupName2} {
@@ -272,11 +285,12 @@ func GetAdvancedGroups(t *testing.T) TestAdvancedGroups {
 			if err != nil {
 				t.Fatalf("ERROR creating test group: %v", err)
 			}
-			catoAdvancedGroups = append(catoAdvancedGroups, Ref{ID: res.GetGroups().GetCreateGroup().GetGroup().GetID(), Name: groupName})
+			testAdvancedGroups = append(testAdvancedGroups, Ref{ID: res.GetGroups().GetCreateGroup().GetGroup().GetID(), Name: groupName})
 		}
 	}
+	resourceRefs[resAdvancedGroups] = testAdvancedGroups
 
-	return catoAdvancedGroups
+	return testAdvancedGroups
 }
 
 func ProviderCfg() string {
@@ -330,48 +344,46 @@ func getEntities(t *testing.T, entityType string) (refs []Ref) {
 	return refs
 }
 
-func GetUsers(t *testing.T) TestUsers {
+func getFromVars(t *testing.T, varName string) []Ref {
 	mu.Lock()
 	defer mu.Unlock()
-	if catoUsers == nil {
-		if cmaVars.Users != nil {
-			return cmaVars.Users
+	refs := resourceRefs[varName]
+	if refs == nil {
+		refs = cmaVars[varName]
+		if len(refs) == 0 {
+			t.Fatalf("TFACC_TEST_VARS %s is not set, cannot fetch %s for tests", varName, varName)
+			return nil
 		}
-		catoUsers = getEntities(t, "vpnUser")
+		resourceRefs[varName] = refs
 	}
-
-	return catoUsers
+	return refs
 }
 
-func GetDhcpRelayGroups(t *testing.T) TestDhcpRelayGroups {
+func getFromEntityLookup(t *testing.T, lookupName string) []Ref {
 	mu.Lock()
 	defer mu.Unlock()
-	if catoDhcpRelayGroups == nil {
-		if cmaVars.Users != nil {
-			return cmaVars.Users
-		}
-		catoDhcpRelayGroups = getEntities(t, "dhcpRelayGroup")
+	refs := resourceRefs[lookupName]
+	if refs == nil {
+		refs = getEntities(t, lookupName)
+		resourceRefs[lookupName] = refs
 	}
-
-	return catoDhcpRelayGroups
+	return refs
 }
 
-func GetLocations(t *testing.T) TestLocations {
-	mu.Lock()
-	defer mu.Unlock()
-	if catoLocations == nil {
-		catoLocations = getEntities(t, "location")
-	}
-	return catoLocations
-}
+func GetUsers(t *testing.T) []Ref           { return getFromEntityLookup(t, resUsers) }
+func GetDhcpRelayGroups(t *testing.T) []Ref { return getFromEntityLookup(t, resDhcpRelayGroup) }
+func GetLocations(t *testing.T) []Ref       { return getFromEntityLookup(t, resLocation) }
+func GetHosts(t *testing.T) []Ref           { return getFromEntityLookup(t, resHost) }
+func GetSites(t *testing.T) []Ref           { return getFromEntityLookup(t, resSite) }
+func GetInterfaces(t *testing.T) []Ref      { return getFromEntityLookup(t, resNetworkInterface) }
+func GetSiteRanges(t *testing.T) []Ref      { return getFromEntityLookup(t, resSiteRange) }
 
-func GetHosts(t *testing.T) TestHosts {
-	mu.Lock()
-	defer mu.Unlock()
-	if catoHosts == nil {
-		catoHosts = getEntities(t, "host")
-	}
-	return catoHosts
-}
+func GetGlobalIPRanges(t *testing.T) []Ref   { return getFromVars(t, resGlobalIPRanges) }
+func GetFloatingRanges(t *testing.T) []Ref   { return getFromVars(t, resFloatingRanges) }
+func GetUserGroups(t *testing.T) []Ref       { return getFromVars(t, resUserGroups) }
+func GetSystemGroups(t *testing.T) []Ref     { return getFromVars(t, resSystemGroups) }
+func GetDevicePostures(t *testing.T) []Ref   { return getFromVars(t, resDevicePostures) }
+func GetCustomApps(t *testing.T) []Ref       { return getFromVars(t, resCustomApps) }
+func GetCustomCategories(t *testing.T) []Ref { return getFromVars(t, resCustomCategories) }
 
 func ptr[T any](x T) *T { return &x }

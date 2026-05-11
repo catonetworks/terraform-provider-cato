@@ -210,8 +210,8 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 
 type privAccessPolicyCfg struct {
 	resName            string
-	applications       acc.TestPrivateApps
-	users              acc.TestUsers
+	applications       []acc.Ref
+	users              []acc.Ref
 	userGroups         []acc.Ref
 	devices            []acc.Ref
 	subscriptionGroups []acc.Ref

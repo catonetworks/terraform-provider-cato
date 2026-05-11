@@ -128,7 +128,7 @@ func TestAccAppConnector(t *testing.T) {
 
 type appConnectorCfg struct {
 	resName   string
-	locations acc.TestLocations
+	locations []acc.Ref
 	t         *testing.T
 }
 
