@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -50,8 +51,32 @@ func NewSocketSiteResource() resource.Resource {
 	return &socketSiteResource{}
 }
 
+func stringPointerForOptionalInput(value types.String) *string {
+	if value.IsNull() || value.IsUnknown() || value.ValueString() == "" {
+		return nil
+	}
+	return value.ValueStringPointer()
+}
+
 type socketSiteResource struct {
-	client *catoClientData
+	client           *catoClientData
+	socketSiteClient SocketSiteClient
+}
+
+type SocketSiteClient interface {
+	SiteAddSocketSite(ctx context.Context, addSocketSiteInput cato_models.AddSocketSiteInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddSocketSite, error)
+}
+
+func (r *socketSiteResource) getSocketSiteClient() SocketSiteClient {
+	if r.socketSiteClient != nil {
+		return r.socketSiteClient
+	}
+
+	if r.client == nil {
+		return nil
+	}
+
+	return r.client.catov2
 }
 
 func (r *socketSiteResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -471,13 +496,13 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 			"nativeRangeInput.RangeName":          utils.InterfaceToJSONString(nativeRangeInput.RangeName.ValueStringPointer()),
 		})
 		input.NativeNetworkRange = nativeRangeInput.NativeNetworkRange.ValueString()
-		input.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
+		input.TranslatedSubnet = stringPointerForOptionalInput(nativeRangeInput.TranslatedSubnet)
 
 		// inputUpdateNetworkRange.Name = nativeRangeInput.RangeName.ValueStringPointer() // The API does not update this attribute for native ranges
 		inputUpdateNetworkRange.Subnet = nativeRangeInput.NativeNetworkRange.ValueStringPointer()
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIp.ValueStringPointer()
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
-		inputUpdateNetworkRange.TranslatedSubnet = nativeRangeInput.TranslatedSubnet.ValueStringPointer()
+		inputUpdateNetworkRange.TranslatedSubnet = stringPointerForOptionalInput(nativeRangeInput.TranslatedSubnet)
 		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
 		inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
 		inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceName.ValueStringPointer()
@@ -594,7 +619,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	tflog.Debug(ctx, "Create.SiteAddSocketSite.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	socketSite, err := r.client.catov2.SiteAddSocketSite(ctx, input, r.client.AccountId)
+	socketSite, err := r.getSocketSiteClient().SiteAddSocketSite(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddSocketSite.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(socketSite),
 	})
