@@ -24,7 +24,6 @@ default: install
 
 build: ## Build the terraform-provider
 	export GO111MODULE="on"
-	go mod vendor
 	go build -o ${BINARY}
 
 install: build ## Install the provider, update config

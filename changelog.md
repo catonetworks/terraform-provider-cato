@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.74 (2026-05-11)
+- Fixed `translated_subnet` handling for socket site native ranges to avoid state drift and preserve API-hydrated values correctly.
+
 ## 0.0.73 (2026-05-05)
 - Removed length validator from Site Location Fields.
 
