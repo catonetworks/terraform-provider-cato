@@ -44,13 +44,16 @@ const (
 	resCustomCategories = "custom_categories"
 
 	// entity lookup types
-	resUsers            = "vpnUser"
-	resDhcpRelayGroup   = "dhcpRelayGroup"
-	resLocation         = "location"
-	resHost             = "host"
-	resSite             = "site"
-	resNetworkInterface = "networkInterface"
-	resSiteRange        = "siteRange"
+	resUsers                   = "vpnUser"
+	resDhcpRelayGroup          = "dhcpRelayGroup"
+	resLocation                = "location"
+	resHost                    = "host"
+	resSite                    = "site"
+	resNetworkInterface        = "networkInterface"
+	resSiteRange               = "siteRange"
+	resSubscriptionGroup       = "groupSubscription"
+	resWebhookSubscription     = "webhookSubscription"
+	resMailingListSubscription = "mailingListSubscription"
 )
 
 var (
@@ -365,18 +368,24 @@ func getFromEntityLookup(t *testing.T, lookupName string) []Ref {
 	refs := resourceRefs[lookupName]
 	if refs == nil {
 		refs = getEntities(t, lookupName)
+		if len(refs) < 2 {
+			t.Fatalf("entity lookup faied for '%s', found just %d items", lookupName, len(refs))
+		}
 		resourceRefs[lookupName] = refs
 	}
 	return refs
 }
 
-func GetUsers(t *testing.T) []Ref           { return getFromEntityLookup(t, resUsers) }
-func GetDhcpRelayGroups(t *testing.T) []Ref { return getFromEntityLookup(t, resDhcpRelayGroup) }
-func GetLocations(t *testing.T) []Ref       { return getFromEntityLookup(t, resLocation) }
-func GetHosts(t *testing.T) []Ref           { return getFromEntityLookup(t, resHost) }
-func GetSites(t *testing.T) []Ref           { return getFromEntityLookup(t, resSite) }
-func GetInterfaces(t *testing.T) []Ref      { return getFromEntityLookup(t, resNetworkInterface) }
-func GetSiteRanges(t *testing.T) []Ref      { return getFromEntityLookup(t, resSiteRange) }
+func GetUsers(t *testing.T) []Ref              { return getFromEntityLookup(t, resUsers) }
+func GetDhcpRelayGroups(t *testing.T) []Ref    { return getFromEntityLookup(t, resDhcpRelayGroup) }
+func GetLocations(t *testing.T) []Ref          { return getFromEntityLookup(t, resLocation) }
+func GetHosts(t *testing.T) []Ref              { return getFromEntityLookup(t, resHost) }
+func GetSites(t *testing.T) []Ref              { return getFromEntityLookup(t, resSite) }
+func GetInterfaces(t *testing.T) []Ref         { return getFromEntityLookup(t, resNetworkInterface) }
+func GetSiteRanges(t *testing.T) []Ref         { return getFromEntityLookup(t, resSiteRange) }
+func GetSubscriptionGroups(t *testing.T) []Ref { return getFromEntityLookup(t, resSubscriptionGroup) }
+func GetWebhooks(t *testing.T) []Ref           { return getFromEntityLookup(t, resWebhookSubscription) }
+func GetMailingLists(t *testing.T) []Ref       { return getFromEntityLookup(t, resMailingListSubscription) }
 
 func GetGlobalIPRanges(t *testing.T) []Ref   { return getFromVars(t, resGlobalIPRanges) }
 func GetFloatingRanges(t *testing.T) []Ref   { return getFromVars(t, resFloatingRanges) }
