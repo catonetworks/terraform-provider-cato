@@ -252,7 +252,8 @@ func PublishPrivateAccessPolicy(t *testing.T) {
 func GetAdvancedGroups(t *testing.T) []Ref {
 	const groupName1 = "acctest_advanced_group_000"
 	const groupName2 = "acctest_advanced_group_001"
-	const groupRE = "^acctest_advanced_group_00[0-1]$"
+	const groupName3 = "acctest_advanced_group_002"
+	const groupRE = "^acctest_advanced_group_00[0-2]$"
 	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
@@ -278,7 +279,7 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 			testAdvancedGroups = append(testAdvancedGroups, Ref{ID: item.GetID(), Name: item.GetName()})
 			groupsFound = append(groupsFound, item.GetName())
 		}
-		for _, groupName := range []string{groupName1, groupName2} {
+		for _, groupName := range []string{groupName1, groupName2, groupName3} {
 			if slices.Contains(groupsFound, groupName) {
 				continue
 			}
@@ -368,7 +369,7 @@ func getFromEntityLookup(t *testing.T, lookupName string) []Ref {
 	refs := resourceRefs[lookupName]
 	if refs == nil {
 		refs = getEntities(t, lookupName)
-		if len(refs) < 2 {
+		if len(refs) < 3 {
 			t.Fatalf("entity lookup faied for '%s', found just %d items", lookupName, len(refs))
 		}
 		resourceRefs[lookupName] = refs

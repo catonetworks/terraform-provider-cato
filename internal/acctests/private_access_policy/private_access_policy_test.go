@@ -225,11 +225,11 @@ func newPrivAccessPolicyCfg(t *testing.T) privAccessPolicyCfg {
 		resName:            acc.GetRandName("private_access_policy"),
 		applications:       acc.GetPrivateApps(t),
 		users:              acc.GetUsers(t),
-		userGroups:         []acc.Ref{{Name: "group-1"}},               // TODO: fetch dynamically
-		devices:            []acc.Ref{{Name: "Test device posture 1"}}, // TODO: fetch dynamically
-		subscriptionGroups: []acc.Ref{{Name: "subscription_group"}},    // TODO: fetch dynamically
-		webhooks:           []acc.Ref{{Name: "webhook_1"}},             // TODO: fetch dynamically
-		mailingLists:       []acc.Ref{{Name: "mailing_list"}},          // TODO: fetch dynamically
+		userGroups:         acc.GetUserGroups(t),
+		devices:            acc.GetDevicePostures(t),
+		subscriptionGroups: acc.GetSubscriptionGroups(t),
+		webhooks:           acc.GetWebhooks(t),
+		mailingLists:       acc.GetMailingLists(t),
 
 		t: t,
 	}

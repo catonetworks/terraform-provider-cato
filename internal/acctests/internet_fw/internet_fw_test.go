@@ -87,6 +87,53 @@ func TestAccInternetFw_Simple(t *testing.T) {
 	})
 }
 
+func TestAccInternetFw_IDName(t *testing.T) {
+	t.Skip("Know bug")
+	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_IDName")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newInternetFwCfg(t)
+	res := "cato_if_rule.id_name"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				// Create the resource
+				Config: cfg.getTfConfigIDName(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+				),
+			},
+		},
+	})
+}
+
+// TestAccInternetFw_Timeframe tests the datetime format - it should be returned in RFC3339
+func TestAccInternetFw_Timeframe(t *testing.T) {
+	// t.Skip("Know bug")
+	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Timeframe")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newInternetFwCfg(t)
+	res := "cato_if_rule.timeframe"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				// Create the resource
+				Config: cfg.getTfConfigTimeframe(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+				),
+			},
+		},
+	})
+}
+
 func TestAccInternetFw_UserID(t *testing.T) {
 	t.Skip("Know bug")
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_UserID")
@@ -594,6 +641,15 @@ func TestAccInternetFw_Full(t *testing.T) {
 				),
 				ExpectNonEmptyPlan: true, // TODO: investigate & fix
 			},
+			/* TODO: fix the provider, enable update test
+			{
+				// Update the resource
+				Config: cfg.getTfConfigFull(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+				),
+			},
+			*/
 		},
 	})
 }
@@ -705,6 +761,88 @@ var internetFwSimpleTFs = []string{
 				domain = [ "new.test.com" ]
 			}
 			source = {}
+		}
+	}
+	`,
+}
+
+// ------------------------------------------------------------------
+// IDNAme cato_if_rule configurations
+// - test combination of name and ID attributes in the rule configuration
+// ------------------------------------------------------------------
+func (p internetFwCfg) getTfConfigIDName(index int) string {
+	data := map[string]any{
+		"Name":  p.resName,
+		"Users": p.users,
+	}
+	return p.prepareTfCfg(data, internetFwIDNameTFs[index])
+}
+
+var internetFwIDNameTFs = []string{
+	`resource "cato_if_rule" "id_name" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name    = "{{ .Name }}"
+			enabled = true
+			action  = "ALLOW"
+			tracking = {
+				event = {
+					enabled = true
+				}
+			}
+			destination = {
+				domain = [ "test.com" ]
+			}
+			source = {
+				user = [
+					{ id   = "{{ (index .Users 0).ID }}" },
+					{ name = "{{ (index .Users 1).Name }}" },
+				]
+			}
+		}
+	}
+	`,
+}
+
+// ------------------------------------------------------------------
+// Timeframe cato_if_rule configurations
+// - test combination of name and ID attributes in the rule configuration
+// ------------------------------------------------------------------
+func (p internetFwCfg) getTfConfigTimeframe(index int) string {
+	data := map[string]any{
+		"Name":  p.resName,
+		"Users": p.users,
+	}
+	return p.prepareTfCfg(data, internetFwTimeframeTFs[index])
+}
+
+var internetFwTimeframeTFs = []string{
+	`resource "cato_if_rule" "timeframe" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name    = "{{ .Name }}"
+			enabled = true
+			action  = "ALLOW"
+			tracking = {
+				event = {
+					enabled = true
+				}
+			}
+			destination = {
+				domain = [ "test.com" ]
+			}
+			source = { }
+			schedule = {
+				active_on = "ALWAYS"
+				custom_timeframe = {
+					from = "2026-02-20T01:02:00Z",
+					to = "2026-02-20T03:04:00Z"
+				}
+			}
 		}
 	}
 	`,
@@ -1168,6 +1306,347 @@ var internetFwFullTFs = []string{
 		}
 	}
 	`,
+
+	// Updated FULL internet fw rule
+	`resource "cato_if_rule" "full" {
+		at   = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name                         = "{{ .Name }} 2"
+			description                  = "{{ .Name }} description 2"
+			enabled                      = false
+			active_period = {
+				effective_from = "2024-01-02T00:00:00Z"
+				expires_at	 = "2125-12-31T23:59:59Z"
+			}
+			source = {
+				ip = ["10.99.12.32"]
+				host = [
+					{ id   = "{{ (index .Hosts 0).ID }}" },
+					{ name = "{{ (index .Hosts 2).Name }}" },
+				]
+				site = [
+					{ id   = "{{ (index .Sites 0).ID }}" },
+					{ name = "{{ (index .Sites 2).Name }}" },
+				]
+				subnet = [
+					"10.99.13.0/24"
+				]	
+				ip_range = [
+					{ from   = "10.99.13.10", to = "10.99.13.20" },
+				]
+				global_ip_range = [
+					{ id   = "{{ (index .GlobalIPRanges 0).ID }}" },
+					{ name = "{{ (index .GlobalIPRanges 2).Name }}" }
+				]
+				network_interface = [
+					{ id   = "{{ (index .Interfaces 1).ID }}" },
+				]
+				site_network_subnet = [
+					{ id   = "{{ (index .SiteRanges 1).ID }}" },
+				]
+				floating_subnet = [
+					{ name = "{{ (index .FloatingRanges 2).Name }}" },
+				]
+				user = [
+					{ id   = "{{ (index .Users 1).ID }}" },
+					# { name = "{{ (index .Users 1).Name }}" },
+				]
+				users_group = [
+					{ id   = "{{ (index .UserGroups 1).ID }}" },
+					# { name = "{{ (index .UserGroups 1).Name }}" },
+				]
+				group = [
+					{ id   = "{{ (index .Groups 2).ID }}" },
+				]
+				system_group = [
+					{ name   = "{{ (index .SystemGroups 2).Name }}" },
+					#{ id   = "{{ (index .SystemGroups 2).ID }}" },
+					{ name = "{{ (index .SystemGroups 1).Name }}" },
+				]
+			}
+			connection_origin = "ANY"
+			country = [
+				{ id   = "IT" },
+				{ name = "Germany" },
+			]
+			device = [
+				{ id   = "{{ (index .DevicePostures 0).ID }}" },
+				{ name = "{{ (index .DevicePostures 2).Name }}" },
+			]
+			device_os = [
+				"LINUX",
+				"MACOS",
+			]
+			device_attributes = {
+				category     = [
+					"IoT",
+					"Mobile",
+				]
+				type         = [
+					"Appliance",
+					"Analog Telephone Adapter",
+				]
+				model        = [
+					" 9",
+					" 7+",
+				]
+				manufacturer = [
+					"APPLE",
+					"ACTi",
+				]
+				os = [
+					"Aruba OS",
+					"Arch Linux",
+				]
+				os_version = [
+					"10.1"
+				]
+			}
+			destination = {
+				application = [
+					{ name = "Gmail" },
+					{ id   = "hibob" },
+				]
+				custom_app = [
+					{ id   = "{{ (index .CustomApps 0).ID }}" },
+					{ name = "{{ (index .CustomApps 2).Name }}" },
+				]
+				app_category = [
+					{ id   = "business_systems" },
+					{ name = "Advertisements" },
+				]
+				custom_category = [
+					{ id   = "{{ (index .CustomCategories 0).ID }}" },
+					{ name = "{{ (index .CustomCategories 2).Name }}" },
+				]
+				sanctioned_apps_category = [
+					{ name = "Sanctioned Apps" }
+				]
+				country = [
+					{ id   = "IT" },
+					{ name = "Germany" },
+				]
+				domain = [
+					"three.example.com",
+					"two.example.com",
+				]
+				fqdn = [
+					"www.three.example.com"
+				]
+				ip = [
+					"192.168.112.4"
+				]
+				subnet = [
+					"192.168.112.0/24"
+				]
+				ip_range = [
+					{ from = "192.168.112.0", to = "192.168.112.100" },
+				]
+				global_ip_range = [
+					{ id   = "{{ (index .GlobalIPRanges 0).ID }}" },
+					{ name = "{{ (index .GlobalIPRanges 2).Name }}" }
+				]
+				remote_asn = [
+					"1235",
+					"5679",
+				]
+			}
+			service = {
+				standard = [
+					{ id = "ftp" },
+					{ id = "telnet" },
+				]
+				custom = [
+					{ port = [ "8023" ], protocol = "TCP" },
+					{ port_range = { from = 7000, to = 7010 }, protocol = "UDP" },
+				]
+			}
+			action = "BLOCK"
+			tracking =  {
+				event = {
+					enabled = false
+				}
+				alert = {
+					enabled = true
+					frequency = "HOURLY"
+					#subscription_group = [
+					#	{ id   = "{{ (index .SubscriptionGroups 0).ID }}" },
+					#	#{ name = "{{ (index .SubscriptionGroups 1).Name }}" }
+					#]
+					#webhook = [
+					#	{ id   = "{{ (index .Webhooks 0).ID }}" },
+					#	#{ name = "{{ (index .Webhooks 1).Name }}" }
+					#]
+					mailing_list = [
+						#{ id   = "{{ (index .MailingLists 0).ID }}" },
+						{ name = "{{ (index .MailingLists 1).Name }}" }
+					]
+				}
+			}
+			schedule = {
+				active_on = "ALWAYS"
+				#custom_timeframe = {
+				#	from = "2026-02-20T01:02:00Z",
+				#	to = "2026-02-20T03:04:00Z"
+				#}
+				custom_recurring = {
+					days = [ "MONDAY", "TUESDAY" ],
+					from =  "08:05:00",
+					to   = "19:31:00"
+				}
+			}
+			exceptions = [
+				{
+					name = "acctest_exception_101"
+					source = {
+						ip = [ "10.20.30.41" ]
+						host = [
+							{ name = "{{ (index .Hosts 0).Name }}" }
+						]
+						site = [
+							{ id = "{{ (index .Sites 0).ID }}" },
+							{ name = "{{ (index .Sites 2).Name }}" },
+						]
+						subnet = [
+							"10.20.31.0/24"
+						]
+						ip_range = [
+							{ from = "192.168.113.0", to = "192.168.113.100" },
+						]
+						global_ip_range = [
+							{ id   = "{{ (index .GlobalIPRanges 0).ID }}" },
+							{ name = "{{ (index .GlobalIPRanges 2).Name }}" }
+						]
+						network_interface = [
+							{ id   = "{{ (index .Interfaces 1).ID }}" },
+						]
+						site_network_subnet = [
+							{ id   = "{{ (index .SiteRanges 1).ID }}" },
+						]
+						floating_subnet = [
+							{ id   = "{{ (index .FloatingRanges 0).ID }}" },
+							{ name = "{{ (index .FloatingRanges 2).Name }}" },
+						]
+						user = [
+							{ id   = "{{ (index .Users 0).ID }}" },
+							# { name = "{{ (index .Users 2).Name }}" },
+						]
+						users_group = [
+							{ id   = "{{ (index .UserGroups 0).ID }}" },
+							# { name = "{{ (index .UserGroups 2).Name }}" },
+						]
+						group = [
+							{ id   = "{{ (index .Groups 0).ID }}" },
+							{ name = "{{ (index .Groups 2).Name }}" },
+						]
+						system_group = [
+							{ id   = "{{ (index .SystemGroups 0).ID }}" },
+							{ name = "{{ (index .SystemGroups 2).Name }}" },
+						]
+					}
+					country = [
+						{ id   = "IT" },
+						{ name = "Belgium" },
+					]
+					device = [
+						{ id   = "{{ (index .DevicePostures 0).ID }}" },
+						{ name = "{{ (index .DevicePostures 2).Name }}" },
+					]
+					device_attributes = {
+						category     = [
+							"IoT",
+							"Mobile",
+						]
+						type         = [
+							"Appliance",
+							"Analog Telephone Adapter",
+						]
+						model        = [
+							" 9",
+							" 8+",
+						]
+						manufacturer = [
+							"ACTi",
+						]
+						os = [
+							"Aruba OS",
+							"Arch Linux",
+						]
+						os_version = [
+							"10.1"
+						]
+					}
+					device_os = [
+						"WINDOWS",
+						"LINUX",
+					]
+					destination = {
+						application = [
+							{ name = "Hibob" },
+							{ id   = "zoom" },
+						]
+						custom_app = [
+							{ id   = "{{ (index .CustomApps 0).ID }}" },
+							{ name = "{{ (index .CustomApps 2).Name }}" },
+						]
+						app_category = [
+							{ id   = "business_systems" },
+							{ name = "Anonymizers" },
+						]
+						custom_category = [
+							{ id   = "{{ (index .CustomCategories 0).ID }}" },
+							{ name = "{{ (index .CustomCategories 2).Name }}" },
+						]
+						sanctioned_apps_category = [
+							{ name = "Sanctioned Apps" }
+						]
+						country = [
+							{ id   = "IT" },
+							{ name = "Germany" },
+						]
+						domain = [
+							"one.example.com",
+							"three.example.com",
+						]
+						fqdn = [
+							"www.three.example.com"
+						]
+						ip = [
+							"192.168.112.4"
+						]
+						subnet = [
+							"192.168.112.0/24"
+						]
+						ip_range = [
+							{ from = "192.168.112.0", to = "192.168.112.100" },
+						]
+						global_ip_range = [
+							{ id   = "{{ (index .GlobalIPRanges 0).ID }}" },
+							{ name = "{{ (index .GlobalIPRanges 2).Name }}" }
+						]
+						remote_asn = [
+							"1235",
+							"5679",
+						]
+					}
+					service = {
+						standard = [
+							{ name = "IMAP" },
+							{ id = "telnet" },
+						]
+						custom = [
+							{ port = [ "8020" ], protocol = "UDP" },
+							{ port_range = { from = 7000, to = 7010 }, protocol = "TCP" },
+						]
+					}
+					connection_origin = "ANY"
+				}
+			]
+		}
+	}
+	`,
 }
 
 // TODO: fix source.network_interface.name  ("aws-site \ LAN 01" does not work)
@@ -1184,3 +1663,5 @@ var internetFwFullTFs = []string{
 //		 -> implement workaround at the TF level -> parse responses
 
 // TODO: add tests for tracking.alert.webhook / subscription_group / mailing_list (only 1 at a time is allowed)
+
+// TODO: fix TF bugs - updating rule does not work - allow update step in TestAccInternetFw_Full
