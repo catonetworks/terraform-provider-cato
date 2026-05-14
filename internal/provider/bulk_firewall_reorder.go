@@ -152,6 +152,38 @@ func buildBulkFirewallReorderInput(currentSections []bulkPolicySection, currentR
 	return cato_models.PolicyReorderInput{Sections: sections}, sectionIDByName, ruleIDByName, nil
 }
 
+func bulkFirewallReorderMatchesCurrentPolicy(input cato_models.PolicyReorderInput, currentSections []bulkPolicySection, currentRules []bulkPolicyRule) bool {
+	if len(input.Sections) != len(currentSections) {
+		return false
+	}
+
+	currentRulesBySection := make(map[string][]bulkPolicyRule)
+	sort.Slice(currentRules, func(i, j int) bool {
+		return currentRules[i].Index < currentRules[j].Index
+	})
+	for _, rule := range currentRules {
+		currentRulesBySection[rule.SectionID] = append(currentRulesBySection[rule.SectionID], rule)
+	}
+
+	for i, section := range input.Sections {
+		if section.Ref == nil || section.Ref.Input != currentSections[i].ID {
+			return false
+		}
+
+		currentSectionRules := currentRulesBySection[currentSections[i].ID]
+		if len(section.Rules) != len(currentSectionRules) {
+			return false
+		}
+		for j, rule := range section.Rules {
+			if rule.Ref == nil || rule.Ref.Input != currentSectionRules[j].ID {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 func keepSystemSectionsAtCurrentIndexes(currentSections []bulkPolicySection, desiredSections []bulkPolicySection) []bulkPolicySection {
 	desiredNonSystem := make([]bulkPolicySection, 0, len(desiredSections))
 	for _, section := range desiredSections {

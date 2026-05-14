@@ -139,6 +139,129 @@ func TestWanRulesIndexResourceCreateUsesReorderPolicy(t *testing.T) {
 	}
 }
 
+func TestIfwRulesIndexResourceCreateStopsOnReorderPolicyFailure(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewBulkInternetFirewallPolicyClient(t)
+
+	mockClient.EXPECT().
+		PolicyInternetFirewallSectionsIndex(mock.Anything, "account-123").
+		Return(ifwBulkSectionsResponse([]bulkPolicySection{
+			{ID: "section-existing", Name: "Existing"},
+			{ID: "section-alpha", Name: "Alpha"},
+			{ID: "section-beta", Name: "Beta"},
+		}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewallRulesIndex(mock.Anything, "account-123").
+		Return(ifwBulkRulesResponse([]bulkPolicyRule{
+			{ID: "rule-one", Name: "Rule One", SectionID: "section-beta", SectionName: "Beta", Description: "from-api", Enabled: true, Index: 1},
+		}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewallReorderPolicy(mock.Anything, mock.Anything, mock.Anything, "account-123").
+		Return(failedIfwReorderResponse("reorderPolicyAlreadyInSession", "A reorder has already been performed in this revision"), nil).
+		Once()
+
+	r := &ifwRulesIndexResource{
+		client:    &catoClientData{AccountId: "account-123"},
+		ifwClient: mockClient,
+	}
+	req := resource.CreateRequest{Plan: newIfwRulesIndexPlan(ctx, t)}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfwRulesIndexSchema(ctx, t)}}
+
+	r.Create(ctx, req, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("expected diagnostics, got none")
+	}
+	assertDiagnosticsContain(t, resp.Diagnostics.Errors(), "reorderPolicyAlreadyInSession")
+	for _, diagnostic := range resp.Diagnostics.Errors() {
+		if diagnostic.Summary() == "Value Conversion Error" {
+			t.Fatalf("unexpected state conversion diagnostic: %+v", resp.Diagnostics.Errors())
+		}
+	}
+}
+
+func TestIfwRulesIndexResourceCreateSkipsReorderWhenPolicyAlreadyMatches(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewBulkInternetFirewallPolicyClient(t)
+
+	mockClient.EXPECT().
+		PolicyInternetFirewallSectionsIndex(mock.Anything, "account-123").
+		Return(ifwBulkSectionsResponse([]bulkPolicySection{
+			{ID: "section-existing", Name: "Existing"},
+			{ID: "section-alpha", Name: "Alpha"},
+			{ID: "section-beta", Name: "Beta"},
+		}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewallRulesIndex(mock.Anything, "account-123").
+		Return(ifwBulkRulesResponse([]bulkPolicyRule{
+			{ID: "rule-one", Name: "Rule One", SectionID: "section-alpha", SectionName: "Alpha", Description: "from-api", Enabled: true, Index: 1},
+		}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, "account-123").
+		Return(nil, nil).
+		Once()
+
+	r := &ifwRulesIndexResource{
+		client:    &catoClientData{AccountId: "account-123"},
+		ifwClient: mockClient,
+	}
+	req := resource.CreateRequest{Plan: newIfwRulesIndexPlan(ctx, t)}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfwRulesIndexSchema(ctx, t)}}
+
+	r.Create(ctx, req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
+}
+
+func TestWanRulesIndexResourceCreateStopsOnReorderPolicyFailure(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewBulkWanFirewallPolicyClient(t)
+
+	mockClient.EXPECT().
+		PolicyWanFirewallSectionsIndex(mock.Anything, "account-123").
+		Return(wanBulkSectionsResponse([]bulkPolicySection{
+			{ID: "section-existing", Name: "Existing"},
+			{ID: "section-alpha", Name: "Alpha"},
+			{ID: "section-beta", Name: "Beta"},
+		}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyWanFirewallRulesIndex(mock.Anything, "account-123").
+		Return(wanBulkRulesResponse([]bulkPolicyRule{
+			{ID: "rule-one", Name: "Rule One", SectionID: "section-beta", SectionName: "Beta", Description: "from-api", Enabled: true, Index: 1},
+		}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyWanFirewallReorderPolicy(mock.Anything, mock.Anything, mock.Anything, "account-123").
+		Return(failedWanReorderResponse("reorderPolicyAlreadyInSession", "A reorder has already been performed in this revision"), nil).
+		Once()
+
+	r := &wanRulesIndexResource{
+		client:    &catoClientData{AccountId: "account-123"},
+		wanClient: mockClient,
+	}
+	req := resource.CreateRequest{Plan: newWanRulesIndexPlan(ctx, t)}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getWanRulesIndexSchema(ctx, t)}}
+
+	r.Create(ctx, req, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("expected diagnostics, got none")
+	}
+	assertDiagnosticsContain(t, resp.Diagnostics.Errors(), "reorderPolicyAlreadyInSession")
+	for _, diagnostic := range resp.Diagnostics.Errors() {
+		if diagnostic.Summary() == "Value Conversion Error" {
+			t.Fatalf("unexpected state conversion diagnostic: %+v", resp.Diagnostics.Errors())
+		}
+	}
+}
+
 func getIfwRulesIndexSchema(ctx context.Context, t *testing.T) schema.Schema {
 	t.Helper()
 
@@ -343,6 +466,42 @@ func successfulWanReorderResponse() *cato_go_sdk.PolicyWanFirewallReorderPolicy 
 			WanFirewall: &cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall{
 				ReorderPolicy: cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall_ReorderPolicy{
 					Status: cato_models.PolicyMutationStatusSuccess,
+				},
+			},
+		},
+	}
+}
+
+func failedIfwReorderResponse(code, message string) *cato_go_sdk.PolicyInternetFirewallReorderPolicy {
+	return &cato_go_sdk.PolicyInternetFirewallReorderPolicy{
+		Policy: &cato_go_sdk.PolicyInternetFirewallReorderPolicy_Policy{
+			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallReorderPolicy_Policy_InternetFirewall{
+				ReorderPolicy: cato_go_sdk.PolicyInternetFirewallReorderPolicy_Policy_InternetFirewall_ReorderPolicy{
+					Status: cato_models.PolicyMutationStatusFailure,
+					Errors: []*cato_go_sdk.PolicyInternetFirewallReorderPolicy_Policy_InternetFirewall_ReorderPolicy_Errors{
+						{
+							ErrorCode:    &code,
+							ErrorMessage: &message,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func failedWanReorderResponse(code, message string) *cato_go_sdk.PolicyWanFirewallReorderPolicy {
+	return &cato_go_sdk.PolicyWanFirewallReorderPolicy{
+		Policy: &cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy{
+			WanFirewall: &cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall{
+				ReorderPolicy: cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall_ReorderPolicy{
+					Status: cato_models.PolicyMutationStatusFailure,
+					Errors: []*cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall_ReorderPolicy_Errors{
+						{
+							ErrorCode:    &code,
+							ErrorMessage: &message,
+						},
+					},
 				},
 			},
 		},

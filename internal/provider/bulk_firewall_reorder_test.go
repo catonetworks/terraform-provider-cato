@@ -75,6 +75,41 @@ func TestBuildBulkFirewallReorderInputKeepsSystemRulesAtCurrentIndexes(t *testin
 	assertStringSliceEqual(t, "main rules", reorderRuleIDs(got, "s-main"), []string{"r-two", "r-system", "r-one"})
 }
 
+func TestBulkFirewallReorderMatchesCurrentPolicy(t *testing.T) {
+	currentSections := []bulkPolicySection{
+		{ID: "s-one", Name: "One"},
+		{ID: "s-two", Name: "Two"},
+	}
+	currentRules := []bulkPolicyRule{
+		{ID: "r-two", Name: "Two", SectionID: "s-one", SectionName: "One", Index: 2},
+		{ID: "r-one", Name: "One", SectionID: "s-one", SectionName: "One", Index: 1},
+	}
+	input := cato_models.PolicyReorderInput{
+		Sections: []*cato_models.PolicyReorderSectionInput{
+			{
+				Ref: policyElementRef("s-one"),
+				Rules: []*cato_models.PolicyReorderRuleInput{
+					{Ref: policyElementRef("r-one")},
+					{Ref: policyElementRef("r-two")},
+				},
+			},
+			{
+				Ref:   policyElementRef("s-two"),
+				Rules: []*cato_models.PolicyReorderRuleInput{},
+			},
+		},
+	}
+
+	if !bulkFirewallReorderMatchesCurrentPolicy(input, currentSections, currentRules) {
+		t.Fatal("expected reorder input to match current policy")
+	}
+
+	input.Sections[0].Rules[0].Ref = policyElementRef("r-two")
+	if bulkFirewallReorderMatchesCurrentPolicy(input, currentSections, currentRules) {
+		t.Fatal("expected changed rule order not to match current policy")
+	}
+}
+
 func TestBuildBulkFirewallReorderInputReturnsReferenceErrors(t *testing.T) {
 	currentSections := []bulkPolicySection{
 		{ID: "s-one", Name: "One"},

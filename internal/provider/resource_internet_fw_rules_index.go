@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/clientinterfaces"
@@ -167,14 +168,16 @@ func (r *ifwRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	sectionObjectsList, rulesObjectsList, diags, err := r.moveIfwRulesAndSections(ctx, plan)
+	resp.Diagnostics.Append(diags...)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallMoveSection error",
-			err.Error(),
-		)
+		if !diags.HasError() {
+			resp.Diagnostics.AddError(
+				"Catov2 API PolicyInternetFirewallMoveSection error",
+				err.Error(),
+			)
+		}
 		return
 	}
-	resp.Diagnostics.Append(diags...)
 	plan.SectionData = sectionObjectsList
 	plan.RuleData = rulesObjectsList
 
@@ -311,14 +314,16 @@ func (r *ifwRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 	}
 
 	sectionObjectsList, rulesObjectsList, diags, err := r.moveIfwRulesAndSections(ctx, plan)
+	resp.Diagnostics.Append(diags...)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallMoveSection error",
-			err.Error(),
-		)
+		if !diags.HasError() {
+			resp.Diagnostics.AddError(
+				"Catov2 API PolicyInternetFirewallMoveSection error",
+				err.Error(),
+			)
+		}
 		return
 	}
-	resp.Diagnostics.Append(diags...)
 	plan.SectionData = sectionObjectsList
 	plan.RuleData = rulesObjectsList
 
@@ -462,32 +467,38 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(ctx context.Context, pla
 	tflog.Debug(ctx, "Write.PolicyInternetFirewallReorderPolicy.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(reorderInput),
 	})
-	reorderResponse, err := ifwClient.PolicyInternetFirewallReorderPolicy(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, reorderInput, r.client.AccountId)
-	tflog.Debug(ctx, "Write.PolicyInternetFirewallReorderPolicy.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(reorderResponse),
-	})
-	if err != nil {
-		diags = append(diags, diag.NewErrorDiagnostic(
-			"Catov2 API PolicyInternetFirewallReorderPolicy error",
-			err.Error(),
-		))
-		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-	}
-
-	reorderResult := reorderResponse.GetPolicy().GetInternetFirewall().GetReorderPolicy()
-	if status := reorderResult.GetStatus(); status == nil || *status != cato_models.PolicyMutationStatusSuccess {
-		errorMessage := "reorderPolicy returned a non-success status"
-		for _, item := range reorderResult.GetErrors() {
-			if item.GetErrorCode() != nil || item.GetErrorMessage() != nil {
-				errorMessage = errorMessage + ": " + utils.InterfaceToJSONString(reorderResult.GetErrors())
-				break
-			}
+	if bulkFirewallReorderMatchesCurrentPolicy(reorderInput, currentSections, currentRules) {
+		tflog.Debug(ctx, "Write.PolicyInternetFirewallReorderPolicy.skipped", map[string]interface{}{
+			"reason": "policy already matches requested order",
+		})
+	} else {
+		reorderResponse, err := ifwClient.PolicyInternetFirewallReorderPolicy(ctx, &cato_models.InternetFirewallPolicyMutationInput{}, reorderInput, r.client.AccountId)
+		tflog.Debug(ctx, "Write.PolicyInternetFirewallReorderPolicy.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(reorderResponse),
+		})
+		if err != nil {
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"Catov2 API PolicyInternetFirewallReorderPolicy error",
+				err.Error(),
+			))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
-		diags = append(diags, diag.NewErrorDiagnostic(
-			"Catov2 API PolicyInternetFirewallReorderPolicy error",
-			errorMessage,
-		))
-		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+
+		reorderResult := reorderResponse.GetPolicy().GetInternetFirewall().GetReorderPolicy()
+		if status := reorderResult.GetStatus(); status == nil || *status != cato_models.PolicyMutationStatusSuccess {
+			errorMessage := "reorderPolicy returned a non-success status"
+			for _, item := range reorderResult.GetErrors() {
+				if item.GetErrorCode() != nil || item.GetErrorMessage() != nil {
+					errorMessage = errorMessage + ": " + utils.InterfaceToJSONString(reorderResult.GetErrors())
+					break
+				}
+			}
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"Catov2 API PolicyInternetFirewallReorderPolicy error",
+				errorMessage,
+			))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, errors.New(errorMessage)
+		}
 	}
 
 	for _, sectionFromPlan := range sectionListFromPlan {
