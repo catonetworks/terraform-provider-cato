@@ -1,6 +1,6 @@
 module github.com/catonetworks/terraform-provider-cato
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/Yamashou/gqlgenc v0.30.2

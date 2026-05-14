@@ -47,6 +47,36 @@ export CATO_RETRY_MAX="5"
 export CATO_RETRY_WAIT_MIN_SECONDS="1"
 export CATO_RETRY_WAIT_MAX_SECONDS="30"
 ```
+
+### Debugging GraphQL API Traffic
+
+When Terraform debug logging is enabled, the provider logs each GraphQL API
+request and response from the Cato SDK under the `API Call` debug message. The
+log entry includes:
+
+- `request`: the GraphQL query, operation name, and variables sent to Cato
+- `response`: the raw GraphQL response body returned by Cato
+- `trace_id`: the Cato server trace ID when returned by the API
+
+Example:
+
+```sh
+export TF_LOG=DEBUG
+export TF_LOG_PATH=~/Downloads/cato_terraform_debug.log
+terraform apply
+```
+
+For easier support handoff, set `TF_API_DUMP_DIR` to write each GraphQL call to
+its own file:
+
+```sh
+export TF_API_DUMP_DIR=~/Downloads/cato_api_calls
+terraform apply
+```
+
+Debug logs and dump files can contain sensitive configuration values. Remove API
+tokens and other secrets before sharing them outside your trusted support path.
+
 Sample terraform files can be found in the examples folder in this repository.  You can initialize and run these terraform files with the following commands:
 ```
 terraform init

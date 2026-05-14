@@ -4,7 +4,7 @@ NAMESPACE=catonetworks
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
 # Whenever bumping provider version, please update the version in cato/client.go (line 27) as well.
-VERSION=0.0.72
+VERSION=0.0.73
 
 # Mac Intel Chip
 # OS_ARCH=darwin_amd64
@@ -24,7 +24,6 @@ default: install
 
 build: ## Build the terraform-provider
 	export GO111MODULE="on"
-	go mod vendor
 	go build -o ${BINARY}
 
 install: build ## Install the provider, update config
