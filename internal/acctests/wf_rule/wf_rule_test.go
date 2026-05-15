@@ -43,6 +43,24 @@ func TestAccWanFw_Simple(t *testing.T) {
 				),
 				ExpectNonEmptyPlan: true, // TODO: provider reads empty exceptions, but schema disallows configuring an empty set.
 			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfigSimple(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttr(res, "rule.action", "BLOCK"),
+					resource.TestCheckResourceAttr(res, "rule.connection_origin", "ANY"),
+					resource.TestCheckResourceAttr(res, "rule.direction", "BOTH"),
+					resource.TestCheckResourceAttr(res, "rule.enabled", "true"),
+					resource.TestCheckResourceAttrSet(res, "rule.id"),
+					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName+"-2"),
+					resource.TestCheckResourceAttr(res, "rule.tracking.alert.enabled", "false"),
+					resource.TestCheckResourceAttr(res, "rule.tracking.alert.frequency", "DAILY"),
+					resource.TestCheckResourceAttr(res, "rule.tracking.event.enabled", "true"),
+				),
+				ExpectNonEmptyPlan: true, // TODO: provider reads empty exceptions, but schema disallows configuring an empty set.
+			},
 		},
 	})
 }
@@ -101,4 +119,26 @@ var wanFwSimpleTFs = []string{
 		}
 	}
 	`,
+	`resource "cato_wf_rule" "simple" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name      = "{{ .Name }}-2"
+			enabled   = true
+			action    = "BLOCK"
+			direction = "BOTH"
+			source      = {}
+			destination = {}
+			application = {}
+			tracking = {
+				event = {
+					enabled = true
+				}
+			}
+		}
+	}
+	`,
 }
+
+// TODO: add all attributes as soon as the API is fixed

@@ -39,6 +39,25 @@ func TestAccSocketLanSection(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "section.name", cfg.resName),
 				),
 			},
+			{
+				// Test import mode
+				ImportState:  true,
+				ResourceName: res,
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "3"),
+					resource.TestCheckResourceAttr(res, "at.%", "2"),
+					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "section.%", "2"),
+					resource.TestCheckResourceAttrSet(res, "section.id"),
+					resource.TestCheckResourceAttr(res, "section.name", cfg.resName+"-2"),
+				),
+			},
 		},
 	})
 }
@@ -81,6 +100,16 @@ var socketLanSectionTFs = []string{
 
 		section = {
 			name = "{{.Name}}"
+		}
+	}
+	`,
+	`resource "cato_socket_lan_section" "this" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+
+		section = {
+			name = "{{.Name}}-2"
 		}
 	}
 	`,

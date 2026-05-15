@@ -40,6 +40,26 @@ func TestAccTlsRule_Simple(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.untrusted_certificate_action", "ALLOW"),
 				),
 			},
+			{
+				// Test import mode
+				ImportState:  true,
+				ResourceName: res,
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfigSimple(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "rule.action", "INSPECT"),
+					resource.TestCheckResourceAttr(res, "rule.connection_origin", "ANY"),
+					resource.TestCheckResourceAttr(res, "rule.enabled", "false"),
+					resource.TestCheckResourceAttrSet(res, "rule.id"),
+					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName+"-2"),
+					resource.TestCheckResourceAttr(res, "rule.untrusted_certificate_action", "ALLOW"),
+				),
+			},
 		},
 	})
 }
@@ -93,4 +113,21 @@ var tlsRuleSimpleTFs = []string{
 		}
 	}
 	`,
+	`resource "cato_tls_rule" "simple" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name                         = "{{ .Name }}-2"
+			enabled                      = false
+			action                       = "INSPECT"
+			connection_origin            = "ANY"
+			untrusted_certificate_action = "ALLOW"
+			source                       = {}
+			application                  = {}
+		}
+	}
+	`,
 }
+
+// TODO: add all attributes as soon as the API is fixed

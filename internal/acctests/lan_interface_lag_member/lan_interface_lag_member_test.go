@@ -38,6 +38,24 @@ func TestAccLanInterfaceLagMember(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "site_id"),
 				),
 			},
+			{
+				// Test import mode
+				ImportState:  true,
+				ResourceName: res,
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "5"),
+					resource.TestCheckResourceAttr(res, "dest_type", "LAN_LAG_MEMBER"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "interface_id", "INT_7"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_lag_member-2"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+				),
+			},
 		},
 	})
 }
@@ -73,7 +91,28 @@ func (p lanInterfaceLagMemberCfg) getTfConfig(index int) string {
 }
 
 var lanInterfaceLagMemberTFs = []string{
-	`resource "cato_socket_site" "this" {
+	siteResource + `
+		resource "cato_lan_interface_lag_member" "this" {
+		depends_on   = [cato_lan_interface.lag_master]
+		site_id      = cato_socket_site.this.id
+		interface_id = "INT_6"
+		name         = "{{.Name}}_lag_member"
+		dest_type    = "LAN_LAG_MEMBER"
+	}
+	`,
+	siteResource + `
+		resource "cato_lan_interface_lag_member" "this" {
+		depends_on   = [cato_lan_interface.lag_master]
+		site_id      = cato_socket_site.this.id
+		interface_id = "INT_7"
+		name         = "{{.Name}}_lag_member-2"
+		dest_type    = "LAN_LAG_MEMBER"
+	}
+	`,
+}
+
+const siteResource = `
+	resource "cato_socket_site" "this" {
 		name            = "{{.Name}}"
 		description     = "{{.Name}} description"
 		site_type       = "BRANCH"
@@ -103,13 +142,4 @@ var lanInterfaceLagMemberTFs = []string{
 		lag_min_links = 1
 		subnet        = "192.168.241.0/24"
 	}
-
-	resource "cato_lan_interface_lag_member" "this" {
-		depends_on   = [cato_lan_interface.lag_master]
-		site_id      = cato_socket_site.this.id
-		interface_id = "INT_6"
-		name         = "{{.Name}}_lag_member"
-		dest_type    = "LAN_LAG_MEMBER"
-	}
-	`,
-}
+`

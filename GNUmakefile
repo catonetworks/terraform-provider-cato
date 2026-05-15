@@ -101,7 +101,7 @@ mocks: ## Generate mockery mocks
 test: ## Run unit tests
 	@unset TF_ACC; go test -json $$(go list ./... | grep -v terraform-provider-cato/internal/acctests) | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 acctest: ## Run acceptance tests (real API calls)
-	@ACCTEST_CLEANUP=true go test -tags acctest -count=1 --timeout=5m -parallel=1 -p=1 ./internal/acctests/acc
+	@ACCTEST_CLEANUP=true go test -tags acctest -count=1 --timeout=5m -run TestCleanupAccTestResources ./internal/acctests/acc
 	TF_ACC=1 DISABLE_POLICY_RULE_CLEANUP=true go test -tags acctest -count=1 -json --timeout=10m -parallel=1 -p=2 ./internal/acctests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 
 lint:  ## Run the linters configured in .golangci.yml locally

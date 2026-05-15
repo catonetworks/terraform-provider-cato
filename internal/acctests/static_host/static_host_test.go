@@ -38,6 +38,19 @@ func TestAccStaticHost(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "site_id"),
 				),
 			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "5"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "ip", "192.168.220.21"),
+					resource.TestCheckResourceAttr(res, "mac_address", "00:00:00:00:00:51"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_host-2"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+				),
+			},
 		},
 	})
 }
@@ -73,7 +86,26 @@ func (p staticHostCfg) getTfConfig(index int) string {
 }
 
 var staticHostTFs = []string{
-	`resource "cato_socket_site" "this" {
+	siteResource + `
+	resource "cato_static_host" "this" {
+		site_id     = cato_socket_site.this.id
+		name        = "{{.Name}}_host"
+		ip          = "192.168.220.20"
+		mac_address = "00:00:00:00:00:50"
+	}
+	`,
+	siteResource + `
+	resource "cato_static_host" "this" {
+		site_id     = cato_socket_site.this.id
+		name        = "{{.Name}}_host-2"
+		ip          = "192.168.220.21"
+		mac_address = "00:00:00:00:00:51"
+	}
+	`,
+}
+
+const siteResource = `
+	resource "cato_socket_site" "this" {
 		name            = "{{.Name}}"
 		description     = "{{.Name}} description"
 		site_type       = "BRANCH"
@@ -93,12 +125,6 @@ var staticHostTFs = []string{
 			timezone     = "Europe/Paris"
 		}
 	}
+`
 
-	resource "cato_static_host" "this" {
-		site_id     = cato_socket_site.this.id
-		name        = "{{.Name}}_host"
-		ip          = "192.168.220.20"
-		mac_address = "00:00:00:00:00:50"
-	}
-	`,
-}
+// TODO:  Add ImportState step, fix TF bug

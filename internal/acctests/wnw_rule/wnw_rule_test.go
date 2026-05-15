@@ -49,6 +49,30 @@ func TestAccWanNetwork_Simple(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.rule_type", "WAN"),
 				),
 			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfigSimple(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttr(res, "rule.bandwidth_priority.id", "-1"),
+					resource.TestCheckResourceAttr(res, "rule.bandwidth_priority.name", "255"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.active_tcp_acceleration", "false"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.packet_loss_mitigation", "true"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.preserve_source_port", "false"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.primary_transport.primary_interface_role", "WAN1"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.primary_transport.secondary_interface_role", "WAN1"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.primary_transport.transport_type", "ALTERNATIVE_WAN"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.secondary_transport.primary_interface_role", "AUTOMATIC"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.secondary_transport.secondary_interface_role", "NONE"),
+					resource.TestCheckResourceAttr(res, "rule.configuration.secondary_transport.transport_type", "NONE"),
+					resource.TestCheckResourceAttr(res, "rule.enabled", "true"),
+					resource.TestCheckResourceAttrSet(res, "rule.id"),
+					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName+"-2"),
+					resource.TestCheckResourceAttr(res, "rule.route_type", "NONE"),
+					resource.TestCheckResourceAttr(res, "rule.rule_type", "WAN"),
+				),
+			},
 		},
 	})
 }
@@ -123,4 +147,42 @@ var wanNetworkSimpleTFs = []string{
 		}
 	}
 	`,
+	`resource "cato_wnw_rule" "simple" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name       = "{{ .Name }}-2"
+			enabled    = true
+			rule_type  = "WAN"
+			route_type = "NONE"
+
+			bandwidth_priority = {
+				name = "255"
+			}
+
+			configuration = {
+				active_tcp_acceleration = false
+				packet_loss_mitigation  = true
+				preserve_source_port    = false
+				primary_transport = {
+					primary_interface_role   = "WAN1"
+					secondary_interface_role = "WAN1"
+					transport_type           = "ALTERNATIVE_WAN"
+				}
+				secondary_transport = {
+					primary_interface_role   = "AUTOMATIC"
+					secondary_interface_role = "NONE"
+					transport_type           = "NONE"
+				}
+			}
+
+			source      = {}
+			destination = {}
+			application = {}
+		}
+	}
+	`,
 }
+
+// TODO: add all attributes as soon as the API is fixed

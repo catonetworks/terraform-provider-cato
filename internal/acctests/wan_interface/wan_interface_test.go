@@ -41,6 +41,27 @@ func TestAccWanInterface(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "upstream_bandwidth", "25"),
 				),
 			},
+			{
+				// Test import mode
+				ImportState:  true,
+				ResourceName: res,
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "8"),
+					resource.TestCheckResourceAttr(res, "downstream_bandwidth", "100"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "interface_id", "WAN2"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_wan-2"),
+					resource.TestCheckResourceAttr(res, "precedence", "PASSIVE"),
+					resource.TestCheckResourceAttr(res, "role", "wan_2"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+					resource.TestCheckResourceAttr(res, "upstream_bandwidth", "50"),
+				),
+			},
 		},
 	})
 }
@@ -76,7 +97,32 @@ func (p wanInterfaceCfg) getTfConfig(index int) string {
 }
 
 var wanInterfaceTFs = []string{
-	`resource "cato_socket_site" "this" {
+	siteResource + `
+	resource "cato_wan_interface" "this" {
+		site_id              = cato_socket_site.this.id
+		interface_id         = "WAN2"
+		name                 = "{{.Name}}_wan"
+		upstream_bandwidth   = 25
+		downstream_bandwidth = 50
+		role                 = "wan_2"
+		precedence           = "PASSIVE"
+	}
+	`,
+	siteResource + `
+	resource "cato_wan_interface" "this" {
+		site_id              = cato_socket_site.this.id
+		interface_id         = "WAN2"
+		name                 = "{{.Name}}_wan-2"
+		upstream_bandwidth   = 50
+		downstream_bandwidth = 100
+		role                 = "wan_2"
+		precedence           = "PASSIVE"
+	}
+	`,
+}
+
+const siteResource = `
+	resource "cato_socket_site" "this" {
 		name            = "{{.Name}}"
 		description     = "{{.Name}} description"
 		site_type       = "BRANCH"
@@ -96,15 +142,4 @@ var wanInterfaceTFs = []string{
 			timezone     = "Europe/Paris"
 		}
 	}
-
-	resource "cato_wan_interface" "this" {
-		site_id              = cato_socket_site.this.id
-		interface_id         = "WAN2"
-		name                 = "{{.Name}}_wan"
-		upstream_bandwidth   = 25
-		downstream_bandwidth = 50
-		role                 = "wan_2"
-		precedence           = "PASSIVE"
-	}
-	`,
-}
+	`

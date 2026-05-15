@@ -44,6 +44,25 @@ func TestAccSocketLanNetworkRule_Simple(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.transport", "LAN"),
 				),
 			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfigSimple(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttr(res, "rule.direction", "BOTH"),
+					resource.TestCheckResourceAttr(res, "rule.enabled", "false"),
+					resource.TestCheckResourceAttrSet(res, "rule.id"),
+					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName+"-2"),
+					resource.TestCheckResourceAttr(res, "rule.nat.enabled", "false"),
+					resource.TestCheckResourceAttr(res, "rule.nat.nat_type", "DYNAMIC_PAT"),
+					resource.TestCheckResourceAttr(res, "rule.site.site.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.site.site.*",
+						map[string]string{"name": cfg.resName},
+					),
+					resource.TestCheckResourceAttr(res, "rule.transport", "LAN"),
+				),
+			},
 		},
 	})
 }
@@ -82,27 +101,7 @@ func (p socketLanNetworkRuleCfg) getTfConfigSimple(index int) string {
 }
 
 var socketLanNetworkRuleSimpleTFs = []string{
-	`resource "cato_socket_site" "this" {
-		name            = "{{ .Name }}"
-		description     = "{{ .Name }} description"
-		site_type       = "BRANCH"
-		connection_type = "SOCKET_X1500"
-
-		native_range = {
-			native_network_range = "192.168.247.0/24"
-			local_ip             = "192.168.247.1"
-			dhcp_settings = {
-				dhcp_type = "DHCP_RANGE"
-				ip_range  = "192.168.247.10-192.168.247.22"
-			}
-		}
-
-		site_location = {
-			country_code = "FR"
-			timezone     = "Europe/Paris"
-		}
-	}
-
+	siteResource + `	
 	resource "cato_socket_lan_network_rule" "simple" {
 		at = {
 			position = "LAST_IN_POLICY"
@@ -128,4 +127,53 @@ var socketLanNetworkRuleSimpleTFs = []string{
 		}
 	}
 	`,
+	siteResource + `	
+	resource "cato_socket_lan_network_rule" "simple" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name      = "{{ .Name }}-2"
+			enabled   = false
+			direction = "BOTH"
+			transport = "LAN"
+			site = {
+				site = [
+					{ id = cato_socket_site.this.id }
+				]
+			}
+			source      = {}
+			destination = {}
+			nat = {
+				enabled  = false
+				nat_type = "DYNAMIC_PAT"
+			}
+		}
+	}
+	`,
 }
+
+const siteResource = `
+	resource "cato_socket_site" "this" {
+		name            = "{{ .Name }}"
+		description     = "{{ .Name }} description"
+		site_type       = "BRANCH"
+		connection_type = "SOCKET_X1500"
+
+		native_range = {
+			native_network_range = "192.168.247.0/24"
+			local_ip             = "192.168.247.1"
+			dhcp_settings = {
+				dhcp_type = "DHCP_RANGE"
+				ip_range  = "192.168.247.10-192.168.247.22"
+			}
+		}
+
+		site_location = {
+			country_code = "FR"
+			timezone     = "Europe/Paris"
+		}
+	}
+`
+
+// TODO: add all attributes as soon as the API is fixed

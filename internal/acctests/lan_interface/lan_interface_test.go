@@ -40,6 +40,26 @@ func TestAccLanInterface(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "subnet", "192.168.211.0/24"),
 				),
 			},
+			{
+				// Test import mode
+				ImportState:  true,
+				ResourceName: res,
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "10"),
+					resource.TestCheckResourceAttr(res, "dest_type", "LAN"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "interface_id", "LAN2"),
+					resource.TestCheckResourceAttr(res, "local_ip", "192.168.211.3"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_lan-3"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+					resource.TestCheckResourceAttr(res, "subnet", "192.168.211.0/24"),
+				),
+			},
 		},
 	})
 }
@@ -75,7 +95,31 @@ func (p lanInterfaceCfg) getTfConfig(index int) string {
 }
 
 var lanInterfaceTFs = []string{
-	`resource "cato_socket_site" "this" {
+	siteResource +
+		`resource "cato_lan_interface" "this" {
+		dest_type    = "LAN"
+		interface_id = "LAN2"
+		local_ip     = "192.168.211.1"
+		name         = "{{.Name}}_lan"
+		site_id      = cato_socket_site.this.id
+		subnet       = "192.168.211.0/24"
+	}
+	`,
+
+	siteResource +
+		`resource "cato_lan_interface" "this" {
+		dest_type    = "LAN"
+		interface_id = "LAN2"
+		local_ip     = "192.168.211.3"
+		name         = "{{.Name}}_lan-3"
+		site_id      = cato_socket_site.this.id
+		subnet       = "192.168.211.0/24"
+	}
+	`,
+}
+
+const siteResource = `
+	resource "cato_socket_site" "this" {
 		name            = "{{.Name}}"
 		description     = "{{.Name}} description"
 		site_type       = "BRANCH"
@@ -95,14 +139,4 @@ var lanInterfaceTFs = []string{
 			timezone     = "Europe/Paris"
 		}
 	}
-
-	resource "cato_lan_interface" "this" {
-		dest_type    = "LAN"
-		interface_id = "LAN2"
-		local_ip     = "192.168.211.1"
-		name         = "{{.Name}}_lan"
-		site_id      = cato_socket_site.this.id
-		subnet       = "192.168.211.0/24"
-	}
-	`,
-}
+`
