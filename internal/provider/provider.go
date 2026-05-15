@@ -418,6 +418,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewGroupResource,
 		NewInternetFwRuleResource,
 		NewInternetFwSectionResource,
+		NewInternetFwSubPolicyResource,
 		NewLanInterfaceResource,
 		NewLanInterfaceLagMemberResource,
 		NewLicenseResource,

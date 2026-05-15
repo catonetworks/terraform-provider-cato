@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -2524,14 +2525,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 	//publishing new rule
 	tflog.Info(ctx, "publishing new rule")
-	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
-		publishDataIfEnabled,
-		r.client.AccountId,
-	)
-	if err != nil {
+	if err := r.publishInternetFirewallRevision(ctx); err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewallPublishPolicyRevision error",
 			err.Error(),
@@ -2543,6 +2537,19 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
 	body, err := r.getIfwClient().PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
 	if err != nil {
+		if isInternetFirewallSubPolicyDecodeError(err) {
+			ruleID := createRuleResponse.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID
+			if err := setInternetFirewallRuleID(ctx, &plan, ruleID); err != nil {
+				resp.Diagnostics.AddError(
+					"Internet Firewall rule state error",
+					err.Error(),
+				)
+				return
+			}
+			diags = resp.State.Set(ctx, plan)
+			resp.Diagnostics.Append(diags...)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
 			err.Error(),
@@ -2606,21 +2613,39 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.getIfwClient().PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewall error",
-			err.Error(),
-		)
-		return
-	}
-
-	//retrieve rule ID
+	// retrieve rule ID
 	rule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
 	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
+	body, err := r.getIfwClient().PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
+	if err != nil {
+		if isInternetFirewallSubPolicyDecodeError(err) {
+			ruleExist, fallbackErr := r.internetFirewallRuleExists(ctx, rule.ID.ValueString())
+			if fallbackErr != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API PolicyInternetFirewall fallback error",
+					fallbackErr.Error(),
+				)
+				return
+			}
+			if !ruleExist {
+				tflog.Warn(ctx, "internet firewall rule not found, resource removed")
+				resp.State.RemoveResource(ctx)
+				return
+			}
+			diags = resp.State.Set(ctx, state)
+			resp.Diagnostics.Append(diags...)
+			return
+		}
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicyInternetFirewall error",
+			err.Error(),
+		)
 		return
 	}
 
@@ -2684,6 +2709,54 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
 	diags = append(diags, diagstmp...)
 
+}
+
+type internetFirewallRuleExistsResponse struct {
+	Policy *struct {
+		InternetFirewall *struct {
+			Policy *struct {
+				Rules []*struct {
+					Rule *struct {
+						ID string `json:"id"`
+					} `json:"rule"`
+				} `json:"rules"`
+			} `json:"policy"`
+		} `json:"internetFirewall"`
+	} `json:"policy"`
+}
+
+const internetFirewallRuleExistsDocument = `query policyInternetFirewallRuleExists($accountId: ID!) {
+  policy(accountId: $accountId) {
+    internetFirewall {
+      policy {
+        rules {
+          rule {
+            id
+          }
+        }
+      }
+    }
+  }
+}`
+
+func (r *internetFwRuleResource) internetFirewallRuleExists(ctx context.Context, ruleID string) (bool, error) {
+	var res internetFirewallRuleExistsResponse
+	vars := map[string]any{
+		"accountId": r.client.AccountId,
+	}
+	err := r.client.catov2.Client.Post(ctx, "policyInternetFirewallRuleExists", internetFirewallRuleExistsDocument, &res, vars)
+	if err != nil {
+		return false, err
+	}
+	if res.Policy == nil || res.Policy.InternetFirewall == nil || res.Policy.InternetFirewall.Policy == nil {
+		return false, fmt.Errorf("empty response")
+	}
+	for _, rulePayload := range res.Policy.InternetFirewall.Policy.Rules {
+		if rulePayload != nil && rulePayload.Rule != nil && rulePayload.Rule.ID == ruleID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (r *internetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -2782,14 +2855,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 
 	//publishing new rule
 	tflog.Info(ctx, "publishing new rule")
-	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
-		publishDataIfEnabled,
-		r.client.AccountId,
-	)
-	if err != nil {
+	if err := r.publishInternetFirewallRevision(ctx); err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewallPublishPolicyRevision error",
 			err.Error(),
@@ -2801,6 +2867,24 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
 	body, err := r.getIfwClient().PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
 	if err != nil {
+		if isInternetFirewallSubPolicyDecodeError(err) {
+			ruleExist, fallbackErr := r.internetFirewallRuleExists(ctx, ruleInput.ID.ValueString())
+			if fallbackErr != nil {
+				resp.Diagnostics.AddError(
+					"Catov2 API PolicyInternetFirewall fallback error",
+					fallbackErr.Error(),
+				)
+				return
+			}
+			if !ruleExist {
+				tflog.Warn(ctx, "internet firewall rule not found, resource removed")
+				resp.State.RemoveResource(ctx)
+				return
+			}
+			diags = resp.State.Set(ctx, plan)
+			resp.Diagnostics.Append(diags...)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
 			err.Error(),
@@ -2888,20 +2972,245 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
-		publishDataIfEnabled,
-		r.client.AccountId,
-	)
-	if err != nil {
+	if err := r.publishInternetFirewallRevision(ctx); err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyInternetFirewallPublishPolicyRevision error",
 			err.Error(),
 		)
 		return
 	}
+}
+
+func (r *internetFwRuleResource) publishInternetFirewallRevision(ctx context.Context) error {
+	if r.client == nil || r.client.catov2 == nil || r.client.catov2.Client == nil {
+		_, err := r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			&cato_models.PolicyPublishRevisionInput{},
+			r.client.AccountId,
+		)
+		return err
+	}
+
+	var res ifSubPolicyPublishResponse
+	vars := map[string]any{
+		"accountId": r.client.AccountId,
+	}
+	err := r.client.catov2.Client.Post(ctx, "policyInternetFirewallPublishSubPolicyRevision", ifSubPolicyPublishDocument, &res, vars)
+	if err != nil {
+		return err
+	}
+	if res.Policy == nil || res.Policy.InternetFirewall == nil || res.Policy.InternetFirewall.PublishPolicyRevision == nil {
+		return fmt.Errorf("empty response")
+	}
+	if res.Policy.InternetFirewall.PublishPolicyRevision.Status != "SUCCESS" {
+		return formatIfSubPolicyErrors(res.Policy.InternetFirewall.PublishPolicyRevision.Errors)
+	}
+	return nil
+}
+
+func isInternetFirewallSubPolicyDecodeError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "SUB_POLICY is not a valid InternetFirewallActionEnum")
+}
+
+func setInternetFirewallRuleID(ctx context.Context, state *InternetFirewallRule, id string) error {
+	ruleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	diags := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		return fmt.Errorf("%v", diags.Errors())
+	}
+	ruleInput.ID = types.StringValue(id)
+	normalizedRule, err := normalizeInternetFirewallRuleAfterFallback(ctx, ruleInput)
+	if err != nil {
+		return err
+	}
+	ruleObject, diags := types.ObjectValueFrom(ctx, InternetFirewallRuleRuleAttrTypes, ruleInput)
+	if !normalizedRule.IsNull() && !normalizedRule.IsUnknown() {
+		ruleObject = normalizedRule
+	}
+	if diags.HasError() {
+		return fmt.Errorf("%v", diags.Errors())
+	}
+	state.Rule = ruleObject
+	return nil
+}
+
+func normalizeInternetFirewallRuleAfterFallback(ctx context.Context, ruleInput Policy_Policy_InternetFirewall_Policy_Rules_Rule) (types.Object, error) {
+	ruleInput.ConnectionOrigin = knownStringOrDefault(ruleInput.ConnectionOrigin, "ANY")
+
+	if ruleInput.Exceptions.IsNull() || ruleInput.Exceptions.IsUnknown() {
+		exceptions, diags := types.SetValue(types.ObjectType{AttrTypes: IfwExceptionAttrTypes}, []attr.Value{})
+		if diags.HasError() {
+			return types.ObjectNull(InternetFirewallRuleRuleAttrTypes), fmt.Errorf("%v", diags.Errors())
+		}
+		ruleInput.Exceptions = exceptions
+	}
+
+	activePeriod, err := normalizeInternetFirewallActivePeriod(ruleInput.ActivePeriod)
+	if err != nil {
+		return types.ObjectNull(InternetFirewallRuleRuleAttrTypes), err
+	}
+	ruleInput.ActivePeriod = activePeriod
+
+	schedule, err := normalizeInternetFirewallSchedule(ruleInput.Schedule)
+	if err != nil {
+		return types.ObjectNull(InternetFirewallRuleRuleAttrTypes), err
+	}
+	ruleInput.Schedule = schedule
+
+	tracking, err := normalizeInternetFirewallTracking(ruleInput.Tracking)
+	if err != nil {
+		return types.ObjectNull(InternetFirewallRuleRuleAttrTypes), err
+	}
+	ruleInput.Tracking = tracking
+
+	ruleObject, diags := types.ObjectValueFrom(ctx, InternetFirewallRuleRuleAttrTypes, ruleInput)
+	if diags.HasError() {
+		return types.ObjectNull(InternetFirewallRuleRuleAttrTypes), fmt.Errorf("%v", diags.Errors())
+	}
+	return ruleObject, nil
+}
+
+func normalizeInternetFirewallActivePeriod(activePeriod types.Object) (types.Object, error) {
+	effectiveFrom := types.StringNull()
+	expiresAt := types.StringNull()
+	useEffectiveFrom := types.BoolValue(false)
+	useExpiresAt := types.BoolValue(false)
+
+	if !activePeriod.IsNull() && !activePeriod.IsUnknown() {
+		attrs := activePeriod.Attributes()
+		effectiveFrom = stringAttrOrNull(attrs["effective_from"])
+		expiresAt = stringAttrOrNull(attrs["expires_at"])
+		useEffectiveFrom = boolAttrOrDefault(attrs["use_effective_from"], stringIsSet(effectiveFrom))
+		useExpiresAt = boolAttrOrDefault(attrs["use_expires_at"], stringIsSet(expiresAt))
+	}
+
+	obj, diags := types.ObjectValue(
+		ActivePeriodAttrTypes,
+		map[string]attr.Value{
+			"effective_from":     effectiveFrom,
+			"expires_at":         expiresAt,
+			"use_effective_from": useEffectiveFrom,
+			"use_expires_at":     useExpiresAt,
+		},
+	)
+	if diags.HasError() {
+		return types.ObjectNull(ActivePeriodAttrTypes), fmt.Errorf("%v", diags.Errors())
+	}
+	return obj, nil
+}
+
+func normalizeInternetFirewallSchedule(schedule types.Object) (types.Object, error) {
+	activeOn := types.StringValue("ALWAYS")
+	customTimeframe := types.ObjectNull(FromToAttrTypes)
+	customRecurring := types.ObjectNull(FromToDaysAttrTypes)
+
+	if !schedule.IsNull() && !schedule.IsUnknown() {
+		attrs := schedule.Attributes()
+		activeOn = knownStringOrDefault(stringAttrOrNull(attrs["active_on"]), "ALWAYS")
+		if obj, ok := attrs["custom_timeframe"].(types.Object); ok && !obj.IsUnknown() {
+			customTimeframe = obj
+		}
+		if obj, ok := attrs["custom_recurring"].(types.Object); ok && !obj.IsUnknown() {
+			customRecurring = obj
+		}
+	}
+
+	obj, diags := types.ObjectValue(
+		ScheduleAttrTypes,
+		map[string]attr.Value{
+			"active_on":        activeOn,
+			"custom_timeframe": customTimeframe,
+			"custom_recurring": customRecurring,
+		},
+	)
+	if diags.HasError() {
+		return types.ObjectNull(ScheduleAttrTypes), fmt.Errorf("%v", diags.Errors())
+	}
+	return obj, nil
+}
+
+func normalizeInternetFirewallTracking(tracking types.Object) (types.Object, error) {
+	eventEnabled := types.BoolValue(false)
+	alertEnabled := types.BoolValue(false)
+	alertFrequency := types.StringValue("HOURLY")
+
+	if !tracking.IsNull() && !tracking.IsUnknown() {
+		attrs := tracking.Attributes()
+		if eventObj, ok := attrs["event"].(types.Object); ok && !eventObj.IsNull() && !eventObj.IsUnknown() {
+			eventEnabled = boolAttrOrDefault(eventObj.Attributes()["enabled"], false)
+		}
+		if alertObj, ok := attrs["alert"].(types.Object); ok && !alertObj.IsNull() && !alertObj.IsUnknown() {
+			alertAttrs := alertObj.Attributes()
+			alertEnabled = boolAttrOrDefault(alertAttrs["enabled"], false)
+			alertFrequency = knownStringOrDefault(stringAttrOrNull(alertAttrs["frequency"]), "HOURLY")
+		}
+	}
+
+	eventObj, diags := types.ObjectValue(
+		TrackingEventAttrTypes,
+		map[string]attr.Value{
+			"enabled": eventEnabled,
+		},
+	)
+	if diags.HasError() {
+		return types.ObjectNull(TrackingAttrTypes), fmt.Errorf("%v", diags.Errors())
+	}
+
+	emptyNameIDSet, diags := types.SetValue(NameIDObjectType, []attr.Value{})
+	if diags.HasError() {
+		return types.ObjectNull(TrackingAttrTypes), fmt.Errorf("%v", diags.Errors())
+	}
+	alertObj, diags := types.ObjectValue(
+		TrackingAlertAttrTypes,
+		map[string]attr.Value{
+			"enabled":            alertEnabled,
+			"frequency":          alertFrequency,
+			"subscription_group": emptyNameIDSet,
+			"webhook":            emptyNameIDSet,
+			"mailing_list":       emptyNameIDSet,
+		},
+	)
+	if diags.HasError() {
+		return types.ObjectNull(TrackingAttrTypes), fmt.Errorf("%v", diags.Errors())
+	}
+
+	obj, diags := types.ObjectValue(
+		TrackingAttrTypes,
+		map[string]attr.Value{
+			"event": eventObj,
+			"alert": alertObj,
+		},
+	)
+	if diags.HasError() {
+		return types.ObjectNull(TrackingAttrTypes), fmt.Errorf("%v", diags.Errors())
+	}
+	return obj, nil
+}
+
+func knownStringOrDefault(value types.String, defaultValue string) types.String {
+	if value.IsNull() || value.IsUnknown() || value.ValueString() == "" {
+		return types.StringValue(defaultValue)
+	}
+	return value
+}
+
+func stringAttrOrNull(value attr.Value) types.String {
+	if stringValue, ok := value.(types.String); ok && !stringValue.IsUnknown() {
+		return stringValue
+	}
+	return types.StringNull()
+}
+
+func boolAttrOrDefault(value attr.Value, defaultValue bool) types.Bool {
+	if boolValue, ok := value.(types.Bool); ok && !boolValue.IsNull() && !boolValue.IsUnknown() {
+		return boolValue
+	}
+	return types.BoolValue(defaultValue)
+}
+
+func stringIsSet(value types.String) bool {
+	return !value.IsNull() && !value.IsUnknown() && value.ValueString() != ""
 }
 
 // IFW Rule Schema validation fuctions

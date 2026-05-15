@@ -232,9 +232,8 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
-	tflog.Debug(ctx, "Read.PolicyInternetFirewall.response", map[string]interface{}{
+	body, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndex.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
 	if err != nil {
@@ -253,7 +252,15 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	sectionList := body.GetPolicy().InternetFirewall.Policy.GetSections()
+	if body == nil || body.Policy == nil || body.Policy.InternetFirewall == nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API error",
+			"empty PolicyInternetFirewallSectionsIndex response",
+		)
+		return
+	}
+
+	sectionList := body.Policy.InternetFirewall.Policy.Sections
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
 		if sectionListItem.GetSection().ID == section.Id.ValueString() {
