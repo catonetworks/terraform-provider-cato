@@ -91,6 +91,11 @@ type Ref struct {
 	ID   string `json:"id"`
 }
 
+type testI interface {
+	Fatalf(format string, args ...any)
+	Logf(format string, args ...any)
+}
+
 var (
 	catoClient          *cato.Client
 	testConnectorGroups []string
@@ -113,7 +118,7 @@ func GetRandName(resource string) string {
 	return "acctest_" + resource + "_" + string(bytes)
 }
 
-func CheckCMAVars(t *testing.T) func() {
+func CheckCMAVars(t testI) func() {
 	return func() {
 		for _, envVar := range []string{envCatoToken, envCatoAccountID, envCatoEndpoint} {
 			if os.Getenv(envVar) == "" {
@@ -145,7 +150,7 @@ func PrintAttributes(resource string) func(st *terraform.State) error {
 	}
 }
 
-func GetClient(t *testing.T) *cato.Client {
+func GetClient(t testI) *cato.Client {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoClient == nil {
@@ -160,7 +165,7 @@ func GetClient(t *testing.T) *cato.Client {
 	return catoClient
 }
 
-func GetConnectorGroups(t *testing.T) []string {
+func GetConnectorGroups(t testI) []string {
 	const testAppConn1 = "acctest_app_connector_1"
 	const testAppConnGroup1 = "acctest_app_connector_group_1"
 	client := GetClient(t)
@@ -174,7 +179,7 @@ func GetConnectorGroups(t *testing.T) []string {
 		if err == nil {
 			group := result.GetZtnaAppConnector().GetZtnaAppConnector().GetGroupName()
 			if group == "" {
-				t.Fatal("ERROR getting app-connector group: group is empty")
+				t.Fatalf("ERROR getting app-connector group: group is empty")
 			}
 			testConnectorGroups = []string{group} // TODO: is 1 group enough?
 			return testConnectorGroups
@@ -302,7 +307,7 @@ func ProviderCfg() string {
 }
 
 // getEntities is a generic function to call entityLookup API and return a []Ref (name and ID of the entities)
-func getEntities(t *testing.T, entityType string) (refs []Ref) {
+func getEntities(t testI, entityType string) (refs []Ref) {
 	var res entityResp
 	query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) ` +
 		`{entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
@@ -348,7 +353,7 @@ func getEntities(t *testing.T, entityType string) (refs []Ref) {
 	return refs
 }
 
-func getFromVars(t *testing.T, varName string) []Ref {
+func getFromVars(t testI, varName string) []Ref {
 	mu.Lock()
 	defer mu.Unlock()
 	refs := resourceRefs[varName]

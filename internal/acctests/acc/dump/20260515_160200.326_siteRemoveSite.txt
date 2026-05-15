@@ -1,0 +1,6 @@
+traceID: 5298685036193779621  [2026-05-15 16:02:00]
+Resource:
+Action:
+Duration:2.046079792s
+{"operationName":"siteRemoveSite","query":"mutation siteRemoveSite ($siteId: ID!, $accountId: ID!) {\n\tsite(accountId: $accountId) {\n\t\tremoveSite(siteId: $siteId) {\n\t\t\tsiteId\n\t\t}\n\t}\n}\n","variables":{"accountId":"62440","siteId":"526197"}}
+{"data":{"site":{"removeSite":{"siteId":"526197"}}}}

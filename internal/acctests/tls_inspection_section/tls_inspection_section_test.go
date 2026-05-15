@@ -1,6 +1,6 @@
 //go:build acctest
 
-package internet_fw_section
+package tls_inspection_section
 
 import (
 	"bytes"
@@ -14,12 +14,12 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-func TestAccInternetFwSection(t *testing.T) {
-	mockSrv := accmock.NewMockServer(t, "TestAccInternetFwSection")
+func TestAccTlsInspectionSection(t *testing.T) {
+	mockSrv := accmock.NewMockServer(t, "TestAccTlsInspectionSection")
 	defer mockSrv.Close()
 	mockSrv.Run()
-	cfg := newInternetFwSectionCfg(t)
-	res := "cato_if_section.this"
+	cfg := newTlsInspectionSectionCfg(t)
+	res := "cato_tls_section.this"
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
@@ -43,20 +43,20 @@ func TestAccInternetFwSection(t *testing.T) {
 	})
 }
 
-type internetFwSectionCfg struct {
+type tlsInspectionSectionCfg struct {
 	resName string
 	t       *testing.T
 }
 
-func newInternetFwSectionCfg(t *testing.T) internetFwSectionCfg {
-	return internetFwSectionCfg{
-		resName: acc.GetRandName("internet_fw_section"),
+func newTlsInspectionSectionCfg(t *testing.T) tlsInspectionSectionCfg {
+	return tlsInspectionSectionCfg{
+		resName: acc.GetRandName("tls_inspection_section"),
 		t:       t,
 	}
 }
 
-func (p internetFwSectionCfg) getTfConfig(index int) string {
-	tmpl, err := template.New("tmpl").Parse(internetFwSectionTFs[index])
+func (p tlsInspectionSectionCfg) getTfConfig(index int) string {
+	tmpl, err := template.New("tmpl").Parse(tlsInspectionSectionTFs[index])
 	if err != nil {
 		p.t.Fatal(err)
 	}
@@ -73,8 +73,8 @@ func (p internetFwSectionCfg) getTfConfig(index int) string {
 	return cfg
 }
 
-var internetFwSectionTFs = []string{
-	`resource "cato_if_section" "this" {
+var tlsInspectionSectionTFs = []string{
+	`resource "cato_tls_section" "this" {
 		at = {
 			position = "LAST_IN_POLICY"
 		}
