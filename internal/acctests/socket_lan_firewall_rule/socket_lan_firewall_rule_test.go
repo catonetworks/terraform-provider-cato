@@ -153,10 +153,6 @@ func socketLanFirewallRuleChecks(res string, cfg socketLanFirewallRuleCfg, name,
 		resource.TestCheckResourceAttr(res, "rule.destination.ip_range.#", "1"),
 		resource.TestCheckResourceAttr(res, "rule.destination.ip_range.0.from", "192.0.2.20"),
 		resource.TestCheckResourceAttr(res, "rule.destination.ip_range.0.to", "192.0.2.30"),
-		resource.TestCheckResourceAttr(res, "rule.destination.network_interface.#", "1"),
-		resource.TestCheckTypeSetElemNestedAttrs(res, "rule.destination.network_interface.*",
-			map[string]string{"id": cfg.interfaces[0].ID},
-		),
 		resource.TestCheckResourceAttr(res, "rule.destination.site.#", "1"),
 		resource.TestCheckTypeSetElemNestedAttrs(res, "rule.destination.site.*",
 			map[string]string{"name": cfg.resName},
@@ -211,10 +207,6 @@ func socketLanFirewallRuleChecks(res string, cfg socketLanFirewallRuleCfg, name,
 		resource.TestCheckResourceAttr(res, "rule.source.ip_range.0.to", "10.99.12.20"),
 		resource.TestCheckResourceAttr(res, "rule.source.mac.#", "1"),
 		resource.TestCheckResourceAttr(res, "rule.source.mac.0", "00:11:22:33:44:55"),
-		resource.TestCheckResourceAttr(res, "rule.source.network_interface.#", "1"),
-		resource.TestCheckTypeSetElemNestedAttrs(res, "rule.source.network_interface.*",
-			map[string]string{"id": cfg.interfaces[0].ID},
-		),
 		resource.TestCheckResourceAttr(res, "rule.source.site.#", "1"),
 		resource.TestCheckTypeSetElemNestedAttrs(res, "rule.source.site.*",
 			map[string]string{"name": cfg.resName},
@@ -282,9 +274,6 @@ var socketLanFirewallRuleSimpleTFs = []string{
 				system_group = [
 					{ id = "{{ (index .SystemGroups 0).ID }}" },
 				]
-				network_interface = [
-					{ id = "{{ (index .Interfaces 0).ID }}" },
-				]
 				global_ip_range = [
 					{ id = "{{ (index .GlobalIPRanges 0).ID }}" },
 				]
@@ -313,9 +302,6 @@ var socketLanFirewallRuleSimpleTFs = []string{
 				]
 				system_group = [
 					{ id = "{{ (index .SystemGroups 0).ID }}" },
-				]
-				network_interface = [
-					{ id = "{{ (index .Interfaces 0).ID }}" },
 				]
 				global_ip_range = [
 					{ id = "{{ (index .GlobalIPRanges 0).ID }}" },
@@ -404,9 +390,6 @@ var socketLanFirewallRuleSimpleTFs = []string{
 				system_group = [
 					{ id = "{{ (index .SystemGroups 0).ID }}" },
 				]
-				network_interface = [
-					{ id = "{{ (index .Interfaces 0).ID }}" },
-				]
 				global_ip_range = [
 					{ id = "{{ (index .GlobalIPRanges 0).ID }}" },
 				]
@@ -435,9 +418,6 @@ var socketLanFirewallRuleSimpleTFs = []string{
 				]
 				system_group = [
 					{ id = "{{ (index .SystemGroups 0).ID }}" },
-				]
-				network_interface = [
-					{ id = "{{ (index .Interfaces 0).ID }}" },
 				]
 				global_ip_range = [
 					{ id = "{{ (index .GlobalIPRanges 0).ID }}" },
