@@ -19,6 +19,7 @@ import (
 
 // TestAccIpsecSite_Basic tests basic CRUD operations for cato_ipsec_site resource.
 func TestAccIpsecSite_Basic(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIpsecSite_Basic")
 	defer mockSrv.Close()
 	mockSrv.Run()

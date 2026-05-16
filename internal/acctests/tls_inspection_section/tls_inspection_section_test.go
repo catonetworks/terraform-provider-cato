@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccTlsInspectionSection(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccTlsInspectionSection")
 	defer mockSrv.Close()
 	mockSrv.Run()

@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccGroupMembers(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccGroupMembers")
 	defer mockSrv.Close()
 	mockSrv.Run()

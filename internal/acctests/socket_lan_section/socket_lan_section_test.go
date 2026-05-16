@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccSocketLanSection(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccSocketLanSection")
 	defer mockSrv.Close()
 	mockSrv.Run()

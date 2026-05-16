@@ -16,6 +16,7 @@ import (
 )
 
 func TestAccPrivateApp(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccPrivateApp")
 	defer mockSrv.Close()
 	mockSrv.Run()

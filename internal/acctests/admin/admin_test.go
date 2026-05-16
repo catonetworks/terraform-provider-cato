@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccAdmin(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccAdmin")
 	defer mockSrv.Close()
 	mockSrv.Run()

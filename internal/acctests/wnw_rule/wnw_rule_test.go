@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccWanNetwork_Simple(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccWanNetwork_Simple")
 	defer mockSrv.Close()
 	mockSrv.Run()

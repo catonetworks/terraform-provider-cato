@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccSocketLanNetworkRule_Simple(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccSocketLanNetworkRule_Simple")
 	defer mockSrv.Close()
 	mockSrv.Run()

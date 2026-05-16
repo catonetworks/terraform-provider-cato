@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccInternetFw_Simple(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Simple")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -88,7 +89,7 @@ func TestAccInternetFw_Simple(t *testing.T) {
 }
 
 func TestAccInternetFw_IDName(t *testing.T) {
-	t.Skip("Know bug")
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_IDName")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -112,7 +113,7 @@ func TestAccInternetFw_IDName(t *testing.T) {
 
 // TestAccInternetFw_Timeframe tests the datetime format - it should be returned in RFC3339
 func TestAccInternetFw_Timeframe(t *testing.T) {
-	t.Skip("Know bug")
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Timeframe")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -135,7 +136,7 @@ func TestAccInternetFw_Timeframe(t *testing.T) {
 }
 
 func TestAccInternetFw_UserID(t *testing.T) {
-	t.Skip("Know bug")
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_UserID")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -229,7 +230,7 @@ func TestAccInternetFw_UserID(t *testing.T) {
 	})
 }
 func TestAccInternetFw_Full(t *testing.T) {
-	t.Skip("Know bug")
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Full")
 	defer mockSrv.Close()
 	mockSrv.Run()

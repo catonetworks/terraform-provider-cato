@@ -4,6 +4,7 @@ package acc
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -19,26 +20,26 @@ import (
 //	}'
 type CMAVars map[string][]Ref
 
-// type CMAVars struct {
-// 	Users            []Ref `json:"users"`
-// 	GlobalIPRanges   []Ref `json:"global_ip_ranges"`
-// 	FloatingRanges   []Ref `json:"floating_ranges"`
-// 	UserGroups       []Ref `json:"user_groups"`
-// 	SystemGroups     []Ref `json:"system_groups"`
-// 	DevicePostures   []Ref `json:"device_postures"`
-// 	CustomApps       []Ref `json:"custom_apps"`
-// 	CustomCategories []Ref `json:"custom_categories"`
-// }
+// SkipTests defines variables for skipping tests, used as a workaround until the API is fixed
+// Map [TestFunctionName]Reason
+//
+//	TFACC_TEST_SKIP='{
+//	  "TestAccPrivAccessPolicy": "ENG-184376 - Rule has an invalid entity: SubscriptionMailingList"
+//	}'
+type SkipTests map[string]string
 
 const (
 	accTestVariable = "TFACC_TEST_VARS"
+	accTestSkipVar  = "TFACC_TEST_SKIP"
 )
 
 var cmaVars CMAVars
+var skipTests SkipTests
 
 // initialize the test package
 func init() { //nolint:gochecknoinits
 	readVarsFromEnv()
+	readSkipFromEnv()
 }
 
 func readVarsFromEnv() {
@@ -49,5 +50,17 @@ func readVarsFromEnv() {
 	err := json.Unmarshal([]byte(v), &cmaVars)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func readSkipFromEnv() {
+	skipTests = make(SkipTests)
+	v := os.Getenv(accTestSkipVar)
+	if v == "" {
+		return
+	}
+	err := json.Unmarshal([]byte(v), &skipTests)
+	if err != nil {
+		fmt.Printf("error unmarshalling skip tests variable '%s': %v\n", accTestSkipVar, err)
 	}
 }

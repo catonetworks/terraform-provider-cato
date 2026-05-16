@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccLanInterface(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccLanInterface")
 	defer mockSrv.Close()
 	mockSrv.Run()

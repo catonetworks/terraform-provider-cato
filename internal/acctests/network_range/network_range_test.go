@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccNetworkRange(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccNetworkRange")
 	defer mockSrv.Close()
 	mockSrv.Run()

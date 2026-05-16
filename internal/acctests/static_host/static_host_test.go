@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccStaticHost(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccStaticHost")
 	defer mockSrv.Close()
 	mockSrv.Run()

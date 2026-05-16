@@ -10,6 +10,8 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -67,6 +69,7 @@ type entityResp struct {
 	Data   entityData  `json:"data"`
 	Errors []respError `json:"errors"`
 }
+
 type respError struct {
 	Msg  string   `json:"message"`
 	Path []string `json:"path"`
@@ -75,12 +78,15 @@ type respError struct {
 type entityData struct {
 	EntityLookup entityLookup `json:"entityLookup"`
 }
+
 type entityLookup struct {
 	Items []entityItem `json:"items"`
 }
+
 type entityItem struct {
 	Entity entityDetail `json:"entity"`
 }
+
 type entityDetail struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -147,6 +153,21 @@ func PrintAttributes(resource string) func(st *terraform.State) error {
 			fmt.Printf("\t%s: %s\n", k, attrs[k])
 		}
 		return nil
+	}
+}
+
+var funcPrefixRE = regexp.MustCompile(`^.*\.`)
+
+func SkipByEnv(t *testing.T) {
+	pc, _, _, ok := runtime.Caller(1)
+	if !ok {
+		fmt.Println("could not get caller")
+		return
+	}
+
+	funcName := funcPrefixRE.ReplaceAllString(runtime.FuncForPC(pc).Name(), "")
+	if details, ok := skipTests[funcName]; ok {
+		t.Skipf("skipping test '%s': %s", funcName, details)
 	}
 }
 

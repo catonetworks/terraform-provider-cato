@@ -15,6 +15,7 @@ import (
 )
 
 func TestAccTlsRule_Simple(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccTlsRule_Simple")
 	defer mockSrv.Close()
 	mockSrv.Run()

@@ -16,7 +16,7 @@ import (
 )
 
 func TestAccLicense(t *testing.T) {
-	t.Skip("No license IDs available")
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccLicense")
 	defer mockSrv.Close()
 	mockSrv.Run()
