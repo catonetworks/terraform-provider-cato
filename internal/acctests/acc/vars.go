@@ -56,6 +56,7 @@ func readVarsFromEnv() {
 func readSkipFromEnv() {
 	skipTests = make(SkipTests)
 	v := os.Getenv(accTestSkipVar)
+	fmt.Printf("readSkipFromEnv: XXXX '%s' = '%s'\n", accTestSkipVar, v)
 	if v == "" {
 		return
 	}
@@ -63,4 +64,5 @@ func readSkipFromEnv() {
 	if err != nil {
 		fmt.Printf("error unmarshalling skip tests variable '%s': %v\n", accTestSkipVar, err)
 	}
+	fmt.Printf("readSkipFromEnv: XXXX %s: %#v\n", accTestSkipVar, skipTests)
 }
