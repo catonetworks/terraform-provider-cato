@@ -62,6 +62,6 @@ for tdir in $test_dirs; do
 	retry_test "$OUT/$log_file" "$i" "$count" "$tdir"
 done
 
-cat "$OUT/"* | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all --follow
+cat "$OUT/"* | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 if [ "$result" = ok ]; then exit 0; fi
 exit 1

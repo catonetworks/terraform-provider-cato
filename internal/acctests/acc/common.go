@@ -167,10 +167,7 @@ func SkipByEnv(t *testing.T) {
 
 	funcName := funcPrefixRE.ReplaceAllString(runtime.FuncForPC(pc).Name(), "")
 	if details, ok := skipTests[funcName]; ok {
-		fmt.Printf("XXXXX SKIPPING %s\n", funcName)
 		t.Skipf("skipping test '%s': %s", funcName, details)
-	} else {
-		fmt.Printf("XXXXX NOT SKIPPING %s %#v\n", funcName, skipTests)
 	}
 }
 

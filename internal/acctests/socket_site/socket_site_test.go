@@ -183,6 +183,7 @@ func TestAccSocketSite_Location(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
+
 					resource.TestCheckResourceAttr(res, "native_range.%", "17"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_dest_type", "LAN"),
 					resource.TestCheckResourceAttrSet(res, "native_range.interface_id"),
@@ -196,6 +197,7 @@ func TestAccSocketSite_Location(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "native_range.range_name", "Native Range"),
 					resource.TestCheckResourceAttr(res, "native_range.range_type", "NATIVE"),
 					resource.TestCheckResourceAttr(res, "native_range.translated_subnet", "192.168.130.0/24"),
+
 					resource.TestCheckResourceAttr(res, "site_location.%", "5"),
 					resource.TestCheckResourceAttr(res, "site_location.country_code", "US"),
 					resource.TestCheckResourceAttr(res, "site_location.state_code", "US-CA"),
