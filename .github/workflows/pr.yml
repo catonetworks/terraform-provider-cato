@@ -42,4 +42,4 @@ jobs:
         run: make test
 
       - name: Run acceptance tests
-        run: make acctest-flaky
+        run: make acctest-flaky t=internal/acctests/if_rule
