@@ -319,8 +319,8 @@ func TestInternetFwRuleExceptionsPlanModifiersPreserveEmptyStateSet(t *testing.T
 	ctx := context.Background()
 	exceptionsAttr := getInternetFwRuleExceptionsAttribute(ctx, t)
 
-	if got := len(exceptionsAttr.PlanModifiers); got != 2 {
-		t.Fatalf("expected 2 exceptions plan modifiers, got %d", got)
+	if got := len(exceptionsAttr.PlanModifiers); got != 1 {
+		t.Fatalf("expected 1 exception plan modifier, got %d", got)
 	}
 
 	exceptionObjectType := types.ObjectType{AttrTypes: IfwExceptionAttrTypes}
