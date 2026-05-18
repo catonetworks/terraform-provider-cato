@@ -8,14 +8,15 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 func TestAccPrivAccessPolicy(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccPrivAccessPolicy")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -63,7 +64,7 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 					resource.TestCheckResourceAttr(resRule, "devices.#", "1"),
 					resource.TestCheckResourceAttr(resRule, "devices.0.%", "2"),
 					resource.TestCheckResourceAttrSet(resRule, "devices.0.id"),
-					resource.TestCheckResourceAttr(resRule, "devices.0.name", "Test device posture 1"),
+					resource.TestCheckResourceAttr(resRule, "devices.0.name", cfg.devices[0].Name),
 					resource.TestCheckResourceAttr(resRule, "enabled", "true"),
 					resource.TestCheckResourceAttr(resRule, "name", cfg.resName),
 					resource.TestCheckResourceAttr(resRule, "platforms.#", "2"),
@@ -153,7 +154,7 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 					resource.TestCheckResourceAttr(resRule, "devices.#", "1"),
 					resource.TestCheckResourceAttr(resRule, "devices.0.%", "2"),
 					resource.TestCheckResourceAttrSet(resRule, "devices.0.id"),
-					resource.TestCheckResourceAttr(resRule, "devices.0.name", "Test device posture 1"),
+					resource.TestCheckResourceAttr(resRule, "devices.0.name", cfg.devices[0].Name),
 					resource.TestCheckResourceAttr(resRule, "enabled", "true"),
 					resource.TestCheckResourceAttr(resRule, "name", cfg.resName),
 					resource.TestCheckResourceAttr(resRule, "platforms.#", "1"),
@@ -210,8 +211,8 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 
 type privAccessPolicyCfg struct {
 	resName            string
-	applications       acc.TestPrivateApps
-	users              acc.TestUsers
+	applications       []acc.Ref
+	users              []acc.Ref
 	userGroups         []acc.Ref
 	devices            []acc.Ref
 	subscriptionGroups []acc.Ref
@@ -225,11 +226,11 @@ func newPrivAccessPolicyCfg(t *testing.T) privAccessPolicyCfg {
 		resName:            acc.GetRandName("private_access_policy"),
 		applications:       acc.GetPrivateApps(t),
 		users:              acc.GetUsers(t),
-		userGroups:         []acc.Ref{{Name: "group-1"}},               // TODO: fetch dynamically
-		devices:            []acc.Ref{{Name: "Test device posture 1"}}, // TODO: fetch dynamically
-		subscriptionGroups: []acc.Ref{{Name: "subscription_group"}},    // TODO: fetch dynamically
-		webhooks:           []acc.Ref{{Name: "webhook_1"}},             // TODO: fetch dynamically
-		mailingLists:       []acc.Ref{{Name: "mailing_list"}},          // TODO: fetch dynamically
+		userGroups:         acc.GetUserGroups(t),
+		devices:            acc.GetDevicePostures(t),
+		subscriptionGroups: acc.GetSubscriptionGroups(t),
+		webhooks:           acc.GetWebhooks(t),
+		mailingLists:       acc.GetMailingLists(t),
 
 		t: t,
 	}

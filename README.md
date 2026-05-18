@@ -111,6 +111,7 @@ In order to run the full suite of Acceptance tests, run `make testacc`.
 ```sh
 make testacc
 ```
+Please refer to [Running TF Provider Tests](https://catonetworks.atlassian.net/wiki/spaces/RnD/pages/7257526403/Running+TF+Provider+Tests) for more details
 
 ## Helpful Terraform Aliases (Unix & Windows)
 

@@ -8,13 +8,14 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 func TestAccAdmin(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccAdmin")
 	defer mockSrv.Close()
 	mockSrv.Run()
