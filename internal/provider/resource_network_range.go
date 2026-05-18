@@ -40,6 +40,34 @@ type networkRangeResource struct {
 	client *catoClientData
 }
 
+func buildAddNetworkRangeInput(plan NetworkRange, mdnsReflector *bool) cato_models.AddNetworkRangeInput {
+	return cato_models.AddNetworkRangeInput{
+		Name:             plan.Name.ValueString(),
+		RangeType:        (cato_models.SubnetType)(plan.RangeType.ValueString()),
+		Subnet:           plan.Subnet.ValueString(),
+		LocalIP:          plan.LocalIp.ValueStringPointer(),
+		TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
+		Gateway:          plan.Gateway.ValueStringPointer(),
+		Vlan:             plan.Vlan.ValueInt64Pointer(),
+		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
+		MdnsReflector:    mdnsReflector,
+	}
+}
+
+func buildUpdateNetworkRangeInput(plan NetworkRange, mdnsReflector *bool, vlan *int64) cato_models.UpdateNetworkRangeInput {
+	return cato_models.UpdateNetworkRangeInput{
+		Name:             plan.Name.ValueStringPointer(),
+		RangeType:        (*cato_models.SubnetType)(plan.RangeType.ValueStringPointer()),
+		Subnet:           plan.Subnet.ValueStringPointer(),
+		LocalIP:          plan.LocalIp.ValueStringPointer(),
+		TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
+		Gateway:          plan.Gateway.ValueStringPointer(),
+		Vlan:             vlan,
+		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
+		MdnsReflector:    mdnsReflector,
+	}
+}
+
 func (r *networkRangeResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_network_range"
 }
@@ -333,17 +361,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// setting input
-	input := cato_models.AddNetworkRangeInput{
-		Name:             plan.Name.ValueString(),
-		RangeType:        (cato_models.SubnetType)(plan.RangeType.ValueString()),
-		Subnet:           plan.Subnet.ValueString(),
-		LocalIP:          plan.LocalIp.ValueStringPointer(),
-		TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),
-		Gateway:          plan.Gateway.ValueStringPointer(),
-		Vlan:             plan.Vlan.ValueInt64Pointer(),
-		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
-		MdnsReflector:    curMdnsReflector,
-	}
+	input := buildAddNetworkRangeInput(plan, curMdnsReflector)
 
 	// get planned DHCP settings Object value, or set default value if null (for VLAN Type)
 	var dhcpSettings DhcpSettings
@@ -665,17 +683,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// setting input
-	input := cato_models.UpdateNetworkRangeInput{
-		Name:             plan.Name.ValueStringPointer(),
-		RangeType:        (*cato_models.SubnetType)(plan.RangeType.ValueStringPointer()),
-		Subnet:           plan.Subnet.ValueStringPointer(),
-		LocalIP:          plan.LocalIp.ValueStringPointer(),
-		TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),
-		Gateway:          plan.Gateway.ValueStringPointer(),
-		Vlan:             vlanValue,
-		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
-		MdnsReflector:    curMdnsReflector,
-	}
+	input := buildUpdateNetworkRangeInput(plan, curMdnsReflector, vlanValue)
 
 	// get planned DHCP settings Object value, or set default value if null (for VLAN Type)
 	var dhcpSettings DhcpSettings
