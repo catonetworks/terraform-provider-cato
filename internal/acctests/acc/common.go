@@ -61,6 +61,7 @@ const (
 var (
 	CatoAccountID = os.Getenv(envCatoAccountID)
 	CatoToken     = os.Getenv(envCatoToken)
+	httpClient    = &http.Client{}
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -187,23 +188,24 @@ func GetConnectorGroups(t *testing.T) []string {
 	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
-	if testConnectorGroups == nil {
-		// try to fetch appConnectors
-
-		input := cato_models.ZtnaAppConnectorRefInput{By: cato_models.ObjectRefByName, Input: testAppConn1}
-		result, err := client.AppConnectorReadConnector(ctx, CatoAccountID, input)
-		if err == nil {
-			group := result.GetZtnaAppConnector().GetZtnaAppConnector().GetGroupName()
-			if group == "" {
-				t.Fatalf("ERROR getting app-connector group: group is empty")
-			}
-			testConnectorGroups = []string{group} // TODO: is 1 group enough?
-			return testConnectorGroups
-		}
+	if testConnectorGroups != nil {
+		return testConnectorGroups
 	}
 
-	// create a new app-connector
-	input := cato_models.AddZtnaAppConnectorInput{
+	// try to fetch appConnectors
+	fetchInput := cato_models.ZtnaAppConnectorRefInput{By: cato_models.ObjectRefByName, Input: testAppConn1}
+	result, err := client.AppConnectorReadConnector(ctx, CatoAccountID, fetchInput)
+	if err == nil {
+		group := result.GetZtnaAppConnector().GetZtnaAppConnector().GetGroupName()
+		if group == "" {
+			t.Fatalf("ERROR getting app-connector group: group is empty")
+		}
+		testConnectorGroups = []string{group} // TODO: is 1 group enough?
+		return testConnectorGroups
+	}
+
+	// nothing fetched, create a new app-connector
+	createInput := cato_models.AddZtnaAppConnectorInput{
 		GroupName: testAppConnGroup1,
 		Name:      testAppConn1,
 		Type:      cato_models.ZtnaAppConnectorTypeVirtual,
@@ -216,7 +218,7 @@ func GetConnectorGroups(t *testing.T) []string {
 			Automatic: true,
 		},
 	}
-	_, err := client.AppConnectorCreateConnector(ctx, CatoAccountID, input)
+	_, err = client.AppConnectorCreateConnector(ctx, CatoAccountID, createInput)
 	if err != nil {
 		t.Fatalf("Cato API AppConnectorCreateConnector error: %v", err.Error())
 	}
@@ -231,32 +233,35 @@ func GetPrivateApps(t *testing.T) []Ref {
 	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
+
 	testPrivateApps := resourceRefs[resPrivateApps]
-	if testPrivateApps == nil {
-		// try to fetch private apps
-		for _, paName := range []string{privateAppName1, privateAppName2} {
-			readInput := cato_models.PrivateApplicationRefInput{By: cato_models.ObjectRefByName, Input: paName}
-			result, err := client.PrivateAppReadPrivateApp(ctx, CatoAccountID, readInput)
-			if err == nil {
-				pa := result.GetPrivateApplication().GetPrivateApplication()
-				if pa.GetID() != "" {
-					testPrivateApps = append(testPrivateApps, Ref{ID: pa.GetID(), Name: pa.GetName()})
-					continue
-				}
+	if testPrivateApps != nil {
+		return testPrivateApps
+	}
+
+	// try to fetch private apps
+	for _, paName := range []string{privateAppName1, privateAppName2} {
+		readInput := cato_models.PrivateApplicationRefInput{By: cato_models.ObjectRefByName, Input: paName}
+		result, err := client.PrivateAppReadPrivateApp(ctx, CatoAccountID, readInput)
+		if err == nil {
+			pa := result.GetPrivateApplication().GetPrivateApplication()
+			if pa.GetID() != "" {
+				testPrivateApps = append(testPrivateApps, Ref{ID: pa.GetID(), Name: pa.GetName()})
+				continue
 			}
-			// create the app
-			input := cato_models.CreatePrivateApplicationInput{
-				Description:        ptr(paName + " description"),
-				InternalAppAddress: GetRandIP(),
-				Name:               paName,
-			}
-			res, err := client.PrivateAppCreatePrivateApp(ctx, CatoAccountID, input)
-			if err != nil {
-				t.Fatalf("ERROR creating test private app: %v", err)
-			}
-			pa := res.GetPrivateApplication().GetCreatePrivateApplication().GetApplication()
-			testPrivateApps = append(testPrivateApps, Ref{ID: pa.GetID(), Name: paName})
 		}
+		// create the app
+		input := cato_models.CreatePrivateApplicationInput{
+			Description:        ptr(paName + " description"),
+			InternalAppAddress: GetRandIP(),
+			Name:               paName,
+		}
+		res, err := client.PrivateAppCreatePrivateApp(ctx, CatoAccountID, input)
+		if err != nil {
+			t.Fatalf("ERROR creating test private app: %v", err)
+		}
+		pa := res.GetPrivateApplication().GetCreatePrivateApplication().GetApplication()
+		testPrivateApps = append(testPrivateApps, Ref{ID: pa.GetID(), Name: paName})
 	}
 	resourceRefs[resPrivateApps] = testPrivateApps
 	return testPrivateApps
@@ -278,43 +283,48 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 	client := GetClient(t)
 	mu.Lock()
 	defer mu.Unlock()
+
 	testAdvancedGroups := resourceRefs[resAdvancedGroups]
-	if testAdvancedGroups == nil {
-		// try to fetch groups
-		groupsInput := &cato_models.GroupListInput{
-			Filter: []*cato_models.GroupListFilterInput{
-				{Name: []*cato_models.AdvancedStringFilterInput{{Regex: ptr(groupRE)}}},
-			},
-			Paging: &cato_models.PagingInput{From: 0, Limit: 10},
-			Sort:   &cato_models.GroupListSortInput{Name: &cato_models.SortOrderInput{Direction: cato_models.SortOrderAsc}},
-		}
-		result, err := client.GroupsList(ctx, groupsInput, CatoAccountID)
-		var groupsFound []string
-		if err != nil {
-			t.Fatalf("failed to load groups: %v", err)
-			return nil
-		}
-
-		items := result.GetGroups().GetGroupList().GetItems()
-		for _, item := range items {
-			testAdvancedGroups = append(testAdvancedGroups, Ref{ID: item.GetID(), Name: item.GetName()})
-			groupsFound = append(groupsFound, item.GetName())
-		}
-		for _, groupName := range []string{groupName1, groupName2, groupName3} {
-			if slices.Contains(groupsFound, groupName) {
-				continue
-			}
-			// create the group
-			createGroupInput := cato_models.CreateGroupInput{Name: groupName, Description: ptr(groupName + " terraform tests")}
-			res, err := client.GroupsCreateGroup(ctx, createGroupInput, CatoAccountID)
-			if err != nil {
-				t.Fatalf("ERROR creating test group: %v", err)
-			}
-			testAdvancedGroups = append(testAdvancedGroups, Ref{ID: res.GetGroups().GetCreateGroup().GetGroup().GetID(), Name: groupName})
-		}
+	if testAdvancedGroups != nil {
+		return testAdvancedGroups
 	}
-	resourceRefs[resAdvancedGroups] = testAdvancedGroups
 
+	// try to fetch groups
+	groupsInput := &cato_models.GroupListInput{
+		Filter: []*cato_models.GroupListFilterInput{
+			{Name: []*cato_models.AdvancedStringFilterInput{{Regex: ptr(groupRE)}}},
+		},
+		Paging: &cato_models.PagingInput{From: 0, Limit: 10},
+		Sort:   &cato_models.GroupListSortInput{Name: &cato_models.SortOrderInput{Direction: cato_models.SortOrderAsc}},
+	}
+	result, err := client.GroupsList(ctx, groupsInput, CatoAccountID)
+	var groupsFound []string
+	if err != nil {
+		t.Fatalf("failed to load groups: %v", err)
+		return nil
+	}
+
+	items := result.GetGroups().GetGroupList().GetItems()
+	for _, item := range items {
+		testAdvancedGroups = append(testAdvancedGroups, Ref{ID: item.GetID(), Name: item.GetName()})
+		groupsFound = append(groupsFound, item.GetName())
+	}
+
+	// check if all groups were found, if not create the missing ones
+	for _, groupName := range []string{groupName1, groupName2, groupName3} {
+		if slices.Contains(groupsFound, groupName) {
+			continue
+		}
+		// create the group
+		createGroupInput := cato_models.CreateGroupInput{Name: groupName, Description: ptr(groupName + " terraform tests")}
+		res, err := client.GroupsCreateGroup(ctx, createGroupInput, CatoAccountID)
+		if err != nil {
+			t.Fatalf("ERROR creating test group: %v", err)
+		}
+		testAdvancedGroups = append(testAdvancedGroups, Ref{ID: res.GetGroups().GetCreateGroup().GetGroup().GetID(), Name: groupName})
+	}
+
+	resourceRefs[resAdvancedGroups] = testAdvancedGroups
 	return testAdvancedGroups
 }
 
@@ -337,8 +347,7 @@ func getEntities(t *testing.T, entityType string) (refs []Ref) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", CatoToken)
-	client := &http.Client{}
-	resp, err := client.Do(req) //nolint:gosec
+	resp, err := httpClient.Do(req) //nolint:gosec
 	if err != nil {
 		t.Fatalf("ERROR fetching %q: %v", entityType, err)
 	}
