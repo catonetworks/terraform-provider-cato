@@ -481,7 +481,7 @@ func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.
 		// Add LAN configuration for non-LAG member interfaces
 		input.Lan = &cato_models.SocketInterfaceLanInput{
 			Subnet:           plan.Subnet.ValueString(),
-			TranslatedSubnet: plan.TranslatedSubnet.ValueStringPointer(),
+			TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
 			LocalIP:          plan.LocalIp.ValueString(),
 		}
 
