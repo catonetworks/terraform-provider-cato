@@ -270,10 +270,3 @@ tfap
 ```
 
 If Terraform runs, your aliases are working.
-
-
-------------------------------------------------------------------------
-Wed May 13 09:05:48 CEST 2026 Town Hall
-- Schlomo
-  - State of the Market: 
-- CAB Customer Advisory Board (14 customers)
