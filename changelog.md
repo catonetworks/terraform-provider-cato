@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.75 (2026-05-18)
+- Fixed license handling for accounts with more than 1,000 sites and added defensive unit coverage.
+- Fixed `translated_subnet` handling for network range, LAN interface, and socket site native ranges to submit nil values correctly when unset.
+- Added broader Terraform acceptance test coverage across provider resources and cleanup workflows.
+- Updated the Cato Go SDK dependency.
+- Hardened socket site update flows with bounded retries for transient backend conflicts and improved connection type hydration.
+- Updated internet and WAN firewall rule hydration to send empty API objects/lists instead of null values for service and action configuration fields.
+
 ## 0.0.74 (2026-05-11)
 - Fixed `translated_subnet` handling for socket site native ranges to avoid state drift and preserve API-hydrated values correctly.
 
