@@ -45,7 +45,7 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 ## Definition of Done for agentic loop
 - Change is implemented with clear, maintainable code that follows existing patterns in internal/provider/.
 - Unit tests are added/updated for the behavior change and pass (make test).
-- Acceptance tests are added/updated when real API behavior changed, and pass when run (make acctest).
+- Acceptance tests are added/updated when real API behavior changed.
 - Imports and style checks pass (make sort-imports, make lint).
 - Documentation is updated and generated (make docs) to reflect the final behavior.
 - Example configuration in examples/ is updated to match the implementation and docs.
@@ -123,6 +123,6 @@ Violating this order will cause `make lint` to fail.
 
 ## Skills
 Find all skills in `.agents/skills/`
-- Use `code-review.md` to review code changes
-- Use `release.md` to release/publish a new version of this provider
-- Use `integration-test-mock.md` to prepare a mock of an integration test
+- Use `release/SKILL.md` to release a new version of this provider
+- Use `cato-provider-unit-tests/SKILL.md` to prepare unit tests
+- Use `integration-test-mock/SKILL.md` to prepare a mock of an integration test
