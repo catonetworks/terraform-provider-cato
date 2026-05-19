@@ -9,12 +9,12 @@ description: Write high-coverage Go unit tests for terraform-provider-cato resou
 
 Add focused unit tests that maximize coverage for the modified provider behavior without hitting the real Cato API. Prefer fast tests beside `internal/provider` code, generated `testify/mock` clients from mockery, and direct Terraform Plugin Framework request/response objects.
 
-Read `references/current-testing-approach.md` when you need concrete local examples or are adding tests to a resource that makes SDK/API calls.
+Read `.agents/skills/cato-provider-unit-tests/references/current-testing-approach.md` when you need concrete local examples or are adding tests to a resource that makes SDK/API calls.
 
 ## Workflow
 
 1. Identify the changed behavior first.
-   - Run `git diff --name-only` and inspect modified `internal/provider/*.go` files.
+   - Run `git diff --name-only` and inspect modified files under `internal/provider`.
    - Map each changed branch to tests: success path, API error, validation error, null/unknown handling, missing remote object, state hydration, import, and payload conversion.
    - Prefer adding tests near the changed resource file, usually `internal/provider/resource_<name>_test.go`.
 
@@ -43,7 +43,7 @@ Read `references/current-testing-approach.md` when you need concrete local examp
 6. Verify narrowly, then broadly.
    - Run `go test ./internal/provider -run '<TestName>'` while iterating.
    - Run `go test ./internal/provider` before finishing provider-only changes.
-   - Run `go test $(go list ./... | grep -v terraform-provider-cato/internal/acctests)` or `make test` when the change could affect shared provider behavior.
+   - Run `make test` when the change could affect shared provider behavior.
    - If mockery output changed, run `go tool mockery` again after final interface edits.
 
 ## Coverage Checklist
@@ -56,5 +56,12 @@ For a modified resource, aim to cover:
 - `Update`: changed fields, move/reorder behavior, publish/read-after-write when present, and API errors for each API step.
 - `Delete`: successful delete, publish when present, API error, and idempotent/not-found behavior if production code supports it.
 - Terraform framework edge cases: null, unknown, empty collections, defaulted/computed values, plan modifiers, validators, and semantic equality.
+
+For a modified data source, aim to cover:
+
+- Constructor/`Metadata`/`Configure` with nil and valid provider data.
+- `Read`: successful API path and flattening/hydration of all user-visible attributes.
+- `Read` diagnostics: API errors, validation errors, and missing/invalid remote objects.
+- Terraform framework edge cases: null, unknown, empty collections, defaulted/computed values, and semantic equality where applicable.
 
 Keep helper builders small and local to the test file unless the same model setup is already shared nearby. Use realistic account IDs, resource IDs, names, and SDK enum values, but keep fixtures minimal.
