@@ -20,7 +20,8 @@ IMPORT_SORT_ORDER := -s standard -s default -s "prefix(github.com/softopus-io)" 
 
 default: install
 
-.PHONY: build install install-mirror sync-provider clean docs mocks
+.PHONY: default build install install-mirror sync-provider clean docs mocks test
+.PHONY: acctest-clean acctest acctest-flaky lint vul sort-imports
 
 build: ## Build the terraform-provider
 	export GO111MODULE="on"
