@@ -185,7 +185,6 @@ func TestAccInternetFw_UserID(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.tracking.event.%", "1"),
 					resource.TestCheckResourceAttr(res, "rule.tracking.event.enabled", "true"),
 				),
-				ExpectNonEmptyPlan: true, // TODO: investigate & fix
 			},
 			{
 				// Update the resource
@@ -224,7 +223,6 @@ func TestAccInternetFw_UserID(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.tracking.event.%", "1"),
 					resource.TestCheckResourceAttr(res, "rule.tracking.event.enabled", "true"),
 				),
-				ExpectNonEmptyPlan: true, // TODO: investigate & fix
 			},
 		},
 	})

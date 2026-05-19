@@ -69,29 +69,24 @@ func (m idNamePlanModifier) MarkdownDescription(_ context.Context) string {
 
 // PlanModifyString implements the plan modification logic.
 func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
-	// Do nothing if there is no state value.
-	if req.StateValue.IsNull() {
-		return
-	}
+	var cfg, state *IdNameRefModel
+	var plan IdNameRefModel
 
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
 	if req.ConfigValue.IsUnknown() {
 		return
 	}
-
-	var cfg, state *IdNameRefModel
-	var plan IdNameRefModel
 	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &cfg, basetypes.ObjectAsOptions{})) {
 		return
 	}
-	if utils.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
-		return
-	}
-
-	if cfg == nil { // removed from the config, return null
+	if cfg == nil { // removed from the config
+		if req.StateValue.IsNull() {
+			return
+		}
 		resp.PlanValue = types.ObjectNull(IdNameRefModelTypes)
 		return
 	}
+
 	// Ensure there is exactly one name or id in the config
 	if cfg.Name.IsNull() && cfg.ID.IsNull() {
 		resp.Diagnostics.AddError("idName reference error in "+req.Path.String(), "'name' or 'id' must be defined in the config ")
@@ -99,6 +94,15 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 	if !cfg.Name.IsNull() && !cfg.ID.IsNull() {
 		resp.Diagnostics.AddError("idName reference error in "+req.Path.String(),
 			fmt.Sprintf("only one of 'name' or 'id' can be specified in the config, [id:%q, name:%q]", cfg.ID.ValueString(), cfg.Name.ValueString()))
+	}
+
+	// Do nothing if there is no state value.
+	if req.StateValue.IsNull() {
+		return
+	}
+
+	if utils.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
+		return
 	}
 
 	// Name is configured
