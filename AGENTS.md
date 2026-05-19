@@ -9,10 +9,8 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 - Each Terraform resource has a full CRUD implementation.
 - The top-level Terraform model for a resource is defined in `type_*.go` with
   strongly-typed fields. Nested objects are mapped via framework attribute types
-  (`attr_types` maps / `ObjectAsOptions`), not plain Go structs.
-- Read, Create, and Update implementations share state-mapping logic extracted
-  into `hydrate_<name>_state.go` (API response → Terraform state) and
-  `hydrate_<name>_api.go` (Terraform state → API input).
+  (`attrTypes` maps / `ObjectAsOptions`), not plain Go structs - exception here are well defined shared types, e.g. GroupMembers in `type_group.go`. 
+- Read, Create, and Update implementations share state-mapping logic. For complex resources  extracted into `hydrate_<name>_state.go` (API response → Terraform state) and `hydrate_<name>_api.go` (Terraform state → API input). Simple resources may map API responses through resource-local helpers.
 
 ## Structure
 - `main.go` — provider entry point, wires `internal/provider.New(version)`.
@@ -31,6 +29,7 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 - `internal/accmock/` and `test_data/` — mocked API integration tests.
 - `examples/` — Terraform examples per resource and data source.
 - `templates/` — provider documentation templates (used by `tfplugindocs`).
+- `docs/` - generated provider docs output
 
 ## Setup
 - Go `1.26.3` (see `go.mod`).
