@@ -42,13 +42,14 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 
 ## Agentic loop for implementing changes
 - Start with unit tests for behavioral changes; get user sign-off if requested.
-- After implementation, iterate on unit tests until green, then add/update acceptance tests when API behavior changed, run lint, update docs and examples. Don't run the acceptance tests in this loop unless specifically asked.
+- After implementation, iterate on unit tests until green, then add/update acceptance tests when API behavior changed, run lint and vulnerability check, update docs and examples. Don't run the acceptance tests in this loop unless specifically asked.
 
 ## Definition of Done for agentic loop
 - Change is implemented with clear, maintainable code that follows existing patterns in internal/provider/.
 - Unit tests are added/updated for the behavior change and pass (make test).
 - Acceptance tests are added/updated when real API behavior changed.
 - Imports and style checks pass (make sort-imports, make lint).
+- Vulnerability check passes
 - Documentation is updated and generated (make docs) to reflect the final behavior.
 - Example configuration in examples/ is updated to match the implementation and docs.
 - New/changed resources or data sources are registered in `internal/provider/provider.go`.
