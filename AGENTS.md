@@ -19,7 +19,9 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 - `internal/provider/` — provider config, resources, data sources, shared types,
   validators, plan modifiers, hydration helpers, and generated mocks.
   - `resource_*.go` — resource CRUD implementations
+  - `resource_*_test.go` — unit test for resource implementations
   - `datasource_*.go` — data source read implementations
+  - `datasource_*_test.go` — data source for resource implementations
   - `type_*.go` — Terraform schema model types
   - `hydrate_*_api.go` / `hydrate_*_state.go` — shared conversion helpers
   - `planmodifiers/` — custom plan modifier implementations
@@ -40,7 +42,7 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 
 ## Agentic loop for implementing changes
 - Start with unit tests for behavioral changes; get user sign-off if requested.
-- After implementation, iterate on unit tests until green, then add/update acceptance tests when API behavior changed, run lint, update docs and examples.
+- After implementation, iterate on unit tests until green, then add/update acceptance tests when API behavior changed, run lint, update docs and examples. Don't run the acceptance tests in this loop unless specifically asked.
 
 ## Definition of Done for agentic loop
 - Change is implemented with clear, maintainable code that follows existing patterns in internal/provider/.
