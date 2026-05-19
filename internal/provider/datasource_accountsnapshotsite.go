@@ -236,8 +236,8 @@ func (d *accountSnapshotSiteDataSource) Configure(_ context.Context, req datasou
 	d.client = req.ProviderData.(*catoClientData)
 }
 
+//nolint:gocyclo
 func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-
 	var state SiteSnapshot
 	diags := req.Config.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -284,7 +284,10 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 			break
 		}
 		// Check if site matches by name
-		if state.SiteName != nil && site.InfoSiteSnapshot != nil && site.InfoSiteSnapshot.Name != nil && *site.InfoSiteSnapshot.Name == *state.SiteName {
+		if state.SiteName != nil &&
+			site.InfoSiteSnapshot != nil &&
+			site.InfoSiteSnapshot.Name != nil &&
+			*site.InfoSiteSnapshot.Name == *state.SiteName {
 			foundSite = site
 			break
 		}
