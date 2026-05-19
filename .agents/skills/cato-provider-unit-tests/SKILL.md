@@ -1,6 +1,6 @@
 ---
 name: cato-provider-unit-tests
-description: Write high-coverage Go unit tests for terraform-provider-cato resources, data sources, validators, plan modifiers, hydrators, and API payload translation. Use when Codex is asked to add or update tests in this repository, especially for modified files under internal/provider, when SDK/API calls need mockery-generated interfaces, or when validating Terraform Plugin Framework Create/Read/Update/Delete/Import behavior without real Cato API calls.
+description: Write high-coverage Go unit tests for terraform-provider-cato resources, data sources, validators, plan modifiers, hydrators, and API payload translation. Use when agent is asked to add or update tests in this repository, especially for modified files under internal/provider, when SDK/API calls need mockery-generated interfaces, or when validating Terraform Plugin Framework Create/Read/Update/Delete/Import behavior without real Cato API calls.
 ---
 
 # Cato Provider Unit Tests
