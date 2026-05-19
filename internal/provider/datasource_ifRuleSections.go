@@ -19,11 +19,6 @@ type ifRuleSectionLookup struct {
 	Items      types.List `tfsdk:"items"`
 }
 
-type ifRuleSection struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
-}
-
 func IfRuleSectionsDataSource() datasource.DataSource {
 	return &ifRuleSectionsDataSource{}
 }
@@ -107,14 +102,14 @@ func (d *ifRuleSectionsDataSource) Read(ctx context.Context, req datasource.Read
 	var objects []attr.Value
 
 	for _, item := range result.Policy.InternetFirewall.Policy.Sections {
-		section_name := cast.ToString(item.Section.Name)
-		section_id := cast.ToString(item.Section.ID)
-		if !filterByName || contains(namesMap, section_name) {
+		sectionName := cast.ToString(item.Section.Name)
+		sectionID := cast.ToString(item.Section.ID)
+		if !filterByName || contains(namesMap, sectionName) {
 			obj, diags := types.ObjectValue(
 				attrTypes,
 				map[string]attr.Value{
-					"id":   types.StringValue(section_id),
-					"name": types.StringValue(section_name),
+					"id":   types.StringValue(sectionID),
+					"name": types.StringValue(sectionName),
 				},
 			)
 			if diags.HasError() {

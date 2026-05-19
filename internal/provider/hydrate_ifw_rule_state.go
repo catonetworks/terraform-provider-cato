@@ -14,8 +14,13 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule) Policy_Policy_InternetFirewall_Policy_Rules_Rule {
-	ruleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+// nolint:gocyclo,funlen
+func hydrateIfwRuleState(
+	ctx context.Context,
+	state InternetFirewallRule,
+	currentRule *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule,
+) PolicyPolicyInternetFirewallPolicyRulesRule {
+	ruleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags := make(diag.Diagnostics, 0)
 	diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
 	diags = append(diags, diagstmp...)
@@ -33,7 +38,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	ruleInput.ID = types.StringValue(currentRule.ID)
 	ruleInput.ConnectionOrigin = types.StringValue(currentRule.ConnectionOrigin.String())
 
-	// //////////// Rule -> Source ///////////////
+	// // /// /// /// / Rule -> Source // /// /// /// /// /
 	curRuleSourceObj, diagstmp := types.ObjectValue(
 		IfwSourceAttrTypes,
 		map[string]attr.Value{
@@ -54,7 +59,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	)
 	diags = append(diags, diagstmp...)
 	ruleInput.Source = curRuleSourceObj
-	////////////// end rule.source ///////////////
+	// /// /// /// /// end rule.source // /// /// /// /// /
 
 	// Rule -> Country
 	ruleInput.Country = parseNameIDList(ctx, currentRule.Country, "rule.country")
@@ -64,7 +69,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	// Rule -> DeviceOS
 	ruleInput.DeviceOs = parseList(ctx, types.StringType, currentRule.DeviceOs, "rule.source.device_os")
 
-	////////////// Start Rule -> deviceAttributes ///////////////
+	// /// /// /// /// Start Rule -> deviceAttributes // /// /// /// /// /
 	// Check if DeviceAttributes has any non-empty fields (not in zero state)
 	hasDeviceAttributes := len(currentRule.DeviceAttributes.Category) > 0 ||
 		len(currentRule.DeviceAttributes.Type) > 0 ||
@@ -104,36 +109,40 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	}
 
 	tflog.Debug(ctx, "IFW_rule.read.currentRule.DeviceAttributes", map[string]interface{}{
-		"deviceAttributesObj": utils.InterfaceToJSONString(fmt.Sprintf("%v", deviceAttributesObj)),
+		"deviceAttributesObj": utils.InterfaceToJSONString(deviceAttributesObj.String()),
 	})
 
 	ruleInput.DeviceAttributes = deviceAttributesObj
-	////////////// End Rule -> deviceAttributes ///////////////
+	// /// /// /// /// End Rule -> deviceAttributes // /// /// /// /// /
 
-	//////////// Rule -> Destination ///////////////
+	// /// /// /// / Rule -> Destination // /// /// /// /// /
 	curRuleDestinationObj, diagstmp := types.ObjectValue(
 		IfwDestAttrTypes,
 		map[string]attr.Value{
-			"application":              parseNameIDList(ctx, currentRule.Destination.Application, "rule.destination.application"),
-			"custom_app":               parseNameIDList(ctx, currentRule.Destination.CustomApp, "rule.destination.custom_app"),
-			"app_category":             parseNameIDList(ctx, currentRule.Destination.AppCategory, "rule.destination.app_category"),
-			"custom_category":          parseNameIDList(ctx, currentRule.Destination.CustomCategory, "rule.destination.custom_category"),
-			"sanctioned_apps_category": parseNameIDList(ctx, currentRule.Destination.SanctionedAppsCategory, "rule.destination.sanctioned_apps_category"),
-			"country":                  parseNameIDList(ctx, currentRule.Destination.Country, "rule.destination.country"),
-			"domain":                   parseList(ctx, types.StringType, currentRule.Destination.Domain, "rule.destination.domain"),
-			"fqdn":                     parseList(ctx, types.StringType, currentRule.Destination.Fqdn, "rule.destination.fqdn"),
-			"ip":                       parseList(ctx, types.StringType, currentRule.Destination.IP, "rule.destination.ip"),
-			"subnet":                   parseList(ctx, types.StringType, currentRule.Destination.Subnet, "rule.destination.subnet"),
-			"ip_range":                 parseFromToList(ctx, currentRule.Destination.IPRange, "rule.destination.ip_range"),
-			"global_ip_range":          parseNameIDList(ctx, currentRule.Destination.GlobalIPRange, "rule.destination.global_ip_range"),
-			"remote_asn":               parseList(ctx, types.StringType, currentRule.Destination.RemoteAsn, "rule.destination.remote_asn"),
+			"application":     parseNameIDList(ctx, currentRule.Destination.Application, "rule.destination.application"),
+			"custom_app":      parseNameIDList(ctx, currentRule.Destination.CustomApp, "rule.destination.custom_app"),
+			"app_category":    parseNameIDList(ctx, currentRule.Destination.AppCategory, "rule.destination.app_category"),
+			"custom_category": parseNameIDList(ctx, currentRule.Destination.CustomCategory, "rule.destination.custom_category"),
+			"sanctioned_apps_category": parseNameIDList(
+				ctx,
+				currentRule.Destination.SanctionedAppsCategory,
+				"rule.destination.sanctioned_apps_category",
+			),
+			"country":         parseNameIDList(ctx, currentRule.Destination.Country, "rule.destination.country"),
+			"domain":          parseList(ctx, types.StringType, currentRule.Destination.Domain, "rule.destination.domain"),
+			"fqdn":            parseList(ctx, types.StringType, currentRule.Destination.Fqdn, "rule.destination.fqdn"),
+			"ip":              parseList(ctx, types.StringType, currentRule.Destination.IP, "rule.destination.ip"),
+			"subnet":          parseList(ctx, types.StringType, currentRule.Destination.Subnet, "rule.destination.subnet"),
+			"ip_range":        parseFromToList(ctx, currentRule.Destination.IPRange, "rule.destination.ip_range"),
+			"global_ip_range": parseNameIDList(ctx, currentRule.Destination.GlobalIPRange, "rule.destination.global_ip_range"),
+			"remote_asn":      parseList(ctx, types.StringType, currentRule.Destination.RemoteAsn, "rule.destination.remote_asn"),
 		},
 	)
 	diags = append(diags, diagstmp...)
 	ruleInput.Destination = curRuleDestinationObj
-	////////////// end Rule -> Destination ///////////////
+	// /// /// /// /// end Rule -> Destination // /// /// /// /// /
 
-	////////////// start Rule -> Service ///////////////
+	// /// /// /// /// start Rule -> Service // /// /// /// /// /
 	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
 		// Initialize Service object with null values
 		curRuleServiceObj, diagstmp := types.ObjectValue(
@@ -164,9 +173,9 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		diags = append(diags, diagstmp...)
 		ruleInput.Service = curRuleServiceObj
 	}
-	////////////// end Rule -> Service ///////////////
+	// /// /// /// /// end Rule -> Service // /// /// /// /// /
 
-	////////////// start Rule -> Tracking ///////////////
+	// /// /// /// /// start Rule -> Tracking // /// /// /// /// /
 	curRuleTrackingObj, diagstmp := types.ObjectValue(
 		TrackingAttrTypes,
 		map[string]attr.Value{
@@ -200,14 +209,14 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	)
 	diags = append(diags, diagstmp...)
 	curRuleTrackingObjAttrs["alert"] = trackingAlertValue
-	tflog.Warn(ctx, "Updated tracking object: "+fmt.Sprintf("%v", curRuleTrackingObj))
+	tflog.Warn(ctx, "Updated tracking object: "+curRuleTrackingObj.String())
 
 	curRuleTrackingObj, diagstmp = types.ObjectValue(curRuleTrackingObj.AttributeTypes(ctx), curRuleTrackingObjAttrs)
 	diags = append(diags, diagstmp...)
 	ruleInput.Tracking = curRuleTrackingObj
-	////////////// end Rule -> Tracking ///////////////
+	// /// /// /// /// end Rule -> Tracking // /// /// /// /// /
 
-	////////////// start Rule -> Schedule ///////////////
+	// /// /// /// /// start Rule -> Schedule // /// /// /// /// /
 	curRuleScheduleObj, diagstmp := types.ObjectValue(
 		ScheduleAttrTypes,
 		map[string]attr.Value{
@@ -218,9 +227,9 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	)
 	diags = append(diags, diagstmp...)
 	ruleInput.Schedule = curRuleScheduleObj
-	////////////// end Rule -> Schedule ///////////////
+	// /// /// /// /// end Rule -> Schedule // /// /// /// /// /
 
-	////////////// start Rule -> Exceptions ///////////////
+	// /// /// /// /// start Rule -> Exceptions // /// /// /// /// /
 	tflog.Warn(ctx, "TFLOG_WARN_IFW.currentRule.Exceptions", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(currentRule.Exceptions),
 	})
@@ -257,24 +266,41 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 			curExceptionDestObj, diagstmp := types.ObjectValue(
 				IfwDestAttrTypes,
 				map[string]attr.Value{
-					"application":              parseNameIDList(ctx, ruleException.Destination.Application, "rule.exception.destination.application"),
-					"custom_app":               parseNameIDList(ctx, ruleException.Destination.CustomApp, "rule.exception.destination.custom_app"),
-					"app_category":             parseNameIDList(ctx, ruleException.Destination.AppCategory, "rule.exception.destination.app_category"),
-					"custom_category":          parseNameIDList(ctx, ruleException.Destination.CustomCategory, "rule.exception.destination.custom_category"),
-					"sanctioned_apps_category": parseNameIDList(ctx, ruleException.Destination.SanctionedAppsCategory, "rule.exception.destination.sanctioned_apps_category"),
-					"country":                  parseNameIDList(ctx, ruleException.Destination.Country, "rule.exception.destination.country"),
-					"domain":                   parseList(ctx, types.StringType, ruleException.Destination.Domain, "rule.exception.destination.domain"),
-					"fqdn":                     parseList(ctx, types.StringType, ruleException.Destination.Fqdn, "rule.exception.destination.fqdn"),
-					"ip":                       parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
-					"subnet":                   parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
-					"ip_range":                 parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range"),
-					"global_ip_range":          parseNameIDList(ctx, ruleException.Destination.GlobalIPRange, "rule.exception.destination.global_ip_range"),
-					"remote_asn":               parseList(ctx, types.StringType, ruleException.Destination.RemoteAsn, "rule.exception.destination.remote_asn"),
+					"application":  parseNameIDList(ctx, ruleException.Destination.Application, "rule.exception.destination.application"),
+					"custom_app":   parseNameIDList(ctx, ruleException.Destination.CustomApp, "rule.exception.destination.custom_app"),
+					"app_category": parseNameIDList(ctx, ruleException.Destination.AppCategory, "rule.exception.destination.app_category"),
+					"custom_category": parseNameIDList(
+						ctx,
+						ruleException.Destination.CustomCategory,
+						"rule.exception.destination.custom_category",
+					),
+					"sanctioned_apps_category": parseNameIDList(
+						ctx,
+						ruleException.Destination.SanctionedAppsCategory,
+						"rule.exception.destination.sanctioned_apps_category",
+					),
+					"country":  parseNameIDList(ctx, ruleException.Destination.Country, "rule.exception.destination.country"),
+					"domain":   parseList(ctx, types.StringType, ruleException.Destination.Domain, "rule.exception.destination.domain"),
+					"fqdn":     parseList(ctx, types.StringType, ruleException.Destination.Fqdn, "rule.exception.destination.fqdn"),
+					"ip":       parseList(ctx, types.StringType, ruleException.Destination.IP, "rule.exception.destination.ip"),
+					"subnet":   parseList(ctx, types.StringType, ruleException.Destination.Subnet, "rule.exception.destination.subnet"),
+					"ip_range": parseFromToList(ctx, ruleException.Destination.IPRange, "rule.exception.destination.ip_range"),
+					"global_ip_range": parseNameIDList(
+						ctx,
+						ruleException.Destination.GlobalIPRange,
+						"rule.exception.destination.global_ip_range",
+					),
+					"remote_asn": parseList(
+						ctx,
+						types.StringType,
+						ruleException.Destination.RemoteAsn,
+						"rule.exception.destination.remote_asn",
+					),
 				},
 			)
 			diags = append(diags, diagstmp...)
 
-			////////////// start Rule -> Service ///////////////
+			// /// /// /// /// start Rule -> Service // /// /// /// /// /
 			// Initialize Service object with null values (matching WAN pattern)
 			curExceptionServiceObj, diagstmp := types.ObjectValue(
 				IfwServiceAttrTypes,
@@ -296,7 +322,10 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 						tflog.Info(ctx, "ruleException.Service.Custom - "+fmt.Sprintf("%v", ruleException.Service.Custom))
 						for _, item := range ruleException.Service.Custom {
 							// Exceptions use PortRangeCustomService in the API; match WAN behavior
-							curExceptionCustomServices = append(curExceptionCustomServices, parseExceptionCustomService(ctx, item, "rule.exception.service.custom"))
+							curExceptionCustomServices = append(
+								curExceptionCustomServices,
+								parseExceptionCustomService(ctx, item, "rule.exception.service.custom"),
+							)
 						}
 						curExceptionServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curExceptionCustomServices)
 						diags = append(diags, diagstmp...)
@@ -306,7 +335,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 				curExceptionServiceObj, diagstmp = types.ObjectValue(curExceptionServiceObj.AttributeTypes(ctx), curExceptionServiceObjAttrs)
 				diags = append(diags, diagstmp...)
 			}
-			////////////// end Rule -> Service ///////////////
+			// /// /// /// /// end Rule -> Service // /// /// /// /// /
 
 			// Note: Internet Firewall exceptions do not have DeviceAttributes in the API response
 			// Always set device_attributes to null for IFW exceptions
@@ -342,11 +371,16 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		diags = append(diags, diagstmp...)
 		ruleInput.Exceptions = curRuleExceptionsObj
 	}
-	////////////// end Rule -> Exceptions ///////////////
+	// /// /// /// /// end Rule -> Exceptions // /// /// /// /// /
 
-	////////////// start Rule -> ActivePeriod ///////////////
+	// /// /// /// /// start Rule -> ActivePeriod // /// /// /// /// /
 	// Debug logging to see what API returns
-	tflog.Warn(ctx, "ActivePeriod from API: EffectiveFrom="+fmt.Sprintf("%v", currentRule.ActivePeriod.EffectiveFrom)+", ExpiresAt="+fmt.Sprintf("%v", currentRule.ActivePeriod.ExpiresAt)+", UseEffectiveFrom="+fmt.Sprintf("%v", currentRule.ActivePeriod.UseEffectiveFrom)+", UseExpiresAt="+fmt.Sprintf("%v", currentRule.ActivePeriod.UseExpiresAt))
+	tflog.Warn(ctx, "ActivePeriod from API", map[string]interface{}{
+		"EffectiveFrom":    currentRule.ActivePeriod.EffectiveFrom,
+		"ExpiresAt":        currentRule.ActivePeriod.ExpiresAt,
+		"UseEffectiveFrom": currentRule.ActivePeriod.UseEffectiveFrom,
+		"UseExpiresAt":     currentRule.ActivePeriod.UseExpiresAt,
+	})
 
 	effectiveFromValue := getActivePeriodString(currentRule.ActivePeriod.EffectiveFrom)
 	expiresAtValue := getActivePeriodString(currentRule.ActivePeriod.ExpiresAt)
@@ -360,7 +394,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		expiresAtValue = types.StringNull()
 	}
 
-	configuredActivePeriod := Policy_Policy_InternetFirewall_Policy_Rules_Rule_ActivePeriod{}
+	configuredActivePeriod := PolicyPolicyInternetFirewallPolicyRulesRuleActivePeriod{}
 	if !ruleInput.ActivePeriod.IsNull() && !ruleInput.ActivePeriod.IsUnknown() {
 		diagstmp = ruleInput.ActivePeriod.As(ctx, &configuredActivePeriod, basetypes.ObjectAsOptions{})
 		diags = append(diags, diagstmp...)
@@ -377,7 +411,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	})
 
 	// Preserve effective_from if API returned nil
-	if !effectiveFromValue.IsNull() && useEffectiveFromValue.ValueBool() == true {
+	if !effectiveFromValue.IsNull() && useEffectiveFromValue.ValueBool() {
 		parsedEffectiveFromStr, err := parseTimeString(effectiveFromValue.ValueString(), configuredActivePeriod.EffectiveFrom.ValueString())
 		if err == nil {
 			tflog.Warn(ctx, "TFLOG_WARN_IFW.ruleInput.parsedEffectiveFromStr", map[string]interface{}{
@@ -392,7 +426,7 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 	}
 
 	// Preserve expires_at if API returned nil
-	if !expiresAtValue.IsNull() && useExpiresAtValue.ValueBool() == true {
+	if !expiresAtValue.IsNull() && useExpiresAtValue.ValueBool() {
 		parsedExpiresAtStr, err := parseTimeString(expiresAtValue.ValueString(), configuredActivePeriod.ExpiresAt.ValueString())
 		if err == nil {
 			tflog.Warn(ctx, "TFLOG_WARN_IFW.ruleInput.parsedExpiresAtStr", map[string]interface{}{
@@ -425,10 +459,12 @@ func hydrateIfwRuleState(ctx context.Context, state InternetFirewallRule, curren
 		},
 	)
 	diags = append(diags, diagstmp...)
+	if diags.HasError() {
+		return ruleInput
+	}
 	ruleInput.ActivePeriod = curRuleActivePeriodObj
-	tflog.Warn(ctx, "Final ActivePeriod IFW object: "+fmt.Sprintf("%v", curRuleActivePeriodObj))
-	////////////// end Rule -> ActivePeriod ///////////////
+	tflog.Warn(ctx, "Final ActivePeriod IFW object: "+curRuleActivePeriodObj.String())
+	// /// /// /// /// end Rule -> ActivePeriod // /// /// /// /// /
 
 	return ruleInput
-
 }

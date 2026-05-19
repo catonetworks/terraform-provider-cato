@@ -4,15 +4,11 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models" // Import the correct package
-	"github.com/fatih/structs"
-	"github.com/gobeam/stringy"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -21,33 +17,53 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-func contains(nameToIdMap map[string]struct{}, name string) bool {
-	_, exists := nameToIdMap[name]
+func contains(nameToIDMap map[string]struct{}, name string) bool {
+	_, exists := nameToIDMap[name]
 	return exists
 }
 
 // getSiteById retrieves site information by site ID using EntityLookup
-func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID string, interfaceId string, interfaceIndex string, interfaceName string) (string, string, error) {
+//
+// nolint:gocyclo,funlen
+func getSiteNetworkInterface(
+	ctx context.Context,
+	client *catoClientData,
+	siteID string,
+	interfaceID string,
+	interfaceIndex string,
+	interfaceName string,
+) (resolvedInterfaceID string, resolvedInterfaceIndex string, err error) {
 	tflog.Debug(ctx, "getSiteNetworkInterface()", map[string]interface{}{
 		"siteID":         utils.InterfaceToJSONString(siteID),
-		"interfaceId":    utils.InterfaceToJSONString(interfaceId),
+		"interfaceId":    utils.InterfaceToJSONString(interfaceID),
 		"interfaceName":  utils.InterfaceToJSONString(interfaceName),
 		"interfaceIndex": utils.InterfaceToJSONString(interfaceIndex),
 	})
 	zeroInt64 := int64(0)
-	// func (c *Client) EntityLookup(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64, parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*EntityLookup, error) {
 	site := &cato_models.EntityInput{
 		Type: cato_models.EntityTypeSite,
 		ID:   siteID,
 	}
 	// Add filter for interfaceId if set
 	var entityIDs []string
-	if interfaceId != "" {
-		entityIDs = []string{interfaceId}
+	if interfaceID != "" {
+		entityIDs = []string{interfaceID}
 	} else {
 		entityIDs = nil
 	}
-	networkInterfaceResponse, err := client.catov2.EntityLookup(ctx, client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, site, nil, entityIDs, nil, nil, nil)
+	networkInterfaceResponse, err := client.catov2.EntityLookup(
+		ctx,
+		client.AccountId,
+		cato_models.EntityTypeNetworkInterface,
+		&zeroInt64,
+		nil,
+		site,
+		nil,
+		entityIDs,
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Warn(ctx, "getSiteNetworkInterfaceById.EntityLookup.networkInterfaceResponse", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(networkInterfaceResponse),
 		"err":      utils.InterfaceToJSONString(err),
@@ -65,7 +81,7 @@ func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID
 	if interfaceIndex != "" {
 		for _, item := range items {
 			helperFields := item.GetHelperFields()
-			curInterfaceId := item.GetEntity().GetID()
+			curInterfaceID := item.GetEntity().GetID()
 			curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
 			tflog.Info(ctx, "getSiteNetworkInterface.interfaceItem", map[string]interface{}{
 				"interfaceItem":  item,
@@ -82,143 +98,63 @@ func getSiteNetworkInterface(ctx context.Context, client *catoClientData, siteID
 			}
 			if curInterfaceIndex == interfaceIndex {
 				tflog.Info(ctx, "getSiteNetworkInterfaceById found interface by index", map[string]interface{}{
-					"interfaceId":    curInterfaceId,
+					"interfaceId":    curInterfaceID,
 					"interfaceIndex": curInterfaceIndex,
 				})
-				return curInterfaceId, curInterfaceIndex, nil
+				return curInterfaceID, curInterfaceIndex, nil
 			}
 		}
 		return "", "", fmt.Errorf("network interface with index '%s' not found in site '%s'", interfaceIndex, siteID)
-	} else {
-		// Confirm single record retiurned by Id
-		if len(items) == 0 {
-			return "", "", fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceId, siteID)
-		} else if len(items) == 1 {
-			interfaceItem := items[0]
-			// Return the first (and should be only) interface item
-			helperFields := interfaceItem.GetHelperFields()
-			curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
+	}
+
+	// Confirm single record returned by ID
+	switch len(items) {
+	case 0:
+		return "", "", fmt.Errorf("network interface with ID '%s' not found in site '%s'", interfaceID, siteID)
+	case 1:
+		interfaceItem := items[0]
+		helperFields := interfaceItem.GetHelperFields()
+		curInterfaceIndex := cast.ToString(helperFields["interfaceId"])
+		if len(curInterfaceIndex) == 1 {
+			intVal, err := cast.ToIntE(curInterfaceIndex)
+			if err == nil {
+				curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
+			}
+		}
+		interfaceID := interfaceItem.GetEntity().GetID()
+		return interfaceID, curInterfaceIndex, nil
+	}
+
+	var curInterfaceIndex string
+	var matchedInterfaceID string
+	for _, interfaceItem := range items {
+		helperFields := interfaceItem.GetHelperFields()
+		curInterfaceName := cast.ToString(helperFields["interfaceName"])
+		tflog.Info(ctx, "getSiteNetworkInterface.interfaceItem", map[string]interface{}{
+			"interfaceItem":                         interfaceItem,
+			"interfaceName":                         interfaceName,
+			"curInterfaceName":                      curInterfaceName,
+			"check curInterfaceName==interfaceName": (curInterfaceName == interfaceName),
+		})
+		if interfaceName == curInterfaceName {
+			curInterfaceIndex = cast.ToString(helperFields["interfaceId"])
 			if len(curInterfaceIndex) == 1 {
 				intVal, err := cast.ToIntE(curInterfaceIndex)
 				if err == nil {
 					curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
 				}
 			}
-			interfaceId := interfaceItem.GetEntity().GetID()
-			return interfaceId, curInterfaceIndex, nil
-		} else {
-			var curInterfaceIndex string
-			var interfaceId string
-			for _, interfaceItem := range items {
-				helperFields := interfaceItem.GetHelperFields()
-				curInterfaceName := cast.ToString(helperFields["interfaceName"])
-				tflog.Info(ctx, "getSiteNetworkInterface.interfaceItem", map[string]interface{}{
-					"interfaceItem":                         interfaceItem,
-					"interfaceName":                         interfaceName,
-					"curInterfaceName":                      curInterfaceName,
-					"check curInterfaceName==interfaceName": (curInterfaceName == interfaceName),
-				})
-				if interfaceName == curInterfaceName {
-					curInterfaceIndex = cast.ToString(helperFields["interfaceId"])
-					if len(curInterfaceIndex) == 1 {
-						intVal, err := cast.ToIntE(curInterfaceIndex)
-						if err == nil {
-							curInterfaceIndex = fmt.Sprintf("INT_%d", intVal)
-						}
-					}
-					interfaceId = interfaceItem.GetEntity().GetID()
-				}
-			}
-			if interfaceId == "" {
-				return "", "", fmt.Errorf("network interface with name '%s' not found in site '%s'", interfaceName, siteID)
-			}
-			tflog.Info(ctx, "getSiteNetworkInterface.return", map[string]interface{}{
-				"interfaceId":       interfaceId,
-				"curInterfaceIndex": curInterfaceIndex,
-			})
-			return interfaceId, curInterfaceIndex, nil
+			matchedInterfaceID = interfaceItem.GetEntity().GetID()
 		}
 	}
-}
-
-func mapObjectList(ctx context.Context, srcItemObjList any, resp *resource.ReadResponse) []types.Object {
-	vals := reflect.ValueOf(srcItemObjList)
-	var objList []types.Object
-	for i := range vals.Len() {
-		objList = append(objList, mapStructFields(ctx, vals.Index(i), resp))
+	if matchedInterfaceID == "" {
+		return "", "", fmt.Errorf("network interface with name '%s' not found in site '%s'", interfaceName, siteID)
 	}
-
-	return objList
-}
-
-func mapStructFields(ctx context.Context, srcItemObj any, resp *resource.ReadResponse) types.Object {
-	vals := reflect.ValueOf(srcItemObj)
-	names := structs.Names(srcItemObj)
-	tflog.Info(ctx, "pointer val: ",
-		map[string]interface{}{
-			"pointer_val": vals,
-		})
-	attrTypes := map[string]attr.Type{}
-	attrValues := map[string]attr.Value{}
-
-	for _, v := range names {
-		attrTypes[v] = types.StringType
-		attrValues[v] = basetypes.NewStringValue(vals.FieldByName(v).String())
-	}
-
-	newObj, diags := basetypes.NewObjectValueFrom(ctx, attrTypes, attrValues)
-	resp.Diagnostics.Append(diags...)
-
-	return newObj
-}
-
-func mapAttributeTypes(ctx context.Context, srcItemObj any, resp *resource.ReadResponse) map[string]attr.Type {
-	attrTypes := map[string]attr.Type{}
-
-	names := structs.Names(srcItemObj)
-	vals := structs.Map(srcItemObj)
-	for _, v := range names {
-		intV := stringy.New(v).SnakeCase().ToLower()
-
-		attrTypes[strings.ToLower(intV)] = convertGoTypeToTfType(ctx, vals[v])
-	}
-
-	return attrTypes
-}
-
-func reverseSlice[S ~[]E, E any](s S) {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-}
-
-func convertGoTypeToTfType(ctx context.Context, srcItemObj any) attr.Type {
-	srcItemObjType := reflect.TypeOf(srcItemObj).String()
-	tflog.Error(ctx, "srcItemObjType", map[string]interface{}{
-		"srcItemObjType": srcItemObjType,
+	tflog.Info(ctx, "getSiteNetworkInterface.return", map[string]interface{}{
+		"interfaceId":       matchedInterfaceID,
+		"curInterfaceIndex": curInterfaceIndex,
 	})
-	switch srcItemObjType {
-	case "string":
-		return types.StringType
-	case "basetypes.StringValue":
-		return types.StringType
-	case "bool":
-		return types.BoolType
-	case "basetypes.BoolValue":
-		return types.BoolType
-	case "int":
-		return types.Int32Type
-	case "int64":
-		return types.Int64Type
-	case "float":
-		return types.Float32Type
-	case "float64":
-		return types.Float64Type
-	case "basetypes.ObjectValue":
-		return types.ObjectType{}
-	}
-
-	return types.StringType
+	return matchedInterfaceID, curInterfaceIndex, nil
 }
 
 func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrName string) types.List {
@@ -241,7 +177,6 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrNa
 
 func parseNameIDList[T any](ctx context.Context, items []T, attrName string) types.Set {
 	tflog.Debug(ctx, "parseNameIDList() "+attrName+" - "+fmt.Sprintf("%v", items))
-	diags := make(diag.Diagnostics, 0)
 
 	tflog.Debug(ctx, "parseNameIDList.items", map[string]interface{}{
 		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", items)),
@@ -265,8 +200,7 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 	}
 
 	// Convert to types.List using SetValueFrom
-	setValue, diagstmp := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
-	diags = append(diags, diagstmp...)
+	setValue, _ := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
 	return setValue
 }
 
@@ -274,13 +208,11 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 // This is used when the configuration explicitly has an empty set (e.g. country = []) to preserve that intent
 func parseNameIDListOrEmptySet[T any](ctx context.Context, items []T, attrName string) types.Set {
 	tflog.Debug(ctx, "parseNameIDListOrEmptySet() "+attrName+" - "+fmt.Sprintf("%v", items))
-	diags := make(diag.Diagnostics, 0)
 
 	// Handle empty list - return empty set instead of null
 	if len(items) == 0 {
 		tflog.Debug(ctx, "parseNameIDListOrEmptySet() - empty input list, returning empty set")
-		emptySet, diagstmp := types.SetValue(NameIDObjectType, []attr.Value{})
-		diags = append(diags, diagstmp...)
+		emptySet, _ := types.SetValue(NameIDObjectType, []attr.Value{})
 		return emptySet
 	}
 
@@ -296,47 +228,13 @@ func parseNameIDListOrEmptySet[T any](ctx context.Context, items []T, attrName s
 	}
 
 	// Convert to types.List using SetValueFrom
-	setValue, diagstmp := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
-	diags = append(diags, diagstmp...)
+	setValue, _ := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
 	return setValue
 }
 
-// parseNameIDListWithUnknownName creates a Set of NameID objects but keeps all names as unknown
-// This is used for computed name fields with UseStateForUnknown() to prevent spurious diffs
-func parseNameIDListWithUnknownName[T any](ctx context.Context, items []T, attrName string) types.Set {
-	tflog.Debug(ctx, "parseNameIDListWithUnknownName() "+attrName+" - "+fmt.Sprintf("%v", items))
-	diags := make(diag.Diagnostics, 0)
-
-	tflog.Debug(ctx, "parseNameIDListWithUnknownName.items", map[string]interface{}{
-		"v": utils.InterfaceToJSONString(fmt.Sprintf("%v", items)),
-		"T": utils.InterfaceToJSONString(fmt.Sprintf("%T", items)),
-	})
-	// Handle empty list (len(nil) == 0 so nil check is redundant)
-	if len(items) == 0 {
-		tflog.Debug(ctx, "parseNameIDListWithUnknownName() - empty input list")
-		return types.SetNull(NameIDObjectType)
-	}
-
-	// Process each item into an attr.Value using the unknown name variant
-	nameIDValues := make([]attr.Value, 0, len(items))
-	for i, item := range items {
-		obj := parseNameIDWithUnknownName(ctx, item, attrName)
-		if !obj.IsNull() { // Include non-null values (unknown is allowed)
-			nameIDValues = append(nameIDValues, obj)
-		} else {
-			tflog.Debug(ctx, "parseNameIDListWithUnknownName() - skipping null item at index "+fmt.Sprintf("%d", i))
-		}
-	}
-
-	// Convert to types.Set using SetValueFrom
-	setValue, diagstmp := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
-	diags = append(diags, diagstmp...)
-	return setValue
-}
-
+// nolint:gocyclo
 func parseNameID(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseNameID() "+attrName+" - "+fmt.Sprintf("%v", item))
-	diags := make(diag.Diagnostics, 0)
 
 	// Get the reflect.Value of the input
 	itemValue := reflect.ValueOf(item)
@@ -428,94 +326,13 @@ func parseNameID(ctx context.Context, item interface{}, attrName string) types.O
 			"id":   idValue,
 		},
 	)
-	tflog.Debug(ctx, "parseNameID() obj - "+fmt.Sprintf("%v", obj))
-	diags = append(diags, diagstmp...)
-	return obj
-}
-
-// parseNameIDWithUnknownName creates a NameID object but keeps the name as unknown
-// This is used for computed name fields with UseStateForUnknown() to prevent spurious diffs
-func parseNameIDWithUnknownName(ctx context.Context, item interface{}, attrName string) types.Object {
-	tflog.Debug(ctx, "parseNameIDWithUnknownName() "+attrName+" - "+fmt.Sprintf("%v", item))
-	diags := make(diag.Diagnostics, 0)
-
-	// Get the reflect.Value of the input
-	itemValue := reflect.ValueOf(item)
-
-	// Handle nil or invalid input (must be a struct, not a slice/array)
-	if item == nil || itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
-			itemValue = itemValue.Elem()
-			if itemValue.Kind() != reflect.Struct {
-				return types.ObjectNull(NameIDAttrTypes)
-			}
-		} else {
-			return types.ObjectNull(NameIDAttrTypes)
-		}
-	}
-
-	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
-		if itemValue.IsNil() {
-			return types.ObjectNull(NameIDAttrTypes)
-		}
-		itemValue = itemValue.Elem()
-	}
-
-	// Get Name and ID fields
-	nameField := itemValue.FieldByName("Name")
-	idField := itemValue.FieldByName("ID")
-
-	if !nameField.IsValid() || !idField.IsValid() {
-		tflog.Debug(ctx, "parseNameIDWithUnknownName() !nameField.IsValid() - "+fmt.Sprintf("%v", nameField))
-		return types.ObjectNull(NameIDAttrTypes)
-	}
-
-	// Safely extract string values, handling pointers and empty values
-	var nameValue types.String
-	var idValue types.String
-
-	// Handle ID field first (this is always populated)
-	if idField.Kind() == reflect.Ptr {
-		if idField.IsNil() {
-			idValue = types.StringNull()
-		} else {
-			val := idField.Elem().String()
-			if val == "" {
-				idValue = types.StringNull()
-			} else {
-				idValue = types.StringValue(val)
-			}
-		}
-	} else {
-		val := idField.String()
-		if val == "" {
-			idValue = types.StringNull()
-		} else {
-			idValue = types.StringValue(val)
-		}
-	}
-
-	// For computed name fields with UseStateForUnknown(), keep name as unknown
-	// to let Terraform's plan modifier handle it properly
-	nameValue = types.StringUnknown()
-
-	// Create object value with proper null/unknown handling
-	obj, diagstmp := types.ObjectValue(
-		NameIDAttrTypes,
-		map[string]attr.Value{
-			"name": nameValue,
-			"id":   idValue,
-		},
-	)
-	tflog.Debug(ctx, "parseNameIDWithUnknownName() obj - "+fmt.Sprintf("%v", obj))
-	diags = append(diags, diagstmp...)
+	tflog.Debug(ctx, "parseNameID() obj - "+obj.String())
+	_ = diagstmp
 	return obj
 }
 
 func parseFromToList[T any](ctx context.Context, items []T, attrName string) types.List {
 	tflog.Debug(ctx, "parseFromToList() "+attrName+" - "+fmt.Sprintf("%v", items))
-	diags := make(diag.Diagnostics, 0)
 
 	// Handle empty list - return null (len(nil) == 0 so nil check is redundant)
 	if len(items) == 0 {
@@ -534,14 +351,12 @@ func parseFromToList[T any](ctx context.Context, items []T, attrName string) typ
 	}
 
 	// Convert to types.List using ListValueFrom
-	listValue, diagstmp := types.ListValueFrom(ctx, FromToObjectType, fromToValues)
-	diags = append(diags, diagstmp...)
+	listValue, _ := types.ListValueFrom(ctx, FromToObjectType, fromToValues)
 	return listValue
 }
 
 func parseFromTo(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseFromTo() "+attrName+" - "+fmt.Sprintf("%v", item))
-	diags := make(diag.Diagnostics, 0)
 
 	if item == nil {
 		tflog.Debug(ctx, "parseFromTo() - nil")
@@ -552,8 +367,8 @@ func parseFromTo(ctx context.Context, item interface{}, attrName string) types.O
 	itemValue := reflect.ValueOf(item)
 
 	// Handle nil or invalid input
-	tflog.Debug(ctx, "parseFromTo() itemValue.Kind()- "+fmt.Sprintf("%v", itemValue.Kind()))
-	if item == nil || itemValue.Kind() != reflect.Struct {
+	tflog.Debug(ctx, "parseFromTo() itemValue.Kind()- "+itemValue.Kind().String())
+	if itemValue.Kind() != reflect.Struct {
 		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			// Keep dereferencing until we get to a struct or can't anymore
@@ -598,14 +413,13 @@ func parseFromTo(ctx context.Context, item interface{}, attrName string) types.O
 			"to":   basetypes.NewStringValue(toField.String()),
 		},
 	)
-	tflog.Debug(ctx, "parseFromTo() obj - "+fmt.Sprintf("%v", obj))
-	diags = append(diags, diagstmp...)
+	tflog.Debug(ctx, "parseFromTo() obj - "+obj.String())
+	_ = diagstmp
 	return obj
 }
 
 func parseFromToDays(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseFromToDays() "+attrName+" - "+fmt.Sprintf("%v", item))
-	diags := make(diag.Diagnostics, 0)
 
 	if item == nil {
 		tflog.Debug(ctx, "parseFromToDays() - nil")
@@ -616,8 +430,8 @@ func parseFromToDays(ctx context.Context, item interface{}, attrName string) typ
 	itemValue := reflect.ValueOf(item)
 
 	// Handle nil or invalid input
-	tflog.Debug(ctx, "parseFromToDays() itemValue.Kind()- "+fmt.Sprintf("%v", itemValue.Kind()))
-	if item == nil || itemValue.Kind() != reflect.Struct {
+	tflog.Debug(ctx, "parseFromToDays() itemValue.Kind()- "+itemValue.Kind().String())
+	if itemValue.Kind() != reflect.Struct {
 		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			// Keep dereferencing until we get to a struct or can't anymore
@@ -660,14 +474,14 @@ func parseFromToDays(ctx context.Context, item interface{}, attrName string) typ
 			"days": parseList(ctx, types.StringType, daysField.Interface().([]cato_models.DayOfWeek), "rule.schedule.custom_recurring.days"),
 		},
 	)
-	tflog.Debug(ctx, "parseFromToDays() obj - "+fmt.Sprintf("%v", obj))
-	diags = append(diags, diagstmp...)
+	tflog.Debug(ctx, "parseFromToDays() obj - "+obj.String())
+	_ = diagstmp
 	return obj
 }
 
+// nolint:gocyclo,funlen
 func parseCustomService(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseCustomService() "+attrName+" - "+fmt.Sprintf("%v", item))
-	diags := make(diag.Diagnostics, 0)
 
 	// Get the reflect.Value of the input
 	itemValue := reflect.ValueOf(item)
@@ -729,7 +543,7 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 				"to":   types.StringValue(to.String()),
 			},
 		)
-		diags = append(diags, diagsTmp...)
+		_ = diagsTmp
 	} else if !hasPortRange {
 		portRangeVal = types.ObjectNull(FromToAttrTypes)
 	}
@@ -737,19 +551,21 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 	// Handle port field - match config logic behavior
 	// When port_range is set, port should always be null even if API returns empty array
 	var portList types.List
-	if hasPortRange {
+	switch {
+	case hasPortRange:
 		// When port_range is present, port must be null to match schema validation
 		portList = types.ListNull(types.StringType)
-	} else if portField.IsValid() && portField.Kind() == reflect.Slice {
+	case portField.IsValid() && portField.Kind() == reflect.Slice:
 		// Only process port field if port_range is not set
-		if portField.IsNil() {
+		switch {
+		case portField.IsNil():
 			// Source data was null - don't include port field in state to match config
 			portList = types.ListNull(types.StringType)
-		} else if portField.Len() == 0 {
+		case portField.Len() == 0:
 			// Source data was empty array [] - treat as null to avoid inconsistency
 			// Note: empty array from API likely means port_range is set
 			portList = types.ListNull(types.StringType)
-		} else {
+		default:
 			// Source data has values - include them
 			ports := make([]attr.Value, portField.Len())
 			for i := range portField.Len() {
@@ -761,16 +577,16 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 				case reflect.Int, reflect.Int64:
 					portStr = fmt.Sprintf("%d", portValue.Int())
 				default:
-					tflog.Info(ctx, "parseCustomService() unsupported port type - "+fmt.Sprintf("%v", portValue.Kind()))
+					tflog.Info(ctx, "parseCustomService() unsupported port type - "+portValue.Kind().String())
 					portStr = fmt.Sprintf("%v", portValue.Interface())
 				}
 				ports[i] = types.StringValue(portStr)
 			}
 			var diagsTmp diag.Diagnostics
 			portList, diagsTmp = types.ListValue(types.StringType, ports)
-			diags = append(diags, diagsTmp...)
+			_ = diagsTmp
 		}
-	} else {
+	default:
 		// Invalid or non-slice field
 		portList = types.ListNull(types.StringType)
 	}
@@ -792,15 +608,16 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 			"protocol":   protocolVal,
 		},
 	)
-	tflog.Debug(ctx, "parseCustomService() obj - "+fmt.Sprintf("%v", obj))
-	diags = append(diags, diagstmp...)
+	tflog.Debug(ctx, "parseCustomService() obj - "+obj.String())
+	_ = diagstmp
 	return obj
 }
 
-// parseCustomServiceIp handles the custom service IP object from API response
-func parseCustomServiceIp(ctx context.Context, item interface{}, attrName string) types.Object {
-	tflog.Debug(ctx, "parseCustomServiceIp() "+attrName+" - "+fmt.Sprintf("%v", item))
-	diags := make(diag.Diagnostics, 0)
+// parseCustomServiceIP handles the custom service IP object from API response
+//
+// nolint:gocyclo
+func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Debug(ctx, "parseCustomServiceIP() "+attrName+" - "+fmt.Sprintf("%v", item))
 
 	// Get the reflect.Value of the input
 	itemValue := reflect.ValueOf(item)
@@ -813,17 +630,17 @@ func parseCustomServiceIp(ctx context.Context, item interface{}, attrName string
 				itemValue = itemValue.Elem()
 			}
 			if itemValue.Kind() != reflect.Struct {
-				return types.ObjectNull(CustomServiceIpAttrTypes)
+				return types.ObjectNull(CustomServiceIPAttrTypes)
 			}
 		} else {
-			return types.ObjectNull(CustomServiceIpAttrTypes)
+			return types.ObjectNull(CustomServiceIPAttrTypes)
 		}
 	}
 
 	// Handle pointer to struct
 	if itemValue.Kind() == reflect.Ptr {
 		if itemValue.IsNil() {
-			return types.ObjectNull(CustomServiceIpAttrTypes)
+			return types.ObjectNull(CustomServiceIPAttrTypes)
 		}
 		itemValue = itemValue.Elem()
 	}
@@ -851,7 +668,8 @@ func parseCustomServiceIp(ctx context.Context, item interface{}, attrName string
 
 	// Handle IP range
 	var ipRangeVal types.Object
-	if ipRangeField.Kind() == reflect.Ptr {
+	switch {
+	case ipRangeField.Kind() == reflect.Ptr:
 		if ipRangeField.IsNil() {
 			ipRangeVal = types.ObjectNull(FromToAttrTypes)
 		} else {
@@ -866,9 +684,9 @@ func parseCustomServiceIp(ctx context.Context, item interface{}, attrName string
 					"to":   types.StringValue(to.String()),
 				},
 			)
-			diags = append(diags, diagsTmp...)
+			_ = diagsTmp
 		}
-	} else if ipRangeField.IsValid() {
+	case ipRangeField.IsValid():
 		from := ipRangeField.FieldByName("From")
 		to := ipRangeField.FieldByName("To")
 		var diagsTmp diag.Diagnostics
@@ -879,29 +697,30 @@ func parseCustomServiceIp(ctx context.Context, item interface{}, attrName string
 				"to":   types.StringValue(to.String()),
 			},
 		)
-		diags = append(diags, diagsTmp...)
-	} else {
+		_ = diagsTmp
+	default:
 		ipRangeVal = types.ObjectNull(FromToAttrTypes)
 	}
 
 	// Create final custom service IP object
 	obj, diagstmp := types.ObjectValue(
-		CustomServiceIpAttrTypes,
+		CustomServiceIPAttrTypes,
 		map[string]attr.Value{
 			"name":     nameVal,
 			"ip":       ipVal,
 			"ip_range": ipRangeVal,
 		},
 	)
-	tflog.Debug(ctx, "parseCustomServiceIp() obj - "+fmt.Sprintf("%v", obj))
-	diags = append(diags, diagstmp...)
+	tflog.Debug(ctx, "parseCustomServiceIP() obj - "+obj.String())
+	_ = diagstmp
 	return obj
 }
 
 // parseExceptionCustomService handles custom services in exceptions which use "portRangeCustomService" field instead of "portRange"
+//
+// nolint:gocyclo,funlen
 func parseExceptionCustomService(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseExceptionCustomService() "+attrName+" - "+fmt.Sprintf("%v", item))
-	diags := make(diag.Diagnostics, 0)
 
 	// Get the reflect.Value of the input
 	itemValue := reflect.ValueOf(item)
@@ -965,7 +784,7 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 					"to":   types.StringValue(to.String()),
 				},
 			)
-			diags = append(diags, diagsTmp...)
+			_ = diagsTmp
 		} else {
 			portRangeVal = types.ObjectNull(FromToAttrTypes)
 			hasPortRange = false
@@ -977,19 +796,21 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 	// Handle port field - match config logic behavior
 	// When port_range is set, port should always be null even if API returns empty array
 	var portList types.List
-	if hasPortRange {
+	switch {
+	case hasPortRange:
 		// When port_range is present, port must be null to match schema validation
 		portList = types.ListNull(types.StringType)
-	} else if portField.IsValid() && portField.Kind() == reflect.Slice {
+	case portField.IsValid() && portField.Kind() == reflect.Slice:
 		// Only process port field if port_range is not set
-		if portField.IsNil() {
+		switch {
+		case portField.IsNil():
 			// Source data was null - don't include port field in state to match config
 			portList = types.ListNull(types.StringType)
-		} else if portField.Len() == 0 {
+		case portField.Len() == 0:
 			// Source data was empty array [] - treat as null to avoid inconsistency
 			// Note: empty array from API likely means port_range is set
 			portList = types.ListNull(types.StringType)
-		} else {
+		default:
 			// Source data has values - include them
 			ports := make([]attr.Value, portField.Len())
 			for i := range portField.Len() {
@@ -1001,16 +822,16 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 				case reflect.Int, reflect.Int64:
 					portStr = fmt.Sprintf("%d", portValue.Int())
 				default:
-					tflog.Info(ctx, "parseExceptionCustomService() unsupported port type - "+fmt.Sprintf("%v", portValue.Kind()))
+					tflog.Info(ctx, "parseExceptionCustomService() unsupported port type - "+portValue.Kind().String())
 					portStr = fmt.Sprintf("%v", portValue.Interface())
 				}
 				ports[i] = types.StringValue(portStr)
 			}
 			var diagsTmp diag.Diagnostics
 			portList, diagsTmp = types.ListValue(types.StringType, ports)
-			diags = append(diags, diagsTmp...)
+			_ = diagsTmp
 		}
-	} else {
+	default:
 		// Invalid or non-slice field
 		portList = types.ListNull(types.StringType)
 	}
@@ -1032,8 +853,8 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 			"protocol":   protocolVal,
 		},
 	)
-	tflog.Debug(ctx, "parseExceptionCustomService() obj - "+fmt.Sprintf("%v", obj))
-	diags = append(diags, diagstmp...)
+	tflog.Debug(ctx, "parseExceptionCustomService() obj - "+obj.String())
+	_ = diagstmp
 	return obj
 }
 

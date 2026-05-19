@@ -32,6 +32,28 @@ var (
 	_ resource.ResourceWithImportState = &networkRangeResource{}
 )
 
+const (
+	networkRangeDHCPDisabled = "DHCP_DISABLED"
+	networkRangeDHCPRange    = "DHCP_RANGE"
+	networkRangeDHCPRelay    = "DHCP_RELAY"
+
+	networkRangeDescription = "The `cato_network_range` resource contains the configuration parameters necessary to " +
+		"add a network range to a cato site. ([virtual socket in AWS/Azure, or physical socket]" +
+		"(https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). " +
+		"Documentation for the underlying API used in this resource can be found at [mutation.addNetworkRange()]" +
+		"(https:// api.catonetworks.com/documentation/#mutation-site.addNetworkRange)."
+	networkRangeMDNSReflectorDescription = "Site native range mDNS reflector. When enabled, the Socket functions as an " +
+		"mDNS gateway, it relays mDNS requests and response between all enabled subnets."
+	networkRangeDHCPMicrosegmentationDescription = "DHCP Microsegmentation. When enabled, the DHCP server will allocate " +
+		"/32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported " +
+		"on all operating systems; monitor the network closely after activation. This setting can only be configured when " +
+		"dhcp_type is set to DHCP_RANGE."
+	networkRangeDHCPDisabledError = "When dhcp_type is DHCP_DISABLED, dhcp_ip_range, dhcp_relay_group_id, and " +
+		"dhcp_relay_group_name must be null, unset, or empty strings."
+	networkRangeDHCPRangeError = "When dhcp_type is DHCP_RANGE, dhcp_ip_range must be provided (not null, unset, or " +
+		"empty string), and dhcp_relay_group_id and dhcp_relay_group_name must be null, unset, or empty strings."
+)
+
 func NewNetworkRangeResource() resource.Resource {
 	return &networkRangeResource{}
 }
@@ -43,9 +65,9 @@ type networkRangeResource struct {
 func buildAddNetworkRangeInput(plan NetworkRange, mdnsReflector *bool) cato_models.AddNetworkRangeInput {
 	return cato_models.AddNetworkRangeInput{
 		Name:             plan.Name.ValueString(),
-		RangeType:        (cato_models.SubnetType)(plan.RangeType.ValueString()),
+		RangeType:        cato_models.SubnetType(plan.RangeType.ValueString()),
 		Subnet:           plan.Subnet.ValueString(),
-		LocalIP:          plan.LocalIp.ValueStringPointer(),
+		LocalIP:          plan.LocalIP.ValueStringPointer(),
 		TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
 		Gateway:          plan.Gateway.ValueStringPointer(),
 		Vlan:             plan.Vlan.ValueInt64Pointer(),
@@ -59,7 +81,7 @@ func buildUpdateNetworkRangeInput(plan NetworkRange, mdnsReflector *bool, vlan *
 		Name:             plan.Name.ValueStringPointer(),
 		RangeType:        (*cato_models.SubnetType)(plan.RangeType.ValueStringPointer()),
 		Subnet:           plan.Subnet.ValueStringPointer(),
-		LocalIP:          plan.LocalIp.ValueStringPointer(),
+		LocalIP:          plan.LocalIP.ValueStringPointer(),
 		TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
 		Gateway:          plan.Gateway.ValueStringPointer(),
 		Vlan:             vlan,
@@ -72,9 +94,10 @@ func (r *networkRangeResource) Metadata(_ context.Context, req resource.Metadata
 	resp.TypeName = req.ProviderTypeName + "_network_range"
 }
 
+// nolint:funlen // Terraform schemas are declarative and lengthy by nature.
 func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_network_range` resource contains the configuration parameters necessary to add a network range to a cato site. ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addNetworkRange()](https://api.catonetworks.com/documentation/#mutation-site.addNetworkRange).",
+		Description: networkRangeDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Network Range ID",
@@ -147,7 +170,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 			},
 			"mdns_reflector": schema.BoolAttribute{
-				Description: "Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.",
+				Description: networkRangeMDNSReflectorDescription,
 				Optional:    true,
 				Computed:    true,
 				Default:     booldefault.StaticBool(false),
@@ -160,7 +183,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"range_type": schema.StringAttribute{
-				Description: "Network range type (https://api.catonetworks.com/documentation/#definition-SubnetType)",
+				Description: "Network range type (https:// api.catonetworks.com/documentation/#definition-SubnetType)",
 				Required:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(
@@ -193,14 +216,14 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"dhcp_type": schema.StringAttribute{
-						Description: "Network range dhcp type (https://api.catonetworks.com/documentation/#definition-DhcpType)",
+						Description: "Network range dhcp type (https:// api.catonetworks.com/documentation/#definition-DhcpType)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf(
 								"ACCOUNT_DEFAULT",
-								"DHCP_DISABLED",
-								"DHCP_RANGE",
-								"DHCP_RELAY",
+								networkRangeDHCPDisabled,
+								networkRangeDHCPRange,
+								networkRangeDHCPRelay,
 							),
 						},
 					},
@@ -224,7 +247,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 						},
 					},
 					"dhcp_microsegmentation": schema.BoolAttribute{
-						Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
+						Description: networkRangeDHCPMicrosegmentationDescription,
 						Optional:    true,
 						Computed:    true,
 					},
@@ -238,7 +261,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *networkRangeResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *networkRangeResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -276,8 +299,8 @@ func (r *networkRangeResource) ImportState(ctx context.Context, req resource.Imp
 	resp.Diagnostics.Append(diags...)
 }
 
+// nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
 func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan NetworkRange
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -286,19 +309,19 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Validate that interface_id and interface_index cannot be set simultaneously
-	tflog.Debug(ctx, "plan.InterfaceId.sample", map[string]interface{}{
-		"plan.InterfaceId.IsNull()":    utils.InterfaceToJSONString(plan.InterfaceId.IsNull()),
+	tflog.Debug(ctx, "plan.InterfaceID.sample", map[string]interface{}{
+		"plan.InterfaceID.IsNull()":    utils.InterfaceToJSONString(plan.InterfaceID.IsNull()),
 		"plan.InterfaceIndex.IsNull()": utils.InterfaceToJSONString(plan.InterfaceIndex.IsNull()),
 	})
 
-	interfaceIdSet := !plan.InterfaceId.IsNull() && !plan.InterfaceId.IsUnknown()
+	interfaceIDSet := !plan.InterfaceID.IsNull() && !plan.InterfaceID.IsUnknown()
 	interfaceIndexSet := !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown()
-	if interfaceIdSet && interfaceIndexSet {
+	if interfaceIDSet && interfaceIndexSet {
 		resp.Diagnostics.AddError(
 			"Conflicting Configuration",
 			fmt.Sprintf("Both interface_id (%q) and interface_index (%q) are specified. "+
 				"Only one interface specification method is allowed per network range.",
-				plan.InterfaceId.ValueString(), plan.InterfaceIndex.ValueString()),
+				plan.InterfaceID.ValueString(), plan.InterfaceIndex.ValueString()),
 		)
 		return
 	}
@@ -307,21 +330,21 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	if !plan.SiteId.IsNull() && !plan.SiteId.IsUnknown() {
 		// If interface_id is set, use it to validate the site network interface
 		var err error
-		var curInterfaceId, curInterfaceIndex string
+		var curInterfaceID, curInterfaceIndex string
 
-		if !plan.InterfaceId.IsNull() && !plan.InterfaceId.IsUnknown() {
+		if !plan.InterfaceID.IsNull() && !plan.InterfaceID.IsUnknown() {
 			// When interface_id is provided, get the corresponding interface_index
-			_, curInterfaceIndex, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceId.ValueString(), "", "")
+			_, curInterfaceIndex, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceID.ValueString(), "", "")
 			if err == nil {
 				// Set the interface_index in the plan based on the lookup
 				plan.InterfaceIndex = types.StringValue(curInterfaceIndex)
 			}
 		} else if !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown() {
 			// When interface_index is provided, get the corresponding interface_id
-			curInterfaceId, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
+			curInterfaceID, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
 			if err == nil {
 				// Set the interface_id in the plan based on the lookup
-				plan.InterfaceId = types.StringValue(curInterfaceId)
+				plan.InterfaceID = types.StringValue(curInterfaceID)
 			}
 		}
 
@@ -336,7 +359,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Validate that InternetOnly and MdnsReflector cannot be set simultaneously
 	if !plan.InternetOnly.IsNull() && !plan.MdnsReflector.IsNull() &&
-		plan.InternetOnly.ValueBool() == true && plan.MdnsReflector.ValueBool() == true {
+		plan.InternetOnly.ValueBool() && plan.MdnsReflector.ValueBool() {
 		resp.Diagnostics.AddError(
 			"Invalid Configuration",
 			"mDNS and Internet Only cannot be set simultaneously",
@@ -346,7 +369,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 	// mDNS not supported for rangeType Routed, set to null
 	if plan.RangeType == types.StringValue("Routed") && !plan.MdnsReflector.IsNull() &&
-		!plan.MdnsReflector.IsNull() && plan.MdnsReflector.ValueBool() == true {
+		!plan.MdnsReflector.IsNull() && plan.MdnsReflector.ValueBool() {
 		resp.Diagnostics.AddError(
 			"Invalid Configuration",
 			"mDNS reflector is not a supported configuration for routed subnets",
@@ -386,38 +409,38 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		// Validate that interface_id and interface_index cannot be set simultaneously
 		tflog.Debug(ctx, "networkRange.create.dhcpSettings", map[string]interface{}{
 			"name":                                      utils.InterfaceToJSONString(plan.Name.ValueString()),
-			"dhcpSettings.IpRange.IsNull()":             utils.InterfaceToJSONString(dhcpSettings.IpRange.IsNull()),
-			"dhcpSettings.IpRange.IsUnknown()":          utils.InterfaceToJSONString(dhcpSettings.IpRange.IsUnknown()),
-			"dhcpSettings.IpRange.ValueString()":        utils.InterfaceToJSONString(dhcpSettings.IpRange.ValueString()),
-			"dhcpSettings.RelayGroupId.IsNull()":        utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsNull()),
-			"dhcpSettings.RelayGroupId.IsUnknown()":     utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsUnknown()),
-			"dhcpSettings.RelayGroupId.ValueString()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.ValueString()),
+			"dhcpSettings.IPRange.IsNull()":             utils.InterfaceToJSONString(dhcpSettings.IPRange.IsNull()),
+			"dhcpSettings.IPRange.IsUnknown()":          utils.InterfaceToJSONString(dhcpSettings.IPRange.IsUnknown()),
+			"dhcpSettings.IPRange.ValueString()":        utils.InterfaceToJSONString(dhcpSettings.IPRange.ValueString()),
+			"dhcpSettings.RelayGroupID.IsNull()":        utils.InterfaceToJSONString(dhcpSettings.RelayGroupID.IsNull()),
+			"dhcpSettings.RelayGroupID.IsUnknown()":     utils.InterfaceToJSONString(dhcpSettings.RelayGroupID.IsUnknown()),
+			"dhcpSettings.RelayGroupID.ValueString()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupID.ValueString()),
 			"dhcpSettings.RelayGroupName.IsNull()":      utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsNull()),
 			"dhcpSettings.RelayGroupName.IsUnknown()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsUnknown()),
 			"dhcpSettings.RelayGroupName.ValueString()": utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.ValueString()),
 		})
 
 		// Validate DHCP_DISABLED configuration
-		if dhcpType == "DHCP_DISABLED" {
-			if (!dhcpSettings.IpRange.IsNull() && !dhcpSettings.IpRange.IsUnknown() && dhcpSettings.IpRange.ValueString() != "") ||
-				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+		if dhcpType == networkRangeDHCPDisabled {
+			if (!dhcpSettings.IPRange.IsNull() && !dhcpSettings.IPRange.IsUnknown() && dhcpSettings.IPRange.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupID.IsNull() && !dhcpSettings.RelayGroupID.IsUnknown() && dhcpSettings.RelayGroupID.ValueString() != "") ||
 				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
 				resp.Diagnostics.AddError(
 					"Invalid DHCP Configuration",
-					"When dhcp_type is DHCP_DISABLED, dhcp_ip_range, dhcp_relay_group_id, and dhcp_relay_group_name must be null, unset, or empty strings.",
+					networkRangeDHCPDisabledError,
 				)
 				return
 			}
 		}
 
 		// Validate DHCP_RANGE configuration
-		if dhcpType == "DHCP_RANGE" {
-			if (dhcpSettings.IpRange.IsNull() || dhcpSettings.IpRange.IsUnknown() || dhcpSettings.IpRange.ValueString() == "") ||
-				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+		if dhcpType == networkRangeDHCPRange {
+			if (dhcpSettings.IPRange.IsNull() || dhcpSettings.IPRange.IsUnknown() || dhcpSettings.IPRange.ValueString() == "") ||
+				(!dhcpSettings.RelayGroupID.IsNull() && !dhcpSettings.RelayGroupID.IsUnknown() && dhcpSettings.RelayGroupID.ValueString() != "") ||
 				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
 				resp.Diagnostics.AddError(
 					"Invalid DHCP Configuration",
-					"When dhcp_type is DHCP_RANGE, dhcp_ip_range must be provided (not null, unset, or empty string), and dhcp_relay_group_id and dhcp_relay_group_name must be null, unset, or empty strings.",
+					networkRangeDHCPRangeError,
 				)
 				return
 			}
@@ -425,10 +448,10 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	if plan.RangeType == types.StringValue("Routed") {
-		if !plan.LocalIp.IsNull() && !plan.LocalIp.IsUnknown() && plan.LocalIp.ValueString() != "" {
+		if !plan.LocalIP.IsNull() && !plan.LocalIP.IsUnknown() && plan.LocalIP.ValueString() != "" {
 			resp.Diagnostics.AddError(
 				"Invalid configuration",
-				"Configuring LocalIp is only supported for VLAN, Native and Direct range types.",
+				"Configuring LocalIP is only supported for VLAN, Native and Direct range types.",
 			)
 			return
 		}
@@ -441,7 +464,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 			)
 			return
 		}
-		input.LocalIP = plan.LocalIp.ValueStringPointer()
+		input.LocalIP = plan.LocalIP.ValueStringPointer()
 
 		if plan.RangeType == types.StringValue("VLAN") {
 			// Track if user actually specified dhcp_settings (for later hydration)
@@ -450,10 +473,10 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 			if plan.DhcpSettings.IsNull() {
 				// Set default DHCP settings for API when null for VLAN ranges
 				// NOTE: Do NOT modify plan.DhcpSettings - keep it null to match Terraform's expected state
-				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
+				dhcpSettings.DhcpType = types.StringValue(networkRangeDHCPDisabled)
 				dhcpSettings.DhcpMicrosegmentation = types.BoolNull()
-				dhcpSettings.IpRange = types.StringNull()
-				dhcpSettings.RelayGroupId = types.StringNull()
+				dhcpSettings.IPRange = types.StringNull()
+				dhcpSettings.RelayGroupID = types.StringNull()
 				dhcpSettings.RelayGroupName = types.StringNull()
 			} else {
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
@@ -470,13 +493,14 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
 
-				input.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
-				input.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
+				input.DhcpSettings.DhcpType = cato_models.DhcpType(dhcpSettingsInput.DhcpType.ValueString())
+				input.DhcpSettings.IPRange = dhcpSettingsInput.IPRange.ValueStringPointer()
 				// Note: RelayGroupID is only set for DHCP_RELAY type below
 				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE or DHCP_RELAY
 				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
 					dhcpType := dhcpSettingsInput.DhcpType.ValueString()
-					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpType != "DHCP_RANGE" && dhcpType != "DHCP_RELAY" {
+					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() &&
+						dhcpType != networkRangeDHCPRange && dhcpType != networkRangeDHCPRelay {
 						resp.Diagnostics.AddError(
 							"Invalid DHCP Microsegmentation Configuration",
 							"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE or DHCP_RELAY",
@@ -487,23 +511,24 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 				// Set dhcpMicrosegmentation for DHCP_RANGE or DHCP_RELAY types
 				dhcpType := dhcpSettingsInput.DhcpType.ValueString()
-				if (dhcpType == "DHCP_RANGE" || dhcpType == "DHCP_RELAY") && (!dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown()) {
+				if (dhcpType == networkRangeDHCPRange || dhcpType == networkRangeDHCPRelay) &&
+					(!dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown()) {
 					input.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
 				}
 
 				// Validate DHCP relay group configuration when dhcp_type is DHCP_RELAY
-				if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RELAY" {
+				if dhcpSettingsInput.DhcpType.ValueString() == networkRangeDHCPRelay {
 					relayGroupName := ""
-					relayGroupId := ""
+					relayGroupID := ""
 
 					if !dhcpSettingsInput.RelayGroupName.IsNull() && !dhcpSettingsInput.RelayGroupName.IsUnknown() {
 						relayGroupName = dhcpSettingsInput.RelayGroupName.ValueString()
 					}
-					if !dhcpSettingsInput.RelayGroupId.IsNull() && !dhcpSettingsInput.RelayGroupId.IsUnknown() {
-						relayGroupId = dhcpSettingsInput.RelayGroupId.ValueString()
+					if !dhcpSettingsInput.RelayGroupID.IsNull() && !dhcpSettingsInput.RelayGroupID.IsUnknown() {
+						relayGroupID = dhcpSettingsInput.RelayGroupID.ValueString()
 					}
 
-					resolvedRelayGroupId, success, err := checkForDhcpRelayGroup(ctx, r.client, relayGroupName, relayGroupId)
+					resolvedRelayGroupID, success, err := checkForDhcpRelayGroup(ctx, r.client, relayGroupName, relayGroupID)
 					if err != nil {
 						resp.Diagnostics.AddError(
 							"DHCP Relay Configuration Error",
@@ -520,11 +545,11 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 					}
 
 					// Set the resolved relay group ID
-					input.DhcpSettings.RelayGroupID = &resolvedRelayGroupId
+					input.DhcpSettings.RelayGroupID = &resolvedRelayGroupID
 
 					// Update the plan's DhcpSettings with the resolved relay group ID
 					// This ensures the value is known after apply
-					dhcpSettingsInput.RelayGroupId = types.StringValue(resolvedRelayGroupId)
+					dhcpSettingsInput.RelayGroupID = types.StringValue(resolvedRelayGroupID)
 					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettingsInput)
 				}
 			}
@@ -533,9 +558,9 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 
 	tflog.Debug(ctx, "Create.SiteAddNetworkRange.request", map[string]interface{}{
 		"request":     utils.InterfaceToJSONString(input),
-		"interfaceId": utils.InterfaceToJSONString(plan.InterfaceId.ValueString()),
+		"interfaceId": utils.InterfaceToJSONString(plan.InterfaceID.ValueString()),
 	})
-	networkRange, err := r.client.catov2.SiteAddNetworkRange(ctx, plan.InterfaceId.ValueString(), input, r.client.AccountId)
+	networkRange, err := r.client.catov2.SiteAddNetworkRange(ctx, plan.InterfaceID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddNetworkRange.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(networkRange),
 	})
@@ -562,7 +587,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	hydratedState.InterfaceId = types.StringValue(plan.InterfaceId.ValueString())
+	hydratedState.InterfaceID = types.StringValue(plan.InterfaceID.ValueString())
 	hydratedState.Id = types.StringValue(networkRange.Site.AddNetworkRange.NetworkRangeID)
 
 	diags = resp.State.Set(ctx, &hydratedState)
@@ -603,8 +628,8 @@ func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadReques
 	}
 }
 
+// nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
 func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan NetworkRange
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -613,7 +638,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// // Validate that interface_id and interface_index cannot be set simultaneously
-	// if !plan.InterfaceId.IsNull() && !plan.InterfaceIndex.IsNull() {
+	// if !plan.InterfaceID.IsNull() && !plan.InterfaceIndex.IsNull() {
 	// 	resp.Diagnostics.AddError(
 	// 		"Invalid Configuration",
 	// 		"Interface ID and Interface Index cannot be set simultaneously",
@@ -626,16 +651,16 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		// If interface_id is set, use it to validate the site network interface
 		var err error
 		tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceAttr", map[string]interface{}{
-			"plan.InterfaceId":                utils.InterfaceToJSONString(plan.InterfaceId),
-			"plan.InterfaceId.IsUnknown()":    plan.InterfaceId.IsUnknown(),
-			"plan.InterfaceId.IsNull()":       plan.InterfaceId.IsNull(),
+			"plan.InterfaceID":                utils.InterfaceToJSONString(plan.InterfaceID),
+			"plan.InterfaceID.IsUnknown()":    plan.InterfaceID.IsUnknown(),
+			"plan.InterfaceID.IsNull()":       plan.InterfaceID.IsNull(),
 			"plan.InterfaceIndex":             utils.InterfaceToJSONString(plan.InterfaceIndex),
 			"plan.InterfaceIndex.IsUnknown()": plan.InterfaceIndex.IsUnknown(),
 			"plan.InterfaceIndex.IsNull()":    plan.InterfaceIndex.IsNull(),
 		})
-		if !plan.InterfaceId.IsNull() && !plan.InterfaceId.IsUnknown() {
-			tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceId.IsNull", map[string]interface{}{})
-			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceId.ValueString(), "", "")
+		if !plan.InterfaceID.IsNull() && !plan.InterfaceID.IsUnknown() {
+			tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceID.IsNull", map[string]interface{}{})
+			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceID.ValueString(), "", "")
 		} else if !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown() {
 			tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceIndex.IsNull", map[string]interface{}{})
 			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
@@ -651,7 +676,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// Validate that InternetOnly and MdnsReflector cannot be set simultaneously
 	if !plan.InternetOnly.IsNull() && !plan.MdnsReflector.IsNull() &&
-		plan.InternetOnly.ValueBool() == true && plan.MdnsReflector.ValueBool() == true {
+		plan.InternetOnly.ValueBool() && plan.MdnsReflector.ValueBool() {
 		resp.Diagnostics.AddError(
 			"Invalid Configuration",
 			"mDNS and Internet Only cannot be set simultaneously",
@@ -698,12 +723,12 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 	// Validate that interface_id and interface_index cannot be set simultaneously
 	tflog.Debug(ctx, "networkRange.update.dhcpSettings", map[string]interface{}{
 		"name":                                      utils.InterfaceToJSONString(plan.Name.ValueStringPointer()),
-		"dhcpSettings.IpRange.IsNull()":             utils.InterfaceToJSONString(dhcpSettings.IpRange.IsNull()),
-		"dhcpSettings.IpRange.IsUnknown()":          utils.InterfaceToJSONString(dhcpSettings.IpRange.IsUnknown()),
-		"dhcpSettings.IpRange.ValueString()":        utils.InterfaceToJSONString(dhcpSettings.IpRange.ValueString()),
-		"dhcpSettings.RelayGroupId.IsNull()":        utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsNull()),
-		"dhcpSettings.RelayGroupId.IsUnknown()":     utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.IsUnknown()),
-		"dhcpSettings.RelayGroupId.ValueString()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupId.ValueString()),
+		"dhcpSettings.IPRange.IsNull()":             utils.InterfaceToJSONString(dhcpSettings.IPRange.IsNull()),
+		"dhcpSettings.IPRange.IsUnknown()":          utils.InterfaceToJSONString(dhcpSettings.IPRange.IsUnknown()),
+		"dhcpSettings.IPRange.ValueString()":        utils.InterfaceToJSONString(dhcpSettings.IPRange.ValueString()),
+		"dhcpSettings.RelayGroupID.IsNull()":        utils.InterfaceToJSONString(dhcpSettings.RelayGroupID.IsNull()),
+		"dhcpSettings.RelayGroupID.IsUnknown()":     utils.InterfaceToJSONString(dhcpSettings.RelayGroupID.IsUnknown()),
+		"dhcpSettings.RelayGroupID.ValueString()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupID.ValueString()),
 		"dhcpSettings.RelayGroupName.IsNull()":      utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsNull()),
 		"dhcpSettings.RelayGroupName.IsUnknown()":   utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.IsUnknown()),
 		"dhcpSettings.RelayGroupName.ValueString()": utils.InterfaceToJSONString(dhcpSettings.RelayGroupName.ValueString()),
@@ -720,26 +745,26 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		dhcpType := dhcpSettings.DhcpType.ValueString()
 
 		// Validate DHCP_DISABLED configuration
-		if dhcpType == "DHCP_DISABLED" {
-			if (!dhcpSettings.IpRange.IsNull() && !dhcpSettings.IpRange.IsUnknown() && dhcpSettings.IpRange.ValueString() != "") ||
-				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+		if dhcpType == networkRangeDHCPDisabled {
+			if (!dhcpSettings.IPRange.IsNull() && !dhcpSettings.IPRange.IsUnknown() && dhcpSettings.IPRange.ValueString() != "") ||
+				(!dhcpSettings.RelayGroupID.IsNull() && !dhcpSettings.RelayGroupID.IsUnknown() && dhcpSettings.RelayGroupID.ValueString() != "") ||
 				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
 				resp.Diagnostics.AddError(
 					"Invalid DHCP Configuration",
-					"When dhcp_type is DHCP_DISABLED, dhcp_ip_range, dhcp_relay_group_id, and dhcp_relay_group_name must be null, unset, or empty strings.",
+					networkRangeDHCPDisabledError,
 				)
 				return
 			}
 		}
 
 		// Validate DHCP_RANGE configuration
-		if dhcpType == "DHCP_RANGE" {
-			if (dhcpSettings.IpRange.IsNull() || dhcpSettings.IpRange.IsUnknown() || dhcpSettings.IpRange.ValueString() == "") ||
-				(!dhcpSettings.RelayGroupId.IsNull() && !dhcpSettings.RelayGroupId.IsUnknown() && dhcpSettings.RelayGroupId.ValueString() != "") ||
+		if dhcpType == networkRangeDHCPRange {
+			if (dhcpSettings.IPRange.IsNull() || dhcpSettings.IPRange.IsUnknown() || dhcpSettings.IPRange.ValueString() == "") ||
+				(!dhcpSettings.RelayGroupID.IsNull() && !dhcpSettings.RelayGroupID.IsUnknown() && dhcpSettings.RelayGroupID.ValueString() != "") ||
 				(!dhcpSettings.RelayGroupName.IsNull() && !dhcpSettings.RelayGroupName.IsUnknown() && dhcpSettings.RelayGroupName.ValueString() != "") {
 				resp.Diagnostics.AddError(
 					"Invalid DHCP Configuration",
-					"When dhcp_type is DHCP_RANGE, dhcp_ip_range must be provided (not null, unset, or empty string), and dhcp_relay_group_id and dhcp_relay_group_name must be null, unset, or empty strings.",
+					networkRangeDHCPRangeError,
 				)
 				return
 			}
@@ -748,10 +773,10 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// Set Gateway or LocalIP based on range type
 	if plan.RangeType == types.StringValue("Routed") {
-		if !plan.LocalIp.IsNull() && !plan.LocalIp.IsUnknown() && plan.LocalIp.ValueString() != "" {
+		if !plan.LocalIP.IsNull() && !plan.LocalIP.IsUnknown() && plan.LocalIP.ValueString() != "" {
 			resp.Diagnostics.AddError(
 				"Invalid configuration",
-				"Configuring LocalIp is only supported for VLAN, Native and Direct range types.",
+				"Configuring LocalIP is only supported for VLAN, Native and Direct range types.",
 			)
 			return
 		}
@@ -766,12 +791,12 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 			)
 			return
 		}
-		input.LocalIP = plan.LocalIp.ValueStringPointer()
+		input.LocalIP = plan.LocalIP.ValueStringPointer()
 		// Explicitly clear Gateway for non-routed ranges
 		input.Gateway = nil
 		if plan.RangeType == types.StringValue("VLAN") {
 			if plan.DhcpSettings.IsNull() {
-				dhcpSettings.DhcpType = types.StringValue("DHCP_DISABLED")
+				dhcpSettings.DhcpType = types.StringValue(networkRangeDHCPDisabled)
 			} else {
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
@@ -786,13 +811,14 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
 
-				input.DhcpSettings.DhcpType = (cato_models.DhcpType)(dhcpSettingsInput.DhcpType.ValueString())
-				input.DhcpSettings.IPRange = dhcpSettingsInput.IpRange.ValueStringPointer()
+				input.DhcpSettings.DhcpType = cato_models.DhcpType(dhcpSettingsInput.DhcpType.ValueString())
+				input.DhcpSettings.IPRange = dhcpSettingsInput.IPRange.ValueStringPointer()
 				// Note: RelayGroupID is only set for DHCP_RELAY type below
 				// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE or DHCP_RELAY
 				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
 					dhcpType := dhcpSettingsInput.DhcpType.ValueString()
-					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() == true && dhcpType != "DHCP_RANGE" && dhcpType != "DHCP_RELAY" {
+					if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() &&
+						dhcpType != networkRangeDHCPRange && dhcpType != networkRangeDHCPRelay {
 						resp.Diagnostics.AddError(
 							"Invalid DHCP Microsegmentation Configuration",
 							"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE or DHCP_RELAY",
@@ -803,23 +829,24 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 
 				// Set dhcpMicrosegmentation for DHCP_RANGE or DHCP_RELAY types
 				dhcpType := dhcpSettingsInput.DhcpType.ValueString()
-				if (dhcpType == "DHCP_RANGE" || dhcpType == "DHCP_RELAY") && (!dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown()) {
+				if (dhcpType == networkRangeDHCPRange || dhcpType == networkRangeDHCPRelay) &&
+					(!dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown()) {
 					input.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
 				}
 
 				// Validate DHCP relay group configuration when dhcp_type is DHCP_RELAY
-				if dhcpSettingsInput.DhcpType.ValueString() == "DHCP_RELAY" {
+				if dhcpSettingsInput.DhcpType.ValueString() == networkRangeDHCPRelay {
 					relayGroupName := ""
-					relayGroupId := ""
+					relayGroupID := ""
 
 					if !dhcpSettingsInput.RelayGroupName.IsNull() && !dhcpSettingsInput.RelayGroupName.IsUnknown() {
 						relayGroupName = dhcpSettingsInput.RelayGroupName.ValueString()
 					}
-					if !dhcpSettingsInput.RelayGroupId.IsNull() && !dhcpSettingsInput.RelayGroupId.IsUnknown() {
-						relayGroupId = dhcpSettingsInput.RelayGroupId.ValueString()
+					if !dhcpSettingsInput.RelayGroupID.IsNull() && !dhcpSettingsInput.RelayGroupID.IsUnknown() {
+						relayGroupID = dhcpSettingsInput.RelayGroupID.ValueString()
 					}
 
-					resolvedRelayGroupId, success, err := checkForDhcpRelayGroup(ctx, r.client, relayGroupName, relayGroupId)
+					resolvedRelayGroupID, success, err := checkForDhcpRelayGroup(ctx, r.client, relayGroupName, relayGroupID)
 					if err != nil {
 						resp.Diagnostics.AddError(
 							"DHCP Relay Configuration Error",
@@ -836,11 +863,11 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 					}
 
 					// Set the resolved relay group ID
-					input.DhcpSettings.RelayGroupID = &resolvedRelayGroupId
+					input.DhcpSettings.RelayGroupID = &resolvedRelayGroupID
 
 					// Update the plan's DhcpSettings with the resolved relay group ID
 					// This ensures the value is known after apply
-					dhcpSettingsInput.RelayGroupId = types.StringValue(resolvedRelayGroupId)
+					dhcpSettingsInput.RelayGroupID = types.StringValue(resolvedRelayGroupID)
 					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettingsInput)
 				}
 			}
@@ -904,7 +931,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	hydratedState.InterfaceId = types.StringValue(plan.InterfaceId.ValueString())
+	hydratedState.InterfaceID = types.StringValue(plan.InterfaceID.ValueString())
 	hydratedState.Id = types.StringValue(siteUpdateNetworkRangeResponse.Site.UpdateNetworkRange.NetworkRangeID)
 
 	diags = resp.State.Set(ctx, &hydratedState)
@@ -915,7 +942,6 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 }
 
 func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state NetworkRange
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -949,11 +975,16 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 			return
 		}
 	}
-
 }
 
 // hydrateNetworkRangeState populates the NetworkRange state with data from API responses
-func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, state NetworkRange, networkRangeID string) (NetworkRange, bool, error) {
+//
+// nolint:gocyclo,funlen // Hydration mirrors API shape and keeps state preservation logic in one place.
+func (r *networkRangeResource) hydrateNetworkRangeState(
+	ctx context.Context,
+	state NetworkRange,
+	networkRangeID string,
+) (NetworkRange, bool, error) {
 	const notFoundMsg = "Invalid network range id: "
 
 	queryRangeResult, err := r.client.catov2.NetworkRange(ctx, r.client.AccountId, networkRangeID)
@@ -992,8 +1023,8 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 
 		dhcpSettings := DhcpSettings{
 			DhcpType:              types.StringValue(string(responseRange.DhcpSettings.DhcpType)),
-			IpRange:               types.StringNull(),
-			RelayGroupId:          types.StringNull(),
+			IPRange:               types.StringNull(),
+			RelayGroupID:          types.StringNull(),
 			RelayGroupName:        types.StringNull(),
 			DhcpMicrosegmentation: types.BoolNull(),
 		}
@@ -1010,7 +1041,7 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 		// Handle type-specific fields
 		switch responseRange.DhcpSettings.DhcpType {
 		case cato_models.DhcpTypeDhcpRange:
-			dhcpSettings.IpRange = types.StringPointerValue(responseRange.DhcpSettings.IPRange)
+			dhcpSettings.IPRange = types.StringPointerValue(responseRange.DhcpSettings.IPRange)
 		case cato_models.DhcpTypeDhcpRelay:
 			if responseRange.DhcpSettings.RelayGroupID == nil { // for DHCP_RELAY, groupID must be set
 				return NetworkRange{}, false, fmt.Errorf("dhcpSettings.RelayGroupID not returned by NetworkRange API for rangeID '%s'", networkRangeID)
@@ -1018,7 +1049,7 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 			// Set BOTH relay_group_id and relay_group_name in state
 			// This ensures no drift regardless of which field the user specified in config
 			// ConflictsWith validator only applies to configuration, not state
-			dhcpSettings.RelayGroupId = types.StringValue(*responseRange.DhcpSettings.RelayGroupID)
+			dhcpSettings.RelayGroupID = types.StringValue(*responseRange.DhcpSettings.RelayGroupID)
 			relayGroupName, success, err := checkForDhcpRelayGroup(ctx, r.client, "", *responseRange.DhcpSettings.RelayGroupID)
 			if err != nil {
 				return NetworkRange{}, false, fmt.Errorf("failed to get dhcpSettings RelayGroup name for network rangeID '%s': %w", networkRangeID, err)
@@ -1040,7 +1071,7 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 	state.Gateway = types.StringPointerValue(responseRange.Gateway)
 	state.InternetOnly = types.BoolValue(responseRange.InternetOnly)
 	state.MdnsReflector = types.BoolValue(responseRange.MdnsReflector)
-	state.LocalIp = types.StringPointerValue(responseRange.LocalIP)
+	state.LocalIP = types.StringPointerValue(responseRange.LocalIP)
 	state.Name = types.StringValue(responseRange.Name)
 	state.RangeType = types.StringValue(string(responseRange.RangeType))
 	state.Subnet = types.StringValue(responseRange.Subnet)
@@ -1050,9 +1081,9 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 		state.Vlan = types.Int64Null()
 	}
 
-	// If SiteId or InterfaceId is not already set (e.g., during import), look it up via entityLookup
-	if state.SiteId.IsNull() || state.SiteId.IsUnknown() || state.InterfaceId.IsNull() || state.InterfaceId.IsUnknown() {
-		siteId, interfaceName, lookupErr := r.getSiteIdFromNetworkRange(ctx, networkRangeID)
+	// If SiteId or InterfaceID is not already set (e.g., during import), look it up via entityLookup
+	if state.SiteId.IsNull() || state.SiteId.IsUnknown() || state.InterfaceID.IsNull() || state.InterfaceID.IsUnknown() {
+		siteID, interfaceName, lookupErr := r.getSiteIDFromNetworkRange(ctx, networkRangeID)
 		if lookupErr != nil {
 			tflog.Warn(ctx, "Failed to lookup site_id for network range, keeping existing state value", map[string]interface{}{
 				"networkRangeID": networkRangeID,
@@ -1061,15 +1092,15 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 		} else {
 			// Set SiteId if not already set
 			if state.SiteId.IsNull() || state.SiteId.IsUnknown() {
-				state.SiteId = types.StringValue(siteId)
+				state.SiteId = types.StringValue(siteID)
 			}
 
-			// Set InterfaceId and InterfaceIndex if not already set and we have interfaceName
-			if (state.InterfaceId.IsNull() || state.InterfaceId.IsUnknown()) && interfaceName != "" {
+			// Set InterfaceID and InterfaceIndex if not already set and we have interfaceName
+			if (state.InterfaceID.IsNull() || state.InterfaceID.IsUnknown()) && interfaceName != "" {
 				// Look up the interface_id using the site_id and interface_name
-				interfaceId, interfaceIndex, interfaceErr := getSiteNetworkInterface(ctx, r.client, siteId, "", "", interfaceName)
+				interfaceID, interfaceIndex, interfaceErr := getSiteNetworkInterface(ctx, r.client, siteID, "", "", interfaceName)
 				if interfaceErr == nil {
-					state.InterfaceId = types.StringValue(interfaceId)
+					state.InterfaceID = types.StringValue(interfaceID)
 					state.InterfaceIndex = types.StringValue(interfaceIndex)
 				} else {
 					tflog.Warn(ctx, "Failed to lookup interface_id for network range", map[string]interface{}{
@@ -1085,9 +1116,24 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, sta
 	return state, true, nil
 }
 
-// getSiteIdFromNetworkRange retrieves the site_id and interface info for a network range using entityLookup
-func (r *networkRangeResource) getSiteIdFromNetworkRange(ctx context.Context, networkRangeID string) (siteId string, interfaceName string, err error) {
-	result, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, nil, nil, []string{networkRangeID}, nil, nil, nil)
+// getSiteIDFromNetworkRange retrieves the site_id and interface info for a network range using entityLookup.
+func (r *networkRangeResource) getSiteIDFromNetworkRange(
+	ctx context.Context,
+	networkRangeID string,
+) (siteID string, interfaceName string, err error) {
+	result, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("siteRange"),
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{networkRangeID},
+		nil,
+		nil,
+		nil,
+	)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to lookup network range site: %w", err)
 	}
@@ -1102,14 +1148,14 @@ func (r *networkRangeResource) getSiteIdFromNetworkRange(ctx context.Context, ne
 		return "", "", fmt.Errorf("no helperFields returned for network range %s", networkRangeID)
 	}
 
-	// Extract siteId from helperFields
-	siteId = cast.ToString(helperFields["siteId"])
-	if siteId == "" {
+	// Extract siteID from helperFields
+	siteID = cast.ToString(helperFields["siteId"])
+	if siteID == "" {
 		return "", "", fmt.Errorf("siteId not found in helperFields for network range %s", networkRangeID)
 	}
 
 	// Extract interfaceName from helperFields
 	interfaceName = cast.ToString(helperFields["interfaceName"])
 
-	return siteId, interfaceName, nil
+	return siteID, interfaceName, nil
 }

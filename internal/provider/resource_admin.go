@@ -28,6 +28,8 @@ var (
 	_ resource.ResourceWithImportState = &adminResource{}
 )
 
+const adminImportIDParts = 2
+
 func NewAdminResource() resource.Resource {
 	return &adminResource{}
 }
@@ -40,6 +42,7 @@ func (r *adminResource) Metadata(_ context.Context, req resource.MetadataRequest
 	resp.TypeName = req.ProviderTypeName + "_admin"
 }
 
+// nolint:funlen
 func (r *adminResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_admin` resource contains the configuration parameters necessary to manage a Cato Networks admin user.",
@@ -164,8 +167,8 @@ func (r *adminResource) ImportState(ctx context.Context, req resource.ImportStat
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// nolint:gocyclo,funlen
 func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan Admin
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -173,15 +176,15 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	curAccountId := r.client.AccountId
-	if !plan.AccountId.IsNull() && !plan.AccountId.IsUnknown() {
-		curAccountId = plan.AccountId.ValueString()
+	curAccountID := r.client.AccountId
+	if !plan.AccountID.IsNull() && !plan.AccountID.IsUnknown() {
+		curAccountID = plan.AccountID.ValueString()
 	}
 	input := cato_models.AddAdminInput{}
 
 	// Set required fields
-	if !plan.AccountId.IsNull() && !plan.AccountId.IsUnknown() {
-		curAccountId = plan.AccountId.ValueString()
+	if !plan.AccountID.IsNull() && !plan.AccountID.IsUnknown() {
+		curAccountID = plan.AccountID.ValueString()
 	}
 
 	if !plan.FirstName.IsNull() && !plan.FirstName.IsUnknown() {
@@ -273,7 +276,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	})
 
 	// Call the API
-	addAdminResult, err := r.client.catov2.AdminAddAdmin(ctx, input, curAccountId)
+	addAdminResult, err := r.client.catov2.AdminAddAdmin(ctx, input, curAccountID)
 	tflog.Debug(ctx, "Create.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addAdminResult),
 	})
@@ -309,11 +312,11 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	})
 
 	// Update the state with the admin ID
-	plan.Id = types.StringValue(curAccountId + ":" + adminID)
-	plan.AdminId = types.StringValue(adminID)
+	plan.Id = types.StringValue(curAccountID + ":" + adminID)
+	plan.AdminID = types.StringValue(adminID)
 
 	// Read the admin data to populate computed fields
-	readAdminResult, err := r.client.catov2.Admin(ctx, curAccountId, adminID)
+	readAdminResult, err := r.client.catov2.Admin(ctx, curAccountID, adminID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API Admin error",
@@ -334,7 +337,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	// Update computed fields from the API response
 	plan.MFAEnabled = types.BoolValue(true)
-	plan.AccountId = types.StringValue(curAccountId)
+	plan.AccountID = types.StringValue(curAccountID)
 
 	// Handle managed roles with computed names
 	if !plan.ManagedRoles.IsNull() && !plan.ManagedRoles.IsUnknown() {
@@ -439,8 +442,8 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 }
 
+// nolint:gocyclo,funlen
 func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state Admin
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -449,15 +452,15 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	idParts := regexp.MustCompile(":").Split(state.Id.ValueString(), 2)
-	curAccountId := ""
-	curAdminId := ""
-	if len(idParts) == 2 {
-		curAccountId = idParts[0]
-		curAdminId = idParts[1]
+	curAccountID := ""
+	curAdminID := ""
+	if len(idParts) == adminImportIDParts {
+		curAccountID = idParts[0]
+		curAdminID = idParts[1]
 	}
 
-	// Fail and return if either curAccountId or curAdminId is empty
-	if curAccountId == "" || curAdminId == "" {
+	// Fail and return if either curAccountID or curAdminID is empty
+	if curAccountID == "" || curAdminID == "" {
 		resp.Diagnostics.AddError(
 			"Invalid Admin ID",
 			"Failed to parse admin ID: either account ID or admin ID is empty.",
@@ -468,12 +471,12 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	// Log the request
 	tflog.Info(ctx, "Read.admin")
 	tflog.Debug(ctx, "Read.Admin.request", map[string]interface{}{
-		"admin_id":   curAdminId,
-		"account_id": curAccountId,
+		"admin_id":   curAdminID,
+		"account_id": curAccountID,
 	})
 
 	// Call the API to read the admin
-	readAdminResult, err := r.client.catov2.Admins(ctx, curAccountId, nil, nil, nil, nil, []string{curAdminId})
+	readAdminResult, err := r.client.catov2.Admins(ctx, curAccountID, nil, nil, nil, nil, []string{curAdminID})
 	tflog.Debug(ctx, "Read.Admins.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(readAdminResult),
 	})
@@ -488,7 +491,7 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	var adminData *cato_models.Admin
 	if readAdminResult != nil && readAdminResult.Admins != nil && readAdminResult.Admins.Items != nil {
 		for _, admin := range readAdminResult.Admins.Items {
-			if admin != nil && admin.ID == curAdminId {
+			if admin != nil && admin.ID == curAdminID {
 				// Convert or map admin (*cato_go_sdk.Admins_Admins_Items) to *cato_models.Admin
 				adminBytes, err := json.Marshal(admin)
 				if err == nil {
@@ -503,22 +506,21 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	if adminData != nil {
-		matchedAdminJson, _ := json.MarshalIndent(adminData, "", "  ")
+		matchedAdminJSON, _ := json.MarshalIndent(adminData, "", "  ")
 		tflog.Debug(ctx, "Matched admin record", map[string]interface{}{
-			"response": string(matchedAdminJson),
+			"response": string(matchedAdminJSON),
 		})
 
 		// Update the state with data from the API response
-		state.Id = types.StringValue(curAccountId + ":" + curAdminId)
+		state.Id = types.StringValue(curAccountID + ":" + curAdminID)
 		state.Email = types.StringValue(*adminData.Email)
 		state.FirstName = types.StringValue(*adminData.FirstName)
 		state.LastName = types.StringValue(*adminData.LastName)
 
 		state.PasswordNeverExpires = types.BoolValue(*adminData.PasswordNeverExpires)
 		state.MFAEnabled = types.BoolValue(true)
-		state.AccountId = types.StringValue(curAccountId)
-		state.AdminId = types.StringValue(curAdminId)
-
+		state.AccountID = types.StringValue(curAccountID)
+		state.AdminID = types.StringValue(curAdminID)
 	} else {
 		resp.Diagnostics.AddError("Admin not found", "The admin with the given ID does not exist.")
 		return
@@ -628,8 +630,8 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 }
 
+// nolint:gocyclo,funlen
 func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan Admin
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -645,15 +647,15 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	idParts := regexp.MustCompile(":").Split(state.Id.ValueString(), 2)
-	curAccountId := ""
-	curAdminId := ""
-	if len(idParts) == 2 {
-		curAccountId = idParts[0]
-		curAdminId = idParts[1]
+	curAccountID := ""
+	curAdminID := ""
+	if len(idParts) == adminImportIDParts {
+		curAccountID = idParts[0]
+		curAdminID = idParts[1]
 	}
 
-	// Fail and return if either curAccountId or curAdminId is empty
-	if curAccountId == "" || curAdminId == "" {
+	// Fail and return if either curAccountID or curAdminID is empty
+	if curAccountID == "" || curAdminID == "" {
 		resp.Diagnostics.AddError(
 			"Invalid Admin ID",
 			"Failed to parse admin ID: either account ID or admin ID is empty.",
@@ -664,8 +666,8 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	// Log the request
 	tflog.Info(ctx, "Read.admin")
 	tflog.Debug(ctx, "Read.Admin.request", map[string]interface{}{
-		"admin_id":   curAdminId,
-		"account_id": curAccountId,
+		"admin_id":   curAdminID,
+		"account_id": curAccountID,
 	})
 
 	// Check if any immutable fields have changed
@@ -768,7 +770,7 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Call the API
-	updateAdminResult, err := r.client.catov2.AdminUpdateAdmin(ctx, curAdminId, input, curAccountId)
+	updateAdminResult, err := r.client.catov2.AdminUpdateAdmin(ctx, curAdminID, input, curAccountID)
 	tflog.Debug(ctx, "Update.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateAdminResult),
 	})
@@ -790,14 +792,14 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	tflog.Debug(ctx, "Admin updated successfully", map[string]interface{}{
-		"admin_id":   curAdminId,
-		"account_id": curAccountId,
+		"admin_id":   curAdminID,
+		"account_id": curAccountID,
 	})
 
 	// Update the state with the admin ID (should be the same)
-	plan.Id = types.StringValue(curAccountId + ":" + curAdminId)
+	plan.Id = types.StringValue(curAccountID + ":" + curAdminID)
 	plan.MFAEnabled = types.BoolValue(true)
-	plan.AccountId = types.StringValue(curAccountId)
+	plan.AccountID = types.StringValue(curAccountID)
 
 	// Set the state
 	diags = resp.State.Set(ctx, plan)
@@ -808,7 +810,6 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 }
 
 func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state Admin
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -817,15 +818,15 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	}
 
 	idParts := regexp.MustCompile(":").Split(state.Id.ValueString(), 2)
-	curAccountId := ""
-	curAdminId := ""
-	if len(idParts) == 2 {
-		curAccountId = idParts[0]
-		curAdminId = idParts[1]
+	curAccountID := ""
+	curAdminID := ""
+	if len(idParts) == adminImportIDParts {
+		curAccountID = idParts[0]
+		curAdminID = idParts[1]
 	}
 
-	// Fail and return if either curAccountId or curAdminId is empty
-	if curAccountId == "" || curAdminId == "" {
+	// Fail and return if either curAccountID or curAdminID is empty
+	if curAccountID == "" || curAdminID == "" {
 		resp.Diagnostics.AddError(
 			"Invalid Admin ID",
 			"Failed to parse admin ID: either account ID or admin ID is empty.",
@@ -836,8 +837,8 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	// Log the request
 	tflog.Info(ctx, "Read.admin")
 	tflog.Debug(ctx, "Read.Admin.request", map[string]interface{}{
-		"admin_id":   curAdminId,
-		"account_id": curAccountId,
+		"admin_id":   curAdminID,
+		"account_id": curAccountID,
 	})
 
 	// Log the request
@@ -847,7 +848,7 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	})
 
 	// Call the API
-	removeAdminResult, err := r.client.catov2.AdminRemoveAdmin(ctx, curAdminId, curAccountId)
+	removeAdminResult, err := r.client.catov2.AdminRemoveAdmin(ctx, curAdminID, curAccountID)
 	tflog.Debug(ctx, "Delete.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removeAdminResult),
 	})

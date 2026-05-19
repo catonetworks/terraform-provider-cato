@@ -6,21 +6,21 @@ import (
 )
 
 type Group struct {
-	Id          types.String `tfsdk:"id"`
+	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
 	Members     types.Set    `tfsdk:"members"`
 }
 
 type GroupMembers struct {
-	Id        types.String `tfsdk:"id"`
+	ID        types.String `tfsdk:"id"`
 	GroupName types.String `tfsdk:"group_name"`
 	Members   types.Set    `tfsdk:"members"`
 }
 
 type GroupMember struct {
 	Name types.String `tfsdk:"name"`
-	Id   types.String `tfsdk:"id"`
+	ID   types.String `tfsdk:"id"`
 	Type types.String `tfsdk:"type"`
 }
 
@@ -34,7 +34,7 @@ var GroupMemberObjectType = types.ObjectType{AttrTypes: GroupMemberAttrTypes}
 
 // GroupsLookup is the type for the groups data source with filters
 type GroupsLookup struct {
-	IdFilter   types.List `tfsdk:"id_filter"`
+	IDFilter   types.List `tfsdk:"id_filter"`
 	NameFilter types.List `tfsdk:"name_filter"`
 	Items      types.List `tfsdk:"items"`
 }

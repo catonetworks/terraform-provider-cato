@@ -19,11 +19,6 @@ type wfRuleSectionLookup struct {
 	Items      types.List `tfsdk:"items"`
 }
 
-type wfRuleSection struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
-}
-
 func WfRuleSectionsDataSource() datasource.DataSource {
 	return &wfRuleSectionsDataSource{}
 }
@@ -66,7 +61,7 @@ func (d *wfRuleSectionsDataSource) Schema(_ context.Context, _ datasource.Schema
 	}
 }
 
-func (d *wfRuleSectionsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *wfRuleSectionsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -107,14 +102,14 @@ func (d *wfRuleSectionsDataSource) Read(ctx context.Context, req datasource.Read
 	var objects []attr.Value
 
 	for _, item := range result.Policy.WanFirewall.Policy.Sections {
-		section_name := cast.ToString(item.Section.Name)
-		section_id := cast.ToString(item.Section.ID)
-		if !filterByName || contains(namesMap, section_name) {
+		sectionName := cast.ToString(item.Section.Name)
+		sectionID := cast.ToString(item.Section.ID)
+		if !filterByName || contains(namesMap, sectionName) {
 			obj, diags := types.ObjectValue(
 				attrTypes,
 				map[string]attr.Value{
-					"id":   types.StringValue(section_id),
-					"name": types.StringValue(section_name),
+					"id":   types.StringValue(sectionID),
+					"name": types.StringValue(sectionName),
 				},
 			)
 			if diags.HasError() {

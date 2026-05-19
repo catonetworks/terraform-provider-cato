@@ -29,6 +29,12 @@ var (
 	_ resource.ResourceWithImportState = &licenseResource{}
 )
 
+const (
+	licenseSiteRefByID                = "ID"
+	licenseStatusActive               = "ACTIVE"
+	multipleOfTenValidatorDescription = "Ensures the value is a multiple of 10"
+)
+
 func NewLicenseResource() resource.Resource {
 	return &licenseResource{}
 }
@@ -41,9 +47,16 @@ func (r *licenseResource) Metadata(_ context.Context, req resource.MetadataReque
 	resp.TypeName = req.ProviderTypeName + "_license"
 }
 
+// nolint:funlen // Terraform schemas are declarative and lengthy by nature.
 func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_license` resource contains the configuration parameters necessary to assign and replace licenses for sites. When creating a new license resource, the `site_id` and `license_id` attributes are required. The `license_info` attribute is optional and will be populated with the license information after the resource is created. If the site has an existing license assigned, the license resource will call the mutation.ReplaceSiteBwLicense() operation replacing the existing license with the new license_id ensuring there is no interruption in servive of reassigning a license.\n\n**NOTE** License assignment does not work for Trial accounts, or for accounts that are \"not synced\".",
+		Description: "The `cato_license` resource contains the configuration parameters necessary to assign and " +
+			"replace licenses for sites. When creating a new license resource, the `site_id` and `license_id` " +
+			"attributes are required. The `license_info` attribute is optional and will be populated with the " +
+			"license information after the resource is created. If the site has an existing license assigned, " +
+			"the license resource will call the mutation.ReplaceSiteBwLicense() operation replacing the existing " +
+			"license with the new license_id ensuring there is no interruption in servive of reassigning a license." +
+			"\n\n**NOTE** License assignment does not work for Trial accounts, or for accounts that are \"not synced\".",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "License ID",
@@ -185,7 +198,6 @@ func (r *licenseResource) ImportState(ctx context.Context, req resource.ImportSt
 }
 
 func (r *licenseResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan LicenseResource
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -208,13 +220,16 @@ func (r *licenseResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 	licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	plan.LicenseInfo = licenseInfoObject
 	diags = resp.State.Set(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if diags.HasError() {
 		return
 	}
-
 }
 
 func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -236,19 +251,24 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Match current license by ID from API response
 	license := &cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses{}
-	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, state.SiteID.ValueString(), licensingInfoResponse)
+	curSiteLicenseID, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteID(ctx, state.SiteID.ValueString(), licensingInfoResponse)
 	if allocatedBw != nil {
 		state.BW = types.Int64Value(*allocatedBw)
 	}
 
 	if siteIsAssigned {
-		if curSiteLicenseId.IsNull() {
-			resp.Diagnostics.AddError("License ID not found", "This could be due to the license or the account being set as trial where the license does not have an ID, or if there is a China license on the account.  If a trial license is assigned, please unassign the trial license and try to reapply.")
+		if curSiteLicenseID.IsNull() {
+			resp.Diagnostics.AddError(
+				"License ID not found",
+				"This could be due to the license or the account being set as trial where the license does not have an ID, "+
+					"or if there is a China license on the account. If a trial license is assigned, "+
+					"please unassign the trial license and try to reapply.",
+			)
 			return
 		}
 		licenses := licensingInfoResponse.GetLicensing().GetLicensingInfo().GetLicenses()
 		for _, curLicense := range licenses {
-			if curLicense.ID != nil && *curLicense.ID == curSiteLicenseId.ValueString() {
+			if curLicense.ID != nil && *curLicense.ID == curSiteLicenseID.ValueString() {
 				license = curLicense
 			}
 		}
@@ -263,7 +283,7 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	state.SiteID = types.StringValue(state.ID.ValueString())
-	state.LicenseID = curSiteLicenseId
+	state.LicenseID = curSiteLicenseID
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if diags.HasError() {
@@ -272,7 +292,6 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 func (r *licenseResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan LicenseResource
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -294,6 +313,10 @@ func (r *licenseResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 	licenseInfoObject, diags := types.ObjectValueFrom(ctx, LicenseInfoResourceAttrTypes, licenseInfo)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	plan.LicenseInfo = licenseInfoObject
 	plan.SiteID = types.StringValue(plan.ID.ValueString())
 	diags = resp.State.Set(ctx, &plan)
@@ -304,7 +327,6 @@ func (r *licenseResource) Update(ctx context.Context, req resource.UpdateRequest
 }
 
 func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state LicenseResource
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -316,7 +338,7 @@ func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest
 	input := cato_models.RemoveSiteBwLicenseInput{}
 	input.LicenseID = state.LicenseID.ValueString()
 	siteRef := &cato_models.SiteRefInput{}
-	siteRef.By = "ID"
+	siteRef.By = licenseSiteRefByID
 	siteRef.Input = state.SiteID.ValueString()
 	input.Site = siteRef
 
@@ -337,54 +359,58 @@ func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 }
 
-func hydrateLicenseState(ctx context.Context, licenseId string, curLicense *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses) (basetypes.ObjectValue, diag.Diagnostics) {
+func hydrateLicenseState(ctx context.Context, licenseID string, curLicense *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses) (basetypes.ObjectValue, diag.Diagnostics) {
 	diags := make(diag.Diagnostics, 0)
 	licenseInfoAttrs := map[string]attr.Value{
 		"allocated_bandwidth": types.Int64Null(),
-		"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
-		"last_updated":        types.StringValue(string(*curLicense.LastUpdated)),
+		"expiration_date":     types.StringValue(curLicense.ExpirationDate),
+		"last_updated":        types.StringValue(*curLicense.LastUpdated),
 		"plan":                types.StringValue(string(curLicense.Plan)),
 		"site_license_group":  types.StringNull(),
 		"site_license_type":   types.StringNull(),
 		"sku":                 types.StringValue(string(curLicense.Sku)),
-		"start_date":          types.StringValue(string(*curLicense.StartDate)),
+		"start_date":          types.StringValue(*curLicense.StartDate),
 		"status":              types.StringValue(string(curLicense.Status)),
-		"total":               types.Int64Value(int64(curLicense.SiteLicense.Total)),
+		"total":               types.Int64Value(curLicense.SiteLicense.Total),
 	}
-	if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_PB_SSE" {
+	if curLicense.Sku == licenseSkuCatoPB || curLicense.Sku == licenseSkuCatoPBSSE {
 		licenseInfoAttrs = map[string]attr.Value{
 			"allocated_bandwidth": types.Int64Value(curLicense.PooledBandwidthLicense.AllocatedBandwidth),
-			"expiration_date":     types.StringValue(string(curLicense.ExpirationDate)),
-			"last_updated":        types.StringValue(string(*curLicense.LastUpdated)),
+			"expiration_date":     types.StringValue(curLicense.ExpirationDate),
+			"last_updated":        types.StringValue(*curLicense.LastUpdated),
 			"plan":                types.StringValue(string(curLicense.Plan)),
 			"site_license_group":  types.StringNull(),
 			"site_license_type":   types.StringNull(),
 			"sku":                 types.StringValue(string(curLicense.Sku)),
-			"start_date":          types.StringValue(string(*curLicense.StartDate)),
+			"start_date":          types.StringValue(*curLicense.StartDate),
 			"status":              types.StringValue(string(curLicense.Status)),
-			"total":               types.Int64Value(int64(curLicense.SiteLicense.Total)),
+			"total":               types.Int64Value(curLicense.SiteLicense.Total),
 		}
 	}
 
 	licenseInfo, diagstmp := types.ObjectValue(LicenseInfoResourceAttrTypes, licenseInfoAttrs)
 	diags = append(diags, diagstmp...)
-	if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_SITE" {
-		if curLicense.Status != "ACTIVE" {
+	if curLicense.Sku == licenseSkuCatoPB || curLicense.Sku == licenseSkuCatoSite {
+		if curLicense.Status != licenseStatusActive {
 			diags.AddError(
 				"INACTIVE LICENSE STATUS",
-				"Site License ID '"+licenseId+"' is not active. Must be 'ACTIVE' status.",
+				"Site License ID '"+licenseID+"' is not active. Must be 'ACTIVE' status.",
 			)
 		}
 	} else {
 		diags.AddError(
 			"INVALID LICENSE ID",
-			"Site License ID '"+licenseId+"' is not a valid site license. Must be 'CATO_PB' or 'CATO_SITE' license type.",
+			"Site License ID '"+licenseID+"' is not a valid site license. Must be 'CATO_PB' or 'CATO_SITE' license type.",
 		)
 	}
 	return licenseInfo, diags
 }
 
-func getLicenseByID(ctx context.Context, curLicenseId string, licensingInfoResponse *cato_go_sdk.Licensing) (*cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses, bool) {
+func getLicenseByID(
+	ctx context.Context,
+	curLicenseID string,
+	licensingInfoResponse *cato_go_sdk.Licensing,
+) (*cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses, bool) {
 	// Match current license by ID from API response
 	licenseExists := false
 	license := &cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses{}
@@ -394,7 +420,7 @@ func getLicenseByID(ctx context.Context, curLicenseId string, licensingInfoRespo
 		if curLicense.ID != nil {
 			licenseID = *curLicense.ID
 		}
-		if licenseID != "" && licenseID == curLicenseId {
+		if licenseID != "" && licenseID == curLicenseID {
 			tflog.Warn(ctx, "Found license ID! "+licenseID)
 			licenseExists = true
 			license = curLicense
@@ -404,79 +430,88 @@ func getLicenseByID(ctx context.Context, curLicenseId string, licensingInfoRespo
 	return license, licenseExists
 }
 
-func getCurrentAssignedLicenseBySiteId(ctx context.Context, curSiteId string, licensingInfoResponse *cato_go_sdk.Licensing) (types.String, *int64, bool) {
-	isAssigned := false
-	var allocatedBw *int64 = nil
-	var curLicenseId types.String
+func getCurrentAssignedLicenseBySiteID(
+	ctx context.Context,
+	curSiteID string,
+	licensingInfoResponse *cato_go_sdk.Licensing,
+) (curLicenseID types.String, allocatedBw *int64, isAssigned bool) {
 	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
 	for _, curLicense := range licenses {
-		if curLicense.Sku == "CATO_PB" || curLicense.Sku == "CATO_PB_SSE" {
+		switch curLicense.Sku {
+		case licenseSkuCatoPB, licenseSkuCatoPBSSE:
 			if len(curLicense.PooledBandwidthLicense.Sites) > 0 {
 				for _, site := range curLicense.PooledBandwidthLicense.Sites {
 					if site.SitePooledBandwidthLicenseSite.ID != "" {
-						tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Checking site IDs, input='"+fmt.Sprintf("%v", curSiteId)+"', currentItem='"+site.SitePooledBandwidthLicenseSite.ID+"'")
-						if site.SitePooledBandwidthLicenseSite.ID == curSiteId {
-							tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
+						tflog.Warn(ctx,
+							"getCurrentAssignedLicenseBySiteID() - Checking site IDs, input='"+curSiteID+
+								"', currentItem='"+site.SitePooledBandwidthLicenseSite.ID+"'",
+						)
+						if site.SitePooledBandwidthLicenseSite.ID == curSiteID {
+							tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteID() - Site ID matched! "+site.SitePooledBandwidthLicenseSite.ID)
 							isAssigned = true
 							allocatedBw = &site.AllocatedBandwidth
 							if curLicense.ID != nil {
-								curLicenseId = types.StringValue(*curLicense.ID)
+								curLicenseID = types.StringValue(*curLicense.ID)
 							} else {
-								curLicenseId = types.StringNull()
+								curLicenseID = types.StringNull()
 							}
 						}
 					}
 				}
 			}
-		} else if curLicense.Sku == "CATO_SITE" || curLicense.Sku == "CATO_SSE_SITE" {
+		case licenseSkuCatoSite, licenseSkuCatoSSESite:
 			if curLicense.SiteLicense.Site != nil {
-				if curLicense.SiteLicense.Site.ID == curSiteId {
-					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteId() - Site ID matched! "+curLicense.SiteLicense.Site.ID)
+				if curLicense.SiteLicense.Site.ID == curSiteID {
+					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteID() - Site ID matched! "+curLicense.SiteLicense.Site.ID)
 					isAssigned = true
 					if curLicense.ID != nil {
-						curLicenseId = types.StringValue(*curLicense.ID)
+						curLicenseID = types.StringValue(*curLicense.ID)
 					} else {
-						curLicenseId = types.StringNull()
+						curLicenseID = types.StringNull()
 					}
 				}
 			}
 		}
 	}
-	return curLicenseId, allocatedBw, isAssigned
+	return curLicenseID, allocatedBw, isAssigned
 }
 
-func checkStaticLicenseForAssignment(ctx context.Context, licenseId string, licensingInfoResponse *cato_go_sdk.Licensing) (types.String, bool) {
+func checkStaticLicenseForAssignment(
+	ctx context.Context,
+	licenseID string,
+	licensingInfoResponse *cato_go_sdk.Licensing,
+) (types.String, bool) {
 	isAssigned := false
-	var curSiteId types.String
+	var curSiteID types.String
 	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
 	for _, curLicense := range licenses {
 		if curLicense.ID != nil {
 			tflog.Debug(ctx, "Calling checkStaticLicenseForAssignment()", map[string]interface{}{
 				"curLicense.ID": fmt.Sprintf("%v", curLicense.ID),
 			})
-			if *curLicense.ID == licenseId && (curLicense.Sku == "CATO_SITE" || curLicense.Sku == "CATO_SSE_SITE") {
+			if *curLicense.ID == licenseID && (curLicense.Sku == licenseSkuCatoSite || curLicense.Sku == licenseSkuCatoSSESite) {
 				if curLicense.SiteLicense.Site != nil {
 					tflog.Debug(ctx, "Calling checkStaticLicenseForAssignment() curLicense.SiteLicense.Site", map[string]interface{}{
-						"curLicense.SiteLicense.Site.ID":                  fmt.Sprintf("%v", curLicense.SiteLicense.Site.ID),
-						"curLicense.ID == curLicense.SiteLicense.Site.ID": (*curLicense.ID == licenseId),
+						"curLicense.SiteLicense.Site.ID":                  curLicense.SiteLicense.Site.ID,
+						"curLicense.ID == curLicense.SiteLicense.Site.ID": (*curLicense.ID == licenseID),
 					})
 					isAssigned = true
-					curSiteId = types.StringValue(curLicense.SiteLicense.Site.ID)
+					curSiteID = types.StringValue(curLicense.SiteLicense.Site.ID)
 				}
 			}
 		}
 	}
-	return curSiteId, isAssigned
+	return curSiteID, isAssigned
 }
 
 // General purpose functions
 type customInt64Validator struct{}
 
 func (v customInt64Validator) Description(ctx context.Context) string {
-	return "Ensures the value is a multiple of 10"
+	return multipleOfTenValidatorDescription
 }
 func (v customInt64Validator) MarkdownDescription(ctx context.Context) string {
-	return "Ensures the value is a multiple of 10"
+	return multipleOfTenValidatorDescription
 }
 func (v customInt64Validator) ValidateInt64(ctx context.Context, req validator.Int64Request, resp *validator.Int64Response) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {

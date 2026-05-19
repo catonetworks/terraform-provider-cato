@@ -32,7 +32,7 @@ var (
 	_ resource.ResourceWithImportState = &tlsInspectionRuleResource{}
 )
 
-func NewTlsInspectionRuleResource() resource.Resource {
+func NewTLSInspectionRuleResource() resource.Resource {
 	return &tlsInspectionRuleResource{}
 }
 
@@ -44,9 +44,12 @@ func (r *tlsInspectionRuleResource) Metadata(_ context.Context, req resource.Met
 	resp.TypeName = req.ProviderTypeName + "_tls_rule"
 }
 
+// nolint:funlen
 func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `_tls_rule` resource contains the configuration parameters necessary to add rule to the TLS Inspection Policy. Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule).",
+		Description: "The `_tls_rule` resource contains the configuration parameters necessary to add rule to the TLS " +
+			"Inspection Policy. Documentation for the underlying API used in this resource can be found at " +
+			"[mutation.policy.tlsInspect.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Identifier of the TLS Inspection Rule",
@@ -61,9 +64,10 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 				Optional:    false,
 				Attributes: map[string]schema.Attribute{
 					"position": schema.StringAttribute{
-						Description: "Position relative to a policy, a section or another rule (FIRST_IN_POLICY, LAST_IN_POLICY, FIRST_IN_SECTION, LAST_IN_SECTION, BEFORE_RULE, AFTER_RULE)",
-						Required:    true,
-						Optional:    false,
+						Description: "Position relative to a policy, a section or another rule (FIRST_IN_POLICY, " +
+							"LAST_IN_POLICY, FIRST_IN_SECTION, LAST_IN_SECTION, BEFORE_RULE, AFTER_RULE)",
+						Required: true,
+						Optional: false,
 						Validators: []validator.String{
 							stringvalidator.OneOf("FIRST_IN_POLICY", "LAST_IN_POLICY", "FIRST_IN_SECTION", "LAST_IN_SECTION", "BEFORE_RULE", "AFTER_RULE"),
 						},
@@ -125,9 +129,10 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						},
 					},
 					"source": schema.SingleNestedAttribute{
-						Description: "Source traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
-						Required:    false,
-						Optional:    true,
+						Description: "Source traffic matching criteria. Logical 'OR' is applied within the criteria set. " +
+							"Logical 'AND' is applied between criteria sets.",
+						Required: false,
+						Optional: true,
 						PlanModifiers: []planmodifier.Object{
 							objectplanmodifier.UseStateForUnknown(),
 							planmodifiers.SourceDestObjectModifier(),
@@ -937,16 +942,16 @@ func (r *tlsInspectionRuleResource) Configure(_ context.Context, req resource.Co
 	r.client = req.ProviderData.(*catoClientData)
 }
 
+// nolint:funlen
 func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
-	var plan TlsInspectionRule
+	var plan TLSInspectionRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	input, diags := hydrateTlsRuleApi(ctx, plan)
+	input, diags := hydrateTLSRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -971,7 +976,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Check for errors
-	if createRuleResponse.Policy.TLSInspect.AddRule.Status != "SUCCESS" {
+	if createRuleResponse.Policy.TLSInspect.AddRule.Status != ifwMutationStatusSuccess {
 		for _, item := range createRuleResponse.Policy.TLSInspect.AddRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
@@ -1020,12 +1025,12 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	})
 
 	// Hydrate ruleInput from api response
-	ruleInputRead, hydrateDiags := hydrateTlsRuleState(ctx, plan, currentRule)
+	ruleInputRead, hydrateDiags := hydrateTLSRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
 	tflog.Info(ctx, "ruleInputRead - "+fmt.Sprintf("%v", ruleInputRead))
 
-	ruleObject, diags := types.ObjectValueFrom(ctx, TlsInspectionRuleRuleAttrTypes, ruleInputRead)
+	ruleObject, diags := types.ObjectValueFrom(ctx, TLSInspectionRuleRuleAttrTypes, ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1042,8 +1047,9 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	resp.Diagnostics.Append(diags...)
 }
 
+// nolint:gocyclo,funlen
 func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state TlsInspectionRule
+	var state TLSInspectionRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -1062,7 +1068,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 	// Retrieve rule ID
 	var ruleID string
 	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		rule := Policy_Policy_TlsInspect_Policy_Rules_Rule{}
+		rule := PolicyPolicyTLSInspectPolicyRulesRule{}
 		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 		if diags.HasError() {
 			tflog.Debug(ctx, "Failed to convert full state to struct, attempting to extract ID only")
@@ -1115,7 +1121,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 		"OUTPUT": utils.InterfaceToJSONString(currentRule),
 	})
 
-	ruleInput, hydrateDiags := hydrateTlsRuleState(ctx, state, currentRule)
+	ruleInput, hydrateDiags := hydrateTLSRuleState(ctx, state, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
 
 	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
@@ -1125,7 +1131,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 	resp.Diagnostics.Append(diags...)
 
 	// Check if position is set in state, if not default to LAST_IN_POLICY
-	positionValue := "LAST_IN_POLICY"
+	positionValue := ifwLastInPolicyPosition
 	refValue := types.StringNull()
 
 	if !state.At.IsNull() && !state.At.IsUnknown() {
@@ -1147,23 +1153,31 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 			"ref":      refValue,
 		},
 	)
+	resp.Diagnostics.Append(diagstmp...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
-	diags = append(diags, diagstmp...)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Set ID at root level
-	resp.State.SetAttribute(ctx, path.Root("id"), types.StringValue(ruleID))
+	diags = resp.State.SetAttribute(ctx, path.Root("id"), types.StringValue(ruleID))
+	resp.Diagnostics.Append(diags...)
 }
 
+// nolint:gocyclo,funlen
 func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
-	var plan TlsInspectionRule
+	var plan TLSInspectionRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	input, diags := hydrateTlsRuleApi(ctx, plan)
+	input, diags := hydrateTLSRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1183,7 +1197,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 		inputMoveRule.To.Ref = positionInput.Ref.ValueStringPointer()
 	}
 
-	ruleInput := Policy_Policy_TlsInspect_Policy_Rules_Rule{}
+	ruleInput := PolicyPolicyTLSInspectPolicyRulesRule{}
 	diags = plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 
@@ -1202,7 +1216,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Check for errors
-	if moveRule.Policy.TLSInspect.MoveRule.Status != "SUCCESS" {
+	if moveRule.Policy.TLSInspect.MoveRule.Status != ifwMutationStatusSuccess {
 		for _, item := range moveRule.Policy.TLSInspect.MoveRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Moving Rule Resource",
@@ -1231,7 +1245,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Check for errors
-	if updateRuleResponse.Policy.TLSInspect.UpdateRule.Status != "SUCCESS" {
+	if updateRuleResponse.Policy.TLSInspect.UpdateRule.Status != ifwMutationStatusSuccess {
 		for _, item := range updateRuleResponse.Policy.TLSInspect.UpdateRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Updating Resource",
@@ -1276,11 +1290,11 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	})
 
 	// Hydrate ruleInput from api response
-	ruleInputRead, hydrateDiags := hydrateTlsRuleState(ctx, plan, currentRule)
+	ruleInputRead, hydrateDiags := hydrateTLSRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
 
-	ruleObject, diags := types.ObjectValueFrom(ctx, TlsInspectionRuleRuleAttrTypes, ruleInputRead)
+	ruleObject, diags := types.ObjectValueFrom(ctx, TLSInspectionRuleRuleAttrTypes, ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1297,14 +1311,14 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 }
 
 func (r *tlsInspectionRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state TlsInspectionRule
+	var state TLSInspectionRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	ruleInput := Policy_Policy_TlsInspect_Policy_Rules_Rule{}
+	ruleInput := PolicyPolicyTLSInspectPolicyRulesRule{}
 	diags = state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 
@@ -1322,7 +1336,7 @@ func (r *tlsInspectionRuleResource) Delete(ctx context.Context, req resource.Del
 	}
 
 	// Check for errors
-	if removeRuleResponse.Policy.TLSInspect.RemoveRule.Status != "SUCCESS" {
+	if removeRuleResponse.Policy.TLSInspect.RemoveRule.Status != ifwMutationStatusSuccess {
 		for _, item := range removeRuleResponse.Policy.TLSInspect.RemoveRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Deleting Resource",

@@ -44,13 +44,22 @@ type privAccessRuleResource struct {
 	client *catoClientData
 }
 
+type (
+	privateAccessRuleSource         = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source
+	privateAccessRuleTracking       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking
+	privateAccessRuleUserAttributes = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_UserAttributes
+	privateAccessRuleSchedule       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Schedule
+	privateAccessRuleActivePeriod   = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_ActivePeriod
+)
+
 func (r *privAccessRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_private_access_rule"
 }
 
 func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_private_access_rule` resource contains the configuration parameters for private access policy rule in the Cato platform.",
+		Description: "The `cato_private_access_rule` resource contains the configuration parameters for private " +
+			"access policy rule in the Cato platform.",
 		Attributes: map[string]schema.Attribute{
 			"action": schema.StringAttribute{
 				Description: "ALLOW or BLOCK",
@@ -507,12 +516,12 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 	}
 	res := result.GetPolicy().GetPrivateAccess().GetUpdateRule()
 	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		errors := res.GetErrors()
-		if len(errors) == 0 {
+		apiErrors := res.GetErrors()
+		if len(apiErrors) == 0 {
 			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*res.GetStatus()))
 			return
 		}
-		for _, e := range errors {
+		for _, e := range apiErrors {
 			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
 		}
 		return
@@ -554,19 +563,21 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 	res := result.GetPolicy().GetPrivateAccess().GetRemoveRule()
 	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		errors := res.GetErrors()
-		if len(errors) == 0 {
+		apiErrors := res.GetErrors()
+		if len(apiErrors) == 0 {
 			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*res.GetStatus()))
 			return
 		}
-		for _, e := range errors {
+		for _, e := range apiErrors {
 			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
 		}
 		return
 	}
 }
 
-func (r *privAccessRuleResource) parseSource(ctx context.Context, src cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source,
+func (r *privAccessRuleResource) parseSource(
+	ctx context.Context,
+	src privateAccessRuleSource,
 	diags *diag.Diagnostics,
 ) types.Object {
 	tfSource := Source{
@@ -578,7 +589,11 @@ func (r *privAccessRuleResource) parseSource(ctx context.Context, src cato_go_sd
 	return obj
 }
 
-func (r *privAccessRuleResource) prepareSource(ctx context.Context, src types.Object, diags *diag.Diagnostics) *cato_models.PrivateAccessPolicySourceInput {
+func (r *privAccessRuleResource) prepareSource(
+	ctx context.Context,
+	src types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PrivateAccessPolicySourceInput {
 	var userInput []*cato_models.UserRefInput
 	var groupInput []*cato_models.UsersGroupRefInput
 
@@ -609,7 +624,11 @@ func (r *privAccessRuleResource) prepareSource(ctx context.Context, src types.Ob
 	}
 }
 
-func (r *privAccessRuleResource) prepareSourceUpdate(ctx context.Context, src types.Object, diags *diag.Diagnostics) *cato_models.PrivateAccessPolicySourceUpdateInput {
+func (r *privAccessRuleResource) prepareSourceUpdate(
+	ctx context.Context,
+	src types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PrivateAccessPolicySourceUpdateInput {
 	upd := r.prepareSource(ctx, src, diags)
 	if upd == nil {
 		return nil
@@ -617,7 +636,11 @@ func (r *privAccessRuleResource) prepareSourceUpdate(ctx context.Context, src ty
 	return &cato_models.PrivateAccessPolicySourceUpdateInput{User: upd.User, UsersGroup: upd.UsersGroup}
 }
 
-func (r *privAccessRuleResource) prepareApplications(ctx context.Context, apps types.Set, diags *diag.Diagnostics) *cato_models.PrivateAccessPolicyApplicationInput {
+func (r *privAccessRuleResource) prepareApplications(
+	ctx context.Context,
+	apps types.Set,
+	diags *diag.Diagnostics,
+) *cato_models.PrivateAccessPolicyApplicationInput {
 	if !utils.HasValue(apps) {
 		return nil
 	}
@@ -629,7 +652,11 @@ func (r *privAccessRuleResource) prepareApplications(ctx context.Context, apps t
 	return &cato_models.PrivateAccessPolicyApplicationInput{Application: applicationInput}
 }
 
-func (r *privAccessRuleResource) prepareApplicationsUpdate(ctx context.Context, apps types.Set, diags *diag.Diagnostics) *cato_models.PrivateAccessPolicyApplicationUpdateInput {
+func (r *privAccessRuleResource) prepareApplicationsUpdate(
+	ctx context.Context,
+	apps types.Set,
+	diags *diag.Diagnostics,
+) *cato_models.PrivateAccessPolicyApplicationUpdateInput {
 	upd := r.prepareApplications(ctx, apps, diags)
 	if upd == nil {
 		return nil
@@ -637,7 +664,11 @@ func (r *privAccessRuleResource) prepareApplicationsUpdate(ctx context.Context, 
 	return &cato_models.PrivateAccessPolicyApplicationUpdateInput{Application: upd.Application}
 }
 
-func (r *privAccessRuleResource) prepareTracking(ctx context.Context, t types.Object, diags *diag.Diagnostics) *cato_models.PolicyTrackingInput {
+func (r *privAccessRuleResource) prepareTracking(
+	ctx context.Context,
+	t types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PolicyTrackingInput {
 	sdkTracking := cato_models.PolicyTrackingInput{
 		Alert: &cato_models.PolicyRuleTrackingAlertInput{Enabled: false, Frequency: cato_models.PolicyRuleTrackingFrequencyEnumHourly},
 		Event: &cato_models.PolicyRuleTrackingEventInput{Enabled: false},
@@ -670,26 +701,45 @@ func (r *privAccessRuleResource) prepareTracking(ctx context.Context, t types.Ob
 	sdkTracking.Alert.Frequency = cato_models.PolicyRuleTrackingFrequencyEnum(tfAlert.Frequency.ValueString())
 
 	// Mailing lists
-	sdkTracking.Alert.MailingList = parse.PrepareIDRefSet[cato_models.SubscriptionMailingListRefInput](ctx, tfAlert.MailingList, diags, "tracking.alert.mailing_list")
+	sdkTracking.Alert.MailingList = parse.PrepareIDRefSet[cato_models.SubscriptionMailingListRefInput](
+		ctx,
+		tfAlert.MailingList,
+		diags,
+		"tracking.alert.mailing_list",
+	)
 	if diags.HasError() {
 		return nil
 	}
 
 	// Subscription groups
-	sdkTracking.Alert.SubscriptionGroup = parse.PrepareIDRefSet[cato_models.SubscriptionGroupRefInput](ctx, tfAlert.SubscriptionGroup, diags, "tracking.alert.subscription_group")
+	sdkTracking.Alert.SubscriptionGroup = parse.PrepareIDRefSet[cato_models.SubscriptionGroupRefInput](
+		ctx,
+		tfAlert.SubscriptionGroup,
+		diags,
+		"tracking.alert.subscription_group",
+	)
 	if diags.HasError() {
 		return nil
 	}
 
 	// Webhooks
-	sdkTracking.Alert.Webhook = parse.PrepareIDRefSet[cato_models.SubscriptionWebhookRefInput](ctx, tfAlert.Webhook, diags, "tracking.alert.webhook")
+	sdkTracking.Alert.Webhook = parse.PrepareIDRefSet[cato_models.SubscriptionWebhookRefInput](
+		ctx,
+		tfAlert.Webhook,
+		diags,
+		"tracking.alert.webhook",
+	)
 	if diags.HasError() {
 		return nil
 	}
 
 	return &sdkTracking
 }
-func (r *privAccessRuleResource) prepareTrackingUpdate(ctx context.Context, t types.Object, diags *diag.Diagnostics) *cato_models.PolicyTrackingUpdateInput {
+func (r *privAccessRuleResource) prepareTrackingUpdate(
+	ctx context.Context,
+	t types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PolicyTrackingUpdateInput {
 	upd := r.prepareTracking(ctx, t, diags)
 	if upd == nil {
 		return nil
@@ -708,7 +758,11 @@ func (r *privAccessRuleResource) prepareTrackingUpdate(ctx context.Context, t ty
 	}
 }
 
-func (r *privAccessRuleResource) prepareUserAttributes(ctx context.Context, uas types.Object, diags *diag.Diagnostics) *cato_models.PrivateAccessUserAttributesInput {
+func (r *privAccessRuleResource) prepareUserAttributes(
+	ctx context.Context,
+	uas types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PrivateAccessUserAttributesInput {
 	// Default values
 	attr := cato_models.PrivateAccessUserAttributesInput{
 		RiskScore: &cato_models.RiskScoreConditionInput{
@@ -740,7 +794,11 @@ func (r *privAccessRuleResource) prepareUserAttributes(ctx context.Context, uas 
 	return &attr
 }
 
-func (r *privAccessRuleResource) prepareUserAttributesUpdate(ctx context.Context, uas types.Object, diags *diag.Diagnostics) *cato_models.PrivateAccessUserAttributesUpdateInput {
+func (r *privAccessRuleResource) prepareUserAttributesUpdate(
+	ctx context.Context,
+	uas types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PrivateAccessUserAttributesUpdateInput {
 	upd := r.prepareUserAttributes(ctx, uas, diags)
 	if upd == nil {
 		return nil
@@ -807,13 +865,16 @@ func (r *privAccessRuleResource) prepareSchedule(ctx context.Context, sch types.
 
 		// To
 		schedule.CustomTimeframe.To = tfTimeframe.To.ValueString()
-
 	}
 
 	return &schedule
 }
 
-func (r *privAccessRuleResource) prepareScheduleUpdate(ctx context.Context, sch types.Object, diags *diag.Diagnostics) *cato_models.PolicyScheduleUpdateInput {
+func (r *privAccessRuleResource) prepareScheduleUpdate(
+	ctx context.Context,
+	sch types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PolicyScheduleUpdateInput {
 	upd := r.prepareSchedule(ctx, sch, diags)
 	if upd == nil {
 		return nil
@@ -835,7 +896,11 @@ func (r *privAccessRuleResource) prepareScheduleUpdate(ctx context.Context, sch 
 	return &schedInput
 }
 
-func (r *privAccessRuleResource) prepareActivePeriod(ctx context.Context, ap types.Object, diags *diag.Diagnostics) *cato_models.PolicyRuleActivePeriodInput {
+func (r *privAccessRuleResource) prepareActivePeriod(
+	ctx context.Context,
+	ap types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PolicyRuleActivePeriodInput {
 	if ap.IsUnknown() || ap.IsNull() {
 		return &cato_models.PolicyRuleActivePeriodInput{}
 	}
@@ -853,7 +918,11 @@ func (r *privAccessRuleResource) prepareActivePeriod(ctx context.Context, ap typ
 	return &sdkPeriod
 }
 
-func (r *privAccessRuleResource) prepareActivePeriodUpdate(ctx context.Context, ap types.Object, diags *diag.Diagnostics) *cato_models.PolicyRuleActivePeriodUpdateInput {
+func (r *privAccessRuleResource) prepareActivePeriodUpdate(
+	ctx context.Context,
+	ap types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PolicyRuleActivePeriodUpdateInput {
 	upd := r.prepareActivePeriod(ctx, ap, diags)
 	if upd == nil {
 		return nil
@@ -866,15 +935,27 @@ func (r *privAccessRuleResource) prepareActivePeriodUpdate(ctx context.Context, 
 	}
 }
 
-func (r *privAccessRuleResource) preparePlatforms(ctx context.Context, platforms types.Set, diags *diag.Diagnostics) []cato_models.OperatingSystem {
+func (r *privAccessRuleResource) preparePlatforms(
+	ctx context.Context,
+	platforms types.Set,
+	diags *diag.Diagnostics,
+) []cato_models.OperatingSystem {
 	return parse.PrepareStrings[cato_models.OperatingSystem](ctx, platforms, diags, "rule.platforms")
 }
 
-func (r *privAccessRuleResource) prepareCountries(ctx context.Context, countries types.Set, diags *diag.Diagnostics) []*cato_models.CountryRefInput {
+func (r *privAccessRuleResource) prepareCountries(
+	ctx context.Context,
+	countries types.Set,
+	diags *diag.Diagnostics,
+) []*cato_models.CountryRefInput {
 	return parse.PrepareIDRefSet[cato_models.CountryRefInput](ctx, countries, diags, "rule.countries")
 }
 
-func (r *privAccessRuleResource) prepareConnectionOrigins(ctx context.Context, os types.Set, diags *diag.Diagnostics) []cato_models.PrivateAccessPolicyOriginEnum {
+func (r *privAccessRuleResource) prepareConnectionOrigins(
+	ctx context.Context,
+	os types.Set,
+	diags *diag.Diagnostics,
+) []cato_models.PrivateAccessPolicyOriginEnum {
 	return parse.PrepareStrings[cato_models.PrivateAccessPolicyOriginEnum](ctx, os, diags, "rule.connection_origins")
 }
 
@@ -889,7 +970,9 @@ func (r *privAccessRuleResource) prepareDevice(ctx context.Context, devs types.S
 	return parse.PrepareIDRefSet[cato_models.DeviceProfileRefInput](ctx, devs, diags, "rule.devices")
 }
 
-func (r *privAccessRuleResource) parseTracking(ctx context.Context, tr cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking,
+func (r *privAccessRuleResource) parseTracking(
+	ctx context.Context,
+	tr privateAccessRuleTracking,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
@@ -935,7 +1018,9 @@ func (r *privAccessRuleResource) parseTracking(ctx context.Context, tr cato_go_s
 	return trackingObj
 }
 
-func (r *privAccessRuleResource) parseUserAttributes(ctx context.Context, ua cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_UserAttributes,
+func (r *privAccessRuleResource) parseUserAttributes(
+	ctx context.Context,
+	ua privateAccessRuleUserAttributes,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
@@ -964,13 +1049,15 @@ func (r *privAccessRuleResource) parseUserAttributes(ctx context.Context, ua cat
 	return userAttrObj
 }
 
-func (r *privAccessRuleResource) parsePolicySchedule(ctx context.Context, sch cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Schedule,
+func (r *privAccessRuleResource) parsePolicySchedule(
+	ctx context.Context,
+	sch privateAccessRuleSchedule,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
 
 	// Prepare PolicySchedule.PolicyCustomRecurring object
-	var recurringObj types.Object = types.ObjectNull(PolicyCustomRecurringTypes)
+	recurringObj := types.ObjectNull(PolicyCustomRecurringTypes)
 	if sch.CustomRecurring != nil {
 		tfRecurring := PolicyCustomRecurring{
 			Days: parse.ParseStringSet(ctx, sch.CustomRecurring.Days, diags),
@@ -985,7 +1072,7 @@ func (r *privAccessRuleResource) parsePolicySchedule(ctx context.Context, sch ca
 	}
 
 	// Prepare PolicySchedule.PolicyCustomTimeframe object
-	var timeframeObj types.Object = types.ObjectNull(PolicyCustomTimeframeTypes)
+	timeframeObj := types.ObjectNull(PolicyCustomTimeframeTypes)
 	if sch.CustomTimeframe != nil {
 		tfTimeframe := PolicyCustomTimeframe{
 			From: types.StringValue(parse.NormalizeDateTime(string(sch.CustomTimeframe.From))),
@@ -1013,7 +1100,9 @@ func (r *privAccessRuleResource) parsePolicySchedule(ctx context.Context, sch ca
 	return scheduleObj
 }
 
-func (r *privAccessRuleResource) parsePolicyActivePeriod(ctx context.Context, ap cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_ActivePeriod,
+func (r *privAccessRuleResource) parsePolicyActivePeriod(
+	ctx context.Context,
+	ap privateAccessRuleActivePeriod,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
@@ -1036,7 +1125,10 @@ func (r *privAccessRuleResource) parsePolicyActivePeriod(ctx context.Context, ap
 
 // hydratePrivAccessRuleState fetches the current state of a privAccessRule from the API
 // It takes a plan parameter to match config members with API members correctly
-func (r *privAccessRuleResource) hydratePrivAccessRuleState(ctx context.Context, ruleID string) (*PrivateAccessRuleModel, diag.Diagnostics, error) {
+func (r *privAccessRuleResource) hydratePrivAccessRuleState(
+	ctx context.Context,
+	ruleID string,
+) (*PrivateAccessRuleModel, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	// Call Cato API to get the policy

@@ -12,14 +12,15 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-// SocketLanFirewallRuleApiInput holds both create and update inputs
-type SocketLanFirewallRuleApiInput struct {
+// SocketLanFirewallRuleAPIInput holds both create and update inputs
+type SocketLanFirewallRuleAPIInput struct {
 	create cato_models.SocketLanFirewallAddRuleInput
 	update cato_models.SocketLanFirewallUpdateRuleInput
 }
 
-func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewallRule) (SocketLanFirewallRuleApiInput, diag.Diagnostics) {
-	var result SocketLanFirewallRuleApiInput
+// nolint:gocyclo,funlen
+func hydrateSocketLanFirewallRuleAPI(ctx context.Context, plan SocketLanFirewallRule) (SocketLanFirewallRuleAPIInput, diag.Diagnostics) {
+	var result SocketLanFirewallRuleAPIInput
 	var diags diag.Diagnostics
 
 	// Initialize create input
@@ -76,7 +77,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 		result.create.Rule.Source = &cato_models.SocketLanFirewallSourceInput{}
 		result.update.Rule.Source = &cato_models.SocketLanFirewallSourceUpdateInput{}
 		if !ruleData.Source.IsNull() {
-			hydrateSocketLanFirewallSourceApi(ctx, ruleData.Source, result.create.Rule.Source, result.update.Rule.Source, &diags)
+			hydrateSocketLanFirewallSourceAPI(ctx, ruleData.Source, result.create.Rule.Source, result.update.Rule.Source, &diags)
 		} else {
 			// Initialize with empty slices when source not specified
 			initializeEmptySocketLanFirewallSource(result.create.Rule.Source, result.update.Rule.Source)
@@ -86,7 +87,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 		result.create.Rule.Destination = &cato_models.SocketLanFirewallDestinationInput{}
 		result.update.Rule.Destination = &cato_models.SocketLanFirewallDestinationUpdateInput{}
 		if !ruleData.Destination.IsNull() {
-			hydrateSocketLanFirewallDestinationApi(ctx, ruleData.Destination, result.create.Rule.Destination, result.update.Rule.Destination, &diags)
+			hydrateSocketLanFirewallDestinationAPI(ctx, ruleData.Destination, result.create.Rule.Destination, result.update.Rule.Destination, &diags)
 		} else {
 			// Initialize with empty slices when destination not specified
 			initializeEmptySocketLanFirewallDestination(result.create.Rule.Destination, result.update.Rule.Destination)
@@ -195,7 +196,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 
 			// IP Range
 			if !appData.IPRange.IsNull() && len(appData.IPRange.Elements()) > 0 {
-				var ipRanges []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange
+				var ipRanges []PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
 				diagstmp = appData.IPRange.ElementsAs(ctx, &ipRanges, false)
 				diags.Append(diagstmp...)
 				for _, r := range ipRanges {
@@ -283,12 +284,12 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 
 			// Custom services
 			if !serviceData.Custom.IsNull() && len(serviceData.Custom.Elements()) > 0 {
-				var customServices []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom
+				var customServices []PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustom
 				diagstmp = serviceData.Custom.ElementsAs(ctx, &customServices, false)
 				diags.Append(diagstmp...)
 				for _, svc := range customServices {
 					customSvc := &cato_models.CustomServiceInput{
-						Protocol: (cato_models.IPProtocol)(svc.Protocol.ValueString()),
+						Protocol: cato_models.IPProtocol(svc.Protocol.ValueString()),
 					}
 
 					// Ports
@@ -304,7 +305,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 
 					// Port range
 					if !svc.PortRange.IsNull() {
-						var portRange Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom_PortRange
+						var portRange PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustomPortRange
 						diagstmp = svc.PortRange.As(ctx, &portRange, basetypes.ObjectAsOptions{})
 						diags.Append(diagstmp...)
 						customSvc.PortRange = &cato_models.PortRangeInput{
@@ -321,7 +322,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 
 		// Tracking
 		if !ruleData.Tracking.IsNull() {
-			var trackingData Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking
+			var trackingData PolicyPolicyInternetFirewallPolicyRulesRuleTracking
 			diagstmp = ruleData.Tracking.As(ctx, &trackingData, basetypes.ObjectAsOptions{})
 			diags.Append(diagstmp...)
 
@@ -330,7 +331,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 
 			// Event
 			if !trackingData.Event.IsNull() {
-				var eventData Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Event
+				var eventData PolicyPolicyInternetFirewallPolicyRulesRuleTrackingEvent
 				diagstmp = trackingData.Event.As(ctx, &eventData, basetypes.ObjectAsOptions{})
 				diags.Append(diagstmp...)
 
@@ -344,7 +345,7 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 
 			// Alert
 			if !trackingData.Alert.IsNull() {
-				var alertData Policy_Policy_InternetFirewall_Policy_Rules_Rule_Tracking_Alert
+				var alertData PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlert
 				diagstmp = trackingData.Alert.As(ctx, &alertData, basetypes.ObjectAsOptions{})
 				diags.Append(diagstmp...)
 
@@ -435,7 +436,14 @@ func hydrateSocketLanFirewallRuleApi(ctx context.Context, plan SocketLanFirewall
 	return result, diags
 }
 
-func hydrateSocketLanFirewallSourceApi(ctx context.Context, sourceObj basetypes.ObjectValue, createInput *cato_models.SocketLanFirewallSourceInput, updateInput *cato_models.SocketLanFirewallSourceUpdateInput, diags *diag.Diagnostics) {
+// nolint:gocyclo,funlen
+func hydrateSocketLanFirewallSourceAPI(
+	ctx context.Context,
+	sourceObj basetypes.ObjectValue,
+	createInput *cato_models.SocketLanFirewallSourceInput,
+	updateInput *cato_models.SocketLanFirewallSourceUpdateInput,
+	diags *diag.Diagnostics,
+) {
 	var sourceData SocketLanFirewallSource
 	diagstmp := sourceObj.As(ctx, &sourceData, basetypes.ObjectAsOptions{})
 	diags.Append(diagstmp...)
@@ -508,7 +516,7 @@ func hydrateSocketLanFirewallSourceApi(ctx context.Context, sourceObj basetypes.
 
 	// IP Range
 	if !sourceData.IPRange.IsNull() && len(sourceData.IPRange.Elements()) > 0 {
-		var ipRanges []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange
+		var ipRanges []PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
 		diagstmp = sourceData.IPRange.ElementsAs(ctx, &ipRanges, false)
 		diags.Append(diagstmp...)
 		for _, r := range ipRanges {
@@ -676,7 +684,14 @@ func hydrateSocketLanFirewallSourceApi(ctx context.Context, sourceObj basetypes.
 	}
 }
 
-func hydrateSocketLanFirewallDestinationApi(ctx context.Context, destObj basetypes.ObjectValue, createInput *cato_models.SocketLanFirewallDestinationInput, updateInput *cato_models.SocketLanFirewallDestinationUpdateInput, diags *diag.Diagnostics) {
+// nolint:gocyclo,funlen
+func hydrateSocketLanFirewallDestinationAPI(
+	ctx context.Context,
+	destObj basetypes.ObjectValue,
+	createInput *cato_models.SocketLanFirewallDestinationInput,
+	updateInput *cato_models.SocketLanFirewallDestinationUpdateInput,
+	diags *diag.Diagnostics,
+) {
 	var destData SocketLanFirewallDestination
 	diagstmp := destObj.As(ctx, &destData, basetypes.ObjectAsOptions{})
 	diags.Append(diagstmp...)
@@ -738,7 +753,7 @@ func hydrateSocketLanFirewallDestinationApi(ctx context.Context, destObj basetyp
 
 	// IP Range
 	if !destData.IPRange.IsNull() && len(destData.IPRange.Elements()) > 0 {
-		var ipRanges []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_IPRange
+		var ipRanges []PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
 		diagstmp = destData.IPRange.ElementsAs(ctx, &ipRanges, false)
 		diags.Append(diagstmp...)
 		for _, r := range ipRanges {
@@ -907,7 +922,10 @@ func hydrateSocketLanFirewallDestinationApi(ctx context.Context, destObj basetyp
 }
 
 // initializeEmptySocketLanFirewallSource initializes all list fields to empty slices to avoid null serialization
-func initializeEmptySocketLanFirewallSource(createInput *cato_models.SocketLanFirewallSourceInput, updateInput *cato_models.SocketLanFirewallSourceUpdateInput) {
+func initializeEmptySocketLanFirewallSource(
+	createInput *cato_models.SocketLanFirewallSourceInput,
+	updateInput *cato_models.SocketLanFirewallSourceUpdateInput,
+) {
 	createInput.Vlan = make([]scalars.Vlan, 0)
 	updateInput.Vlan = make([]scalars.Vlan, 0)
 	createInput.Mac = make([]string, 0)
@@ -937,7 +955,10 @@ func initializeEmptySocketLanFirewallSource(createInput *cato_models.SocketLanFi
 }
 
 // initializeEmptySocketLanFirewallDestination initializes all list fields to empty slices to avoid null serialization
-func initializeEmptySocketLanFirewallDestination(createInput *cato_models.SocketLanFirewallDestinationInput, updateInput *cato_models.SocketLanFirewallDestinationUpdateInput) {
+func initializeEmptySocketLanFirewallDestination(
+	createInput *cato_models.SocketLanFirewallDestinationInput,
+	updateInput *cato_models.SocketLanFirewallDestinationUpdateInput,
+) {
 	createInput.Vlan = make([]scalars.Vlan, 0)
 	updateInput.Vlan = make([]scalars.Vlan, 0)
 	createInput.IP = make([]string, 0)

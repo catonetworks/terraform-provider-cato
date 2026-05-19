@@ -25,6 +25,12 @@ var (
 	_ resource.ResourceWithConfigure = &lanInterfaceResource{}
 )
 
+const (
+	lanLagMasterDestType        = "LAN_LAG_MASTER"
+	lanLagMasterAndVrrpDestType = "LAN_LAG_MASTER_AND_VRRP"
+	dhcpNativeRangeMessage      = "DHCP Range should be included in the native range"
+)
+
 func NewLanInterfaceResource() resource.Resource {
 	return &lanInterfaceResource{}
 }
@@ -37,9 +43,10 @@ func (r *lanInterfaceResource) Metadata(_ context.Context, req resource.Metadata
 	resp.TypeName = req.ProviderTypeName + "_lan_interface"
 }
 
+// nolint:lll
 func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_lan_interface` resource contains the configuration parameters necessary to add a lan interface to a socket. ([physical socket physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
+		Description: "The `cato_lan_interface` resource contains the configuration parameters necessary to add a lan interface to a socket. ([physical socket physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https:// api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Network Interface ID",
@@ -60,7 +67,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"interface_id": schema.StringAttribute{
-				Description: "SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https://api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)",
+				Description: "SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https:// api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -72,11 +79,11 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				},
 			},
 			"dest_type": schema.StringAttribute{
-				Description: "SocketInterface destination type (https://api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
+				Description: "SocketInterface destination type (https:// api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
 				Required:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(
-						"INTERFACE_DISABLED", "LAN", "LAN_AND_HA", "LAN_LAG_MASTER", "LAN_LAG_MASTER_AND_VRRP", "VRRP", "VRRP_AND_LAN",
+						"INTERFACE_DISABLED", "LAN", "LAN_AND_HA", lanLagMasterDestType, lanLagMasterAndVrrpDestType, "VRRP", "VRRP_AND_LAN",
 					),
 				},
 			},
@@ -101,7 +108,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 			},
 			"vrrp_type": schema.StringAttribute{
-				Description: "VRRP Type (https://api.catonetworks.com/documentation/#definition-VrrpType)",
+				Description: "VRRP Type (https:// api.catonetworks.com/documentation/#definition-VrrpType)",
 				Required:    false,
 				Optional:    true,
 				Validators: []validator.String{
@@ -134,6 +141,7 @@ func (r *lanInterfaceResource) ImportState(ctx context.Context, req resource.Imp
 	resp.State = readResp.State
 }
 
+// nolint:gocyclo,funlen,lll
 func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan LanInterface
 	diags := req.Plan.Get(ctx, &plan)
@@ -147,7 +155,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	hasLagMinLinks := !plan.LagMinLinks.IsNull() && !plan.LagMinLinks.IsUnknown()
 
 	// Rule 1: If dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, lag_min_links must have a value
-	if (destType == "LAN_LAG_MASTER" || destType == "LAN_LAG_MASTER_AND_VRRP") && !hasLagMinLinks {
+	if (destType == lanLagMasterDestType || destType == lanLagMasterAndVrrpDestType) && !hasLagMinLinks {
 		resp.Diagnostics.AddError(
 			"Invalid LAG Configuration",
 			fmt.Sprintf("When dest_type is %s, lag_min_links must be specified.", destType),
@@ -156,7 +164,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Rule 2: If lag_min_links has a value, dest_type must be LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP
-	if hasLagMinLinks && destType != "LAN_LAG_MASTER" && destType != "LAN_LAG_MASTER_AND_VRRP" {
+	if hasLagMinLinks && destType != lanLagMasterDestType && destType != lanLagMasterAndVrrpDestType {
 		resp.Diagnostics.AddError(
 			"Invalid LAG Configuration",
 			fmt.Sprintf("lag_min_links can only be configured when dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, but dest_type is %s.", destType),
@@ -182,7 +190,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		}
 		reservedInterface := false
 		if parseErr := json.Unmarshal([]byte(err.Error()), &apiError); parseErr == nil && len(apiError.GraphqlErrors) > 0 {
-			if apiError.GraphqlErrors[0].Message == "DHCP Range should be included in the native range" {
+			if apiError.GraphqlErrors[0].Message == dhcpNativeRangeMessage {
 				reservedInterface = true
 			}
 		}
@@ -200,7 +208,13 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 	// Updating interface a second time due to API bug where only the name field does not propagate on first update intermittently.
-	_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	_, _ = r.client.catov2.SiteUpdateSocketInterface(
+		ctx,
+		plan.SiteId.ValueString(),
+		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
+		input,
+		r.client.AccountId,
+	)
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -221,11 +235,11 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	tflog.Debug(ctx, "Iterate over network interfaces to match interfaceID '"+plan.InterfaceID.ValueString()+"' to retrieve numeric networkInterfaceID")
 	for _, item := range queryInterfaceResult.GetEntityLookup().GetItems() {
 		helperFields := item.GetHelperFields()
-		interfaceId := cast.ToString(helperFields["interfaceId"])
-		if _, err := cast.ToIntE(interfaceId); err == nil {
-			interfaceId = fmt.Sprintf("INT_%v", interfaceId)
+		interfaceID := cast.ToString(helperFields["interfaceID"])
+		if _, err := cast.ToIntE(interfaceID); err == nil {
+			interfaceID = fmt.Sprintf("INT_%v", interfaceID)
 		}
-		if interfaceId == plan.InterfaceID.ValueString() {
+		if interfaceID == plan.InterfaceID.ValueString() {
 			plan.ID = types.StringValue(item.GetEntity().GetID())
 			tflog.Debug(ctx, "Network interface matched! Setting plan.ID="+plan.ID.ValueString())
 			break
@@ -243,6 +257,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	diags = resp.State.Set(ctx, updatedPlan)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -274,8 +289,8 @@ func (r *lanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 	}
 }
 
+// nolint:gocyclo,lll
 func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan LanInterface
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -288,7 +303,7 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	hasLagMinLinks := !plan.LagMinLinks.IsNull() && !plan.LagMinLinks.IsUnknown()
 
 	// Rule 1: If dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, lag_min_links must have a value
-	if (destType == "LAN_LAG_MASTER" || destType == "LAN_LAG_MASTER_AND_VRRP") && !hasLagMinLinks {
+	if (destType == lanLagMasterDestType || destType == lanLagMasterAndVrrpDestType) && !hasLagMinLinks {
 		resp.Diagnostics.AddError(
 			"Invalid LAG Configuration",
 			fmt.Sprintf("When dest_type is %s, lag_min_links must be specified.", destType),
@@ -297,7 +312,7 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// Rule 2: If lag_min_links has a value, dest_type must be LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP
-	if hasLagMinLinks && destType != "LAN_LAG_MASTER" && destType != "LAN_LAG_MASTER_AND_VRRP" {
+	if hasLagMinLinks && destType != lanLagMasterDestType && destType != lanLagMasterAndVrrpDestType {
 		resp.Diagnostics.AddError(
 			"Invalid LAG Configuration",
 			fmt.Sprintf("lag_min_links can only be configured when dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, but dest_type is %s.", destType),
@@ -326,7 +341,7 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 		reservedInterface := false
 		if parseErr := json.Unmarshal([]byte(err.Error()), &apiError); parseErr == nil && len(apiError.GraphqlErrors) > 0 {
-			if apiError.GraphqlErrors[0].Message == "DHCP Range should be included in the native range" {
+			if apiError.GraphqlErrors[0].Message == dhcpNativeRangeMessage {
 				reservedInterface = true
 			}
 		}
@@ -362,8 +377,8 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 }
 
+// nolint:gocyclo,gocritic,lll
 func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state LanInterface
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -372,33 +387,33 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	// Check if LAG_MASTER, lookup other LAG_MEMBER interfaces and disable to successfully delete LAG_MASTER
-	if state.DestType.ValueString() == "LAN_LAG_MASTER" || state.DestType.ValueString() != "LAN_LAG_MASTER_AND_VRRP" {
+	if state.DestType.ValueString() == lanLagMasterDestType || state.DestType.ValueString() != lanLagMasterAndVrrpDestType {
 		// Get the site's accountSnapshot to find the LAG master
-		siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
+		siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
 		tflog.Debug(ctx, "Create.AccountSnapshot.response looking for LAN_LAG_MEMBERs", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(siteAccountSnapshotApiData),
+			"response": utils.InterfaceToJSONString(siteAccountSnapshotAPIData),
 		})
-		for _, site := range siteAccountSnapshotApiData.AccountSnapshot.GetSites() {
+		for _, site := range siteAccountSnapshotAPIData.AccountSnapshot.GetSites() {
 			siteID := site.GetID()
 			if siteID != nil && state.SiteId.ValueString() == *siteID {
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
-					if iface.DestType != nil && *iface.DestType == "LAN_LAG_MEMBER" {
+					if iface.DestType != nil && *iface.DestType == lanLagMemberDestType {
 						tflog.Debug(ctx, "Create.AccountSnapshot.response found LAN_LAG_MEMBER", map[string]interface{}{
 							"response": utils.InterfaceToJSONString(iface),
 						})
-						curInterfaceId := iface.ID
-						if _, err := cast.ToIntE(curInterfaceId); err == nil {
-							curInterfaceId = fmt.Sprintf("INT_%v", curInterfaceId)
+						curInterfaceID := iface.ID
+						if _, err := cast.ToIntE(curInterfaceID); err == nil {
+							curInterfaceID = fmt.Sprintf("INT_%v", curInterfaceID)
 						}
 						input := cato_models.UpdateSocketInterfaceInput{
-							Name:     &curInterfaceId,
+							Name:     &curInterfaceID,
 							DestType: "INTERFACE_DISABLED",
 						}
 
 						tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request LAN_LAG_MEMBER", map[string]interface{}{
 							"request": utils.InterfaceToJSONString(input),
 						})
-						_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(curInterfaceId), input, r.client.AccountId)
+						_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(curInterfaceID), input, r.client.AccountId)
 						if err != nil {
 							resp.Diagnostics.AddError(
 								"Cato API SiteUpdateSocketInterface error",
@@ -477,12 +492,12 @@ func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.
 	}
 
 	// For LAN_LAG_MEMBER, only send basic interface info - no LAN, LAG, or VRRP config
-	if destType != "LAN_LAG_MEMBER" {
+	if destType != lanLagMemberDestType {
 		// Add LAN configuration for non-LAG member interfaces
 		input.Lan = &cato_models.SocketInterfaceLanInput{
 			Subnet:           plan.Subnet.ValueString(),
 			TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
-			LocalIP:          plan.LocalIp.ValueString(),
+			LocalIP:          plan.LocalIP.ValueString(),
 		}
 
 		// Add VRRP configuration if specified and not LAG member
@@ -494,7 +509,9 @@ func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.
 	}
 
 	// Add LAG configuration only for LAG master types
-	if (destType == "LAN_LAG_MASTER" || destType == "LAN_LAG_MASTER_AND_VRRP") && !plan.LagMinLinks.IsNull() && !plan.LagMinLinks.IsUnknown() {
+	if (destType == lanLagMasterDestType || destType == lanLagMasterAndVrrpDestType) &&
+		!plan.LagMinLinks.IsNull() &&
+		!plan.LagMinLinks.IsUnknown() {
 		input.Lag = &cato_models.SocketInterfaceLagInput{
 			MinLinks: plan.LagMinLinks.ValueInt64(),
 		}
@@ -503,6 +520,7 @@ func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.
 	return input
 }
 
+// nolint:gocyclo,funlen,lll
 func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, state *LanInterface) (LanInterface, error) {
 	// Standard interface lookup (for non-LAG members or after LAG master validation)
 	tflog.Debug(ctx, "hydrateLanInterfaceState()", map[string]interface{}{
@@ -530,14 +548,14 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 			})
 			isPresent = true
 			state.ID = types.StringValue(curIint.Entity.ID)
-			if siteIdVal, ok := curIint.HelperFields["siteId"]; ok {
-				state.SiteId = types.StringValue(cast.ToString(siteIdVal))
+			if siteIDVal, ok := curIint.HelperFields["siteId"]; ok {
+				state.SiteId = types.StringValue(cast.ToString(siteIDVal))
 			}
-			if _, ok := curIint.HelperFields["interfaceId"]; ok {
-				if idxInt, err := cast.ToIntE(curIint.HelperFields["interfaceId"]); err == nil {
+			if _, ok := curIint.HelperFields["interfaceID"]; ok {
+				if idxInt, err := cast.ToIntE(curIint.HelperFields["interfaceID"]); err == nil {
 					state.InterfaceID = types.StringValue(fmt.Sprintf("INT_%d", idxInt))
 				} else {
-					state.InterfaceID = types.StringValue(cast.ToString(curIint.HelperFields["interfaceId"]))
+					state.InterfaceID = types.StringValue(cast.ToString(curIint.HelperFields["interfaceID"]))
 				}
 			}
 			if nameVal, ok := curIint.HelperFields["interfaceName"]; ok {
@@ -572,20 +590,21 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 		"state.LagMinLinks.IsNull()":    utils.InterfaceToJSONString(state.LagMinLinks.IsNull()),
 		"state.DestType.ValueString()":  utils.InterfaceToJSONString(state.DestType.ValueString()),
 	})
-	if (state.DestType.ValueString() == "LAN_LAG_MASTER" || state.DestType.ValueString() == "LAN_LAG_MASTER_AND_VRRP") && (state.LagMinLinks.IsNull() || state.LagMinLinks.IsUnknown()) {
+	if (state.DestType.ValueString() == lanLagMasterDestType || state.DestType.ValueString() == lanLagMasterAndVrrpDestType) &&
+		(state.LagMinLinks.IsNull() || state.LagMinLinks.IsUnknown()) {
 		lagMinLinks := 0
-		siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
+		siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
 		tflog.Debug(ctx, "Create.AccountSnapshot.response looking for LAN_LAG_MEMBERs", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(siteAccountSnapshotApiData),
+			"response": utils.InterfaceToJSONString(siteAccountSnapshotAPIData),
 		})
 		if err != nil {
 			return *state, fmt.Errorf("Catov2 API error getting account snapshot for LAG member: %s", err.Error())
 		}
-		for _, site := range siteAccountSnapshotApiData.AccountSnapshot.GetSites() {
+		for _, site := range siteAccountSnapshotAPIData.AccountSnapshot.GetSites() {
 			siteID := site.GetID()
 			if siteID != nil && state.SiteId.ValueString() == *siteID {
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
-					if iface.DestType != nil && *iface.DestType == "LAN_LAG_MEMBER" {
+					if iface.DestType != nil && *iface.DestType == lanLagMemberDestType {
 						lagMinLinks++
 					}
 				}
@@ -635,12 +654,12 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 					if gatewayVal, ok := v.HelperFields["gateway"]; ok && gatewayVal != nil {
 						gatewayStr := cast.ToString(gatewayVal)
 						if gatewayStr != "" {
-							state.LocalIp = types.StringValue(gatewayStr)
+							state.LocalIP = types.StringValue(gatewayStr)
 						} else {
-							state.LocalIp = types.StringNull()
+							state.LocalIP = types.StringNull()
 						}
 					} else {
-						state.LocalIp = types.StringNull()
+						state.LocalIP = types.StringNull()
 					}
 
 					break

@@ -16,7 +16,9 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-const socketMappJson = `{
+const (
+	lan1Interface  = "LAN1"
+	socketMappJSON = `{
 	"SOCKET_X1500": {
 		"WAN1": "WAN 01",
 		"WAN2": "WAN 02",
@@ -63,6 +65,7 @@ const socketMappJson = `{
 		"16": "INT_16"
 	}
 }`
+)
 
 type NetworkInterfaceLookup struct {
 	SiteID                types.String `tfsdk:"site_id"`
@@ -76,7 +79,7 @@ type NetworkInterface struct {
 	SiteID            types.String `tfsdk:"site_id"`
 	SiteName          types.String `tfsdk:"site_name"`
 	Subnet            types.String `tfsdk:"subnet"`
-	SocketInterfaceId types.String `tfsdk:"socket_interface_id"`
+	SocketInterfaceID types.String `tfsdk:"socket_interface_id"`
 }
 
 func NetworkInterfacesDataSource() datasource.DataSource {
@@ -148,7 +151,7 @@ func (d *networkInterfacesDataSource) Schema(_ context.Context, _ datasource.Sch
 	}
 }
 
-func (d *networkInterfacesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *networkInterfacesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -156,6 +159,7 @@ func (d *networkInterfacesDataSource) Configure(_ context.Context, req datasourc
 	d.client = req.ProviderData.(*catoClientData)
 }
 
+// nolint:gocyclo,funlen
 func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var networkInterfacesDataSource NetworkInterfaceLookup
 	if diags := req.Config.Get(ctx, &networkInterfacesDataSource); diags.HasError() {
@@ -172,7 +176,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 	// Unmarshal socketMapping into a nested map
 	var socketMap map[string]map[string]string
-	err := json.Unmarshal([]byte(socketMappJson), &socketMap)
+	err := json.Unmarshal([]byte(socketMappJSON), &socketMap)
 	if err != nil {
 		panic(err)
 	}
@@ -201,7 +205,9 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 	tflog.Warn(ctx, "ifaceMap '"+fmt.Sprintf("%v", ifaceMap)+"'")
 	zeroInt64 := int64(0)
-	entityLookupResponse, err := d.client.catov2.EntityLookup(ctx, d.client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, nil, nil, nil, nil, nil, nil)
+	entityLookupResponse, err := d.client.catov2.EntityLookup(
+		ctx, d.client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, nil, nil, nil, nil, nil, nil,
+	)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(entityLookupResponse),
 	})
@@ -226,7 +232,8 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 	for _, site := range accountSnapshotSite.AccountSnapshot.GetSites() {
 		siteID := site.GetID()
-		if networkInterfacesDataSource.SiteID.IsNull() || (!networkInterfacesDataSource.SiteID.IsNull() && *siteID == networkInterfacesDataSource.SiteID.ValueString()) {
+		siteMatches := networkInterfacesDataSource.SiteID.IsNull() || *siteID == networkInterfacesDataSource.SiteID.ValueString()
+		if siteMatches {
 			connType = site.InfoSiteSnapshot.ConnType.String()
 			if socketConf, ok := socketMap[connType]; ok {
 				tflog.Debug(ctx, "socketConf", map[string]interface{}{
@@ -237,14 +244,17 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 				}
 
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
-					fmt.Println("networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() " + fmt.Sprintf("%v", networkInterfacesDataSource.NetworkInterfaceIndex.ValueString()))
-					fmt.Println("iface.Id " + fmt.Sprintf("%v", iface.ID))
-					fmt.Println("*iface.Name " + fmt.Sprintf("%v", *iface.Name))
+					fmt.Println(
+						"networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() " +
+							networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(),
+					)
+					fmt.Println("iface.Id " + iface.ID)
+					fmt.Println("*iface.Name " + *iface.Name)
 					curInterfaceIndex := getInterfaceIndexByConnType(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
 					if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN" ||
-						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN1") &&
+						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == lan1Interface) &&
 						"INT_"+iface.ID == curInterfaceIndex {
-						fmt.Println("NetworkInterfaceIndex==LAN and curInterfaceIndex=" + fmt.Sprintf("%v", curInterfaceIndex))
+						fmt.Println("NetworkInterfaceIndex==LAN and curInterfaceIndex=" + curInterfaceIndex)
 						ifaceMap[*siteID][curInterfaceIndex] = InterfaceConfig{
 							InterfaceID: socketConf[curInterfaceIndex],
 							Index:       curInterfaceIndex,
@@ -253,7 +263,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 							// Name:        *iface.Name,
 						}
 					} else if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN" ||
-						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN1") &&
+						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == lan1Interface) &&
 						socketConf[iface.ID] != "" {
 						ifaceMap[*siteID]["INT_"+iface.ID] = InterfaceConfig{
 							InterfaceID: socketConf["INT_"+iface.ID],
@@ -265,7 +275,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 					}
 				}
 			} else {
-				fmt.Println(fmt.Sprintf("%v", connType) + " not found")
+				fmt.Println(connType + " not found")
 			}
 		}
 	}
@@ -279,12 +289,13 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 		// entLookupinterfaceID := cast.ToString(helperFields["interfaceName"])
 		entLookupinterfaceID := getInterfaceIndexByConnType(cast.ToString(helperFields["interfaceName"]), connType)
 		siteID := cast.ToString(helperFields["siteId"])
-		tflog.Warn(ctx, "networkInterfaceLookup.SiteID '"+fmt.Sprintf("%v", networkInterfacesDataSource.SiteID.ValueString())+"'")
-		tflog.Warn(ctx, "siteID '"+fmt.Sprintf("%v", siteID)+"'")
-		if networkInterfacesDataSource.SiteID.IsNull() || (!networkInterfacesDataSource.SiteID.IsNull() && siteID == networkInterfacesDataSource.SiteID.ValueString()) {
+		tflog.Warn(ctx, "networkInterfaceLookup.SiteID '"+networkInterfacesDataSource.SiteID.ValueString()+"'")
+		tflog.Warn(ctx, "siteID '"+siteID+"'")
+		siteMatches := networkInterfacesDataSource.SiteID.IsNull() || siteID == networkInterfacesDataSource.SiteID.ValueString()
+		if siteMatches {
 			curInterfaceIndex := getInterfaceIndexByConnType(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
-			tflog.Warn(ctx, "entLookupinterfaceID '"+fmt.Sprintf("%v", entLookupinterfaceID)+"'")
-			tflog.Warn(ctx, "networkInterfacesDataSource.NetworkInterfaceName.ValueString() '"+fmt.Sprintf("%v", curInterfaceIndex)+"'")
+			tflog.Warn(ctx, "entLookupinterfaceID '"+entLookupinterfaceID+"'")
+			tflog.Warn(ctx, "networkInterfacesDataSource.NetworkInterfaceName.ValueString() '"+curInterfaceIndex+"'")
 			if networkInterfacesDataSource.NetworkInterfaceIndex.IsNull() ||
 				(!networkInterfacesDataSource.NetworkInterfaceIndex.IsNull() &&
 					entLookupinterfaceID == curInterfaceIndex) ||
@@ -339,12 +350,13 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 func getInterfaceIndexByConnType(interfaceName, connType string) string {
 	curInterfaceIndex := interfaceName
-	if interfaceName == "LAN1" && connType == "SOCKET_X1500" {
+	if interfaceName == lan1Interface && connType == "SOCKET_X1500" {
 		curInterfaceIndex = "LAN 01"
 	} else if interfaceName == "LAN" {
-		if connType == "SOCKET_X1600" || connType == "SOCKET_X1600_LTE" {
+		switch connType {
+		case "SOCKET_X1600", "SOCKET_X1600_LTE":
 			curInterfaceIndex = "INT_5"
-		} else if connType == "SOCKET_X1700" {
+		case "SOCKET_X1700":
 			curInterfaceIndex = "INT_3"
 		}
 	}

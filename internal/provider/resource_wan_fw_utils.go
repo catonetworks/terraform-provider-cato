@@ -270,7 +270,13 @@ func preserveNullOrCorrelateSet(ctx context.Context, newAttrs map[string]attr.Va
 }
 
 // correlateWanNestedObjects correlates nested objects like source, destination, application
-func correlateWanNestedObjects(ctx context.Context, newAttrs map[string]attr.Value, planAttrs map[string]attr.Value, responseAttrs map[string]attr.Value, nestedFieldName string) {
+func correlateWanNestedObjects(
+	ctx context.Context,
+	newAttrs map[string]attr.Value,
+	planAttrs map[string]attr.Value,
+	_ map[string]attr.Value,
+	nestedFieldName string,
+) {
 	responsNested, responseExists := newAttrs[nestedFieldName]
 	if !responseExists {
 		return
@@ -314,7 +320,12 @@ func correlateWanNestedObjects(ctx context.Context, newAttrs map[string]attr.Val
 }
 
 // correlateWanSetElements correlates set elements by matching on name and preserving plan structure
-func correlateWanSetElements(ctx context.Context, newNestedAttrs map[string]attr.Value, planNestedAttrs map[string]attr.Value, setFieldName string) {
+func correlateWanSetElements(
+	ctx context.Context,
+	newNestedAttrs map[string]attr.Value,
+	planNestedAttrs map[string]attr.Value,
+	setFieldName string,
+) {
 	responseSet, responseExists := newNestedAttrs[setFieldName]
 	if !responseExists {
 		return
@@ -373,6 +384,8 @@ func correlateWanSetElements(ctx context.Context, newNestedAttrs map[string]attr
 }
 
 // findWanElementByName finds an element in the list by matching the name or ID field
+//
+// nolint:gocyclo
 func findWanElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
 
@@ -407,10 +420,10 @@ func findWanElementByName(ctx context.Context, targetObj types.Object, elements 
 	}
 
 	// If name matching failed, try to match by ID
-	targetId, idExists := targetAttrs["id"]
+	targetID, idExists := targetAttrs["id"]
 	if idExists {
-		targetIdStr, ok := targetId.(types.String)
-		if ok && !targetIdStr.IsNull() && !targetIdStr.IsUnknown() {
+		targetIDStr, ok := targetID.(types.String)
+		if ok && !targetIDStr.IsNull() && !targetIDStr.IsUnknown() {
 			for _, element := range elements {
 				elementObj, ok := element.(types.Object)
 				if !ok {
@@ -418,19 +431,19 @@ func findWanElementByName(ctx context.Context, targetObj types.Object, elements 
 				}
 
 				elementAttrs := elementObj.Attributes()
-				elementId, exists := elementAttrs["id"]
+				elementID, exists := elementAttrs["id"]
 				if !exists {
 					continue
 				}
 
-				elementIdStr, ok := elementId.(types.String)
+				elementIDStr, ok := elementID.(types.String)
 				if !ok {
 					continue
 				}
 
-				if !elementIdStr.IsNull() && !elementIdStr.IsUnknown() &&
-					elementIdStr.ValueString() == targetIdStr.ValueString() {
-					tflog.Debug(ctx, "findWanElementByName: Found element by ID", map[string]interface{}{"id": targetIdStr.ValueString()})
+				if !elementIDStr.IsNull() && !elementIDStr.IsUnknown() &&
+					elementIDStr.ValueString() == targetIDStr.ValueString() {
+					tflog.Debug(ctx, "findWanElementByName: Found element by ID", map[string]interface{}{"id": targetIDStr.ValueString()})
 					return &elementObj
 				}
 			}
@@ -464,8 +477,8 @@ func correlateWanSetElement(ctx context.Context, planObj types.Object, responseO
 	}
 
 	// Similarly, if plan had id=null and user specified name, preserve null id
-	if planId, exists := planAttrs["id"]; exists {
-		if planIdStr, ok := planId.(types.String); ok && planIdStr.IsNull() {
+	if planID, exists := planAttrs["id"]; exists {
+		if planIDStr, ok := planID.(types.String); ok && planIDStr.IsNull() {
 			// Plan had null id (user specified only name), preserve null
 			newAttrs["id"] = types.StringNull()
 			tflog.Debug(ctx, "correlateWanSetElement: Preserving null id from plan")

@@ -60,7 +60,7 @@ type SiteBandwidth struct {
 	AllocatedBandwidth int  `tfsdk:"allocated_bandwidth"`
 }
 
-// License Resource Structs and Types
+// LicenseResource describes the license resource model.
 type LicenseResource struct {
 	ID          types.String `tfsdk:"id"`
 	SiteID      types.String `tfsdk:"site_id"`
@@ -105,7 +105,7 @@ var LicenseInfoResourceAttrTypes = map[string]attr.Type{
 	"total":               types.Int64Type,
 }
 
-// License Data Source Structs and Types
+// LicenseDataSource describes the licensing data source model.
 type LicenseDataSource struct {
 	SKU                      types.String   `tfsdk:"sku"`
 	IsActive                 types.Bool     `tfsdk:"is_active"`

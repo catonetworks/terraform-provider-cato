@@ -28,6 +28,7 @@ func (d *licensingInfoDataSource) Metadata(_ context.Context, req datasource.Met
 	resp.TypeName = req.ProviderTypeName + "_licensingInfo"
 }
 
+// nolint:funlen
 func (d *licensingInfoDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Represents licensing information from the Cato API.",
@@ -37,7 +38,16 @@ func (d *licensingInfoDataSource) Schema(_ context.Context, _ datasource.SchemaR
 				Required:    false,
 				Optional:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("CATO_ANTI_MALWARE", "CATO_ANTI_MALWARE_NG", "CATO_CASB", "CATO_DATALAKE", "CATO_DATALAKE_12M", "CATO_DATALAKE_3M", "CATO_DATALAKE_6M", "CATO_DEM", "CATO_DLP", "CATO_EPP", "CATO_ILMM", "CATO_IOT_OT", "CATO_IP_ADD", "CATO_IPS", "CATO_MANAGED_XDR", "CATO_MDR", "CATO_NOCAAS_HF", "CATO_PB", "CATO_PB_SSE", "CATO_RBI", "CATO_SAAS", "CATO_SAAS_SECURITY_API", "CATO_SAAS_SECURITY_API_ALL_APPS", "CATO_SAAS_SECURITY_API_ONE_APP", "CATO_SAAS_SECURITY_API_TWO_APPS", "CATO_SITE", "CATO_SSE_SITE", "CATO_THREAT_PREVENTION", "CATO_THREAT_PREVENTION_ADV", "CATO_XDR_PRO", "CATO_ZTNA_USERS", "MOBILE_USERS"),
+					stringvalidator.OneOf(
+						"CATO_ANTI_MALWARE", "CATO_ANTI_MALWARE_NG", "CATO_CASB", "CATO_DATALAKE",
+						"CATO_DATALAKE_12M", "CATO_DATALAKE_3M", "CATO_DATALAKE_6M", "CATO_DEM",
+						"CATO_DLP", "CATO_EPP", "CATO_ILMM", "CATO_IOT_OT", "CATO_IP_ADD", "CATO_IPS",
+						"CATO_MANAGED_XDR", "CATO_MDR", "CATO_NOCAAS_HF", "CATO_PB", "CATO_PB_SSE",
+						"CATO_RBI", "CATO_SAAS", "CATO_SAAS_SECURITY_API", "CATO_SAAS_SECURITY_API_ALL_APPS",
+						"CATO_SAAS_SECURITY_API_ONE_APP", "CATO_SAAS_SECURITY_API_TWO_APPS", "CATO_SITE",
+						"CATO_SSE_SITE", "CATO_THREAT_PREVENTION", "CATO_THREAT_PREVENTION_ADV",
+						"CATO_XDR_PRO", "CATO_ZTNA_USERS", "MOBILE_USERS",
+					),
 				},
 			},
 			"is_active": schema.BoolAttribute{
@@ -232,6 +242,7 @@ func (d *licensingInfoDataSource) Configure(_ context.Context, req datasource.Co
 	d.client = req.ProviderData.(*catoClientData)
 }
 
+// nolint:gocyclo,funlen
 func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state LicenseDataSource
 	if diags := req.Config.Get(ctx, &state); diags.HasError() {
@@ -265,18 +276,18 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 	publicIps, diags := types.ObjectValue(
 		LicenseCountPublicIpsAttrTypes,
 		map[string]attr.Value{
-			"total":     types.Int64Value(int64(gla.PublicIps.Total)),
-			"allocated": types.Int64Value(int64(gla.PublicIps.Allocated)),
-			"available": types.Int64Value(int64(gla.PublicIps.Available)),
+			"total":     types.Int64Value(gla.PublicIps.Total),
+			"allocated": types.Int64Value(gla.PublicIps.Allocated),
+			"available": types.Int64Value(gla.PublicIps.Available),
 		},
 	)
 	resp.Diagnostics.Append(diags...)
 	ztnaUsers, diags := types.ObjectValue(
 		LicenseCountZtnaUsersAttrTypes,
 		map[string]attr.Value{
-			"total":     types.Int64Value(int64(gla.ZtnaUsers.Total)),
-			"allocated": types.Int64Value(int64(gla.ZtnaUsers.Allocated)),
-			"available": types.Int64Value(int64(gla.ZtnaUsers.Available)),
+			"total":     types.Int64Value(gla.ZtnaUsers.Total),
+			"allocated": types.Int64Value(gla.ZtnaUsers.Allocated),
+			"available": types.Int64Value(gla.ZtnaUsers.Available),
 		},
 	)
 	resp.Diagnostics.Append(diags...)
@@ -305,7 +316,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 		tflog.Debug(ctx, "license.Sku", map[string]interface{}{
 			"val":           (license.Sku),
 			"state.sku":     fmt.Sprintf("%T", state.SKU),
-			"state.sku.val": fmt.Sprintf("%v", state.SKU),
+			"state.sku.val": state.SKU.String(),
 			"matches":       fmt.Sprintf("%v", state.SKU.ValueString() == string(license.Sku)),
 		})
 		if !state.IsActive.IsNull() && !state.IsActive.IsUnknown() {
@@ -332,11 +343,13 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 					break
 				}
 			}
-			if !state.IsAssigned.IsNull() && state.IsAssigned.ValueBool() == true && isInList {
+			if !state.IsAssigned.IsNull() && state.IsAssigned.ValueBool() && isInList {
 				matches = false
 			} else {
 				switch license.Sku {
-				case "CATO_ANTI_MALWARE", "CATO_ANTI_MALWARE_NG", "CATO_CASB", "CATO_DLP", "CATO_IOT_OT", "CATO_IPS", "CATO_MANAGED_XDR", "CATO_MDR", "CATO_NOCAAS_HF", "CATO_RBI", "CATO_SAAS", "CATO_THREAT_PREVENTION", "CATO_THREAT_PREVENTION_ADV":
+				case "CATO_ANTI_MALWARE", "CATO_ANTI_MALWARE_NG", "CATO_CASB", "CATO_DLP", "CATO_IOT_OT",
+					"CATO_IPS", "CATO_MANAGED_XDR", "CATO_MDR", "CATO_NOCAAS_HF", "CATO_RBI", "CATO_SAAS",
+					"CATO_THREAT_PREVENTION", "CATO_THREAT_PREVENTION_ADV":
 					// Handle licenses with no specific attributes
 				case "CATO_DATALAKE", "CATO_DATALAKE_12M", "CATO_DATALAKE_3M", "CATO_DATALAKE_6M":
 					total := int(license.DataLakeLicense.Total)
@@ -358,7 +371,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 					curTotal = types.Int64Value(int64(total))
 					if len(license.PooledBandwidthLicense.Sites) > 0 {
 						if !state.IsAssigned.IsNull() {
-							matches = state.IsAssigned.ValueBool() == true
+							matches = state.IsAssigned.ValueBool()
 						}
 						var curSites []attr.Value
 						for _, site := range license.PooledBandwidthLicense.Sites {
@@ -373,19 +386,18 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 								SiteAllocationAttrTypes,
 								map[string]attr.Value{
 									"site":                curSite,
-									"allocated_bandwidth": types.Int64Value(int64(site.AllocatedBandwidth)),
+									"allocated_bandwidth": types.Int64Value(site.AllocatedBandwidth),
 								},
 							)
 							curSites = append(curSites, curSiteItem)
 							// site
 						}
 						curSitesListType, _ = types.ListValue(SiteAllocationObjectType, curSites)
-					} else {
-						if !state.IsAssigned.IsNull() {
-							matches = state.IsAssigned.ValueBool() == false
-						}
+					} else if !state.IsAssigned.IsNull() {
+						matches = !state.IsAssigned.ValueBool()
 					}
-				case "CATO_SAAS_SECURITY_API", "CATO_SAAS_SECURITY_API_ALL_APPS", "CATO_SAAS_SECURITY_API_ONE_APP", "CATO_SAAS_SECURITY_API_TWO_APPS":
+				case "CATO_SAAS_SECURITY_API", "CATO_SAAS_SECURITY_API_ALL_APPS",
+					"CATO_SAAS_SECURITY_API_ONE_APP", "CATO_SAAS_SECURITY_API_TWO_APPS":
 					total := int(license.SaasSecurityAPILicense.Total)
 					curTotal = types.Int64Value(int64(total))
 				case "CATO_SITE", "CATO_SSE_SITE":
@@ -394,7 +406,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 					var curSites []attr.Value
 					if license.SiteLicense.Site != nil {
 						if !state.IsAssigned.IsNull() {
-							matches = state.IsAssigned.ValueBool() == true
+							matches = state.IsAssigned.ValueBool()
 						}
 						curSite, _ := types.ObjectValue(
 							NameIDAttrTypes,
@@ -452,14 +464,6 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 	if diags.HasError() {
 		return
 	}
-}
-
-type attrType interface{}
-type typesObjectType struct {
-	AttrTypes map[string]attrType
-}
-type typesListType struct {
-	ElemType typesObjectType
 }
 
 func parseTimeP(t *string) string {

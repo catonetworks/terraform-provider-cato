@@ -11,8 +11,8 @@ type SiteIpsecIkeV2 struct {
 	SiteType             types.String `tfsdk:"site_type"`
 	Description          types.String `tfsdk:"description"`
 	NativeNetworkRange   types.String `tfsdk:"native_network_range"`
-	NativeNetworkRangeId types.String `tfsdk:"native_network_range_id"`
-	InterfaceId          types.String `tfsdk:"interface_id"`
+	NativeNetworkRangeID types.String `tfsdk:"native_network_range_id"`
+	InterfaceID          types.String `tfsdk:"interface_id"`
 	SiteLocation         types.Object `tfsdk:"site_location"`
 	IPSec                types.Object `tfsdk:"ipsec"`
 }
@@ -26,21 +26,21 @@ type AddIpsecSiteLocationInput struct {
 }
 
 type AddIpsecIkeV2SiteTunnelsInput struct {
-	SiteId             types.String `tfsdk:"site_id"`
-	Primary            types.Object `tfsdk:"primary"`             //AddIpsecIkeV2TunnelsInput
-	Secondary          types.Object `tfsdk:"secondary"`           //AddIpsecIkeV2TunnelsInput
-	ConnectionMode     types.String `tfsdk:"connection_mode"`     //ConnectionMode enum
-	IdentificationType types.String `tfsdk:"identification_type"` //IdentificationType enum
-	InitMessage        types.Object `tfsdk:"init_message"`        //IpsecIkeV2MessageInput
-	AuthMessage        types.Object `tfsdk:"auth_message"`        //IpsecIkeV2MessageInput
-	NetworkRanges      types.List   `tfsdk:"network_ranges"`      //String Array
+	SiteID             types.String `tfsdk:"site_id"`
+	Primary            types.Object `tfsdk:"primary"`             // AddIpsecIkeV2TunnelsInput
+	Secondary          types.Object `tfsdk:"secondary"`           // AddIpsecIkeV2TunnelsInput
+	ConnectionMode     types.String `tfsdk:"connection_mode"`     // ConnectionMode enum
+	IdentificationType types.String `tfsdk:"identification_type"` // IdentificationType enum
+	InitMessage        types.Object `tfsdk:"init_message"`        // IpsecIkeV2MessageInput
+	AuthMessage        types.Object `tfsdk:"auth_message"`        // IpsecIkeV2MessageInput
+	NetworkRanges      types.List   `tfsdk:"network_ranges"`      // String Array
 }
 
 type AddIpsecIkeV2TunnelsInput struct {
 	DestinationType types.String `tfsdk:"destination_type"`
 	PublicCatoIPID  types.String `tfsdk:"public_cato_ip_id"`
 	PopLocationID   types.String `tfsdk:"pop_location_id"`
-	Tunnels         types.List   `tfsdk:"tunnels"` //[]*AddIpsecIkeV2TunnelInput
+	Tunnels         types.List   `tfsdk:"tunnels"` // []*AddIpsecIkeV2TunnelInput
 }
 
 type AddIpsecIkeV2TunnelInput struct {
@@ -48,7 +48,7 @@ type AddIpsecIkeV2TunnelInput struct {
 	PublicSiteIP  types.String `tfsdk:"public_site_ip"`
 	PrivateCatoIP types.String `tfsdk:"private_cato_ip"`
 	PrivateSiteIP types.String `tfsdk:"private_site_ip"`
-	LastMileBw    types.Object `tfsdk:"last_mile_bw"` //*LastMileBwInput
+	LastMileBw    types.Object `tfsdk:"last_mile_bw"` // *LastMileBwInput
 	Psk           types.String `tfsdk:"psk"`
 }
 
@@ -60,10 +60,10 @@ type LastMileBwInput struct {
 }
 
 type IpsecIkeV2MessageInput struct {
-	Cipher    types.String `tfsdk:"cipher"`    //IpSecCipher enum
-	DhGroup   types.String `tfsdk:"dh_group"`  //IpSecDHGroup enum
-	Integrity types.String `tfsdk:"integrity"` //IpSecHash enum
-	Prf       types.String `tfsdk:"prf"`       //IpSecHash enum
+	Cipher    types.String `tfsdk:"cipher"`    // IpSecCipher enum
+	DhGroup   types.String `tfsdk:"dh_group"`  // IpSecDHGroup enum
+	Integrity types.String `tfsdk:"integrity"` // IpSecHash enum
+	Prf       types.String `tfsdk:"prf"`       // IpSecHash enum
 }
 
 // Define attribute types for nested objects

@@ -30,7 +30,8 @@ func (d *groupDataSource) Metadata(_ context.Context, req datasource.MetadataReq
 
 func (d *groupDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_group` data source fetches information about groups with optional filters. Returns a list of groups matching the filter criteria, each with their members.",
+		Description: "The `cato_group` data source fetches information about groups with optional filters. " +
+			"Returns a list of groups matching the filter criteria, each with their members.",
 		Attributes: map[string]schema.Attribute{
 			"id_filter": schema.ListAttribute{
 				ElementType: types.StringType,
@@ -81,8 +82,9 @@ func (d *groupDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 										Computed:    true,
 									},
 									"type": schema.StringAttribute{
-										Description: "Member type: SITE, HOST, NETWORK_INTERFACE, GLOBAL_IP_RANGE, FLOATING_SUBNET, SITE_NETWORK_SUBNET, USER, USERS_GROUP, SYSTEM_GROUP",
-										Computed:    true,
+										Description: "Member type: SITE, HOST, NETWORK_INTERFACE, GLOBAL_IP_RANGE, " +
+											"FLOATING_SUBNET, SITE_NETWORK_SUBNET, USER, USERS_GROUP, SYSTEM_GROUP",
+										Computed: true,
 									},
 								},
 							},
@@ -102,6 +104,7 @@ func (d *groupDataSource) Configure(_ context.Context, req datasource.ConfigureR
 	d.client = req.ProviderData.(*catoClientData)
 }
 
+// nolint:gocyclo,funlen
 func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var config GroupsLookup
 	diags := req.Config.Get(ctx, &config)
@@ -141,10 +144,10 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	// Build filter maps
-	filterById := !config.IdFilter.IsNull() && config.IdFilter.Elements() != nil
+	filterByID := !config.IDFilter.IsNull() && config.IDFilter.Elements() != nil
 	idsMap := make(map[string]struct{})
-	if filterById {
-		for _, value := range config.IdFilter.Elements() {
+	if filterByID {
+		for _, value := range config.IDFilter.Elements() {
 			valueStr := strings.Trim(value.String(), "\"")
 			idsMap[valueStr] = struct{}{}
 		}
@@ -165,16 +168,17 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	for _, groupItem := range groupListResult.Groups.GroupList.Items {
 		// Apply filters
 		var shouldInclude bool
-		if filterById && filterByName {
+		switch {
+		case filterByID && filterByName:
 			// Both filters - both must match
 			idMatches := contains(idsMap, groupItem.ID)
 			nameMatches := contains(namesMap, groupItem.Name)
 			shouldInclude = idMatches && nameMatches
-		} else if filterById {
+		case filterByID:
 			shouldInclude = contains(idsMap, groupItem.ID)
-		} else if filterByName {
+		case filterByName:
 			shouldInclude = contains(namesMap, groupItem.Name)
-		} else {
+		default:
 			// No filters - include all
 			shouldInclude = true
 		}

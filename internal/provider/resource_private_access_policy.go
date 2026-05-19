@@ -76,7 +76,7 @@ func (r *privAccessPolicyResource) Configure(ctx context.Context, req resource.C
 	r.client = req.ProviderData.(*catoClientData)
 }
 
-func (r *privAccessPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *privAccessPolicyResource) ImportState(ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("enabled"), false)...)
 }
 
@@ -91,6 +91,7 @@ func (r *privAccessPolicyResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	hydratedState, diags := r.callUpdate(ctx, plan.Enabled.ValueBool())
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -137,6 +138,7 @@ func (r *privAccessPolicyResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	hydratedState, diags := r.callUpdate(ctx, plan.Enabled.ValueBool())
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -153,7 +155,10 @@ func (r *privAccessPolicyResource) Delete(ctx context.Context, req resource.Dele
 }
 
 // callUpdate implements the actual update logic use by Update() or Create()
-func (r *privAccessPolicyResource) callUpdate(ctx context.Context, isEnabled bool) (newState *PrivAccessPolicyModel, diags diag.Diagnostics) {
+func (r *privAccessPolicyResource) callUpdate(
+	ctx context.Context,
+	isEnabled bool,
+) (newState *PrivAccessPolicyModel, diags diag.Diagnostics) {
 	// Set the enabled polEnabled
 	polEnabled := cato_models.PolicyToggleStateDisabled
 	if isEnabled {
@@ -219,13 +224,15 @@ func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Cont
 	return state, nil, nil
 }
 
-func (r *privAccessPolicyResource) parseAudit(ctx context.Context, aud *cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Audit,
+func (r *privAccessPolicyResource) parseAudit(
+	ctx context.Context,
+	aud *cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Audit,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
 
 	// Prepare PolicyAudit object
-	var auditObj types.Object = types.ObjectNull(PolicyAuditTypes)
+	auditObj := types.ObjectNull(PolicyAuditTypes)
 	if aud != nil {
 		tfAudit := PolicyAudit{
 			PublishedBy:   types.StringValue(aud.PublishedBy),

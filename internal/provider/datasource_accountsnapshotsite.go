@@ -236,7 +236,7 @@ func (d *accountSnapshotSiteDataSource) Configure(_ context.Context, req datasou
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-//nolint:gocyclo
+// nolint:gocyclo
 func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state SiteSnapshot
 	diags := req.Config.Get(ctx, &state)

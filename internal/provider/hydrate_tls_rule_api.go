@@ -13,40 +13,39 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-// hydrateTlsApiTypes create sub-types for both create and update calls to populate both entries
-type hydrateTlsApiTypes struct {
+// hydrateTLSAPITypes create sub-types for both create and update calls to populate both entries
+type hydrateTLSAPITypes struct {
 	create cato_models.TLSInspectAddRuleInput
 	update cato_models.TLSInspectUpdateRuleInput
 }
 
-// hydrateTlsRuleApi takes in the current state/plan along with context and returns the created
-// diagnostic data as well as cato api data used to either create or update TLS entries
-func hydrateTlsRuleApi(ctx context.Context, plan TlsInspectionRule) (hydrateTlsApiTypes, diag.Diagnostics) {
+// hydrateTLSRuleAPI takes in the current state/plan along with context and returns the created
+// diagnostic data as well as cato API data used to either create or update TLS entries
+//
+// nolint:gocyclo,funlen
+func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 
-	hydrateApiReturn := hydrateTlsApiTypes{}
-	hydrateApiReturn.create = cato_models.TLSInspectAddRuleInput{}
-	hydrateApiReturn.update = cato_models.TLSInspectUpdateRuleInput{}
-	hydrateApiReturn.create.At = &cato_models.PolicyRulePositionInput{}
+	hydrateAPIReturn := hydrateTLSAPITypes{}
+	hydrateAPIReturn.create = cato_models.TLSInspectAddRuleInput{}
+	hydrateAPIReturn.update = cato_models.TLSInspectUpdateRuleInput{}
+	hydrateAPIReturn.create.At = &cato_models.PolicyRulePositionInput{}
 
 	rootAddRule := &cato_models.TLSInspectAddRuleDataInput{}
 	rootUpdateRule := &cato_models.TLSInspectUpdateRuleDataInput{}
 
-	//setting at for creation only
+	// setting at for creation only
 	if !plan.At.IsNull() {
-
 		positionInput := PolicyRulePositionInput{}
 		diags = append(diags, plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
 
-		hydrateApiReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
-		hydrateApiReturn.create.At.Ref = positionInput.Ref.ValueStringPointer()
-
+		hydrateAPIReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
+		hydrateAPIReturn.create.At.Ref = positionInput.Ref.ValueStringPointer()
 	}
 
 	// setting rule
 	if !plan.Rule.IsNull() {
-
-		ruleInput := Policy_Policy_TlsInspect_Policy_Rules_Rule{}
+		ruleInput := PolicyPolicyTLSInspectPolicyRulesRule{}
 		diags = append(diags, plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})...)
 
 		// setting name
@@ -89,18 +88,19 @@ func hydrateTlsRuleApi(ctx context.Context, plan TlsInspectionRule) (hydrateTlsA
 
 		// setting untrusted certificate action
 		if !ruleInput.UntrustedCertificateAction.IsNull() && !ruleInput.UntrustedCertificateAction.IsUnknown() {
-			rootAddRule.UntrustedCertificateAction = cato_models.TLSInspectUntrustedCertificateAction(ruleInput.UntrustedCertificateAction.ValueString())
+			rootAddRule.UntrustedCertificateAction = cato_models.TLSInspectUntrustedCertificateAction(
+				ruleInput.UntrustedCertificateAction.ValueString(),
+			)
 			untrustedCertVal := cato_models.TLSInspectUntrustedCertificateAction(ruleInput.UntrustedCertificateAction.ValueString())
 			rootUpdateRule.UntrustedCertificateAction = &untrustedCertVal
 		}
 
 		// setting source
 		if !ruleInput.Source.IsNull() {
-
 			ruleSourceInput := &cato_models.TLSInspectSourceInput{}
 			ruleSourceUpdateInput := &cato_models.TLSInspectSourceUpdateInput{}
 
-			sourceInput := Policy_Policy_TlsInspect_Policy_Rules_Rule_Source{}
+			sourceInput := PolicyPolicyTLSInspectPolicyRulesRuleSource{}
 			diags = append(diags, ruleInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})...)
 
 			// setting source IP
@@ -381,7 +381,7 @@ func hydrateTlsRuleApi(ctx context.Context, plan TlsInspectionRule) (hydrateTlsA
 			rootAddRule.Source = ruleSourceInput
 			rootUpdateRule.Source = ruleSourceUpdateInput
 		}
-		////////////// end rule.source ///////////////
+		// /// /// /// /// end rule.source // /// /// /// /// /
 
 		// setting country
 		if !ruleInput.Country.IsNull() && !ruleInput.Country.IsUnknown() {
@@ -447,11 +447,10 @@ func hydrateTlsRuleApi(ctx context.Context, plan TlsInspectionRule) (hydrateTlsA
 
 		// setting application
 		if !ruleInput.Application.IsNull() {
-
 			ruleApplicationInput := &cato_models.TLSInspectApplicationInput{}
 			ruleApplicationUpdateInput := &cato_models.TLSInspectApplicationUpdateInput{}
 
-			applicationInput := Policy_Policy_TlsInspect_Policy_Rules_Rule_Application{}
+			applicationInput := PolicyPolicyTLSInspectPolicyRulesRuleApplication{}
 			diags = append(diags, ruleInput.Application.As(ctx, &applicationInput, basetypes.ObjectAsOptions{})...)
 
 			// setting application.application
@@ -688,11 +687,11 @@ func hydrateTlsRuleApi(ctx context.Context, plan TlsInspectionRule) (hydrateTlsA
 			rootAddRule.Application = ruleApplicationInput
 			rootUpdateRule.Application = ruleApplicationUpdateInput
 		}
-		////////////// end rule.application ///////////////
+		// /// /// /// /// end rule.application // /// /// /// /// /
 	}
 
-	hydrateApiReturn.create.Rule = rootAddRule
-	hydrateApiReturn.update.Rule = rootUpdateRule
+	hydrateAPIReturn.create.Rule = rootAddRule
+	hydrateAPIReturn.update.Rule = rootUpdateRule
 
-	return hydrateApiReturn, diags
+	return hydrateAPIReturn, diags
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
+const ifwComprehensiveMatchThreshold = 0.6
+
 // Internet Firewall utility functions for correlation and state management
 // correlateIfwExceptions correlates plan exceptions with response exceptions to preserve ID structure
 // It supports both ID and name matching for elements, prioritizing ID matching if available
@@ -89,12 +91,11 @@ func correlateIfwExceptions(ctx context.Context, planExceptions types.Set, respo
 		if !diags.HasError() {
 			tflog.Debug(ctx, "correlateIfwExceptions: Successfully correlated exceptions set")
 			return &correlatedSet
-		} else {
-			tflog.Error(ctx, "correlateIfwExceptions: Failed to create correlated set, falling back to response", map[string]interface{}{
-				"error": diags.Errors(),
-			})
-			return &responseExceptions
 		}
+		tflog.Error(ctx, "correlateIfwExceptions: Failed to create correlated set, falling back to response", map[string]interface{}{
+			"error": diags.Errors(),
+		})
+		return &responseExceptions
 	}
 
 	return &responseExceptions
@@ -117,14 +118,16 @@ func getPlanName(obj types.Object) string {
 // findCorrespondingIfwResponseElement finds the response element that corresponds to the given plan element
 // It first tries to match by ID if both elements have IDs, then falls back to name matching,
 // and finally uses comprehensive field matching for cases where connection_origin or other fields differ
+//
+// nolint:gocyclo
 func findCorrespondingIfwResponseElement(ctx context.Context, planObj types.Object, responseElements []attr.Value) *types.Object {
 	planAttrs := planObj.Attributes()
 
 	// First, try to match by ID if both plan and response elements have IDs
-	planId, planIdExists := planAttrs["id"]
-	if planIdExists {
-		planIdStr, ok := planId.(types.String)
-		if ok && !planIdStr.IsNull() && !planIdStr.IsUnknown() {
+	planID, planIDExists := planAttrs["id"]
+	if planIDExists {
+		planIDStr, ok := planID.(types.String)
+		if ok && !planIDStr.IsNull() && !planIDStr.IsUnknown() {
 			// Plan has a valid ID, try to find response element with the same ID
 			for _, responseElement := range responseElements {
 				responseObj, ok := responseElement.(types.Object)
@@ -133,18 +136,18 @@ func findCorrespondingIfwResponseElement(ctx context.Context, planObj types.Obje
 				}
 
 				responseAttrs := responseObj.Attributes()
-				responseId, responseIdExists := responseAttrs["id"]
-				if !responseIdExists {
+				responseID, responseIDExists := responseAttrs["id"]
+				if !responseIDExists {
 					continue
 				}
 
-				responseIdStr, ok := responseId.(types.String)
-				if !ok || responseIdStr.IsNull() || responseIdStr.IsUnknown() {
+				responseIDStr, ok := responseID.(types.String)
+				if !ok || responseIDStr.IsNull() || responseIDStr.IsUnknown() {
 					continue
 				}
 
 				// Match by ID (preferred for updates)
-				if responseIdStr.ValueString() == planIdStr.ValueString() {
+				if responseIDStr.ValueString() == planIDStr.ValueString() {
 					tflog.Debug(ctx, "findCorrespondingIfwResponseElement: Found match by ID")
 					return &responseObj
 				}
@@ -227,11 +230,11 @@ func isComprehensiveMatch(ctx context.Context, planObj types.Object, responseObj
 	}
 
 	// Compare nested objects to determine similarity
-	nested_fields := []string{"source", "destination", "service"}
+	nestedFields := []string{"source", "destination", "service"}
 	matchingFields := 0
 	totalFields := 0
 
-	for _, fieldName := range nested_fields {
+	for _, fieldName := range nestedFields {
 		planField, planExists := planAttrs[fieldName]
 		responseField, responseExists := responseAttrs[fieldName]
 
@@ -251,13 +254,15 @@ func isComprehensiveMatch(ctx context.Context, planObj types.Object, responseObj
 			"totalFields":    totalFields,
 			"matchRatio":     matchRatio,
 		})
-		return matchRatio >= 0.6 // 60% match threshold
+		return matchRatio >= ifwComprehensiveMatchThreshold
 	}
 
 	return false
 }
 
 // compareNestedObjects compares two nested objects and returns true if they are structurally similar
+//
+// nolint:gocyclo
 func compareNestedObjects(ctx context.Context, planField attr.Value, responseField attr.Value) bool {
 	planObj, planOk := planField.(types.Object)
 	responseObj, responseOk := responseField.(types.Object)
@@ -310,48 +315,6 @@ func compareNestedObjects(ctx context.Context, planField attr.Value, responseFie
 
 	// Objects are similar if they have the same level of complexity
 	return planNonNullCount == responseNonNullCount
-}
-
-// findCorrespondingIfwPlanElement finds the plan element that corresponds to the given response element
-func findCorrespondingIfwPlanElement(ctx context.Context, responseObj types.Object, planElements []attr.Value) *types.Object {
-	responseAttrs := responseObj.Attributes()
-
-	// Use exception name as the primary identifier
-	responseName, nameExists := responseAttrs["name"]
-	if !nameExists {
-		return nil
-	}
-
-	responseNameStr, ok := responseName.(types.String)
-	if !ok || responseNameStr.IsNull() || responseNameStr.IsUnknown() {
-		return nil
-	}
-
-	for _, planElement := range planElements {
-		planObj, ok := planElement.(types.Object)
-		if !ok {
-			continue
-		}
-
-		planAttrs := planObj.Attributes()
-		planName, exists := planAttrs["name"]
-		if !exists {
-			continue
-		}
-
-		planNameStr, ok := planName.(types.String)
-		if !ok {
-			continue
-		}
-
-		// Match by name (primary identifier for exceptions)
-		if !planNameStr.IsNull() && !planNameStr.IsUnknown() &&
-			planNameStr.ValueString() == responseNameStr.ValueString() {
-			return &planObj
-		}
-	}
-
-	return nil
 }
 
 // correlateIfwExceptionElement creates a correlated exception element that combines plan structure with response data
@@ -507,7 +470,13 @@ func preservePlanValue(ctx context.Context, newAttrs map[string]attr.Value, plan
 }
 
 // correlateIfwNestedObjects correlates nested objects like source, destination, service
-func correlateIfwNestedObjects(ctx context.Context, newAttrs map[string]attr.Value, planAttrs map[string]attr.Value, responseAttrs map[string]attr.Value, nestedFieldName string) {
+func correlateIfwNestedObjects(
+	ctx context.Context,
+	newAttrs map[string]attr.Value,
+	planAttrs map[string]attr.Value,
+	_ map[string]attr.Value,
+	nestedFieldName string,
+) {
 	responsNested, responseExists := newAttrs[nestedFieldName]
 	if !responseExists {
 		tflog.Debug(ctx, "correlateIfwNestedObjects: Response field does not exist", map[string]interface{}{"field": nestedFieldName})
@@ -523,13 +492,19 @@ func correlateIfwNestedObjects(ctx context.Context, newAttrs map[string]attr.Val
 	// Handle nested object with sets (like source, destination, service)
 	responseNestedObj, ok := responsNested.(types.Object)
 	if !ok {
-		tflog.Debug(ctx, "correlateIfwNestedObjects: Response field is not an object", map[string]interface{}{"field": nestedFieldName, "type": fmt.Sprintf("%T", responsNested)})
+		tflog.Debug(ctx, "correlateIfwNestedObjects: Response field is not an object", map[string]interface{}{
+			"field": nestedFieldName,
+			"type":  fmt.Sprintf("%T", responsNested),
+		})
 		return
 	}
 
 	planNestedObj, ok := planNested.(types.Object)
 	if !ok {
-		tflog.Debug(ctx, "correlateIfwNestedObjects: Plan field is not an object", map[string]interface{}{"field": nestedFieldName, "type": fmt.Sprintf("%T", planNested)})
+		tflog.Debug(ctx, "correlateIfwNestedObjects: Plan field is not an object", map[string]interface{}{
+			"field": nestedFieldName,
+			"type":  fmt.Sprintf("%T", planNested),
+		})
 		return
 	}
 
@@ -578,7 +553,12 @@ func correlateIfwNestedObjects(ctx context.Context, newAttrs map[string]attr.Val
 }
 
 // correlateIfwSetElements correlates set elements by matching on name and preserving plan structure
-func correlateIfwSetElements(ctx context.Context, newNestedAttrs map[string]attr.Value, planNestedAttrs map[string]attr.Value, setFieldName string) {
+func correlateIfwSetElements(
+	ctx context.Context,
+	newNestedAttrs map[string]attr.Value,
+	planNestedAttrs map[string]attr.Value,
+	setFieldName string,
+) {
 	responseSet, responseExists := newNestedAttrs[setFieldName]
 	if !responseExists {
 		return
@@ -638,14 +618,16 @@ func correlateIfwSetElements(ctx context.Context, newNestedAttrs map[string]attr
 
 // findIfwElementByName finds an element in the list by matching the ID field first, then name field
 // This supports both create operations (name-based) and update operations (ID-based if present)
+//
+// nolint:gocyclo
 func findIfwElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
 
 	// First, try to match by ID if both target and elements have IDs
-	targetId, targetIdExists := targetAttrs["id"]
-	if targetIdExists {
-		targetIdStr, ok := targetId.(types.String)
-		if ok && !targetIdStr.IsNull() && !targetIdStr.IsUnknown() {
+	targetID, targetIDExists := targetAttrs["id"]
+	if targetIDExists {
+		targetIDStr, ok := targetID.(types.String)
+		if ok && !targetIDStr.IsNull() && !targetIDStr.IsUnknown() {
 			// Target has a valid ID, try to find element with the same ID
 			for _, element := range elements {
 				elementObj, ok := element.(types.Object)
@@ -654,18 +636,18 @@ func findIfwElementByName(ctx context.Context, targetObj types.Object, elements 
 				}
 
 				elementAttrs := elementObj.Attributes()
-				elementId, elementIdExists := elementAttrs["id"]
-				if !elementIdExists {
+				elementID, elementIDExists := elementAttrs["id"]
+				if !elementIDExists {
 					continue
 				}
 
-				elementIdStr, ok := elementId.(types.String)
-				if !ok || elementIdStr.IsNull() || elementIdStr.IsUnknown() {
+				elementIDStr, ok := elementID.(types.String)
+				if !ok || elementIDStr.IsNull() || elementIDStr.IsUnknown() {
 					continue
 				}
 
 				// Match by ID (preferred)
-				if elementIdStr.ValueString() == targetIdStr.ValueString() {
+				if elementIDStr.ValueString() == targetIDStr.ValueString() {
 					return &elementObj
 				}
 			}
@@ -735,14 +717,14 @@ func correlateIfwSetElement(ctx context.Context, planObj types.Object, responseO
 	}
 
 	// Similarly, if plan had id=null and user specified name, preserve null id
-	if planId, exists := planAttrs["id"]; exists {
-		if planIdStr, ok := planId.(types.String); ok && planIdStr.IsNull() {
+	if planID, exists := planAttrs["id"]; exists {
+		if planIDStr, ok := planID.(types.String); ok && planIDStr.IsNull() {
 			// Plan had null id (user specified only name), preserve null
 			newAttrs["id"] = types.StringNull()
 			tflog.Debug(ctx, "correlateIfwSetElement: Preserving null id from plan")
-		} else if !planIdStr.IsNull() && !planIdStr.IsUnknown() {
+		} else if !planIDStr.IsNull() && !planIDStr.IsUnknown() {
 			// Plan has a valid id, preserve it
-			newAttrs["id"] = planIdStr
+			newAttrs["id"] = planIDStr
 		}
 	}
 

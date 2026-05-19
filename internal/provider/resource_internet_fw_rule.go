@@ -37,6 +37,11 @@ var (
 	_ resource.ResourceWithImportState = &internetFwRuleResource{}
 )
 
+const (
+	ifwMutationStatusSuccess = "SUCCESS"
+	ifwLastInPolicyPosition  = "LAST_IN_POLICY"
+)
+
 type internetFwRuleResource struct {
 	client    *catoClientData
 	ifwClient InternetFirewallPolicyClient
@@ -62,17 +67,18 @@ func (r *internetFwRuleResource) Metadata(_ context.Context, req resource.Metada
 	resp.TypeName = req.ProviderTypeName + "_if_rule"
 }
 
+// nolint:funlen,lll
 func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_if_rule` resource contains the configuration parameters necessary to add rule to the Internet Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413273486865-What-is-the-Cato-Internet-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addRule).",
+		Description: "The `cato_if_rule` resource contains the configuration parameters necessary to add rule to the Internet Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413273486865-What-is-the-Cato-Internet-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
-				Description: "Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionInput)",
+				Description: "Position of the rule in the policy (https:// api.catonetworks.com/documentation/#definition-PolicyRulePositionInput)",
 				Required:    true,
 				Optional:    false,
 				Attributes: map[string]schema.Attribute{
 					"position": schema.StringAttribute{
-						Description: "Position relative to a policy, a section or another rule (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionEnum)",
+						Description: "Position relative to a policy, a section or another rule (https:// api.catonetworks.com/documentation/#definition-PolicyRulePositionEnum)",
 						Required:    true,
 						Optional:    false,
 						Validators: []validator.String{
@@ -87,7 +93,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				},
 			},
 			"rule": schema.SingleNestedAttribute{
-				Description: "Parameters for the rule you are adding (https://api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput)",
+				Description: "Parameters for the rule you are adding (https:// api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput)",
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
@@ -169,7 +175,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"source": schema.SingleNestedAttribute{
-						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput)",
+						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https:// api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput)",
 						Required:    true,
 						Optional:    false,
 						PlanModifiers: []planmodifier.Object{
@@ -594,7 +600,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"connection_origin": schema.StringAttribute{
-						Description: "Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
+						Description: "Connection origin of the traffic (https:// api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 						Optional:    true,
 						Required:    false,
 						PlanModifiers: []planmodifier.String{
@@ -677,7 +683,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 					},
 					"device_os": schema.ListAttribute{
 						ElementType: types.StringType,
-						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
+						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
 						Optional:    true,
 						Required:    false,
 					},
@@ -764,7 +770,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"destination": schema.SingleNestedAttribute{
-						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput)",
+						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https:// api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput)",
 						Optional:    false,
 						Required:    true,
 						PlanModifiers: []planmodifier.Object{
@@ -1164,7 +1170,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
+											Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
 											Required:    false,
 											Optional:    true,
 										},
@@ -1174,7 +1180,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"action": schema.StringAttribute{
-						Description: "The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
+						Description: "The action applied by the Internet Firewall if the rule is matched (https:// api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT", "RBI", "CAPTIVE_PORTAL"),
@@ -1218,7 +1224,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Default:  booldefault.StaticBool(false),
 									},
 									"frequency": schema.StringAttribute{
-										Description: "Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
+										Description: "Returns data for the alert frequency (https:// api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
 										Optional:    true,
 										Required:    false,
 										Validators: []validator.String{
@@ -1349,7 +1355,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 						Attributes: map[string]schema.Attribute{
 							"active_on": schema.StringAttribute{
-								Description: "Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
+								Description: "Define when the rule is active (https:// api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
 								Required:    false,
 								Optional:    true,
 								Computed:    true,
@@ -1400,7 +1406,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 									"days": schema.ListAttribute{
 										ElementType: types.StringType,
-										Description: "(https://api.catonetworks.com/documentation/#definition-DayOfWeek)",
+										Description: "(https:// api.catonetworks.com/documentation/#definition-DayOfWeek)",
 										Required:    false,
 										Optional:    true,
 										Validators: []validator.List{
@@ -2026,7 +2032,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 								"device_os": schema.ListAttribute{
 									ElementType: types.StringType,
-									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
+									Description: "Source device OS matching criteria for the exception. (https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
 									Required:    false,
 									PlanModifiers: []planmodifier.List{
@@ -2436,7 +2442,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														},
 													},
 													"protocol": schema.StringAttribute{
-														Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
+														Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
 														Required:    false,
 														Optional:    true,
 													},
@@ -2446,7 +2452,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 								},
 								"connection_origin": schema.StringAttribute{
-									Description: "Connection origin matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
+									Description: "Connection origin matching criteria for the exception. (https:// api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 									Optional:    true,
 									Required:    false,
 									PlanModifiers: []planmodifier.String{
@@ -2478,8 +2484,8 @@ func (r *internetFwRuleResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
+// nolint:gocyclo,funlen
 func (r *internetFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan InternetFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -2487,7 +2493,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	input, diags := hydrateIfwRuleApi(ctx, plan)
+	input, diags := hydrateIfwRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -2497,7 +2503,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
 
-	//creating new rule
+	// Creating new rule
 	createRuleResponse, err := r.getIfwClient().PolicyInternetFirewallAddRule(ctx, input.create, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -2512,7 +2518,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 	})
 
 	// check for errors
-	if createRuleResponse.Policy.InternetFirewall.AddRule.Status != "SUCCESS" {
+	if createRuleResponse.Policy.InternetFirewall.AddRule.Status != ifwMutationStatusSuccess {
 		for _, item := range createRuleResponse.Policy.InternetFirewall.AddRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
@@ -2522,7 +2528,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	//publishing new rule
+	// Publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
 	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
@@ -2570,7 +2576,7 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 	// Handle exceptions correlation manually to preserve plan structure
 	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+		planRule := PolicyPolicyInternetFirewallPolicyRulesRule{}
 		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
 		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
 			// Correlate exceptions between plan and hydrated response
@@ -2598,7 +2604,6 @@ func (r *internetFwRuleResource) Create(ctx context.Context, req resource.Create
 }
 
 func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state InternetFirewallRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -2616,8 +2621,8 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	//retrieve rule ID
-	rule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	// Retrieve rule ID
+	rule := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -2659,7 +2664,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	// Hard coding LAST_IN_POLICY position as the API does not return any value and
 	// hardcoding position supports the use case of bulk rule import/export
 	// getting around state changes for the position field
-	positionValue := "LAST_IN_POLICY"
+	positionValue := ifwLastInPolicyPosition
 	refValue := types.StringNull()
 
 	if !state.At.IsNull() && !state.At.IsUnknown() {
@@ -2682,12 +2687,15 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 		},
 	)
 	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
-	diags = append(diags, diagstmp...)
-
+	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(diagstmp...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
+// nolint:gocyclo,funlen
 func (r *internetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan InternetFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -2695,7 +2703,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	input, diags := hydrateIfwRuleApi(ctx, plan)
+	input, diags := hydrateIfwRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -2704,7 +2712,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	// setting input for moving rule
 	inputMoveRule := cato_models.PolicyMoveRuleInput{}
 
-	//setting at (to move rule)
+	// Setting at (to move rule)
 	if !plan.At.IsNull() {
 		inputMoveRule.To = &cato_models.PolicyRulePositionInput{}
 		positionInput := PolicyRulePositionInput{}
@@ -2716,7 +2724,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// // setting rule
-	ruleInput := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	ruleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags = plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 
@@ -2724,7 +2732,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	inputMoveRule.ID = *ruleInput.ID.ValueStringPointer()
 	input.update.ID = *ruleInput.ID.ValueStringPointer()
 
-	//move rule
+	// Move rule
 	moveRule, err := r.getIfwClient().PolicyInternetFirewallMoveRule(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
@@ -2740,7 +2748,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// check for errors
-	if moveRule.Policy.InternetFirewall.MoveRule.Status != "SUCCESS" {
+	if moveRule.Policy.InternetFirewall.MoveRule.Status != ifwMutationStatusSuccess {
 		for _, item := range moveRule.Policy.InternetFirewall.MoveRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Moving Rule Resource",
@@ -2754,7 +2762,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		"OUTPUT": utils.InterfaceToJSONString(input.update),
 	})
 
-	//Update new rule
+	// Update new rule
 	updateRuleResponse, err := r.getIfwClient().PolicyInternetFirewallUpdateRule(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
@@ -2770,7 +2778,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// check for errors
-	if updateRuleResponse.Policy.InternetFirewall.UpdateRule.Status != "SUCCESS" {
+	if updateRuleResponse.Policy.InternetFirewall.UpdateRule.Status != ifwMutationStatusSuccess {
 		for _, item := range updateRuleResponse.Policy.InternetFirewall.UpdateRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Update Resource",
@@ -2780,7 +2788,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	//publishing new rule
+	// Publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
 	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
@@ -2827,7 +2835,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 
 	// Handle exceptions correlation manually to preserve plan structure
 	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+		planRule := PolicyPolicyInternetFirewallPolicyRulesRule{}
 		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
 		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
 			// Correlate exceptions between plan and hydrated response
@@ -2854,7 +2862,6 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 }
 
 func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state InternetFirewallRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -2862,8 +2869,8 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	//retrieve rule ID
-	rule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	// Retrieve rule ID
+	rule := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -2910,7 +2917,8 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 type ruleAlertValidator struct{}
 
 func (v ruleAlertValidator) Description(ctx context.Context) string {
-	return "If 'alert' is provided, both 'enabled' and 'frequency' must also be set, and must specify values for mailing_list, subscription_group, or web_hook."
+	return "If 'alert' is provided, both 'enabled' and 'frequency' must also be set, " +
+		"and must specify values for mailing_list, subscription_group, or web_hook."
 }
 
 func (v ruleAlertValidator) MarkdownDescription(ctx context.Context) string {

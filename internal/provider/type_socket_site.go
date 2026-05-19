@@ -17,14 +17,14 @@ type SocketSite struct {
 
 type NativeRange struct {
 	InterfaceIndex              types.String `tfsdk:"interface_index"`
-	InterfaceId                 types.String `tfsdk:"interface_id"`
+	InterfaceID                 types.String `tfsdk:"interface_id"`
 	InterfaceName               types.String `tfsdk:"interface_name"`
-	NativeNetworkLanInterfaceId types.String `tfsdk:"native_network_lan_interface_id"`
+	NativeNetworkLanInterfaceID types.String `tfsdk:"native_network_lan_interface_id"`
 	NativeNetworkRange          types.String `tfsdk:"native_network_range"`
-	NativeNetworkRangeId        types.String `tfsdk:"native_network_range_id"`
+	NativeNetworkRangeID        types.String `tfsdk:"native_network_range_id"`
 	RangeName                   types.String `tfsdk:"range_name"`
-	RangeId                     types.String `tfsdk:"range_id"`
-	LocalIp                     types.String `tfsdk:"local_ip"`
+	RangeID                     types.String `tfsdk:"range_id"`
+	LocalIP                     types.String `tfsdk:"local_ip"`
 	TranslatedSubnet            types.String `tfsdk:"translated_subnet"`
 	Gateway                     types.String `tfsdk:"gateway"`
 	RangeType                   types.String `tfsdk:"range_type"`

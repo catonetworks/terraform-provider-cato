@@ -4,8 +4,8 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 
 type Admin struct {
 	Id                   types.String `tfsdk:"id"`
-	AdminId              types.String `tfsdk:"admin_id"`
-	AccountId            types.String `tfsdk:"account_id"`
+	AdminID              types.String `tfsdk:"admin_id"`
+	AccountID            types.String `tfsdk:"account_id"`
 	Email                types.String `tfsdk:"email"`
 	FirstName            types.String `tfsdk:"first_name"`
 	LastName             types.String `tfsdk:"last_name"`

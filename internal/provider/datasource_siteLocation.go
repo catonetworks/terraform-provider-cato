@@ -23,7 +23,7 @@ var sldFilename string
 var sldCatalog map[string]SLDCatalogEntry
 var sldCatalogLoadError error
 
-//nolint:gochecknoinits
+// nolint:gochecknoinits
 func init() {
 	sldCatalogLoadError = json.Unmarshal([]byte(sldFilename), &sldCatalog)
 }
@@ -326,13 +326,12 @@ func filterSiteLocations(
 	return siteLocations
 }
 
-//nolint:funlen // legacy code
+// nolint:funlen // legacy code
 func setSiteLocations(
 	ctx context.Context,
 	resp *datasource.ReadResponse,
 	filters types.List, allLocations []SLDCatalogEntry,
 ) {
-	diags := make(diag.Diagnostics, 0)
 	locationsOut := make([]attr.Value, 0, len(allLocations))
 
 	filtersListVal, diags := types.ListValueFrom(
@@ -346,8 +345,8 @@ func setSiteLocations(
 	}
 
 	for _, loc := range allLocations {
-		tflog.Info(ctx, "allLocations.StateCode - "+fmt.Sprintf("%v", loc.StateCode))
-		tflog.Info(ctx, "reflect.TypeOf(loc.StateCode) - "+fmt.Sprintf("%v", reflect.TypeOf(loc.StateCode)))
+		tflog.Info(ctx, "allLocations.StateCode - "+loc.StateCode)
+		tflog.Info(ctx, "reflect.TypeOf(loc.StateCode) - "+reflect.TypeOf(loc.StateCode).String())
 
 		locObj, diags := types.ObjectValue(
 			SLDAttrTypes,
@@ -406,7 +405,7 @@ func setSiteLocations(
 		locationsOut = append(locationsOut, locObj)
 	}
 
-	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
+	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+reflect.TypeOf(locationsOut).String())
 	locationsListVal, diags := types.ListValueFrom(
 		ctx,
 		types.ObjectType{AttrTypes: SLDAttrTypes},
@@ -417,7 +416,7 @@ func setSiteLocations(
 		return
 	}
 
-	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
+	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+reflect.TypeOf(locationsOut).String())
 	state, diags := types.ObjectValue(
 		SLDQueryAttrTypes,
 		map[string]attr.Value{

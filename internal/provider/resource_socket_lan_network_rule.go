@@ -47,9 +47,13 @@ func (r *socketLanNetworkRuleResource) Metadata(_ context.Context, req resource.
 	resp.TypeName = req.ProviderTypeName + "_socket_lan_network_rule"
 }
 
+// nolint:funlen
 func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_socket_lan_network_rule` resource contains the configuration parameters necessary to add a Socket LAN network rule. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule).",
+		Description: "The `cato_socket_lan_network_rule` resource contains the configuration parameters necessary " +
+			"to add a Socket LAN network rule. Documentation for the underlying API used in this resource can be " +
+			"found at [mutation.policy.socketLan.addRule()]" +
+			"(https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
 				Description: "Position of the rule in the policy",
@@ -463,10 +467,13 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 								},
 							},
 							"floating_subnet": schema.SetNestedAttribute{
-								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP.",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
+								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic " +
+									"exactly matched to the route advertised by BGP. They are not associated with a " +
+									"specific site. This is useful in scenarios such as active-standby high " +
+									"availability routed via BGP.",
+								Required: false,
+								Optional: true,
+								Computed: true,
 								PlanModifiers: []planmodifier.Set{
 									setplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
@@ -808,10 +815,13 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 								},
 							},
 							"floating_subnet": schema.SetNestedAttribute{
-								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP.",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
+								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic " +
+									"exactly matched to the route advertised by BGP. They are not associated with a " +
+									"specific site. This is useful in scenarios such as active-standby high " +
+									"availability routed via BGP.",
+								Required: false,
+								Optional: true,
+								Computed: true,
 								PlanModifiers: []planmodifier.Set{
 									setplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
@@ -888,9 +898,10 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 						},
 					},
 					"service": schema.SingleNestedAttribute{
-						Description: "Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
-						Required:    false,
-						Optional:    true,
+						Description: "Destination service traffic matching criteria. Logical 'OR' is applied within " +
+							"the criteria set. Logical 'AND' is applied between criteria sets.",
+						Required: false,
+						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"simple": schema.SetNestedAttribute{
 								Description: "Simple Service to which this Socket LAN rule applies",
@@ -952,7 +963,7 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 											},
 										},
 										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
+											Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
 											Required:    false,
 											Optional:    true,
 										},
@@ -997,7 +1008,11 @@ func (r *socketLanNetworkRuleResource) Configure(_ context.Context, req resource
 	r.client = req.ProviderData.(*catoClientData)
 }
 
-func (r *socketLanNetworkRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *socketLanNetworkRuleResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
@@ -1010,7 +1025,7 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 	}
 
 	// Build API input
-	apiInput, inputDiags := hydrateSocketLanNetworkRuleApi(ctx, plan)
+	apiInput, inputDiags := hydrateSocketLanNetworkRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(inputDiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1052,7 +1067,7 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 	}
 
 	// Get the rule ID from the response
-	ruleId := policyChange.GetPolicy().GetSocketLan().GetAddRule().Rule.GetRule().ID
+	ruleID := policyChange.GetPolicy().GetSocketLan().GetAddRule().Rule.GetRule().ID
 
 	// Read back the rule to populate state
 	queryResult, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
@@ -1067,7 +1082,7 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 	// Find the created rule
 	var currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule
 	for _, ruleWrapper := range queryResult.Policy.SocketLan.Policy.Rules {
-		if ruleWrapper.Rule.ID == ruleId {
+		if ruleWrapper.Rule.ID == ruleID {
 			currentRule = &ruleWrapper.Rule
 			break
 		}
@@ -1076,7 +1091,7 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 	if currentRule == nil {
 		resp.Diagnostics.AddError(
 			"Rule not found",
-			fmt.Sprintf("Could not find created rule with ID %s", ruleId),
+			fmt.Sprintf("Could not find created rule with ID %s", ruleID),
 		)
 		return
 	}
@@ -1110,7 +1125,7 @@ func (r *socketLanNetworkRuleResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	ruleId := ruleData.ID.ValueString()
+	ruleID := ruleData.ID.ValueString()
 
 	// Query the API
 	queryResult, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
@@ -1129,7 +1144,7 @@ func (r *socketLanNetworkRuleResource) Read(ctx context.Context, req resource.Re
 	var currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule
 	ruleExists := false
 	for _, ruleWrapper := range queryResult.Policy.SocketLan.Policy.Rules {
-		if ruleWrapper.Rule.ID == ruleId {
+		if ruleWrapper.Rule.ID == ruleID {
 			currentRule = &ruleWrapper.Rule
 			ruleExists = true
 			break
@@ -1166,6 +1181,7 @@ func (r *socketLanNetworkRuleResource) Read(ctx context.Context, req resource.Re
 	resp.Diagnostics.Append(diags...)
 }
 
+// nolint:funlen
 func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SocketLanNetworkRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -1182,17 +1198,17 @@ func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	ruleId := ruleData.ID.ValueString()
+	ruleID := ruleData.ID.ValueString()
 
 	// Build API input
-	apiInput, inputDiags := hydrateSocketLanNetworkRuleApi(ctx, plan)
+	apiInput, inputDiags := hydrateSocketLanNetworkRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(inputDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// Set the rule ID for update
-	apiInput.update.ID = ruleId
+	apiInput.update.ID = ruleID
 
 	// Move rule if position changed
 	var positionInput PolicyRulePositionInput
@@ -1200,7 +1216,7 @@ func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.
 	resp.Diagnostics.Append(diags...)
 
 	moveInput := cato_models.PolicyMoveRuleInput{
-		ID: ruleId,
+		ID: ruleID,
 		To: &cato_models.PolicyRulePositionInput{
 			Position: (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer()),
 			Ref:      positionInput.Ref.ValueStringPointer(),
@@ -1238,7 +1254,7 @@ func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	if updateResult.Policy.SocketLan.UpdateRule.Status != "SUCCESS" {
+	if updateResult.Policy.SocketLan.UpdateRule.Status != ifwMutationStatusSuccess {
 		for _, item := range updateResult.Policy.SocketLan.UpdateRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Updating Rule Resource",
@@ -1272,7 +1288,7 @@ func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.
 
 	var currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule
 	for _, ruleWrapper := range queryResult.Policy.SocketLan.Policy.Rules {
-		if ruleWrapper.Rule.ID == ruleId {
+		if ruleWrapper.Rule.ID == ruleID {
 			currentRule = &ruleWrapper.Rule
 			break
 		}
@@ -1281,7 +1297,7 @@ func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.
 	if currentRule == nil {
 		resp.Diagnostics.AddError(
 			"Rule not found",
-			fmt.Sprintf("Could not find rule with ID %s after update", ruleId),
+			fmt.Sprintf("Could not find rule with ID %s after update", ruleID),
 		)
 		return
 	}
@@ -1314,10 +1330,10 @@ func (r *socketLanNetworkRuleResource) Delete(ctx context.Context, req resource.
 		return
 	}
 
-	ruleId := ruleData.ID.ValueString()
+	ruleID := ruleData.ID.ValueString()
 
 	removeInput := cato_models.SocketLanRemoveRuleInput{
-		ID: ruleId,
+		ID: ruleID,
 	}
 
 	tflog.Debug(ctx, "Delete.PolicySocketLanRemoveRule.request", map[string]interface{}{

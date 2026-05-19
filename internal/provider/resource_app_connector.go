@@ -30,7 +30,10 @@ var (
 	ErrAppConnectorNotFound = errors.New("app-connector not found")
 )
 
-const optional = true
+type (
+	appConnectorLocation             = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location
+	appConnectorPreferredPopLocation = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation
+)
 
 func NewAppConnectorResource() resource.Resource {
 	return &appConnectorResource{}
@@ -321,7 +324,11 @@ func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
-func (r *appConnectorResource) prepareLocation(ctx context.Context, addr types.Object, diags *diag.Diagnostics) *cato_models.ZtnaAppConnectorLocationInput {
+func (r *appConnectorResource) prepareLocation(
+	ctx context.Context,
+	addr types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.ZtnaAppConnectorLocationInput {
 	if !utils.HasValue(addr) {
 		return nil
 	}
@@ -365,7 +372,7 @@ func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types
 	return &sdkLocation
 }
 
-func (r *appConnectorResource) parseLocation(ctx context.Context, addr cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location,
+func (r *appConnectorResource) parseLocation(ctx context.Context, addr appConnectorLocation,
 	diags *diag.Diagnostics,
 ) types.Object {
 	// Prepare AppConnectorLocation object
@@ -386,7 +393,7 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr cato_go_s
 	return locObj
 }
 
-func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation,
+func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appConnectorPreferredPopLocation,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
@@ -418,9 +425,12 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *cato_g
 	return locObj
 }
 
-// hydrateAppConnectorState fetches the current state of a appConnector from the API
-// It takes a plan parameter to match config members with API members correctly
-func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, appConnectorID string, plan AppConnectorModel) (*AppConnectorModel, diag.Diagnostics, error) {
+// hydrateAppConnectorState fetches the current state of an appConnector from the API.
+func (r *appConnectorResource) hydrateAppConnectorState(
+	ctx context.Context,
+	appConnectorID string,
+	_ AppConnectorModel,
+) (*AppConnectorModel, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	input := cato_models.ZtnaAppConnectorRefInput{

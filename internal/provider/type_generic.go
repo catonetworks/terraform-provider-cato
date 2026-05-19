@@ -27,7 +27,7 @@ var FromToDaysAttrTypes = map[string]attr.Type{
 	"days": types.ListType{ElemType: types.StringType},
 }
 
-// Rule -> Tracking
+// TrackingObjectType defines rule tracking attributes.
 var TrackingObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
 var TrackingAttrTypes = map[string]attr.Type{
 	"event": types.ObjectType{AttrTypes: TrackingEventAttrTypes},
@@ -68,8 +68,8 @@ var ActivePeriodAttrTypes = map[string]attr.Type{
 	"use_expires_at":     types.BoolType,
 }
 
-var CustomServiceIpObjectType = types.ObjectType{AttrTypes: CustomServiceIpAttrTypes}
-var CustomServiceIpAttrTypes = map[string]attr.Type{
+var CustomServiceIPObjectType = types.ObjectType{AttrTypes: CustomServiceIPAttrTypes}
+var CustomServiceIPAttrTypes = map[string]attr.Type{
 	"name":     types.StringType,
 	"ip":       types.StringType,
 	"ip_range": FromToObjectType,

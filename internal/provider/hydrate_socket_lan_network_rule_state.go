@@ -24,7 +24,11 @@ type SocketLanNetworkRuleStateOutput struct {
 	Nat         types.Object `tfsdk:"nat"`
 }
 
-func hydrateSocketLanNetworkRuleState(ctx context.Context, plan SocketLanNetworkRule, apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule) SocketLanNetworkRuleStateOutput {
+func hydrateSocketLanNetworkRuleState(
+	ctx context.Context,
+	_ SocketLanNetworkRule,
+	apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule,
+) SocketLanNetworkRuleStateOutput {
 	result := SocketLanNetworkRuleStateOutput{
 		ID:        types.StringValue(apiRule.ID),
 		Name:      types.StringValue(apiRule.Name),
@@ -100,7 +104,11 @@ func hydrateSocketLanSiteState(ctx context.Context, apiRule *cato_go_sdk.PolicyS
 	return siteObj
 }
 
-func hydrateSocketLanSourceState(ctx context.Context, apiSource cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Source) types.Object {
+// nolint:gocyclo,funlen
+func hydrateSocketLanSourceState(
+	ctx context.Context,
+	apiSource cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Source,
+) types.Object {
 	sourceAttrs := map[string]attr.Value{
 		"vlan":                types.ListNull(types.Int64Type),
 		"ip":                  types.ListNull(types.StringType),
@@ -261,7 +269,11 @@ func hydrateSocketLanSourceState(ctx context.Context, apiSource cato_go_sdk.Poli
 	return sourceObj
 }
 
-func hydrateSocketLanDestinationState(ctx context.Context, apiDest cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Destination) types.Object {
+// nolint:gocyclo,funlen
+func hydrateSocketLanDestinationState(
+	ctx context.Context,
+	apiDest cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Destination,
+) types.Object {
 	destAttrs := map[string]attr.Value{
 		"vlan":                types.ListNull(types.Int64Type),
 		"ip":                  types.ListNull(types.StringType),

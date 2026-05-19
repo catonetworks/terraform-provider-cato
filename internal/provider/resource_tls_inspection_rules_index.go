@@ -25,7 +25,7 @@ var (
 	_ resource.ResourceWithConfigure = &tlsRulesIndexResource{}
 )
 
-func NewTlsRulesIndexResource() resource.Resource {
+func NewTLSRulesIndexResource() resource.Resource {
 	return &tlsRulesIndexResource{}
 }
 
@@ -121,8 +121,8 @@ func (r *tlsRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 	}
 }
 
-var TlsRuleIndexResourceObjectTypes = types.ObjectType{AttrTypes: TlsRuleIndexResourceAttrTypes}
-var TlsRuleIndexResourceAttrTypes = map[string]attr.Type{
+var TLSRuleIndexResourceObjectTypes = types.ObjectType{AttrTypes: TLSRuleIndexResourceAttrTypes}
+var TLSRuleIndexResourceAttrTypes = map[string]attr.Type{
 	"id":               types.StringType,
 	"index_in_section": types.Int64Type,
 	"section_name":     types.StringType,
@@ -131,8 +131,8 @@ var TlsRuleIndexResourceAttrTypes = map[string]attr.Type{
 	"enabled":          types.BoolType,
 }
 
-var TlsSectionIndexResourceObjectTypes = types.ObjectType{AttrTypes: TlsSectionIndexResourceAttrTypes}
-var TlsSectionIndexResourceAttrTypes = map[string]attr.Type{
+var TLSSectionIndexResourceObjectTypes = types.ObjectType{AttrTypes: TLSSectionIndexResourceAttrTypes}
+var TLSSectionIndexResourceAttrTypes = map[string]attr.Type{
 	"id":            types.StringType,
 	"section_name":  types.StringType,
 	"section_index": types.Int64Type,
@@ -147,15 +147,14 @@ func (r *tlsRulesIndexResource) Configure(_ context.Context, req resource.Config
 }
 
 func (r *tlsRulesIndexResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
-	var plan TlsRulesIndex
+	var plan TLSRulesIndex
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	sectionObjectsList, rulesObjectsList, diags, err := r.moveTlsRulesAndSections(ctx, plan)
+	sectionObjectsList, rulesObjectsList, diags, err := r.moveTLSRulesAndSections(ctx, plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTLSInspectMoveSection error",
@@ -176,7 +175,7 @@ func (r *tlsRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 }
 
 func (r *tlsRulesIndexResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state TlsRulesIndex
+	var state TLSRulesIndex
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -195,15 +194,14 @@ func (r *tlsRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 }
 
 func (r *tlsRulesIndexResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
-	var plan TlsRulesIndex
+	var plan TLSRulesIndex
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	sectionObjectsList, rulesObjectsList, diags, err := r.moveTlsRulesAndSections(ctx, plan)
+	sectionObjectsList, rulesObjectsList, diags, err := r.moveTLSRulesAndSections(ctx, plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTLSInspectMoveSection error",
@@ -220,12 +218,10 @@ func (r *tlsRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 }
 
 func (r *tlsRulesIndexResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
-	var state TlsRulesIndex
+	var state TLSRulesIndex
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -235,11 +231,15 @@ func (r *tlsRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, plan TlsRulesIndex) (basetypes.MapValue, basetypes.MapValue, diag.Diagnostics, error) {
+// nolint:gocyclo,funlen
+func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
+	ctx context.Context,
+	plan TLSRulesIndex,
+) (sectionObjects basetypes.MapValue, ruleObjects basetypes.MapValue, diagnostics diag.Diagnostics, err error) {
 	diags := []diag.Diagnostic{}
 	ruleObjectMap := make(map[string]attr.Value)
 
-	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
+	if plan.SectionToStartAfterId.ValueString() != "" {
 		result, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.TlsinspectpolicySectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
@@ -250,8 +250,8 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 		}
 		isPresent := false
 		for _, item := range result.Policy.TLSInspect.Policy.Sections {
-			section_id := cast.ToString(item.Section.ID)
-			if section_id == plan.SectionToStartAfterId.ValueString() {
+			sectionID := cast.ToString(item.Section.ID)
+			if sectionID == plan.SectionToStartAfterId.ValueString() {
 				isPresent = true
 				break
 			}
@@ -269,10 +269,10 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 	listOfSectionNames := make([]string, 0)
 
 	// maps section_name -> section_id
-	sectionIdList := make(map[string]string)
-	sectionIndexApiData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	sectionIDList := make(map[string]string)
+	sectionIndexAPIData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.TlsinspectpolicySectionsIndexInCreate.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(sectionIndexApiData),
+		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
@@ -283,20 +283,20 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 	}
 
 	// for easier processing, a map of section name to ID is created
-	for _, v := range sectionIndexApiData.Policy.TLSInspect.Policy.Sections {
-		sectionIdList[v.Section.Name] = v.Section.ID
+	for _, v := range sectionIndexAPIData.Policy.TLSInspect.Policy.Sections {
+		sectionIDList[v.Section.Name] = v.Section.ID
 	}
 
-	sectionListFromPlan := make([]TlsRulesSectionDataIndex, 0)
+	sectionListFromPlan := make([]TLSRulesSectionDataIndex, 0)
 
 	// Convert map to slice for processing
 	sectionDataMapElements := plan.SectionData.Elements()
 	for _, sectionValue := range sectionDataMapElements {
 		sectionObject := sectionValue.(types.Object)
-		var sectionSourceRuleIndex TlsRulesSectionItemIndex
+		var sectionSourceRuleIndex TLSRulesSectionItemIndex
 		diags = append(diags, sectionObject.As(ctx, &sectionSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
-		sectionDataTmp := TlsRulesSectionDataIndex{
+		sectionDataTmp := TLSRulesSectionDataIndex{
 			SectionIndex: sectionSourceRuleIndex.SectionIndex.ValueInt64(),
 			SectionName:  sectionSourceRuleIndex.SectionName.ValueString(),
 		}
@@ -312,21 +312,20 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 		"sections": utils.InterfaceToJSONString(sectionListFromPlan),
 	})
 
-	currentSectionId := ""
+	currentSectionID := ""
 
 	sectionObjectMap := make(map[string]attr.Value)
 
-	// create the sections from the list provided following the section ID provided in firstSectionId
+	// create the sections from the list provided following the section ID provided in firstSectionID
 	for _, workingSectionName := range sectionListFromPlan {
-
 		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
 		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
-			ID: sectionIdList[workingSectionName.SectionName],
+			ID: sectionIDList[workingSectionName.SectionName],
 		}
 
 		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionId to the SectionToStartAfterId otherwise set to id of first section for next in list
-		if currentSectionId == "" {
+		// initializing currentSectionID to the SectionToStartAfterId otherwise set to id of first section for next in list
+		if currentSectionID == "" {
 			if plan.SectionToStartAfterId.ValueString() != "" {
 				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
 					Ref:      plan.SectionToStartAfterId.ValueStringPointer(),
@@ -339,27 +338,27 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 			}
 		} else {
 			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionId,
+				Ref:      &currentSectionID,
 				Position: "AFTER_SECTION",
 			}
 		}
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
 			"sectionToStartAfterId":          plan.SectionToStartAfterId.ValueString(),
 			"moveFrom":                       workingSectionName.SectionName,
-			"toAfter":                        currentSectionId,
-			"sectionIdList":                  sectionIdList,
+			"toAfter":                        currentSectionID,
+			"sectionIDList":                  sectionIDList,
 			"workingSectionName.SectionName": workingSectionName.SectionName,
-			"sectionIdList[workingSectionName.SectionName]": sectionIdList[workingSectionName.SectionName],
+			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveApiData, err := r.client.catov2.PolicyTLSInspectMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveAPIData, err := r.client.catov2.PolicyTLSInspectMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
-		if sectionMoveApiData != nil && sectionMoveApiData.GetPolicy() != nil &&
-			sectionMoveApiData.GetPolicy().TLSInspect != nil &&
-			sectionMoveApiData.GetPolicy().TLSInspect.GetMoveSection() != nil &&
-			len(sectionMoveApiData.GetPolicy().TLSInspect.GetMoveSection().Errors) != 0 {
+		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
+			sectionMoveAPIData.GetPolicy().TLSInspect != nil &&
+			sectionMoveAPIData.GetPolicy().TLSInspect.GetMoveSection() != nil &&
+			len(sectionMoveAPIData.GetPolicy().TLSInspect.GetMoveSection().Errors) != 0 {
 			tflog.Warn(ctx, "Write.PolicyTLSInspectMoveSectionMoveSection.response", map[string]interface{}{
-				"response": utils.InterfaceToJSONString(sectionMoveApiData),
+				"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 			})
 			if err != nil {
 				diags = append(diags, diag.NewErrorDiagnostic(
@@ -370,7 +369,7 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 			}
 		}
 		tflog.Warn(ctx, "Write.PolicyTLSInspectMoveSection.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(sectionMoveApiData),
+			"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 		})
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
@@ -381,9 +380,9 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 		}
 
 		sectionIndexStateData, diagsSection := types.ObjectValue(
-			TlsSectionIndexResourceAttrTypes,
+			TLSSectionIndexResourceAttrTypes,
 			map[string]attr.Value{
-				"id":            types.StringValue(sectionIdList[workingSectionName.SectionName]),
+				"id":            types.StringValue(sectionIDList[workingSectionName.SectionName]),
 				"section_name":  types.StringValue(workingSectionName.SectionName),
 				"section_index": types.Int64Value(workingSectionName.SectionIndex),
 			},
@@ -392,22 +391,22 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 
 		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
 
-		currentSectionId = sectionIdList[workingSectionName.SectionName]
+		currentSectionID = sectionIDList[workingSectionName.SectionName]
 	}
 
 	// now that the sections are ordered properly, move the rules to the correct locations
 	if len(plan.RuleData.Elements()) > 0 {
 		// get all of the list elements from the plan
-		ruleListFromPlan := make([]TlsRulesRuleDataIndex, 0)
+		ruleListFromPlan := make([]TLSRulesRuleDataIndex, 0)
 
 		// Convert map to slice for processing
 		ruleDataMapElements := plan.RuleData.Elements()
 		for _, ruleValue := range ruleDataMapElements {
 			ruleObject := ruleValue.(types.Object)
-			var planSourceRuleIndex TlsRulesRuleItemIndex
+			var planSourceRuleIndex TLSRulesRuleItemIndex
 			diags = append(diags, ruleObject.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
-			rulenDataTmp := TlsRulesRuleDataIndex{
+			rulenDataTmp := TLSRulesRuleDataIndex{
 				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
 				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
 				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
@@ -433,9 +432,9 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIdData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+		ruleNameIDData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.TlsinspectpolicyRulesIndex.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(ruleNameIdData),
+			"response": utils.InterfaceToJSONString(ruleNameIDData),
 		})
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
@@ -444,22 +443,22 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
-		ruleNameIdMap := make(map[string]string)
+		ruleNameIDMap := make(map[string]string)
 
 		// create map of TLS rule names from the API to their IDs for easy lookup
-		for _, ruleNameIdDataItem := range ruleNameIdData.Policy.TLSInspect.Policy.Rules {
-			ruleNameIdMap[ruleNameIdDataItem.Rule.Name] = ruleNameIdDataItem.Rule.ID
+		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.TLSInspect.Policy.Rules {
+			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
 		}
 
-		tflog.Warn(ctx, "Read.ruleNameIdMap.response", map[string]interface{}{
-			"ruleNameIdMap": utils.InterfaceToJSONString(ruleNameIdMap),
+		tflog.Warn(ctx, "Read.ruleNameIDMap.response", map[string]interface{}{
+			"ruleNameIDMap": utils.InterfaceToJSONString(ruleNameIDMap),
 		})
 
 		// loop through the ordered list of section names
 		for _, sectionNameItem := range listOfSectionNames {
 			tflog.Warn(ctx, "Read.ProcessingSectionFromList.response", map[string]interface{}{
 				"sectionNameItem": sectionNameItem,
-				"ruleNameIdMap":   utils.InterfaceToJSONString(listOfSectionNames),
+				"ruleNameIDMap":   utils.InterfaceToJSONString(listOfSectionNames),
 			})
 
 			// for easier processing and visualization, we are creating two maps
@@ -491,37 +490,37 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 				"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 			})
 
-			currentRuleId := ""
+			currentRuleID := ""
 			for x := 1; x < len(mapRuleIndexToRuleName)+1; x++ {
 				toPosition := &cato_models.PolicyRulePositionInput{}
 				if x == 1 {
-					pos := "FIRST_IN_SECTION"
+					pos := ifwRulePositionFirstInSection
 					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					firstSectionId := sectionIdList[mapRuleIndexToSectionName[1]]
-					toPosition.Ref = &firstSectionId
+					firstSectionID := sectionIDList[mapRuleIndexToSectionName[1]]
+					toPosition.Ref = &firstSectionID
 				} else {
-					pos := "AFTER_RULE"
+					pos := ifwRulePositionAfterRule
 					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					currentRuleId = ruleNameIdMap[mapRuleIndexToRuleName[int64(x)-1]]
-					toPosition.Ref = &currentRuleId
-					tflog.Warn(ctx, "Read.sectionIdList[mapRuleIndexToSectionName[1]].response", map[string]interface{}{
+					currentRuleID = ruleNameIDMap[mapRuleIndexToRuleName[int64(x)-1]]
+					toPosition.Ref = &currentRuleID
+					tflog.Warn(ctx, "Read.sectionIDList[mapRuleIndexToSectionName[1]].response", map[string]interface{}{
 						"mapRuleIndexToSectionName":         mapRuleIndexToRuleName,
-						"currentRuleId":                     currentRuleId,
+						"currentRuleID":                     currentRuleID,
 						"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-						"ruleNameIdMap":                     utils.InterfaceToJSONString(ruleNameIdMap),
+						"ruleNameIDMap":                     utils.InterfaceToJSONString(ruleNameIDMap),
 					})
 				}
 
 				moveRuleConfig := cato_models.PolicyMoveRuleInput{
-					ID: ruleNameIdMap[mapRuleIndexToRuleName[int64(x)]],
+					ID: ruleNameIDMap[mapRuleIndexToRuleName[int64(x)]],
 					To: toPosition,
 				}
-				ruleMoveApiData, err := r.client.catov2.PolicyTLSInspectMoveRule(ctx, moveRuleConfig, r.client.AccountId)
+				ruleMoveAPIData, err := r.client.catov2.PolicyTLSInspectMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyTLSInspectMoveRule.response", map[string]interface{}{
-					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIdMap),
+					"ruleNameIDMap":             utils.InterfaceToJSONString(ruleNameIDMap),
 					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 					"moveRuleConfig":            utils.InterfaceToJSONString(moveRuleConfig),
-					"response":                  utils.InterfaceToJSONString(ruleMoveApiData),
+					"response":                  utils.InterfaceToJSONString(ruleMoveAPIData),
 				})
 				if err != nil {
 					diags = append(diags, diag.NewErrorDiagnostic(
@@ -535,11 +534,11 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 
 		// Now create the rule objects map with proper IDs from the API
 		for _, ruleFromPlan := range ruleListFromPlan {
-			ruleId := ruleNameIdMap[ruleFromPlan.RuleName]
+			ruleID := ruleNameIDMap[ruleFromPlan.RuleName]
 			ruleIndexStateData, diagsSection := types.ObjectValue(
-				TlsRuleIndexResourceAttrTypes,
+				TLSRuleIndexResourceAttrTypes,
 				map[string]attr.Value{
-					"id":               types.StringValue(ruleId),
+					"id":               types.StringValue(ruleID),
 					"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
 					"section_name":     types.StringValue(ruleFromPlan.SectionName),
 					"rule_name":        types.StringValue(ruleFromPlan.RuleName),
@@ -562,13 +561,13 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 	}
 
 	sectionObjectsMap, sectionMapDiags := types.MapValue(
-		TlsSectionIndexResourceObjectTypes,
+		TLSSectionIndexResourceObjectTypes,
 		sectionObjectMap,
 	)
 	diags = append(diags, sectionMapDiags...)
 
 	ruleObjectsMap, ruleMapDiags := types.MapValue(
-		TlsRuleIndexResourceObjectTypes,
+		TLSRuleIndexResourceObjectTypes,
 		ruleObjectMap,
 	)
 	diags = append(diags, ruleMapDiags...)

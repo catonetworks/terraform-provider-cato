@@ -38,6 +38,12 @@ type privateAppResource struct {
 	client *catoClientData
 }
 
+type (
+	privateAppProtocolPorts      = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_ProtocolPorts
+	privateAppPublishedAppDomain = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PublishedAppDomain
+	privateAppProbing            = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PrivateAppProbing
+)
+
 func (r *privateAppResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_private_app"
 }
@@ -388,7 +394,9 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 	return state, diags, nil
 }
 
-func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts []*cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_ProtocolPorts,
+func (r *privateAppResource) parseProtocolPorts(
+	ctx context.Context,
+	protoPorts []*privateAppProtocolPorts,
 	diags *diag.Diagnostics,
 ) types.Set {
 	var diag diag.Diagnostics
@@ -457,7 +465,9 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 	return tfProtoPortSet
 }
 
-func (r *privateAppResource) parsePublishedAppDomain(ctx context.Context, domain *cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PublishedAppDomain,
+func (r *privateAppResource) parsePublishedAppDomain(
+	ctx context.Context,
+	domain *privateAppPublishedAppDomain,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
@@ -482,7 +492,9 @@ func (r *privateAppResource) parsePublishedAppDomain(ctx context.Context, domain
 	return domainObj
 }
 
-func (r *privateAppResource) parsePrivateAppProbing(ctx context.Context, probing *cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PrivateAppProbing,
+func (r *privateAppResource) parsePrivateAppProbing(
+	ctx context.Context,
+	probing *privateAppProbing,
 	diags *diag.Diagnostics,
 ) types.Object {
 	var diag diag.Diagnostics
@@ -545,7 +557,11 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 }
 
-func (r *privateAppResource) prepareProtocolPorts(ctx context.Context, protPorts types.Set, diags *diag.Diagnostics) []*cato_models.CustomServiceInput {
+func (r *privateAppResource) prepareProtocolPorts(
+	ctx context.Context,
+	protPorts types.Set,
+	diags *diag.Diagnostics,
+) []*cato_models.CustomServiceInput {
 	if !utils.HasValue(protPorts) {
 		return nil
 	}

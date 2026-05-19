@@ -113,11 +113,11 @@ type IfwRuleIndexLookup struct {
 	Rules types.List `tfsdk:"rules"`
 }
 
-func (d *ifwRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *ifwRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var ifwRuleIndexLookup IfwRuleIndexLookup
-	ruleIndexApiData, err := d.client.catov2.PolicyInternetFirewallRulesIndex(ctx, d.client.AccountId)
+	ruleIndexAPIData, err := d.client.catov2.PolicyInternetFirewallRulesIndex(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyInternetFirewallRulesIndex.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(ruleIndexApiData),
+		"response": utils.InterfaceToJSONString(ruleIndexAPIData),
 	})
 
 	if err != nil {
@@ -128,9 +128,9 @@ func (d *ifwRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	sectionIndexApiData, err := d.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, d.client.AccountId)
+	sectionIndexAPIData, err := d.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndex.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(sectionIndexApiData),
+		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
 
 	if err != nil {
@@ -143,12 +143,12 @@ func (d *ifwRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	var objects []attr.Value
 
-	sectionIdList := make(map[string]int64)
-	for _, v := range sectionIndexApiData.Policy.InternetFirewall.Policy.Sections {
-		sectionIdList[v.Section.ID] = 0
+	sectionIDList := make(map[string]int64)
+	for _, v := range sectionIndexAPIData.Policy.InternetFirewall.Policy.Sections {
+		sectionIDList[v.Section.ID] = 0
 	}
 
-	for _, item := range ruleIndexApiData.Policy.InternetFirewall.Policy.Rules {
+	for _, item := range ruleIndexAPIData.Policy.InternetFirewall.Policy.Rules {
 		systemSection := false
 		propertiesStringSlice := make([]string, 0)
 		for _, v := range item.Properties {
@@ -162,15 +162,15 @@ func (d *ifwRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 			propertiesValue, diags := types.ListValueFrom(context.Background(), types.StringType, propertiesStringSlice)
 			resp.Diagnostics.Append(diags...)
 
-			sectionIdList[item.Rule.Section.ID]++
-			sectionIdListItem := sectionIdList[item.Rule.Section.ID]
+			sectionIDList[item.Rule.Section.ID]++
+			sectionIDListItem := sectionIDList[item.Rule.Section.ID]
 
 			ruleIndexStateData, diags := types.ObjectValue(
 				IfwRuleIndexAttrTypes,
 				map[string]attr.Value{
 					"id":               types.StringValue(item.Rule.ID),
 					"index":            types.Int64Value(item.Rule.Index),
-					"index_in_section": types.Int64Value(sectionIdListItem),
+					"index_in_section": types.Int64Value(sectionIDListItem),
 					"section_name":     types.StringValue(item.Rule.Section.Name),
 					"section_id":       types.StringValue(item.Rule.Section.ID),
 					"description":      types.StringValue(item.Rule.Description),
@@ -183,7 +183,6 @@ func (d *ifwRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 
 			objects = append(objects, ruleIndexStateData)
 		}
-
 	}
 
 	objectlist, diags := types.ListValue(
@@ -202,5 +201,4 @@ func (d *ifwRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 	if diags := resp.State.Set(ctx, &ifwRuleIndexLookup); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
-
 }

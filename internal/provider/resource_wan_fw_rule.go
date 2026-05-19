@@ -1,3 +1,4 @@
+// nolint:lll
 package provider
 
 import (
@@ -49,9 +50,10 @@ func (r *wanFwRuleResource) Metadata(_ context.Context, req resource.MetadataReq
 	resp.TypeName = req.ProviderTypeName + "_wf_rule"
 }
 
+// nolint:funlen
 func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).",
+		Description: "The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
 				Description: "Position of the rule in the policy",
@@ -118,14 +120,14 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					// 	},
 					// },
 					"action": schema.StringAttribute{
-						Description: "The action applied by the Wan Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
+						Description: "The action applied by the Wan Firewall if the rule is matched (https:// api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT"),
 						},
 					},
 					"direction": schema.StringAttribute{
-						Description: "Define the direction on which the rule is applied (https://api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)",
+						Description: "Define the direction on which the rule is applied (https:// api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("TO", "BOTH"),
@@ -1007,7 +1009,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"connection_origin": schema.StringAttribute{
-						Description: "Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
+						Description: "Connection origin of the traffic (https:// api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 						Optional:    true,
 						Required:    false,
 						PlanModifiers: []planmodifier.String{
@@ -1173,7 +1175,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					},
 					"device_os": schema.ListAttribute{
 						ElementType: types.StringType,
-						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
+						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
 						Optional:    true,
 						Required:    false,
 						Validators: []validator.List{
@@ -1546,7 +1548,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
+											Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
 											Required:    false,
 											Optional:    true,
 										},
@@ -1593,7 +1595,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										Default:  booldefault.StaticBool(false),
 									},
 									"frequency": schema.StringAttribute{
-										Description: "Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
+										Description: "Returns data for the alert frequency (https:// api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
 										Optional:    true,
 										Required:    false,
 										Validators: []validator.String{
@@ -1724,7 +1726,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 						Attributes: map[string]schema.Attribute{
 							"active_on": schema.StringAttribute{
-								Description: "Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
+								Description: "Define when the rule is active (https:// api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
 								Required:    false,
 								Optional:    true,
 								Computed:    true,
@@ -1775,7 +1777,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 									"days": schema.ListAttribute{
 										ElementType: types.StringType,
-										Description: "Custom Recurring Days - (https://api.catonetworks.com/documentation/#definition-DayOfWeek)",
+										Description: "Custom Recurring Days - (https:// api.catonetworks.com/documentation/#definition-DayOfWeek)",
 										Required:    false,
 										Optional:    true,
 										Validators: []validator.List{
@@ -2830,7 +2832,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								},
 								"device_os": schema.ListAttribute{
 									ElementType: types.StringType,
-									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
+									Description: "Source device OS matching criteria for the exception. (https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
 									Required:    false,
 									PlanModifiers: []planmodifier.List{
@@ -3282,8 +3284,8 @@ func (r *wanFwRuleResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
+// nolint:gocyclo,funlen
 func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan WanFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -3291,7 +3293,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	input, diags := hydrateWanRuleApi(ctx, plan)
+	input, diags := hydrateWanRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -3316,7 +3318,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	// check for errors
-	if createRuleResponse.Policy.WanFirewall.AddRule.Status != "SUCCESS" {
+	if createRuleResponse.Policy.WanFirewall.AddRule.Status != ifwMutationStatusSuccess {
 		for _, item := range createRuleResponse.Policy.WanFirewall.AddRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
@@ -3326,7 +3328,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	//publishing new rule
+	// publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
 	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
@@ -3376,7 +3378,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 
 	// Handle exceptions correlation manually to preserve plan structure
 	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+		planRule := PolicyPolicyWanFirewallPolicyRulesRule{}
 		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
 		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
 			// Correlate exceptions between plan and hydrated response
@@ -3403,6 +3405,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	resp.Diagnostics.Append(diags...)
 }
 
+// nolint:gocyclo,funlen
 func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state WanFirewallRule
 	diags := req.State.Get(ctx, &state)
@@ -3421,11 +3424,11 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	//retrieve rule ID
+	// retrieve rule ID
 	// Handle case where state might be incomplete (e.g., during import)
 	var ruleID string
 	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		rule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+		rule := PolicyPolicyWanFirewallPolicyRulesRule{}
 		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 		if diags.HasError() {
 			// If conversion fails, try to extract just the ID from the state
@@ -3495,7 +3498,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	// Hard coding LAST_IN_POLICY position as the API does not return any value and
 	// hardcoding position supports the use case of bulk rule import/export
 	// getting around state changes for the position field
-	positionValue := "LAST_IN_POLICY"
+	positionValue := ifwLastInPolicyPosition
 	refValue := types.StringNull()
 
 	if !state.At.IsNull() && !state.At.IsUnknown() {
@@ -3517,13 +3520,16 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 			"ref":      refValue,
 		},
 	)
+	resp.Diagnostics.Append(diagstmp...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
-	diags = append(diags, diagstmp...)
-
+	resp.Diagnostics.Append(diags...)
 }
 
+// nolint:gocyclo,funlen
 func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan WanFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -3531,7 +3537,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	input, diags := hydrateWanRuleApi(ctx, plan)
+	input, diags := hydrateWanRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -3540,7 +3546,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	// setting input for moving rule
 	inputMoveRule := cato_models.PolicyMoveRuleInput{}
 
-	//setting at (to move rule)
+	// setting at (to move rule)
 	if !plan.At.IsNull() {
 		inputMoveRule.To = &cato_models.PolicyRulePositionInput{}
 		positionInput := PolicyRulePositionInput{}
@@ -3551,7 +3557,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		inputMoveRule.To.Ref = positionInput.Ref.ValueStringPointer()
 	}
 
-	ruleInput := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+	ruleInput := PolicyPolicyWanFirewallPolicyRulesRule{}
 	diags = plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 
@@ -3559,7 +3565,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	inputMoveRule.ID = *ruleInput.ID.ValueStringPointer()
 	input.update.ID = *ruleInput.ID.ValueStringPointer()
 
-	//move rule
+	// move rule
 	moveRule, err := r.client.catov2.PolicyWanFirewallMoveRule(ctx, inputMoveRule, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -3570,7 +3576,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	// check for errors
-	if moveRule.Policy.WanFirewall.MoveRule.Status != "SUCCESS" {
+	if moveRule.Policy.WanFirewall.MoveRule.Status != ifwMutationStatusSuccess {
 		for _, item := range moveRule.Policy.WanFirewall.MoveRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Moving Rule Resource",
@@ -3599,7 +3605,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	// check for errors
-	if updateRuleResponse.Policy.WanFirewall.UpdateRule.Status != "SUCCESS" {
+	if updateRuleResponse.Policy.WanFirewall.UpdateRule.Status != ifwMutationStatusSuccess {
 		for _, item := range updateRuleResponse.Policy.WanFirewall.UpdateRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
@@ -3609,7 +3615,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	//publishing new rule
+	// publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
 	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
@@ -3656,7 +3662,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 
 	// Handle exceptions correlation manually to preserve plan structure
 	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+		planRule := PolicyPolicyWanFirewallPolicyRulesRule{}
 		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
 		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
 			// Correlate exceptions between plan and hydrated response
@@ -3683,7 +3689,6 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 func (r *wanFwRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state WanFirewallRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -3691,8 +3696,8 @@ func (r *wanFwRuleResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	//retrieve rule ID
-	rule := Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+	// retrieve rule ID
+	rule := PolicyPolicyWanFirewallPolicyRulesRule{}
 	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

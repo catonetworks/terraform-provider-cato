@@ -5,15 +5,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// TlsInspectionRule represents the top-level resource structure
-type TlsInspectionRule struct {
+// TLSInspectionRule represents the top-level resource structure
+type TLSInspectionRule struct {
 	At   types.Object `tfsdk:"at"`
 	Rule types.Object `tfsdk:"rule"`
 	ID   types.String `tfsdk:"id"`
 }
 
-// Policy_Policy_TlsInspect_Policy_Rules_Rule represents the rule structure
-type Policy_Policy_TlsInspect_Policy_Rules_Rule struct {
+// PolicyPolicyTLSInspectPolicyRulesRule represents the rule structure
+type PolicyPolicyTLSInspectPolicyRulesRule struct {
 	ID                         types.String `tfsdk:"id"`
 	Name                       types.String `tfsdk:"name"`
 	Description                types.String `tfsdk:"description"`
@@ -28,8 +28,8 @@ type Policy_Policy_TlsInspect_Policy_Rules_Rule struct {
 	Application                types.Object `tfsdk:"application"`
 }
 
-// Policy_Policy_TlsInspect_Policy_Rules_Rule_Source represents the source criteria
-type Policy_Policy_TlsInspect_Policy_Rules_Rule_Source struct {
+// PolicyPolicyTLSInspectPolicyRulesRuleSource represents the source criteria
+type PolicyPolicyTLSInspectPolicyRulesRuleSource struct {
 	IP                types.List `tfsdk:"ip"`
 	Subnet            types.List `tfsdk:"subnet"`
 	Host              types.Set  `tfsdk:"host"`
@@ -45,8 +45,8 @@ type Policy_Policy_TlsInspect_Policy_Rules_Rule_Source struct {
 	SystemGroup       types.Set  `tfsdk:"system_group"`
 }
 
-// Policy_Policy_TlsInspect_Policy_Rules_Rule_Application represents the application criteria
-type Policy_Policy_TlsInspect_Policy_Rules_Rule_Application struct {
+// PolicyPolicyTLSInspectPolicyRulesRuleApplication represents the application criteria
+type PolicyPolicyTLSInspectPolicyRulesRuleApplication struct {
 	Application        types.Set    `tfsdk:"application"`
 	CustomApp          types.Set    `tfsdk:"custom_app"`
 	AppCategory        types.Set    `tfsdk:"app_category"`
@@ -60,27 +60,27 @@ type Policy_Policy_TlsInspect_Policy_Rules_Rule_Application struct {
 	RemoteAsn          types.List   `tfsdk:"remote_asn"`
 	Service            types.Set    `tfsdk:"service"`
 	CustomService      types.Object `tfsdk:"custom_service"`
-	CustomServiceIp    types.Object `tfsdk:"custom_service_ip"`
-	TlsInspectCategory types.String `tfsdk:"tls_inspect_category"`
+	CustomServiceIP    types.Object `tfsdk:"custom_service_ip"`
+	TLSInspectCategory types.String `tfsdk:"tls_inspect_category"`
 	Country            types.Set    `tfsdk:"country"`
 }
 
-// Policy_Policy_TlsInspect_Policy_Rules_Rule_Application_CustomService represents custom service definition
-type Policy_Policy_TlsInspect_Policy_Rules_Rule_Application_CustomService struct {
+// PolicyPolicyTLSInspectPolicyRulesRuleApplicationCustomService represents custom service definition
+type PolicyPolicyTLSInspectPolicyRulesRuleApplicationCustomService struct {
 	Port      types.List   `tfsdk:"port"`
 	PortRange types.Object `tfsdk:"port_range"`
 	Protocol  types.String `tfsdk:"protocol"`
 }
 
-// Policy_Policy_TlsInspect_Policy_Rules_Rule_Application_CustomServiceIp represents custom service IP definition
-type Policy_Policy_TlsInspect_Policy_Rules_Rule_Application_CustomServiceIp struct {
+// PolicyPolicyTLSInspectPolicyRulesRuleApplicationCustomServiceIP represents custom service IP definition
+type PolicyPolicyTLSInspectPolicyRulesRuleApplicationCustomServiceIP struct {
 	Name    types.String `tfsdk:"name"`
 	IP      types.String `tfsdk:"ip"`
 	IPRange types.Object `tfsdk:"ip_range"`
 }
 
-// TlsSourceAttrTypes defines the attribute types for TLS source criteria
-var TlsSourceAttrTypes = map[string]attr.Type{
+// TLSSourceAttrTypes defines the attribute types for TLS source criteria
+var TLSSourceAttrTypes = map[string]attr.Type{
 	"ip":                  types.ListType{ElemType: types.StringType},
 	"subnet":              types.ListType{ElemType: types.StringType},
 	"host":                types.SetType{ElemType: NameIDObjectType},
@@ -96,8 +96,8 @@ var TlsSourceAttrTypes = map[string]attr.Type{
 	"system_group":        types.SetType{ElemType: NameIDObjectType},
 }
 
-// TlsApplicationAttrTypes defines the attribute types for TLS application criteria
-var TlsApplicationAttrTypes = map[string]attr.Type{
+// TLSApplicationAttrTypes defines the attribute types for TLS application criteria
+var TLSApplicationAttrTypes = map[string]attr.Type{
 	"application":          types.SetType{ElemType: NameIDObjectType},
 	"custom_app":           types.SetType{ElemType: NameIDObjectType},
 	"app_category":         types.SetType{ElemType: NameIDObjectType},
@@ -111,12 +111,12 @@ var TlsApplicationAttrTypes = map[string]attr.Type{
 	"remote_asn":           types.ListType{ElemType: types.StringType},
 	"service":              types.SetType{ElemType: NameIDObjectType},
 	"custom_service":       types.ObjectType{AttrTypes: CustomServiceAttrTypes},
-	"custom_service_ip":    types.ObjectType{AttrTypes: CustomServiceIpAttrTypes},
+	"custom_service_ip":    types.ObjectType{AttrTypes: CustomServiceIPAttrTypes},
 	"tls_inspect_category": types.StringType,
 	"country":              types.SetType{ElemType: NameIDObjectType},
 }
 
-// Shared type definitions for nested objects with ID and Name
+// NameIDRef defines a nested object with ID and name fields.
 type NameIDRef struct {
 	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
@@ -127,8 +127,8 @@ type FromTo struct {
 	To   types.String `tfsdk:"to"`
 }
 
-// TlsInspectionRuleRuleAttrTypes defines the attribute types for the TLS rule object
-var TlsInspectionRuleRuleAttrTypes = map[string]attr.Type{
+// TLSInspectionRuleRuleAttrTypes defines the attribute types for the TLS rule object
+var TLSInspectionRuleRuleAttrTypes = map[string]attr.Type{
 	"id":                           types.StringType,
 	"name":                         types.StringType,
 	"description":                  types.StringType,
@@ -136,9 +136,9 @@ var TlsInspectionRuleRuleAttrTypes = map[string]attr.Type{
 	"action":                       types.StringType,
 	"untrusted_certificate_action": types.StringType,
 	"connection_origin":            types.StringType,
-	"source":                       types.ObjectType{AttrTypes: TlsSourceAttrTypes},
+	"source":                       types.ObjectType{AttrTypes: TLSSourceAttrTypes},
 	"country":                      types.SetType{ElemType: NameIDObjectType},
 	"device_posture_profile":       types.SetType{ElemType: NameIDObjectType},
 	"platform":                     types.StringType,
-	"application":                  types.ObjectType{AttrTypes: TlsApplicationAttrTypes},
+	"application":                  types.ObjectType{AttrTypes: TLSApplicationAttrTypes},
 }

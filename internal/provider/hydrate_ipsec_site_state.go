@@ -15,13 +15,28 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
+const nativeRangeName = "Native Range"
+
+// nolint:gocyclo,funlen
 func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state SiteIpsecIkeV2, siteID string) (SiteIpsecIkeV2, bool, error) {
 	// Check if site exists
 	tflog.Debug(ctx, "hydrateIpsecSiteState.EntityLookup.request", map[string]interface{}{
 		"siteID":     utils.InterfaceToJSONString(siteID),
 		"EntityType": utils.InterfaceToJSONString(cato_models.EntityType("site")),
 	})
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{siteID}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("site"),
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{siteID},
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "hydrateIpsecSiteState.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -48,19 +63,19 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 	}
 
 	// Get AccountSnapshot for detailed site information
-	siteAccountSnapshotApiData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
+	siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
 	tflog.Debug(ctx, "hydrateIpsecSiteState.AccountSnapshot.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(siteAccountSnapshotApiData),
+		"response": utils.InterfaceToJSONString(siteAccountSnapshotAPIData),
 	})
 	if err != nil {
 		return state, false, err
 	}
 
-	if len(siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()) == 0 {
+	if len(siteAccountSnapshotAPIData.GetAccountSnapshot().GetSites()) == 0 {
 		return state, false, nil
 	}
 
-	thisSite := siteAccountSnapshotApiData.GetAccountSnapshot().GetSites()[0]
+	thisSite := siteAccountSnapshotAPIData.GetAccountSnapshot().GetSites()[0]
 
 	// Set basic site information
 	state.ID = types.StringValue(siteEntity.Entity.GetID())
@@ -84,7 +99,19 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 
 	// Get native network range ID and interface ID
 	siteEntityInput := &cato_models.EntityInput{Type: "site", ID: siteID}
-	siteRangeEntities, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, siteEntityInput, nil, nil, nil, nil, nil)
+	siteRangeEntities, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("siteRange"),
+		nil,
+		nil,
+		siteEntityInput,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "hydrateIpsecSiteState.EntityLookup.siteRange.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteRangeEntities),
 	})
@@ -96,8 +123,8 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 	for _, item := range siteRangeEntities.EntityLookup.Items {
 		if item.Entity.Name != nil {
 			splitName := strings.Split(*item.Entity.Name, " \\ ")
-			if len(splitName) >= 3 && splitName[2] == "Native Range" {
-				state.NativeNetworkRangeId = types.StringValue(item.Entity.ID)
+			if len(splitName) >= 3 && splitName[2] == nativeRangeName {
+				state.NativeNetworkRangeID = types.StringValue(item.Entity.ID)
 				if subnet, ok := item.HelperFields["subnet"]; ok && subnet != nil {
 					state.NativeNetworkRange = types.StringValue(subnet.(string))
 				}
@@ -107,7 +134,19 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 	}
 
 	// Get native interface ID
-	networkInterfaceEntities, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), nil, nil, siteEntityInput, nil, nil, nil, nil, nil)
+	networkInterfaceEntities, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("networkInterface"),
+		nil,
+		nil,
+		siteEntityInput,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "hydrateIpsecSiteState.EntityLookup.networkInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(networkInterfaceEntities),
 	})
@@ -117,9 +156,9 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 
 	// Find native network interface
 	for _, curIint := range networkInterfaceEntities.EntityLookup.Items {
-		curSiteId := cast.ToString(curIint.HelperFields["siteId"])
-		if curSiteId == siteID {
-			state.InterfaceId = types.StringValue(curIint.Entity.ID)
+		curSiteID := cast.ToString(curIint.HelperFields["siteId"])
+		if curSiteID == siteID {
+			state.InterfaceID = types.StringValue(curIint.Entity.ID)
 			break
 		}
 	}

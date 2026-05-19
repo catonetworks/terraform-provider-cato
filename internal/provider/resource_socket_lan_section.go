@@ -40,7 +40,9 @@ func (r *socketLanSectionResource) Metadata(_ context.Context, req resource.Meta
 
 func (r *socketLanSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_socket_lan_section` resource contains the configuration parameters necessary to add a Socket LAN firewall section. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).",
+		Description: "The `cato_socket_lan_section` resource contains the configuration parameters necessary to add a Socket LAN " +
+			"firewall section. Documentation for the underlying API used in this resource can be found at " +
+			"[mutation.policy.socketLan.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Section ID",
@@ -108,7 +110,6 @@ func (r *socketLanSectionResource) ImportState(ctx context.Context, req resource
 }
 
 func (r *socketLanSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan SocketLanSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -125,7 +126,7 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		input.At.Position = (cato_models.PolicySectionPositionEnum)(positionInput.Position.ValueString())
+		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
 		input.At.Ref = positionInput.Ref.ValueStringPointer()
 	}
 
@@ -191,7 +192,6 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 }
 
 func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state SocketLanSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -222,19 +222,24 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 	sectionList := body.GetPolicy().SocketLan.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID == section.Id.ValueString() {
-			sectionExist = true
-			state.Id = types.StringValue(sectionListItem.GetSection().ID)
-			curSectionObj, diagstmp := types.ObjectValue(
-				NameIDAttrTypes,
-				map[string]attr.Value{
-					"id":   types.StringValue(sectionListItem.GetSection().ID),
-					"name": types.StringValue(sectionListItem.GetSection().GetName()),
-				},
-			)
-			diags = append(diags, diagstmp...)
-			state.Section = curSectionObj
+		if sectionListItem.GetSection().ID != section.Id.ValueString() {
+			continue
 		}
+
+		sectionExist = true
+		state.Id = types.StringValue(sectionListItem.GetSection().ID)
+		curSectionObj, diagstmp := types.ObjectValue(
+			NameIDAttrTypes,
+			map[string]attr.Value{
+				"id":   types.StringValue(sectionListItem.GetSection().ID),
+				"name": types.StringValue(sectionListItem.GetSection().GetName()),
+			},
+		)
+		resp.Diagnostics.Append(diagstmp...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.Section = curSectionObj
 	}
 
 	// Hard coding LAST_IN_POLICY position as the API does not return any value
@@ -246,7 +251,10 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 		},
 	)
 	state.At = curAtObj
-	diags = append(diags, diagstmp...)
+	resp.Diagnostics.Append(diagstmp...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// remove resource if it doesn't exist anymore
 	if !sectionExist {
@@ -262,8 +270,8 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 	}
 }
 
+// nolint:funlen
 func (r *socketLanSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan SocketLanSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -292,7 +300,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		inputMoveSection.To.Position = (cato_models.PolicySectionPositionEnum)(positionInput.Position.ValueString())
+		inputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
 		inputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
 		inputMoveSection.ID = inputUpdateSection.ID
 	}
@@ -314,7 +322,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// check for errors
-	if moveSection.Policy.SocketLan.MoveSection.Status != "SUCCESS" {
+	if moveSection.Policy.SocketLan.MoveSection.Status != ifwMutationStatusSuccess {
 		for _, item := range moveSection.Policy.SocketLan.MoveSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Moving Section Resource",
@@ -341,7 +349,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// check for errors
-	if updateSection.Policy.SocketLan.UpdateSection.Status != "SUCCESS" {
+	if updateSection.Policy.SocketLan.UpdateSection.Status != ifwMutationStatusSuccess {
 		for _, item := range updateSection.Policy.SocketLan.UpdateSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Updating Section Resource",
@@ -372,7 +380,6 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 }
 
 func (r *socketLanSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state SocketLanSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)

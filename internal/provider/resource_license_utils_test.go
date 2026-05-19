@@ -16,6 +16,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+const (
+	testLicenseGroup = "GROUP_1"
+	testLicenseType  = "SASE"
+)
+
 func TestUpsertLicense_AcceptsSitesAtAndBeyondFirstThousand(t *testing.T) {
 	t.Parallel()
 
@@ -444,16 +449,16 @@ func licenseResponseItem(license licenseFixture) map[string]any {
 
 	switch license.SKU {
 	case "CATO_SITE", "CATO_SSE_SITE":
-		item["siteLicenseGroup"] = "GROUP_1"
+		item["siteLicenseGroup"] = testLicenseGroup
 		item["regionality"] = "GLOBAL"
-		item["siteLicenseType"] = "SASE"
+		item["siteLicenseType"] = testLicenseType
 		item["total"] = 1
 		if license.AssignedSite != "" {
 			item["site"] = siteObject(license.AssignedSite)
 		}
 	case "CATO_PB", "CATO_PB_SSE":
-		item["siteLicenseGroup"] = "GROUP_1"
-		item["siteLicenseType"] = "SASE"
+		item["siteLicenseGroup"] = testLicenseGroup
+		item["siteLicenseType"] = testLicenseType
 		item["total"] = 1000
 		item["allocatedBandwidth"] = int64(0)
 		sites := make([]map[string]any, 0, len(license.PooledSites))

@@ -28,6 +28,7 @@ const (
 	defaultRetryMax            int64 = 5
 	defaultRetryWaitMinSeconds int64 = 1
 	defaultRetryWaitMaxSeconds int64 = 30
+	policyRevisionNotFound           = "PolicyRevisionNotFound"
 )
 
 func New(version string) func() provider.Provider {
@@ -56,7 +57,7 @@ type catoProviderModel struct {
 type catoClientData struct {
 	BaseURL   string
 	Token     string
-	AccountId string
+	AccountId string // nolint:revive // Shared client field used across provider resources.
 	catov2    *cato.Client
 }
 
@@ -100,6 +101,7 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 	}
 }
 
+// nolint:gocyclo,funlen
 func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var config catoProviderModel
 	diags := req.Config.Get(ctx, &config)
@@ -383,7 +385,7 @@ func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
 	}
 	errors := resp.GetPolicy().GetPrivateAccess().DiscardPolicyRevision.Errors
 	if len(errors) > 0 {
-		if errors[0].ErrorCode != nil && *errors[0].ErrorCode == "PolicyRevisionNotFound" {
+		if errors[0].ErrorCode != nil && *errors[0].ErrorCode == policyRevisionNotFound {
 			return // no policy draft to discard; OK
 		}
 		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"errors": errors})
@@ -393,7 +395,7 @@ func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
 func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewAccountSnapshotSiteDataSource,
-		AllocatedIpDataSource,
+		AllocatedIPDataSource,
 		DhcpRelayDataSource,
 		GroupDataSource,
 		LicensingInfoDataSource,
@@ -401,7 +403,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		SiteLocationDataSource,
 		IfwRulesIndexDataSource,
 		WanRulesIndexDataSource,
-		TlsRulesIndexDataSource,
+		TLSRulesIndexDataSource,
 		IfRuleSectionsDataSource,
 		WfRuleSectionsDataSource,
 		NetworkRangesDataSource,
@@ -426,8 +428,8 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewSiteIpsecResource,
 		NewSocketSiteResource,
 		NewStaticHostResource,
-		NewTlsInspectionRuleResource,
-		NewTlsInspectionSectionResource,
+		NewTLSInspectionRuleResource,
+		NewTLSInspectionSectionResource,
 		NewWanFwRuleResource,
 		NewWanFwSectionResource,
 		NewWanInterfaceResource,
@@ -436,7 +438,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewIfwRulesIndexResource,
 		NewWanRulesIndexResource,
 		NewWanNetworkRulesIndexResource,
-		NewTlsRulesIndexResource,
+		NewTLSRulesIndexResource,
 		NewAppConnectorResource,
 		NewPrivateAppResource,
 		NewPrivAccessPolicyResource,

@@ -9,11 +9,11 @@ type NetworkRange struct {
 	Id               types.String `tfsdk:"id"`
 	DhcpSettings     types.Object `tfsdk:"dhcp_settings"`
 	Gateway          types.String `tfsdk:"gateway"`
-	InterfaceId      types.String `tfsdk:"interface_id"`
+	InterfaceID      types.String `tfsdk:"interface_id"`
 	InterfaceIndex   types.String `tfsdk:"interface_index"`
 	InternetOnly     types.Bool   `tfsdk:"internet_only"`
 	MdnsReflector    types.Bool   `tfsdk:"mdns_reflector"`
-	LocalIp          types.String `tfsdk:"local_ip"`
+	LocalIP          types.String `tfsdk:"local_ip"`
 	Name             types.String `tfsdk:"name"`
 	RangeType        types.String `tfsdk:"range_type"`
 	SiteId           types.String `tfsdk:"site_id"`
@@ -24,14 +24,14 @@ type NetworkRange struct {
 
 type DhcpSettings struct {
 	DhcpType              types.String `tfsdk:"dhcp_type"`
-	IpRange               types.String `tfsdk:"ip_range"`
-	RelayGroupId          types.String `tfsdk:"relay_group_id"`
+	IPRange               types.String `tfsdk:"ip_range"`
+	RelayGroupID          types.String `tfsdk:"relay_group_id"`
 	RelayGroupName        types.String `tfsdk:"relay_group_name"`
 	DhcpMicrosegmentation types.Bool   `tfsdk:"dhcp_microsegmentation"`
 }
 
 type NetworkRangeLookup struct {
-	SiteIdFilter types.List `tfsdk:"site_id_filter"`
+	SiteIDFilter types.List `tfsdk:"site_id_filter"`
 	NameFilter   types.List `tfsdk:"name_filter"`
 	Items        types.List `tfsdk:"items"`
 }

@@ -29,7 +29,9 @@ func TestMove(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(fmt.Sprintf("%s-%d", tc.id, tc.newPos), func(t *testing.T) {
 			currentRules := getTestRules()
-			r.moveToPosition(ctx, currentRules, tc.id, "some name", tc.newPos)
+			if err := r.moveToPosition(ctx, currentRules, tc.id, "some name", tc.newPos); err != nil {
+				t.Fatalf("moveToPosition returned error: %v", err)
+			}
 			if len(currentRules) != len(tc.expectedIDs) {
 				t.Errorf("Expected %d rules, got %d", len(tc.expectedIDs), len(currentRules))
 				return

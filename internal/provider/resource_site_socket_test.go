@@ -471,12 +471,6 @@ func newSocketSitePlanWithOptions(ctx context.Context, t *testing.T, options soc
 	return plan
 }
 
-func newSocketSiteNativeRange(translatedSubnet types.String) types.Object {
-	return newSocketSiteNativeRangeWithOptions(socketSitePlanOptions{
-		TranslatedSubnet: translatedSubnet,
-	})
-}
-
 func newSocketSiteNativeRangeWithOptions(options socketSitePlanOptions) types.Object {
 	translatedSubnet := options.TranslatedSubnet
 	if translatedSubnet.IsNull() && !translatedSubnet.IsUnknown() && translatedSubnet.ValueString() == "" {
@@ -509,10 +503,7 @@ func newSocketSiteConfig(ctx context.Context, t *testing.T, options socketSitePl
 
 	plan := newSocketSitePlanWithOptions(ctx, t, options)
 
-	return tfsdk.Config{
-		Raw:    plan.Raw,
-		Schema: plan.Schema,
-	}
+	return tfsdk.Config(plan)
 }
 
 func newSocketSiteLocation() types.Object {
