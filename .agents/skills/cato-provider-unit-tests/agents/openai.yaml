@@ -1,4 +1,4 @@
 interface:
-  display_name: "Cato Provider Unit Tests"
+  display_name: "Unit Tests"
   short_description: "Write high-coverage unit tests for Cato resources"
   default_prompt: "Use $cato-provider-unit-tests to add comprehensive unit tests for the modified Terraform provider resources."
