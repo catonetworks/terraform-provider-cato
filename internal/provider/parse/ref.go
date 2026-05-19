@@ -79,6 +79,13 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &cfg, basetypes.ObjectAsOptions{})) {
 		return
 	}
+	if cfg == nil { // removed from the config
+		if req.StateValue.IsNull() {
+			return
+		}
+		resp.PlanValue = types.ObjectNull(IdNameRefModelTypes)
+		return
+	}
 
 	// Ensure there is exactly one name or id in the config
 	if cfg.Name.IsNull() && cfg.ID.IsNull() {
@@ -95,11 +102,6 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 	}
 
 	if utils.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
-		return
-	}
-
-	if cfg == nil { // removed from the config, return null
-		resp.PlanValue = types.ObjectNull(IdNameRefModelTypes)
 		return
 	}
 
