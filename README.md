@@ -10,7 +10,7 @@ Terraform `CATO` Provider
 Maintainers
 -----------
 
-This provider plugin is maintained by the team at [Cato](https://www.catonetworks.com/).
+This provider plugin is maintained by the team at [Cato](https://www.catonetworks.com/). And some other folks (for test)
 
 Requirements
 ------------
