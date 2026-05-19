@@ -1,6 +1,6 @@
 ---
 name: prepare-release
-description: Use when the user asks to prepare the release of a new version of the terraform provider living in this repository.
+description: Use when the user asks to prepare the release of a new version of the terraform provider living in this repository. It will create a new release branch, update the version in the appropriate files, and create a changelog entry with the changes since the last release.
 ---
 
 # Terraform Provider Cato Prepare Release Skill
@@ -35,9 +35,9 @@ Follow this order:
 4. Add a new entry to the changelog at the top of the file with the following suggestions:
    - Use the new version number and the current date in the format `YYYY-MM-DD` for the changelog entry header.
    - Use the messages from the commits since the last release to populate the changelog entry. If there are multiple commits, group them into categories (e.g., "Added", "Changed", "Fixed") based on the content of the commit messages. If the commit messages do not clearly indicate the type of change, you can use your judgment to categorize them appropriately.
-5. Commit the changes with a message like `Release version X.Y.Z`.
+5. Commit the changes with a message like `vX.Y.Z`.
 6. Push the release branch to the remote repository.
-7. If the github command line is available, use it to create a pull request from the release branch to the main branch with a title like `Release vX.Y.Z` and a description that includes the changelog entry for the new version.
+7. If the github command line is available, use it to create a pull request from the release branch to the main branch with a title like `vX.Y.Z` and a description that includes the changelog entry for the new version.
 
 ## Constraints
 

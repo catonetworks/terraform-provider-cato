@@ -1,6 +1,6 @@
 ---
 name: publish-release
-description: Use when the user asks to publish the release of a new prepared version of the terraform provider living in this repository.
+description: Use when the user asks to publish the release of a new prepared version of the terraform provider living in this repository. It will create a new release in the repository with the appropriate tag and release notes based on the changelog entry created during the prepare-release step.
 ---
 
 # Terraform Provider Cato Publish Release Skill
