@@ -126,6 +126,7 @@ Violating this order will cause `make lint` to fail.
 
 ## Skills
 Find all skills in `.agents/skills/`
-- Use `release/SKILL.md` to release a new version of this provider
+- Use `prepare-release/SKILL.md` to prepare the release of a new version of the terraform provider
+- Use `publish-release/SKILL.md` to publish the release of a new version of the terraform provider
 - Use `cato-provider-unit-tests/SKILL.md` to prepare unit tests
 - Use `integration-test-mock/SKILL.md` to prepare a mock of an integration test
