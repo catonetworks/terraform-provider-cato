@@ -306,7 +306,6 @@ Optional:
 Read-Only:
 
 - `id` (String) ID of the rule
-- `index` (Number) Rule Index - computed value that may change due to rule reordering
 
 <a id="nestedatt--rule--destination"></a>
 ### Nested Schema for `rule.destination`
@@ -666,7 +665,7 @@ Optional:
 Optional:
 
 - `id` (String) Application Category ID
-- `name` (String) Application Category Name
+- `name` (String) Application Category name
 
 
 <a id="nestedatt--rule--exceptions--destination--application"></a>
@@ -675,7 +674,7 @@ Optional:
 Optional:
 
 - `id` (String) Application ID
-- `name` (String) Application Name
+- `name` (String) Application name
 
 
 <a id="nestedatt--rule--exceptions--destination--country"></a>
@@ -684,7 +683,7 @@ Optional:
 Optional:
 
 - `id` (String) Country ID
-- `name` (String) Country Name
+- `name` (String) Country name
 
 
 <a id="nestedatt--rule--exceptions--destination--custom_app"></a>
@@ -693,7 +692,7 @@ Optional:
 Optional:
 
 - `id` (String) Custom Application ID
-- `name` (String) Custom Application Name
+- `name` (String) Custom Application name
 
 
 <a id="nestedatt--rule--exceptions--destination--custom_category"></a>
@@ -702,7 +701,7 @@ Optional:
 Optional:
 
 - `id` (String) Custom Category ID
-- `name` (String) Custom Category Name
+- `name` (String) Custom Category name
 
 
 <a id="nestedatt--rule--exceptions--destination--global_ip_range"></a>
@@ -710,8 +709,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Global IP ID
-- `name` (String) Global IP Range Name
+- `id` (String) Global IP Range ID
+- `name` (String) Global IP Range name
 
 
 <a id="nestedatt--rule--exceptions--destination--ip_range"></a>
@@ -729,7 +728,7 @@ Required:
 Optional:
 
 - `id` (String) Sanctioned Apps Category ID
-- `name` (String) Sanctioned Apps Category Name
+- `name` (String) Sanctioned Apps Category name
 
 
 
@@ -766,7 +765,7 @@ Required:
 Optional:
 
 - `id` (String) Service Standard ID
-- `name` (String) Service Standard Name
+- `name` (String) Service Standard name
 
 
 
@@ -776,7 +775,7 @@ Optional:
 Optional:
 
 - `id` (String) Country ID
-- `name` (String) Country Name
+- `name` (String) Country name
 
 
 <a id="nestedatt--rule--exceptions--device"></a>
@@ -785,7 +784,7 @@ Optional:
 Optional:
 
 - `id` (String) Device ID
-- `name` (String) Device Name
+- `name` (String) Device name
 
 
 <a id="nestedatt--rule--exceptions--device_attributes"></a>
@@ -826,7 +825,7 @@ Optional:
 Optional:
 
 - `id` (String) Floating Subnet ID
-- `name` (String) Floating Subnet Name
+- `name` (String) Floating Subnet name
 
 
 <a id="nestedatt--rule--exceptions--source--global_ip_range"></a>
@@ -835,7 +834,7 @@ Optional:
 Optional:
 
 - `id` (String) Global IP Range ID
-- `name` (String) Global IP Range Name
+- `name` (String) Global IP Range name
 
 
 <a id="nestedatt--rule--exceptions--source--group"></a>
@@ -844,7 +843,7 @@ Optional:
 Optional:
 
 - `id` (String) Group ID
-- `name` (String) Group Name
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--exceptions--source--host"></a>
@@ -853,7 +852,7 @@ Optional:
 Optional:
 
 - `id` (String) Host ID
-- `name` (String) Host Name
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--exceptions--source--ip_range"></a>
@@ -871,7 +870,7 @@ Required:
 Optional:
 
 - `id` (String) Network Interface ID
-- `name` (String) Network Interface Name
+- `name` (String) Network Interface name
 
 
 <a id="nestedatt--rule--exceptions--source--site"></a>
@@ -880,7 +879,7 @@ Optional:
 Optional:
 
 - `id` (String) Site ID
-- `name` (String) Site Name
+- `name` (String) Site name
 
 
 <a id="nestedatt--rule--exceptions--source--site_network_subnet"></a>
@@ -889,7 +888,7 @@ Optional:
 Optional:
 
 - `id` (String) Site Network Subnet ID
-- `name` (String) Site Network Subnet Name
+- `name` (String) Site Network Subnet name
 
 
 <a id="nestedatt--rule--exceptions--source--system_group"></a>
@@ -898,7 +897,7 @@ Optional:
 Optional:
 
 - `id` (String) System Group ID
-- `name` (String) System Group Name
+- `name` (String) System Group name
 
 
 <a id="nestedatt--rule--exceptions--source--user"></a>
@@ -907,7 +906,7 @@ Optional:
 Optional:
 
 - `id` (String) User ID
-- `name` (String) User Name
+- `name` (String) User name
 
 
 <a id="nestedatt--rule--exceptions--source--users_group"></a>
@@ -916,7 +915,7 @@ Optional:
 Optional:
 
 - `id` (String) Users Group ID
-- `name` (String) Users Group Name
+- `name` (String) Users Group name
 
 
 

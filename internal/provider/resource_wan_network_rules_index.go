@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sort"
 
+	"github.com/Yamashou/gqlgenc/clientv2"
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -31,7 +33,23 @@ func NewWanNetworkRulesIndexResource() resource.Resource {
 }
 
 type wanNetworkRulesIndexResource struct {
-	client *catoClientData
+	client           *catoClientData
+	wanNetworkClient wanNetworkBulkPolicyClient
+}
+
+type wanNetworkBulkPolicyClient interface {
+	WanNetworkPolicy(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.WanNetworkPolicy, error)
+	PolicyWanNetworkMoveSection(ctx context.Context, policyMoveSectionInput cato_models.PolicyMoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanNetworkMoveSection, error)
+	PolicyWanNetworkMoveRule(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanNetworkMoveRule, error)
+	PolicyWanNetworkPublishPolicyRevision(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanNetworkPublishPolicyRevision, error)
+}
+
+func (r *wanNetworkRulesIndexResource) getWanNetworkClient() wanNetworkBulkPolicyClient {
+	if r.wanNetworkClient != nil {
+		return r.wanNetworkClient
+	}
+
+	return r.client.catov2
 }
 
 func (r *wanNetworkRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -245,9 +263,10 @@ func (r *wanNetworkRulesIndexResource) Delete(ctx context.Context, req resource.
 func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(ctx context.Context, plan WanNetworkRulesIndex) (basetypes.MapValue, basetypes.MapValue, diag.Diagnostics, error) {
 	diags := []diag.Diagnostic{}
 	ruleObjectMap := make(map[string]attr.Value)
+	wanNetworkClient := r.getWanNetworkClient()
 
 	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
-		result, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+		result, err := wanNetworkClient.WanNetworkPolicy(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.WanNetworkPolicy.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -277,7 +296,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(ctx contex
 
 	// maps section_name -> section_id
 	sectionIdList := make(map[string]string)
-	sectionIndexApiData, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	sectionIndexApiData, err := wanNetworkClient.WanNetworkPolicy(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.WanNetworkPolicyInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexApiData),
 	})
@@ -359,7 +378,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(ctx contex
 			"sectionIdList[workingSectionName.SectionName]": sectionIdList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveApiData, err := r.client.catov2.PolicyWanNetworkMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveApiData, err := wanNetworkClient.PolicyWanNetworkMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
 		if sectionMoveApiData != nil && sectionMoveApiData.GetPolicy() != nil &&
 			sectionMoveApiData.GetPolicy().WanNetwork != nil &&
@@ -440,7 +459,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(ctx contex
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIdData, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+		ruleNameIdData, err := wanNetworkClient.WanNetworkPolicy(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.WanNetworkPolicy.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(ruleNameIdData),
 		})
@@ -523,7 +542,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(ctx contex
 					ID: ruleNameIdMap[mapRuleIndexToRuleName[int64(x)]],
 					To: toPosition,
 				}
-				ruleMoveApiData, err := r.client.catov2.PolicyWanNetworkMoveRule(ctx, moveRuleConfig, r.client.AccountId)
+				ruleMoveApiData, err := wanNetworkClient.PolicyWanNetworkMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyWanNetworkMoveRule.response", map[string]interface{}{
 					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIdMap),
 					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
@@ -559,7 +578,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(ctx contex
 		}
 	}
 
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = wanNetworkClient.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",

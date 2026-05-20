@@ -8,7 +8,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
@@ -16,6 +16,7 @@ import (
 
 // TestAccSocketSite_Basic tests basic CRUD operations for cato_socket_site resource with connection type SOCKET_X1500 and update to SOCKET_AWS1500
 func TestAccSocketSite_Basic(t *testing.T) {
+	acc.SkipByEnv(t)
 	t.Parallel()
 	mockSrv := accmock.NewMockServer(t, "TestAccSocketSite_Basic")
 	defer mockSrv.Close()
@@ -106,6 +107,7 @@ func TestAccSocketSite_Basic(t *testing.T) {
 
 // TestAccSocketSite_ConnType tests creating socket sites with different connection types and updating connection type of an existing site
 func TestAccSocketSite_ConnType(t *testing.T) {
+	acc.SkipByEnv(t)
 	t.Parallel()
 	mockSrv := accmock.NewMockServer(t, "TestAccSocketSite_ConnType")
 	defer mockSrv.Close()
@@ -159,8 +161,8 @@ func TestAccSocketSite_ConnType(t *testing.T) {
 // TestAccSocketSite_Location tests creating a socket site with location attributes and updating those attributes
 // - test that state_code is properly removed from state when switching from US,US-CA to FR,null
 func TestAccSocketSite_Location(t *testing.T) {
+	acc.SkipByEnv(t)
 	t.Parallel()
-	t.Skip("TODO: fix API bug and related TF resource")
 	mockSrv := accmock.NewMockServer(t, "TestAccSocketSite_Location")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -187,14 +189,14 @@ func TestAccSocketSite_Location(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "native_range.interface_id"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_index", "LAN1"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_name", "LAN1"),
-					resource.TestCheckResourceAttr(res, "native_range.local_ip", "192.168.120.5"),
+					resource.TestCheckResourceAttr(res, "native_range.local_ip", "192.168.130.5"),
 					resource.TestCheckResourceAttr(res, "native_range.mdns_reflector", "false"),
 					resource.TestCheckResourceAttrSet(res, "native_range.native_network_lan_interface_id"),
-					resource.TestCheckResourceAttr(res, "native_range.native_network_range", "192.168.120.0/24"),
+					resource.TestCheckResourceAttr(res, "native_range.native_network_range", "192.168.130.0/24"),
 					resource.TestCheckResourceAttrSet(res, "native_range.native_network_range_id"),
 					resource.TestCheckResourceAttr(res, "native_range.range_name", "Native Range"),
 					resource.TestCheckResourceAttr(res, "native_range.range_type", "NATIVE"),
-					resource.TestCheckResourceAttr(res, "native_range.translated_subnet", "192.168.120.0/24"),
+					resource.TestCheckResourceAttr(res, "native_range.translated_subnet", "192.168.130.0/24"),
 
 					resource.TestCheckResourceAttr(res, "site_location.%", "5"),
 					resource.TestCheckResourceAttr(res, "site_location.country_code", "US"),
@@ -221,6 +223,7 @@ func TestAccSocketSite_Location(t *testing.T) {
 
 // TestAccSocketSite_DHCP tests creating a socket site with DHCP settings and updating those settings
 func TestAccSocketSite_DHCP(t *testing.T) {
+	acc.SkipByEnv(t)
 	t.Parallel()
 	mockSrv := accmock.NewMockServer(t, "TestAccSocketSite_DHCP")
 	defer mockSrv.Close()

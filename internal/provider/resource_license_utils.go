@@ -17,22 +17,36 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	// Get all sites, check for valid siteID
 	siteExists := false
 	thousandInt64 := int64(1000)
-	siteResponse, err := cc.catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, &thousandInt64, nil, nil, nil, nil, nil, nil, nil)
-	tflog.Warn(ctx, "upsertLicense().EntityLookup.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(siteResponse),
-	})
+	tenThousandInt64 := int64(10000) //to give it a cap and avoid infinite loop - not a great solution but ok for current scale. Will need to be revisited and replace the lookup for a specific site.
+	fromInt64 := int64(0)
+	processedItems := int64(0)
+	for !siteExists && processedItems < tenThousandInt64 {
+		siteResponse, err := cc.catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, &thousandInt64, &fromInt64, nil, nil, nil, nil, nil, nil)
+		tflog.Warn(ctx, "upsertLicense().EntityLookup.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(siteResponse),
+		})
 
-	if err != nil {
-		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
-		return nil, err
-	}
-	for _, item := range siteResponse.GetEntityLookup().GetItems() {
-		tflog.Warn(ctx, "Checking site IDs, input='"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', currentItem='"+item.GetEntity().GetID()+"'")
-		if item.GetEntity().GetID() == plan.SiteID.ValueString() {
-			tflog.Warn(ctx, "Site ID matched! "+item.GetEntity().GetID())
-			siteExists = true
+		if err != nil {
+			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API error", err.Error()))
+			return nil, err
+		}
+
+		items := siteResponse.GetEntityLookup().GetItems()
+		for _, item := range items {
+			tflog.Warn(ctx, "Checking site IDs, input='"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', currentItem='"+item.GetEntity().GetID()+"'")
+			if item.GetEntity().GetID() == plan.SiteID.ValueString() {
+				tflog.Warn(ctx, "Site ID matched! "+item.GetEntity().GetID())
+				siteExists = true
+				break
+			}
+		}
+
+		processedItems += int64(len(items))
+		if len(items) < int(thousandInt64) {
 			break
 		}
+
+		fromInt64 += thousandInt64
 	}
 	if !siteExists {
 		message := "Site '" + plan.SiteID.ValueString() + "' not found."

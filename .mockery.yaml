@@ -11,4 +11,5 @@ packages:
       BulkInternetFirewallPolicyClient:
       BulkWanFirewallPolicyClient:
       InternetFirewallPolicyClient:
+      NetworkRangeClient:
       SocketSiteClient:

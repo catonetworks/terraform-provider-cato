@@ -8,13 +8,14 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
 func TestAccAppConnector(t *testing.T) {
+	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccAppConnector")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -128,7 +129,7 @@ func TestAccAppConnector(t *testing.T) {
 
 type appConnectorCfg struct {
 	resName   string
-	locations acc.TestLocations
+	locations []acc.Ref
 	t         *testing.T
 }
 

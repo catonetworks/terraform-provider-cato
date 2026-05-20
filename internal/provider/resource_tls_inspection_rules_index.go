@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sort"
 
+	"github.com/Yamashou/gqlgenc/clientv2"
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -30,7 +32,23 @@ func NewTlsRulesIndexResource() resource.Resource {
 }
 
 type tlsRulesIndexResource struct {
-	client *catoClientData
+	client    *catoClientData
+	tlsClient tlsBulkPolicyClient
+}
+
+type tlsBulkPolicyClient interface {
+	Tlsinspectpolicy(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.Tlsinspectpolicy, error)
+	PolicyTLSInspectMoveSection(ctx context.Context, policyMoveSectionInput cato_models.PolicyMoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyTLSInspectMoveSection, error)
+	PolicyTLSInspectMoveRule(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyTLSInspectMoveRule, error)
+	PolicyTLSInspectPublishPolicyRevision(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyTLSInspectPublishPolicyRevision, error)
+}
+
+func (r *tlsRulesIndexResource) getTlsClient() tlsBulkPolicyClient {
+	if r.tlsClient != nil {
+		return r.tlsClient
+	}
+
+	return r.client.catov2
 }
 
 func (r *tlsRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -238,9 +256,10 @@ func (r *tlsRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, plan TlsRulesIndex) (basetypes.MapValue, basetypes.MapValue, diag.Diagnostics, error) {
 	diags := []diag.Diagnostic{}
 	ruleObjectMap := make(map[string]attr.Value)
+	tlsClient := r.getTlsClient()
 
 	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
-		result, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+		result, err := tlsClient.Tlsinspectpolicy(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.TlsinspectpolicySectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -270,7 +289,7 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 
 	// maps section_name -> section_id
 	sectionIdList := make(map[string]string)
-	sectionIndexApiData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	sectionIndexApiData, err := tlsClient.Tlsinspectpolicy(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.TlsinspectpolicySectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexApiData),
 	})
@@ -352,7 +371,7 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 			"sectionIdList[workingSectionName.SectionName]": sectionIdList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveApiData, err := r.client.catov2.PolicyTLSInspectMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveApiData, err := tlsClient.PolicyTLSInspectMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
 		if sectionMoveApiData != nil && sectionMoveApiData.GetPolicy() != nil &&
 			sectionMoveApiData.GetPolicy().TLSInspect != nil &&
@@ -433,7 +452,7 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIdData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+		ruleNameIdData, err := tlsClient.Tlsinspectpolicy(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.TlsinspectpolicyRulesIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(ruleNameIdData),
 		})
@@ -516,7 +535,7 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 					ID: ruleNameIdMap[mapRuleIndexToRuleName[int64(x)]],
 					To: toPosition,
 				}
-				ruleMoveApiData, err := r.client.catov2.PolicyTLSInspectMoveRule(ctx, moveRuleConfig, r.client.AccountId)
+				ruleMoveApiData, err := tlsClient.PolicyTLSInspectMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyTLSInspectMoveRule.response", map[string]interface{}{
 					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIdMap),
 					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
@@ -552,7 +571,7 @@ func (r *tlsRulesIndexResource) moveTlsRulesAndSections(ctx context.Context, pla
 		}
 	}
 
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = tlsClient.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",

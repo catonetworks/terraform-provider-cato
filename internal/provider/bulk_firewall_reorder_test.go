@@ -149,11 +149,33 @@ func TestBuildBulkFirewallReorderInputReturnsReferenceErrors(t *testing.T) {
 			planRules:    []bulkPlanRule{{Index: 1, Name: "Missing Rule", SectionName: "One"}},
 			wantErr:      "rule \"Missing Rule\" not found",
 		},
+		"ambiguous planned rule name across sections": {
+			planSections: []bulkPlanSection{
+				{Index: 1, Name: "One"},
+				{Index: 2, Name: "Two"},
+				{Index: 3, Name: "Three"},
+			},
+			planRules: []bulkPlanRule{{Index: 1, Name: "Shared Rule", SectionName: "Three"}},
+			wantErr:   "rule \"Shared Rule\" is ambiguous",
+		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			_, _, _, err := buildBulkFirewallReorderInput(currentSections, currentRules, tt.planSections, tt.planRules, tt.sectionToStartAfterID)
+			sections := currentSections
+			rules := currentRules
+			if name == "ambiguous planned rule name across sections" {
+				sections = []bulkPolicySection{
+					{ID: "s-one", Name: "One"},
+					{ID: "s-two", Name: "Two"},
+					{ID: "s-three", Name: "Three"},
+				}
+				rules = []bulkPolicyRule{
+					{ID: "r-one", Name: "Shared Rule", SectionID: "s-one", SectionName: "One", Index: 1},
+					{ID: "r-two", Name: "Shared Rule", SectionID: "s-two", SectionName: "Two", Index: 1},
+				}
+			}
+			_, _, _, err := buildBulkFirewallReorderInput(sections, rules, tt.planSections, tt.planRules, tt.sectionToStartAfterID)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -162,6 +184,32 @@ func TestBuildBulkFirewallReorderInputReturnsReferenceErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildBulkFirewallReorderInputResolvesDuplicateNamesBySection(t *testing.T) {
+	currentSections := []bulkPolicySection{
+		{ID: "s-one", Name: "One"},
+		{ID: "s-two", Name: "Two"},
+	}
+	currentRules := []bulkPolicyRule{
+		{ID: "r-one", Name: "Shared Rule", SectionID: "s-one", SectionName: "One", Index: 1},
+		{ID: "r-two", Name: "Shared Rule", SectionID: "s-two", SectionName: "Two", Index: 1},
+	}
+	planSections := []bulkPlanSection{
+		{Index: 1, Name: "One"},
+		{Index: 2, Name: "Two"},
+	}
+	planRules := []bulkPlanRule{
+		{Index: 1, Name: "Shared Rule", SectionName: "One"},
+		{Index: 1, Name: "Shared Rule", SectionName: "Two"},
+	}
+
+	got, _, _, err := buildBulkFirewallReorderInput(currentSections, currentRules, planSections, planRules, "")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	assertStringSliceEqual(t, "one rules", reorderRuleIDs(got, "s-one"), []string{"r-one"})
+	assertStringSliceEqual(t, "two rules", reorderRuleIDs(got, "s-two"), []string{"r-two"})
 }
 
 func reorderSectionIDs(input cato_models.PolicyReorderInput) []string {

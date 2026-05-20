@@ -110,6 +110,76 @@ func TestInternetFwRuleImportState(t *testing.T) {
 	}
 }
 
+func TestUseStateExceptionDeviceAttributesUsesMatchingException(t *testing.T) {
+	ctx := context.Background()
+
+	topLevelDeviceAttributes := ifwDeviceAttributesObject([]string{"top-level-category"})
+	exceptionDeviceAttributes := ifwDeviceAttributesObject([]string{"exception-category"})
+
+	model := newMinimalInternetFwRuleModel("rule-123")
+	ruleAttrs := model.Rule.Attributes()
+	ruleAttrs["device_attributes"] = topLevelDeviceAttributes
+	ruleAttrs["exceptions"] = types.SetValueMust(IfwExceptionObjectType, []attr.Value{
+		types.ObjectValueMust(IfwExceptionAttrTypes, map[string]attr.Value{
+			"name":              types.StringValue("exception-a"),
+			"source":            emptyIfwSourceObject(),
+			"country":           types.SetNull(NameIDObjectType),
+			"device":            types.SetNull(NameIDObjectType),
+			"device_attributes": exceptionDeviceAttributes,
+			"device_os":         types.ListNull(types.StringType),
+			"destination":       emptyIfwDestinationObject(),
+			"service":           emptyIfwServiceObject(),
+			"connection_origin": types.StringNull(),
+		}),
+	})
+	model.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	got := useStateExceptionDeviceAttributes(ctx, model, "exception-a")
+	if got.IsNull() || got.IsUnknown() {
+		t.Fatal("expected exception device attributes, got null or unknown")
+	}
+
+	category, ok := got.Attributes()["category"].(types.List)
+	if !ok {
+		t.Fatalf("expected category to be types.List, got %T", got.Attributes()["category"])
+	}
+
+	var categories []string
+	diags := category.ElementsAs(ctx, &categories, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected category diagnostics: %+v", diags)
+	}
+	if len(categories) != 1 || categories[0] != "exception-category" {
+		t.Fatalf("expected exception category, got %#v", categories)
+	}
+}
+
+func TestUseStateExceptionDeviceAttributesReturnsNullWithoutMatch(t *testing.T) {
+	ctx := context.Background()
+
+	model := newMinimalInternetFwRuleModel("rule-123")
+	ruleAttrs := model.Rule.Attributes()
+	ruleAttrs["exceptions"] = types.SetValueMust(IfwExceptionObjectType, []attr.Value{
+		types.ObjectValueMust(IfwExceptionAttrTypes, map[string]attr.Value{
+			"name":              types.StringValue("exception-a"),
+			"source":            emptyIfwSourceObject(),
+			"country":           types.SetNull(NameIDObjectType),
+			"device":            types.SetNull(NameIDObjectType),
+			"device_attributes": ifwDeviceAttributesObject([]string{"exception-category"}),
+			"device_os":         types.ListNull(types.StringType),
+			"destination":       emptyIfwDestinationObject(),
+			"service":           emptyIfwServiceObject(),
+			"connection_origin": types.StringNull(),
+		}),
+	})
+	model.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	got := useStateExceptionDeviceAttributes(ctx, model, "exception-b")
+	if !got.IsNull() {
+		t.Fatalf("expected null device attributes for missing exception, got %+v", got)
+	}
+}
+
 func TestInternetFwRuleDelete(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
@@ -319,8 +389,8 @@ func TestInternetFwRuleExceptionsPlanModifiersPreserveEmptyStateSet(t *testing.T
 	ctx := context.Background()
 	exceptionsAttr := getInternetFwRuleExceptionsAttribute(ctx, t)
 
-	if got := len(exceptionsAttr.PlanModifiers); got != 2 {
-		t.Fatalf("expected 2 exceptions plan modifiers, got %d", got)
+	if got := len(exceptionsAttr.PlanModifiers); got != 1 {
+		t.Fatalf("expected 1 exception plan modifier, got %d", got)
 	}
 
 	exceptionObjectType := types.ObjectType{AttrTypes: IfwExceptionAttrTypes}
@@ -549,6 +619,22 @@ func emptyIfwServiceObject() types.Object {
 	return types.ObjectValueMust(IfwServiceAttrTypes, map[string]attr.Value{
 		"standard": types.SetNull(NameIDObjectType),
 		"custom":   types.ListNull(CustomServiceObjectType),
+	})
+}
+
+func ifwDeviceAttributesObject(categories []string) types.Object {
+	categoryValues := make([]attr.Value, 0, len(categories))
+	for _, category := range categories {
+		categoryValues = append(categoryValues, types.StringValue(category))
+	}
+
+	return types.ObjectValueMust(IfwDeviceAttrAttrTypes, map[string]attr.Value{
+		"category":     types.ListValueMust(types.StringType, categoryValues),
+		"type":         types.ListNull(types.StringType),
+		"model":        types.ListNull(types.StringType),
+		"manufacturer": types.ListNull(types.StringType),
+		"os":           types.ListNull(types.StringType),
+		"os_version":   types.ListNull(types.StringType),
 	})
 }
 

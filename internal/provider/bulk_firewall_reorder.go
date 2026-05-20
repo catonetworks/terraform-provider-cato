@@ -46,10 +46,16 @@ func buildBulkFirewallReorderInput(currentSections []bulkPolicySection, currentR
 	}
 
 	ruleIDByName := make(map[string]string, len(currentRules))
+	ruleBySectionAndName := make(map[string]bulkPolicyRule, len(currentRules))
+	ruleNameCount := make(map[string]int, len(currentRules))
 	ruleByName := make(map[string]bulkPolicyRule, len(currentRules))
 	for _, rule := range currentRules {
 		ruleIDByName[rule.Name] = rule.ID
-		ruleByName[rule.Name] = rule
+		ruleBySectionAndName[bulkRuleKey(rule.SectionName, rule.Name)] = rule
+		ruleNameCount[rule.Name]++
+		if ruleNameCount[rule.Name] == 1 {
+			ruleByName[rule.Name] = rule
+		}
 	}
 
 	if sectionToStartAfterID != "" {
@@ -114,7 +120,13 @@ func buildBulkFirewallReorderInput(currentSections []bulkPolicySection, currentR
 		if !ok {
 			return cato_models.PolicyReorderInput{}, nil, nil, fmt.Errorf("section %q not found for rule %q", planned.SectionName, planned.Name)
 		}
-		rule, ok := ruleByName[planned.Name]
+		rule, ok := ruleBySectionAndName[bulkRuleKey(planned.SectionName, planned.Name)]
+		if !ok {
+			if ruleNameCount[planned.Name] > 1 {
+				return cato_models.PolicyReorderInput{}, nil, nil, fmt.Errorf("rule %q is ambiguous; rule names must be unique across sections", planned.Name)
+			}
+			rule, ok = ruleByName[planned.Name]
+		}
 		if !ok {
 			return cato_models.PolicyReorderInput{}, nil, nil, fmt.Errorf("rule %q not found", planned.Name)
 		}
@@ -150,6 +162,10 @@ func buildBulkFirewallReorderInput(currentSections []bulkPolicySection, currentR
 	}
 
 	return cato_models.PolicyReorderInput{Sections: sections}, sectionIDByName, ruleIDByName, nil
+}
+
+func bulkRuleKey(sectionName string, ruleName string) string {
+	return sectionName + "\x00" + ruleName
 }
 
 func bulkFirewallReorderMatchesCurrentPolicy(input cato_models.PolicyReorderInput, currentSections []bulkPolicySection, currentRules []bulkPolicyRule) bool {
