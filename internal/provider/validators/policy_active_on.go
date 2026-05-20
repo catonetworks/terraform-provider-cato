@@ -8,10 +8,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-// Active-on validator
+// PolicyActiveOnValidator Active-on validator
 type PolicyActiveOnValidator struct{}
 
-func (v PolicyActiveOnValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v PolicyActiveOnValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if req.ConfigValue.IsUnknown() {
 		return
 	}

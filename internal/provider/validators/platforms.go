@@ -11,7 +11,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 )
 
-// Platform validator
+// PlatformValidator validates that the provided set of strings are valid platforms
 type PlatformValidator struct{}
 
 func (v PlatformValidator) ValidateSet(ctx context.Context, req validator.SetRequest, resp *validator.SetResponse) {
@@ -20,7 +20,7 @@ func (v PlatformValidator) ValidateSet(ctx context.Context, req validator.SetReq
 		return
 	}
 
-	platforms := parse.PrepareStrings[cato_models.OperatingSystem](ctx, req.ConfigValue, &diags, "platform")
+	platforms := parse.PrepareStrings[cato_models.OperatingSystem](ctx, req.ConfigValue, &diags)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return

@@ -25,7 +25,10 @@ func (m activePeriodModifier) MarkdownDescription(_ context.Context) string {
 }
 
 // PlanModifyObject implements the plan modification logic
-func (m activePeriodModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
+//
+//nolint:gocyclo,funlen
+func (m activePeriodModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse,
+) {
 	// Handle case where active_period is not present in config (null)
 	// but we want to set default values
 	if req.ConfigValue.IsNull() {
@@ -90,7 +93,8 @@ func (m activePeriodModifier) PlanModifyObject(ctx context.Context, req planmodi
 	changeDetected := false
 
 	// Compare effective_from: null config vs non-null state should trigger change
-	if configEffectiveFrom.IsNull() && !stateEffectiveFrom.IsNull() && !stateEffectiveFrom.IsUnknown() && stateEffectiveFrom.ValueString() != "" {
+	if configEffectiveFrom.IsNull() && !stateEffectiveFrom.IsNull() &&
+		!stateEffectiveFrom.IsUnknown() && stateEffectiveFrom.ValueString() != "" {
 		tflog.Warn(ctx, "ActivePeriod plan modifier: Detected effective_from removal", map[string]interface{}{
 			"config": "null",
 			"state":  stateEffectiveFrom.ValueString(),

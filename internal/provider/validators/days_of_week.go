@@ -20,7 +20,7 @@ func (v DaysValidator) ValidateSet(ctx context.Context, req validator.SetRequest
 		return
 	}
 
-	days := parse.PrepareStrings[cato_models.DayOfWeek](ctx, req.ConfigValue, &diags, "days")
+	days := parse.PrepareStrings[cato_models.DayOfWeek](ctx, req.ConfigValue, &diags)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return

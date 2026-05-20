@@ -20,8 +20,8 @@ func (m emptySetDefaultModifier) Description(_ context.Context) string {
 }
 
 // MarkdownDescription returns a markdown description of the plan modifier
-func (m emptySetDefaultModifier) MarkdownDescription(_ context.Context) string {
-	return "Provides default empty set when config is null"
+func (m emptySetDefaultModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
 }
 
 // PlanModifySet implements the plan modification logic for Set attributes

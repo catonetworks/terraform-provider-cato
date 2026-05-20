@@ -8,10 +8,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-// Action validator
+// PrivAccPolicyActionValidator validates that the provided string is a valid Private Access Policy Action
 type PrivAccPolicyActionValidator struct{}
 
-func (v PrivAccPolicyActionValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v PrivAccPolicyActionValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if req.ConfigValue.IsUnknown() {
 		return
 	}
@@ -23,7 +23,7 @@ func (v PrivAccPolicyActionValidator) ValidateString(ctx context.Context, req va
 		return
 	}
 }
-func (v PrivAccPolicyActionValidator) Description(ctx context.Context) string {
+func (v PrivAccPolicyActionValidator) Description(_ context.Context) string {
 	return fmt.Sprintf("PrivatAccessPolicy action must be one of: %v", cato_models.AllPrivateAccessPolicyActionEnum)
 }
 func (v PrivAccPolicyActionValidator) MarkdownDescription(ctx context.Context) string {

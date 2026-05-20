@@ -10,7 +10,7 @@ import (
 type PrivAccPolicySourceValidator struct{}
 
 // ValidateObject for the "source" ensures that there is either a user or a group specified.
-func (v PrivAccPolicySourceValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
+func (v PrivAccPolicySourceValidator) ValidateObject(_ context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
 	if req.ConfigValue.IsUnknown() {
 		return
 	}
@@ -34,24 +34,28 @@ func (v PrivAccPolicySourceValidator) ValidateObject(ctx context.Context, req va
 		return
 	}
 	for _, srcKind := range []string{"users", "user_groups"} {
-		if attrValue := source[srcKind]; attrValue != nil {
-			var items []tftypes.Value
-			tfvalue, err := attrValue.ToTerraformValue(context.Background())
-			if checkError(err) {
-				return
-			}
-			if checkError(tfvalue.As(&items)) {
-				return
-			}
-			if len(items) > 0 {
-				return // Good, users or groups are specified
-			}
+		attrValue := source[srcKind]
+		if attrValue == nil {
+			addError()
+			continue
+		}
+
+		var items []tftypes.Value
+		tfvalue, err := attrValue.ToTerraformValue(context.Background())
+		if checkError(err) {
+			return
+		}
+		if checkError(tfvalue.As(&items)) {
+			return
+		}
+		if len(items) > 0 {
+			return // Good, users or groups are specified
 		}
 	}
 	addError() // No users or groups specified
 }
 
-func (v PrivAccPolicySourceValidator) Description(ctx context.Context) string {
+func (v PrivAccPolicySourceValidator) Description(_ context.Context) string {
 	return "PrivatAccessPolicy source must specify at least one user or group"
 }
 func (v PrivAccPolicySourceValidator) MarkdownDescription(ctx context.Context) string {

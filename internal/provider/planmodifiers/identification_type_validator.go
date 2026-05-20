@@ -17,15 +17,17 @@ func IdentificationTypeValidator() planmodifier.String {
 
 type identificationTypeValidator struct{}
 
-func (m *identificationTypeValidator) Description(ctx context.Context) string {
+func (m *identificationTypeValidator) Description(_ context.Context) string {
 	return "Validates that identification_type is only set when connection_mode is RESPONDER_ONLY"
 }
 
 func (m *identificationTypeValidator) MarkdownDescription(ctx context.Context) string {
-	return "Validates that `identification_type` is only set when `connection_mode` is `RESPONDER_ONLY`"
+	return m.Description(ctx)
 }
 
-func (m *identificationTypeValidator) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+func (m *identificationTypeValidator) PlanModifyString(ctx context.Context, req planmodifier.StringRequest,
+	resp *planmodifier.StringResponse,
+) {
 	// If identification_type is null or unknown, no validation needed
 	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
 		return
@@ -46,7 +48,8 @@ func (m *identificationTypeValidator) PlanModifyString(ctx context.Context, req 
 			resp.Diagnostics.AddAttributeError(
 				req.Path,
 				"Invalid Configuration",
-				fmt.Sprintf("identification_type can only be set when connection_mode is RESPONDER_ONLY, but connection_mode is %q", connectionMode.ValueString()),
+				fmt.Sprintf("identification_type can only be set when connection_mode is RESPONDER_ONLY, but connection_mode is %q",
+					connectionMode.ValueString()),
 			)
 			return
 		}

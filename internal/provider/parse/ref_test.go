@@ -95,9 +95,10 @@ func TestNormalizeDateTimePtr(t *testing.T) {
 }
 
 func TestIdNameModifierDescriptions(t *testing.T) {
+	const descr = "Once set, the value of this attribute in state will not change."
 	m := idNamePlanModifier{}
 	ctx := context.Background()
-	want := "Once set, the value of this attribute in state will not change."
+	want := descr
 
 	if got := m.Description(ctx); got != want {
 		t.Fatalf("unexpected description\nwant: %q\ngot:  %q", want, got)
@@ -114,8 +115,8 @@ func TestIdNamePlanModifierPlanModifyObject(t *testing.T) {
 
 		m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 			Path:        path.Root("ref"),
-			ConfigValue: types.ObjectUnknown(IdNameRefModelTypes),
-			StateValue:  types.ObjectNull(IdNameRefModelTypes),
+			ConfigValue: types.ObjectUnknown(IDNameRefModelTypes),
+			StateValue:  types.ObjectNull(IDNameRefModelTypes),
 		}, resp)
 
 		if resp.Diagnostics.HasError() {
@@ -134,7 +135,7 @@ func TestIdNamePlanModifierPlanModifyObject(t *testing.T) {
 			m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 				Path:        path.Root("ref"),
 				ConfigValue: newRefObject(t, types.StringNull(), types.StringNull()),
-				StateValue:  types.ObjectNull(IdNameRefModelTypes),
+				StateValue:  types.ObjectNull(IDNameRefModelTypes),
 			}, resp)
 
 			if !resp.Diagnostics.HasError() {
@@ -149,7 +150,7 @@ func TestIdNamePlanModifierPlanModifyObject(t *testing.T) {
 			m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 				Path:        path.Root("ref"),
 				ConfigValue: newRefObject(t, types.StringValue("name-1"), types.StringValue("id-1")),
-				StateValue:  types.ObjectNull(IdNameRefModelTypes),
+				StateValue:  types.ObjectNull(IDNameRefModelTypes),
 			}, resp)
 
 			if !resp.Diagnostics.HasError() {
@@ -230,7 +231,7 @@ func TestIdNamePlanModifierPlanModifyObject(t *testing.T) {
 
 		m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 			Path:        path.Root("ref"),
-			ConfigValue: types.ObjectNull(IdNameRefModelTypes),
+			ConfigValue: types.ObjectNull(IDNameRefModelTypes),
 			StateValue:  newRefObject(t, types.StringValue("n1"), types.StringValue("id-1")),
 		}, resp)
 
@@ -243,7 +244,7 @@ func TestIdNamePlanModifierPlanModifyObject(t *testing.T) {
 func newRefObject(t *testing.T, name, id types.String) types.Object {
 	t.Helper()
 
-	obj, diags := types.ObjectValue(IdNameRefModelTypes, map[string]attr.Value{
+	obj, diags := types.ObjectValue(IDNameRefModelTypes, map[string]attr.Value{
 		"name": name,
 		"id":   id,
 	})
@@ -253,10 +254,10 @@ func newRefObject(t *testing.T, name, id types.String) types.Object {
 	return obj
 }
 
-func mustAsRefModel(t *testing.T, v types.Object) IdNameRefModel {
+func mustAsRefModel(t *testing.T, v types.Object) IDNameRefModel {
 	t.Helper()
 
-	var out IdNameRefModel
+	var out IDNameRefModel
 	diags := v.As(context.Background(), &out, basetypes.ObjectAsOptions{})
 	if diags.HasError() {
 		t.Fatalf("unexpected object conversion diagnostics: %+v", diags)

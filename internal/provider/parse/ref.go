@@ -14,12 +14,12 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-type IdNameRefModel struct {
+type IDNameRefModel struct {
 	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
 
-var IdNameRefModelTypes = map[string]attr.Type{
+var IDNameRefModelTypes = map[string]attr.Type{
 	"id":   types.StringType,
 	"name": types.StringType,
 }
@@ -42,15 +42,8 @@ func SchemaNameID(prefix string) map[string]schema.Attribute {
 	}
 }
 
-// UseStateForUnknown returns a plan modifier that copies a known prior state
-// value into the planned value. Use this when it is known that an unconfigured
-// value will remain the same after a resource update.
-//
-// To prevent Terraform errors, the framework automatically sets unconfigured
-// and Computed attributes to an unknown value "(known after apply)" on update.
-// Using this plan modifier will instead display the prior state value in the
-// plan, unless a prior plan modifier adjusts the value.
-func IdNameModifier() planmodifier.Object {
+// IDNameModifier returns a plan modifier for ID/Name reference objects
+func IDNameModifier() planmodifier.Object {
 	return idNamePlanModifier{}
 }
 
@@ -63,14 +56,16 @@ func (m idNamePlanModifier) Description(_ context.Context) string {
 }
 
 // MarkdownDescription returns a markdown description of the plan modifier.
-func (m idNamePlanModifier) MarkdownDescription(_ context.Context) string {
-	return "Once set, the value of this attribute in state will not change."
+func (m idNamePlanModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
 }
 
 // PlanModifyString implements the plan modification logic.
+//
+//nolint:gocyclo
 func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
-	var cfg, state *IdNameRefModel
-	var plan IdNameRefModel
+	var cfg, state *IDNameRefModel
+	var plan IDNameRefModel
 
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
 	if req.ConfigValue.IsUnknown() {
@@ -83,7 +78,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		if req.StateValue.IsNull() {
 			return
 		}
-		resp.PlanValue = types.ObjectNull(IdNameRefModelTypes)
+		resp.PlanValue = types.ObjectNull(IDNameRefModelTypes)
 		return
 	}
 
@@ -115,7 +110,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		// Name is different -> set ID as unknown
 		plan.Name = cfg.Name
 		plan.ID = types.StringUnknown()
-		planObj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, plan)
+		planObj, diag := types.ObjectValueFrom(ctx, IDNameRefModelTypes, plan)
 		if utils.CheckErr(&resp.Diagnostics, diag) {
 			return
 		}
@@ -132,7 +127,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 	// ID is different -> set Name as unknown
 	plan.Name = types.StringUnknown()
 	plan.ID = cfg.ID
-	planObj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, plan)
+	planObj, diag := types.ObjectValueFrom(ctx, IDNameRefModelTypes, plan)
 	if utils.CheckErr(&resp.Diagnostics, diag) {
 		return
 	}

@@ -474,7 +474,7 @@ func useStateExceptionDeviceAttributes(ctx context.Context, state InternetFirewa
 	if state.Rule.IsNull() || state.Rule.IsUnknown() {
 		return types.ObjectNull(IfwDeviceAttrAttrTypes)
 	}
-	var ruleState Policy_Policy_InternetFirewall_Policy_Rules_Rule
+	var ruleState PolicyPolicyInternetFirewallPolicyRulesRule
 	diags := make(diag.Diagnostics, 0)
 	diagstmp := state.Rule.As(ctx, &ruleState, basetypes.ObjectAsOptions{})
 	diags = append(diags, diagstmp...)
@@ -486,7 +486,7 @@ func useStateExceptionDeviceAttributes(ctx context.Context, state InternetFirewa
 		return types.ObjectNull(IfwDeviceAttrAttrTypes)
 	}
 
-	var exceptions []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	var exceptions []PolicyPolicyInternetFirewallPolicyRulesRuleExceptions
 	diagstmp = ruleState.Exceptions.ElementsAs(ctx, &exceptions, false)
 	diags = append(diags, diagstmp...)
 	if diags.HasError() {

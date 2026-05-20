@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-// Tracking frequency validator
+// PolicyTrackingFrequency frequency validator
 type (
 	PolicyTrackingFrequency struct{}
 )

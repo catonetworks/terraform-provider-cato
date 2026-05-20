@@ -1468,7 +1468,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Host"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"site": schema.SetNestedAttribute{
@@ -1480,7 +1480,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Site"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"subnet": schema.ListAttribute{
@@ -1529,7 +1529,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Global IP Range"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"network_interface": schema.SetNestedAttribute{
@@ -1541,7 +1541,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Network Interface"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"site_network_subnet": schema.SetNestedAttribute{
@@ -1552,7 +1552,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Site Network Subnet"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"floating_subnet": schema.SetNestedAttribute{
@@ -1564,7 +1564,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Floating Subnet"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"user": schema.SetNestedAttribute{
@@ -1576,7 +1576,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("User"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"users_group": schema.SetNestedAttribute{
@@ -1588,7 +1588,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Users Group"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"group": schema.SetNestedAttribute{
@@ -1600,7 +1600,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Group"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"system_group": schema.SetNestedAttribute{
@@ -1612,7 +1612,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("System Group"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 									},
@@ -1626,7 +1626,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 									NestedObject: schema.NestedAttributeObject{
 										Attributes:    parse.SchemaNameID("Country"),
-										PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+										PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 									},
 								},
 								"device": schema.SetNestedAttribute{
@@ -1638,7 +1638,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 									NestedObject: schema.NestedAttributeObject{
 										Attributes:    parse.SchemaNameID("Device"),
-										PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+										PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 									},
 								},
 								"device_attributes": schema.SingleNestedAttribute{
@@ -1750,7 +1750,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Application"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"custom_app": schema.SetNestedAttribute{
@@ -1762,7 +1762,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Custom Application"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"app_category": schema.SetNestedAttribute{
@@ -1774,7 +1774,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Application Category"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"custom_category": schema.SetNestedAttribute{
@@ -1786,7 +1786,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Custom Category"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"sanctioned_apps_category": schema.SetNestedAttribute{
@@ -1798,7 +1798,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Sanctioned Apps Category"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"country": schema.SetNestedAttribute{
@@ -1810,7 +1810,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Country"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"domain": schema.ListAttribute{
@@ -1880,7 +1880,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Global IP Range"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"remote_asn": schema.ListAttribute{
@@ -1911,7 +1911,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 											NestedObject: schema.NestedAttributeObject{
 												Attributes:    parse.SchemaNameID("Service Standard"),
-												PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 											},
 										},
 										"custom": schema.ListNestedAttribute{
@@ -1987,7 +1987,6 @@ func (r *internetFwRuleResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
-//nolint:gocyclo,funlen
 func (r *internetFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InternetFirewallRule
 	diags := req.Plan.Get(ctx, &plan)

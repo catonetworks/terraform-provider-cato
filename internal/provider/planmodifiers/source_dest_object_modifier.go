@@ -20,8 +20,8 @@ func (m sourceDestObjectModifier) Description(_ context.Context) string {
 }
 
 // MarkdownDescription returns a markdown description of the plan modifier
-func (m sourceDestObjectModifier) MarkdownDescription(_ context.Context) string {
-	return "Handles source/destination object element correlation when nested ID fields change from unknown to known"
+func (m sourceDestObjectModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
 }
 
 // PlanModifyObject implements the plan modification logic for Object attributes
@@ -54,7 +54,7 @@ func (m sourceDestObjectModifier) PlanModifyObject(ctx context.Context, req plan
 	stateObj := req.StateValue
 
 	// Create new object with preserved IDs for nested sets
-	modifiedObj := m.preserveNestedSetIds(ctx, plannedObj, stateObj)
+	modifiedObj := m.preserveNestedSetIDs(ctx, plannedObj, stateObj)
 
 	if !modifiedObj.Equal(plannedObj) {
 		resp.PlanValue = modifiedObj
@@ -64,8 +64,8 @@ func (m sourceDestObjectModifier) PlanModifyObject(ctx context.Context, req plan
 	}
 }
 
-// preserveNestedSetIds creates a new object that preserves state ID values for nested set elements
-func (m sourceDestObjectModifier) preserveNestedSetIds(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
+// preserveNestedSetIDs creates a new object that preserves state ID values for nested set elements
+func (m sourceDestObjectModifier) preserveNestedSetIDs(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
 
@@ -83,7 +83,7 @@ func (m sourceDestObjectModifier) preserveNestedSetIds(ctx context.Context, plan
 	}
 
 	for _, fieldName := range setFieldsToProcess {
-		m.preserveSetElementIds(ctx, newAttrs, stateAttrs, fieldName)
+		m.preserveSetElementIDs(ctx, newAttrs, stateAttrs, fieldName)
 	}
 
 	// Create the new object
@@ -98,7 +98,11 @@ func (m sourceDestObjectModifier) preserveNestedSetIds(ctx context.Context, plan
 }
 
 // preserveSetElementIds preserves ID values within set elements by matching on name
-func (m sourceDestObjectModifier) preserveSetElementIds(ctx context.Context, newAttrs map[string]attr.Value, stateAttrs map[string]attr.Value, setFieldName string) {
+
+//nolint:gocyclo
+func (m sourceDestObjectModifier) preserveSetElementIDs(ctx context.Context, newAttrs map[string]attr.Value,
+	stateAttrs map[string]attr.Value, setFieldName string,
+) {
 	plannedSet, exists := newAttrs[setFieldName]
 	if !exists {
 		return
@@ -145,7 +149,7 @@ func (m sourceDestObjectModifier) preserveSetElementIds(ctx context.Context, new
 		correspondingStateElement := m.findElementByName(ctx, plannedElementObj, stateElements)
 		if correspondingStateElement != nil {
 			// Create new element with preserved ID
-			modifiedElement := m.preserveElementId(ctx, plannedElementObj, *correspondingStateElement)
+			modifiedElement := m.preserveElementID(ctx, plannedElementObj, *correspondingStateElement)
 			modifiedElements = append(modifiedElements, modifiedElement)
 		} else {
 			modifiedElements = append(modifiedElements, plannedElement)
@@ -163,7 +167,7 @@ func (m sourceDestObjectModifier) preserveSetElementIds(ctx context.Context, new
 }
 
 // findElementByName finds an element in the list by matching the name field
-func (m sourceDestObjectModifier) findElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
+func (m sourceDestObjectModifier) findElementByName(_ context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
 	targetName, exists := targetAttrs["name"]
 	if !exists {
@@ -201,8 +205,8 @@ func (m sourceDestObjectModifier) findElementByName(ctx context.Context, targetO
 	return nil
 }
 
-// preserveElementId creates a new element object with ID preserved from state
-func (m sourceDestObjectModifier) preserveElementId(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
+// preserveElementID creates a new element object with ID preserved from state
+func (m sourceDestObjectModifier) preserveElementID(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
 
@@ -212,9 +216,9 @@ func (m sourceDestObjectModifier) preserveElementId(ctx context.Context, planned
 	}
 
 	// Preserve ID from state if it exists
-	if stateId, exists := stateAttrs["id"]; exists {
-		if stateIdStr, ok := stateId.(types.String); ok && !stateIdStr.IsNull() && !stateIdStr.IsUnknown() {
-			newAttrs["id"] = stateIdStr
+	if stateID, exists := stateAttrs["id"]; exists {
+		if stateIDStr, ok := stateID.(types.String); ok && !stateIDStr.IsNull() && !stateIDStr.IsUnknown() {
+			newAttrs["id"] = stateIDStr
 		}
 	}
 

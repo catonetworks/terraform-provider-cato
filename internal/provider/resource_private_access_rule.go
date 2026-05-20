@@ -72,7 +72,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Required:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    parse.SchemaNameID("Application"),
-					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 				},
 			},
 			"connection_origins": schema.SetAttribute{
@@ -89,7 +89,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    parse.SchemaNameID("Country"),
-					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -105,7 +105,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    parse.SchemaNameID("Device"),
-					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -166,7 +166,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    parse.SchemaNameID("Mailing list"),
-							PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 						},
 					},
 					"subscription_group": schema.SetNestedAttribute{
@@ -174,7 +174,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    parse.SchemaNameID("Subscription group"),
-							PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 						},
 					},
 					"webhook": schema.SetNestedAttribute{
@@ -182,7 +182,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    parse.SchemaNameID("Webhook"),
-							PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 						},
 					},
 				},
@@ -328,7 +328,7 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    parse.SchemaNameID("User"),
-					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -338,7 +338,7 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    parse.SchemaNameID("Group"),
-					PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -581,8 +581,8 @@ func (r *privAccessRuleResource) parseSource(
 	diags *diag.Diagnostics,
 ) types.Object {
 	tfSource := Source{
-		Users:      parse.ParseIDRefSet(ctx, src.User, diags),
-		UserGroups: parse.ParseIDRefSet(ctx, src.UsersGroup, diags),
+		Users:      parse.IDRefSet(ctx, src.User, diags),
+		UserGroups: parse.IDRefSet(ctx, src.UsersGroup, diags),
 	}
 	obj, objDiags := types.ObjectValueFrom(ctx, SourceTypes, tfSource)
 	diags.Append(objDiags...)
@@ -607,13 +607,13 @@ func (r *privAccessRuleResource) prepareSource(
 	}
 
 	// user list
-	userInput = parse.PrepareIDRefSet[cato_models.UserRefInput](ctx, tfSource.Users, diags, "source.users")
+	userInput = parse.PrepareIDRefSet[cato_models.UserRefInput](ctx, tfSource.Users, diags)
 	if diags.HasError() {
 		return nil
 	}
 
 	// group list
-	groupInput = parse.PrepareIDRefSet[cato_models.UsersGroupRefInput](ctx, tfSource.UserGroups, diags, "source.groups")
+	groupInput = parse.PrepareIDRefSet[cato_models.UsersGroupRefInput](ctx, tfSource.UserGroups, diags)
 	if diags.HasError() {
 		return nil
 	}
@@ -644,7 +644,7 @@ func (r *privAccessRuleResource) prepareApplications(
 	if !utils.HasValue(apps) {
 		return nil
 	}
-	applicationInput := parse.PrepareIDRefSet[cato_models.PrivateApplicationRefInput](ctx, apps, diags, "applications")
+	applicationInput := parse.PrepareIDRefSet[cato_models.PrivateApplicationRefInput](ctx, apps, diags)
 	if diags.HasError() {
 		return nil
 	}
@@ -705,7 +705,6 @@ func (r *privAccessRuleResource) prepareTracking(
 		ctx,
 		tfAlert.MailingList,
 		diags,
-		"tracking.alert.mailing_list",
 	)
 	if diags.HasError() {
 		return nil
@@ -716,7 +715,6 @@ func (r *privAccessRuleResource) prepareTracking(
 		ctx,
 		tfAlert.SubscriptionGroup,
 		diags,
-		"tracking.alert.subscription_group",
 	)
 	if diags.HasError() {
 		return nil
@@ -727,7 +725,6 @@ func (r *privAccessRuleResource) prepareTracking(
 		ctx,
 		tfAlert.Webhook,
 		diags,
-		"tracking.alert.webhook",
 	)
 	if diags.HasError() {
 		return nil
@@ -944,7 +941,7 @@ func (r *privAccessRuleResource) preparePlatforms(
 	platforms types.Set,
 	diags *diag.Diagnostics,
 ) []cato_models.OperatingSystem {
-	return parse.PrepareStrings[cato_models.OperatingSystem](ctx, platforms, diags, "rule.platforms")
+	return parse.PrepareStrings[cato_models.OperatingSystem](ctx, platforms, diags)
 }
 
 func (r *privAccessRuleResource) prepareCountries(
@@ -952,7 +949,7 @@ func (r *privAccessRuleResource) prepareCountries(
 	countries types.Set,
 	diags *diag.Diagnostics,
 ) []*cato_models.CountryRefInput {
-	return parse.PrepareIDRefSet[cato_models.CountryRefInput](ctx, countries, diags, "rule.countries")
+	return parse.PrepareIDRefSet[cato_models.CountryRefInput](ctx, countries, diags)
 }
 
 func (r *privAccessRuleResource) prepareConnectionOrigins(
@@ -960,7 +957,7 @@ func (r *privAccessRuleResource) prepareConnectionOrigins(
 	os types.Set,
 	diags *diag.Diagnostics,
 ) []cato_models.PrivateAccessPolicyOriginEnum {
-	return parse.PrepareStrings[cato_models.PrivateAccessPolicyOriginEnum](ctx, os, diags, "rule.connection_origins")
+	return parse.PrepareStrings[cato_models.PrivateAccessPolicyOriginEnum](ctx, os, diags)
 }
 
 func (r *privAccessRuleResource) prepareAction(action types.String) *cato_models.PrivateAccessPolicyActionInput {
@@ -975,7 +972,7 @@ func (r *privAccessRuleResource) prepareDevice(
 	devs types.Set,
 	diags *diag.Diagnostics,
 ) []*cato_models.DeviceProfileRefInput {
-	return parse.PrepareIDRefSet[cato_models.DeviceProfileRefInput](ctx, devs, diags, "rule.devices")
+	return parse.PrepareIDRefSet[cato_models.DeviceProfileRefInput](ctx, devs, diags)
 }
 
 func (r *privAccessRuleResource) parseTracking(
@@ -996,9 +993,9 @@ func (r *privAccessRuleResource) parseTracking(
 	}
 
 	// Prepare Tracking.Alert object
-	mailingList := parse.ParseIDRefSet(ctx, tr.Alert.MailingList, diags)
-	subscriptionGroup := parse.ParseIDRefSet(ctx, tr.Alert.SubscriptionGroup, diags)
-	webHook := parse.ParseIDRefSet(ctx, tr.Alert.Webhook, diags)
+	mailingList := parse.IDRefSet(ctx, tr.Alert.MailingList, diags)
+	subscriptionGroup := parse.IDRefSet(ctx, tr.Alert.SubscriptionGroup, diags)
+	webHook := parse.IDRefSet(ctx, tr.Alert.Webhook, diags)
 	if diags.HasError() {
 		return types.ObjectNull(PolicyRuleTrackingTypes)
 	}
@@ -1068,7 +1065,7 @@ func (r *privAccessRuleResource) parsePolicySchedule(
 	recurringObj := types.ObjectNull(PolicyCustomRecurringTypes)
 	if sch.CustomRecurring != nil {
 		tfRecurring := PolicyCustomRecurring{
-			Days: parse.ParseStringSet(ctx, sch.CustomRecurring.Days, diags),
+			Days: parse.StringSet(ctx, sch.CustomRecurring.Days, diags),
 			From: types.StringValue(string(sch.CustomRecurring.From)),
 			To:   types.StringValue(string(sch.CustomRecurring.To)),
 		}
@@ -1158,15 +1155,15 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 		state = &PrivateAccessRuleModel{
 			Action:            types.StringValue(string(apiRule.Action.Action)),
 			ActivePeriod:      r.parsePolicyActivePeriod(ctx, apiRule.ActivePeriod, &diags),
-			Applications:      parse.ParseIDRefSet(ctx, apiRule.Applications.Application, &diags),
-			ConnectionOrigins: parse.ParseStringSet(ctx, apiRule.ConnectionOrigin, &diags),
-			Countries:         parse.ParseIDRefSet(ctx, apiRule.Country, &diags),
+			Applications:      parse.IDRefSet(ctx, apiRule.Applications.Application, &diags),
+			ConnectionOrigins: parse.StringSet(ctx, apiRule.ConnectionOrigin, &diags),
+			Countries:         parse.IDRefSet(ctx, apiRule.Country, &diags),
 			Description:       types.StringValue(apiRule.Description),
-			Devices:           parse.ParseIDRefSet(ctx, apiRule.Device, &diags),
+			Devices:           parse.IDRefSet(ctx, apiRule.Device, &diags),
 			Enabled:           types.BoolValue(apiRule.Enabled),
 			ID:                types.StringValue(apiRule.ID),
 			Name:              types.StringValue(apiRule.Name),
-			Platforms:         parse.ParseStringSet(ctx, apiRule.Platform, &diags),
+			Platforms:         parse.StringSet(ctx, apiRule.Platform, &diags),
 			Schedule:          r.parsePolicySchedule(ctx, apiRule.Schedule, &diags),
 			Source:            r.parseSource(ctx, apiRule.Source, &diags),
 			Tracking:          r.parseTracking(ctx, apiRule.Tracking, &diags),

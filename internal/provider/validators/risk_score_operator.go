@@ -11,15 +11,15 @@ import (
 // RiskScoreOperator validator
 type RiskScoreOperator struct{}
 
-func (v RiskScoreOperator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v RiskScoreOperator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if req.ConfigValue.IsUnknown() {
 		return
 	}
 	value := req.ConfigValue.ValueString()
 	action := cato_models.RiskScoreOperator(value)
 	if !action.IsValid() {
-		resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid risk score operator (%s: %s)\n - valid options: %+v", req.Path.String(),
-			value, cato_models.AllRiskScoreOperator))
+		resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid risk score operator (%s: %s)\n - valid options: %+v",
+			req.Path.String(), value, cato_models.AllRiskScoreOperator))
 		return
 	}
 }

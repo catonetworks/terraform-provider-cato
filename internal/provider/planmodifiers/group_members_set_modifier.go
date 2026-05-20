@@ -20,11 +20,13 @@ func (m groupMembersSetModifier) Description(_ context.Context) string {
 }
 
 // MarkdownDescription returns a markdown description of the plan modifier
-func (m groupMembersSetModifier) MarkdownDescription(_ context.Context) string {
-	return "Handles group member correlation by matching on ID+type or name+type, allowing names to update from API"
+func (m groupMembersSetModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
 }
 
 // PlanModifySet implements the plan modification logic for Set attributes
+//
+//nolint:gocyclo,funlen
 func (m groupMembersSetModifier) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
 	tflog.Debug(ctx, "GroupMembersSetModifier: Plan modifier invoked")
 

@@ -20,12 +20,15 @@ func (m ifwExceptionsSetModifier) Description(_ context.Context) string {
 }
 
 // MarkdownDescription returns a markdown description of the plan modifier
-func (m ifwExceptionsSetModifier) MarkdownDescription(_ context.Context) string {
-	return "Handles Internet Firewall exceptions set element correlation when nested ID fields change from unknown to known"
+func (m ifwExceptionsSetModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
 }
 
 // PlanModifySet implements the plan modification logic for Set attributes
-func (m ifwExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
+//
+//nolint:gocyclo,funlen
+func (m ifwExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse,
+) {
 	// Log entry into the plan modifier
 	tflog.Warn(ctx, "IfwExceptionsSetModifier: Plan modifier invoked")
 
@@ -108,11 +111,12 @@ func (m ifwExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmod
 		if correspondingStateElement != nil {
 			tflog.Debug(ctx, "IfwExceptionsSetModifier: Found corresponding state element", map[string]interface{}{"index": i})
 			// Preserve the object with state-derived ID values for nested objects
-			modifiedElement := m.preserveStateIds(ctx, plannedObj, *correspondingStateElement)
+			modifiedElement := m.preserveStateIDs(ctx, plannedObj, *correspondingStateElement)
 			modifiedElements = append(modifiedElements, modifiedElement)
 			correlationSuccessCount++
 		} else {
-			tflog.Debug(ctx, "IfwExceptionsSetModifier: No corresponding state element found, using planned as-is", map[string]interface{}{"index": i})
+			tflog.Debug(ctx, "IfwExceptionsSetModifier: No corresponding state element found, using planned as-is",
+				map[string]interface{}{"index": i})
 			// No corresponding state element found, use planned as-is
 			modifiedElements = append(modifiedElements, plannedObj)
 		}
@@ -138,7 +142,8 @@ func (m ifwExceptionsSetModifier) PlanModifySet(ctx context.Context, req planmod
 
 // findCorrespondingStateElement attempts to find the state element that corresponds
 // to the given planned element by matching on non-ID identifying fields
-func (m ifwExceptionsSetModifier) findCorrespondingStateElement(ctx context.Context, plannedObj types.Object, stateElements []attr.Value) *types.Object {
+func (m ifwExceptionsSetModifier) findCorrespondingStateElement(_ context.Context, plannedObj types.Object, stateElements []attr.Value,
+) *types.Object {
 	plannedAttrs := plannedObj.Attributes()
 
 	// Use exception name as the primary identifier
@@ -179,9 +184,9 @@ func (m ifwExceptionsSetModifier) findCorrespondingStateElement(ctx context.Cont
 	return nil
 }
 
-// preserveStateIds creates a new object that preserves state ID values for nested objects
+// preserveStateIDs creates a new object that preserves state ID values for nested objects
 // while keeping the planned values for other fields
-func (m ifwExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
+func (m ifwExceptionsSetModifier) preserveStateIDs(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
 
@@ -192,9 +197,9 @@ func (m ifwExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedO
 	}
 
 	// Preserve nested object IDs from state for Internet Firewall specific fields
-	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "source")
-	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "destination")
-	m.preserveNestedObjectIds(ctx, newAttrs, stateAttrs, "service")
+	m.preserveNestedObjectIDs(ctx, newAttrs, stateAttrs, "source")
+	m.preserveNestedObjectIDs(ctx, newAttrs, stateAttrs, "destination")
+	m.preserveNestedObjectIDs(ctx, newAttrs, stateAttrs, "service")
 
 	// Preserve empty sets from config to prevent null/empty set correlation issues
 	m.preserveEmptySet(ctx, newAttrs, stateAttrs, "country")
@@ -243,8 +248,10 @@ func (m ifwExceptionsSetModifier) preserveStateIds(ctx context.Context, plannedO
 	return newObj
 }
 
-// preserveNestedObjectIds preserves ID values in nested objects (like source.host, destination.application, etc.)
-func (m ifwExceptionsSetModifier) preserveNestedObjectIds(ctx context.Context, newAttrs map[string]attr.Value, stateAttrs map[string]attr.Value, nestedFieldName string) {
+// preserveNestedObjectIDs preserves ID values in nested objects (like source.host, destination.application, etc.)
+func (m ifwExceptionsSetModifier) preserveNestedObjectIDs(ctx context.Context, newAttrs map[string]attr.Value,
+	stateAttrs map[string]attr.Value, nestedFieldName string,
+) {
 	plannedNested, exists := newAttrs[nestedFieldName]
 	if !exists {
 		return
@@ -281,7 +288,7 @@ func (m ifwExceptionsSetModifier) preserveNestedObjectIds(ctx context.Context, n
 		if plannedSet, ok := plannedAttrValue.(types.Set); ok && plannedSet.IsNull() {
 			continue
 		}
-		m.preserveSetElementIds(ctx, newNestedAttrs, stateNestedAttrs, attrName)
+		m.preserveSetElementIDs(ctx, newNestedAttrs, stateNestedAttrs, attrName)
 	}
 
 	// Recreate the nested object
@@ -290,30 +297,14 @@ func (m ifwExceptionsSetModifier) preserveNestedObjectIds(ctx context.Context, n
 	if !diags.HasError() {
 		newAttrs[nestedFieldName] = newNestedObj
 	}
-
-	// // Preserve IDs in nested sets - Internet Firewall specific field names
-	// ifwSetFields := []string{
-	// 	"host", "site", "global_ip_range", "network_interface",
-	// 	"site_network_subnet", "floating_subnet", "group",
-	// 	"system_group", "user", "users_group", "application",
-	// 	"custom_app", "app_category", "custom_category",
-	// 	"sanctioned_apps_category", "country", "standard",
-	// }
-
-	// for _, fieldName := range ifwSetFields {
-	// 	m.preserveSetElementIds(ctx, newNestedAttrs, stateNestedAttrs, fieldName)
-	// }
-
-	// // Recreate the nested object
-	// nestedObjectType := plannedNestedObj.Type(ctx).(types.ObjectType)
-	// newNestedObj, diags := types.ObjectValue(nestedObjectType.AttrTypes, newNestedAttrs)
-	// if !diags.HasError() {
-	// 	newAttrs[nestedFieldName] = newNestedObj
-	// }
 }
 
-// preserveSetElementIds preserves ID values within set elements by matching on name
-func (m ifwExceptionsSetModifier) preserveSetElementIds(ctx context.Context, newNestedAttrs map[string]attr.Value, stateNestedAttrs map[string]attr.Value, setFieldName string) {
+// preserveSetElementIDs preserves ID values within set elements by matching on name
+
+//nolint:gocyclo
+func (m ifwExceptionsSetModifier) preserveSetElementIDs(ctx context.Context, newNestedAttrs map[string]attr.Value,
+	stateNestedAttrs map[string]attr.Value, setFieldName string,
+) {
 	plannedSet, exists := newNestedAttrs[setFieldName]
 	if !exists {
 		// Explicitly handle the case where a set is present in state but null in plan
@@ -374,7 +365,7 @@ func (m ifwExceptionsSetModifier) preserveSetElementIds(ctx context.Context, new
 		correspondingStateElement := m.findElementByName(ctx, plannedElementObj, stateElements)
 		if correspondingStateElement != nil {
 			// Create new element with preserved ID
-			modifiedElement := m.preserveElementId(ctx, plannedElementObj, *correspondingStateElement)
+			modifiedElement := m.preserveElementID(ctx, plannedElementObj, *correspondingStateElement)
 			modifiedElements = append(modifiedElements, modifiedElement)
 		} else {
 			modifiedElements = append(modifiedElements, plannedElement)
@@ -392,7 +383,7 @@ func (m ifwExceptionsSetModifier) preserveSetElementIds(ctx context.Context, new
 }
 
 // findElementByName finds an element in the list by matching the name field
-func (m ifwExceptionsSetModifier) findElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
+func (m ifwExceptionsSetModifier) findElementByName(_ context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
 	targetName, exists := targetAttrs["name"]
 	if !exists {
@@ -430,8 +421,8 @@ func (m ifwExceptionsSetModifier) findElementByName(ctx context.Context, targetO
 	return nil
 }
 
-// preserveElementId creates a new element object with ID and name preserved from state
-func (m ifwExceptionsSetModifier) preserveElementId(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
+// preserveElementID creates a new element object with ID and name preserved from state
+func (m ifwExceptionsSetModifier) preserveElementID(ctx context.Context, plannedObj types.Object, stateObj types.Object) types.Object {
 	plannedAttrs := plannedObj.Attributes()
 	stateAttrs := stateObj.Attributes()
 
@@ -441,9 +432,9 @@ func (m ifwExceptionsSetModifier) preserveElementId(ctx context.Context, planned
 	}
 
 	// Preserve ID from state if it exists and is known
-	if stateId, exists := stateAttrs["id"]; exists {
-		if stateIdStr, ok := stateId.(types.String); ok && !stateIdStr.IsNull() && !stateIdStr.IsUnknown() {
-			newAttrs["id"] = stateIdStr
+	if stateID, exists := stateAttrs["id"]; exists {
+		if stateIDStr, ok := stateID.(types.String); ok && !stateIDStr.IsNull() && !stateIDStr.IsUnknown() {
+			newAttrs["id"] = stateIDStr
 		}
 	}
 
@@ -606,7 +597,9 @@ func (m ifwExceptionsSetModifier) resolveSetUnknowns(ctx context.Context, setVal
 }
 
 // preserveEmptySet preserves empty sets from plan to prevent null/empty set correlation issues
-func (m ifwExceptionsSetModifier) preserveEmptySet(ctx context.Context, newAttrs map[string]attr.Value, stateAttrs map[string]attr.Value, fieldName string) {
+func (m ifwExceptionsSetModifier) preserveEmptySet(ctx context.Context, newAttrs map[string]attr.Value,
+	stateAttrs map[string]attr.Value, fieldName string,
+) {
 	plannedField, plannedExists := newAttrs[fieldName]
 	if !plannedExists {
 		return

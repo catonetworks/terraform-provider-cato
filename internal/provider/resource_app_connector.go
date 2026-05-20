@@ -143,13 +143,13 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 				Description:   "Physical location of the pripary Pop",
 				Optional:      true,
 				Attributes:    parse.SchemaNameID("Primary location"),
-				PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 			},
 			"secondary": schema.SingleNestedAttribute{
 				Description:   "Physical location of the secondary Pop",
 				Optional:      true,
 				Attributes:    parse.SchemaNameID("Secondary location"),
-				PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 			},
 		},
 	}
@@ -365,8 +365,8 @@ func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types
 	sdkLocation := cato_models.ZtnaAppConnectorPreferredPopLocationInput{
 		PreferredOnly: tfLocation.PreferredOnly.ValueBool(),
 		Automatic:     tfLocation.Automatic.ValueBool(),
-		Primary:       parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags, "preferred_pop_location.primary"),
-		Secondary:     parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Secondary, diags, "preferred_pop_location.secondary"),
+		Primary:       parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags),
+		Secondary:     parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Secondary, diags),
 	}
 
 	return &sdkLocation
@@ -406,14 +406,14 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appCon
 	tfLocation := PreferredPopLocationModel{
 		PreferredOnly: types.BoolValue(loc.PreferredOnly),
 		Automatic:     types.BoolValue(loc.Automatic),
-		Primary:       types.ObjectNull(parse.IdNameRefModelTypes),
-		Secondary:     types.ObjectNull(parse.IdNameRefModelTypes),
+		Primary:       types.ObjectNull(parse.IDNameRefModelTypes),
+		Secondary:     types.ObjectNull(parse.IDNameRefModelTypes),
 	}
 	if loc.Primary != nil {
-		tfLocation.Primary = parse.ParseIDRef(ctx, *loc.Primary, diags)
+		tfLocation.Primary = parse.IDRef(ctx, *loc.Primary, diags)
 	}
 	if loc.Secondary != nil {
-		tfLocation.Secondary = parse.ParseIDRef(ctx, *loc.Secondary, diags)
+		tfLocation.Secondary = parse.IDRef(ctx, *loc.Secondary, diags)
 	}
 
 	locObj, objDiags := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
@@ -459,7 +459,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 		Location:             r.parseLocation(ctx, con.Location, &diags),
 		Name:                 types.StringValue(con.Name),
 		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
-		PrivateAppRef:        parse.ParseIDRefSet(ctx, con.PrivateAppRef, &diags),
+		PrivateAppRef:        parse.IDRefSet(ctx, con.PrivateAppRef, &diags),
 		SerialNumber:         types.StringPointerValue(con.SerialNumber),
 		SocketID:             types.StringPointerValue(con.SocketID),
 		SocketModel:          types.StringPointerValue((*string)(con.SocketModel)),

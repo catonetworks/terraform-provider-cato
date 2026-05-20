@@ -11,15 +11,15 @@ import (
 // RiscScoreCategory validator
 type RiscScoreCategory struct{}
 
-func (v RiscScoreCategory) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v RiscScoreCategory) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if req.ConfigValue.IsUnknown() {
 		return
 	}
 	value := req.ConfigValue.ValueString()
 	action := cato_models.RiskScoreCategory(value)
 	if !action.IsValid() {
-		resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid risk score category (%s: %s)\n - valid options: %+v", req.Path.String(),
-			value, cato_models.AllRiskScoreCategory))
+		resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid risk score category (%s: %s)\n - valid options: %+v",
+			req.Path.String(), value, cato_models.AllRiskScoreCategory))
 		return
 	}
 }

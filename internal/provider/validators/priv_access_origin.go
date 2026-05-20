@@ -11,7 +11,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 )
 
-// Connection origins validator
+// PrivAccPolicyConnOriginValidator validates that the provided set of strings are valid Private Access Policy Connection Origins
 type PrivAccPolicyConnOriginValidator struct{}
 
 func (v PrivAccPolicyConnOriginValidator) ValidateSet(ctx context.Context, req validator.SetRequest, resp *validator.SetResponse) {
@@ -20,7 +20,7 @@ func (v PrivAccPolicyConnOriginValidator) ValidateSet(ctx context.Context, req v
 		return
 	}
 
-	origins := parse.PrepareStrings[cato_models.PrivateAccessPolicyOriginEnum](ctx, req.ConfigValue, &diags, "rule.connection_origins")
+	origins := parse.PrepareStrings[cato_models.PrivateAccessPolicyOriginEnum](ctx, req.ConfigValue, &diags)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return
@@ -28,8 +28,8 @@ func (v PrivAccPolicyConnOriginValidator) ValidateSet(ctx context.Context, req v
 
 	for _, origin := range origins {
 		if !origin.IsValid() {
-			resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid connection origin (%s: %s)\n - valid options: %+v", req.Path.String(),
-				origin, cato_models.AllPrivateAccessPolicyOriginEnum))
+			resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid connection origin (%s: %s)\n - valid options: %+v",
+				req.Path.String(), origin, cato_models.AllPrivateAccessPolicyOriginEnum))
 			return
 		}
 	}
