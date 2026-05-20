@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Yamashou/gqlgenc/clientv2"
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -59,7 +60,32 @@ func NewNetworkRangeResource() resource.Resource {
 }
 
 type networkRangeResource struct {
-	client *catoClientData
+	client             *catoClientData
+	networkRangeClient NetworkRangeClient
+}
+
+type NetworkRangeClient interface {
+	SiteAddNetworkRange(ctx context.Context, lanSocketInterfaceID string, addNetworkRangeInput cato_models.AddNetworkRangeInput,
+		accountID string, interceptors ...clientv2.RequestInterceptor) (*cato.SiteAddNetworkRange, error)
+	SiteUpdateNetworkRange(ctx context.Context, networkRangeID string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput,
+		accountID string, interceptors ...clientv2.RequestInterceptor) (*cato.SiteUpdateNetworkRange, error)
+	SiteRemoveNetworkRange(ctx context.Context, networkRangeID string, accountID string,
+		interceptors ...clientv2.RequestInterceptor) (*cato.SiteRemoveNetworkRange, error)
+	NetworkRange(ctx context.Context, accountID string, networkRangeID string,
+		interceptors ...clientv2.RequestInterceptor) (*cato.NetworkRange, error)
+	EntityLookup(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64,
+		parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput,
+		filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*cato.EntityLookup, error)
+}
+
+func (r *networkRangeResource) getNetworkRangeClient() NetworkRangeClient {
+	if r.networkRangeClient != nil {
+		return r.networkRangeClient
+	}
+	if r.client == nil {
+		return nil
+	}
+	return r.client.catov2
 }
 
 func buildAddNetworkRangeInput(plan NetworkRange, mdnsReflector *bool) cato_models.AddNetworkRangeInput {
@@ -117,7 +143,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIfConfigured(),
 				},
 			},
 			"interface_index": schema.StringAttribute{
@@ -560,7 +586,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		"request":     utils.InterfaceToJSONString(input),
 		"interfaceId": utils.InterfaceToJSONString(plan.InterfaceID.ValueString()),
 	})
-	networkRange, err := r.client.catov2.SiteAddNetworkRange(ctx, plan.InterfaceID.ValueString(), input, r.client.AccountId)
+	networkRange, err := r.getNetworkRangeClient().SiteAddNetworkRange(ctx, plan.InterfaceID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddNetworkRange.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(networkRange),
 	})
@@ -874,7 +900,8 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		"lanInterfaceID": plan.ID.ValueString(),
 		"input":          utils.InterfaceToJSONString(input),
 	})
-	siteUpdateNetworkRangeResponse, err := r.client.catov2.SiteUpdateNetworkRange(ctx, plan.ID.ValueString(), input, r.client.AccountId)
+	siteUpdateNetworkRangeResponse, err := r.getNetworkRangeClient().SiteUpdateNetworkRange(ctx, plan.ID.ValueString(),
+		input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateNetworkRangeResponse),
 	})
@@ -942,7 +969,7 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	// check if interface is already removed and fail gracefully
 	//	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-	_, err := r.client.catov2.SiteRemoveNetworkRange(ctx, state.ID.ValueString(), r.client.AccountId)
+	_, err := r.getNetworkRangeClient().SiteRemoveNetworkRange(ctx, state.ID.ValueString(), r.client.AccountId)
 	if err != nil {
 		var apiError struct {
 			NetworkErrors interface{} `json:"networkErrors"`
@@ -978,7 +1005,7 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 ) (NetworkRange, bool, error) {
 	const notFoundMsg = "Invalid network range id: "
 
-	queryRangeResult, err := r.client.catov2.NetworkRange(ctx, r.client.AccountId, networkRangeID)
+	queryRangeResult, err := r.getNetworkRangeClient().NetworkRange(ctx, r.client.AccountId, networkRangeID)
 	if err != nil {
 		// Check if error is not found error, if so return (nil, false, nil) to indicate resource should be removed from state without error
 		var gqlError *clientv2.ErrorResponse
@@ -1107,24 +1134,11 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 	return state, true, nil
 }
 
-// getSiteIDFromNetworkRange retrieves the site_id and interface info for a network range using entityLookup.
-func (r *networkRangeResource) getSiteIDFromNetworkRange(
-	ctx context.Context,
-	networkRangeID string,
+// getSiteIdFromNetworkRange retrieves the site_id and interface info for a network range using entityLookup
+func (r *networkRangeResource) getSiteIDFromNetworkRange(ctx context.Context, networkRangeID string,
 ) (siteID string, interfaceName string, err error) {
-	result, err := r.client.catov2.EntityLookup(
-		ctx,
-		r.client.AccountId,
-		cato_models.EntityType("siteRange"),
-		nil,
-		nil,
-		nil,
-		nil,
-		[]string{networkRangeID},
-		nil,
-		nil,
-		nil,
-	)
+	result, err := r.getNetworkRangeClient().EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"),
+		nil, nil, nil, nil, []string{networkRangeID}, nil, nil, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to lookup network range site: %w", err)
 	}
