@@ -853,8 +853,9 @@ var internetFwTimeframeTFs = []string{
 // ------------------------------------------------------------------
 func (p internetFwCfg) getTfConfigUserID(index int) string {
 	data := map[string]any{
-		"Name":  p.resName,
-		"Users": p.users,
+		"Name":           p.resName,
+		"Users":          p.users,
+		"DevicePostures": p.devicePostures,
 	}
 	return p.prepareTfCfg(data, internetFwUserIDTFs[index])
 }
@@ -880,6 +881,12 @@ var internetFwUserIDTFs = []string{
 			exceptions = [
 				{
 					name = "acctest_exception_uid_100"
+					device_attributes = {
+						category     = [
+							"IoT",
+							"Mobile",
+						]
+					}
 					service = {
 						standard = [ { name = "IMAP" } ]
 					}
