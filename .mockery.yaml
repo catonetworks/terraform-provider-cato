@@ -9,4 +9,5 @@ packages:
   github.com/catonetworks/terraform-provider-cato/internal/provider:
     interfaces:
       InternetFirewallPolicyClient:
+      NetworkRangeClient:
       SocketSiteClient:
