@@ -25,8 +25,10 @@ Read `.agents/skills/cato-provider-unit-tests/references/current-testing-approac
 
 3. Build tests around real resource methods.
    - Instantiate the concrete resource struct with `client: &catoClientData{AccountId: "account-123"}` and any injected mock client.
+   - If the resource currently calls `r.client.catov2` directly, add a tiny `<Resource>Client` interface plus `get<Resource>Client()` fallback helper so tests can inject mocks without changing runtime behavior.
    - Use `resource.CreateRequest`, `resource.ReadRequest`, `resource.UpdateRequest`, `resource.DeleteRequest`, and `resource.ImportStateRequest` with synthetic `tfsdk.Plan`/`tfsdk.State`.
    - Seed plans and states through the resource schema and `plan.Set`/`state.Set`; avoid ad hoc `tftypes` unless a low-level plan modifier requires it.
+   - For resources with deep hydration chains, it is acceptable to cover some CRUD methods via validation/API-error paths (to prove method wiring and diagnostics) and keep full success-path assertions in targeted tests where fixture overhead is reasonable.
    - Decode resulting state into the resource model and assert user-visible attributes, IDs, computed fields, and removed state.
 
 4. Assert API payloads and call order where behavior matters.
@@ -38,6 +40,7 @@ Read `.agents/skills/cato-provider-unit-tests/references/current-testing-approac
 5. Cover non-API logic directly.
    - Add table tests for validators, plan modifiers, semantic equality helpers, hydrators, conversion functions, and small pure helpers touched by the change.
    - Include null, unknown, empty, and valid values for Terraform framework types.
+   - For direct `PlanModify*` tests, set `req.State.Raw` and `req.Plan.Raw` to non-null `tftypes.Value` when exercising update behavior; many framework replace modifiers short-circuit on create/destroy if raw values are null.
    - Use `t.Parallel()` for pure or independent tests; skip it when tests touch shared global state, environment variables, or httptest fixtures that are not isolated.
 
 6. Verify narrowly, then broadly.
@@ -56,6 +59,7 @@ For a modified resource, aim to cover:
 - `Update`: changed fields, move/reorder behavior, publish/read-after-write when present, and API errors for each API step.
 - `Delete`: successful delete, publish when present, API error, and idempotent/not-found behavior if production code supports it.
 - Terraform framework edge cases: null, unknown, empty collections, defaulted/computed values, plan modifiers, validators, and semantic equality.
+- Keep helper builders in the test file (`get<Resource>Schema`, `new<Resource>Plan`, `new<Resource>State`, minimal API response builders) so CRUD tests stay readable and deterministic.
 
 For a modified data source, aim to cover:
 
