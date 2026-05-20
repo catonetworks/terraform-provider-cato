@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.77 (2026-05-20)
+## 0.0.78 (2026-05-20)
 - Fixed network range drift and added unit test coverage for the updated behavior.
 - Fixed internet firewall rule device attribute handling to ensure correct state and API mapping.
 
