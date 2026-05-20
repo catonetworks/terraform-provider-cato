@@ -22,7 +22,7 @@ type hydrateWanNetworkAPITypes struct {
 // hydrateWanNetworkRuleAPI takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato API data used to either create or update WAN Network entries
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateWanNetworkRuleAPI(ctx context.Context, plan WanNetworkRule) (hydrateWanNetworkAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 

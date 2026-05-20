@@ -40,7 +40,7 @@ func (r *privAccessRuleBulkResource) Metadata(_ context.Context, req resource.Me
 	resp.TypeName = req.ProviderTypeName + "_private_access_rule_bulk"
 }
 
-func (r *privAccessRuleBulkResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *privAccessRuleBulkResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -48,7 +48,7 @@ func (r *privAccessRuleBulkResource) Configure(ctx context.Context, req resource
 	r.client = req.ProviderData.(*catoClientData)
 }
 
-func (r *privAccessRuleBulkResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *privAccessRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages ordering and publishng private access policy rules.",
 		Attributes: map[string]schema.Attribute{
@@ -214,7 +214,7 @@ func (r *privAccessRuleBulkResource) ModifyPlan(ctx context.Context, req resourc
 	}
 }
 
-func (r *privAccessRuleBulkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *privAccessRuleBulkResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	fmt.Println("bulk Delete")
 }
 
@@ -275,8 +275,8 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 			return nil, nil, nil, fmt.Errorf("rule '%s' from API is not found in the PrivateAccessRuleBulkModel state", apiRule.Name)
 		}
 		tfRule.Index = stateRule.Index
-		ruleObj, diag := types.ObjectValueFrom(ctx, PrivateAccessBulkRuleTypes, tfRule)
-		diags.Append(diag...)
+		ruleObj, objDiags := types.ObjectValueFrom(ctx, PrivateAccessBulkRuleTypes, tfRule)
+		diags.Append(objDiags...)
 		if diags.HasError() {
 			return nil, nil, diags, ErrAPIResponseParse
 		}
@@ -285,8 +285,8 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	}
 
 	// Prepate the tf state - ruleData map from enriched apiRules
-	rulesMap, diag := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: PrivateAccessBulkRuleTypes}, apiRulesTf)
-	diags.Append(diag...)
+	rulesMap, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: PrivateAccessBulkRuleTypes}, apiRulesTf)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return nil, nil, diags, ErrAPIResponseParse
 	}

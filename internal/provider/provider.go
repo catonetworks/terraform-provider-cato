@@ -57,7 +57,7 @@ type catoProviderModel struct {
 type catoClientData struct {
 	BaseURL   string
 	Token     string
-	AccountId string // nolint:revive // Shared client field used across provider resources.
+	AccountId string //nolint:revive // Shared client field used across provider resources.
 	catov2    *cato.Client
 }
 
@@ -101,7 +101,7 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var config catoProviderModel
 	diags := req.Config.Get(ctx, &config)

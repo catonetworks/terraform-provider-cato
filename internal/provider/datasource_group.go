@@ -96,7 +96,7 @@ func (d *groupDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 	}
 }
 
-func (d *groupDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *groupDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -104,7 +104,7 @@ func (d *groupDataSource) Configure(_ context.Context, req datasource.ConfigureR
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var config GroupsLookup
 	diags := req.Config.Get(ctx, &config)

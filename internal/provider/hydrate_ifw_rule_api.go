@@ -28,7 +28,7 @@ type hydrateIfwAPITypes struct {
 // hydrateIfwApiRuleState takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato api data used to either create or update IFW entries
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateIfwAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 
@@ -668,10 +668,13 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						tflog.Error(ctx, err.Error())
 					}
 
-					ruleDestinationInput.SanctionedAppsCategory = append(ruleDestinationInput.SanctionedAppsCategory, &cato_models.SanctionedAppsCategoryRefInput{
-						By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-						Input: ObjectRefOutput.Input,
-					})
+					ruleDestinationInput.SanctionedAppsCategory = append(
+						ruleDestinationInput.SanctionedAppsCategory,
+						&cato_models.SanctionedAppsCategoryRefInput{
+							By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
+							Input: ObjectRefOutput.Input,
+						},
+					)
 				}
 				ruleDestinationUpdateInput.SanctionedAppsCategory = ruleDestinationInput.SanctionedAppsCategory
 			} else {

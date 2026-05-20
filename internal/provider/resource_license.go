@@ -47,7 +47,7 @@ func (r *licenseResource) Metadata(_ context.Context, req resource.MetadataReque
 	resp.TypeName = req.ProviderTypeName + "_license"
 }
 
-// nolint:funlen // Terraform schemas are declarative and lengthy by nature.
+//nolint:funlen // Terraform schemas are declarative and lengthy by nature.
 func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_license` resource contains the configuration parameters necessary to assign and " +
@@ -185,7 +185,7 @@ func (r *licenseResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	}
 }
 
-func (r *licenseResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *licenseResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -359,7 +359,11 @@ func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 }
 
-func hydrateLicenseState(ctx context.Context, licenseID string, curLicense *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses) (basetypes.ObjectValue, diag.Diagnostics) {
+func hydrateLicenseState(
+	_ context.Context,
+	licenseID string,
+	curLicense *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses,
+) (basetypes.ObjectValue, diag.Diagnostics) {
 	diags := make(diag.Diagnostics, 0)
 	licenseInfoAttrs := map[string]attr.Value{
 		"allocated_bandwidth": types.Int64Null(),
@@ -507,13 +511,13 @@ func checkStaticLicenseForAssignment(
 // General purpose functions
 type customInt64Validator struct{}
 
-func (v customInt64Validator) Description(ctx context.Context) string {
+func (v customInt64Validator) Description(_ context.Context) string {
 	return multipleOfTenValidatorDescription
 }
-func (v customInt64Validator) MarkdownDescription(ctx context.Context) string {
+func (v customInt64Validator) MarkdownDescription(_ context.Context) string {
 	return multipleOfTenValidatorDescription
 }
-func (v customInt64Validator) ValidateInt64(ctx context.Context, req validator.Int64Request, resp *validator.Int64Response) {
+func (v customInt64Validator) ValidateInt64(_ context.Context, req validator.Int64Request, resp *validator.Int64Response) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}

@@ -73,7 +73,7 @@ func (d *dhcpRelayGroupDataSource) Schema(_ context.Context, _ datasource.Schema
 	}
 }
 
-func (d *dhcpRelayGroupDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *dhcpRelayGroupDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}

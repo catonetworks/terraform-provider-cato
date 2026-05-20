@@ -47,7 +47,7 @@ func (r *socketLanNetworkRuleResource) Metadata(_ context.Context, req resource.
 	resp.TypeName = req.ProviderTypeName + "_socket_lan_network_rule"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_socket_lan_network_rule` resource contains the configuration parameters necessary " +
@@ -1000,7 +1000,7 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 	}
 }
 
-func (r *socketLanNetworkRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *socketLanNetworkRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -1181,7 +1181,7 @@ func (r *socketLanNetworkRuleResource) Read(ctx context.Context, req resource.Re
 	resp.Diagnostics.Append(diags...)
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SocketLanNetworkRule
 	diags := req.Plan.Get(ctx, &plan)

@@ -119,7 +119,7 @@ func getPlanName(obj types.Object) string {
 // It first tries to match by ID if both elements have IDs, then falls back to name matching,
 // and finally uses comprehensive field matching for cases where connection_origin or other fields differ
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func findCorrespondingIfwResponseElement(ctx context.Context, planObj types.Object, responseElements []attr.Value) *types.Object {
 	planAttrs := planObj.Attributes()
 
@@ -262,7 +262,7 @@ func isComprehensiveMatch(ctx context.Context, planObj types.Object, responseObj
 
 // compareNestedObjects compares two nested objects and returns true if they are structurally similar
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func compareNestedObjects(ctx context.Context, planField attr.Value, responseField attr.Value) bool {
 	planObj, planOk := planField.(types.Object)
 	responseObj, responseOk := responseField.(types.Object)
@@ -619,8 +619,8 @@ func correlateIfwSetElements(
 // findIfwElementByName finds an element in the list by matching the ID field first, then name field
 // This supports both create operations (name-based) and update operations (ID-based if present)
 //
-// nolint:gocyclo
-func findIfwElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
+//nolint:gocyclo
+func findIfwElementByName(_ context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
 
 	// First, try to match by ID if both target and elements have IDs

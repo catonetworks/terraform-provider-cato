@@ -68,7 +68,7 @@ func (r *staticHostResource) Schema(_ context.Context, _ resource.SchemaRequest,
 	}
 }
 
-func (r *staticHostResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *staticHostResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}

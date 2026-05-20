@@ -113,7 +113,7 @@ func (d *hostDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 	}
 }
 
-func (d *hostDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *hostDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}

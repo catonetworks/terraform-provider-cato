@@ -138,7 +138,7 @@ var TLSSectionIndexResourceAttrTypes = map[string]attr.Type{
 	"section_index": types.Int64Type,
 }
 
-func (r *tlsRulesIndexResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *tlsRulesIndexResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -231,7 +231,7 @@ func (r *tlsRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 	ctx context.Context,
 	plan TLSRulesIndex,
@@ -239,7 +239,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 	diags := []diag.Diagnostic{}
 	ruleObjectMap := make(map[string]attr.Value)
 
-	if plan.SectionToStartAfterId.ValueString() != "" {
+	if plan.SectionToStartAfterID.ValueString() != "" {
 		result, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.TlsinspectpolicySectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
@@ -251,14 +251,14 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 		isPresent := false
 		for _, item := range result.Policy.TLSInspect.Policy.Sections {
 			sectionID := cast.ToString(item.Section.ID)
-			if sectionID == plan.SectionToStartAfterId.ValueString() {
+			if sectionID == plan.SectionToStartAfterID.ValueString() {
 				isPresent = true
 				break
 			}
 		}
 		if !isPresent {
 			diags = append(diags, diag.NewErrorDiagnostic(
-				"SectionToStartAfterId '"+plan.SectionToStartAfterId.ValueString()+"' not found",
+				"SectionToStartAfterID '"+plan.SectionToStartAfterID.ValueString()+"' not found",
 				"Please check the section ID and try again.",
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, errors.New("sectionToStartAfterId not found")
@@ -324,11 +324,11 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 		}
 
 		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionID to the SectionToStartAfterId otherwise set to id of first section for next in list
+		// initializing currentSectionID to the SectionToStartAfterID otherwise set to id of first section for next in list
 		if currentSectionID == "" {
-			if plan.SectionToStartAfterId.ValueString() != "" {
+			if plan.SectionToStartAfterID.ValueString() != "" {
 				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterId.ValueStringPointer(),
+					Ref:      plan.SectionToStartAfterID.ValueStringPointer(),
 					Position: "AFTER_SECTION",
 				}
 			} else {
@@ -343,7 +343,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 			}
 		}
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
-			"sectionToStartAfterId":          plan.SectionToStartAfterId.ValueString(),
+			"sectionToStartAfterId":          plan.SectionToStartAfterID.ValueString(),
 			"moveFrom":                       workingSectionName.SectionName,
 			"toAfter":                        currentSectionID,
 			"sectionIDList":                  sectionIDList,

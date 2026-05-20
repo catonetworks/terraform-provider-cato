@@ -38,7 +38,8 @@ func (r *privAccessPolicyResource) Metadata(_ context.Context, req resource.Meta
 
 func (r *privAccessPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_private_access_policy` resource contains the configuration parameters for private access policies in the Cato platform.",
+		Description: "The `cato_private_access_policy` resource contains the configuration parameters for " +
+			"private access policies in the Cato platform.",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -68,7 +69,7 @@ func (r *privAccessPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 	}
 }
 
-func (r *privAccessPolicyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *privAccessPolicyResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -151,7 +152,7 @@ func (r *privAccessPolicyResource) Update(ctx context.Context, req resource.Upda
 }
 
 // Delete does not do anything, the policy always exists
-func (r *privAccessPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *privAccessPolicyResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 }
 
 // callUpdate implements the actual update logic use by Update() or Create()
@@ -190,10 +191,10 @@ func (r *privAccessPolicyResource) callUpdate(
 	}
 
 	// Hydrate state from API
-	newState, diag, hydrateErr := r.hydratePrivAccessPolicyState(ctx)
+	newState, hydrateDiags, hydrateErr := r.hydratePrivAccessPolicyState(ctx)
 	if hydrateErr != nil {
 		diags.AddError("Error hydrating privateAccessRule state", hydrateErr.Error())
-		diags.Append(diag...)
+		diags.Append(hydrateDiags...)
 		return nil, diags
 	}
 	return newState, diags
@@ -229,7 +230,7 @@ func (r *privAccessPolicyResource) parseAudit(
 	aud *cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Audit,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objectDiags diag.Diagnostics
 
 	// Prepare PolicyAudit object
 	auditObj := types.ObjectNull(PolicyAuditTypes)
@@ -238,8 +239,8 @@ func (r *privAccessPolicyResource) parseAudit(
 			PublishedBy:   types.StringValue(aud.PublishedBy),
 			PublishedTime: types.StringValue(aud.PublishedTime),
 		}
-		auditObj, diag = types.ObjectValueFrom(ctx, PolicyAuditTypes, tfAudit)
-		diags.Append(diag...)
+		auditObj, objectDiags = types.ObjectValueFrom(ctx, PolicyAuditTypes, tfAudit)
+		diags.Append(objectDiags...)
 		if diags.HasError() {
 			return auditObj
 		}

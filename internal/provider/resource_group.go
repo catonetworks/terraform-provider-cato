@@ -109,7 +109,7 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	}
 }
 
-func (r *groupResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *groupResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -212,7 +212,7 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 }
 
-// nolint:gocyclo
+//nolint:gocyclo
 func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan Group
 	diags := req.Plan.Get(ctx, &plan)
@@ -458,7 +458,7 @@ func (r *groupResource) hydrateGroupState(ctx context.Context, groupID string, p
 // parseGroupMemberListWithConfig converts API group member items to a Terraform set
 // matching with config/plan to preserve user's choice of specifying ID vs name
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func parseGroupMemberListWithConfig[T any](ctx context.Context, items []T, configMembers types.Set, attrName string) types.Set {
 	tflog.Debug(ctx, "parseGroupMemberListWithConfig() "+attrName)
 
@@ -574,8 +574,8 @@ func parseGroupMemberList[T any](ctx context.Context, items []T, attrName string
 
 // parseGroupMember converts a single API group member item to a Terraform object
 //
-// nolint:gocyclo
-func parseGroupMember(ctx context.Context, item interface{}, attrName string) types.Object {
+//nolint:gocyclo
+func parseGroupMember(_ context.Context, item interface{}, _ string) types.Object {
 	// Get the reflect.Value of the input
 	itemValue := reflect.ValueOf(item)
 

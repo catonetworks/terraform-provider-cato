@@ -18,7 +18,7 @@ type SocketLanNetworkRuleAPIInput struct {
 	update cato_models.SocketLanUpdateRuleInput
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRule) (SocketLanNetworkRuleAPIInput, diag.Diagnostics) {
 	var result SocketLanNetworkRuleAPIInput
 	var diags diag.Diagnostics
@@ -240,7 +240,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 	return result, diags
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanSourceAPI(
 	ctx context.Context,
 	sourceObj basetypes.ObjectValue,
@@ -456,7 +456,7 @@ func hydrateSocketLanSourceAPI(
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanDestinationAPI(
 	ctx context.Context,
 	destObj basetypes.ObjectValue,

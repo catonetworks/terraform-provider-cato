@@ -1,4 +1,4 @@
-// nolint:lll
+//nolint:lll
 package provider
 
 import (
@@ -99,7 +99,7 @@ func (r *socketSiteResource) Metadata(_ context.Context, req resource.MetadataRe
 	resp.TypeName = req.ProviderTypeName + "_socket_site"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site to the Cato cloud ([virtual socket in AWS/Azure, or physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addSocketSite()](https:// api.catonetworks.com/documentation/#mutation-site.addSocketSite). \n\n **Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product](https:// aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).",
@@ -334,7 +334,7 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 	}
 }
 
-func (r *socketSiteResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *socketSiteResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -356,7 +356,7 @@ func (r *socketSiteResource) ImportState(ctx context.Context, req resource.Impor
 	resp.State = readResp.State
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan SocketSite
 	diags := req.Plan.Get(ctx, &plan)
@@ -515,7 +515,6 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		input.NativeNetworkRange = nativeRangeInput.NativeNetworkRange.ValueString()
 		input.TranslatedSubnet = stringPointerForOptionalInput(nativeRangeInput.TranslatedSubnet)
 
-		// inputUpdateNetworkRange.Name = nativeRangeInput.RangeName.ValueStringPointer() // The API does not update this attribute for native ranges
 		inputUpdateNetworkRange.Subnet = nativeRangeInput.NativeNetworkRange.ValueStringPointer()
 		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIP.ValueStringPointer()
 		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
@@ -791,7 +790,7 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// hydrate the state with API data
-	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, state, state.Id.ValueString())
+	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, state, state.ID.ValueString())
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -814,7 +813,7 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 }
 
-// nolint:gocyclo,funlen,gocritic
+//nolint:gocyclo,funlen,gocritic
 func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SocketSite
 	diags := req.Plan.Get(ctx, &plan)
@@ -1205,7 +1204,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputSiteGeneral),
 	})
-	siteUpdateSiteGeneralDetailsResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.Id.ValueString(), inputSiteGeneral, r.client.AccountId)
+	siteUpdateSiteGeneralDetailsResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), inputSiteGeneral, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSiteGeneralDetailsResponse),
 	})
@@ -1310,7 +1309,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 				"lagMinLinks":        utils.InterfaceToJSONString(lagMinLinks),
 				"translatedSubnet":   utils.InterfaceToJSONString(translatedSubnet),
 			})
-			isDefaultPresent, err := r.attemptReassignNativeRangeIndex(ctx, cato_models.SocketInterfaceIDEnum(interfaceIndex), interfaceName, localIP, nativeNetworkRange, plan.Id.ValueString(), interfaceDestType, lagMinLinks, translatedSubnet)
+			isDefaultPresent, err := r.attemptReassignNativeRangeIndex(ctx, cato_models.SocketInterfaceIDEnum(interfaceIndex), interfaceName, localIP, nativeNetworkRange, plan.ID.ValueString(), interfaceDestType, lagMinLinks, translatedSubnet)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Catov2 API SiteAddSocketSite error",
@@ -1327,7 +1326,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			}
 			// Interface was reassigned - need to retrieve new native range ID and reapply DHCP settings
 			// Get the updated native interface and subnet information
-			nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, plan.ConnectionType.ValueString(), plan.Id.ValueString(), plan, interfaceByConnType)
+			nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, plan.ConnectionType.ValueString(), plan.ID.ValueString(), plan, interfaceByConnType)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Error retrieving native interface after reassignment",
@@ -1360,7 +1359,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 				"request":        utils.InterfaceToJSONString(inputUpdateSocketInterface),
 				"interfaceIndex": utils.InterfaceToJSONString(nativeRangeCheck.InterfaceIndex.ValueString()),
 			})
-			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.Id.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeCheck.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
+			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.ID.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeCheck.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Catov2 API SiteUpdateSocketInterface error (after interface reassignment)",
@@ -1389,7 +1388,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request (no index change)", map[string]interface{}{
 				"request": utils.InterfaceToJSONString(inputUpdateSocketInterface),
 			})
-			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.Id.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeState.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
+			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.ID.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeState.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Catov2 API SiteUpdateSocketInterface error",
@@ -1430,7 +1429,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	// }
 
 	// hydrate the state with API data
-	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, plan.Id.ValueString())
+	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, plan.ID.ValueString())
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -1461,7 +1460,7 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
 	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -1475,7 +1474,7 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-		_, err := r.client.catov2.SiteRemoveSite(ctx, state.Id.ValueString(), r.client.AccountId)
+		_, err := r.client.catov2.SiteRemoveSite(ctx, state.ID.ValueString(), r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API SiteRemoveSite error",
@@ -1547,7 +1546,7 @@ type NativeInterfaceAndSubnetResult struct {
 // getNativeInterfaceAndSubnet retrieves native interface and subnet information
 // Returns: NativeInterfaceAndSubnetResult, error
 //
-// nolint:gocyclo,funlen,gocritic
+//nolint:gocyclo,funlen,gocritic
 func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, connType string, siteID string, state SocketSite, interfaceByConnType map[string]string) (*NativeInterfaceAndSubnetResult, error) {
 	var relayGroupName attr.Value = types.StringUnknown()
 	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
@@ -1920,7 +1919,7 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 	}, nil
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, nativeRangeObj *NativeRange,
 	_, isDhcpKnown bool, relayGroupName attr.Value,
 ) error {
@@ -2086,7 +2085,7 @@ func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context
 
 // hydrateSocketSiteState populates the SocketSite state with data from API responses
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state SocketSite, siteID string) (SocketSite, bool, error) {
 	// Unmarshal socketMapping into a map
 	var interfaceByConnType map[string]string
@@ -2103,12 +2102,6 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 	if err != nil {
 		return state, false, err
 	}
-
-	// // Get native interface and subnet information (remove unused variable)
-	// _, err = r.getNativeInterfaceAndSubnet(ctx, state.ConnectionType.ValueString(), siteID, state, interfaceByConnType)
-	// if err != nil {
-	// 	return state, false, err
-	// }
 
 	siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
 	tflog.Warn(ctx, "Read.AccountSnapshot/siteAccountSnapshotAPIData.response", map[string]interface{}{
@@ -2186,8 +2179,6 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 				// Extract values from result struct
 				subnet := nativeInterfaceAndSubnet.Subnet
 				resultNativeNetworkRangeID := nativeInterfaceAndSubnet.NativeNetworkRangeID
-				// interfaceIndex := nativeInterfaceAndSubnet.InterfaceIndex
-				// interfaceId := nativeInterfaceAndSubnet.InterfaceID
 				siteNetRangeAPIData := nativeInterfaceAndSubnet.SiteNetRangeAPIData
 				nativeRangeObj := nativeInterfaceAndSubnet.NativeRangeObj
 
@@ -2195,7 +2186,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 				if val, containsKey := v.GetHelperFields()["type"]; containsKey {
 					siteType = val.(string)
 				}
-				state.Id = types.StringValue(v.Entity.GetID())
+				state.ID = types.StringValue(v.Entity.GetID())
 				state.Name = types.StringValue(*v.GetEntity().Name)
 				// ConnectionType is already set above in the switch statement
 				state.SiteType = types.StringValue(siteType)
@@ -2293,15 +2284,15 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 // for certain connection types and that local_ip is within the native_network_range subnet
 type socketSiteNativeRangeValidator struct{}
 
-func (v socketSiteNativeRangeValidator) Description(ctx context.Context) string {
+func (v socketSiteNativeRangeValidator) Description(_ context.Context) string {
 	return socketNativeRangeValidatorDescription
 }
 
-func (v socketSiteNativeRangeValidator) MarkdownDescription(ctx context.Context) string {
+func (v socketSiteNativeRangeValidator) MarkdownDescription(_ context.Context) string {
 	return socketNativeRangeValidatorDescription
 }
 
-// nolint:gocyclo
+//nolint:gocyclo
 func (v socketSiteNativeRangeValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
 	// Get the connection_type value from the config
 	var connectionType types.String

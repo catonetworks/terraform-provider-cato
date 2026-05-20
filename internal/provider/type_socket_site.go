@@ -6,7 +6,7 @@ import (
 )
 
 type SocketSite struct {
-	Id             types.String `tfsdk:"id"`
+	ID             types.String `tfsdk:"id"`
 	Name           types.String `tfsdk:"name"`
 	ConnectionType types.String `tfsdk:"connection_type"`
 	SiteType       types.String `tfsdk:"site_type"`

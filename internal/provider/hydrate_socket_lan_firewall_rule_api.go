@@ -18,7 +18,7 @@ type SocketLanFirewallRuleAPIInput struct {
 	update cato_models.SocketLanFirewallUpdateRuleInput
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallRuleAPI(ctx context.Context, plan SocketLanFirewallRule) (SocketLanFirewallRuleAPIInput, diag.Diagnostics) {
 	var result SocketLanFirewallRuleAPIInput
 	var diags diag.Diagnostics
@@ -298,7 +298,6 @@ func hydrateSocketLanFirewallRuleAPI(ctx context.Context, plan SocketLanFirewall
 						diagstmp = svc.Port.ElementsAs(ctx, &ports, false)
 						diags.Append(diagstmp...)
 						for _, p := range ports {
-							// customSvc.Port = append(customSvc.Port, scalars.Port(p))
 							customSvc.Port = append(customSvc.Port, scalars.Port(p))
 						}
 					}
@@ -436,7 +435,7 @@ func hydrateSocketLanFirewallRuleAPI(ctx context.Context, plan SocketLanFirewall
 	return result, diags
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallSourceAPI(
 	ctx context.Context,
 	sourceObj basetypes.ObjectValue,
@@ -684,7 +683,7 @@ func hydrateSocketLanFirewallSourceAPI(
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallDestinationAPI(
 	ctx context.Context,
 	destObj basetypes.ObjectValue,

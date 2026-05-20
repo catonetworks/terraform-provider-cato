@@ -98,7 +98,7 @@ func (r *tlsInspectionSectionResource) Schema(_ context.Context, _ resource.Sche
 	}
 }
 
-func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -175,7 +175,7 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID)
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -222,12 +222,12 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 	sectionList := body.GetPolicy().TLSInspect.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.Id.ValueString() {
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
 			continue
 		}
 
 		sectionExist = true
-		state.Id = types.StringValue(sectionListItem.GetSection().ID)
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
 		curSectionObj, diagstmp := types.ObjectValue(
 			NameIDAttrTypes,
 			map[string]attr.Value{
@@ -272,7 +272,7 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 	}
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan TLSInspectionSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -292,7 +292,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 		resp.Diagnostics.Append(diags...)
 
 		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.Id.ValueString()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
 	}
 
 	// setting at
@@ -394,7 +394,7 @@ func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.
 	}
 
 	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.Id.ValueString(),
+		ID: section.ID.ValueString(),
 	}
 
 	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.request", map[string]interface{}{

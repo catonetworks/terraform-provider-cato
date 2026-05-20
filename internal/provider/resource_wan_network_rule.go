@@ -1,4 +1,4 @@
-// nolint:lll
+//nolint:lll
 package provider
 
 import (
@@ -46,7 +46,7 @@ func (r *wanNetworkRuleResource) Metadata(_ context.Context, req resource.Metada
 	resp.TypeName = req.ProviderTypeName + "_wnw_rule"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_wan_nw_rule` resource contains the configuration parameters necessary to add a rule to the WAN Network policy.",
@@ -2527,7 +2527,7 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 	}
 }
 
-func (r *wanNetworkRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *wanNetworkRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -2538,7 +2538,7 @@ func (r *wanNetworkRuleResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan WanNetworkRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -2656,7 +2656,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state WanNetworkRule
 	diags := req.State.Get(ctx, &state)
@@ -2788,7 +2788,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	resp.Diagnostics.Append(diagstmp...)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanNetworkRule
 	diags := req.Plan.Get(ctx, &plan)

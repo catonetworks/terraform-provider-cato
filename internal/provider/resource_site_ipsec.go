@@ -40,7 +40,7 @@ func (r *siteIpsecResource) Metadata(_ context.Context, req resource.MetadataReq
 	resp.TypeName = req.ProviderTypeName + "_ipsec_site"
 }
 
-func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) { // nolint:funlen
+func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) { //nolint:funlen
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -418,7 +418,7 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 	}
 }
 
-func (r *siteIpsecResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *siteIpsecResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -431,7 +431,7 @@ func (r *siteIpsecResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// nolint:gocyclo,funlen // Existing create flow follows several API calls that must remain ordered.
+//nolint:gocyclo,funlen // Existing create flow follows several API calls that must remain ordered.
 func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan SiteIpsecIkeV2
 	diags := req.Plan.Get(ctx, &plan)
@@ -628,7 +628,7 @@ func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 }
 
-// nolint:gocyclo,funlen // Existing update flow follows several API calls that must remain ordered.
+//nolint:gocyclo,funlen // Existing update flow follows several API calls that must remain ordered.
 func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SiteIpsecIkeV2
 	diags := req.Plan.Get(ctx, &plan)
@@ -655,7 +655,6 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
-		// inputSiteGeneral.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
 	}
 
 	inputUpdateNetworkRange.Subnet = plan.NativeNetworkRange.ValueStringPointer()

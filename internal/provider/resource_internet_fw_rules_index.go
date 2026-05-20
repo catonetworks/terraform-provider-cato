@@ -184,7 +184,7 @@ func (r *ifwRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	}
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state IfwRulesIndex
 	diags := req.State.Get(ctx, &state)
@@ -338,7 +338,7 @@ func (r *ifwRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-// nolint:gocyclo,funlen,gocritic
+//nolint:gocyclo,funlen,gocritic
 func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	ctx context.Context,
 	plan IfwRulesIndex,
@@ -347,7 +347,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 	ruleObjectMap := make(map[string]attr.Value)
 
-	if plan.SectionToStartAfterId.ValueString() != "" {
+	if plan.SectionToStartAfterID.ValueString() != "" {
 		result, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
@@ -359,17 +359,17 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		isPresent := false
 		for _, item := range result.Policy.InternetFirewall.Policy.Sections {
 			sectionID := cast.ToString(item.Section.ID)
-			if sectionID == plan.SectionToStartAfterId.ValueString() {
+			if sectionID == plan.SectionToStartAfterID.ValueString() {
 				isPresent = true
 				break
 			}
 		}
 		if !isPresent {
 			diags = append(diags, diag.NewErrorDiagnostic(
-				"SectionToStartAfterId '"+plan.SectionToStartAfterId.ValueString()+"' not found",
+				"SectionToStartAfterID '"+plan.SectionToStartAfterID.ValueString()+"' not found",
 				"Please check the section ID and try again.",
 			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, errors.New("SectionToStartAfterId not found")
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, errors.New("SectionToStartAfterID not found")
 		}
 	}
 
@@ -460,11 +460,11 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		}
 
 		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionID to the SectionToStartAfterId otherwise set to id of first section for next in list
+		// initializing currentSectionID to the SectionToStartAfterID otherwise set to id of first section for next in list
 		if currentSectionID == "" {
-			if plan.SectionToStartAfterId.ValueString() != "" {
+			if plan.SectionToStartAfterID.ValueString() != "" {
 				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterId.ValueStringPointer(),
+					Ref:      plan.SectionToStartAfterID.ValueStringPointer(),
 					Position: "AFTER_SECTION",
 				}
 			} else {
@@ -479,7 +479,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			}
 		}
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
-			"sectionToStartAfterId":          plan.SectionToStartAfterId.ValueString(),
+			"sectionToStartAfterId":          plan.SectionToStartAfterID.ValueString(),
 			"moveFrom":                       workingSectionName.SectionName,
 			"toAfter":                        currentSectionID,
 			"sectionIDList":                  sectionIDList,

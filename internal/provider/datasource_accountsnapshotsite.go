@@ -26,7 +26,7 @@ type accountSnapshotSiteDataSource struct {
 }
 
 type SiteSnapshot struct {
-	Id       *string `tfsdk:"id"`
+	ID       *string `tfsdk:"id"`
 	SiteName *string `tfsdk:"site_name"`
 	// ProtoId            *int             `tfsdk:"protoId"`
 	// ConnectivityStatus *string          `tfsdk:"connectivityStatus"`
@@ -49,7 +49,7 @@ type SiteSnapshot struct {
 // }
 
 // type DeviceSnapshot struct {
-// 	Id                  *string              `tfsdk:"id"`
+// 	ID                  *string              `tfsdk:"id"`
 // 	Name                *string              `tfsdk:"name"`
 // 	Identifier          *string              `tfsdk:"identifier"`
 // 	Connected           *bool                `tfsdk:"connected"`
@@ -76,7 +76,7 @@ type SiteSnapshot struct {
 
 // type InterfaceSnapshot struct {
 // 	Connected              *bool              `tfsdk:"connected"`
-// 	Id                     *string            `tfsdk:"id"`
+// 	ID                     *string            `tfsdk:"id"`
 // 	Name                   *string            `tfsdk:"name"`
 // 	PhysicalPort           *int64             `tfsdk:"physicalPort"`
 // 	NaturalOrder           *int64             `tfsdk:"naturalOrder"`
@@ -112,7 +112,7 @@ type SiteSnapshot struct {
 // }
 
 // type InterfaceInfo struct {
-// 	Id                  string  `tfsdk:"id"`
+// 	ID                  string  `tfsdk:"id"`
 // 	Name                *string `tfsdk:"name"`
 // 	UpstreamBandwidth   *int64  `tfsdk:"upstreamBandwidth"`
 // 	DownstreamBandwidth *int64  `tfsdk:"downstreamBandwidth"`
@@ -141,7 +141,7 @@ type SiteSnapshot struct {
 // }
 
 // type InterfaceLinkState struct {
-// 	Id        *string `tfsdk:"id"`
+// 	ID        *string `tfsdk:"id"`
 // 	Up        *bool   `tfsdk:"up"`
 // 	MediaIn   *bool   `tfsdk:"mediaIn"`
 // 	LinkSpeed *string `tfsdk:"linkSpeed"`
@@ -149,7 +149,7 @@ type SiteSnapshot struct {
 // }
 
 type SocketInfo struct {
-	Id        *string `tfsdk:"id"`
+	ID        *string `tfsdk:"id"`
 	Serial    *string `tfsdk:"serial"`
 	IsPrimary *bool   `tfsdk:"is_primary"`
 	// Platform          *string `tfsdk:"platform"`
@@ -228,7 +228,7 @@ func (d *accountSnapshotSiteDataSource) Schema(_ context.Context, _ datasource.S
 	}
 }
 
-func (d *accountSnapshotSiteDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *accountSnapshotSiteDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -236,7 +236,7 @@ func (d *accountSnapshotSiteDataSource) Configure(_ context.Context, req datasou
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-// nolint:gocyclo
+//nolint:gocyclo
 func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state SiteSnapshot
 	diags := req.Config.Get(ctx, &state)
@@ -246,7 +246,7 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 	}
 
 	// Ensure exactly one of 'id' or 'site_name' is set
-	if state.Id != nil && state.SiteName != nil {
+	if state.ID != nil && state.SiteName != nil {
 		resp.Diagnostics.AddError(
 			"Configuration Error",
 			"Only one of 'id' or 'site_name' can be set, not both.",
@@ -254,7 +254,7 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 
-	if state.Id == nil && state.SiteName == nil {
+	if state.ID == nil && state.SiteName == nil {
 		resp.Diagnostics.AddError(
 			"Configuration Error",
 			"Either 'id' or 'site_name' must be specified.",
@@ -279,7 +279,7 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 
 	for _, site := range accountSnapshotSite.AccountSnapshot.Sites {
 		// Check if site matches by ID
-		if state.Id != nil && site.ID != nil && *site.ID == *state.Id {
+		if state.ID != nil && site.ID != nil && *site.ID == *state.ID {
 			foundSite = site
 			break
 		}
@@ -294,10 +294,10 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 	}
 
 	if foundSite == nil {
-		if state.Id != nil {
+		if state.ID != nil {
 			resp.Diagnostics.AddError(
 				"Site Not Found",
-				fmt.Sprintf("No site found with ID: %s", *state.Id),
+				fmt.Sprintf("No site found with ID: %s", *state.ID),
 			)
 		} else {
 			resp.Diagnostics.AddError(
@@ -309,7 +309,7 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 	}
 
 	state = SiteSnapshot{
-		Id:       foundSite.ID,
+		ID:       foundSite.ID,
 		SiteName: foundSite.InfoSiteSnapshot.Name,
 		Info: &SiteInfo{
 			Name: foundSite.InfoSiteSnapshot.Name,
@@ -318,7 +318,7 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 
 	for _, socket := range foundSite.InfoSiteSnapshot.Sockets {
 		state.Info.Sockets = append(state.Info.Sockets, SocketInfo{
-			Id:        socket.ID,
+			ID:        socket.ID,
 			Serial:    socket.Serial,
 			IsPrimary: socket.IsPrimary,
 		})

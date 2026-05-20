@@ -1,4 +1,4 @@
-// nolint:lll
+//nolint:lll
 package provider
 
 import (
@@ -169,7 +169,7 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetWanNetwork().GetAddSection().Section.GetSection().ID)
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetWanNetwork().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -216,11 +216,11 @@ func (r *wanNetworkSectionResource) Read(ctx context.Context, req resource.ReadR
 	sectionList := body.GetPolicy().WanNetwork.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.Id.ValueString() {
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
 			continue
 		}
 		sectionExist = true
-		state.Id = types.StringValue(sectionListItem.GetSection().ID)
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
 		curSectionObj, diagstmp := types.ObjectValue(
 			NameIDAttrTypes,
 			map[string]attr.Value{
@@ -265,7 +265,7 @@ func (r *wanNetworkSectionResource) Read(ctx context.Context, req resource.ReadR
 	}
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanNetworkSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -285,7 +285,7 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 		resp.Diagnostics.Append(diags...)
 
 		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.Id.ValueString()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
 	}
 
 	// setting at
@@ -387,7 +387,7 @@ func (r *wanNetworkSectionResource) Delete(ctx context.Context, req resource.Del
 	}
 
 	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.Id.ValueString(),
+		ID: section.ID.ValueString(),
 	}
 
 	tflog.Debug(ctx, "Delete.PolicyWanNetworkRemoveSection.request", map[string]interface{}{

@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// nolint:funlen
+//nolint:funlen
 func hydrateWanNetworkRuleState(
 	ctx context.Context,
 	state WanNetworkRule,

@@ -22,7 +22,7 @@ type hydrateTLSAPITypes struct {
 // hydrateTLSRuleAPI takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato API data used to either create or update TLS entries
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 

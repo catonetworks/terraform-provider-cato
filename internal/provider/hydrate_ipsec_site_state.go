@@ -17,7 +17,7 @@ import (
 
 const nativeRangeName = "Native Range"
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state SiteIpsecIkeV2, siteID string) (SiteIpsecIkeV2, bool, error) {
 	// Check if site exists
 	tflog.Debug(ctx, "hydrateIpsecSiteState.EntityLookup.request", map[string]interface{}{

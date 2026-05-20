@@ -67,7 +67,7 @@ func (r *internetFwRuleResource) Metadata(_ context.Context, req resource.Metada
 	resp.TypeName = req.ProviderTypeName + "_if_rule"
 }
 
-// nolint:funlen,lll
+//nolint:funlen,lll
 func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_if_rule` resource contains the configuration parameters necessary to add rule to the Internet Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413273486865-What-is-the-Cato-Internet-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addRule).",
@@ -2471,7 +2471,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 	}
 }
 
-func (r *internetFwRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *internetFwRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -2484,7 +2484,7 @@ func (r *internetFwRuleResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *internetFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InternetFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -2694,7 +2694,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *internetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan InternetFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -2916,7 +2916,7 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 // Rule -> Alert Valildator
 type ruleAlertValidator struct{}
 
-func (v ruleAlertValidator) Description(ctx context.Context) string {
+func (v ruleAlertValidator) Description(_ context.Context) string {
 	return "If 'alert' is provided, both 'enabled' and 'frequency' must also be set, " +
 		"and must specify values for mailing_list, subscription_group, or web_hook."
 }
@@ -2925,7 +2925,7 @@ func (v ruleAlertValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
 }
 
-func (v ruleAlertValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
+func (v ruleAlertValidator) ValidateObject(_ context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}

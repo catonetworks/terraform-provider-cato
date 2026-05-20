@@ -77,7 +77,7 @@ func (d *allocatedIPDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 	}
 }
 
-func (d *allocatedIPDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *allocatedIPDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}

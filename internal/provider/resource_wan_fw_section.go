@@ -98,7 +98,7 @@ func (r *wanFwSectionResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *wanFwSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *wanFwSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -172,7 +172,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID)
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -220,12 +220,12 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	sectionList := body.GetPolicy().WanFirewall.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.Id.ValueString() {
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
 			continue
 		}
 
 		sectionExist = true
-		state.Id = types.StringValue(sectionListItem.GetSection().ID)
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
 		curSectionObj, diagstmp := types.ObjectValue(
 			NameIDAttrTypes,
 			map[string]attr.Value{
@@ -270,7 +270,7 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	}
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanFirewallSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -290,7 +290,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 		resp.Diagnostics.Append(diags...)
 
 		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.Id.ValueString()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
 	}
 
 	// setting at
@@ -393,7 +393,7 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.Id.ValueString(),
+		ID: section.ID.ValueString(),
 	}
 
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.request", map[string]interface{}{

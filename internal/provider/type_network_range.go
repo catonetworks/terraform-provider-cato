@@ -6,7 +6,7 @@ import (
 )
 
 type NetworkRange struct {
-	Id               types.String `tfsdk:"id"`
+	ID               types.String `tfsdk:"id"`
 	DhcpSettings     types.Object `tfsdk:"dhcp_settings"`
 	Gateway          types.String `tfsdk:"gateway"`
 	InterfaceID      types.String `tfsdk:"interface_id"`
@@ -16,7 +16,7 @@ type NetworkRange struct {
 	LocalIP          types.String `tfsdk:"local_ip"`
 	Name             types.String `tfsdk:"name"`
 	RangeType        types.String `tfsdk:"range_type"`
-	SiteId           types.String `tfsdk:"site_id"`
+	SiteID           types.String `tfsdk:"site_id"`
 	Subnet           types.String `tfsdk:"subnet"`
 	TranslatedSubnet types.String `tfsdk:"translated_subnet"`
 	Vlan             types.Int64  `tfsdk:"vlan"`

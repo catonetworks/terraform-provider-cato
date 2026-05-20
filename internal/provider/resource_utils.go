@@ -24,7 +24,7 @@ func contains(nameToIDMap map[string]struct{}, name string) bool {
 
 // getSiteById retrieves site information by site ID using EntityLookup
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func getSiteNetworkInterface(
 	ctx context.Context,
 	client *catoClientData,
@@ -232,7 +232,7 @@ func parseNameIDListOrEmptySet[T any](ctx context.Context, items []T, attrName s
 	return setValue
 }
 
-// nolint:gocyclo
+//nolint:gocyclo
 func parseNameID(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseNameID() "+attrName+" - "+fmt.Sprintf("%v", item))
 
@@ -479,7 +479,7 @@ func parseFromToDays(ctx context.Context, item interface{}, attrName string) typ
 	return obj
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func parseCustomService(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseCustomService() "+attrName+" - "+fmt.Sprintf("%v", item))
 
@@ -615,7 +615,7 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 
 // parseCustomServiceIP handles the custom service IP object from API response
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseCustomServiceIP() "+attrName+" - "+fmt.Sprintf("%v", item))
 
@@ -718,7 +718,7 @@ func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string
 
 // parseExceptionCustomService handles custom services in exceptions which use "portRangeCustomService" field instead of "portRange"
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func parseExceptionCustomService(ctx context.Context, item interface{}, attrName string) types.Object {
 	tflog.Debug(ctx, "parseExceptionCustomService() "+attrName+" - "+fmt.Sprintf("%v", item))
 

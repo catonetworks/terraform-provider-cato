@@ -82,7 +82,8 @@ type BgpTrackingInput struct {
 	SubscriptionID types.String `tfsdk:"subscription_id"`
 }
 
-func (r *bgpPeerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+//nolint:funlen
+func (r *bgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_bgp_peer`resource contains the configuration parameters necessary to add a BGP peer to a Cato site. " +
 			"Documentation for the underlying API used in this resource can be found at " +
@@ -112,8 +113,9 @@ func (r *bgpPeerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Required:    true,
 			},
 			"peer_ip": schema.StringAttribute{
-				Description: "The IP address of the BGP peer, this is the configured ip from the Site->IPSec Tunnel (Primary or Secondary)->Private IPs->Site",
-				Required:    true,
+				Description: "The IP address of the BGP peer, this is the configured ip from the " +
+					"Site->IPSec Tunnel (Primary or Secondary)->Private IPs->Site",
+				Required: true,
 			},
 			"advertise_default_route": schema.BoolAttribute{
 				Description: "Advertise the default route (0.0.0.0/0) if true.",
@@ -246,11 +248,11 @@ func (r *bgpPeerResource) Schema(ctx context.Context, req resource.SchemaRequest
 	}
 }
 
-func (r *bgpPeerResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *bgpPeerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_bgp_peer"
 }
 
-func (r *bgpPeerResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *bgpPeerResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -262,7 +264,7 @@ func (r *bgpPeerResource) ImportState(ctx context.Context, req resource.ImportSt
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan BgpPeer
 	diags := req.Plan.Get(ctx, &plan)
@@ -426,7 +428,7 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan BgpPeer
 	diags := req.Plan.Get(ctx, &plan)

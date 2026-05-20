@@ -1,4 +1,4 @@
-// nolint:lll
+//nolint:lll
 package provider
 
 import (
@@ -156,7 +156,7 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -266,7 +266,7 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -314,7 +314,7 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteID.ValueString()}, nil, nil, nil)
 	tflog.Debug(ctx, "Delete.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -329,7 +329,7 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
 		// check if there is only one WAN interface & rewrite the input with default one
-		accountSnapshotSite, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
+		accountSnapshotSite, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteID.ValueString()}, nil, &r.client.AccountId)
 		tflog.Debug(ctx, "Delete.AccountSnapshot.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(accountSnapshotSite),
 		})
@@ -375,7 +375,7 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 		tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request", map[string]interface{}{
 			"request": utils.InterfaceToJSONString(input),
 		})
-		_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()), input, r.client.AccountId)
+		_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()), input, r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API SiteUpdateSocketInterface error",
@@ -389,7 +389,7 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 // hydrateWanInterfaceState fetches the current state of a WAN interface from the API
 // and populates the state object with the latest values, including precedence mapping
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, state WanInterface, siteID string, interfaceID string) (WanInterface, bool, error) {
 	// Get accountSnapshot data to check if site exists and has interfaces
 	siteAccountSnapshotData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
@@ -431,7 +431,7 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, sta
 	} else {
 		state.InterfaceID = types.StringValue("INT_" + foundInterface.ID)
 	}
-	state.SiteId = types.StringValue(siteID)
+	state.SiteID = types.StringValue(siteID)
 	state.ID = types.StringValue(siteID + ":" + state.InterfaceID.ValueString())
 	state.Name = types.StringValue(*foundInterface.Name)
 	state.UpstreamBandwidth = types.Int64Value(*foundInterface.UpstreamBandwidth)

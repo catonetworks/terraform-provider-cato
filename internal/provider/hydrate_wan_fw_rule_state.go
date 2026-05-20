@@ -14,7 +14,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateWanRuleState(
 	ctx context.Context,
 	state WanFirewallRule,
@@ -528,7 +528,6 @@ func hydrateWanRuleState(
 			})
 			effectiveFromValue = types.StringValue(parsedEffectiveFromStr)
 		}
-		// useEffectiveFromValue = types.BoolValue(true) // If we have a value, set use flag to true
 	} else {
 		effectiveFromValue = types.StringNull() // If no value, set to null
 	}

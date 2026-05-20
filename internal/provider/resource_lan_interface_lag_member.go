@@ -128,7 +128,7 @@ func (r *lanInterfaceLagMemberResource) Create(ctx context.Context, req resource
 	})
 	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(
 		ctx,
-		plan.SiteId.ValueString(),
+		plan.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
 		input,
 		r.client.AccountId,
@@ -208,7 +208,7 @@ func (r *lanInterfaceLagMemberResource) Update(ctx context.Context, req resource
 	})
 	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(
 		ctx,
-		plan.SiteId.ValueString(),
+		plan.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
 		input,
 		r.client.AccountId,
@@ -263,7 +263,7 @@ func (r *lanInterfaceLagMemberResource) Delete(ctx context.Context, req resource
 	})
 	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(
 		ctx,
-		state.SiteId.ValueString(),
+		state.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()),
 		input,
 		r.client.AccountId,
@@ -289,7 +289,7 @@ func (r *lanInterfaceLagMemberResource) Delete(ctx context.Context, req resource
 		tflog.Debug(ctx, "Checking for reservedInterface of LAN on socket.", map[string]interface{}{
 			"isReservedInterface": utils.InterfaceToJSONString(reservedInterface),
 			"InterfaceID":         utils.InterfaceToJSONString(cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString())),
-			"SiteId":              utils.InterfaceToJSONString(state.SiteId.ValueString()),
+			"SiteID":              utils.InterfaceToJSONString(state.SiteID.ValueString()),
 		})
 		if !reservedInterface {
 			resp.Diagnostics.AddError(
@@ -335,7 +335,7 @@ func (r *lanInterfaceLagMemberResource) hydrateLanInterfaceLagMemberState(
 	for _, site := range siteAccountSnapshotAPIData.AccountSnapshot.Sites {
 		tflog.Debug(ctx, "hydrateLanInterfaceLagMemberState.siteId check", map[string]interface{}{
 			"siteID":                     siteID,
-			"input.SiteId.ValueString()": input.SiteId.ValueString(),
+			"input.SiteID.ValueString()": input.SiteID.ValueString(),
 		})
 		if *site.ID == siteID {
 			for _, iface := range site.InfoSiteSnapshot.Interfaces {
@@ -355,7 +355,7 @@ func (r *lanInterfaceLagMemberResource) hydrateLanInterfaceLagMemberState(
 						"curInterfaceName": iface.Name,
 					})
 					input.Name = types.StringPointerValue(iface.Name)
-					input.SiteId = types.StringPointerValue(&siteID)
+					input.SiteID = types.StringPointerValue(&siteID)
 					input.InterfaceID = types.StringPointerValue(&interfaceID)
 					input.DestType = types.StringValue(lanLagMemberDestType)
 					lagMemberFound = true

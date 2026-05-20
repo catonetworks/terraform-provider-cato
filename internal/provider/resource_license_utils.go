@@ -20,7 +20,7 @@ const (
 	bandwidthRequiredError = "Bandwidth must be set for 'CATO_PB' and 'CATO_PB_SSE' pooled bandwidth license type."
 )
 
-// nolint:gocyclo,funlen,ineffassign,lll,staticcheck
+//nolint:gocyclo,funlen,ineffassign,lll,staticcheck
 func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData) (*cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses, error) {
 	diags := make(diag.Diagnostics, 0)
 	// Get all sites, check for valid siteID
@@ -138,7 +138,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 						input := cato_models.UpdateSiteBwLicenseInput{}
 						input.LicenseID = plan.LicenseID.ValueString()
 						siteRef := &cato_models.SiteRefInput{}
-						siteRef.By = "ID"
+						siteRef.By = licenseSiteRefByID
 						siteRef.Input = plan.SiteID.ValueString()
 						input.Site = siteRef
 						input.Bw = plan.BW.ValueInt64()
@@ -164,7 +164,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 				input.LicenseIDToRemove = curSiteLicenseID.ValueString()
 				input.LicenseIDToAdd = plan.LicenseID.ValueString()
 				siteRef := &cato_models.SiteRefInput{}
-				siteRef.By = "ID"
+				siteRef.By = licenseSiteRefByID
 				siteRef.Input = plan.SiteID.ValueString()
 				input.Site = siteRef
 				// Check for BW if pooled
@@ -196,7 +196,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 			input := cato_models.AssignSiteBwLicenseInput{}
 			input.LicenseID = plan.LicenseID.ValueString()
 			siteRef := &cato_models.SiteRefInput{}
-			siteRef.By = "ID"
+			siteRef.By = licenseSiteRefByID
 			siteRef.Input = plan.SiteID.ValueString()
 			input.Site = siteRef
 			// Check for BW if pooled

@@ -159,7 +159,7 @@ func (d *networkInterfacesDataSource) Configure(_ context.Context, req datasourc
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var networkInterfacesDataSource NetworkInterfaceLookup
 	if diags := req.Config.Get(ctx, &networkInterfacesDataSource); diags.HasError() {
@@ -251,7 +251,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 					fmt.Println("iface.Id " + iface.ID)
 					fmt.Println("*iface.Name " + *iface.Name)
 					curInterfaceIndex := getInterfaceIndexByConnType(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
-					if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN" ||
+					if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == socketInterfaceDestTypeLAN ||
 						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == lan1Interface) &&
 						"INT_"+iface.ID == curInterfaceIndex {
 						fmt.Println("NetworkInterfaceIndex==LAN and curInterfaceIndex=" + curInterfaceIndex)
@@ -262,7 +262,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 							Name:        socketConf[iface.ID],
 							// Name:        *iface.Name,
 						}
-					} else if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == "LAN" ||
+					} else if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == socketInterfaceDestTypeLAN ||
 						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == lan1Interface) &&
 						socketConf[iface.ID] != "" {
 						ifaceMap[*siteID]["INT_"+iface.ID] = InterfaceConfig{
@@ -286,7 +286,6 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 	for _, item := range entityLookupResponse.GetEntityLookup().GetItems() {
 		helperFields := item.GetHelperFields()
-		// entLookupinterfaceID := cast.ToString(helperFields["interfaceName"])
 		entLookupinterfaceID := getInterfaceIndexByConnType(cast.ToString(helperFields["interfaceName"]), connType)
 		siteID := cast.ToString(helperFields["siteId"])
 		tflog.Warn(ctx, "networkInterfaceLookup.SiteID '"+networkInterfacesDataSource.SiteID.ValueString()+"'")
@@ -352,7 +351,7 @@ func getInterfaceIndexByConnType(interfaceName, connType string) string {
 	curInterfaceIndex := interfaceName
 	if interfaceName == lan1Interface && connType == "SOCKET_X1500" {
 		curInterfaceIndex = "LAN 01"
-	} else if interfaceName == "LAN" {
+	} else if interfaceName == socketInterfaceDestTypeLAN {
 		switch connType {
 		case "SOCKET_X1600", "SOCKET_X1600_LTE":
 			curInterfaceIndex = "INT_5"
@@ -367,7 +366,7 @@ func getInterfaceIndexByConnType(interfaceName, connType string) string {
 // 	curInterfaceIndex := interfaceName
 // 	if interfaceName == "LAN1" && connType == "SOCKET_X1500" {
 // 		curInterfaceIndex = "LAN 01"
-// 	} else if interfaceName == "LAN" {
+// 	} else if interfaceName == socketInterfaceDestTypeLAN {
 // 		if connType == "SOCKET_X1600" || connType == "SOCKET_X1600_LTE" {
 // 			curInterfaceIndex = "INT_5"
 // 		} else if connType == "SOCKET_X1700" {

@@ -23,7 +23,7 @@ var sldFilename string
 var sldCatalog map[string]SLDCatalogEntry
 var sldCatalogLoadError error
 
-// nolint:gochecknoinits
+//nolint:gochecknoinits
 func init() {
 	sldCatalogLoadError = json.Unmarshal([]byte(sldFilename), &sldCatalog)
 }
@@ -326,7 +326,7 @@ func filterSiteLocations(
 	return siteLocations
 }
 
-// nolint:funlen // legacy code
+//nolint:funlen // legacy code
 func setSiteLocations(
 	ctx context.Context,
 	resp *datasource.ReadResponse,
@@ -353,25 +353,25 @@ func setSiteLocations(
 			map[string]attr.Value{
 				"country_code": func() attr.Value {
 					if loc.CountryCode != "" {
-						return types.StringValue(string(loc.CountryCode))
+						return types.StringValue(loc.CountryCode)
 					}
 					return types.StringNull()
 				}(),
 				"country_name": func() attr.Value {
 					if loc.CountryName != "" {
-						return types.StringValue(string(loc.CountryName))
+						return types.StringValue(loc.CountryName)
 					}
 					return types.StringNull()
 				}(),
 				"state_code": func() attr.Value {
 					if loc.StateCode != "" {
-						return types.StringValue(string(loc.StateCode))
+						return types.StringValue(loc.StateCode)
 					}
 					return types.StringNull()
 				}(),
 				"state_name": func() attr.Value {
 					if loc.StateName != "" {
-						return types.StringValue(string(loc.StateName))
+						return types.StringValue(loc.StateName)
 					}
 					return types.StringNull()
 				}(),
@@ -392,7 +392,7 @@ func setSiteLocations(
 				}(),
 				"city": func() attr.Value {
 					if loc.City != "" {
-						return types.StringValue(string(loc.City))
+						return types.StringValue(loc.City)
 					}
 					return types.StringNull()
 				}(),

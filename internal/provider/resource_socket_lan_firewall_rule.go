@@ -47,7 +47,7 @@ func (r *socketLanFirewallRuleResource) Metadata(_ context.Context, req resource
 	resp.TypeName = req.ProviderTypeName + "_socket_lan_firewall_rule"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_socket_lan_firewall_rule` resource contains the configuration parameters necessary " +
@@ -1179,7 +1179,7 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 	}
 }
 
-func (r *socketLanFirewallRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *socketLanFirewallRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -1370,7 +1370,7 @@ func (r *socketLanFirewallRuleResource) Read(ctx context.Context, req resource.R
 	resp.Diagnostics.Append(diags...)
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SocketLanFirewallRule
 	diags := req.Plan.Get(ctx, &plan)

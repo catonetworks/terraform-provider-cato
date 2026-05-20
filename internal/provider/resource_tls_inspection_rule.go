@@ -44,7 +44,7 @@ func (r *tlsInspectionRuleResource) Metadata(_ context.Context, req resource.Met
 	resp.TypeName = req.ProviderTypeName + "_tls_rule"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `_tls_rule` resource contains the configuration parameters necessary to add rule to the TLS " +
@@ -934,7 +934,7 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 	}
 }
 
-func (r *tlsInspectionRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *tlsInspectionRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -942,7 +942,7 @@ func (r *tlsInspectionRuleResource) Configure(_ context.Context, req resource.Co
 	r.client = req.ProviderData.(*catoClientData)
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan TLSInspectionRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -1047,7 +1047,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	resp.Diagnostics.Append(diags...)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state TLSInspectionRule
 	diags := req.State.Get(ctx, &state)
@@ -1168,7 +1168,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 	resp.Diagnostics.Append(diags...)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan TLSInspectionRule
 	diags := req.Plan.Get(ctx, &plan)

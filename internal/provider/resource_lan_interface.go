@@ -43,7 +43,7 @@ func (r *lanInterfaceResource) Metadata(_ context.Context, req resource.Metadata
 	resp.TypeName = req.ProviderTypeName + "_lan_interface"
 }
 
-// nolint:lll
+//nolint:lll
 func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_lan_interface` resource contains the configuration parameters necessary to add a lan interface to a socket. ([physical socket physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https:// api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
@@ -119,7 +119,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *lanInterfaceResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *lanInterfaceResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -141,7 +141,7 @@ func (r *lanInterfaceResource) ImportState(ctx context.Context, req resource.Imp
 	resp.State = readResp.State
 }
 
-// nolint:gocyclo,funlen,lll
+//nolint:gocyclo,funlen,lll
 func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan LanInterface
 	diags := req.Plan.Get(ctx, &plan)
@@ -176,7 +176,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -210,7 +210,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	// Updating interface a second time due to API bug where only the name field does not propagate on first update intermittently.
 	_, _ = r.client.catov2.SiteUpdateSocketInterface(
 		ctx,
-		plan.SiteId.ValueString(),
+		plan.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
 		input,
 		r.client.AccountId,
@@ -220,7 +220,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	})
 
 	// Resolve numeric interface ID by querying entityLookup
-	siteEntity := &cato_models.EntityInput{Type: "site", ID: plan.SiteId.ValueString()}
+	siteEntity := &cato_models.EntityInput{Type: "site", ID: plan.SiteID.ValueString()}
 	zeroInt64 := int64(0)
 	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
 	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
@@ -289,7 +289,7 @@ func (r *lanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 	}
 }
 
-// nolint:gocyclo,lll
+//nolint:gocyclo,lll
 func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan LanInterface
 	diags := req.Plan.Get(ctx, &plan)
@@ -327,7 +327,7 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, plan.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -377,7 +377,7 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 }
 
-// nolint:gocyclo,gocritic,lll
+//nolint:gocyclo,gocritic,lll
 func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state LanInterface
 	diags := req.State.Get(ctx, &state)
@@ -389,13 +389,13 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	// Check if LAG_MASTER, lookup other LAG_MEMBER interfaces and disable to successfully delete LAG_MASTER
 	if state.DestType.ValueString() == lanLagMasterDestType || state.DestType.ValueString() != lanLagMasterAndVrrpDestType {
 		// Get the site's accountSnapshot to find the LAG master
-		siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
+		siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteID.ValueString()}, nil, &r.client.AccountId)
 		tflog.Debug(ctx, "Create.AccountSnapshot.response looking for LAN_LAG_MEMBERs", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(siteAccountSnapshotAPIData),
 		})
 		for _, site := range siteAccountSnapshotAPIData.AccountSnapshot.GetSites() {
 			siteID := site.GetID()
-			if siteID != nil && state.SiteId.ValueString() == *siteID {
+			if siteID != nil && state.SiteID.ValueString() == *siteID {
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
 					if iface.DestType != nil && *iface.DestType == lanLagMemberDestType {
 						tflog.Debug(ctx, "Create.AccountSnapshot.response found LAN_LAG_MEMBER", map[string]interface{}{
@@ -413,7 +413,7 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 						tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request LAN_LAG_MEMBER", map[string]interface{}{
 							"request": utils.InterfaceToJSONString(input),
 						})
-						_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(curInterfaceID), input, r.client.AccountId)
+						_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(curInterfaceID), input, r.client.AccountId)
 						if err != nil {
 							resp.Diagnostics.AddError(
 								"Cato API SiteUpdateSocketInterface error",
@@ -443,7 +443,7 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteId.ValueString(), cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, state.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()), input, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -465,7 +465,7 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 		tflog.Debug(ctx, "Checking for reservedInterface of LAN on socket, if reservedInterface, gracefully failing deleting resource from state.", map[string]interface{}{
 			"isReservedInterface": utils.InterfaceToJSONString(reservedInterface),
 			"InterfaceID":         utils.InterfaceToJSONString(cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString())),
-			"SiteId":              utils.InterfaceToJSONString(state.SiteId.ValueString()),
+			"SiteID":              utils.InterfaceToJSONString(state.SiteID.ValueString()),
 		})
 		if !reservedInterface {
 			resp.Diagnostics.AddError(
@@ -520,7 +520,7 @@ func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.
 	return input
 }
 
-// nolint:gocyclo,funlen,lll
+//nolint:gocyclo,funlen,lll
 func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, state *LanInterface) (LanInterface, error) {
 	// Standard interface lookup (for non-LAG members or after LAG master validation)
 	tflog.Debug(ctx, "hydrateLanInterfaceState()", map[string]interface{}{
@@ -549,7 +549,7 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 			isPresent = true
 			state.ID = types.StringValue(curIint.Entity.ID)
 			if siteIDVal, ok := curIint.HelperFields["siteId"]; ok {
-				state.SiteId = types.StringValue(cast.ToString(siteIDVal))
+				state.SiteID = types.StringValue(cast.ToString(siteIDVal))
 			}
 			if _, ok := curIint.HelperFields["interfaceID"]; ok {
 				if idxInt, err := cast.ToIntE(curIint.HelperFields["interfaceID"]); err == nil {
@@ -593,7 +593,7 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 	if (state.DestType.ValueString() == lanLagMasterDestType || state.DestType.ValueString() == lanLagMasterAndVrrpDestType) &&
 		(state.LagMinLinks.IsNull() || state.LagMinLinks.IsUnknown()) {
 		lagMinLinks := 0
-		siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteId.ValueString()}, nil, &r.client.AccountId)
+		siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteID.ValueString()}, nil, &r.client.AccountId)
 		tflog.Debug(ctx, "Create.AccountSnapshot.response looking for LAN_LAG_MEMBERs", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(siteAccountSnapshotAPIData),
 		})
@@ -602,7 +602,7 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 		}
 		for _, site := range siteAccountSnapshotAPIData.AccountSnapshot.GetSites() {
 			siteID := site.GetID()
-			if siteID != nil && state.SiteId.ValueString() == *siteID {
+			if siteID != nil && state.SiteID.ValueString() == *siteID {
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
 					if iface.DestType != nil && *iface.DestType == lanLagMemberDestType {
 						lagMinLinks++
@@ -621,7 +621,7 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 	// Query siteRange to get translated_subnet and local_ip (gateway)
 	// These fields are not available in networkInterface entityLookup, but are in siteRange
 	if !state.Subnet.IsNull() && !state.Subnet.IsUnknown() && state.Subnet.ValueString() != "" {
-		siteEntity := &cato_models.EntityInput{Type: "site", ID: state.SiteId.ValueString()}
+		siteEntity := &cato_models.EntityInput{Type: "site", ID: state.SiteID.ValueString()}
 		zeroInt64 := int64(0)
 		thouInt64 := int64(1000)
 		querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &thouInt64, &zeroInt64, siteEntity, nil, nil, nil, nil, nil)

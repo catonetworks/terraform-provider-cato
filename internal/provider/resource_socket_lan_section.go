@@ -97,7 +97,7 @@ func (r *socketLanSectionResource) Schema(_ context.Context, _ resource.SchemaRe
 	}
 }
 
-func (r *socketLanSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *socketLanSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -176,7 +176,7 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetSocketLan().GetAddSection().Section.GetSection().ID)
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetSocketLan().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -222,12 +222,12 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 	sectionList := body.GetPolicy().SocketLan.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.Id.ValueString() {
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
 			continue
 		}
 
 		sectionExist = true
-		state.Id = types.StringValue(sectionListItem.GetSection().ID)
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
 		curSectionObj, diagstmp := types.ObjectValue(
 			NameIDAttrTypes,
 			map[string]attr.Value{
@@ -270,7 +270,7 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 	}
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *socketLanSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SocketLanSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -290,7 +290,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 		resp.Diagnostics.Append(diags...)
 
 		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.Id.ValueString()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
 	}
 
 	// setting at
@@ -396,7 +396,7 @@ func (r *socketLanSectionResource) Delete(ctx context.Context, req resource.Dele
 	}
 
 	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.Id.ValueString(),
+		ID: section.ID.ValueString(),
 	}
 
 	PolicySocketLanRemoveSectionResponse, err := r.client.catov2.PolicySocketLanRemoveSection(ctx, nil, removeSection, r.client.AccountId)

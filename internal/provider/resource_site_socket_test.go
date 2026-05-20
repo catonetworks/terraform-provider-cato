@@ -456,7 +456,7 @@ func newSocketSitePlanWithOptions(ctx context.Context, t *testing.T, options soc
 
 	plan := tfsdk.Plan{Schema: getSocketSiteSchema(ctx, t)}
 	diags := plan.Set(ctx, SocketSite{
-		Id:             types.StringNull(),
+		ID:             types.StringNull(),
 		Name:           types.StringValue("aws-site-01"),
 		ConnectionType: types.StringValue(valueOrDefault(options.ConnectionType, "SOCKET_AWS1500")),
 		SiteType:       types.StringValue("DATACENTER"),

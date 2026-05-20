@@ -14,7 +14,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateIfwRuleState(
 	ctx context.Context,
 	state InternetFirewallRule,
@@ -420,7 +420,6 @@ func hydrateIfwRuleState(
 			})
 			effectiveFromValue = types.StringValue(parsedEffectiveFromStr)
 		}
-		// useEffectiveFromValue = types.BoolValue(true) // If we have a value, set use flag to true
 	} else {
 		effectiveFromValue = types.StringNull() // If no value, set to null
 	}
@@ -441,7 +440,9 @@ func hydrateIfwRuleState(
 
 	// Recompute use_effective_from and use_expires_at based on final values after preservation logic
 	// This ensures consistency: use_effective_from should be true only when effective_from has a value
-	useEffectiveFromValue = types.BoolValue(!effectiveFromValue.IsNull() && !effectiveFromValue.IsUnknown() && effectiveFromValue.ValueString() != "")
+	useEffectiveFromValue = types.BoolValue(
+		!effectiveFromValue.IsNull() && !effectiveFromValue.IsUnknown() && effectiveFromValue.ValueString() != "",
+	)
 	useExpiresAtValue = types.BoolValue(!expiresAtValue.IsNull() && !expiresAtValue.IsUnknown() && expiresAtValue.ValueString() != "")
 
 	tflog.Warn(ctx, "TFLOG_WARN_IFW.ruleInput.ActivePeriod", map[string]interface{}{

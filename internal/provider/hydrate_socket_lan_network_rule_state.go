@@ -66,7 +66,10 @@ func hydrateSocketLanNetworkRuleState(
 	return result
 }
 
-func hydrateSocketLanSiteState(ctx context.Context, apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule) types.Object {
+func hydrateSocketLanSiteState(
+	_ context.Context,
+	apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule,
+) types.Object {
 	siteAttrs := map[string]attr.Value{
 		"site":  types.SetNull(NameIDObjectType),
 		"group": types.SetNull(NameIDObjectType),
@@ -104,9 +107,9 @@ func hydrateSocketLanSiteState(ctx context.Context, apiRule *cato_go_sdk.PolicyS
 	return siteObj
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanSourceState(
-	ctx context.Context,
+	_ context.Context,
 	apiSource cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Source,
 ) types.Object {
 	sourceAttrs := map[string]attr.Value{
@@ -269,9 +272,9 @@ func hydrateSocketLanSourceState(
 	return sourceObj
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanDestinationState(
-	ctx context.Context,
+	_ context.Context,
 	apiDest cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Destination,
 ) types.Object {
 	destAttrs := map[string]attr.Value{
@@ -434,8 +437,10 @@ func hydrateSocketLanDestinationState(
 	return destObj
 }
 
-func hydrateSocketLanServiceState(ctx context.Context, apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service) types.Object {
-
+func hydrateSocketLanServiceState(
+	_ context.Context,
+	apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service,
+) types.Object {
 	serviceAttrs := map[string]attr.Value{
 		"simple": types.SetNull(SimpleServiceObjectType),
 		"custom": types.ListNull(CustomServiceObjectType),
@@ -494,8 +499,10 @@ func hydrateSocketLanServiceState(ctx context.Context, apiService cato_go_sdk.Po
 	return serviceObj
 }
 
-func hydrateSocketLanNatState(ctx context.Context, apiNat cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Nat) basetypes.ObjectValue {
-
+func hydrateSocketLanNatState(
+	_ context.Context,
+	apiNat cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Nat,
+) basetypes.ObjectValue {
 	natAttrs := map[string]attr.Value{
 		"enabled":  types.BoolValue(apiNat.Enabled),
 		"nat_type": types.StringNull(),

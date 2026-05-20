@@ -66,9 +66,9 @@ func hydrateSocketLanFirewallRuleState(
 	return result
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallSourceState(
-	ctx context.Context,
+	_ context.Context,
 	apiSource cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Source,
 ) types.Object {
 	sourceAttrs := map[string]attr.Value{
@@ -257,9 +257,9 @@ func hydrateSocketLanFirewallSourceState(
 	return sourceObj
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallDestinationState(
-	ctx context.Context,
+	_ context.Context,
 	apiDest cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Destination,
 ) types.Object {
 	destAttrs := map[string]attr.Value{
@@ -437,9 +437,9 @@ func hydrateSocketLanFirewallDestinationState(
 	return destObj
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallApplicationState(
-	ctx context.Context,
+	_ context.Context,
 	apiApp cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Application,
 	planHasApplication bool,
 ) types.Object {
@@ -565,8 +565,11 @@ func hydrateSocketLanFirewallApplicationState(
 	return appObj
 }
 
-func hydrateSocketLanFirewallServiceState(ctx context.Context, apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Service, planHasService bool) types.Object {
-
+func hydrateSocketLanFirewallServiceState(
+	_ context.Context,
+	apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Service,
+	planHasService bool,
+) types.Object {
 	serviceAttrs := map[string]attr.Value{
 		"simple":   types.SetNull(SimpleServiceObjectType),
 		"standard": types.SetNull(NameIDObjectType),
@@ -649,8 +652,10 @@ func hydrateSocketLanFirewallServiceState(ctx context.Context, apiService cato_g
 	return serviceObj
 }
 
-func hydrateSocketLanFirewallTrackingState(ctx context.Context, apiTracking cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Tracking) types.Object {
-
+func hydrateSocketLanFirewallTrackingState(
+	_ context.Context,
+	apiTracking cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Tracking,
+) types.Object {
 	trackingAttrs := map[string]attr.Value{
 		"event": types.ObjectNull(TrackingEventAttrTypes),
 		"alert": types.ObjectNull(TrackingAlertAttrTypes),

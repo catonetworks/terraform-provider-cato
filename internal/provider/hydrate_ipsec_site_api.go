@@ -43,7 +43,7 @@ type hydrateIpsecTunnelsAPITypes struct {
 
 // hydrateAddIpsecIkeV2SiteTunnels takes the plan and returns both Add and Update inputs for tunnels
 //
-// nolint:funlen
+//nolint:funlen
 func hydrateAddIpsecIkeV2SiteTunnels(ctx context.Context, plan SiteIpsecIkeV2) (hydrateIpsecTunnelsAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 	result := hydrateIpsecTunnelsAPITypes{
@@ -183,7 +183,7 @@ func hydrateAddIpsecIkeV2SiteTunnels(ctx context.Context, plan SiteIpsecIkeV2) (
 
 // hydrateUpdateIpsecIkeV2SiteGeneralDetails takes the plan and returns UpdateIpsecIkeV2SiteGeneralDetailsInput
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateUpdateIpsecIkeV2SiteGeneralDetails(
 	ctx context.Context,
 	plan SiteIpsecIkeV2,

@@ -42,7 +42,7 @@ func (r *adminResource) Metadata(_ context.Context, req resource.MetadataRequest
 	resp.TypeName = req.ProviderTypeName + "_admin"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *adminResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_admin` resource contains the configuration parameters necessary to manage a Cato Networks admin user.",
@@ -154,7 +154,7 @@ func (r *adminResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	}
 }
 
-func (r *adminResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *adminResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -167,7 +167,7 @@ func (r *adminResource) ImportState(ctx context.Context, req resource.ImportStat
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan Admin
 	diags := req.Plan.Get(ctx, &plan)
@@ -312,7 +312,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	})
 
 	// Update the state with the admin ID
-	plan.Id = types.StringValue(curAccountID + ":" + adminID)
+	plan.ID = types.StringValue(curAccountID + ":" + adminID)
 	plan.AdminID = types.StringValue(adminID)
 
 	// Read the admin data to populate computed fields
@@ -442,7 +442,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state Admin
 	diags := req.State.Get(ctx, &state)
@@ -451,7 +451,7 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	idParts := regexp.MustCompile(":").Split(state.Id.ValueString(), 2)
+	idParts := regexp.MustCompile(":").Split(state.ID.ValueString(), 2)
 	curAccountID := ""
 	curAdminID := ""
 	if len(idParts) == adminImportIDParts {
@@ -512,7 +512,7 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		})
 
 		// Update the state with data from the API response
-		state.Id = types.StringValue(curAccountID + ":" + curAdminID)
+		state.ID = types.StringValue(curAccountID + ":" + curAdminID)
 		state.Email = types.StringValue(*adminData.Email)
 		state.FirstName = types.StringValue(*adminData.FirstName)
 		state.LastName = types.StringValue(*adminData.LastName)
@@ -630,7 +630,7 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan Admin
 	diags := req.Plan.Get(ctx, &plan)
@@ -646,7 +646,7 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	idParts := regexp.MustCompile(":").Split(state.Id.ValueString(), 2)
+	idParts := regexp.MustCompile(":").Split(state.ID.ValueString(), 2)
 	curAccountID := ""
 	curAdminID := ""
 	if len(idParts) == adminImportIDParts {
@@ -797,7 +797,7 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Update the state with the admin ID (should be the same)
-	plan.Id = types.StringValue(curAccountID + ":" + curAdminID)
+	plan.ID = types.StringValue(curAccountID + ":" + curAdminID)
 	plan.MFAEnabled = types.BoolValue(true)
 	plan.AccountID = types.StringValue(curAccountID)
 
@@ -817,7 +817,7 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 
-	idParts := regexp.MustCompile(":").Split(state.Id.ValueString(), 2)
+	idParts := regexp.MustCompile(":").Split(state.ID.ValueString(), 2)
 	curAccountID := ""
 	curAdminID := ""
 	if len(idParts) == adminImportIDParts {
@@ -844,7 +844,7 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	// Log the request
 	tflog.Info(ctx, "Delete.admin")
 	tflog.Debug(ctx, "Delete.Admin.request", map[string]interface{}{
-		"admin_id": state.Id.ValueString(),
+		"admin_id": state.ID.ValueString(),
 	})
 
 	// Call the API
@@ -861,6 +861,6 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	}
 
 	tflog.Debug(ctx, "Admin deleted successfully", map[string]interface{}{
-		"admin_id": state.Id.ValueString(),
+		"admin_id": state.ID.ValueString(),
 	})
 }

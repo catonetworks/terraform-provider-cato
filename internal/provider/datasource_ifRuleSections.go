@@ -61,7 +61,7 @@ func (d *ifRuleSectionsDataSource) Schema(_ context.Context, _ datasource.Schema
 	}
 }
 
-func (d *ifRuleSectionsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *ifRuleSectionsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}

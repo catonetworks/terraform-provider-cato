@@ -94,7 +94,7 @@ func (r *networkRangeResource) Metadata(_ context.Context, req resource.Metadata
 	resp.TypeName = req.ProviderTypeName + "_network_range"
 }
 
-// nolint:funlen // Terraform schemas are declarative and lengthy by nature.
+//nolint:funlen // Terraform schemas are declarative and lengthy by nature.
 func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: networkRangeDescription,
@@ -275,7 +275,7 @@ func (r *networkRangeResource) ImportState(ctx context.Context, req resource.Imp
 
 	// Hydrate the state from the API
 	var state NetworkRange
-	state.Id = types.StringValue(req.ID)
+	state.ID = types.StringValue(req.ID)
 
 	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, state, req.ID)
 	if hydrateErr != nil {
@@ -299,7 +299,7 @@ func (r *networkRangeResource) ImportState(ctx context.Context, req resource.Imp
 	resp.Diagnostics.Append(diags...)
 }
 
-// nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
+//nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
 func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan NetworkRange
 	diags := req.Plan.Get(ctx, &plan)
@@ -327,21 +327,21 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Validate that the site ID exists
-	if !plan.SiteId.IsNull() && !plan.SiteId.IsUnknown() {
+	if !plan.SiteID.IsNull() && !plan.SiteID.IsUnknown() {
 		// If interface_id is set, use it to validate the site network interface
 		var err error
 		var curInterfaceID, curInterfaceIndex string
 
 		if !plan.InterfaceID.IsNull() && !plan.InterfaceID.IsUnknown() {
 			// When interface_id is provided, get the corresponding interface_index
-			_, curInterfaceIndex, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceID.ValueString(), "", "")
+			_, curInterfaceIndex, err = getSiteNetworkInterface(ctx, r.client, plan.SiteID.ValueString(), plan.InterfaceID.ValueString(), "", "")
 			if err == nil {
 				// Set the interface_index in the plan based on the lookup
 				plan.InterfaceIndex = types.StringValue(curInterfaceIndex)
 			}
 		} else if !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown() {
 			// When interface_index is provided, get the corresponding interface_id
-			curInterfaceID, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
+			curInterfaceID, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteID.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
 			if err == nil {
 				// Set the interface_id in the plan based on the lookup
 				plan.InterfaceID = types.StringValue(curInterfaceID)
@@ -588,7 +588,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	hydratedState.InterfaceID = types.StringValue(plan.InterfaceID.ValueString())
-	hydratedState.Id = types.StringValue(networkRange.Site.AddNetworkRange.NetworkRangeID)
+	hydratedState.ID = types.StringValue(networkRange.Site.AddNetworkRange.NetworkRangeID)
 
 	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
@@ -606,7 +606,7 @@ func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	// hydrate the state with API data
-	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, state, state.Id.ValueString())
+	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, state, state.ID.ValueString())
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -628,7 +628,7 @@ func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadReques
 	}
 }
 
-// nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
+//nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
 func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan NetworkRange
 	diags := req.Plan.Get(ctx, &plan)
@@ -637,17 +637,8 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	// // Validate that interface_id and interface_index cannot be set simultaneously
-	// if !plan.InterfaceID.IsNull() && !plan.InterfaceIndex.IsNull() {
-	// 	resp.Diagnostics.AddError(
-	// 		"Invalid Configuration",
-	// 		"Interface ID and Interface Index cannot be set simultaneously",
-	// 	)
-	// 	return
-	// }
-
 	// Validate that the site ID exists
-	if !plan.SiteId.IsNull() && !plan.SiteId.IsUnknown() {
+	if !plan.SiteID.IsNull() && !plan.SiteID.IsUnknown() {
 		// If interface_id is set, use it to validate the site network interface
 		var err error
 		tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceAttr", map[string]interface{}{
@@ -660,10 +651,10 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		})
 		if !plan.InterfaceID.IsNull() && !plan.InterfaceID.IsUnknown() {
 			tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceID.IsNull", map[string]interface{}{})
-			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), plan.InterfaceID.ValueString(), "", "")
+			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteID.ValueString(), plan.InterfaceID.ValueString(), "", "")
 		} else if !plan.InterfaceIndex.IsNull() && !plan.InterfaceIndex.IsUnknown() {
 			tflog.Info(ctx, "networkRangeUpdate.plan.InterfaceIndex.IsNull", map[string]interface{}{})
-			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteId.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
+			_, _, err = getSiteNetworkInterface(ctx, r.client, plan.SiteID.ValueString(), "", plan.InterfaceIndex.ValueString(), "")
 		}
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -876,14 +867,14 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 
 	tflog.Debug(ctx, "network range update", map[string]interface{}{
 		"input":          utils.InterfaceToJSONString(input),
-		"lanInterfaceID": plan.Id.ValueString(),
+		"lanInterfaceID": plan.ID.ValueString(),
 	})
 
 	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.request", map[string]interface{}{
-		"lanInterfaceID": plan.Id.ValueString(),
+		"lanInterfaceID": plan.ID.ValueString(),
 		"input":          utils.InterfaceToJSONString(input),
 	})
-	siteUpdateNetworkRangeResponse, err := r.client.catov2.SiteUpdateNetworkRange(ctx, plan.Id.ValueString(), input, r.client.AccountId)
+	siteUpdateNetworkRangeResponse, err := r.client.catov2.SiteUpdateNetworkRange(ctx, plan.ID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateNetworkRangeResponse),
 	})
@@ -917,7 +908,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// hydrate the state with API data
-	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, plan, plan.Id.ValueString())
+	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, plan, plan.ID.ValueString())
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating socket site state",
@@ -932,7 +923,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	hydratedState.InterfaceID = types.StringValue(plan.InterfaceID.ValueString())
-	hydratedState.Id = types.StringValue(siteUpdateNetworkRangeResponse.Site.UpdateNetworkRange.NetworkRangeID)
+	hydratedState.ID = types.StringValue(siteUpdateNetworkRangeResponse.Site.UpdateNetworkRange.NetworkRangeID)
 
 	diags = resp.State.Set(ctx, &hydratedState)
 	resp.Diagnostics.Append(diags...)
@@ -951,7 +942,7 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	// check if interface is already removed and fail gracefully
 	//	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-	_, err := r.client.catov2.SiteRemoveNetworkRange(ctx, state.Id.ValueString(), r.client.AccountId)
+	_, err := r.client.catov2.SiteRemoveNetworkRange(ctx, state.ID.ValueString(), r.client.AccountId)
 	if err != nil {
 		var apiError struct {
 			NetworkErrors interface{} `json:"networkErrors"`
@@ -979,7 +970,7 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 
 // hydrateNetworkRangeState populates the NetworkRange state with data from API responses
 //
-// nolint:gocyclo,funlen // Hydration mirrors API shape and keeps state preservation logic in one place.
+//nolint:gocyclo,funlen // Hydration mirrors API shape and keeps state preservation logic in one place.
 func (r *networkRangeResource) hydrateNetworkRangeState(
 	ctx context.Context,
 	state NetworkRange,
@@ -1081,8 +1072,8 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 		state.Vlan = types.Int64Null()
 	}
 
-	// If SiteId or InterfaceID is not already set (e.g., during import), look it up via entityLookup
-	if state.SiteId.IsNull() || state.SiteId.IsUnknown() || state.InterfaceID.IsNull() || state.InterfaceID.IsUnknown() {
+	// If SiteID or InterfaceID is not already set (e.g., during import), look it up via entityLookup
+	if state.SiteID.IsNull() || state.SiteID.IsUnknown() || state.InterfaceID.IsNull() || state.InterfaceID.IsUnknown() {
 		siteID, interfaceName, lookupErr := r.getSiteIDFromNetworkRange(ctx, networkRangeID)
 		if lookupErr != nil {
 			tflog.Warn(ctx, "Failed to lookup site_id for network range, keeping existing state value", map[string]interface{}{
@@ -1090,9 +1081,9 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 				"error":          lookupErr.Error(),
 			})
 		} else {
-			// Set SiteId if not already set
-			if state.SiteId.IsNull() || state.SiteId.IsUnknown() {
-				state.SiteId = types.StringValue(siteID)
+			// Set SiteID if not already set
+			if state.SiteID.IsNull() || state.SiteID.IsUnknown() {
+				state.SiteID = types.StringValue(siteID)
 			}
 
 			// Set InterfaceID and InterfaceIndex if not already set and we have interfaceName

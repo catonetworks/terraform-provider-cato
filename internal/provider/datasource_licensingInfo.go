@@ -28,7 +28,7 @@ func (d *licensingInfoDataSource) Metadata(_ context.Context, req datasource.Met
 	resp.TypeName = req.ProviderTypeName + "_licensingInfo"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (d *licensingInfoDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Represents licensing information from the Cato API.",
@@ -234,7 +234,7 @@ func (d *licensingInfoDataSource) Schema(_ context.Context, _ datasource.SchemaR
 	}
 }
 
-func (d *licensingInfoDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *licensingInfoDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -242,7 +242,7 @@ func (d *licensingInfoDataSource) Configure(_ context.Context, req datasource.Co
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state LicenseDataSource
 	if diags := req.Config.Get(ctx, &state); diags.HasError() {
@@ -366,7 +366,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 				case "CATO_IP_ADD":
 					total := int(license.PublicIpsLicense.Total)
 					curTotal = types.Int64Value(int64(total))
-				case "CATO_PB", "CATO_PB_SSE":
+				case licenseSkuCatoPB, licenseSkuCatoPBSSE:
 					total := int(license.PooledBandwidthLicense.Total)
 					curTotal = types.Int64Value(int64(total))
 					if len(license.PooledBandwidthLicense.Sites) > 0 {
@@ -400,7 +400,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 					"CATO_SAAS_SECURITY_API_ONE_APP", "CATO_SAAS_SECURITY_API_TWO_APPS":
 					total := int(license.SaasSecurityAPILicense.Total)
 					curTotal = types.Int64Value(int64(total))
-				case "CATO_SITE", "CATO_SSE_SITE":
+				case licenseSkuCatoSite, licenseSkuCatoSSESite:
 					total := int(license.SiteLicense.Total)
 					curTotal = types.Int64Value(int64(total))
 					var curSites []attr.Value

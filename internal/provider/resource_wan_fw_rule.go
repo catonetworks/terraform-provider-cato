@@ -1,4 +1,4 @@
-// nolint:lll
+//nolint:lll
 package provider
 
 import (
@@ -50,7 +50,7 @@ func (r *wanFwRuleResource) Metadata(_ context.Context, req resource.MetadataReq
 	resp.TypeName = req.ProviderTypeName + "_wf_rule"
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).",
@@ -3271,7 +3271,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 	}
 }
 
-func (r *wanFwRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *wanFwRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -3284,7 +3284,7 @@ func (r *wanFwRuleResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan WanFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -3405,7 +3405,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	resp.Diagnostics.Append(diags...)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state WanFirewallRule
 	diags := req.State.Get(ctx, &state)
@@ -3528,7 +3528,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	resp.Diagnostics.Append(diags...)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanFirewallRule
 	diags := req.Plan.Get(ctx, &plan)

@@ -23,7 +23,7 @@ type hydrateWanAPITypes struct {
 // hydrateWanApiRule takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato API data used to either create or update WAN entries
 //
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateWanRuleAPI(ctx context.Context, plan WanFirewallRule) (hydrateWanAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 
@@ -346,36 +346,6 @@ func hydrateWanRuleAPI(ctx context.Context, plan WanFirewallRule) (hydrateWanAPI
 			rootUpdateRule.Source = ruleSourceUpdateInput
 		} else {
 			tflog.Warn(ctx, "TFLOG_SOURCE_WANFW_IS_NULL")
-			// rootAddRule.Source = &cato_models.WanFirewallSourceInput{
-			//      FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
-			//      GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
-			//      Group:             make([]*cato_models.GroupRefInput, 0),
-			//      Host:              make([]*cato_models.HostRefInput, 0),
-			//      IP:                make([]string, 0),
-			//      IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
-			//      NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
-			//      Site:              make([]*cato_models.SiteRefInput, 0),
-			//      SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
-			//      Subnet:            make([]string, 0),
-			//      SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
-			//      User:              make([]*cato_models.UserRefInput, 0),
-			//      UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
-			// }
-			// rootUpdateRule.Source = &cato_models.WanFirewallSourceUpdateInput{
-			//      FloatingSubnet:    make([]*cato_models.FloatingSubnetRefInput, 0),
-			//      GlobalIPRange:     make([]*cato_models.GlobalIPRangeRefInput, 0),
-			//      Group:             make([]*cato_models.GroupRefInput, 0),
-			//      Host:              make([]*cato_models.HostRefInput, 0),
-			//      IP:                make([]string, 0),
-			//      IPRange:           make([]*cato_models.IPAddressRangeInput, 0),
-			//      NetworkInterface:  make([]*cato_models.NetworkInterfaceRefInput, 0),
-			//      Site:              make([]*cato_models.SiteRefInput, 0),
-			//      SiteNetworkSubnet: make([]*cato_models.SiteNetworkSubnetRefInput, 0),
-			//      Subnet:            make([]string, 0),
-			//      SystemGroup:       make([]*cato_models.SystemGroupRefInput, 0),
-			//      User:              make([]*cato_models.UserRefInput, 0),
-			//      UsersGroup:        make([]*cato_models.UsersGroupRefInput, 0),
-			// }
 		}
 
 		// setting country

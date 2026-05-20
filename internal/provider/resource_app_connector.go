@@ -155,7 +155,7 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 	}
 }
 
-func (r *appConnectorResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *appConnectorResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -384,8 +384,8 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr appConnec
 		Timezone:    types.StringValue(addr.Timezone),
 	}
 
-	locObj, diag := types.ObjectValueFrom(ctx, AppConnectorLocationTypes, tfLocation)
-	diags.Append(diag...)
+	locObj, objDiags := types.ObjectValueFrom(ctx, AppConnectorLocationTypes, tfLocation)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(AppConnectorLocationTypes)
 	}
@@ -396,7 +396,7 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr appConnec
 func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appConnectorPreferredPopLocation,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 
 	if loc == nil {
 		return types.ObjectNull(PreferredPopLocationModelTypes)
@@ -416,8 +416,8 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appCon
 		tfLocation.Secondary = parse.ParseIDRef(ctx, *loc.Secondary, diags)
 	}
 
-	locObj, diag := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
-	diags.Append(diag...)
+	locObj, objDiags := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(PreferredPopLocationModelTypes)
 	}

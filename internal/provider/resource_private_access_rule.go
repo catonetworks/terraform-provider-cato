@@ -347,7 +347,7 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 	}
 }
 
-func (r *privAccessRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *privAccessRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -584,8 +584,8 @@ func (r *privAccessRuleResource) parseSource(
 		Users:      parse.ParseIDRefSet(ctx, src.User, diags),
 		UserGroups: parse.ParseIDRefSet(ctx, src.UsersGroup, diags),
 	}
-	obj, diag := types.ObjectValueFrom(ctx, SourceTypes, tfSource)
-	diags.Append(diag...)
+	obj, objDiags := types.ObjectValueFrom(ctx, SourceTypes, tfSource)
+	diags.Append(objDiags...)
 	return obj
 }
 
@@ -811,7 +811,11 @@ func (r *privAccessRuleResource) prepareUserAttributesUpdate(
 	}
 }
 
-func (r *privAccessRuleResource) prepareSchedule(ctx context.Context, sch types.Object, diags *diag.Diagnostics) *cato_models.PolicyScheduleInput {
+func (r *privAccessRuleResource) prepareSchedule(
+	ctx context.Context,
+	sch types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.PolicyScheduleInput {
 	schedule := cato_models.PolicyScheduleInput{
 		ActiveOn: cato_models.PolicyActiveOnEnumAlways,
 	}
@@ -966,7 +970,11 @@ func (r *privAccessRuleResource) prepareActionUpdate(action types.String) *cato_
 	return &cato_models.PrivateAccessPolicyActionUpdateInput{Action: ptr(cato_models.PrivateAccessPolicyActionEnum(action.ValueString()))}
 }
 
-func (r *privAccessRuleResource) prepareDevice(ctx context.Context, devs types.Set, diags *diag.Diagnostics) []*cato_models.DeviceProfileRefInput {
+func (r *privAccessRuleResource) prepareDevice(
+	ctx context.Context,
+	devs types.Set,
+	diags *diag.Diagnostics,
+) []*cato_models.DeviceProfileRefInput {
 	return parse.PrepareIDRefSet[cato_models.DeviceProfileRefInput](ctx, devs, diags, "rule.devices")
 }
 
@@ -975,14 +983,14 @@ func (r *privAccessRuleResource) parseTracking(
 	tr privateAccessRuleTracking,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 
 	// Prepare Tracking.Event object
 	tfEvent := PolicyRuleTrackingEvent{
 		Enabled: types.BoolValue(tr.Event.Enabled),
 	}
-	eventObj, diag := types.ObjectValueFrom(ctx, PolicyRuleTrackingEventTypes, tfEvent)
-	diags.Append(diag...)
+	eventObj, objDiags := types.ObjectValueFrom(ctx, PolicyRuleTrackingEventTypes, tfEvent)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(PolicyRuleTrackingTypes)
 	}
@@ -1001,8 +1009,8 @@ func (r *privAccessRuleResource) parseTracking(
 		SubscriptionGroup: subscriptionGroup,
 		Webhook:           webHook,
 	}
-	alertObj, diag := types.ObjectValueFrom(ctx, PolicyRuleTrackingAlertTypes, tfAlert)
-	diags.Append(diag...)
+	alertObj, objDiags := types.ObjectValueFrom(ctx, PolicyRuleTrackingAlertTypes, tfAlert)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(PolicyRuleTrackingTypes)
 	}
@@ -1012,8 +1020,8 @@ func (r *privAccessRuleResource) parseTracking(
 		Event: eventObj,
 		Alert: alertObj,
 	}
-	trackingObj, diag := types.ObjectValueFrom(ctx, PolicyRuleTrackingTypes, tfTracking)
-	diags.Append(diag...)
+	trackingObj, objDiags := types.ObjectValueFrom(ctx, PolicyRuleTrackingTypes, tfTracking)
+	diags.Append(objDiags...)
 
 	return trackingObj
 }
@@ -1023,15 +1031,15 @@ func (r *privAccessRuleResource) parseUserAttributes(
 	ua privateAccessRuleUserAttributes,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 
 	// Prepare UserAttributes.RiskScore object
 	tfRiskScore := RiskScore{
 		Category: types.StringValue(string(ua.RiskScore.Category)),
 		Operator: types.StringValue(string(ua.RiskScore.Operator)),
 	}
-	riskScoreObj, diag := types.ObjectValueFrom(ctx, RiskScoreTypes, tfRiskScore)
-	diags.Append(diag...)
+	riskScoreObj, objDiags := types.ObjectValueFrom(ctx, RiskScoreTypes, tfRiskScore)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(UserAttributesTypes)
 	}
@@ -1040,8 +1048,8 @@ func (r *privAccessRuleResource) parseUserAttributes(
 	tfUserAttributes := UserAttributes{
 		RiskScore: riskScoreObj,
 	}
-	userAttrObj, diag := types.ObjectValueFrom(ctx, UserAttributesTypes, tfUserAttributes)
-	diags.Append(diag...)
+	userAttrObj, objDiags := types.ObjectValueFrom(ctx, UserAttributesTypes, tfUserAttributes)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(PolicyRuleTrackingTypes)
 	}
@@ -1054,7 +1062,7 @@ func (r *privAccessRuleResource) parsePolicySchedule(
 	sch privateAccessRuleSchedule,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 
 	// Prepare PolicySchedule.PolicyCustomRecurring object
 	recurringObj := types.ObjectNull(PolicyCustomRecurringTypes)
@@ -1064,8 +1072,8 @@ func (r *privAccessRuleResource) parsePolicySchedule(
 			From: types.StringValue(string(sch.CustomRecurring.From)),
 			To:   types.StringValue(string(sch.CustomRecurring.To)),
 		}
-		recurringObj, diag = types.ObjectValueFrom(ctx, PolicyCustomRecurringTypes, tfRecurring)
-		diags.Append(diag...)
+		recurringObj, objDiags = types.ObjectValueFrom(ctx, PolicyCustomRecurringTypes, tfRecurring)
+		diags.Append(objDiags...)
 		if diags.HasError() {
 			return types.ObjectNull(PolicyScheduleTypes)
 		}
@@ -1075,11 +1083,11 @@ func (r *privAccessRuleResource) parsePolicySchedule(
 	timeframeObj := types.ObjectNull(PolicyCustomTimeframeTypes)
 	if sch.CustomTimeframe != nil {
 		tfTimeframe := PolicyCustomTimeframe{
-			From: types.StringValue(parse.NormalizeDateTime(string(sch.CustomTimeframe.From))),
-			To:   types.StringValue(parse.NormalizeDateTime(string(sch.CustomTimeframe.To))),
+			From: types.StringValue(parse.NormalizeDateTime(sch.CustomTimeframe.From)),
+			To:   types.StringValue(parse.NormalizeDateTime(sch.CustomTimeframe.To)),
 		}
-		timeframeObj, diag = types.ObjectValueFrom(ctx, PolicyCustomTimeframeTypes, tfTimeframe)
-		diags.Append(diag...)
+		timeframeObj, objDiags = types.ObjectValueFrom(ctx, PolicyCustomTimeframeTypes, tfTimeframe)
+		diags.Append(objDiags...)
 		if diags.HasError() {
 			return types.ObjectNull(PolicyScheduleTypes)
 		}
@@ -1091,8 +1099,8 @@ func (r *privAccessRuleResource) parsePolicySchedule(
 		CustomRecurring: recurringObj,
 		CustomTimeframe: timeframeObj,
 	}
-	scheduleObj, diag := types.ObjectValueFrom(ctx, PolicyScheduleTypes, tfSchedule)
-	diags.Append(diag...)
+	scheduleObj, objDiags := types.ObjectValueFrom(ctx, PolicyScheduleTypes, tfSchedule)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(PolicyScheduleTypes)
 	}
@@ -1105,7 +1113,7 @@ func (r *privAccessRuleResource) parsePolicyActivePeriod(
 	ap privateAccessRuleActivePeriod,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 
 	// Prepare Active Period
 	tfActivePeriod := PolicyRuleActivePeriod{
@@ -1114,8 +1122,8 @@ func (r *privAccessRuleResource) parsePolicyActivePeriod(
 		UseEffectiveFrom: types.BoolValue(ap.UseEffectiveFrom),
 		UseExpiresAt:     types.BoolValue(ap.UseExpiresAt),
 	}
-	periodObj, diag := types.ObjectValueFrom(ctx, PolicyRuleActivePeriodTypes, tfActivePeriod)
-	diags.Append(diag...)
+	periodObj, objDiags := types.ObjectValueFrom(ctx, PolicyRuleActivePeriodTypes, tfActivePeriod)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(PolicyRuleActivePeriodTypes)
 	}

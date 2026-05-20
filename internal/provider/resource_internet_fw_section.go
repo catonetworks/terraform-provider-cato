@@ -97,7 +97,7 @@ func (r *internetFwSectionResource) Schema(_ context.Context, _ resource.SchemaR
 	}
 }
 
-func (r *internetFwSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *internetFwSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -110,7 +110,7 @@ func (r *internetFwSectionResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *internetFwSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InternetFirewallSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -226,7 +226,7 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetInternetFirewall().GetAddSection().Section.GetSection().ID)
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetInternetFirewall().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -272,12 +272,12 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 	sectionList := body.GetPolicy().InternetFirewall.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.Id.ValueString() {
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
 			continue
 		}
 
 		sectionExist = true
-		state.Id = types.StringValue(sectionListItem.GetSection().ID)
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
 		curSectionObj, diagstmp := types.ObjectValue(
 			NameIDAttrTypes,
 			map[string]attr.Value{
@@ -316,7 +316,7 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 	}
 }
 
-// nolint:funlen
+//nolint:funlen
 func (r *internetFwSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan InternetFirewallSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -336,7 +336,7 @@ func (r *internetFwSectionResource) Update(ctx context.Context, req resource.Upd
 		resp.Diagnostics.Append(diags...)
 
 		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.Id.ValueString()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
 	}
 
 	// Setting at
@@ -457,7 +457,7 @@ func (r *internetFwSectionResource) Delete(ctx context.Context, req resource.Del
 	}
 
 	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.Id.ValueString(),
+		ID: section.ID.ValueString(),
 	}
 
 	policyInternetFirewallRemoveSectionResponse, err := r.client.catov2.PolicyInternetFirewallRemoveSection(

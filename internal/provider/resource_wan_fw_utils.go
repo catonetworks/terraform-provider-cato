@@ -67,7 +67,7 @@ func correlateWanExceptions(ctx context.Context, planExceptions types.Set, respo
 }
 
 // findCorrespondingWanResponseElement finds the response element that corresponds to the given plan element
-func findCorrespondingWanResponseElement(ctx context.Context, planObj types.Object, responseElements []attr.Value) *types.Object {
+func findCorrespondingWanResponseElement(_ context.Context, planObj types.Object, responseElements []attr.Value) *types.Object {
 	planAttrs := planObj.Attributes()
 
 	// Use exception name as the primary identifier
@@ -102,48 +102,6 @@ func findCorrespondingWanResponseElement(ctx context.Context, planObj types.Obje
 		if !responseNameStr.IsNull() && !responseNameStr.IsUnknown() &&
 			responseNameStr.ValueString() == planNameStr.ValueString() {
 			return &responseObj
-		}
-	}
-
-	return nil
-}
-
-// findCorrespondingWanPlanElement finds the plan element that corresponds to the given response element
-func findCorrespondingWanPlanElement(ctx context.Context, responseObj types.Object, planElements []attr.Value) *types.Object {
-	responseAttrs := responseObj.Attributes()
-
-	// Use exception name as the primary identifier
-	responseName, nameExists := responseAttrs["name"]
-	if !nameExists {
-		return nil
-	}
-
-	responseNameStr, ok := responseName.(types.String)
-	if !ok || responseNameStr.IsNull() || responseNameStr.IsUnknown() {
-		return nil
-	}
-
-	for _, planElement := range planElements {
-		planObj, ok := planElement.(types.Object)
-		if !ok {
-			continue
-		}
-
-		planAttrs := planObj.Attributes()
-		planName, exists := planAttrs["name"]
-		if !exists {
-			continue
-		}
-
-		planNameStr, ok := planName.(types.String)
-		if !ok {
-			continue
-		}
-
-		// Match by name (primary identifier for exceptions)
-		if !planNameStr.IsNull() && !planNameStr.IsUnknown() &&
-			planNameStr.ValueString() == responseNameStr.ValueString() {
-			return &planObj
 		}
 	}
 
@@ -385,7 +343,7 @@ func correlateWanSetElements(
 
 // findWanElementByName finds an element in the list by matching the name or ID field
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func findWanElementByName(ctx context.Context, targetObj types.Object, elements []attr.Value) *types.Object {
 	targetAttrs := targetObj.Attributes()
 

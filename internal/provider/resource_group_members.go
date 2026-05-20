@@ -102,7 +102,7 @@ func (r *groupMembersResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *groupMembersResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *groupMembersResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -115,7 +115,7 @@ func (r *groupMembersResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// nolint:gocyclo
+//nolint:gocyclo
 func (r *groupMembersResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan GroupMembers
 	diags := req.Plan.Get(ctx, &plan)
@@ -220,7 +220,7 @@ func (r *groupMembersResource) Create(ctx context.Context, req resource.CreateRe
 	}
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *groupMembersResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan GroupMembers
 	diags := req.Plan.Get(ctx, &plan)
@@ -406,7 +406,6 @@ func (r *groupMembersResource) Update(ctx context.Context, req resource.UpdateRe
 }
 
 func (r *groupMembersResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state GroupMembers
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -438,7 +437,6 @@ func (r *groupMembersResource) Read(ctx context.Context, req resource.ReadReques
 }
 
 func (r *groupMembersResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state GroupMembers
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -517,7 +515,7 @@ func (r *groupMembersResource) Delete(ctx context.Context, req resource.DeleteRe
 // hydrateGroupMembersState fetches the current state of group members from the API
 // It only includes members that are in the planMembers set
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func (r *groupMembersResource) hydrateGroupMembersState(
 	ctx context.Context,
 	groupID string,

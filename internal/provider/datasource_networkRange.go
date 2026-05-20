@@ -94,7 +94,7 @@ func (d *networkRangesDataSource) Schema(_ context.Context, _ datasource.SchemaR
 	}
 }
 
-func (d *networkRangesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *networkRangesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -102,7 +102,7 @@ func (d *networkRangesDataSource) Configure(_ context.Context, req datasource.Co
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var networkRangesDataSource NetworkRangeLookup
 	if diags := req.Config.Get(ctx, &networkRangesDataSource); diags.HasError() {

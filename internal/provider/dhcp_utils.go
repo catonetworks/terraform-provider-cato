@@ -12,7 +12,7 @@ import (
 
 // checkForDhcpRelayGroup validates DHCP relay group configuration and returns the relay group ID
 //
-// nolint:gocyclo
+//nolint:gocyclo
 func checkForDhcpRelayGroup(
 	ctx context.Context,
 	client *catoClientData,

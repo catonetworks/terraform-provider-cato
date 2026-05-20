@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func hydrateTLSRuleState(
 	ctx context.Context,
 	state TLSInspectionRule,
@@ -208,7 +208,7 @@ func hydrateTLSRuleState(
 }
 
 // parseTLSInspectCategory handles the TLS inspection category field
-func parseTLSInspectCategory(ctx context.Context, category interface{}) types.String {
+func parseTLSInspectCategory(_ context.Context, category interface{}) types.String {
 	if category == nil {
 		return types.StringNull()
 	}

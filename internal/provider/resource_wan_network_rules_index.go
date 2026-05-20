@@ -1,4 +1,4 @@
-// nolint:lll
+//nolint:lll
 package provider
 
 import (
@@ -239,7 +239,7 @@ func (r *wanNetworkRulesIndexResource) Delete(ctx context.Context, req resource.
 	resp.State.RemoveResource(ctx)
 }
 
-// nolint:gocyclo,funlen
+//nolint:gocyclo,funlen
 func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 	ctx context.Context,
 	plan WanNetworkRulesIndex,
