@@ -8,16 +8,18 @@ import (
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
+
+const site_id = "site-1"
 
 func TestNewNetworkRangeResource(t *testing.T) {
 	t.Parallel()
@@ -352,7 +354,7 @@ func TestGetSiteIDFromNetworkRange(t *testing.T) {
 					{
 						Entity: cato.EntityLookup_EntityLookup_Items_Entity{ID: "nr-1", Type: cato_models.EntityType("siteRange")},
 						HelperFields: map[string]any{
-							"siteId":        "site-1",
+							"siteId":        site_id,
 							"interfaceName": "LAN 1",
 						},
 					},
@@ -370,7 +372,7 @@ func TestGetSiteIDFromNetworkRange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if siteID != "site-1" {
+	if siteID != site_id {
 		t.Fatalf("expected site-1, got %q", siteID)
 	}
 	if interfaceName != "LAN 1" {
@@ -449,20 +451,20 @@ func nonNullRawValue(t *testing.T) tftypes.Value {
 }
 
 type networkRangeModel struct {
-	Id             types.String
-	SiteId         types.String
-	InterfaceId    types.String
-	InterfaceIndex types.String
-	Name           types.String
-	RangeType      types.String
-	Subnet         types.String
-	LocalIp        types.String
-	Gateway        types.String
+	Id               types.String
+	SiteId           types.String
+	InterfaceId      types.String
+	InterfaceIndex   types.String
+	Name             types.String
+	RangeType        types.String
+	Subnet           types.String
+	LocalIp          types.String
+	Gateway          types.String
 	TranslatedSubnet types.String
-	DhcpSettings   types.Object
-	InternetOnly   types.Bool
-	MdnsReflector  types.Bool
-	Vlan           types.Int64
+	DhcpSettings     types.Object
+	InternetOnly     types.Bool
+	MdnsReflector    types.Bool
+	Vlan             types.Int64
 }
 
 func (m networkRangeModel) toResourceModel() NetworkRange {
@@ -472,7 +474,7 @@ func (m networkRangeModel) toResourceModel() NetworkRange {
 	}
 	siteID := m.SiteId
 	if siteID.IsNull() && !siteID.IsUnknown() && siteID.ValueString() == "" {
-		siteID = types.StringValue("site-1")
+		siteID = types.StringValue(site_id)
 	}
 	name := m.Name
 	if name.IsNull() && !name.IsUnknown() && name.ValueString() == "" {
