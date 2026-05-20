@@ -337,9 +337,9 @@ func hydrateIfwRuleState(
 			}
 			// /// /// /// /// end Rule -> Service // /// /// /// /// /
 
-			// Note: Internet Firewall exceptions do not have DeviceAttributes in the API response
-			// Always set device_attributes to null for IFW exceptions
-			exceptionDeviceAttributesObj := types.ObjectNull(IfwDeviceAttrAttrTypes)
+			// Internet Firewall exceptions do not have DeviceAttributes in the API response.
+			// Preserve the configured value from state when the matching exception still exists.
+			exceptionDeviceAttributesObj := useStateExceptionDeviceAttributes(ctx, state, ruleException.Name)
 
 			// Initialize Exception object with populated values (use regular parseNameIDList like WAN firewall)
 			exceptionAttrs := map[string]attr.Value{
@@ -468,4 +468,36 @@ func hydrateIfwRuleState(
 	// /// /// /// /// end Rule -> ActivePeriod // /// /// /// /// /
 
 	return ruleInput
+}
+
+func useStateExceptionDeviceAttributes(ctx context.Context, state InternetFirewallRule, exceptionName string) types.Object {
+	if state.Rule.IsNull() || state.Rule.IsUnknown() {
+		return types.ObjectNull(IfwDeviceAttrAttrTypes)
+	}
+	var ruleState Policy_Policy_InternetFirewall_Policy_Rules_Rule
+	diags := make(diag.Diagnostics, 0)
+	diagstmp := state.Rule.As(ctx, &ruleState, basetypes.ObjectAsOptions{})
+	diags = append(diags, diagstmp...)
+	if diags.HasError() {
+		return types.ObjectNull(IfwDeviceAttrAttrTypes)
+	}
+
+	if ruleState.Exceptions.IsNull() || ruleState.Exceptions.IsUnknown() {
+		return types.ObjectNull(IfwDeviceAttrAttrTypes)
+	}
+
+	var exceptions []Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions
+	diagstmp = ruleState.Exceptions.ElementsAs(ctx, &exceptions, false)
+	diags = append(diags, diagstmp...)
+	if diags.HasError() {
+		return types.ObjectNull(IfwDeviceAttrAttrTypes)
+	}
+
+	for _, exception := range exceptions {
+		if exception.Name.ValueString() == exceptionName {
+			return exception.DeviceAttributes
+		}
+	}
+
+	return types.ObjectNull(IfwDeviceAttrAttrTypes)
 }
