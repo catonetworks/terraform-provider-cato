@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.76 (2026-05-19)
+- Fixed ID/name handling for internet firewall rule exceptions and added focused parser unit coverage.
+- Simplified internet firewall rule reference parsing by moving shared logic into the parser package.
+- Added release preparation and publishing skills for the provider release workflow.
+- Added unit test authoring guidance and reference material for provider resource and data source tests.
+- Added and refined agent workflow documentation, including testing, vulnerability checks, skill paths, and acceptance-test guidance.
+
 ## 0.0.75 (2026-05-18)
 - Fixed license handling for accounts with more than 1,000 sites and added defensive unit coverage.
 - Fixed `translated_subnet` handling for network range, LAN interface, and socket site native ranges to submit nil values correctly when unset.
