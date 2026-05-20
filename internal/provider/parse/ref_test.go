@@ -94,7 +94,7 @@ func TestNormalizeDateTimePtr(t *testing.T) {
 	})
 }
 
-func TestIdNameModifierDescriptions(t *testing.T) {
+func TestIDNameModifierDescriptions(t *testing.T) {
 	const descr = "Once set, the value of this attribute in state will not change."
 	m := idNamePlanModifier{}
 	ctx := context.Background()
@@ -108,7 +108,7 @@ func TestIdNameModifierDescriptions(t *testing.T) {
 	}
 }
 
-func TestIdNamePlanModifierPlanModifyObject(t *testing.T) {
+func TestIDNamePlanModifierPlanModifyObject(t *testing.T) {
 	t.Run("unknown config value is ignored", func(t *testing.T) {
 		m := idNamePlanModifier{}
 		resp := &planmodifier.ObjectResponse{}

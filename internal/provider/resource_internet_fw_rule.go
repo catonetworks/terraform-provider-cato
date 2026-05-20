@@ -71,15 +71,15 @@ func (r *internetFwRuleResource) Metadata(_ context.Context, req resource.Metada
 //nolint:funlen,lll
 func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_if_rule` resource contains the configuration parameters necessary to add rule to the Internet Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413273486865-What-is-the-Cato-Internet-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addRule).",
+		Description: "The `cato_if_rule` resource contains the configuration parameters necessary to add rule to the Internet Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413273486865-What-is-the-Cato-Internet-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
-				Description: "Position of the rule in the policy (https:// api.catonetworks.com/documentation/#definition-PolicyRulePositionInput)",
+				Description: "Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionInput)",
 				Required:    true,
 				Optional:    false,
 				Attributes: map[string]schema.Attribute{
 					"position": schema.StringAttribute{
-						Description: "Position relative to a policy, a section or another rule (https:// api.catonetworks.com/documentation/#definition-PolicyRulePositionEnum)",
+						Description: "Position relative to a policy, a section or another rule (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionEnum)",
 						Required:    true,
 						Optional:    false,
 						Validators: []validator.String{
@@ -94,7 +94,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				},
 			},
 			"rule": schema.SingleNestedAttribute{
-				Description: "Parameters for the rule you are adding (https:// api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput)",
+				Description: "Parameters for the rule you are adding (https://api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput)",
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
@@ -176,7 +176,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"source": schema.SingleNestedAttribute{
-						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https:// api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput)",
+						Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput)",
 						Required:    true,
 						Optional:    false,
 						PlanModifiers: []planmodifier.Object{
@@ -601,7 +601,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"connection_origin": schema.StringAttribute{
-						Description: "Connection origin of the traffic (https:// api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
+						Description: "Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 						Optional:    true,
 						Required:    false,
 						PlanModifiers: []planmodifier.String{
@@ -684,7 +684,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 					},
 					"device_os": schema.ListAttribute{
 						ElementType: types.StringType,
-						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
+						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 						Optional:    true,
 						Required:    false,
 					},
@@ -771,7 +771,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"destination": schema.SingleNestedAttribute{
-						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https:// api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput)",
+						Description: "Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput)",
 						Optional:    false,
 						Required:    true,
 						PlanModifiers: []planmodifier.Object{
@@ -1171,7 +1171,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
+											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
 											Required:    false,
 											Optional:    true,
 										},
@@ -1181,7 +1181,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 					},
 					"action": schema.StringAttribute{
-						Description: "The action applied by the Internet Firewall if the rule is matched (https:// api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
+						Description: "The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT", "RBI", "CAPTIVE_PORTAL"),
@@ -1225,7 +1225,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Default:  booldefault.StaticBool(false),
 									},
 									"frequency": schema.StringAttribute{
-										Description: "Returns data for the alert frequency (https:// api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
+										Description: "Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
 										Optional:    true,
 										Required:    false,
 										Validators: []validator.String{
@@ -1356,7 +1356,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						},
 						Attributes: map[string]schema.Attribute{
 							"active_on": schema.StringAttribute{
-								Description: "Define when the rule is active (https:// api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
+								Description: "Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
 								Required:    false,
 								Optional:    true,
 								Computed:    true,
@@ -1407,7 +1407,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 									"days": schema.ListAttribute{
 										ElementType: types.StringType,
-										Description: "(https:// api.catonetworks.com/documentation/#definition-DayOfWeek)",
+										Description: "(https://api.catonetworks.com/documentation/#definition-DayOfWeek)",
 										Required:    false,
 										Optional:    true,
 										Validators: []validator.List{
@@ -1725,7 +1725,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 								"device_os": schema.ListAttribute{
 									ElementType: types.StringType,
-									Description: "Source device OS matching criteria for the exception. (https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
+									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
 									Required:    false,
 									PlanModifiers: []planmodifier.List{
@@ -1944,7 +1944,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														},
 													},
 													"protocol": schema.StringAttribute{
-														Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
+														Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
 														Required:    false,
 														Optional:    true,
 													},
@@ -1954,7 +1954,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 								},
 								"connection_origin": schema.StringAttribute{
-									Description: "Connection origin matching criteria for the exception. (https:// api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
+									Description: "Connection origin matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 									Optional:    true,
 									Computed:    true,
 									Required:    false,
