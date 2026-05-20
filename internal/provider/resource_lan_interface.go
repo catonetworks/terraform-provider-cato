@@ -79,7 +79,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				},
 			},
 			"dest_type": schema.StringAttribute{
-				Description: "SocketInterface destination type (https:// api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
+				Description: "SocketInterface destination type (https://api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
 				Required:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(
@@ -108,7 +108,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 			},
 			"vrrp_type": schema.StringAttribute{
-				Description: "VRRP Type (https:// api.catonetworks.com/documentation/#definition-VrrpType)",
+				Description: "VRRP Type (https://api.catonetworks.com/documentation/#definition-VrrpType)",
 				Required:    false,
 				Optional:    true,
 				Validators: []validator.String{
@@ -235,7 +235,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	tflog.Debug(ctx, "Iterate over network interfaces to match interfaceID '"+plan.InterfaceID.ValueString()+"' to retrieve numeric networkInterfaceID")
 	for _, item := range queryInterfaceResult.GetEntityLookup().GetItems() {
 		helperFields := item.GetHelperFields()
-		interfaceID := cast.ToString(helperFields["interfaceID"])
+		interfaceID := cast.ToString(helperFields["interfaceId"])
 		if _, err := cast.ToIntE(interfaceID); err == nil {
 			interfaceID = fmt.Sprintf("INT_%v", interfaceID)
 		}
@@ -464,8 +464,8 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 		}
 		tflog.Debug(ctx, "Checking for reservedInterface of LAN on socket, if reservedInterface, gracefully failing deleting resource from state.", map[string]interface{}{
 			"isReservedInterface": utils.InterfaceToJSONString(reservedInterface),
-			"InterfaceID":         utils.InterfaceToJSONString(cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString())),
-			"SiteID":              utils.InterfaceToJSONString(state.SiteID.ValueString()),
+			"InterfaceId":         utils.InterfaceToJSONString(cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString())),
+			"SiteId":              utils.InterfaceToJSONString(state.SiteID.ValueString()),
 		})
 		if !reservedInterface {
 			resp.Diagnostics.AddError(
