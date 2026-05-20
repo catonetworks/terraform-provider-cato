@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.77 (2026-05-20)
+- Fixed IF rule device attributes.
+
 ## 0.0.76 (2026-05-19)
 - Fixed ID/name handling for internet firewall rule exceptions and added focused parser unit coverage.
 - Simplified internet firewall rule reference parsing by moving shared logic into the parser package.
