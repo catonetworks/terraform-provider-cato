@@ -461,82 +461,57 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"ruleNameIDMap": utils.InterfaceToJSONString(ruleNameIDMap),
 		})
 
-		// loop through the ordered list of section names
-		for _, sectionNameItem := range listOfSectionNames {
-			tflog.Warn(ctx, "Read.ProcessingSectionFromList.response", map[string]interface{}{
-				"sectionNameItem": sectionNameItem,
-				"ruleNameIDMap":   utils.InterfaceToJSONString(listOfSectionNames),
-			})
-
-			// for easier processing and visualization, we are creating two maps
-			// 1 - mapRuleIndexToRuleName
-			//   this maps the rule index in section to the rule name
-			// 2 - mapRuleIndexToSectionName
-			//  this maps the rule index in section to the section name
-			mapRuleIndexToRuleName := make(map[int64]string)
-			mapRuleIndexToSectionName := make(map[int64]string)
-
-			for _, ruleItemFromPlan := range ruleListFromPlan {
-				tflog.Warn(ctx, "Read.CompareruleItemFromPlanAndruleListFromPlan", map[string]interface{}{
-					"ruleItemFromPlan.SectionName": ruleItemFromPlan.SectionName,
-					"sectionNameItem":              sectionNameItem,
-				})
-				if ruleItemFromPlan.SectionName == sectionNameItem {
-					// section name -> rule index order -> rule name
-					mapRuleIndexToRuleName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.RuleName
-					mapRuleIndexToSectionName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.SectionName
-					tflog.Warn(ctx, "Read.mapRuleIndexToRuleName.response", map[string]interface{}{
-						"ruleItemFromPlan.IndexInSection":   ruleItemFromPlan.IndexInSection,
-						"ruleItemFromPlan.RuleName":         ruleItemFromPlan.RuleName,
-						"mapInternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-					})
-				}
+		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(listOfSectionNames))
+		sectionRules := make(map[string][]*cato_models.PolicyReorderRuleInput, len(listOfSectionNames))
+		for _, ruleItemFromPlan := range ruleListFromPlan {
+			ruleID, ok := ruleNameIDMap[ruleItemFromPlan.RuleName]
+			if !ok {
+				err := errors.New("failed to resolve rule ID for reorder operation")
+				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 			}
-
-			tflog.Warn(ctx, "Read.mapRuleIndexToSectionName.response", map[string]interface{}{
-				"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
+			sectionRules[ruleItemFromPlan.SectionName] = append(sectionRules[ruleItemFromPlan.SectionName], &cato_models.PolicyReorderRuleInput{
+				Ref: &cato_models.PolicyElementRefInput{
+					By:    cato_models.ObjectRefByID,
+					Input: ruleID,
+				},
 			})
-
-			currentRuleID := ""
-			for x := 1; x < len(mapRuleIndexToRuleName)+1; x++ {
-				toPosition := &cato_models.PolicyRulePositionInput{}
-				if x == 1 {
-					pos := ifwRulePositionFirstInSection
-					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					firstSectionID := sectionIDList[mapRuleIndexToSectionName[1]]
-					toPosition.Ref = &firstSectionID
-				} else {
-					pos := ifwRulePositionAfterRule
-					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					currentRuleID = ruleNameIDMap[mapRuleIndexToRuleName[int64(x)-1]]
-					toPosition.Ref = &currentRuleID
-					tflog.Warn(ctx, "Read.sectionIDList[mapRuleIndexToSectionName[1]].response", map[string]interface{}{
-						"mapRuleIndexToSectionName":         mapRuleIndexToRuleName,
-						"currentRuleId":                     currentRuleID,
-						"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-						"ruleNameIDMap":                     utils.InterfaceToJSONString(ruleNameIDMap),
-					})
+		}
+		for _, sectionName := range listOfSectionNames {
+			reorderSections = append(reorderSections, &cato_models.PolicyReorderSectionInput{
+				Ref: &cato_models.PolicyElementRefInput{
+					By:    cato_models.ObjectRefByID,
+					Input: sectionIDList[sectionName],
+				},
+				Rules: sectionRules[sectionName],
+			})
+		}
+		reorderInput := cato_models.PolicyReorderInput{
+			Sections: reorderSections,
+		}
+		reorderResult, err := r.client.catov2.PolicyWanFirewallReorderPolicy(ctx, nil, reorderInput, r.client.AccountId)
+		if err != nil {
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"Catov2 API PolicyWanFirewallReorderPolicy error",
+				err.Error(),
+			))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+		}
+		reorderPayload := reorderResult.GetPolicy().GetWanFirewall().GetReorderPolicy()
+		if reorderPayload != nil && reorderPayload.GetStatus() != nil && *reorderPayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+			apiErrors := reorderPayload.GetErrors()
+			if len(apiErrors) > 0 {
+				errMsg := "reorder policy failed with api error"
+				if apiErrors[0].GetErrorMessage() != nil {
+					errMsg = *apiErrors[0].GetErrorMessage()
 				}
-
-				moveRuleConfig := cato_models.PolicyMoveRuleInput{
-					ID: ruleNameIDMap[mapRuleIndexToRuleName[int64(x)]],
-					To: toPosition,
-				}
-				ruleMoveAPIData, err := r.client.catov2.PolicyWanFirewallMoveRule(ctx, moveRuleConfig, r.client.AccountId)
-				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveRule.response", map[string]interface{}{
-					"ruleNameIDMap":             utils.InterfaceToJSONString(ruleNameIDMap),
-					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-					"moveRuleConfig":            utils.InterfaceToJSONString(moveRuleConfig),
-					"response":                  utils.InterfaceToJSONString(ruleMoveAPIData),
-				})
-				if err != nil {
-					diags = append(diags, diag.NewErrorDiagnostic(
-						"Catov2 API EntityLookup error",
-						err.Error(),
-					))
-					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-				}
+				err := errors.New(errMsg)
+				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 			}
+			err := errors.New("reorder policy failed")
+			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 
 		// Now create the rule objects map with proper IDs from the API
