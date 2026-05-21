@@ -61,7 +61,9 @@ func (r *internetFwSubPolicyResource) Configure(_ context.Context, req resource.
 
 func (r *internetFwSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages Internet Firewall sub-policy container. This resource only manages the sub-policy object. Sub-rules are managed via separate IF rule resources that reference this sub-policy.",
+		Description: "Manages Internet Firewall sub-policy container. " +
+			"This resource only manages the sub-policy object. " +
+			"Sub-rules are managed via separate IF rule resources that reference this sub-policy.",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
 				Required: true,
@@ -187,7 +189,7 @@ func (r *internetFwSubPolicyResource) Read(ctx context.Context, req resource.Rea
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (r *internetFwSubPolicyResource) Update(ctx context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *internetFwSubPolicyResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
 	resp.Diagnostics.AddError(
 		"Update not supported",
 		"Internet Firewall sub-policy attributes require replacement. Terraform should replace this resource when policy attributes change.",
@@ -213,7 +215,11 @@ func (r *internetFwSubPolicyResource) Delete(ctx context.Context, req resource.D
 	}
 }
 
-func (r *internetFwSubPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *internetFwSubPolicyResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("policy").AtName("id"), req, resp)
 }
 
@@ -261,7 +267,12 @@ type ifwSubPolicyPayload struct {
 	} `json:"policy"`
 }
 
-const mutationIfwAddSubPolicy = `mutation policyInternetFirewallAddSubPolicy($internetFirewallPolicyMutationInput: InternetFirewallPolicyMutationInput, $input: InternetFirewallAddSubPolicyInput!, $accountId: ID!) {
+const mutationIfwAddSubPolicy = `
+mutation policyInternetFirewallAddSubPolicy(
+  $internetFirewallPolicyMutationInput: InternetFirewallPolicyMutationInput,
+  $input: InternetFirewallAddSubPolicyInput!,
+  $accountId: ID!
+) {
   policy(accountId: $accountId) {
     internetFirewall(input: $internetFirewallPolicyMutationInput) {
       addSubPolicy(input: $input) {
@@ -290,7 +301,12 @@ const queryIfwSubPolicies = `query internetFirewallSubPolicies($accountId: ID!) 
   }
 }`
 
-const mutationIfwRemoveSubPolicy = `mutation policyInternetFirewallRemoveSubPolicy($internetFirewallPolicyMutationInput: InternetFirewallPolicyMutationInput, $input: InternetFirewallRemoveSubPolicyInput!, $accountId: ID!) {
+const mutationIfwRemoveSubPolicy = `
+mutation policyInternetFirewallRemoveSubPolicy(
+  $internetFirewallPolicyMutationInput: InternetFirewallPolicyMutationInput,
+  $input: InternetFirewallRemoveSubPolicyInput!,
+  $accountId: ID!
+) {
   policy(accountId: $accountId) {
     internetFirewall(input: $internetFirewallPolicyMutationInput) {
       removeSubPolicy(input: $input) {
@@ -303,7 +319,11 @@ const mutationIfwRemoveSubPolicy = `mutation policyInternetFirewallRemoveSubPoli
   }
 }`
 
-func (r *internetFwSubPolicyResource) addInternetFirewallSubPolicy(ctx context.Context, at internetFwSubPolicyAtModel, policy internetFwSubPolicyPolicyModel) (*ifwAddSubPolicyResponse, error) {
+func (r *internetFwSubPolicyResource) addInternetFirewallSubPolicy(
+	ctx context.Context,
+	at internetFwSubPolicyAtModel,
+	policy internetFwSubPolicyPolicyModel,
+) (*ifwAddSubPolicyResponse, error) {
 	scopeName := policy.Name.ValueString() + " scope"
 	vars := map[string]any{
 		"accountId":                           r.client.AccountId,
@@ -317,91 +337,7 @@ func (r *internetFwSubPolicyResource) addInternetFirewallSubPolicy(ctx context.C
 				"name":        policy.Name.ValueString(),
 				"description": policy.Description.ValueString(),
 			},
-			"scope": map[string]any{
-				"name":                   scopeName,
-				"enabled":                true,
-				"action":                 "BLOCK",
-				"connectionOrigin":       "ANY",
-				"connectionsOriginList":  []string{"SITE"},
-				"connectionsOriginsList": []string{},
-				"country":                []any{},
-				"device":                 []any{},
-				"deviceOS":               []string{},
-				"exceptions":             []any{},
-				"source": map[string]any{
-					"ip":                []string{},
-					"host":              []any{},
-					"site":              []any{},
-					"subnet":            []string{},
-					"ipRange":           []any{},
-					"globalIpRange":     []any{},
-					"networkInterface":  []any{},
-					"siteNetworkSubnet": []any{},
-					"floatingSubnet":    []any{},
-					"user":              []any{},
-					"usersGroup":        []any{},
-					"group":             []any{},
-					"systemGroup":       []any{},
-				},
-				"destination": map[string]any{
-					"application":            []any{},
-					"customApp":              []any{},
-					"appCategory":            []any{},
-					"customCategory":         []any{},
-					"sanctionedAppsCategory": []any{},
-					"country":                []any{},
-					"domain":                 []string{},
-					"fqdn":                   []string{},
-					"ip":                     []string{},
-					"subnet":                 []string{},
-					"ipRange":                []any{},
-					"globalIpRange":          []any{},
-					"remoteAsn":              []string{},
-					"group":                  []any{},
-					"containers": map[string]any{
-						"fqdnContainer":           []any{},
-						"ipAddressRangeContainer": []any{},
-					},
-				},
-				"service": map[string]any{
-					"standard": []any{},
-					"custom":   []any{},
-				},
-				"tracking": map[string]any{
-					"event": map[string]any{
-						"enabled": false,
-					},
-					"alert": map[string]any{
-						"enabled":           false,
-						"frequency":         "HOURLY",
-						"subscriptionGroup": []any{},
-						"webhook":           []any{},
-						"mailingList":       []any{},
-					},
-				},
-				"activePeriod": map[string]any{
-					"useEffectiveFrom": false,
-					"useExpiresAt":     false,
-				},
-				"schedule": map[string]any{
-					"activeOn": "ALWAYS",
-				},
-				"deviceAttributes": map[string]any{
-					"category":     []string{},
-					"type":         []string{},
-					"model":        []string{},
-					"manufacturer": []string{},
-					"os":           []string{},
-					"osVersion":    []string{},
-				},
-				"userAttributes": map[string]any{
-					"riskScore": map[string]any{
-						"category": "ANY",
-						"operator": "GTE",
-					},
-					"userConfidenceLevel": "ANY",
-				},
-			},
+			"scope": buildIfwSubPolicyScope(scopeName),
 		},
 	}
 	var res ifwAddSubPolicyResponse
@@ -443,7 +379,8 @@ func (r *internetFwSubPolicyResource) removeInternetFirewallSubPolicy(ctx contex
 		return err
 	}
 	if res.Policy.InternetFirewall.RemoveSubPolicy.Status != ifwMutationStatusSuccess {
-		if len(res.Policy.InternetFirewall.RemoveSubPolicy.Errors) > 0 && res.Policy.InternetFirewall.RemoveSubPolicy.Errors[0].ErrorMessage != nil {
+		if len(res.Policy.InternetFirewall.RemoveSubPolicy.Errors) > 0 &&
+			res.Policy.InternetFirewall.RemoveSubPolicy.Errors[0].ErrorMessage != nil {
 			return errors.New(*res.Policy.InternetFirewall.RemoveSubPolicy.Errors[0].ErrorMessage)
 		}
 		return fmt.Errorf("remove sub-policy failed")
@@ -474,4 +411,92 @@ func stringOrNil(v types.String) any {
 		return nil
 	}
 	return v.ValueString()
+}
+
+func buildIfwSubPolicyScope(scopeName string) map[string]any {
+	return map[string]any{
+		"name":                   scopeName,
+		"enabled":                true,
+		"action":                 "BLOCK",
+		"connectionOrigin":       "ANY",
+		"connectionsOriginList":  []string{"SITE"},
+		"connectionsOriginsList": []string{},
+		"country":                []any{},
+		"device":                 []any{},
+		"deviceOS":               []string{},
+		"exceptions":             []any{},
+		"source": map[string]any{
+			"ip":                []string{},
+			"host":              []any{},
+			"site":              []any{},
+			"subnet":            []string{},
+			"ipRange":           []any{},
+			"globalIpRange":     []any{},
+			"networkInterface":  []any{},
+			"siteNetworkSubnet": []any{},
+			"floatingSubnet":    []any{},
+			"user":              []any{},
+			"usersGroup":        []any{},
+			"group":             []any{},
+			"systemGroup":       []any{},
+		},
+		"destination": map[string]any{
+			"application":            []any{},
+			"customApp":              []any{},
+			"appCategory":            []any{},
+			"customCategory":         []any{},
+			"sanctionedAppsCategory": []any{},
+			"country":                []any{},
+			"domain":                 []string{},
+			"fqdn":                   []string{},
+			"ip":                     []string{},
+			"subnet":                 []string{},
+			"ipRange":                []any{},
+			"globalIpRange":          []any{},
+			"remoteAsn":              []string{},
+			"group":                  []any{},
+			"containers": map[string]any{
+				"fqdnContainer":           []any{},
+				"ipAddressRangeContainer": []any{},
+			},
+		},
+		"service": map[string]any{
+			"standard": []any{},
+			"custom":   []any{},
+		},
+		"tracking": map[string]any{
+			"event": map[string]any{
+				"enabled": false,
+			},
+			"alert": map[string]any{
+				"enabled":           false,
+				"frequency":         "HOURLY",
+				"subscriptionGroup": []any{},
+				"webhook":           []any{},
+				"mailingList":       []any{},
+			},
+		},
+		"activePeriod": map[string]any{
+			"useEffectiveFrom": false,
+			"useExpiresAt":     false,
+		},
+		"schedule": map[string]any{
+			"activeOn": "ALWAYS",
+		},
+		"deviceAttributes": map[string]any{
+			"category":     []string{},
+			"type":         []string{},
+			"model":        []string{},
+			"manufacturer": []string{},
+			"os":           []string{},
+			"osVersion":    []string{},
+		},
+		"userAttributes": map[string]any{
+			"riskScore": map[string]any{
+				"category": "ANY",
+				"operator": "GTE",
+			},
+			"userConfidenceLevel": "ANY",
+		},
+	}
 }
