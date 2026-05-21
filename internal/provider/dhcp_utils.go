@@ -13,12 +13,8 @@ import (
 // checkForDhcpRelayGroup validates DHCP relay group configuration and returns the relay group ID
 //
 //nolint:gocyclo
-func checkForDhcpRelayGroup(
-	ctx context.Context,
-	client *catoClientData,
-	relayGroupName,
-	relayGroupID string,
-) (groupID string, found bool, err error) {
+func checkForDhcpRelayGroup(ctx context.Context, client *catoClientData, relayGroupName, relayGroupID string,
+) (groupNameOrID string, found bool, err error) {
 	// Add nil checks
 	if client == nil {
 		return "", false, fmt.Errorf("client is nil")
