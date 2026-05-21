@@ -28,6 +28,7 @@ var (
 const (
 	ifwRulePositionFirstInSection = "FIRST_IN_SECTION"
 	ifwRulePositionAfterRule      = "AFTER_RULE"
+	reorderPolicyAPIErrorMsg      = "reorder policy failed with api error"
 )
 
 func NewIfwRulesIndexResource() resource.Resource {
@@ -388,8 +389,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		}
 	}
 
-	listOfSectionNames := make([]string, 0)
-
 	// maps section_name -> sectionID
 	// initially used to find ID of Default section
 	sectionIDList := make(map[string]string)
@@ -469,7 +468,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 	// create the sections from the list provided following the section ID provided in firstSectionID
 	for _, workingSectionName := range sectionListFromPlan {
-		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
 		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
 			ID: sectionIDList[workingSectionName.SectionName],
 		}
@@ -753,7 +751,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		if reorderPayload != nil && reorderPayload.GetStatus() != nil && *reorderPayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
 			apiErrors := reorderPayload.GetErrors()
 			if len(apiErrors) > 0 {
-				errMsg := "reorder policy failed with api error"
+				errMsg := reorderPolicyAPIErrorMsg
 				if apiErrors[0].GetErrorMessage() != nil {
 					errMsg = *apiErrors[0].GetErrorMessage()
 				}
