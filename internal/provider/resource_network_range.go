@@ -1024,9 +1024,15 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 	// parse DHCP settings - handle both import (when state is null) and refresh cases
 	// For Routed and Direct range types, dhcp_settings should always be null
 	// The API returns DHCP values for these but they're not valid to submit
+	//
+	// IMPORTANT: If dhcp_settings was null in the input state (plan), preserve that null value
+	// This prevents "inconsistent result after apply" errors when users don't specify dhcp_settings
+	wasNullInPlan := state.DhcpSettings.IsNull()
+
 	if responseRange.DhcpSettings == nil ||
 		responseRange.RangeType == cato_models.SubnetTypeRouted ||
-		responseRange.RangeType == cato_models.SubnetTypeDirect {
+		responseRange.RangeType == cato_models.SubnetTypeDirect ||
+		wasNullInPlan {
 		state.DhcpSettings = types.ObjectNull(DhcpSettingsAttrTypes)
 	} else {
 		// Get existing state values if available for preserving computed values
