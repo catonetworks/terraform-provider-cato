@@ -101,7 +101,7 @@ type Ref struct {
 var (
 	catoClient          *cato.Client
 	testConnectorGroups []string
-	resourceRefs        map[string][]Ref = make(map[string][]Ref)
+	resourceRefs        = make(map[string][]Ref)
 
 	mu  sync.Mutex
 	ctx = context.Background()
@@ -394,12 +394,14 @@ func getFromVars(t *testing.T, varName string) []Ref {
 }
 
 func getFromEntityLookup(t *testing.T, lookupName string) []Ref {
+	const minEntities = 3
+
 	mu.Lock()
 	defer mu.Unlock()
 	refs := resourceRefs[lookupName]
 	if refs == nil {
 		refs = getEntities(t, lookupName)
-		if len(refs) < 3 {
+		if len(refs) < minEntities {
 			t.Fatalf("entity lookup faied for '%s', found just %d items", lookupName, len(refs))
 		}
 		resourceRefs[lookupName] = refs

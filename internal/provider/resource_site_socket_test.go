@@ -456,7 +456,7 @@ func newSocketSitePlanWithOptions(ctx context.Context, t *testing.T, options soc
 
 	plan := tfsdk.Plan{Schema: getSocketSiteSchema(ctx, t)}
 	diags := plan.Set(ctx, SocketSite{
-		Id:             types.StringNull(),
+		ID:             types.StringNull(),
 		Name:           types.StringValue("aws-site-01"),
 		ConnectionType: types.StringValue(valueOrDefault(options.ConnectionType, "SOCKET_AWS1500")),
 		SiteType:       types.StringValue("DATACENTER"),
@@ -469,12 +469,6 @@ func newSocketSitePlanWithOptions(ctx context.Context, t *testing.T, options soc
 	}
 
 	return plan
-}
-
-func newSocketSiteNativeRange(translatedSubnet types.String) types.Object {
-	return newSocketSiteNativeRangeWithOptions(socketSitePlanOptions{
-		TranslatedSubnet: translatedSubnet,
-	})
 }
 
 func newSocketSiteNativeRangeWithOptions(options socketSitePlanOptions) types.Object {
@@ -509,10 +503,7 @@ func newSocketSiteConfig(ctx context.Context, t *testing.T, options socketSitePl
 
 	plan := newSocketSitePlanWithOptions(ctx, t, options)
 
-	return tfsdk.Config{
-		Raw:    plan.Raw,
-		Schema: plan.Schema,
-	}
+	return tfsdk.Config(plan)
 }
 
 func newSocketSiteLocation() types.Object {

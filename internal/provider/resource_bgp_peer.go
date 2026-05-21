@@ -40,11 +40,11 @@ type bgpPeerResource struct {
 
 type BgpPeer struct {
 	ID                     types.String `tfsdk:"id"`
-	SiteId                 types.String `tfsdk:"site_id"`
+	SiteID                 types.String `tfsdk:"site_id"`
 	Name                   types.String `tfsdk:"name"`
 	PeerAsn                types.Int64  `tfsdk:"peer_asn"`
 	CatoAsn                types.Int64  `tfsdk:"cato_asn"`
-	PeerIp                 types.String `tfsdk:"peer_ip"`
+	PeerIP                 types.String `tfsdk:"peer_ip"`
 	AdvertiseDefaultRoute  types.Bool   `tfsdk:"advertise_default_route"`
 	AdvertiseAllRoutes     types.Bool   `tfsdk:"advertise_all_routes"`
 	AdvertiseSummaryRoutes types.Bool   `tfsdk:"advertise_summary_routes"`
@@ -79,12 +79,15 @@ type BgpCommunityInput struct {
 type BgpTrackingInput struct {
 	Enabled        types.Bool   `tfsdk:"enabled"`
 	AlertFrequency types.String `tfsdk:"alert_frequency"`
-	SubscriptionId types.String `tfsdk:"subscription_id"`
+	SubscriptionID types.String `tfsdk:"subscription_id"`
 }
 
-func (r *bgpPeerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+//nolint:funlen
+func (r *bgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_bgp_peer`resource contains the configuration parameters necessary to add a BGP peer to a Cato site. Documentation for the underlying API used in this resource can be found at [mutation.site.AddBgpPeerPayload()](https://api.catonetworks.com/documentation/#definition-AddBgpPeerPayload).",
+		Description: "The `cato_bgp_peer`resource contains the configuration parameters necessary to add a BGP peer to a Cato site. " +
+			"Documentation for the underlying API used in this resource can be found at " +
+			"[mutation.site.AddBgpPeerPayload()](https:// api.catonetworks.com/documentation/#definition-AddBgpPeerPayload).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Unique identifier for the BGP peer.",
@@ -110,8 +113,9 @@ func (r *bgpPeerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Required:    true,
 			},
 			"peer_ip": schema.StringAttribute{
-				Description: "The IP address of the BGP peer, this is the configured ip from the Site->IPSec Tunnel (Primary or Secondary)->Private IPs->Site",
-				Required:    true,
+				Description: "The IP address of the BGP peer, this is the configured ip from the " +
+					"Site->IPSec Tunnel (Primary or Secondary)->Private IPs->Site",
+				Required: true,
 			},
 			"advertise_default_route": schema.BoolAttribute{
 				Description: "Advertise the default route (0.0.0.0/0) if true.",
@@ -244,11 +248,11 @@ func (r *bgpPeerResource) Schema(ctx context.Context, req resource.SchemaRequest
 	}
 }
 
-func (r *bgpPeerResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *bgpPeerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_bgp_peer"
 }
 
-func (r *bgpPeerResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *bgpPeerResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -260,6 +264,7 @@ func (r *bgpPeerResource) ImportState(ctx context.Context, req resource.ImportSt
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+//nolint:gocyclo,funlen
 func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan BgpPeer
 	diags := req.Plan.Get(ctx, &plan)
@@ -272,11 +277,11 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 		Name:          plan.Name.ValueString(),
 		PeerAsn:       scalars.Asn32(plan.PeerAsn.String()),
 		CatoAsn:       scalars.Asn16(plan.CatoAsn.String()),
-		PeerIP:        plan.PeerIp.ValueString(),
+		PeerIP:        plan.PeerIP.ValueString(),
 		DefaultAction: cato_models.BgpDefaultAction(plan.DefaultAction.ValueString()),
 		Site: &cato_models.SiteRefInput{
 			By:    cato_models.ObjectRefByID,
-			Input: plan.SiteId.ValueString(),
+			Input: plan.SiteID.ValueString(),
 		},
 	}
 
@@ -349,7 +354,7 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 		resp.Diagnostics.Append(diags...)
 		trackingInput.Enabled = tracking.Enabled.ValueBool()
 		trackingInput.AlertFrequency = cato_models.PolicyRuleTrackingFrequencyEnum(tracking.AlertFrequency.ValueString())
-		trackingInput.SubscriptionID = tracking.SubscriptionId.ValueString()
+		trackingInput.SubscriptionID = tracking.SubscriptionID.ValueString()
 		input.Tracking = &trackingInput
 	}
 
@@ -380,7 +385,6 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 }
 
 func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state BgpPeer
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -424,6 +428,7 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 }
 
+//nolint:gocyclo,funlen
 func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan BgpPeer
 	diags := req.Plan.Get(ctx, &plan)
@@ -447,8 +452,8 @@ func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest
 		catoAsn := scalars.Asn16(strconv.FormatInt(plan.CatoAsn.ValueInt64(), 10))
 		input.CatoAsn = &catoAsn
 	}
-	if !plan.PeerIp.IsNull() {
-		input.PeerIP = plan.PeerIp.ValueStringPointer()
+	if !plan.PeerIP.IsNull() {
+		input.PeerIP = plan.PeerIP.ValueStringPointer()
 	}
 	if !plan.DefaultAction.IsNull() {
 		input.DefaultAction = (*cato_models.BgpDefaultAction)(plan.DefaultAction.ValueStringPointer())
@@ -521,7 +526,7 @@ func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest
 		resp.Diagnostics.Append(diags...)
 		trackingInput.Enabled = tracking.Enabled.ValueBool()
 		trackingInput.AlertFrequency = cato_models.PolicyRuleTrackingFrequencyEnum(tracking.AlertFrequency.ValueString())
-		trackingInput.SubscriptionID = tracking.SubscriptionId.ValueString()
+		trackingInput.SubscriptionID = tracking.SubscriptionID.ValueString()
 		input.Tracking = &trackingInput
 	}
 
@@ -688,11 +693,11 @@ func ConvertToBgpPeer(input cato_go_sdk.Site_Site_BgpPeer) BgpPeer {
 	catoAsnInt64, _ := strconv.ParseInt(string(input.CatoAsn), 10, 64)
 	return BgpPeer{
 		ID:                     types.StringValue(input.ID),
-		SiteId:                 types.StringValue(input.Site.ID),
+		SiteID:                 types.StringValue(input.Site.ID),
 		Name:                   types.StringValue(input.Name),
 		PeerAsn:                types.Int64Value(peerAsnInt64),
 		CatoAsn:                types.Int64Value(catoAsnInt64), // Convert Asn16 to int64
-		PeerIp:                 types.StringValue(input.PeerIP),
+		PeerIP:                 types.StringValue(input.PeerIP),
 		AdvertiseDefaultRoute:  types.BoolValue(input.AdvertiseDefaultRoute),
 		AdvertiseAllRoutes:     types.BoolValue(input.AdvertiseAllRoutes),
 		AdvertiseSummaryRoutes: types.BoolValue(input.AdvertiseSummaryRoutes),

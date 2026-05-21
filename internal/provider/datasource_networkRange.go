@@ -94,7 +94,7 @@ func (d *networkRangesDataSource) Schema(_ context.Context, _ datasource.SchemaR
 	}
 }
 
-func (d *networkRangesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *networkRangesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -102,6 +102,7 @@ func (d *networkRangesDataSource) Configure(_ context.Context, req datasource.Co
 	d.client = req.ProviderData.(*catoClientData)
 }
 
+//nolint:gocyclo,funlen
 func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var networkRangesDataSource NetworkRangeLookup
 	if diags := req.Config.Get(ctx, &networkRangesDataSource); diags.HasError() {
@@ -110,7 +111,9 @@ func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadR
 	}
 
 	zeroInt64 := int64(0)
-	result, err := d.client.catov2.EntityLookupMinimal(ctx, d.client.AccountId, cato_models.EntityTypeSiteRange, &zeroInt64, nil, nil, nil, nil)
+	result, err := d.client.catov2.EntityLookupMinimal(
+		ctx, d.client.AccountId, cato_models.EntityTypeSiteRange, &zeroInt64, nil, nil, nil, nil,
+	)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -129,13 +132,13 @@ func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadR
 		}
 	}
 
-	filterBySiteId := !networkRangesDataSource.SiteIdFilter.IsNull() && networkRangesDataSource.SiteIdFilter.Elements() != nil
-	siteIdsMap := make(map[string]struct{})
-	if filterBySiteId {
-		for _, value := range networkRangesDataSource.SiteIdFilter.Elements() {
+	filterBySiteID := !networkRangesDataSource.SiteIDFilter.IsNull() && networkRangesDataSource.SiteIDFilter.Elements() != nil
+	siteIDsMap := make(map[string]struct{})
+	if filterBySiteID {
+		for _, value := range networkRangesDataSource.SiteIDFilter.Elements() {
 			// Trim any quotes if present
 			valueStr := strings.Trim(value.String(), "\"")
-			siteIdsMap[valueStr] = struct{}{}
+			siteIDsMap[valueStr] = struct{}{}
 		}
 	}
 
@@ -158,27 +161,27 @@ func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadR
 		nameValue := ""
 		if len(parts) > 0 {
 			nameValue = parts[len(parts)-1]
-			parts = parts[:len(parts)-1]
 		}
 		helperFields := item.GetHelperFields()
-		siteId := types.StringValue(cast.ToString(helperFields["siteId"]))
+		siteID := types.StringValue(cast.ToString(helperFields["siteId"]))
 
 		// Check filters: combined logic for name and site ID filters
 		// If both siteIds and names are specified, both must match
 		// If only names are specified (no siteIds), only name filter applies
 		var shouldInclude bool
-		if filterBySiteId && filterByName {
+		switch {
+		case filterBySiteID && filterByName:
 			// Both filters specified - both must match
 			nameMatches := contains(namesMap, nameValue) || contains(namesMap, cast.ToString(helperFields["interfaceName"]))
-			siteIdMatches := contains(siteIdsMap, cast.ToString(helperFields["siteId"]))
-			shouldInclude = nameMatches && siteIdMatches
-		} else if filterByName {
+			siteIDMatches := contains(siteIDsMap, cast.ToString(helperFields["siteId"]))
+			shouldInclude = nameMatches && siteIDMatches
+		case filterByName:
 			// Only name filter specified
 			shouldInclude = contains(namesMap, nameValue) || contains(namesMap, cast.ToString(helperFields["interfaceName"]))
-		} else if filterBySiteId {
+		case filterBySiteID:
 			// Only site ID filter specified
-			shouldInclude = contains(siteIdsMap, cast.ToString(helperFields["siteId"]))
-		} else {
+			shouldInclude = contains(siteIDsMap, cast.ToString(helperFields["siteId"]))
+		default:
 			// No filters specified - include all
 			shouldInclude = true
 		}
@@ -191,7 +194,7 @@ func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadR
 					"interface_name":    types.StringValue(cast.ToString(helperFields["interfaceName"])),
 					"mdns_reflector":    types.BoolValue(cast.ToBool(helperFields["mdnsReflector"])),
 					"microsegmentation": types.BoolValue(cast.ToBool(helperFields["microsegmentation"])),
-					"site_id":           siteId,
+					"site_id":           siteID,
 					"site_name":         types.StringValue(cast.ToString(helperFields["siteName"])),
 					"subnet":            types.StringValue(cast.ToString(helperFields["subnet"])),
 					"name":              types.StringValue(nameValue),

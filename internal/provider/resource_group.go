@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -27,6 +28,8 @@ var (
 	_ resource.ResourceWithImportState = &groupResource{}
 )
 
+const groupNotFoundMessage = "group not found"
+
 func NewGroupResource() resource.Resource {
 	return &groupResource{}
 }
@@ -41,7 +44,10 @@ func (r *groupResource) Metadata(_ context.Context, req resource.MetadataRequest
 
 func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_group` resource contains the configuration parameters necessary to manage a group. Groups can contain various member types including sites, hosts, network ranges, and more. Documentation for the underlying API used in this resource can be found at [mutation.groups.createGroup()](https://api.catonetworks.com/documentation/#mutation-groups.createGroup).",
+		Description: "The `cato_group` resource contains the configuration parameters necessary to manage a group. " +
+			"Groups can contain various member types including sites, hosts, network ranges, and more. Documentation for the " +
+			"underlying API used in this resource can be found at [mutation.groups.createGroup()]" +
+			"(https:// api.catonetworks.com/documentation/#mutation-groups.createGroup).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Group ID",
@@ -59,8 +65,10 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Optional:    true,
 			},
 			"members": schema.SetNestedAttribute{
-				Description: "List of group members. Each member has 'name', 'id', and 'type' fields. You can specify either 'name' or 'id' when creating/updating; both will be populated in state. At least one member is required.",
-				Required:    true,
+				Description: "List of group members. Each member has 'name', 'id', and 'type' fields. " +
+					"You can specify either 'name' or 'id' when creating/updating; both will be populated in state. " +
+					"At least one member is required.",
+				Required: true,
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
 				},
@@ -77,8 +85,9 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 							Computed:    true,
 						},
 						"type": schema.StringAttribute{
-							Description: "Member type: FLOATING_SUBNET, GLOBAL_IP_RANGE, HOST, NETWORK_INTERFACE, SITE, SITE_NETWORK_SUBNET", // USER, USERS_GROUP, SYSTEM_GROUP
-							Required:    true,
+							Description: "Member type: FLOATING_SUBNET, GLOBAL_IP_RANGE, HOST, NETWORK_INTERFACE, SITE, " +
+								"SITE_NETWORK_SUBNET", // USER, USERS_GROUP, SYSTEM_GROUP
+							Required: true,
 							Validators: []validator.String{
 								stringvalidator.OneOf(
 									"FLOATING_SUBNET",
@@ -100,7 +109,7 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	}
 }
 
-func (r *groupResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *groupResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -114,7 +123,6 @@ func (r *groupResource) ImportState(ctx context.Context, req resource.ImportStat
 }
 
 func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan Group
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -137,15 +145,16 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 			var by cato_models.ObjectRefBy
 			var input string
 
-			if !member.Id.IsNull() && !member.Id.IsUnknown() && member.Id.ValueString() != "" {
+			switch {
+			case !member.ID.IsNull() && !member.ID.IsUnknown() && member.ID.ValueString() != "":
 				// Use ID if provided
 				by = cato_models.ObjectRefByID
-				input = member.Id.ValueString()
-			} else if !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "" {
+				input = member.ID.ValueString()
+			case !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "":
 				// Fall back to NAME if ID not provided
 				by = cato_models.ObjectRefByName
 				input = member.Name.ValueString()
-			} else {
+			default:
 				resp.Diagnostics.AddError(
 					"Invalid member configuration",
 					"Each member must specify either 'id' or 'name'",
@@ -184,10 +193,10 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Set the ID from the response
-	plan.Id = types.StringValue(result.Groups.CreateGroup.Group.ID)
+	plan.ID = types.StringValue(result.Groups.CreateGroup.Group.ID)
 
 	// Hydrate state from API
-	hydratedState, hydrateErr := r.hydrateGroupState(ctx, plan.Id.ValueString(), plan)
+	hydratedState, hydrateErr := r.hydrateGroupState(ctx, plan.ID.ValueString(), plan)
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating group state",
@@ -203,8 +212,8 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 }
 
+//nolint:gocyclo
 func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan Group
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -234,15 +243,16 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			var by cato_models.ObjectRefBy
 			var input string
 
-			if !member.Id.IsNull() && !member.Id.IsUnknown() && member.Id.ValueString() != "" {
+			switch {
+			case !member.ID.IsNull() && !member.ID.IsUnknown() && member.ID.ValueString() != "":
 				// Use ID if provided
 				by = cato_models.ObjectRefByID
-				input = member.Id.ValueString()
-			} else if !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "" {
+				input = member.ID.ValueString()
+			case !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "":
 				// Fall back to NAME if ID not provided
 				by = cato_models.ObjectRefByName
 				input = member.Name.ValueString()
-			} else {
+			default:
 				resp.Diagnostics.AddError(
 					"Invalid member configuration",
 					"Each member must specify either 'id' or 'name'",
@@ -262,7 +272,7 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	groupRef := &cato_models.GroupRefInput{
 		By:    cato_models.ObjectRefByID,
-		Input: plan.Id.ValueString(),
+		Input: plan.ID.ValueString(),
 	}
 
 	// Only send name if it has changed from state
@@ -295,7 +305,7 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Hydrate state from API
-	hydratedState, hydrateErr := r.hydrateGroupState(ctx, plan.Id.ValueString(), plan)
+	hydratedState, hydrateErr := r.hydrateGroupState(ctx, plan.ID.ValueString(), plan)
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating group state",
@@ -312,7 +322,6 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 }
 
 func (r *groupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state Group
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -321,10 +330,10 @@ func (r *groupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	// Hydrate state from API using current state as plan reference
-	hydratedState, hydrateErr := r.hydrateGroupState(ctx, state.Id.ValueString(), state)
+	hydratedState, hydrateErr := r.hydrateGroupState(ctx, state.ID.ValueString(), state)
 	if hydrateErr != nil {
 		// Check if group not found
-		if hydrateErr.Error() == "group not found" {
+		if hydrateErr.Error() == groupNotFoundMessage {
 			tflog.Warn(ctx, "group not found, resource removed")
 			resp.State.RemoveResource(ctx)
 			return
@@ -344,7 +353,6 @@ func (r *groupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 }
 
 func (r *groupResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state Group
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -355,7 +363,7 @@ func (r *groupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	// Delete the group
 	groupRef := cato_models.GroupRefInput{
 		By:    cato_models.ObjectRefByID,
-		Input: state.Id.ValueString(),
+		Input: state.ID.ValueString(),
 	}
 
 	result, err := r.client.catov2.GroupsDeleteGroup(ctx, groupRef, r.client.AccountId)
@@ -376,7 +384,7 @@ func (r *groupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 // It takes a plan parameter to match config members with API members correctly
 func (r *groupResource) hydrateGroupState(ctx context.Context, groupID string, plan Group) (Group, error) {
 	var state Group
-	state.Id = types.StringValue(groupID)
+	state.ID = types.StringValue(groupID)
 
 	// Read group metadata using GroupsList
 	groupListInput := &cato_models.GroupListInput{
@@ -406,7 +414,7 @@ func (r *groupResource) hydrateGroupState(ctx context.Context, groupID string, p
 
 	// Check if the group was found
 	if groupListResult.Groups.GroupList == nil || len(groupListResult.Groups.GroupList.Items) == 0 {
-		return state, fmt.Errorf("group not found")
+		return state, errors.New(groupNotFoundMessage)
 	}
 
 	// Update state with group details from GroupsList
@@ -449,6 +457,8 @@ func (r *groupResource) hydrateGroupState(ctx context.Context, groupID string, p
 
 // parseGroupMemberListWithConfig converts API group member items to a Terraform set
 // matching with config/plan to preserve user's choice of specifying ID vs name
+//
+//nolint:gocyclo
 func parseGroupMemberListWithConfig[T any](ctx context.Context, items []T, configMembers types.Set, attrName string) types.Set {
 	tflog.Debug(ctx, "parseGroupMemberListWithConfig() "+attrName)
 
@@ -468,8 +478,8 @@ func parseGroupMemberListWithConfig[T any](ctx context.Context, items []T, confi
 			for _, configMember := range configMembersList {
 				memberType := configMember.Type.ValueString()
 				// Create lookup keys based on what was specified in config
-				if !configMember.Id.IsNull() && !configMember.Id.IsUnknown() && configMember.Id.ValueString() != "" {
-					key := memberType + ":id:" + configMember.Id.ValueString()
+				if !configMember.ID.IsNull() && !configMember.ID.IsUnknown() && configMember.ID.ValueString() != "" {
+					key := memberType + ":id:" + configMember.ID.ValueString()
 					configMap[key] = configMember
 				}
 				if !configMember.Name.IsNull() && !configMember.Name.IsUnknown() && configMember.Name.ValueString() != "" {
@@ -504,18 +514,18 @@ func parseGroupMemberListWithConfig[T any](ctx context.Context, items []T, confi
 			apiName = nameVal.ValueString()
 		}
 
-		// Try to find matching config member
-		var matchedConfig *GroupMember
+		// Try to find matching config member.
+		matchedConfig := false
 		if apiID != "" && apiType != "" {
 			key := apiType + ":id:" + apiID
-			if config, exists := configMap[key]; exists {
-				matchedConfig = &config
+			if _, exists := configMap[key]; exists {
+				matchedConfig = true
 			}
 		}
-		if matchedConfig == nil && apiName != "" && apiType != "" {
+		if !matchedConfig && apiName != "" && apiType != "" {
 			key := apiType + ":name:" + apiName
-			if config, exists := configMap[key]; exists {
-				matchedConfig = &config
+			if _, exists := configMap[key]; exists {
+				matchedConfig = true
 			}
 		}
 
@@ -563,7 +573,9 @@ func parseGroupMemberList[T any](ctx context.Context, items []T, attrName string
 }
 
 // parseGroupMember converts a single API group member item to a Terraform object
-func parseGroupMember(ctx context.Context, item interface{}, attrName string) types.Object {
+//
+//nolint:gocyclo
+func parseGroupMember(_ context.Context, item interface{}, _ string) types.Object {
 	// Get the reflect.Value of the input
 	itemValue := reflect.ValueOf(item)
 

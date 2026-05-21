@@ -99,7 +99,7 @@ func TestInternetFwRuleImportState(t *testing.T) {
 		t.Fatalf("unexpected state diagnostics: %+v", diags)
 	}
 
-	ruleModel := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	ruleModel := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags = imported.Rule.As(ctx, &ruleModel, basetypes.ObjectAsOptions{})
 	if diags.HasError() {
 		t.Fatalf("unexpected rule diagnostics: %+v", diags)
@@ -746,7 +746,7 @@ func assertRuleState(ctx context.Context, t *testing.T, state tfsdk.State, wantI
 		t.Fatalf("unexpected state diagnostics: %+v", diags)
 	}
 
-	rule := Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
+	rule := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags = model.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 	if diags.HasError() {
 		t.Fatalf("unexpected rule diagnostics: %+v", diags)

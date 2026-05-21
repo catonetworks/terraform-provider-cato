@@ -19,7 +19,7 @@ func TestAccTlsInspectionSection(t *testing.T) {
 	mockSrv := accmock.NewMockServer(t, "TestAccTlsInspectionSection")
 	defer mockSrv.Close()
 	mockSrv.Run()
-	cfg := newTlsInspectionSectionCfg(t)
+	cfg := newTLSInspectionSectionCfg(t)
 	res := "cato_tls_section.this"
 
 	resource.Test(t, resource.TestCase{
@@ -68,7 +68,7 @@ type tlsInspectionSectionCfg struct {
 	t       *testing.T
 }
 
-func newTlsInspectionSectionCfg(t *testing.T) tlsInspectionSectionCfg {
+func newTLSInspectionSectionCfg(t *testing.T) tlsInspectionSectionCfg {
 	return tlsInspectionSectionCfg{
 		resName: acc.GetRandName("tls_inspection_section"),
 		t:       t,

@@ -26,7 +26,7 @@ var (
 	_ resource.ResourceWithImportState = &tlsInspectionSectionResource{}
 )
 
-func NewTlsInspectionSectionResource() resource.Resource {
+func NewTLSInspectionSectionResource() resource.Resource {
 	return &tlsInspectionSectionResource{}
 }
 
@@ -40,7 +40,10 @@ func (r *tlsInspectionSectionResource) Metadata(_ context.Context, req resource.
 
 func (r *tlsInspectionSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_tls_section` resource contains the configuration parameters necessary to add TLS Inspection section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addSection).",
+		Description: "The `cato_tls_section` resource contains the configuration parameters necessary to add TLS Inspection " +
+			"section (https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). " +
+			"Documentation for the underlying API used in this resource can be found at " +
+			"[mutation.policy.tlsInspect.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addSection).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Section ID",
@@ -95,7 +98,7 @@ func (r *tlsInspectionSectionResource) Schema(_ context.Context, _ resource.Sche
 	}
 }
 
-func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -103,14 +106,17 @@ func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource
 	r.client = req.ProviderData.(*catoClientData)
 }
 
-func (r *tlsInspectionSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *tlsInspectionSectionResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
 func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
-	var plan TlsInspectionSection
+	var plan TLSInspectionSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -119,18 +125,18 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 
 	input := cato_models.PolicyAddSectionInput{}
 
-	//setting at
+	// setting at
 	if !plan.At.IsNull() {
 		input.At = &cato_models.PolicySectionPositionInput{}
 		positionInput := PolicyRulePositionInput{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		input.At.Position = (cato_models.PolicySectionPositionEnum)(positionInput.Position.ValueString())
+		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
 		input.At.Ref = positionInput.Ref.ValueStringPointer()
 	}
 
-	//setting section
+	// setting section
 	if !plan.Section.IsNull() {
 		input.Section = &cato_models.PolicyAddSectionInfoInput{}
 		sectionInput := PolicyAddSectionInfoInput{}
@@ -158,7 +164,7 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 		}
 	}
 
-	//publishing new section
+	// publishing new section
 	tflog.Info(ctx, "publishing new section")
 	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
@@ -169,7 +175,7 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID)
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -182,12 +188,10 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 		path.Root("section").AtName("id"),
 		policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID,
 	)
-
 }
 
 func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
-	var state TlsInspectionSection
+	var state TLSInspectionSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -207,7 +211,7 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	//retrieve section ID
+	// retrieve section ID
 	section := PolicyUpdateSectionInfoInput{}
 	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
@@ -218,19 +222,24 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 	sectionList := body.GetPolicy().TLSInspect.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID == section.Id.ValueString() {
-			sectionExist = true
-			state.Id = types.StringValue(sectionListItem.GetSection().ID)
-			curSectionObj, diagstmp := types.ObjectValue(
-				NameIDAttrTypes,
-				map[string]attr.Value{
-					"id":   types.StringValue(sectionListItem.GetSection().ID),
-					"name": types.StringValue(sectionListItem.GetSection().GetName()),
-				},
-			)
-			diags = append(diags, diagstmp...)
-			state.Section = curSectionObj
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
+			continue
 		}
+
+		sectionExist = true
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
+		curSectionObj, diagstmp := types.ObjectValue(
+			NameIDAttrTypes,
+			map[string]attr.Value{
+				"id":   types.StringValue(sectionListItem.GetSection().ID),
+				"name": types.StringValue(sectionListItem.GetSection().GetName()),
+			},
+		)
+		resp.Diagnostics.Append(diagstmp...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.Section = curSectionObj
 	}
 
 	// Hard coding LAST_IN_POLICY position as the API does not return any value and
@@ -244,7 +253,10 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 		},
 	)
 	state.At = curAtObj
-	diags = append(diags, diagstmp...)
+	resp.Diagnostics.Append(diagstmp...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// remove resource if it doesn't exist anymore
 	if !sectionExist {
@@ -258,12 +270,11 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 }
 
+//nolint:funlen
 func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
-	var plan TlsInspectionSection
+	var plan TLSInspectionSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -273,7 +284,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 	inputUpdateSection := cato_models.PolicyUpdateSectionInput{}
 	inputMoveSection := cato_models.PolicyMoveSectionInput{}
 
-	//setting section
+	// setting section
 	if !plan.Section.IsNull() {
 		inputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
 		sectionInput := PolicyUpdateSectionInfoInput{}
@@ -281,17 +292,17 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 		resp.Diagnostics.Append(diags...)
 
 		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.Id.ValueString()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
 	}
 
-	//setting at
+	// setting at
 	if !plan.At.IsNull() {
 		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
 		positionInput := PolicyRulePositionInput{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		inputMoveSection.To.Position = (cato_models.PolicySectionPositionEnum)(positionInput.Position.ValueString())
+		inputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
 		inputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
 		inputMoveSection.ID = inputUpdateSection.ID
 	}
@@ -312,7 +323,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 	}
 
 	// check for errors
-	if moveSection.Policy.TLSInspect.MoveSection.Status != "SUCCESS" {
+	if moveSection.Policy.TLSInspect.MoveSection.Status != ifwMutationStatusSuccess {
 		for _, item := range moveSection.Policy.TLSInspect.MoveSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Moving Section",
@@ -338,7 +349,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 	}
 
 	// check for errors
-	if updateSection.Policy.TLSInspect.UpdateSection.Status != "SUCCESS" {
+	if updateSection.Policy.TLSInspect.UpdateSection.Status != ifwMutationStatusSuccess {
 		for _, item := range updateSection.Policy.TLSInspect.UpdateSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Updating Section",
@@ -348,7 +359,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	//publishing updated section
+	// publishing updated section
 	tflog.Info(ctx, "publishing updated section")
 	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
@@ -367,15 +378,14 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 }
 
 func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
-	var state TlsInspectionSection
+	var state TLSInspectionSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	//retrieve section ID
+	// retrieve section ID
 	section := PolicyAddSectionInfoInput{}
 	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
@@ -384,7 +394,7 @@ func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.
 	}
 
 	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.Id.ValueString(),
+		ID: section.ID.ValueString(),
 	}
 
 	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.request", map[string]interface{}{
@@ -410,5 +420,4 @@ func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.
 		)
 		return
 	}
-
 }

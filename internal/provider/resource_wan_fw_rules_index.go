@@ -140,7 +140,7 @@ var WanSectionIndexResourceAttrTypes = map[string]attr.Type{
 	"section_index": types.Int64Type,
 }
 
-func (r *wanRulesIndexResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *wanRulesIndexResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -154,7 +154,6 @@ func (r *wanRulesIndexResource) Configure(_ context.Context, req resource.Config
 // }
 
 func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan WanRulesIndex
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -202,7 +201,6 @@ func (r *wanRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 }
 
 func (r *wanRulesIndexResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan WanRulesIndex
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -227,11 +225,9 @@ func (r *wanRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 }
 
 func (r *wanRulesIndexResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state WanRulesIndex
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -242,11 +238,15 @@ func (r *wanRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, plan WanRulesIndex) (basetypes.MapValue, basetypes.MapValue, diag.Diagnostics, error) {
+//nolint:gocyclo,funlen
+func (r *wanRulesIndexResource) moveWanRulesAndSections(
+	ctx context.Context,
+	plan WanRulesIndex,
+) (sectionObjects basetypes.MapValue, ruleObjects basetypes.MapValue, diagnostics diag.Diagnostics, err error) {
 	diags := []diag.Diagnostic{}
 	ruleObjectMap := make(map[string]attr.Value)
 
-	if len(plan.SectionToStartAfterId.ValueString()) > 0 {
+	if plan.SectionToStartAfterID.ValueString() != "" {
 		result, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
@@ -257,15 +257,15 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		}
 		isPresent := false
 		for _, item := range result.Policy.WanFirewall.Policy.Sections {
-			section_id := cast.ToString(item.Section.ID)
-			if section_id == plan.SectionToStartAfterId.ValueString() {
+			sectionID := cast.ToString(item.Section.ID)
+			if sectionID == plan.SectionToStartAfterID.ValueString() {
 				isPresent = true
 				break
 			}
 		}
 		if !isPresent {
 			diags = append(diags, diag.NewErrorDiagnostic(
-				"SectionToStartAfterId '"+plan.SectionToStartAfterId.ValueString()+"' not found",
+				"SectionToStartAfterID '"+plan.SectionToStartAfterID.ValueString()+"' not found",
 				"Please check the section ID and try again.",
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, errors.New("sectionToStartAfterId not found")
@@ -276,10 +276,10 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 	listOfSectionNames := make([]string, 0)
 
 	// maps section_name -> section_id
-	sectionIdList := make(map[string]string)
-	sectionIndexApiData, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+	sectionIDList := make(map[string]string)
+	sectionIndexAPIData, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(sectionIndexApiData),
+		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
@@ -290,8 +290,8 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 	}
 
 	// for easier processing, a map of section name to ID is created
-	for _, v := range sectionIndexApiData.Policy.WanFirewall.Policy.Sections {
-		sectionIdList[v.Section.Name] = v.Section.ID
+	for _, v := range sectionIndexAPIData.Policy.WanFirewall.Policy.Sections {
+		sectionIDList[v.Section.Name] = v.Section.ID
 	}
 
 	sectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
@@ -319,24 +319,23 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		"sections": utils.InterfaceToJSONString(sectionListFromPlan),
 	})
 
-	currentSectionId := ""
+	currentSectionID := ""
 
 	sectionObjectMap := make(map[string]attr.Value)
 
 	// create the sections from the list provided following the section ID provided in firstSectionId
 	for _, workingSectionName := range sectionListFromPlan {
-
 		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
 		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
-			ID: sectionIdList[workingSectionName.SectionName],
+			ID: sectionIDList[workingSectionName.SectionName],
 		}
 
 		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionId to the SectionToStartAfterId otherwise set to id of first section for next in list
-		if currentSectionId == "" {
-			if plan.SectionToStartAfterId.ValueString() != "" {
+		// initializing currentSectionID to the SectionToStartAfterID otherwise set to id of first section for next in list
+		if currentSectionID == "" {
+			if plan.SectionToStartAfterID.ValueString() != "" {
 				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterId.ValueStringPointer(),
+					Ref:      plan.SectionToStartAfterID.ValueStringPointer(),
 					Position: "AFTER_SECTION",
 				}
 			} else {
@@ -346,27 +345,27 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			}
 		} else {
 			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionId,
+				Ref:      &currentSectionID,
 				Position: "AFTER_SECTION",
 			}
 		}
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
-			"sectionToStartAfterId":          plan.SectionToStartAfterId.ValueString(),
+			"sectionToStartAfterId":          plan.SectionToStartAfterID.ValueString(),
 			"moveFrom":                       workingSectionName.SectionName,
-			"toAfter":                        currentSectionId,
-			"sectionIdList":                  sectionIdList,
+			"toAfter":                        currentSectionID,
+			"sectionIDList":                  sectionIDList,
 			"workingSectionName.SectionName": workingSectionName.SectionName,
-			"sectionIdList[workingSectionName.SectionName]": sectionIdList[workingSectionName.SectionName],
+			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveApiData, err := r.client.catov2.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveAPIData, err := r.client.catov2.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
-		if sectionMoveApiData != nil && sectionMoveApiData.GetPolicy() != nil &&
-			sectionMoveApiData.GetPolicy().WanFirewall != nil &&
-			sectionMoveApiData.GetPolicy().WanFirewall.GetMoveSection() != nil &&
-			len(sectionMoveApiData.GetPolicy().WanFirewall.GetMoveSection().Errors) != 0 {
+		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
+			sectionMoveAPIData.GetPolicy().WanFirewall != nil &&
+			sectionMoveAPIData.GetPolicy().WanFirewall.GetMoveSection() != nil &&
+			len(sectionMoveAPIData.GetPolicy().WanFirewall.GetMoveSection().Errors) != 0 {
 			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSectionMoveSection.response", map[string]interface{}{
-				"response": utils.InterfaceToJSONString(sectionMoveApiData),
+				"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 			})
 			if err != nil {
 				diags = append(diags, diag.NewErrorDiagnostic(
@@ -377,7 +376,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			}
 		}
 		tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(sectionMoveApiData),
+			"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 		})
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
@@ -390,7 +389,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 		sectionIndexStateData, diagsSection := types.ObjectValue(
 			WanSectionIndexResourceAttrTypes,
 			map[string]attr.Value{
-				"id":            types.StringValue(sectionIdList[workingSectionName.SectionName]),
+				"id":            types.StringValue(sectionIDList[workingSectionName.SectionName]),
 				"section_name":  types.StringValue(workingSectionName.SectionName),
 				"section_index": types.Int64Value(workingSectionName.SectionIndex),
 			},
@@ -399,7 +398,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 
 		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
 
-		currentSectionId = sectionIdList[workingSectionName.SectionName]
+		currentSectionID = sectionIDList[workingSectionName.SectionName]
 	}
 
 	// now that the sections are ordered properly, move the rules to the correct locations
@@ -440,9 +439,9 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIdData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
+		ruleNameIDData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.PolicyWanFirewallRulesIndex.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(ruleNameIdData),
+			"response": utils.InterfaceToJSONString(ruleNameIDData),
 		})
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
@@ -451,22 +450,22 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
-		ruleNameIdMap := make(map[string]string)
+		ruleNameIDMap := make(map[string]string)
 
 		// create map of IFW rule names from the API to their IDs for easy lookup
-		for _, ruleNameIdDataItem := range ruleNameIdData.Policy.WanFirewall.Policy.Rules {
-			ruleNameIdMap[ruleNameIdDataItem.Rule.Name] = ruleNameIdDataItem.Rule.ID
+		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.WanFirewall.Policy.Rules {
+			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
 		}
 
-		tflog.Warn(ctx, "Read.ruleNameIdMap.response", map[string]interface{}{
-			"ruleNameIdMap": utils.InterfaceToJSONString(ruleNameIdMap),
+		tflog.Warn(ctx, "Read.ruleNameIDMap.response", map[string]interface{}{
+			"ruleNameIDMap": utils.InterfaceToJSONString(ruleNameIDMap),
 		})
 
 		// loop through the ordered list of section names
 		for _, sectionNameItem := range listOfSectionNames {
 			tflog.Warn(ctx, "Read.ProcessingSectionFromList.response", map[string]interface{}{
 				"sectionNameItem": sectionNameItem,
-				"ruleNameIdMap":   utils.InterfaceToJSONString(listOfSectionNames),
+				"ruleNameIDMap":   utils.InterfaceToJSONString(listOfSectionNames),
 			})
 
 			// for easier processing and visualization, we are creating two maps
@@ -498,37 +497,37 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 				"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 			})
 
-			currentRuleId := ""
+			currentRuleID := ""
 			for x := 1; x < len(mapRuleIndexToRuleName)+1; x++ {
 				toPosition := &cato_models.PolicyRulePositionInput{}
 				if x == 1 {
-					pos := "FIRST_IN_SECTION"
+					pos := ifwRulePositionFirstInSection
 					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					firstSectionId := sectionIdList[mapRuleIndexToSectionName[1]]
-					toPosition.Ref = &firstSectionId
+					firstSectionID := sectionIDList[mapRuleIndexToSectionName[1]]
+					toPosition.Ref = &firstSectionID
 				} else {
-					pos := "AFTER_RULE"
+					pos := ifwRulePositionAfterRule
 					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					currentRuleId = ruleNameIdMap[mapRuleIndexToRuleName[int64(x)-1]]
-					toPosition.Ref = &currentRuleId
-					tflog.Warn(ctx, "Read.sectionIdList[mapRuleIndexToSectionName[1]].response", map[string]interface{}{
+					currentRuleID = ruleNameIDMap[mapRuleIndexToRuleName[int64(x)-1]]
+					toPosition.Ref = &currentRuleID
+					tflog.Warn(ctx, "Read.sectionIDList[mapRuleIndexToSectionName[1]].response", map[string]interface{}{
 						"mapRuleIndexToSectionName":         mapRuleIndexToRuleName,
-						"currentRuleId":                     currentRuleId,
+						"currentRuleId":                     currentRuleID,
 						"mapExternalRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
-						"ruleNameIdMap":                     utils.InterfaceToJSONString(ruleNameIdMap),
+						"ruleNameIDMap":                     utils.InterfaceToJSONString(ruleNameIDMap),
 					})
 				}
 
 				moveRuleConfig := cato_models.PolicyMoveRuleInput{
-					ID: ruleNameIdMap[mapRuleIndexToRuleName[int64(x)]],
+					ID: ruleNameIDMap[mapRuleIndexToRuleName[int64(x)]],
 					To: toPosition,
 				}
-				ruleMoveApiData, err := r.client.catov2.PolicyWanFirewallMoveRule(ctx, moveRuleConfig, r.client.AccountId)
+				ruleMoveAPIData, err := r.client.catov2.PolicyWanFirewallMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveRule.response", map[string]interface{}{
-					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIdMap),
+					"ruleNameIDMap":             utils.InterfaceToJSONString(ruleNameIDMap),
 					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
 					"moveRuleConfig":            utils.InterfaceToJSONString(moveRuleConfig),
-					"response":                  utils.InterfaceToJSONString(ruleMoveApiData),
+					"response":                  utils.InterfaceToJSONString(ruleMoveAPIData),
 				})
 				if err != nil {
 					diags = append(diags, diag.NewErrorDiagnostic(
@@ -542,11 +541,11 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(ctx context.Context, pla
 
 		// Now create the rule objects map with proper IDs from the API
 		for _, ruleFromPlan := range ruleListFromPlan {
-			ruleId := ruleNameIdMap[ruleFromPlan.RuleName]
+			ruleID := ruleNameIDMap[ruleFromPlan.RuleName]
 			ruleIndexStateData, diagsSection := types.ObjectValue(
 				WanRuleIndexResourceAttrTypes,
 				map[string]attr.Value{
-					"id":               types.StringValue(ruleId),
+					"id":               types.StringValue(ruleID),
 					"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
 					"section_name":     types.StringValue(ruleFromPlan.SectionName),
 					"rule_name":        types.StringValue(ruleFromPlan.RuleName),

@@ -1,3 +1,4 @@
+//nolint:lll
 package provider
 
 import (
@@ -45,6 +46,7 @@ func (r *wanNetworkRuleResource) Metadata(_ context.Context, req resource.Metada
 	resp.TypeName = req.ProviderTypeName + "_wnw_rule"
 }
 
+//nolint:funlen
 func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_wan_nw_rule` resource contains the configuration parameters necessary to add a rule to the WAN Network policy.",
@@ -2525,7 +2527,7 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 	}
 }
 
-func (r *wanNetworkRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *wanNetworkRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -2536,6 +2538,7 @@ func (r *wanNetworkRuleResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
+//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan WanNetworkRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -2544,7 +2547,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	input, diags := hydrateWanNetworkRuleApi(ctx, plan)
+	input, diags := hydrateWanNetworkRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -2569,7 +2572,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// check for errors
-	if createRuleResponse.Policy.WanNetwork.AddRule.Status != "SUCCESS" {
+	if createRuleResponse.Policy.WanNetwork.AddRule.Status != ifwMutationStatusSuccess {
 		for _, item := range createRuleResponse.Policy.WanNetwork.AddRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
@@ -2627,7 +2630,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 
 	// Handle exceptions correlation manually to preserve plan structure
 	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := Policy_Policy_WanNetwork_Policy_Rules_Rule{}
+		planRule := PolicyPolicyWanNetworkPolicyRulesRule{}
 		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
 		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
 			// Correlate exceptions between plan and hydrated response
@@ -2653,6 +2656,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 	}
 }
 
+//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state WanNetworkRule
 	diags := req.State.Get(ctx, &state)
@@ -2674,7 +2678,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	// Extract rule ID from state
 	var ruleID string
 	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		rule := Policy_Policy_WanNetwork_Policy_Rules_Rule{}
+		rule := PolicyPolicyWanNetworkPolicyRulesRule{}
 		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 		if diags.HasError() {
 			// If conversion fails, try to extract just the ID from the state
@@ -2737,7 +2741,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 
 	// Handle exceptions correlation manually to preserve state structure
 	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		stateRule := Policy_Policy_WanNetwork_Policy_Rules_Rule{}
+		stateRule := PolicyPolicyWanNetworkPolicyRulesRule{}
 		diags = state.Rule.As(ctx, &stateRule, basetypes.ObjectAsOptions{})
 		if !diags.HasError() && !stateRule.Exceptions.IsNull() && !stateRule.Exceptions.IsUnknown() {
 			// Correlate exceptions between state and hydrated response
@@ -2784,6 +2788,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	resp.Diagnostics.Append(diagstmp...)
 }
 
+//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanNetworkRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -2792,7 +2797,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	input, diags := hydrateWanNetworkRuleApi(ctx, plan)
+	input, diags := hydrateWanNetworkRuleAPI(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -2801,7 +2806,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 	// Extract rule ID from plan
 	var ruleID string
 	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		rule := Policy_Policy_WanNetwork_Policy_Rules_Rule{}
+		rule := PolicyPolicyWanNetworkPolicyRulesRule{}
 		diags = plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -2833,7 +2838,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 		"OUTPUT": utils.InterfaceToJSONString(updateRuleResponse),
 	})
 
-	if updateRuleResponse.Policy.WanNetwork.UpdateRule.Status != "SUCCESS" {
+	if updateRuleResponse.Policy.WanNetwork.UpdateRule.Status != ifwMutationStatusSuccess {
 		for _, item := range updateRuleResponse.Policy.WanNetwork.UpdateRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Updating Resource",
@@ -2884,7 +2889,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 
 	// Handle exceptions correlation manually to preserve plan structure
 	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := Policy_Policy_WanNetwork_Policy_Rules_Rule{}
+		planRule := PolicyPolicyWanNetworkPolicyRulesRule{}
 		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
 		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
 			// Correlate exceptions between plan and hydrated response
@@ -2916,7 +2921,7 @@ func (r *wanNetworkRuleResource) Delete(ctx context.Context, req resource.Delete
 	// Extract rule ID from state
 	var ruleID string
 	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		rule := Policy_Policy_WanNetwork_Policy_Rules_Rule{}
+		rule := PolicyPolicyWanNetworkPolicyRulesRule{}
 		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -2939,7 +2944,7 @@ func (r *wanNetworkRuleResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	if deleteRuleResponse.Policy.WanNetwork.RemoveRule.Status != "SUCCESS" {
+	if deleteRuleResponse.Policy.WanNetwork.RemoveRule.Status != ifwMutationStatusSuccess {
 		for _, item := range deleteRuleResponse.Policy.WanNetwork.RemoveRule.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Deleting Resource",

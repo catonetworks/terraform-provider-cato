@@ -62,7 +62,12 @@ func newLicenseCfg(t *testing.T) licenseCfg {
 	}
 }
 
-func getAssignableLicense(t *testing.T) (string, string, int64) {
+func getAssignableLicense(t *testing.T) (license string, sku string, bw int64) {
+	const (
+		statusActive = "ACTIVE"
+		SkuCatoSite  = "CATO_SITE"
+		skuCatoPB    = "CATO_PB"
+	)
 	client := acc.GetClient(t)
 	licensing, err := client.Licensing(context.Background(), acc.CatoAccountID)
 	if err != nil {
@@ -70,21 +75,21 @@ func getAssignableLicense(t *testing.T) (string, string, int64) {
 	}
 
 	for _, curLicense := range licensing.GetLicensing().GetLicensingInfo().GetLicenses() {
-		if curLicense.ID == nil || curLicense.Sku != "CATO_SITE" || curLicense.Status != "ACTIVE" {
+		if curLicense.ID == nil || curLicense.Sku != SkuCatoSite || curLicense.Status != statusActive {
 			continue
 		}
 		if curLicense.SiteLicense.Site == nil {
-			return *curLicense.ID, "CATO_SITE", 0
+			return *curLicense.ID, SkuCatoSite, 0
 		}
 	}
 
 	for _, curLicense := range licensing.GetLicensing().GetLicensingInfo().GetLicenses() {
-		if curLicense.ID == nil || curLicense.Sku != "CATO_PB" || curLicense.Status != "ACTIVE" {
+		if curLicense.ID == nil || curLicense.Sku != skuCatoPB || curLicense.Status != statusActive {
 			continue
 		}
 		available := curLicense.PooledBandwidthLicense.Total - curLicense.PooledBandwidthLicense.AllocatedBandwidth
 		if available >= 10 {
-			return *curLicense.ID, "CATO_PB", 10
+			return *curLicense.ID, skuCatoPB, 10
 		}
 	}
 

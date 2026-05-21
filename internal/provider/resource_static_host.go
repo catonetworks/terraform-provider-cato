@@ -34,7 +34,9 @@ func (r *staticHostResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *staticHostResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_static_host` resource contains the configuration parameters necessary to add a static host. Documentation for the underlying API used in this resource can be found at [mutation.addStaticHost()](https://api.catonetworks.com/documentation/#mutation-site.addStaticHost).",
+		Description: "The `cato_static_host` resource contains the configuration parameters necessary to add a static host. " +
+			"Documentation for the underlying API used in this resource can be found at " +
+			"[mutation.addStaticHost()](https:// api.catonetworks.com/documentation/#mutation-site.addStaticHost).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Host ID",
@@ -66,7 +68,7 @@ func (r *staticHostResource) Schema(_ context.Context, _ resource.SchemaRequest,
 	}
 }
 
-func (r *staticHostResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *staticHostResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -80,7 +82,6 @@ func (r *staticHostResource) ImportState(ctx context.Context, req resource.Impor
 }
 
 func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan StaticHost
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -91,14 +92,14 @@ func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequ
 	// setting input
 	input := cato_models.AddStaticHostInput{
 		Name:       plan.Name.ValueString(),
-		IP:         plan.Ip.ValueString(),
+		IP:         plan.IP.ValueString(),
 		MacAddress: plan.MacAddress.ValueStringPointer(),
 	}
 
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	body, err := r.client.catov2.SiteAddStaticHost(ctx, plan.SiteId.ValueString(), input, r.client.AccountId)
+	body, err := r.client.catov2.SiteAddStaticHost(ctx, plan.SiteID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -125,7 +126,6 @@ func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequ
 }
 
 func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state StaticHost
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -134,7 +134,19 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// check if site exist, else remove resource
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("site"),
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{state.SiteID.ValueString()},
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "Read.EntityLookup.site.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -153,7 +165,19 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// check if host exist before removing
-	queryHostResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("host"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
+	queryHostResult, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("host"),
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{state.ID.ValueString()},
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "Read.EntityLookup.host.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryHostResult),
 	})
@@ -167,7 +191,7 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	// read in the ipsec site entries
 	for _, v := range queryHostResult.EntityLookup.Items {
-		if v.Entity.ID == state.Id.ValueString() {
+		if v.Entity.ID == state.ID.ValueString() {
 			resp.State.SetAttribute(
 				ctx,
 				path.Root("id"),
@@ -190,7 +214,6 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 }
 
 func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan StaticHost
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -201,7 +224,7 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 	// setting input
 	input := cato_models.UpdateStaticHostInput{
 		Name:       plan.Name.ValueStringPointer(),
-		IP:         plan.Ip.ValueStringPointer(),
+		IP:         plan.IP.ValueStringPointer(),
 		MacAddress: plan.MacAddress.ValueStringPointer(),
 	}
 
@@ -212,7 +235,7 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateStaticHostResponse, err := r.client.catov2.SiteUpdateStaticHost(ctx, plan.Id.ValueString(), input, r.client.AccountId)
+	siteUpdateStaticHostResponse, err := r.client.catov2.SiteUpdateStaticHost(ctx, plan.ID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateStaticHostResponse),
 	})
@@ -233,7 +256,6 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 }
 
 func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state StaticHost
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -241,7 +263,19 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteId.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("site"),
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{state.SiteID.ValueString()},
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "Delete.EntityLookup.site.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -255,7 +289,19 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-		queryHostResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("host"), nil, nil, nil, nil, []string{state.Id.ValueString()}, nil, nil, nil)
+		queryHostResult, err := r.client.catov2.EntityLookup(
+			ctx,
+			r.client.AccountId,
+			cato_models.EntityType("host"),
+			nil,
+			nil,
+			nil,
+			nil,
+			[]string{state.ID.ValueString()},
+			nil,
+			nil,
+			nil,
+		)
 		tflog.Debug(ctx, "Delete.EntityLookup.host.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(queryHostResult),
 		})
@@ -269,7 +315,7 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 		// check if host exist before removing
 		if len(queryHostResult.EntityLookup.GetItems()) == 1 {
-			siteRemoveStaticHostResponse, err := r.client.catov2.SiteRemoveStaticHost(ctx, state.Id.ValueString(), r.client.AccountId)
+			siteRemoveStaticHostResponse, err := r.client.catov2.SiteRemoveStaticHost(ctx, state.ID.ValueString(), r.client.AccountId)
 			tflog.Debug(ctx, "Delete.SiteRemoveStaticHost.response", map[string]interface{}{
 				"response": utils.InterfaceToJSONString(siteRemoveStaticHostResponse),
 			})
@@ -282,5 +328,4 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 			}
 		}
 	}
-
 }

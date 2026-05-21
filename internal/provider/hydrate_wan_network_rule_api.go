@@ -13,49 +13,47 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-// hydrateWanNetworkApiTypes create sub-types for both create and update calls to populate both entries
-type hydrateWanNetworkApiTypes struct {
+// hydrateWanNetworkAPITypes create sub-types for both create and update calls to populate both entries
+type hydrateWanNetworkAPITypes struct {
 	create cato_models.WanNetworkAddRuleInput
 	update cato_models.WanNetworkUpdateRuleInput
 }
 
-// hydrateWanNetworkRuleApi takes in the current state/plan along with context and returns the created
-// diagnostic data as well as cato api data used to either create or update WAN Network entries
-func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrateWanNetworkApiTypes, diag.Diagnostics) {
+// hydrateWanNetworkRuleAPI takes in the current state/plan along with context and returns the created
+// diagnostic data as well as cato API data used to either create or update WAN Network entries
+//
+//nolint:gocyclo,funlen
+func hydrateWanNetworkRuleAPI(ctx context.Context, plan WanNetworkRule) (hydrateWanNetworkAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 
-	hydrateApiReturn := hydrateWanNetworkApiTypes{}
-	hydrateApiReturn.create = cato_models.WanNetworkAddRuleInput{}
-	hydrateApiReturn.update = cato_models.WanNetworkUpdateRuleInput{}
-	hydrateApiReturn.create.At = &cato_models.PolicyRulePositionInput{}
+	hydrateAPIReturn := hydrateWanNetworkAPITypes{}
+	hydrateAPIReturn.create = cato_models.WanNetworkAddRuleInput{}
+	hydrateAPIReturn.update = cato_models.WanNetworkUpdateRuleInput{}
+	hydrateAPIReturn.create.At = &cato_models.PolicyRulePositionInput{}
 
 	rootAddRule := &cato_models.WanNetworkAddRuleDataInput{}
 	rootUpdateRule := &cato_models.WanNetworkUpdateRuleDataInput{}
 
-	//setting at for creation only
+	// setting at for creation only
 	if !plan.At.IsNull() {
-
 		positionInput := PolicyRulePositionInput{}
 		diags = append(diags, plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
 
-		hydrateApiReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
-		hydrateApiReturn.create.At.Ref = positionInput.Ref.ValueStringPointer()
-
+		hydrateAPIReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
+		hydrateAPIReturn.create.At.Ref = positionInput.Ref.ValueStringPointer()
 	}
 
 	// setting rule
 	if !plan.Rule.IsNull() {
-
-		ruleInput := Policy_Policy_WanNetwork_Policy_Rules_Rule{}
+		ruleInput := PolicyPolicyWanNetworkPolicyRulesRule{}
 		diags = append(diags, plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})...)
 
 		// setting source
 		if !ruleInput.Source.IsNull() {
-
 			ruleSourceInput := &cato_models.WanNetworkRuleSourceInput{}
 			ruleSourceUpdateInput := &cato_models.WanNetworkRuleSourceUpdateInput{}
 
-			sourceInput := Policy_Policy_WanNetwork_Policy_Rules_Rule_Source{}
+			sourceInput := PolicyPolicyWanNetworkPolicyRulesRuleSource{}
 			diags = append(diags, ruleInput.Source.As(ctx, &sourceInput, basetypes.ObjectAsOptions{})...)
 
 			// setting source IP
@@ -79,7 +77,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceHostInput := make([]types.Object, 0, len(sourceInput.Host.Elements()))
 				diags = append(diags, sourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)...)
 
-				var itemSourceHostInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Host
+				var itemSourceHostInput PolicyPolicyWanNetworkPolicyRulesRuleSourceHost
 				for _, item := range elementsSourceHostInput {
 					diags = append(diags, item.As(ctx, &itemSourceHostInput, basetypes.ObjectAsOptions{})...)
 
@@ -103,7 +101,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceSiteInput := make([]types.Object, 0, len(sourceInput.Site.Elements()))
 				diags = append(diags, sourceInput.Site.ElementsAs(ctx, &elementsSourceSiteInput, false)...)
 
-				var itemSourceSiteInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Site
+				var itemSourceSiteInput PolicyPolicyWanNetworkPolicyRulesRuleSourceSite
 				for _, item := range elementsSourceSiteInput {
 					diags = append(diags, item.As(ctx, &itemSourceSiteInput, basetypes.ObjectAsOptions{})...)
 
@@ -127,7 +125,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceIPRangeInput := make([]types.Object, 0, len(sourceInput.IPRange.Elements()))
 				diags = append(diags, sourceInput.IPRange.ElementsAs(ctx, &elementsSourceIPRangeInput, false)...)
 
-				var itemSourceIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_IPRange
+				var itemSourceIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleSourceIPRange
 				for _, item := range elementsSourceIPRangeInput {
 					diags = append(diags, item.As(ctx, &itemSourceIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -146,7 +144,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceGlobalIPRangeInput := make([]types.Object, 0, len(sourceInput.GlobalIPRange.Elements()))
 				diags = append(diags, sourceInput.GlobalIPRange.ElementsAs(ctx, &elementsSourceGlobalIPRangeInput, false)...)
 
-				var itemSourceGlobalIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_GlobalIPRange
+				var itemSourceGlobalIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleSourceGlobalIPRange
 				for _, item := range elementsSourceGlobalIPRangeInput {
 					diags = append(diags, item.As(ctx, &itemSourceGlobalIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -170,24 +168,28 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceNetworkInterfaceInput := make([]types.Object, 0, len(sourceInput.NetworkInterface.Elements()))
 				diags = append(diags, sourceInput.NetworkInterface.ElementsAs(ctx, &elementsSourceNetworkInterfaceInput, false)...)
 
-				var itemSourceNetworkInterfaceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_NetworkInterface
+				var itemSourceNetworkInterfaceInput PolicyPolicyWanNetworkPolicyRulesRuleSourceNetworkInterface
 				for _, item := range elementsSourceNetworkInterfaceInput {
 					diags = append(diags, item.As(ctx, &itemSourceNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
 					// Prefer ID if present; only fall back to name when safe (no slashes)
-					if !itemSourceNetworkInterfaceInput.ID.IsNull() && !itemSourceNetworkInterfaceInput.ID.IsUnknown() {
+					switch {
+					case !itemSourceNetworkInterfaceInput.ID.IsNull() && !itemSourceNetworkInterfaceInput.ID.IsUnknown():
 						ruleSourceInput.NetworkInterface = append(ruleSourceInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
 							By:    cato_models.ObjectRefBy("ID"),
 							Input: itemSourceNetworkInterfaceInput.ID.ValueString(),
 						})
-					} else if !itemSourceNetworkInterfaceInput.Name.IsNull() && !itemSourceNetworkInterfaceInput.Name.IsUnknown() {
+					case !itemSourceNetworkInterfaceInput.Name.IsNull() && !itemSourceNetworkInterfaceInput.Name.IsUnknown():
 						nameVal := itemSourceNetworkInterfaceInput.Name.ValueString()
 						ruleSourceInput.NetworkInterface = append(ruleSourceInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
 							By:    cato_models.ObjectRefBy("NAME"),
 							Input: nameVal,
 						})
-					} else {
-						diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for a source.network_interface element."))
+					default:
+						diags = append(diags, diag.NewErrorDiagnostic(
+							"Missing network_interface selector",
+							"Neither id nor name provided for a source.network_interface element.",
+						))
 					}
 				}
 				ruleSourceUpdateInput.NetworkInterface = ruleSourceInput.NetworkInterface
@@ -200,7 +202,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceSiteNetworkSubnetInput := make([]types.Object, 0, len(sourceInput.SiteNetworkSubnet.Elements()))
 				diags = append(diags, sourceInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsSourceSiteNetworkSubnetInput, false)...)
 
-				var itemSourceSiteNetworkSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_SiteNetworkSubnet
+				var itemSourceSiteNetworkSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleSourceSiteNetworkSubnet
 				for _, item := range elementsSourceSiteNetworkSubnetInput {
 					diags = append(diags, item.As(ctx, &itemSourceSiteNetworkSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -224,7 +226,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceFloatingSubnetInput := make([]types.Object, 0, len(sourceInput.FloatingSubnet.Elements()))
 				diags = append(diags, sourceInput.FloatingSubnet.ElementsAs(ctx, &elementsSourceFloatingSubnetInput, false)...)
 
-				var itemSourceFloatingSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_FloatingSubnet
+				var itemSourceFloatingSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleSourceFloatingSubnet
 				for _, item := range elementsSourceFloatingSubnetInput {
 					diags = append(diags, item.As(ctx, &itemSourceFloatingSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -248,7 +250,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceUserInput := make([]types.Object, 0, len(sourceInput.User.Elements()))
 				diags = append(diags, sourceInput.User.ElementsAs(ctx, &elementsSourceUserInput, false)...)
 
-				var itemSourceUserInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_User
+				var itemSourceUserInput PolicyPolicyWanNetworkPolicyRulesRuleSourceUser
 				for _, item := range elementsSourceUserInput {
 					diags = append(diags, item.As(ctx, &itemSourceUserInput, basetypes.ObjectAsOptions{})...)
 
@@ -272,7 +274,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceUsersGroupInput := make([]types.Object, 0, len(sourceInput.UsersGroup.Elements()))
 				diags = append(diags, sourceInput.UsersGroup.ElementsAs(ctx, &elementsSourceUsersGroupInput, false)...)
 
-				var itemSourceUsersGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_UsersGroup
+				var itemSourceUsersGroupInput PolicyPolicyWanNetworkPolicyRulesRuleSourceUsersGroup
 				for _, item := range elementsSourceUsersGroupInput {
 					diags = append(diags, item.As(ctx, &itemSourceUsersGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -296,7 +298,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceGroupInput := make([]types.Object, 0, len(sourceInput.Group.Elements()))
 				diags = append(diags, sourceInput.Group.ElementsAs(ctx, &elementsSourceGroupInput, false)...)
 
-				var itemSourceGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Group
+				var itemSourceGroupInput PolicyPolicyWanNetworkPolicyRulesRuleSourceGroup
 				for _, item := range elementsSourceGroupInput {
 					diags = append(diags, item.As(ctx, &itemSourceGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -320,7 +322,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsSourceSystemGroupInput := make([]types.Object, 0, len(sourceInput.SystemGroup.Elements()))
 				diags = append(diags, sourceInput.SystemGroup.ElementsAs(ctx, &elementsSourceSystemGroupInput, false)...)
 
-				var itemSourceSystemGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_SystemGroup
+				var itemSourceSystemGroupInput PolicyPolicyWanNetworkPolicyRulesRuleSourceSystemGroup
 				for _, item := range elementsSourceSystemGroupInput {
 					diags = append(diags, item.As(ctx, &itemSourceSystemGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -347,11 +349,10 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 		// setting destination
 		if !ruleInput.Destination.IsUnknown() && !ruleInput.Destination.IsNull() {
-
 			ruleDestinationInput := &cato_models.WanNetworkRuleDestinationInput{}
 			ruleDestinationUpdateInput := &cato_models.WanNetworkRuleDestinationUpdateInput{}
 
-			destinationInput := Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination{}
+			destinationInput := PolicyPolicyWanNetworkPolicyRulesRuleDestination{}
 			diags = append(diags, ruleInput.Destination.As(ctx, &destinationInput, basetypes.ObjectAsOptions{})...)
 
 			// setting destination IP
@@ -375,7 +376,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationHostInput := make([]types.Object, 0, len(destinationInput.Host.Elements()))
 				diags = append(diags, destinationInput.Host.ElementsAs(ctx, &elementsDestinationHostInput, false)...)
 
-				var itemDestinationHostInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Host
+				var itemDestinationHostInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationHost
 				for _, item := range elementsDestinationHostInput {
 					diags = append(diags, item.As(ctx, &itemDestinationHostInput, basetypes.ObjectAsOptions{})...)
 
@@ -399,7 +400,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationSiteInput := make([]types.Object, 0, len(destinationInput.Site.Elements()))
 				diags = append(diags, destinationInput.Site.ElementsAs(ctx, &elementsDestinationSiteInput, false)...)
 
-				var itemDestinationSiteInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Site
+				var itemDestinationSiteInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationSite
 				for _, item := range elementsDestinationSiteInput {
 					diags = append(diags, item.As(ctx, &itemDestinationSiteInput, basetypes.ObjectAsOptions{})...)
 
@@ -423,7 +424,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationIPRangeInput := make([]types.Object, 0, len(destinationInput.IPRange.Elements()))
 				diags = append(diags, destinationInput.IPRange.ElementsAs(ctx, &elementsDestinationIPRangeInput, false)...)
 
-				var itemDestinationIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_IPRange
+				var itemDestinationIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationIPRange
 				for _, item := range elementsDestinationIPRangeInput {
 					diags = append(diags, item.As(ctx, &itemDestinationIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -442,7 +443,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationGlobalIPRangeInput := make([]types.Object, 0, len(destinationInput.GlobalIPRange.Elements()))
 				diags = append(diags, destinationInput.GlobalIPRange.ElementsAs(ctx, &elementsDestinationGlobalIPRangeInput, false)...)
 
-				var itemDestinationGlobalIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_GlobalIPRange
+				var itemDestinationGlobalIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationGlobalIPRange
 				for _, item := range elementsDestinationGlobalIPRangeInput {
 					diags = append(diags, item.As(ctx, &itemDestinationGlobalIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -466,23 +467,27 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationNetworkInterfaceInput := make([]types.Object, 0, len(destinationInput.NetworkInterface.Elements()))
 				diags = append(diags, destinationInput.NetworkInterface.ElementsAs(ctx, &elementsDestinationNetworkInterfaceInput, false)...)
 
-				var itemDestinationNetworkInterfaceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_NetworkInterface
+				var itemDestinationNetworkInterfaceInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationNetworkInterface
 				for _, item := range elementsDestinationNetworkInterfaceInput {
 					diags = append(diags, item.As(ctx, &itemDestinationNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
-					if !itemDestinationNetworkInterfaceInput.ID.IsNull() && !itemDestinationNetworkInterfaceInput.ID.IsUnknown() {
+					switch {
+					case !itemDestinationNetworkInterfaceInput.ID.IsNull() && !itemDestinationNetworkInterfaceInput.ID.IsUnknown():
 						ruleDestinationInput.NetworkInterface = append(ruleDestinationInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
 							By:    cato_models.ObjectRefBy("ID"),
 							Input: itemDestinationNetworkInterfaceInput.ID.ValueString(),
 						})
-					} else if !itemDestinationNetworkInterfaceInput.Name.IsNull() && !itemDestinationNetworkInterfaceInput.Name.IsUnknown() {
+					case !itemDestinationNetworkInterfaceInput.Name.IsNull() && !itemDestinationNetworkInterfaceInput.Name.IsUnknown():
 						nameVal := itemDestinationNetworkInterfaceInput.Name.ValueString()
 						ruleDestinationInput.NetworkInterface = append(ruleDestinationInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
 							By:    cato_models.ObjectRefBy("NAME"),
 							Input: nameVal,
 						})
-					} else {
-						diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for a destination.network_interface element."))
+					default:
+						diags = append(diags, diag.NewErrorDiagnostic(
+							"Missing network_interface selector",
+							"Neither id nor name provided for a destination.network_interface element.",
+						))
 					}
 				}
 				ruleDestinationUpdateInput.NetworkInterface = ruleDestinationInput.NetworkInterface
@@ -495,7 +500,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationSiteNetworkSubnetInput := make([]types.Object, 0, len(destinationInput.SiteNetworkSubnet.Elements()))
 				diags = append(diags, destinationInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsDestinationSiteNetworkSubnetInput, false)...)
 
-				var itemDestinationSiteNetworkSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_SiteNetworkSubnet
+				var itemDestinationSiteNetworkSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationSiteNetworkSubnet
 				for _, item := range elementsDestinationSiteNetworkSubnetInput {
 					diags = append(diags, item.As(ctx, &itemDestinationSiteNetworkSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -519,7 +524,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationFloatingSubnetInput := make([]types.Object, 0, len(destinationInput.FloatingSubnet.Elements()))
 				diags = append(diags, destinationInput.FloatingSubnet.ElementsAs(ctx, &elementsDestinationFloatingSubnetInput, false)...)
 
-				var itemDestinationFloatingSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_FloatingSubnet
+				var itemDestinationFloatingSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationFloatingSubnet
 				for _, item := range elementsDestinationFloatingSubnetInput {
 					diags = append(diags, item.As(ctx, &itemDestinationFloatingSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -543,7 +548,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationUserInput := make([]types.Object, 0, len(destinationInput.User.Elements()))
 				diags = append(diags, destinationInput.User.ElementsAs(ctx, &elementsDestinationUserInput, false)...)
 
-				var itemDestinationUserInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_User
+				var itemDestinationUserInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationUser
 				for _, item := range elementsDestinationUserInput {
 					diags = append(diags, item.As(ctx, &itemDestinationUserInput, basetypes.ObjectAsOptions{})...)
 
@@ -567,7 +572,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationUsersGroupInput := make([]types.Object, 0, len(destinationInput.UsersGroup.Elements()))
 				diags = append(diags, destinationInput.UsersGroup.ElementsAs(ctx, &elementsDestinationUsersGroupInput, false)...)
 
-				var itemDestinationUsersGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_UsersGroup
+				var itemDestinationUsersGroupInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationUsersGroup
 				for _, item := range elementsDestinationUsersGroupInput {
 					diags = append(diags, item.As(ctx, &itemDestinationUsersGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -591,7 +596,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationGroupInput := make([]types.Object, 0, len(destinationInput.Group.Elements()))
 				diags = append(diags, destinationInput.Group.ElementsAs(ctx, &elementsDestinationGroupInput, false)...)
 
-				var itemDestinationGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Group
+				var itemDestinationGroupInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationGroup
 				for _, item := range elementsDestinationGroupInput {
 					diags = append(diags, item.As(ctx, &itemDestinationGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -615,7 +620,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsDestinationSystemGroupInput := make([]types.Object, 0, len(destinationInput.SystemGroup.Elements()))
 				diags = append(diags, destinationInput.SystemGroup.ElementsAs(ctx, &elementsDestinationSystemGroupInput, false)...)
 
-				var itemDestinationSystemGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_SystemGroup
+				var itemDestinationSystemGroupInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationSystemGroup
 				for _, item := range elementsDestinationSystemGroupInput {
 					diags = append(diags, item.As(ctx, &itemDestinationSystemGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -643,7 +648,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 			ruleApplicationInput := &cato_models.WanNetworkRuleApplicationInput{}
 			ruleApplicationUpdateInput := &cato_models.WanNetworkRuleApplicationUpdateInput{}
 
-			applicationInput := Policy_Policy_WanNetwork_Policy_Rules_Rule_Application{}
+			applicationInput := PolicyPolicyWanNetworkPolicyRulesRuleApplication{}
 			diags = append(diags, ruleInput.Application.As(ctx, &applicationInput, basetypes.ObjectAsOptions{})...)
 
 			// setting application domain
@@ -667,7 +672,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsApplicationApplicationInput := make([]types.Object, 0, len(applicationInput.Application.Elements()))
 				diags = append(diags, applicationInput.Application.ElementsAs(ctx, &elementsApplicationApplicationInput, false)...)
 
-				var itemApplicationApplicationInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_Application
+				var itemApplicationApplicationInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationApplication
 				for _, item := range elementsApplicationApplicationInput {
 					diags = append(diags, item.As(ctx, &itemApplicationApplicationInput, basetypes.ObjectAsOptions{})...)
 
@@ -691,7 +696,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsApplicationCustomAppInput := make([]types.Object, 0, len(applicationInput.CustomApp.Elements()))
 				diags = append(diags, applicationInput.CustomApp.ElementsAs(ctx, &elementsApplicationCustomAppInput, false)...)
 
-				var itemApplicationCustomAppInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomApp
+				var itemApplicationCustomAppInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomApp
 				for _, item := range elementsApplicationCustomAppInput {
 					diags = append(diags, item.As(ctx, &itemApplicationCustomAppInput, basetypes.ObjectAsOptions{})...)
 
@@ -715,7 +720,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsApplicationAppCategoryInput := make([]types.Object, 0, len(applicationInput.AppCategory.Elements()))
 				diags = append(diags, applicationInput.AppCategory.ElementsAs(ctx, &elementsApplicationAppCategoryInput, false)...)
 
-				var itemApplicationAppCategoryInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_AppCategory
+				var itemApplicationAppCategoryInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationAppCategory
 				for _, item := range elementsApplicationAppCategoryInput {
 					diags = append(diags, item.As(ctx, &itemApplicationAppCategoryInput, basetypes.ObjectAsOptions{})...)
 
@@ -739,7 +744,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsApplicationCustomCategoryInput := make([]types.Object, 0, len(applicationInput.CustomCategory.Elements()))
 				diags = append(diags, applicationInput.CustomCategory.ElementsAs(ctx, &elementsApplicationCustomCategoryInput, false)...)
 
-				var itemApplicationCustomCategoryInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomCategory
+				var itemApplicationCustomCategoryInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomCategory
 				for _, item := range elementsApplicationCustomCategoryInput {
 					diags = append(diags, item.As(ctx, &itemApplicationCustomCategoryInput, basetypes.ObjectAsOptions{})...)
 
@@ -763,7 +768,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsApplicationServiceInput := make([]types.Object, 0, len(applicationInput.Service.Elements()))
 				diags = append(diags, applicationInput.Service.ElementsAs(ctx, &elementsApplicationServiceInput, false)...)
 
-				var itemApplicationServiceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_Service
+				var itemApplicationServiceInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationService
 				for _, item := range elementsApplicationServiceInput {
 					diags = append(diags, item.As(ctx, &itemApplicationServiceInput, basetypes.ObjectAsOptions{})...)
 
@@ -787,7 +792,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsApplicationCustomServiceInput := make([]types.Object, 0, len(applicationInput.CustomService.Elements()))
 				diags = append(diags, applicationInput.CustomService.ElementsAs(ctx, &elementsApplicationCustomServiceInput, false)...)
 
-				var itemApplicationCustomServiceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomService
+				var itemApplicationCustomServiceInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomService
 				for _, item := range elementsApplicationCustomServiceInput {
 					diags = append(diags, item.As(ctx, &itemApplicationCustomServiceInput, basetypes.ObjectAsOptions{})...)
 
@@ -809,7 +814,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 					// setting custom service port range
 					if !itemApplicationCustomServiceInput.PortRange.IsNull() {
-						var itemPortRange Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomService_PortRange
+						var itemPortRange PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServicePortRange
 						diags = append(diags, itemApplicationCustomServiceInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
 						inputPortRange := cato_models.PortRangeInput{
@@ -827,37 +832,37 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 			}
 
 			// setting application custom service IP
-			if !applicationInput.CustomServiceIp.IsNull() {
-				elementsApplicationCustomServiceIpInput := make([]types.Object, 0, len(applicationInput.CustomServiceIp.Elements()))
-				diags = append(diags, applicationInput.CustomServiceIp.ElementsAs(ctx, &elementsApplicationCustomServiceIpInput, false)...)
+			if !applicationInput.CustomServiceIP.IsNull() {
+				elementsApplicationCustomServiceIPInput := make([]types.Object, 0, len(applicationInput.CustomServiceIP.Elements()))
+				diags = append(diags, applicationInput.CustomServiceIP.ElementsAs(ctx, &elementsApplicationCustomServiceIPInput, false)...)
 
-				var itemApplicationCustomServiceIpInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomServiceIp
-				for _, item := range elementsApplicationCustomServiceIpInput {
-					diags = append(diags, item.As(ctx, &itemApplicationCustomServiceIpInput, basetypes.ObjectAsOptions{})...)
+				var itemApplicationCustomServiceIPInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServiceIP
+				for _, item := range elementsApplicationCustomServiceIPInput {
+					diags = append(diags, item.As(ctx, &itemApplicationCustomServiceIPInput, basetypes.ObjectAsOptions{})...)
 
-					customServiceIpInput := &cato_models.CustomServiceIPInput{
-						Name: itemApplicationCustomServiceIpInput.Name.ValueString(),
+					customServiceIPInput := &cato_models.CustomServiceIPInput{
+						Name: itemApplicationCustomServiceIPInput.Name.ValueString(),
 					}
 
 					// setting custom service IP address
-					if !itemApplicationCustomServiceIpInput.IP.IsNull() {
-						ipValue := itemApplicationCustomServiceIpInput.IP.ValueString()
-						customServiceIpInput.IP = &ipValue
+					if !itemApplicationCustomServiceIPInput.IP.IsNull() {
+						ipValue := itemApplicationCustomServiceIPInput.IP.ValueString()
+						customServiceIPInput.IP = &ipValue
 					}
 
 					// setting custom service IP range
-					if !itemApplicationCustomServiceIpInput.IPRange.IsNull() {
-						var itemIPRange Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomServiceIp_IPRange
-						diags = append(diags, itemApplicationCustomServiceIpInput.IPRange.As(ctx, &itemIPRange, basetypes.ObjectAsOptions{})...)
+					if !itemApplicationCustomServiceIPInput.IPRange.IsNull() {
+						var itemIPRange PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServiceIPIPRange
+						diags = append(diags, itemApplicationCustomServiceIPInput.IPRange.As(ctx, &itemIPRange, basetypes.ObjectAsOptions{})...)
 
 						inputIPRange := cato_models.IPAddressRangeInput{
 							From: itemIPRange.From.ValueString(),
 							To:   itemIPRange.To.ValueString(),
 						}
-						customServiceIpInput.IPRange = &inputIPRange
+						customServiceIPInput.IPRange = &inputIPRange
 					}
 
-					ruleApplicationInput.CustomServiceIP = append(ruleApplicationInput.CustomServiceIP, customServiceIpInput)
+					ruleApplicationInput.CustomServiceIP = append(ruleApplicationInput.CustomServiceIP, customServiceIPInput)
 				}
 				ruleApplicationUpdateInput.CustomServiceIP = ruleApplicationInput.CustomServiceIP
 			} else {
@@ -874,9 +879,8 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 			diags = append(diags, ruleInput.Exceptions.ElementsAs(ctx, &elementsExceptionsInput, false)...)
 
 			// loop over exceptions
-			var itemExceptionsInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Exceptions
+			var itemExceptionsInput PolicyPolicyWanNetworkPolicyRulesRuleExceptions
 			for _, item := range elementsExceptionsInput {
-
 				exceptionAddInput := cato_models.WanNetworkRuleExceptionInput{}
 				exceptionUpdateInput := cato_models.WanNetworkRuleExceptionInput{}
 
@@ -888,11 +892,10 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 				// setting source
 				if !itemExceptionsInput.Source.IsNull() {
-
 					exceptionAddInput.Source = &cato_models.WanNetworkRuleSourceInput{}
 					exceptionUpdateInput.Source = &cato_models.WanNetworkRuleSourceInput{}
 
-					exceptionSourceInput := Policy_Policy_WanNetwork_Policy_Rules_Rule_Source{}
+					exceptionSourceInput := PolicyPolicyWanNetworkPolicyRulesRuleSource{}
 					diags = append(diags, itemExceptionsInput.Source.As(ctx, &exceptionSourceInput, basetypes.ObjectAsOptions{})...)
 
 					// setting source IP
@@ -916,7 +919,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceHostInput := make([]types.Object, 0, len(exceptionSourceInput.Host.Elements()))
 						diags = append(diags, exceptionSourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)...)
 
-						var itemSourceHostInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Host
+						var itemSourceHostInput PolicyPolicyWanNetworkPolicyRulesRuleSourceHost
 						for _, item := range elementsSourceHostInput {
 							diags = append(diags, item.As(ctx, &itemSourceHostInput, basetypes.ObjectAsOptions{})...)
 
@@ -940,7 +943,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceSiteInput := make([]types.Object, 0, len(exceptionSourceInput.Site.Elements()))
 						diags = append(diags, exceptionSourceInput.Site.ElementsAs(ctx, &elementsSourceSiteInput, false)...)
 
-						var itemSourceSiteInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Site
+						var itemSourceSiteInput PolicyPolicyWanNetworkPolicyRulesRuleSourceSite
 						for _, item := range elementsSourceSiteInput {
 							diags = append(diags, item.As(ctx, &itemSourceSiteInput, basetypes.ObjectAsOptions{})...)
 
@@ -964,7 +967,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsExceptionSourceIPRangeInput := make([]types.Object, 0, len(exceptionSourceInput.IPRange.Elements()))
 						diags = append(diags, exceptionSourceInput.IPRange.ElementsAs(ctx, &elementsExceptionSourceIPRangeInput, false)...)
 
-						var itemSourceIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_IPRange
+						var itemSourceIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleSourceIPRange
 						for _, item := range elementsExceptionSourceIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemSourceIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -983,7 +986,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceGlobalIPRangeInput := make([]types.Object, 0, len(exceptionSourceInput.GlobalIPRange.Elements()))
 						diags = append(diags, exceptionSourceInput.GlobalIPRange.ElementsAs(ctx, &elementsSourceGlobalIPRangeInput, false)...)
 
-						var itemSourceGlobalIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_GlobalIPRange
+						var itemSourceGlobalIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleSourceGlobalIPRange
 						for _, item := range elementsSourceGlobalIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemSourceGlobalIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -1007,23 +1010,27 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceNetworkInterfaceInput := make([]types.Object, 0, len(exceptionSourceInput.NetworkInterface.Elements()))
 						diags = append(diags, exceptionSourceInput.NetworkInterface.ElementsAs(ctx, &elementsSourceNetworkInterfaceInput, false)...)
 
-						var itemSourceNetworkInterfaceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_NetworkInterface
+						var itemSourceNetworkInterfaceInput PolicyPolicyWanNetworkPolicyRulesRuleSourceNetworkInterface
 						for _, item := range elementsSourceNetworkInterfaceInput {
 							diags = append(diags, item.As(ctx, &itemSourceNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
-							if !itemSourceNetworkInterfaceInput.ID.IsNull() && !itemSourceNetworkInterfaceInput.ID.IsUnknown() {
+							switch {
+							case !itemSourceNetworkInterfaceInput.ID.IsNull() && !itemSourceNetworkInterfaceInput.ID.IsUnknown():
 								exceptionAddInput.Source.NetworkInterface = append(exceptionAddInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
 									By:    cato_models.ObjectRefBy("ID"),
 									Input: itemSourceNetworkInterfaceInput.ID.ValueString(),
 								})
-							} else if !itemSourceNetworkInterfaceInput.Name.IsNull() && !itemSourceNetworkInterfaceInput.Name.IsUnknown() {
+							case !itemSourceNetworkInterfaceInput.Name.IsNull() && !itemSourceNetworkInterfaceInput.Name.IsUnknown():
 								nameVal := itemSourceNetworkInterfaceInput.Name.ValueString()
 								exceptionAddInput.Source.NetworkInterface = append(exceptionAddInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
 									By:    cato_models.ObjectRefBy("NAME"),
 									Input: nameVal,
 								})
-							} else {
-								diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for an exception.source.network_interface element."))
+							default:
+								diags = append(diags, diag.NewErrorDiagnostic(
+									"Missing network_interface selector",
+									"Neither id nor name provided for an exception.source.network_interface element.",
+								))
 							}
 						}
 						exceptionUpdateInput.Source.NetworkInterface = exceptionAddInput.Source.NetworkInterface
@@ -1036,7 +1043,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceSiteNetworkSubnetInput := make([]types.Object, 0, len(exceptionSourceInput.SiteNetworkSubnet.Elements()))
 						diags = append(diags, exceptionSourceInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsSourceSiteNetworkSubnetInput, false)...)
 
-						var itemSourceSiteNetworkSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_SiteNetworkSubnet
+						var itemSourceSiteNetworkSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleSourceSiteNetworkSubnet
 						for _, item := range elementsSourceSiteNetworkSubnetInput {
 							diags = append(diags, item.As(ctx, &itemSourceSiteNetworkSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -1045,10 +1052,13 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionAddInput.Source.SiteNetworkSubnet = append(exceptionAddInput.Source.SiteNetworkSubnet, &cato_models.SiteNetworkSubnetRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
+							exceptionAddInput.Source.SiteNetworkSubnet = append(
+								exceptionAddInput.Source.SiteNetworkSubnet,
+								&cato_models.SiteNetworkSubnetRefInput{
+									By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
+									Input: ObjectRefOutput.Input,
+								},
+							)
 						}
 						exceptionUpdateInput.Source.SiteNetworkSubnet = exceptionAddInput.Source.SiteNetworkSubnet
 					} else {
@@ -1060,7 +1070,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceFloatingSubnetInput := make([]types.Object, 0, len(exceptionSourceInput.FloatingSubnet.Elements()))
 						diags = append(diags, exceptionSourceInput.FloatingSubnet.ElementsAs(ctx, &elementsSourceFloatingSubnetInput, false)...)
 
-						var itemSourceFloatingSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_FloatingSubnet
+						var itemSourceFloatingSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleSourceFloatingSubnet
 						for _, item := range elementsSourceFloatingSubnetInput {
 							diags = append(diags, item.As(ctx, &itemSourceFloatingSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -1084,7 +1094,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceUserInput := make([]types.Object, 0, len(exceptionSourceInput.User.Elements()))
 						diags = append(diags, exceptionSourceInput.User.ElementsAs(ctx, &elementsSourceUserInput, false)...)
 
-						var itemSourceUserInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_User
+						var itemSourceUserInput PolicyPolicyWanNetworkPolicyRulesRuleSourceUser
 						for _, item := range elementsSourceUserInput {
 							diags = append(diags, item.As(ctx, &itemSourceUserInput, basetypes.ObjectAsOptions{})...)
 
@@ -1108,7 +1118,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceUsersGroupInput := make([]types.Object, 0, len(exceptionSourceInput.UsersGroup.Elements()))
 						diags = append(diags, exceptionSourceInput.UsersGroup.ElementsAs(ctx, &elementsSourceUsersGroupInput, false)...)
 
-						var itemSourceUsersGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_UsersGroup
+						var itemSourceUsersGroupInput PolicyPolicyWanNetworkPolicyRulesRuleSourceUsersGroup
 						for _, item := range elementsSourceUsersGroupInput {
 							diags = append(diags, item.As(ctx, &itemSourceUsersGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -1132,7 +1142,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceGroupInput := make([]types.Object, 0, len(exceptionSourceInput.Group.Elements()))
 						diags = append(diags, exceptionSourceInput.Group.ElementsAs(ctx, &elementsSourceGroupInput, false)...)
 
-						var itemSourceGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Group
+						var itemSourceGroupInput PolicyPolicyWanNetworkPolicyRulesRuleSourceGroup
 						for _, item := range elementsSourceGroupInput {
 							diags = append(diags, item.As(ctx, &itemSourceGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -1156,7 +1166,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsSourceSystemGroupInput := make([]types.Object, 0, len(exceptionSourceInput.SystemGroup.Elements()))
 						diags = append(diags, exceptionSourceInput.SystemGroup.ElementsAs(ctx, &elementsSourceSystemGroupInput, false)...)
 
-						var itemSourceSystemGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_SystemGroup
+						var itemSourceSystemGroupInput PolicyPolicyWanNetworkPolicyRulesRuleSourceSystemGroup
 						for _, item := range elementsSourceSystemGroupInput {
 							diags = append(diags, item.As(ctx, &itemSourceSystemGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -1178,11 +1188,10 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 				// setting destination
 				if !itemExceptionsInput.Destination.IsNull() {
-
 					exceptionAddInput.Destination = &cato_models.WanNetworkRuleDestinationInput{}
 					exceptionUpdateInput.Destination = &cato_models.WanNetworkRuleDestinationInput{}
 
-					exceptionDestinationInput := Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination{}
+					exceptionDestinationInput := PolicyPolicyWanNetworkPolicyRulesRuleDestination{}
 					diags = append(diags, itemExceptionsInput.Destination.As(ctx, &exceptionDestinationInput, basetypes.ObjectAsOptions{})...)
 
 					// setting destination IP
@@ -1206,7 +1215,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationHostInput := make([]types.Object, 0, len(exceptionDestinationInput.Host.Elements()))
 						diags = append(diags, exceptionDestinationInput.Host.ElementsAs(ctx, &elementsDestinationHostInput, false)...)
 
-						var itemDestinationHostInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Host
+						var itemDestinationHostInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationHost
 						for _, item := range elementsDestinationHostInput {
 							diags = append(diags, item.As(ctx, &itemDestinationHostInput, basetypes.ObjectAsOptions{})...)
 
@@ -1230,7 +1239,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationSiteInput := make([]types.Object, 0, len(exceptionDestinationInput.Site.Elements()))
 						diags = append(diags, exceptionDestinationInput.Site.ElementsAs(ctx, &elementsDestinationSiteInput, false)...)
 
-						var itemDestinationSiteInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Site
+						var itemDestinationSiteInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationSite
 						for _, item := range elementsDestinationSiteInput {
 							diags = append(diags, item.As(ctx, &itemDestinationSiteInput, basetypes.ObjectAsOptions{})...)
 
@@ -1254,7 +1263,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationIPRangeInput := make([]types.Object, 0, len(exceptionDestinationInput.IPRange.Elements()))
 						diags = append(diags, exceptionDestinationInput.IPRange.ElementsAs(ctx, &elementsDestinationIPRangeInput, false)...)
 
-						var itemDestinationIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_IPRange
+						var itemDestinationIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationIPRange
 						for _, item := range elementsDestinationIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemDestinationIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -1273,7 +1282,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationGlobalIPRangeInput := make([]types.Object, 0, len(exceptionDestinationInput.GlobalIPRange.Elements()))
 						diags = append(diags, exceptionDestinationInput.GlobalIPRange.ElementsAs(ctx, &elementsDestinationGlobalIPRangeInput, false)...)
 
-						var itemDestinationGlobalIPRangeInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_GlobalIPRange
+						var itemDestinationGlobalIPRangeInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationGlobalIPRange
 						for _, item := range elementsDestinationGlobalIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemDestinationGlobalIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -1297,23 +1306,33 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationNetworkInterfaceInput := make([]types.Object, 0, len(exceptionDestinationInput.NetworkInterface.Elements()))
 						diags = append(diags, exceptionDestinationInput.NetworkInterface.ElementsAs(ctx, &elementsDestinationNetworkInterfaceInput, false)...)
 
-						var itemDestinationNetworkInterfaceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_NetworkInterface
+						var itemDestinationNetworkInterfaceInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationNetworkInterface
 						for _, item := range elementsDestinationNetworkInterfaceInput {
 							diags = append(diags, item.As(ctx, &itemDestinationNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
-							if !itemDestinationNetworkInterfaceInput.ID.IsNull() && !itemDestinationNetworkInterfaceInput.ID.IsUnknown() {
-								exceptionAddInput.Destination.NetworkInterface = append(exceptionAddInput.Destination.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
-									By:    cato_models.ObjectRefBy("ID"),
-									Input: itemDestinationNetworkInterfaceInput.ID.ValueString(),
-								})
-							} else if !itemDestinationNetworkInterfaceInput.Name.IsNull() && !itemDestinationNetworkInterfaceInput.Name.IsUnknown() {
+							switch {
+							case !itemDestinationNetworkInterfaceInput.ID.IsNull() && !itemDestinationNetworkInterfaceInput.ID.IsUnknown():
+								exceptionAddInput.Destination.NetworkInterface = append(
+									exceptionAddInput.Destination.NetworkInterface,
+									&cato_models.NetworkInterfaceRefInput{
+										By:    cato_models.ObjectRefBy("ID"),
+										Input: itemDestinationNetworkInterfaceInput.ID.ValueString(),
+									},
+								)
+							case !itemDestinationNetworkInterfaceInput.Name.IsNull() && !itemDestinationNetworkInterfaceInput.Name.IsUnknown():
 								nameVal := itemDestinationNetworkInterfaceInput.Name.ValueString()
-								exceptionAddInput.Destination.NetworkInterface = append(exceptionAddInput.Destination.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
-									By:    cato_models.ObjectRefBy("NAME"),
-									Input: nameVal,
-								})
-							} else {
-								diags = append(diags, diag.NewErrorDiagnostic("Missing network_interface selector", "Neither id nor name provided for an exception.destination.network_interface element."))
+								exceptionAddInput.Destination.NetworkInterface = append(
+									exceptionAddInput.Destination.NetworkInterface,
+									&cato_models.NetworkInterfaceRefInput{
+										By:    cato_models.ObjectRefBy("NAME"),
+										Input: nameVal,
+									},
+								)
+							default:
+								diags = append(diags, diag.NewErrorDiagnostic(
+									"Missing network_interface selector",
+									"Neither id nor name provided for an exception.destination.network_interface element.",
+								))
 							}
 						}
 						exceptionUpdateInput.Destination.NetworkInterface = exceptionAddInput.Destination.NetworkInterface
@@ -1324,9 +1343,16 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 					// setting destination site network subnet
 					if !exceptionDestinationInput.SiteNetworkSubnet.IsNull() {
 						elementsDestinationSiteNetworkSubnetInput := make([]types.Object, 0, len(exceptionDestinationInput.SiteNetworkSubnet.Elements()))
-						diags = append(diags, exceptionDestinationInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsDestinationSiteNetworkSubnetInput, false)...)
+						diags = append(
+							diags,
+							exceptionDestinationInput.SiteNetworkSubnet.ElementsAs(
+								ctx,
+								&elementsDestinationSiteNetworkSubnetInput,
+								false,
+							)...,
+						)
 
-						var itemDestinationSiteNetworkSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_SiteNetworkSubnet
+						var itemDestinationSiteNetworkSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationSiteNetworkSubnet
 						for _, item := range elementsDestinationSiteNetworkSubnetInput {
 							diags = append(diags, item.As(ctx, &itemDestinationSiteNetworkSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -1335,10 +1361,13 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionAddInput.Destination.SiteNetworkSubnet = append(exceptionAddInput.Destination.SiteNetworkSubnet, &cato_models.SiteNetworkSubnetRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
+							exceptionAddInput.Destination.SiteNetworkSubnet = append(
+								exceptionAddInput.Destination.SiteNetworkSubnet,
+								&cato_models.SiteNetworkSubnetRefInput{
+									By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
+									Input: ObjectRefOutput.Input,
+								},
+							)
 						}
 						exceptionUpdateInput.Destination.SiteNetworkSubnet = exceptionAddInput.Destination.SiteNetworkSubnet
 					} else {
@@ -1350,7 +1379,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationFloatingSubnetInput := make([]types.Object, 0, len(exceptionDestinationInput.FloatingSubnet.Elements()))
 						diags = append(diags, exceptionDestinationInput.FloatingSubnet.ElementsAs(ctx, &elementsDestinationFloatingSubnetInput, false)...)
 
-						var itemDestinationFloatingSubnetInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_FloatingSubnet
+						var itemDestinationFloatingSubnetInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationFloatingSubnet
 						for _, item := range elementsDestinationFloatingSubnetInput {
 							diags = append(diags, item.As(ctx, &itemDestinationFloatingSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -1359,10 +1388,13 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionAddInput.Destination.FloatingSubnet = append(exceptionAddInput.Destination.FloatingSubnet, &cato_models.FloatingSubnetRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
+							exceptionAddInput.Destination.FloatingSubnet = append(
+								exceptionAddInput.Destination.FloatingSubnet,
+								&cato_models.FloatingSubnetRefInput{
+									By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
+									Input: ObjectRefOutput.Input,
+								},
+							)
 						}
 						exceptionUpdateInput.Destination.FloatingSubnet = exceptionAddInput.Destination.FloatingSubnet
 					} else {
@@ -1374,7 +1406,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationUserInput := make([]types.Object, 0, len(exceptionDestinationInput.User.Elements()))
 						diags = append(diags, exceptionDestinationInput.User.ElementsAs(ctx, &elementsDestinationUserInput, false)...)
 
-						var itemDestinationUserInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_User
+						var itemDestinationUserInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationUser
 						for _, item := range elementsDestinationUserInput {
 							diags = append(diags, item.As(ctx, &itemDestinationUserInput, basetypes.ObjectAsOptions{})...)
 
@@ -1398,7 +1430,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationUsersGroupInput := make([]types.Object, 0, len(exceptionDestinationInput.UsersGroup.Elements()))
 						diags = append(diags, exceptionDestinationInput.UsersGroup.ElementsAs(ctx, &elementsDestinationUsersGroupInput, false)...)
 
-						var itemDestinationUsersGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_UsersGroup
+						var itemDestinationUsersGroupInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationUsersGroup
 						for _, item := range elementsDestinationUsersGroupInput {
 							diags = append(diags, item.As(ctx, &itemDestinationUsersGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -1422,7 +1454,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationGroupInput := make([]types.Object, 0, len(exceptionDestinationInput.Group.Elements()))
 						diags = append(diags, exceptionDestinationInput.Group.ElementsAs(ctx, &elementsDestinationGroupInput, false)...)
 
-						var itemDestinationGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Group
+						var itemDestinationGroupInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationGroup
 						for _, item := range elementsDestinationGroupInput {
 							diags = append(diags, item.As(ctx, &itemDestinationGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -1446,7 +1478,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsDestinationSystemGroupInput := make([]types.Object, 0, len(exceptionDestinationInput.SystemGroup.Elements()))
 						diags = append(diags, exceptionDestinationInput.SystemGroup.ElementsAs(ctx, &elementsDestinationSystemGroupInput, false)...)
 
-						var itemDestinationSystemGroupInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_SystemGroup
+						var itemDestinationSystemGroupInput PolicyPolicyWanNetworkPolicyRulesRuleDestinationSystemGroup
 						for _, item := range elementsDestinationSystemGroupInput {
 							diags = append(diags, item.As(ctx, &itemDestinationSystemGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -1468,11 +1500,10 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 				// setting application
 				if !itemExceptionsInput.Application.IsNull() {
-
 					exceptionAddInput.Application = &cato_models.WanNetworkRuleApplicationInput{}
 					exceptionUpdateInput.Application = &cato_models.WanNetworkRuleApplicationInput{}
 
-					exceptionApplicationInput := Policy_Policy_WanNetwork_Policy_Rules_Rule_Application{}
+					exceptionApplicationInput := PolicyPolicyWanNetworkPolicyRulesRuleApplication{}
 					diags = append(diags, itemExceptionsInput.Application.As(ctx, &exceptionApplicationInput, basetypes.ObjectAsOptions{})...)
 
 					// setting application domain
@@ -1496,7 +1527,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsApplicationApplicationInput := make([]types.Object, 0, len(exceptionApplicationInput.Application.Elements()))
 						diags = append(diags, exceptionApplicationInput.Application.ElementsAs(ctx, &elementsApplicationApplicationInput, false)...)
 
-						var itemApplicationApplicationInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_Application
+						var itemApplicationApplicationInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationApplication
 						for _, item := range elementsApplicationApplicationInput {
 							diags = append(diags, item.As(ctx, &itemApplicationApplicationInput, basetypes.ObjectAsOptions{})...)
 
@@ -1520,7 +1551,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsApplicationCustomAppInput := make([]types.Object, 0, len(exceptionApplicationInput.CustomApp.Elements()))
 						diags = append(diags, exceptionApplicationInput.CustomApp.ElementsAs(ctx, &elementsApplicationCustomAppInput, false)...)
 
-						var itemApplicationCustomAppInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomApp
+						var itemApplicationCustomAppInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomApp
 						for _, item := range elementsApplicationCustomAppInput {
 							diags = append(diags, item.As(ctx, &itemApplicationCustomAppInput, basetypes.ObjectAsOptions{})...)
 
@@ -1544,7 +1575,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsApplicationAppCategoryInput := make([]types.Object, 0, len(exceptionApplicationInput.AppCategory.Elements()))
 						diags = append(diags, exceptionApplicationInput.AppCategory.ElementsAs(ctx, &elementsApplicationAppCategoryInput, false)...)
 
-						var itemApplicationAppCategoryInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_AppCategory
+						var itemApplicationAppCategoryInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationAppCategory
 						for _, item := range elementsApplicationAppCategoryInput {
 							diags = append(diags, item.As(ctx, &itemApplicationAppCategoryInput, basetypes.ObjectAsOptions{})...)
 
@@ -1553,10 +1584,13 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionAddInput.Application.AppCategory = append(exceptionAddInput.Application.AppCategory, &cato_models.ApplicationCategoryRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
+							exceptionAddInput.Application.AppCategory = append(
+								exceptionAddInput.Application.AppCategory,
+								&cato_models.ApplicationCategoryRefInput{
+									By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
+									Input: ObjectRefOutput.Input,
+								},
+							)
 						}
 						exceptionUpdateInput.Application.AppCategory = exceptionAddInput.Application.AppCategory
 					} else {
@@ -1568,7 +1602,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsApplicationCustomCategoryInput := make([]types.Object, 0, len(exceptionApplicationInput.CustomCategory.Elements()))
 						diags = append(diags, exceptionApplicationInput.CustomCategory.ElementsAs(ctx, &elementsApplicationCustomCategoryInput, false)...)
 
-						var itemApplicationCustomCategoryInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomCategory
+						var itemApplicationCustomCategoryInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomCategory
 						for _, item := range elementsApplicationCustomCategoryInput {
 							diags = append(diags, item.As(ctx, &itemApplicationCustomCategoryInput, basetypes.ObjectAsOptions{})...)
 
@@ -1577,10 +1611,13 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 								tflog.Error(ctx, err.Error())
 							}
 
-							exceptionAddInput.Application.CustomCategory = append(exceptionAddInput.Application.CustomCategory, &cato_models.CustomCategoryRefInput{
-								By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
-								Input: ObjectRefOutput.Input,
-							})
+							exceptionAddInput.Application.CustomCategory = append(
+								exceptionAddInput.Application.CustomCategory,
+								&cato_models.CustomCategoryRefInput{
+									By:    cato_models.ObjectRefBy(ObjectRefOutput.By),
+									Input: ObjectRefOutput.Input,
+								},
+							)
 						}
 						exceptionUpdateInput.Application.CustomCategory = exceptionAddInput.Application.CustomCategory
 					} else {
@@ -1592,7 +1629,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsApplicationServiceInput := make([]types.Object, 0, len(exceptionApplicationInput.Service.Elements()))
 						diags = append(diags, exceptionApplicationInput.Service.ElementsAs(ctx, &elementsApplicationServiceInput, false)...)
 
-						var itemApplicationServiceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_Service
+						var itemApplicationServiceInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationService
 						for _, item := range elementsApplicationServiceInput {
 							diags = append(diags, item.As(ctx, &itemApplicationServiceInput, basetypes.ObjectAsOptions{})...)
 
@@ -1616,7 +1653,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 						elementsApplicationCustomServiceInput := make([]types.Object, 0, len(exceptionApplicationInput.CustomService.Elements()))
 						diags = append(diags, exceptionApplicationInput.CustomService.ElementsAs(ctx, &elementsApplicationCustomServiceInput, false)...)
 
-						var itemApplicationCustomServiceInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomService
+						var itemApplicationCustomServiceInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomService
 						for _, item := range elementsApplicationCustomServiceInput {
 							diags = append(diags, item.As(ctx, &itemApplicationCustomServiceInput, basetypes.ObjectAsOptions{})...)
 
@@ -1638,7 +1675,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 							// setting custom service port range
 							if !itemApplicationCustomServiceInput.PortRange.IsNull() {
-								var itemPortRange Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomService_PortRange
+								var itemPortRange PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServicePortRange
 								diags = append(diags, itemApplicationCustomServiceInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
 								inputPortRange := cato_models.PortRangeInput{
@@ -1656,37 +1693,37 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 					}
 
 					// setting application custom service IP
-					if !exceptionApplicationInput.CustomServiceIp.IsNull() {
-						elementsApplicationCustomServiceIpInput := make([]types.Object, 0, len(exceptionApplicationInput.CustomServiceIp.Elements()))
-						diags = append(diags, exceptionApplicationInput.CustomServiceIp.ElementsAs(ctx, &elementsApplicationCustomServiceIpInput, false)...)
+					if !exceptionApplicationInput.CustomServiceIP.IsNull() {
+						elementsApplicationCustomServiceIPInput := make([]types.Object, 0, len(exceptionApplicationInput.CustomServiceIP.Elements()))
+						diags = append(diags, exceptionApplicationInput.CustomServiceIP.ElementsAs(ctx, &elementsApplicationCustomServiceIPInput, false)...)
 
-						var itemApplicationCustomServiceIpInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomServiceIp
-						for _, item := range elementsApplicationCustomServiceIpInput {
-							diags = append(diags, item.As(ctx, &itemApplicationCustomServiceIpInput, basetypes.ObjectAsOptions{})...)
+						var itemApplicationCustomServiceIPInput PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServiceIP
+						for _, item := range elementsApplicationCustomServiceIPInput {
+							diags = append(diags, item.As(ctx, &itemApplicationCustomServiceIPInput, basetypes.ObjectAsOptions{})...)
 
-							customServiceIpInput := &cato_models.CustomServiceIPInput{
-								Name: itemApplicationCustomServiceIpInput.Name.ValueString(),
+							customServiceIPInput := &cato_models.CustomServiceIPInput{
+								Name: itemApplicationCustomServiceIPInput.Name.ValueString(),
 							}
 
 							// setting custom service IP address
-							if !itemApplicationCustomServiceIpInput.IP.IsNull() {
-								ipValue := itemApplicationCustomServiceIpInput.IP.ValueString()
-								customServiceIpInput.IP = &ipValue
+							if !itemApplicationCustomServiceIPInput.IP.IsNull() {
+								ipValue := itemApplicationCustomServiceIPInput.IP.ValueString()
+								customServiceIPInput.IP = &ipValue
 							}
 
 							// setting custom service IP range
-							if !itemApplicationCustomServiceIpInput.IPRange.IsNull() {
-								var itemIPRange Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomServiceIp_IPRange
-								diags = append(diags, itemApplicationCustomServiceIpInput.IPRange.As(ctx, &itemIPRange, basetypes.ObjectAsOptions{})...)
+							if !itemApplicationCustomServiceIPInput.IPRange.IsNull() {
+								var itemIPRange PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServiceIPIPRange
+								diags = append(diags, itemApplicationCustomServiceIPInput.IPRange.As(ctx, &itemIPRange, basetypes.ObjectAsOptions{})...)
 
 								inputIPRange := cato_models.IPAddressRangeInput{
 									From: itemIPRange.From.ValueString(),
 									To:   itemIPRange.To.ValueString(),
 								}
-								customServiceIpInput.IPRange = &inputIPRange
+								customServiceIPInput.IPRange = &inputIPRange
 							}
 
-							exceptionAddInput.Application.CustomServiceIP = append(exceptionAddInput.Application.CustomServiceIP, customServiceIpInput)
+							exceptionAddInput.Application.CustomServiceIP = append(exceptionAddInput.Application.CustomServiceIP, customServiceIPInput)
 						}
 						exceptionUpdateInput.Application.CustomServiceIP = exceptionAddInput.Application.CustomServiceIP
 					} else {
@@ -1706,20 +1743,20 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 			ruleConfigurationInput := &cato_models.WanNetworkRuleConfigurationInput{}
 			ruleConfigurationUpdateInput := &cato_models.WanNetworkRuleConfigurationUpdateInput{}
 
-			configurationInput := Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration{}
+			configurationInput := PolicyPolicyWanNetworkPolicyRulesRuleConfiguration{}
 			diags = append(diags, ruleInput.Configuration.As(ctx, &configurationInput, basetypes.ObjectAsOptions{})...)
 
-			ruleConfigurationInput.ActiveTCPAcceleration = configurationInput.ActiveTcpAcceleration
+			ruleConfigurationInput.ActiveTCPAcceleration = configurationInput.ActiveTCPAcceleration
 			ruleConfigurationInput.PacketLossMitigation = configurationInput.PacketLossMitigation
 			ruleConfigurationInput.PreserveSourcePort = configurationInput.PreserveSourcePort
 
-			ruleConfigurationUpdateInput.ActiveTCPAcceleration = &configurationInput.ActiveTcpAcceleration
+			ruleConfigurationUpdateInput.ActiveTCPAcceleration = &configurationInput.ActiveTCPAcceleration
 			ruleConfigurationUpdateInput.PacketLossMitigation = &configurationInput.PacketLossMitigation
 			ruleConfigurationUpdateInput.PreserveSourcePort = &configurationInput.PreserveSourcePort
 
 			// setting primary transport
 			if !configurationInput.PrimaryTransport.IsNull() {
-				var primaryTransportInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_Transport
+				var primaryTransportInput PolicyPolicyWanNetworkPolicyRulesRuleConfigurationTransport
 				diags = append(diags, configurationInput.PrimaryTransport.As(ctx, &primaryTransportInput, basetypes.ObjectAsOptions{})...)
 
 				ruleConfigurationInput.PrimaryTransport = &cato_models.WanNetworkRuleTransportInput{
@@ -1737,32 +1774,36 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 			// setting secondary transport
 			if !configurationInput.SecondaryTransport.IsNull() {
-				var secondaryTransportInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_Transport
+				var secondaryTransportInput PolicyPolicyWanNetworkPolicyRulesRuleConfigurationTransport
 				diags = append(diags, configurationInput.SecondaryTransport.As(ctx, &secondaryTransportInput, basetypes.ObjectAsOptions{})...)
 
 				ruleConfigurationInput.SecondaryTransport = &cato_models.WanNetworkRuleTransportInput{
-					TransportType:          cato_models.WanNetworkRuleTransportType(secondaryTransportInput.TransportType.ValueString()),
-					PrimaryInterfaceRole:   cato_models.WanNetworkRuleInterfaceRole(secondaryTransportInput.PrimaryInterfaceRole.ValueString()),
-					SecondaryInterfaceRole: cato_models.WanNetworkRuleInterfaceRole(secondaryTransportInput.SecondaryInterfaceRole.ValueString()),
+					TransportType:        cato_models.WanNetworkRuleTransportType(secondaryTransportInput.TransportType.ValueString()),
+					PrimaryInterfaceRole: cato_models.WanNetworkRuleInterfaceRole(secondaryTransportInput.PrimaryInterfaceRole.ValueString()),
+					SecondaryInterfaceRole: cato_models.WanNetworkRuleInterfaceRole(
+						secondaryTransportInput.SecondaryInterfaceRole.ValueString(),
+					),
 				}
 
 				ruleConfigurationUpdateInput.SecondaryTransport = &cato_models.WanNetworkRuleTransportUpdateInput{
-					TransportType:          (*cato_models.WanNetworkRuleTransportType)(secondaryTransportInput.TransportType.ValueStringPointer()),
-					PrimaryInterfaceRole:   (*cato_models.WanNetworkRuleInterfaceRole)(secondaryTransportInput.PrimaryInterfaceRole.ValueStringPointer()),
-					SecondaryInterfaceRole: (*cato_models.WanNetworkRuleInterfaceRole)(secondaryTransportInput.SecondaryInterfaceRole.ValueStringPointer()),
+					TransportType:        (*cato_models.WanNetworkRuleTransportType)(secondaryTransportInput.TransportType.ValueStringPointer()),
+					PrimaryInterfaceRole: (*cato_models.WanNetworkRuleInterfaceRole)(secondaryTransportInput.PrimaryInterfaceRole.ValueStringPointer()),
+					SecondaryInterfaceRole: (*cato_models.WanNetworkRuleInterfaceRole)(
+						secondaryTransportInput.SecondaryInterfaceRole.ValueStringPointer(),
+					),
 				}
 			}
 
 			// setting allocation IP
-			if !configurationInput.AllocationIp.IsNull() {
-				elementsAllocationIpInput := make([]types.Object, 0, len(configurationInput.AllocationIp.Elements()))
-				diags = append(diags, configurationInput.AllocationIp.ElementsAs(ctx, &elementsAllocationIpInput, false)...)
+			if !configurationInput.AllocationIP.IsNull() {
+				elementsAllocationIPInput := make([]types.Object, 0, len(configurationInput.AllocationIP.Elements()))
+				diags = append(diags, configurationInput.AllocationIP.ElementsAs(ctx, &elementsAllocationIPInput, false)...)
 
-				var itemAllocationIpInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_AllocationIp
-				for _, item := range elementsAllocationIpInput {
-					diags = append(diags, item.As(ctx, &itemAllocationIpInput, basetypes.ObjectAsOptions{})...)
+				var itemAllocationIPInput PolicyPolicyWanNetworkPolicyRulesRuleConfigurationAllocationIP
+				for _, item := range elementsAllocationIPInput {
+					diags = append(diags, item.As(ctx, &itemAllocationIPInput, basetypes.ObjectAsOptions{})...)
 
-					ObjectRefOutput, err := utils.TransformObjectRefInput(itemAllocationIpInput)
+					ObjectRefOutput, err := utils.TransformObjectRefInput(itemAllocationIPInput)
 					if err != nil {
 						tflog.Error(ctx, err.Error())
 					}
@@ -1782,7 +1823,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsPopLocationInput := make([]types.Object, 0, len(configurationInput.PopLocation.Elements()))
 				diags = append(diags, configurationInput.PopLocation.ElementsAs(ctx, &elementsPopLocationInput, false)...)
 
-				var itemPopLocationInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_PopLocation
+				var itemPopLocationInput PolicyPolicyWanNetworkPolicyRulesRuleConfigurationPopLocation
 				for _, item := range elementsPopLocationInput {
 					diags = append(diags, item.As(ctx, &itemPopLocationInput, basetypes.ObjectAsOptions{})...)
 
@@ -1806,7 +1847,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 				elementsBackhaulingSiteInput := make([]types.Object, 0, len(configurationInput.BackhaulingSite.Elements()))
 				diags = append(diags, configurationInput.BackhaulingSite.ElementsAs(ctx, &elementsBackhaulingSiteInput, false)...)
 
-				var itemBackhaulingSiteInput Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_BackhaulingSite
+				var itemBackhaulingSiteInput PolicyPolicyWanNetworkPolicyRulesRuleConfigurationBackhaulingSite
 				for _, item := range elementsBackhaulingSiteInput {
 					diags = append(diags, item.As(ctx, &itemBackhaulingSiteInput, basetypes.ObjectAsOptions{})...)
 
@@ -1831,7 +1872,7 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 
 		// setting bandwidth priority
 		if !ruleInput.BandwidthPriority.IsUnknown() && !ruleInput.BandwidthPriority.IsNull() {
-			var bandwidthPriorityInput Policy_Policy_WanNetwork_Policy_Rules_Rule_BandwidthPriority
+			var bandwidthPriorityInput PolicyPolicyWanNetworkPolicyRulesRuleBandwidthPriority
 			diags = append(diags, ruleInput.BandwidthPriority.As(ctx, &bandwidthPriorityInput, basetypes.ObjectAsOptions{})...)
 
 			ObjectRefOutput, err := utils.TransformObjectRefInput(bandwidthPriorityInput)
@@ -1873,8 +1914,8 @@ func hydrateWanNetworkRuleApi(ctx context.Context, plan WanNetworkRule) (hydrate
 		rootUpdateRule.RouteType = (*cato_models.WanNetworkRuleRouteType)(ruleInput.RouteType.ValueStringPointer())
 	}
 
-	hydrateApiReturn.create.Rule = rootAddRule
-	hydrateApiReturn.update.Rule = rootUpdateRule
+	hydrateAPIReturn.create.Rule = rootAddRule
+	hydrateAPIReturn.update.Rule = rootUpdateRule
 
-	return hydrateApiReturn, diags
+	return hydrateAPIReturn, diags
 }

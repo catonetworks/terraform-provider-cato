@@ -14,7 +14,7 @@ type AppConnectorModel struct {
 	Location             types.Object `tfsdk:"location"` // AppConnectorLocation
 	Name                 types.String `tfsdk:"name"`
 	PreferredPopLocation types.Object `tfsdk:"preferred_pop_location"` // PreferredPopLocationModel
-	PrivateAppRef        types.Set    `tfsdk:"private_apps"`           // []IdNameRefModel
+	PrivateAppRef        types.Set    `tfsdk:"private_apps"`           // []IDNameRefModel
 	SerialNumber         types.String `tfsdk:"serial_number"`
 	SocketID             types.String `tfsdk:"socket_id"`
 	SocketModel          types.String `tfsdk:"socket_model"`
@@ -40,7 +40,7 @@ var AppConnectorLocationTypes = map[string]attr.Type{
 type PostalAddressModel struct {
 	AddressValidated types.String `tfsdk:"address_validated"`
 	City             types.String `tfsdk:"city"`
-	Country          types.Object `tfsdk:"country"` // IdNameRefModel
+	Country          types.Object `tfsdk:"country"` // IDNameRefModel
 	State            types.String `tfsdk:"state"`
 	Street           types.String `tfsdk:"street"`
 	ZipCode          types.String `tfsdk:"zip_code"`
@@ -49,13 +49,13 @@ type PostalAddressModel struct {
 type PreferredPopLocationModel struct {
 	PreferredOnly types.Bool   `tfsdk:"preferred_only"`
 	Automatic     types.Bool   `tfsdk:"automatic"`
-	Primary       types.Object `tfsdk:"primary"`   // IdNameRefModel
-	Secondary     types.Object `tfsdk:"secondary"` // IdNameRefModel
+	Primary       types.Object `tfsdk:"primary"`   // IDNameRefModel
+	Secondary     types.Object `tfsdk:"secondary"` // IDNameRefModel
 }
 
 var PreferredPopLocationModelTypes = map[string]attr.Type{
 	"preferred_only": types.BoolType,
 	"automatic":      types.BoolType,
-	"primary":        types.ObjectType{AttrTypes: parse.IdNameRefModelTypes},
-	"secondary":      types.ObjectType{AttrTypes: parse.IdNameRefModelTypes},
+	"primary":        types.ObjectType{AttrTypes: parse.IDNameRefModelTypes},
+	"secondary":      types.ObjectType{AttrTypes: parse.IDNameRefModelTypes},
 }

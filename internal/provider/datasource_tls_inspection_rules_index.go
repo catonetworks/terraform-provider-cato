@@ -12,7 +12,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-func TlsRulesIndexDataSource() datasource.DataSource {
+func TLSRulesIndexDataSource() datasource.DataSource {
 	return &tlsRulesIndexDataSource{}
 }
 
@@ -86,15 +86,15 @@ func (d *tlsRulesIndexDataSource) Schema(_ context.Context, _ datasource.SchemaR
 	}
 }
 
-func (d *tlsRulesIndexDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *tlsRulesIndexDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-var TlsRuleIndexObjectType = types.ObjectType{AttrTypes: TlsRuleIndexAttrTypes}
-var TlsRuleIndexAttrTypes = map[string]attr.Type{
+var TLSRuleIndexObjectType = types.ObjectType{AttrTypes: TLSRuleIndexAttrTypes}
+var TLSRuleIndexAttrTypes = map[string]attr.Type{
 	"id":               types.StringType,
 	"action":           types.StringType,
 	"index":            types.Int64Type,
@@ -106,15 +106,15 @@ var TlsRuleIndexAttrTypes = map[string]attr.Type{
 	"name":             types.StringType,
 }
 
-type TlsRuleIndexLookup struct {
+type TLSRuleIndexLookup struct {
 	Rules types.List `tfsdk:"rules"`
 }
 
-func (d *tlsRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var tlsRuleIndexLookup TlsRuleIndexLookup
-	ruleIndexApiData, err := d.client.catov2.Tlsinspectpolicy(ctx, d.client.AccountId)
+func (d *tlsRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var tlsRuleIndexLookup TLSRuleIndexLookup
+	ruleIndexAPIData, err := d.client.catov2.Tlsinspectpolicy(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.Tlsinspectpolicy.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(ruleIndexApiData),
+		"response": utils.InterfaceToJSONString(ruleIndexAPIData),
 	})
 
 	if err != nil {
@@ -127,26 +127,26 @@ func (d *tlsRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	var objects []attr.Value
 
-	sectionIdList := make(map[string]int64)
-	for _, v := range ruleIndexApiData.Policy.TLSInspect.Policy.Sections {
-		sectionIdList[v.Section.ID] = 0
+	sectionIDList := make(map[string]int64)
+	for _, v := range ruleIndexAPIData.Policy.TLSInspect.Policy.Sections {
+		sectionIDList[v.Section.ID] = 0
 	}
 
-	for _, item := range ruleIndexApiData.Policy.TLSInspect.Policy.Rules {
-		sectionIdList[item.Rule.Section.ID]++
-		sectionIdListItem := sectionIdList[item.Rule.Section.ID]
+	for _, item := range ruleIndexAPIData.Policy.TLSInspect.Policy.Rules {
+		sectionIDList[item.Rule.Section.ID]++
+		sectionIDListItem := sectionIDList[item.Rule.Section.ID]
 
 		tflog.Warn(ctx, "Read.TLSRuleItem.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(item),
 		})
 
 		ruleIndexStateData, diags := types.ObjectValue(
-			TlsRuleIndexAttrTypes,
+			TLSRuleIndexAttrTypes,
 			map[string]attr.Value{
 				"id":               types.StringValue(item.Rule.ID),
 				"action":           types.StringValue(string(item.Rule.Action)),
 				"index":            types.Int64Value(item.Rule.Index),
-				"index_in_section": types.Int64Value(sectionIdListItem),
+				"index_in_section": types.Int64Value(sectionIDListItem),
 				"section_name":     types.StringValue(item.Rule.Section.GetName()),
 				"section_id":       types.StringValue(item.Rule.Section.GetID()),
 				"description":      types.StringValue(item.Rule.Description),
@@ -161,7 +161,7 @@ func (d *tlsRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	objectlist, diags := types.ListValue(
 		types.ObjectType{
-			AttrTypes: TlsRuleIndexAttrTypes,
+			AttrTypes: TLSRuleIndexAttrTypes,
 		},
 		objects,
 	)
@@ -175,5 +175,4 @@ func (d *tlsRulesIndexDataSource) Read(ctx context.Context, req datasource.ReadR
 	if diags := resp.State.Set(ctx, &tlsRuleIndexLookup); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
-
 }

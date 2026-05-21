@@ -332,7 +332,6 @@ func setSiteLocations(
 	resp *datasource.ReadResponse,
 	filters types.List, allLocations []SLDCatalogEntry,
 ) {
-	diags := make(diag.Diagnostics, 0)
 	locationsOut := make([]attr.Value, 0, len(allLocations))
 
 	filtersListVal, diags := types.ListValueFrom(
@@ -346,33 +345,33 @@ func setSiteLocations(
 	}
 
 	for _, loc := range allLocations {
-		tflog.Info(ctx, "allLocations.StateCode - "+fmt.Sprintf("%v", loc.StateCode))
-		tflog.Info(ctx, "reflect.TypeOf(loc.StateCode) - "+fmt.Sprintf("%v", reflect.TypeOf(loc.StateCode)))
+		tflog.Info(ctx, "allLocations.StateCode - "+loc.StateCode)
+		tflog.Info(ctx, "reflect.TypeOf(loc.StateCode) - "+reflect.TypeOf(loc.StateCode).String())
 
 		locObj, diags := types.ObjectValue(
 			SLDAttrTypes,
 			map[string]attr.Value{
 				"country_code": func() attr.Value {
 					if loc.CountryCode != "" {
-						return types.StringValue(string(loc.CountryCode))
+						return types.StringValue(loc.CountryCode)
 					}
 					return types.StringNull()
 				}(),
 				"country_name": func() attr.Value {
 					if loc.CountryName != "" {
-						return types.StringValue(string(loc.CountryName))
+						return types.StringValue(loc.CountryName)
 					}
 					return types.StringNull()
 				}(),
 				"state_code": func() attr.Value {
 					if loc.StateCode != "" {
-						return types.StringValue(string(loc.StateCode))
+						return types.StringValue(loc.StateCode)
 					}
 					return types.StringNull()
 				}(),
 				"state_name": func() attr.Value {
 					if loc.StateName != "" {
-						return types.StringValue(string(loc.StateName))
+						return types.StringValue(loc.StateName)
 					}
 					return types.StringNull()
 				}(),
@@ -393,7 +392,7 @@ func setSiteLocations(
 				}(),
 				"city": func() attr.Value {
 					if loc.City != "" {
-						return types.StringValue(string(loc.City))
+						return types.StringValue(loc.City)
 					}
 					return types.StringNull()
 				}(),
@@ -406,7 +405,7 @@ func setSiteLocations(
 		locationsOut = append(locationsOut, locObj)
 	}
 
-	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
+	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+reflect.TypeOf(locationsOut).String())
 	locationsListVal, diags := types.ListValueFrom(
 		ctx,
 		types.ObjectType{AttrTypes: SLDAttrTypes},
@@ -417,7 +416,7 @@ func setSiteLocations(
 		return
 	}
 
-	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+fmt.Sprintf("%v", reflect.TypeOf(locationsOut)))
+	tflog.Info(ctx, "locationsListVal types.ListValueFrom locationsOut - "+reflect.TypeOf(locationsOut).String())
 	state, diags := types.ObjectValue(
 		SLDQueryAttrTypes,
 		map[string]attr.Value{

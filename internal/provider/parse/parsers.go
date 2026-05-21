@@ -26,12 +26,13 @@ type idRefInputs interface {
 	}
 }
 
-func ParseIDRefSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.Set {
+// IDRefSet parses a set of ID reference objects for the given type T and returns a types.Set of Terraform Object values
+func IDRefSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.Set {
 	type idn struct{ ID, Name string }
 
 	// null value
 	if items == nil {
-		return types.SetNull(types.ObjectType{AttrTypes: IdNameRefModelTypes})
+		return types.SetNull(types.ObjectType{AttrTypes: IDNameRefModelTypes})
 	}
 
 	refObjects := make([]attr.Value, 0, len(items))
@@ -39,30 +40,31 @@ func ParseIDRefSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.Di
 		if i == nil {
 			continue
 		}
-		// make IdNameRefModel struct
+		// make IDNameRefModel struct
 		val := idn(*i)
-		ref := IdNameRefModel{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
-		// make IdNameRefModel Object
-		obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, ref)
-		if utils.CheckErr(diags, diag) {
-			return types.SetNull(types.ObjectType{AttrTypes: IdNameRefModelTypes})
+		ref := IDNameRefModel{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
+		// make IDNameRefModel Object
+		obj, valueDiag := types.ObjectValueFrom(ctx, IDNameRefModelTypes, ref)
+		if utils.CheckErr(diags, valueDiag) {
+			return types.SetNull(types.ObjectType{AttrTypes: IDNameRefModelTypes})
 		}
 		// append to Object slice
 		refObjects = append(refObjects, obj)
 	}
 	// make Set value
-	setValues, diag := types.SetValue(types.ObjectType{AttrTypes: IdNameRefModelTypes}, refObjects)
-	diags.Append(diag...)
+	setValues, valueDiag := types.SetValue(types.ObjectType{AttrTypes: IDNameRefModelTypes}, refObjects)
+	diags.Append(valueDiag...)
 
 	return setValues
 }
 
-func ParseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.List {
+// IDRefList parses a slice of ID reference objects for the given type T and returns a Terraform List value
+func IDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.Diagnostics) types.List {
 	type idn struct{ ID, Name string }
 
 	// null value
 	if items == nil {
-		return types.ListNull(types.ObjectType{AttrTypes: IdNameRefModelTypes})
+		return types.ListNull(types.ObjectType{AttrTypes: IDNameRefModelTypes})
 	}
 
 	refObjects := make([]attr.Value, 0, len(items))
@@ -70,25 +72,25 @@ func ParseIDRefList[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 		if i == nil {
 			continue
 		}
-		// make IdNameRefModel struct
+		// make IDNameRefModel struct
 		val := idn(*i)
-		ref := IdNameRefModel{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
-		// make IdNameRefModel Object
-		obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, ref)
-		if utils.CheckErr(diags, diag) {
-			return types.ListNull(types.ObjectType{AttrTypes: IdNameRefModelTypes})
+		ref := IDNameRefModel{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
+		// make IDNameRefModel Object
+		obj, valueDiag := types.ObjectValueFrom(ctx, IDNameRefModelTypes, ref)
+		if utils.CheckErr(diags, valueDiag) {
+			return types.ListNull(types.ObjectType{AttrTypes: IDNameRefModelTypes})
 		}
 		// append to Object slice
 		refObjects = append(refObjects, obj)
 	}
 	// make List value
-	list, diag := types.ListValue(types.ObjectType{AttrTypes: IdNameRefModelTypes}, refObjects)
-	diags.Append(diag...)
+	list, valueDiag := types.ListValue(types.ObjectType{AttrTypes: IDNameRefModelTypes}, refObjects)
+	diags.Append(valueDiag...)
 
 	return list
 }
 
-func PrepareStrings[T ~string](ctx context.Context, tfSet types.Set, diags *diag.Diagnostics, fieldName string) (sdkList []T) {
+func PrepareStrings[T ~string](ctx context.Context, tfSet types.Set, diags *diag.Diagnostics) (sdkList []T) {
 	if !utils.HasValue(tfSet) {
 		return nil
 	}
@@ -106,7 +108,7 @@ func PrepareStrings[T ~string](ctx context.Context, tfSet types.Set, diags *diag
 	return sdkList
 }
 
-func PrepareStringList[T ~string](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []T) {
+func PrepareStringList[T ~string](ctx context.Context, tfList types.List, diags *diag.Diagnostics) (sdkList []T) {
 	if !utils.HasValue(tfList) {
 		return nil
 	}
@@ -124,7 +126,8 @@ func PrepareStringList[T ~string](ctx context.Context, tfList types.List, diags 
 	return sdkList
 }
 
-func ParseStringSet[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.Set {
+// StringSet parses a slice of fmt.Stringer into a types.Set of strings
+func StringSet[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.Set {
 	// null value
 	if stringers == nil {
 		return types.SetNull(types.StringType)
@@ -132,8 +135,8 @@ func ParseStringSet[T fmt.Stringer](ctx context.Context, stringers []T, diags *d
 
 	// existing empty list
 	if len(stringers) == 0 {
-		val, diag := types.SetValue(types.StringType, nil)
-		diags.Append(diag...)
+		val, valueDiag := types.SetValue(types.StringType, nil)
+		diags.Append(valueDiag...)
 		return val
 	}
 
@@ -143,13 +146,14 @@ func ParseStringSet[T fmt.Stringer](ctx context.Context, stringers []T, diags *d
 		stringSlice = append(stringSlice, types.StringValue(o.String()))
 	}
 	// convert to types.Set
-	stringSet, diag := types.SetValueFrom(ctx, types.StringType, stringSlice)
-	diags.Append(diag...)
+	stringSet, valueDiag := types.SetValueFrom(ctx, types.StringType, stringSlice)
+	diags.Append(valueDiag...)
 
 	return stringSet
 }
 
-func ParseStringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.List {
+// StringList parses a slice of fmt.Stringer into a types.List of strings
+func StringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.Diagnostics) types.List {
 	// null value
 	if stringers == nil {
 		return types.ListNull(types.StringType)
@@ -157,8 +161,8 @@ func ParseStringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *
 
 	// existing empty list
 	if len(stringers) == 0 {
-		val, diag := types.ListValue(types.StringType, nil)
-		diags.Append(diag...)
+		val, valueDiag := types.ListValue(types.StringType, nil)
+		diags.Append(valueDiag...)
 		return val
 	}
 
@@ -168,8 +172,8 @@ func ParseStringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *
 		stringSlice = append(stringSlice, types.StringValue(o.String()))
 	}
 	// convert to types.List
-	stringList, diag := types.ListValueFrom(ctx, types.StringType, stringSlice)
-	diags.Append(diag...)
+	stringList, valueDiag := types.ListValueFrom(ctx, types.StringType, stringSlice)
+	diags.Append(valueDiag...)
 
 	return stringList
 }

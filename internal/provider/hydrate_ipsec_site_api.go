@@ -28,23 +28,25 @@ func hydrateAddIpsecIkeV2Site(ctx context.Context, plan SiteIpsecIkeV2) (cato_mo
 
 	// Set other site attributes
 	input.Name = plan.Name.ValueString()
-	input.SiteType = (cato_models.SiteType)(plan.SiteType.ValueString())
+	input.SiteType = cato_models.SiteType(plan.SiteType.ValueString())
 	input.NativeNetworkRange = plan.NativeNetworkRange.ValueString()
 	input.Description = plan.Description.ValueStringPointer()
 
 	return input, diags
 }
 
-// hydrateIpsecTunnelsApiTypes holds both Add and Update tunnel inputs
-type hydrateIpsecTunnelsApiTypes struct {
+// hydrateIpsecTunnelsAPITypes holds both Add and Update tunnel inputs
+type hydrateIpsecTunnelsAPITypes struct {
 	add    cato_models.AddIpsecIkeV2SiteTunnelsInput
 	update cato_models.UpdateIpsecIkeV2SiteTunnelsInput
 }
 
 // hydrateAddIpsecIkeV2SiteTunnels takes the plan and returns both Add and Update inputs for tunnels
-func hydrateAddIpsecIkeV2SiteTunnels(ctx context.Context, plan SiteIpsecIkeV2) (hydrateIpsecTunnelsApiTypes, diag.Diagnostics) {
+//
+//nolint:funlen
+func hydrateAddIpsecIkeV2SiteTunnels(ctx context.Context, plan SiteIpsecIkeV2) (hydrateIpsecTunnelsAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
-	result := hydrateIpsecTunnelsApiTypes{
+	result := hydrateIpsecTunnelsAPITypes{
 		add:    cato_models.AddIpsecIkeV2SiteTunnelsInput{},
 		update: cato_models.UpdateIpsecIkeV2SiteTunnelsInput{},
 	}
@@ -180,7 +182,12 @@ func hydrateAddIpsecIkeV2SiteTunnels(ctx context.Context, plan SiteIpsecIkeV2) (
 }
 
 // hydrateUpdateIpsecIkeV2SiteGeneralDetails takes the plan and returns UpdateIpsecIkeV2SiteGeneralDetailsInput
-func hydrateUpdateIpsecIkeV2SiteGeneralDetails(ctx context.Context, plan SiteIpsecIkeV2) (cato_models.UpdateIpsecIkeV2SiteGeneralDetailsInput, diag.Diagnostics) {
+//
+//nolint:gocyclo,funlen
+func hydrateUpdateIpsecIkeV2SiteGeneralDetails(
+	ctx context.Context,
+	plan SiteIpsecIkeV2,
+) (cato_models.UpdateIpsecIkeV2SiteGeneralDetailsInput, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 	input := cato_models.UpdateIpsecIkeV2SiteGeneralDetailsInput{}
 

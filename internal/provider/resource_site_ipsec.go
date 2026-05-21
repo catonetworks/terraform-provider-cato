@@ -40,7 +40,7 @@ func (r *siteIpsecResource) Metadata(_ context.Context, req resource.MetadataReq
 	resp.TypeName = req.ProviderTypeName + "_ipsec_site"
 }
 
-func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) { //nolint:funlen
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -287,8 +287,9 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"identification_type": schema.StringAttribute{
-						Description: "Identification type for IPSec. Only applicable when connection_mode is RESPONDER_ONLY. Valid values: IPV4, FQDN, EMAIL, KEY_ID",
-						Optional:    true,
+						Description: "Identification type for IPSec. Only applicable when connection_mode is " +
+							"RESPONDER_ONLY. Valid values: IPV4, FQDN, EMAIL, KEY_ID",
+						Optional: true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("IPV4", "FQDN", "EMAIL", "KEY_ID"),
 						},
@@ -310,11 +311,24 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Default: stringdefault.StaticString("AUTOMATIC"),
 							},
 							"dh_group": schema.StringAttribute{
-								Description: "Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, DH_20_ECP384, DH_21_ECP521",
-								Optional:    true,
-								Computed:    true,
+								Description: "Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, " +
+									"DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, " +
+									"DH_20_ECP384, DH_21_ECP521",
+								Optional: true,
+								Computed: true,
 								Validators: []validator.String{
-									stringvalidator.OneOf("NONE", "AUTOMATIC", "DH_2_MODP1024", "DH_5_MODP1536", "DH_14_MODP2048", "DH_15_MODP3072", "DH_16_MODP4096", "DH_19_ECP256", "DH_20_ECP384", "DH_21_ECP521"),
+									stringvalidator.OneOf(
+										"NONE",
+										"AUTOMATIC",
+										"DH_2_MODP1024",
+										"DH_5_MODP1536",
+										"DH_14_MODP2048",
+										"DH_15_MODP3072",
+										"DH_16_MODP4096",
+										"DH_19_ECP256",
+										"DH_20_ECP384",
+										"DH_21_ECP521",
+									),
 								},
 								Default: stringdefault.StaticString("AUTOMATIC"),
 							},
@@ -352,11 +366,24 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								Default: stringdefault.StaticString("AUTOMATIC"),
 							},
 							"dh_group": schema.StringAttribute{
-								Description: "Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, DH_20_ECP384, DH_21_ECP521",
-								Optional:    true,
-								Computed:    true,
+								Description: "Diffie-Hellman group. Valid values: NONE, AUTOMATIC, DH_2_MODP1024, " +
+									"DH_5_MODP1536, DH_14_MODP2048, DH_15_MODP3072, DH_16_MODP4096, DH_19_ECP256, " +
+									"DH_20_ECP384, DH_21_ECP521",
+								Optional: true,
+								Computed: true,
 								Validators: []validator.String{
-									stringvalidator.OneOf("NONE", "AUTOMATIC", "DH_2_MODP1024", "DH_5_MODP1536", "DH_14_MODP2048", "DH_15_MODP3072", "DH_16_MODP4096", "DH_19_ECP256", "DH_20_ECP384", "DH_21_ECP521"),
+									stringvalidator.OneOf(
+										"NONE",
+										"AUTOMATIC",
+										"DH_2_MODP1024",
+										"DH_5_MODP1536",
+										"DH_14_MODP2048",
+										"DH_15_MODP3072",
+										"DH_16_MODP4096",
+										"DH_19_ECP256",
+										"DH_20_ECP384",
+										"DH_21_ECP521",
+									),
 								},
 								Default: stringdefault.StaticString("AUTOMATIC"),
 							},
@@ -391,7 +418,7 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 	}
 }
 
-func (r *siteIpsecResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *siteIpsecResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -404,8 +431,8 @@ func (r *siteIpsecResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+//nolint:gocyclo,funlen // Existing create flow follows several API calls that must remain ordered.
 func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan SiteIpsecIkeV2
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -440,10 +467,22 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	// retrieving native-network range ID to update native range
 	entityParent := cato_models.EntityInput{
 		ID:   ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID(),
-		Type: (cato_models.EntityType)("site"),
+		Type: cato_models.EntityType("site"),
 	}
 
-	siteRangeEntities, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), nil, nil, &entityParent, nil, nil, nil, nil, nil)
+	siteRangeEntities, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("siteRange"),
+		nil,
+		nil,
+		&entityParent,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteRangeEntities),
 	})
@@ -475,7 +514,12 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	tflog.Debug(ctx, "Create.SiteUpdateIpsecIkeV2SiteGeneralDetails.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputIpsecGeneralDetails),
 	})
-	ipsecGeneralDetailsResponse, err := r.client.catov2.SiteUpdateIpsecIkeV2SiteGeneralDetails(ctx, siteID, inputIpsecGeneralDetails, r.client.AccountId)
+	ipsecGeneralDetailsResponse, err := r.client.catov2.SiteUpdateIpsecIkeV2SiteGeneralDetails(
+		ctx,
+		siteID,
+		inputIpsecGeneralDetails,
+		r.client.AccountId,
+	)
 	tflog.Debug(ctx, "Create.SiteUpdateIpsecIkeV2SiteGeneralDetails.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(ipsecGeneralDetailsResponse),
 	})
@@ -497,29 +541,22 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(tunnelInputs.add),
 	})
-	tunnelData, err_ipsec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
+	tunnelData, errIPSec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(tunnelData),
 	})
-	if err_ipsec != nil {
+	if errIPSec != nil {
 		resp.Diagnostics.AddError(
 			"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
-			err_ipsec.Error(),
+			errIPSec.Error(),
 		)
 		return
 	}
 
 	// create types to support multiple primary and secondary tunnels
-	tunnelsPrimaryData := []*cato_go_sdk.SiteAddIpsecIkeV2SiteTunnels_Site_AddIpsecIkeV2SiteTunnels_PrimaryAddIpsecIkeV2SiteTunnelsPayload_Tunnels{}
-	tunnelsSecondaryData := []*cato_go_sdk.SiteAddIpsecIkeV2SiteTunnels_Site_AddIpsecIkeV2SiteTunnels_SecondaryAddIpsecIkeV2SiteTunnelsPayload_Tunnels{}
-
-	if len(tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()) > 0 {
-		tunnelsPrimaryData = tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
-	}
-
-	if len(tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()) > 0 {
-		tunnelsSecondaryData = tunnelData.Site.GetAddIpsecIkeV2SiteTunnels().SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
-	}
+	addTunnels := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels()
+	tunnelsPrimaryData := addTunnels.PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
+	tunnelsSecondaryData := addTunnels.SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
 
 	// Hydrate the state with API data to ensure consistency
 	hydratedState, _, hydrateErr := r.hydrateIpsecSiteState(ctx, plan, siteID)
@@ -540,14 +577,16 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 	// supports multiple primary ipsec tunnels
 	if tunnelInputs.add.Primary != nil {
 		for x := 0; x < len(tunnelsPrimaryData); x++ {
-			resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id"), tunnelsPrimaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
+			tunnelIDPath := path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
+			resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsPrimaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
 		}
 	}
 
 	// supports multiple secondary ipsec tunnels
 	if tunnelInputs.add.Secondary != nil {
 		for x := 0; x < len(tunnelsSecondaryData); x++ {
-			resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("secondary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id"), tunnelsSecondaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
+			tunnelIDPath := path.Root("ipsec").AtName("secondary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
+			resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsSecondaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
 		}
 	}
 
@@ -558,7 +597,6 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 }
 
 func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state SiteIpsecIkeV2
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -590,8 +628,8 @@ func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 }
 
+//nolint:gocyclo,funlen // Existing update flow follows several API calls that must remain ordered.
 func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan SiteIpsecIkeV2
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -617,7 +655,6 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		inputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
-		// inputSiteGeneral.SiteLocation.City = siteLocationInput.City.ValueStringPointer()
 	}
 
 	inputUpdateNetworkRange.Subnet = plan.NativeNetworkRange.ValueStringPointer()
@@ -629,7 +666,12 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputSiteGeneral),
 	})
-	inputSiteGeneralResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), inputSiteGeneral, r.client.AccountId)
+	inputSiteGeneralResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(
+		ctx,
+		plan.ID.ValueString(),
+		inputSiteGeneral,
+		r.client.AccountId,
+	)
 	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(inputSiteGeneralResponse),
 	})
@@ -645,7 +687,7 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		"request": utils.InterfaceToJSONString(inputUpdateNetworkRange),
 	})
 	// TODO, look at why response object does not resolve
-	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, plan.NativeNetworkRangeId.ValueString(), inputUpdateNetworkRange, r.client.AccountId)
+	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, plan.NativeNetworkRangeID.ValueString(), inputUpdateNetworkRange, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API SiteUpdateNetworkRange error",
@@ -665,12 +707,17 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 	planIPSec := AddIpsecIkeV2SiteTunnelsInput{}
 	diags = plan.IPSec.As(ctx, &planIPSec, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
-	siteID := planIPSec.SiteId.ValueString()
+	siteID := planIPSec.SiteID.ValueString()
 
 	tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteGeneralDetails.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputIpsecGeneralDetails),
 	})
-	ipsecGeneralDetailsResponse, err := r.client.catov2.SiteUpdateIpsecIkeV2SiteGeneralDetails(ctx, siteID, inputIpsecGeneralDetails, r.client.AccountId)
+	ipsecGeneralDetailsResponse, err := r.client.catov2.SiteUpdateIpsecIkeV2SiteGeneralDetails(
+		ctx,
+		siteID,
+		inputIpsecGeneralDetails,
+		r.client.AccountId,
+	)
 	tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteGeneralDetails.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(ipsecGeneralDetailsResponse),
 	})
@@ -710,30 +757,33 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.request", map[string]interface{}{
 			"request": utils.InterfaceToJSONString(tunnelInputs.update),
 		})
-		tunnelData, err_ipsec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.update, r.client.AccountId)
+		tunnelData, errIPSec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.update, r.client.AccountId)
 		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(tunnelData),
 		})
-		if err_ipsec != nil {
+		if errIPSec != nil {
 			resp.Diagnostics.AddError(
 				"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
-				err_ipsec.Error(),
+				errIPSec.Error(),
 			)
 			return
 		}
 
 		// create types to support multiple primary and secondary tunnels
-		if len(tunnelData.Site.GetUpdateIpsecIkeV2SiteTunnels().GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()) > 0 {
-			tunnelsPrimaryData := tunnelData.Site.GetUpdateIpsecIkeV2SiteTunnels().GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
+		updateTunnels := tunnelData.Site.GetUpdateIpsecIkeV2SiteTunnels()
+		if len(updateTunnels.GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()) > 0 {
+			tunnelsPrimaryData := updateTunnels.GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
 			for x := 0; x < len(tunnelsPrimaryData); x++ {
-				resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id"), tunnelsPrimaryData[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
+				tunnelIDPath := path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
+				resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsPrimaryData[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
 			}
 		}
 
-		if len(tunnelData.Site.GetUpdateIpsecIkeV2SiteTunnels().GetSecondaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()) > 0 {
-			tunnelsSecondaryData := tunnelData.Site.GetUpdateIpsecIkeV2SiteTunnels().GetSecondaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
+		if len(updateTunnels.GetSecondaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()) > 0 {
+			tunnelsSecondaryData := updateTunnels.GetSecondaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
 			for x := 0; x < len(tunnelsSecondaryData); x++ {
-				resp.State.SetAttribute(ctx, path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id"), tunnelsSecondaryData[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
+				tunnelIDPath := path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
+				resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsSecondaryData[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
 			}
 		}
 	}
@@ -746,7 +796,6 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 func (r *siteIpsecResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state SiteIpsecIkeV2
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -754,7 +803,19 @@ func (r *siteIpsecResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("site"),
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{state.ID.ValueString()},
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "Delete.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -778,5 +839,4 @@ func (r *siteIpsecResource) Delete(ctx context.Context, req resource.DeleteReque
 			return
 		}
 	}
-
 }

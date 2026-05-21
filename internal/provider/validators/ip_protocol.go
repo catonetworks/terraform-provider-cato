@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-// Validators
+// IPProtocolValidator validates that the provided string is a valid IP Protocol
 type (
 	IPProtocolValidator struct{}
 )

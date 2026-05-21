@@ -38,6 +38,12 @@ type privateAppResource struct {
 	client *catoClientData
 }
 
+type (
+	privateAppProtocolPorts      = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_ProtocolPorts
+	privateAppPublishedAppDomain = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PublishedAppDomain
+	privateAppProbing            = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PrivateAppProbing
+)
+
 func (r *privateAppResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_private_app"
 }
@@ -174,7 +180,7 @@ func (r *privateAppResource) schemaPublishedAppDomain() schema.SingleNestedAttri
 	}
 }
 
-func (r *privateAppResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *privateAppResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -388,10 +394,12 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 	return state, diags, nil
 }
 
-func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts []*cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_ProtocolPorts,
+func (r *privateAppResource) parseProtocolPorts(
+	ctx context.Context,
+	protoPorts []*privateAppProtocolPorts,
 	diags *diag.Diagnostics,
 ) types.Set {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 	setNull := types.SetNull(types.ObjectType{AttrTypes: ProtocolPortTypes})
 
 	if protoPorts == nil {
@@ -412,8 +420,8 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 			for _, p := range pp.Port {
 				intSlice = append(intSlice, types.Int64Value(p.GetInt64()))
 			}
-			tfPortSet, diag = types.SetValueFrom(ctx, types.Int64Type, intSlice)
-			diags.Append(diag...)
+			tfPortSet, objDiags = types.SetValueFrom(ctx, types.Int64Type, intSlice)
+			diags.Append(objDiags...)
 			if diags.HasError() {
 				return setNull
 			}
@@ -426,8 +434,8 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 				From: types.Int64Value(pp.PortRange.From.GetInt64()),
 				To:   types.Int64Value(pp.PortRange.To.GetInt64()),
 			}
-			tfPortRangeObj, diag = types.ObjectValueFrom(ctx, PortRangeTypes, tfPortRange)
-			diags.Append(diag...)
+			tfPortRangeObj, objDiags = types.ObjectValueFrom(ctx, PortRangeTypes, tfPortRange)
+			diags.Append(objDiags...)
 			if diags.HasError() {
 				return setNull
 			}
@@ -439,8 +447,8 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 			PortRange: tfPortRangeObj,
 			Protocol:  types.StringValue(string(pp.Protocol)),
 		}
-		tfPPortObj, diag := types.ObjectValueFrom(ctx, ProtocolPortTypes, tfPPort)
-		diags.Append(diag...)
+		tfPPortObj, objDiags := types.ObjectValueFrom(ctx, ProtocolPortTypes, tfPPort)
+		diags.Append(objDiags...)
 		if diags.HasError() {
 			return setNull
 		}
@@ -448,8 +456,8 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 	}
 
 	// convert slice to types.Set
-	tfProtoPortSet, diag := types.SetValueFrom(ctx, types.ObjectType{AttrTypes: ProtocolPortTypes}, protoPortsObjects)
-	diags.Append(diag...)
+	tfProtoPortSet, objDiags := types.SetValueFrom(ctx, types.ObjectType{AttrTypes: ProtocolPortTypes}, protoPortsObjects)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return setNull
 	}
@@ -457,10 +465,12 @@ func (r *privateAppResource) parseProtocolPorts(ctx context.Context, protoPorts 
 	return tfProtoPortSet
 }
 
-func (r *privateAppResource) parsePublishedAppDomain(ctx context.Context, domain *cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PublishedAppDomain,
+func (r *privateAppResource) parsePublishedAppDomain(
+	ctx context.Context,
+	domain *privateAppPublishedAppDomain,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 	objNull := types.ObjectNull(PublishedAppDomainTypes)
 
 	if domain == nil {
@@ -474,18 +484,20 @@ func (r *privateAppResource) parsePublishedAppDomain(ctx context.Context, domain
 		PublishedAppDomain: types.StringValue(domain.PublishedAppDomain),
 	}
 
-	domainObj, diag := types.ObjectValueFrom(ctx, PublishedAppDomainTypes, tfDomain)
-	diags.Append(diag...)
+	domainObj, objDiags := types.ObjectValueFrom(ctx, PublishedAppDomainTypes, tfDomain)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return objNull
 	}
 	return domainObj
 }
 
-func (r *privateAppResource) parsePrivateAppProbing(ctx context.Context, probing *cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PrivateAppProbing,
+func (r *privateAppResource) parsePrivateAppProbing(
+	ctx context.Context,
+	probing *privateAppProbing,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 	objNull := types.ObjectNull(PrivateAppProbingTypes)
 
 	if probing == nil {
@@ -499,8 +511,8 @@ func (r *privateAppResource) parsePrivateAppProbing(ctx context.Context, probing
 		Type:               types.StringValue(probing.Type),
 	}
 
-	probingObj, diag := types.ObjectValueFrom(ctx, PrivateAppProbingTypes, tfProbing)
-	diags.Append(diag...)
+	probingObj, objDiags := types.ObjectValueFrom(ctx, PrivateAppProbingTypes, tfProbing)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return objNull
 	}
@@ -545,7 +557,11 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 }
 
-func (r *privateAppResource) prepareProtocolPorts(ctx context.Context, protPorts types.Set, diags *diag.Diagnostics) []*cato_models.CustomServiceInput {
+func (r *privateAppResource) prepareProtocolPorts(
+	ctx context.Context,
+	protPorts types.Set,
+	diags *diag.Diagnostics,
+) []*cato_models.CustomServiceInput {
 	if !utils.HasValue(protPorts) {
 		return nil
 	}

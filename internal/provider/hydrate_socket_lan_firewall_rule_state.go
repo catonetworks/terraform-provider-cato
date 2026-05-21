@@ -24,7 +24,11 @@ type SocketLanFirewallRuleStateOutput struct {
 	Tracking    types.Object `tfsdk:"tracking"`
 }
 
-func hydrateSocketLanFirewallRuleState(ctx context.Context, plan SocketLanFirewallRule, apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule) SocketLanFirewallRuleStateOutput {
+func hydrateSocketLanFirewallRuleState(
+	ctx context.Context,
+	plan SocketLanFirewallRule,
+	apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule,
+) SocketLanFirewallRuleStateOutput {
 	result := SocketLanFirewallRuleStateOutput{
 		ID:        types.StringValue(apiRule.ID),
 		Name:      types.StringValue(apiRule.Name),
@@ -62,7 +66,11 @@ func hydrateSocketLanFirewallRuleState(ctx context.Context, plan SocketLanFirewa
 	return result
 }
 
-func hydrateSocketLanFirewallSourceState(ctx context.Context, apiSource cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Source) types.Object {
+//nolint:gocyclo,funlen
+func hydrateSocketLanFirewallSourceState(
+	_ context.Context,
+	apiSource cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Source,
+) types.Object {
 	sourceAttrs := map[string]attr.Value{
 		"vlan":                types.ListNull(types.Int64Type),
 		"mac":                 types.ListNull(types.StringType),
@@ -249,7 +257,11 @@ func hydrateSocketLanFirewallSourceState(ctx context.Context, apiSource cato_go_
 	return sourceObj
 }
 
-func hydrateSocketLanFirewallDestinationState(ctx context.Context, apiDest cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Destination) types.Object {
+//nolint:gocyclo,funlen
+func hydrateSocketLanFirewallDestinationState(
+	_ context.Context,
+	apiDest cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Destination,
+) types.Object {
 	destAttrs := map[string]attr.Value{
 		"vlan":                types.ListNull(types.Int64Type),
 		"ip":                  types.ListNull(types.StringType),
@@ -425,8 +437,12 @@ func hydrateSocketLanFirewallDestinationState(ctx context.Context, apiDest cato_
 	return destObj
 }
 
-func hydrateSocketLanFirewallApplicationState(ctx context.Context, apiApp cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Application, planHasApplication bool) types.Object {
-
+//nolint:gocyclo,funlen
+func hydrateSocketLanFirewallApplicationState(
+	_ context.Context,
+	apiApp cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Application,
+	planHasApplication bool,
+) types.Object {
 	appAttrs := map[string]attr.Value{
 		"application":     types.SetNull(NameIDObjectType),
 		"custom_app":      types.SetNull(NameIDObjectType),
@@ -549,8 +565,11 @@ func hydrateSocketLanFirewallApplicationState(ctx context.Context, apiApp cato_g
 	return appObj
 }
 
-func hydrateSocketLanFirewallServiceState(ctx context.Context, apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Service, planHasService bool) types.Object {
-
+func hydrateSocketLanFirewallServiceState(
+	_ context.Context,
+	apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Service,
+	planHasService bool,
+) types.Object {
 	serviceAttrs := map[string]attr.Value{
 		"simple":   types.SetNull(SimpleServiceObjectType),
 		"standard": types.SetNull(NameIDObjectType),
@@ -633,8 +652,10 @@ func hydrateSocketLanFirewallServiceState(ctx context.Context, apiService cato_g
 	return serviceObj
 }
 
-func hydrateSocketLanFirewallTrackingState(ctx context.Context, apiTracking cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Tracking) types.Object {
-
+func hydrateSocketLanFirewallTrackingState(
+	_ context.Context,
+	apiTracking cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Tracking,
+) types.Object {
 	trackingAttrs := map[string]attr.Value{
 		"event": types.ObjectNull(TrackingEventAttrTypes),
 		"alert": types.ObjectNull(TrackingAlertAttrTypes),

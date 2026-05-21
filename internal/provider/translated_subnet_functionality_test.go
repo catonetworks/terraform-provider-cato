@@ -39,7 +39,7 @@ func TestBuildAddNetworkRangeInputTranslatedSubnet(t *testing.T) {
 				Name:             types.StringValue("nr"),
 				RangeType:        types.StringValue("VLAN"),
 				Subnet:           types.StringValue("10.10.10.0/24"),
-				LocalIp:          types.StringValue("10.10.10.1"),
+				LocalIP:          types.StringValue("10.10.10.1"),
 				TranslatedSubnet: tt.translatedSubnet,
 				InternetOnly:     types.BoolValue(false),
 			}
@@ -83,7 +83,7 @@ func TestBuildUpdateNetworkRangeInputTranslatedSubnet(t *testing.T) {
 				Name:             types.StringValue("nr"),
 				RangeType:        types.StringValue("VLAN"),
 				Subnet:           types.StringValue("10.20.20.0/24"),
-				LocalIp:          types.StringValue("10.20.20.1"),
+				LocalIP:          types.StringValue("10.20.20.1"),
 				TranslatedSubnet: tt.translatedSubnet,
 				InternetOnly:     types.BoolValue(false),
 			}
@@ -124,7 +124,7 @@ func TestHydrateLanInterfaceAPITranslatedSubnet(t *testing.T) {
 			plan := LanInterface{
 				Name:             types.StringValue("lan-1"),
 				DestType:         types.StringValue("LAN"),
-				LocalIp:          types.StringValue("10.30.30.1"),
+				LocalIP:          types.StringValue("10.30.30.1"),
 				Subnet:           types.StringValue("10.30.30.0/24"),
 				TranslatedSubnet: tt.translatedSubnet,
 				VrrpType:         types.StringNull(),
@@ -156,4 +156,3 @@ func assertTranslatedSubnetPointer(t *testing.T, got *string, wantNil bool, want
 		t.Fatalf("expected translated subnet %q, got %q", wantValue, *got)
 	}
 }
-

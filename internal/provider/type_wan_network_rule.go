@@ -1,3 +1,4 @@
+//nolint:lll
 package provider
 
 import (
@@ -7,28 +8,28 @@ import (
 
 // WanNetworkRule represents the top-level resource
 type WanNetworkRule struct {
-	Rule types.Object `tfsdk:"rule" json:"rule,omitempty"` //Policy_Policy_WanNetwork_Policy_Rules_Rule
-	At   types.Object `tfsdk:"at" json:"at,omitempty"`     //*PolicyRulePositionInput
+	Rule types.Object `tfsdk:"rule" json:"rule,omitempty"` // PolicyPolicyWanNetworkPolicyRulesRule
+	At   types.Object `tfsdk:"at" json:"at,omitempty"`     // *PolicyRulePositionInput
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule represents a WAN Network rule
-type Policy_Policy_WanNetwork_Policy_Rules_Rule struct {
+// PolicyPolicyWanNetworkPolicyRulesRule represents a WAN Network rule
+type PolicyPolicyWanNetworkPolicyRulesRule struct {
 	ID                types.String `tfsdk:"id" json:"id,omitempty"`
 	Name              types.String `tfsdk:"name" json:"name,omitempty"`
 	Description       types.String `tfsdk:"description" json:"description,omitempty"`
 	Enabled           types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
 	RuleType          types.String `tfsdk:"rule_type" json:"ruleType,omitempty"`
 	RouteType         types.String `tfsdk:"route_type" json:"routeType,omitempty"`
-	Source            types.Object `tfsdk:"source" json:"source,omitempty"`                        //Policy_Policy_WanNetwork_Policy_Rules_Rule_Source
-	Destination       types.Object `tfsdk:"destination" json:"destination,omitempty"`              //Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination
-	Application       types.Object `tfsdk:"application" json:"application,omitempty"`              //Policy_Policy_WanNetwork_Policy_Rules_Rule_Application
-	Configuration     types.Object `tfsdk:"configuration" json:"configuration,omitempty"`          //Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration
-	BandwidthPriority types.Object `tfsdk:"bandwidth_priority" json:"bandwidthPriority,omitempty"` //Policy_Policy_WanNetwork_Policy_Rules_Rule_BandwidthPriority
-	Exceptions        types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"`                //[]*Policy_Policy_WanNetwork_Policy_Rules_Rule_Exceptions
+	Source            types.Object `tfsdk:"source" json:"source,omitempty"`                        // PolicyPolicyWanNetworkPolicyRulesRuleSource
+	Destination       types.Object `tfsdk:"destination" json:"destination,omitempty"`              // PolicyPolicyWanNetworkPolicyRulesRuleDestination
+	Application       types.Object `tfsdk:"application" json:"application,omitempty"`              // PolicyPolicyWanNetworkPolicyRulesRuleApplication
+	Configuration     types.Object `tfsdk:"configuration" json:"configuration,omitempty"`          // PolicyPolicyWanNetworkPolicyRulesRuleConfiguration
+	BandwidthPriority types.Object `tfsdk:"bandwidth_priority" json:"bandwidthPriority,omitempty"` // PolicyPolicyWanNetworkPolicyRulesRuleBandwidthPriority
+	Exceptions        types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"`                // []*PolicyPolicyWanNetworkPolicyRulesRuleExceptions
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Source represents source matching criteria
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleSource represents source matching criteria
+type PolicyPolicyWanNetworkPolicyRulesRuleSource struct {
 	IP                types.List `tfsdk:"ip" json:"ip,omitempty"`
 	Host              types.Set  `tfsdk:"host" json:"host,omitempty"`
 	Site              types.Set  `tfsdk:"site" json:"site,omitempty"`
@@ -44,63 +45,63 @@ type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source struct {
 	SystemGroup       types.Set  `tfsdk:"system_group" json:"system_group,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Host struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceHost struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Site struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceSite struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_IPRange struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceIPRange struct {
 	From types.String `tfsdk:"from" json:"from,omitempty"`
 	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_GlobalIPRange struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceGlobalIPRange struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_NetworkInterface struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceNetworkInterface struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_SiteNetworkSubnet struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceSiteNetworkSubnet struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_FloatingSubnet struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceFloatingSubnet struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_User struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceUser struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_UsersGroup struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceUsersGroup struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_Group struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceGroup struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Source_SystemGroup struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleSourceSystemGroup struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination represents destination matching criteria
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleDestination represents destination matching criteria
+type PolicyPolicyWanNetworkPolicyRulesRuleDestination struct {
 	IP                types.List `tfsdk:"ip" json:"ip,omitempty"`
 	Host              types.Set  `tfsdk:"host" json:"host,omitempty"`
 	Site              types.Set  `tfsdk:"site" json:"site,omitempty"`
@@ -116,63 +117,63 @@ type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination struct {
 	SystemGroup       types.Set  `tfsdk:"system_group" json:"system_group,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Host struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationHost struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Site struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationSite struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_IPRange struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationIPRange struct {
 	From types.String `tfsdk:"from" json:"from,omitempty"`
 	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_GlobalIPRange struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationGlobalIPRange struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_NetworkInterface struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationNetworkInterface struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_SiteNetworkSubnet struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationSiteNetworkSubnet struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_FloatingSubnet struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationFloatingSubnet struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_User struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationUser struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_UsersGroup struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationUsersGroup struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_Group struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationGroup struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Destination_SystemGroup struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleDestinationSystemGroup struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Application represents application matching criteria
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleApplication represents application matching criteria
+type PolicyPolicyWanNetworkPolicyRulesRuleApplication struct {
 	Application     types.Set  `tfsdk:"application" json:"application,omitempty"`
 	CustomApp       types.Set  `tfsdk:"custom_app" json:"custom_app,omitempty"`
 	AppCategory     types.Set  `tfsdk:"app_category" json:"app_category,omitempty"`
@@ -181,102 +182,102 @@ type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application struct {
 	Fqdn            types.List `tfsdk:"fqdn" json:"fqdn,omitempty"`
 	Service         types.Set  `tfsdk:"service" json:"service,omitempty"`
 	CustomService   types.List `tfsdk:"custom_service" json:"custom_service,omitempty"`
-	CustomServiceIp types.List `tfsdk:"custom_service_ip" json:"custom_service_ip,omitempty"`
+	CustomServiceIP types.List `tfsdk:"custom_service_ip" json:"custom_service_ip,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomService represents custom service definition
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomService struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomService represents custom service definition
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomService struct {
 	Port      types.List   `tfsdk:"port" json:"port,omitempty"`
 	PortRange types.Object `tfsdk:"port_range" json:"port_range,omitempty"`
 	Protocol  types.String `tfsdk:"protocol" json:"protocol,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomServiceIp represents custom service IP definition
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomServiceIp struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServiceIP represents custom service IP definition
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServiceIP struct {
 	Name    types.String `tfsdk:"name" json:"name,omitempty"`
 	IP      types.String `tfsdk:"ip" json:"ip,omitempty"`
 	IPRange types.Object `tfsdk:"ip_range" json:"ip_range,omitempty"`
 }
 
-// Additional application-related types for ID/Name reference objects
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_Application struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleApplicationApplication represents an application ID/name reference object.
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationApplication struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomApp struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomApp struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_AppCategory struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationAppCategory struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomCategory struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomCategory struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_Service struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationService struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomService_PortRange struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServicePortRange struct {
 	From types.String `tfsdk:"from" json:"from,omitempty"`
 	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Application_CustomServiceIp_IPRange struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleApplicationCustomServiceIPIPRange struct {
 	From types.String `tfsdk:"from" json:"from,omitempty"`
 	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration represents WAN network configuration
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration struct {
-	ActiveTcpAcceleration bool         `tfsdk:"active_tcp_acceleration" json:"activeTcpAcceleration,omitempty"`
+// PolicyPolicyWanNetworkPolicyRulesRuleConfiguration represents WAN network configuration
+type PolicyPolicyWanNetworkPolicyRulesRuleConfiguration struct {
+	ActiveTCPAcceleration bool         `tfsdk:"active_tcp_acceleration" json:"activeTcpAcceleration,omitempty"`
 	PacketLossMitigation  bool         `tfsdk:"packet_loss_mitigation" json:"packetLossMitigation,omitempty"`
 	PreserveSourcePort    bool         `tfsdk:"preserve_source_port" json:"preserveSourcePort,omitempty"`
 	PrimaryTransport      types.Object `tfsdk:"primary_transport" json:"primaryTransport,omitempty"`
 	SecondaryTransport    types.Object `tfsdk:"secondary_transport" json:"secondaryTransport,omitempty"`
-	AllocationIp          types.Set    `tfsdk:"allocation_ip" json:"allocationIp,omitempty"`
+	AllocationIP          types.Set    `tfsdk:"allocation_ip" json:"allocationIp,omitempty"`
 	PopLocation           types.Set    `tfsdk:"pop_location" json:"popLocation,omitempty"`
 	BackhaulingSite       types.Set    `tfsdk:"backhauling_site" json:"backhaulingSite,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_Transport represents transport configuration
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_Transport struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleConfigurationTransport represents transport configuration
+type PolicyPolicyWanNetworkPolicyRulesRuleConfigurationTransport struct {
 	TransportType          types.String `tfsdk:"transport_type" json:"transportType,omitempty"`
 	PrimaryInterfaceRole   types.String `tfsdk:"primary_interface_role" json:"primaryInterfaceRole,omitempty"`
 	SecondaryInterfaceRole types.String `tfsdk:"secondary_interface_role" json:"secondaryInterfaceRole,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_BandwidthPriority represents bandwidth priority
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_BandwidthPriority struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleBandwidthPriority represents bandwidth priority
+type PolicyPolicyWanNetworkPolicyRulesRuleBandwidthPriority struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-// Additional configuration-related types
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_AllocationIp struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleConfigurationAllocationIP represents an allocation IP ID/name reference object.
+type PolicyPolicyWanNetworkPolicyRulesRuleConfigurationAllocationIP struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_PopLocation struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleConfigurationPopLocation struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Configuration_BackhaulingSite struct {
+type PolicyPolicyWanNetworkPolicyRulesRuleConfigurationBackhaulingSite struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
 
-// Policy_Policy_WanNetwork_Policy_Rules_Rule_Exceptions represents rule exceptions
-type Policy_Policy_WanNetwork_Policy_Rules_Rule_Exceptions struct {
+// PolicyPolicyWanNetworkPolicyRulesRuleExceptions represents rule exceptions
+type PolicyPolicyWanNetworkPolicyRulesRuleExceptions struct {
 	Name        types.String `tfsdk:"name" json:"name,omitempty"`
 	Source      types.Object `tfsdk:"source" json:"source,omitempty"`
 	Destination types.Object `tfsdk:"destination" json:"destination,omitempty"`
@@ -351,7 +352,7 @@ var WanNetworkApplicationAttrTypes = map[string]attr.Type{
 	"fqdn":              types.ListType{ElemType: types.StringType},
 	"service":           types.SetType{ElemType: NameIDObjectType},
 	"custom_service":    types.ListType{ElemType: WanNetworkCustomServiceObjectType},
-	"custom_service_ip": types.ListType{ElemType: WanNetworkCustomServiceIpObjectType},
+	"custom_service_ip": types.ListType{ElemType: WanNetworkCustomServiceIPObjectType},
 }
 
 // WanNetworkExceptionApplicationObjectType is used for exceptions (matches WAN Network application schema)
@@ -365,7 +366,7 @@ var WanNetworkExceptionApplicationAttrTypes = map[string]attr.Type{
 	"fqdn":              types.ListType{ElemType: types.StringType},
 	"service":           types.SetType{ElemType: NameIDObjectType},
 	"custom_service":    types.ListType{ElemType: WanNetworkCustomServiceObjectType},
-	"custom_service_ip": types.ListType{ElemType: WanNetworkCustomServiceIpObjectType},
+	"custom_service_ip": types.ListType{ElemType: WanNetworkCustomServiceIPObjectType},
 }
 
 var WanNetworkCustomServiceObjectType = types.ObjectType{AttrTypes: WanNetworkCustomServiceAttrTypes}
@@ -375,8 +376,8 @@ var WanNetworkCustomServiceAttrTypes = map[string]attr.Type{
 	"protocol":   types.StringType,
 }
 
-var WanNetworkCustomServiceIpObjectType = types.ObjectType{AttrTypes: WanNetworkCustomServiceIpAttrTypes}
-var WanNetworkCustomServiceIpAttrTypes = map[string]attr.Type{
+var WanNetworkCustomServiceIPObjectType = types.ObjectType{AttrTypes: WanNetworkCustomServiceIPAttrTypes}
+var WanNetworkCustomServiceIPAttrTypes = map[string]attr.Type{
 	"name":     types.StringType,
 	"ip":       types.StringType,
 	"ip_range": FromToObjectType,

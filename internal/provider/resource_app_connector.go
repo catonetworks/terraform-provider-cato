@@ -30,7 +30,10 @@ var (
 	ErrAppConnectorNotFound = errors.New("app-connector not found")
 )
 
-const optional = true
+type (
+	appConnectorLocation             = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location
+	appConnectorPreferredPopLocation = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation
+)
 
 func NewAppConnectorResource() resource.Resource {
 	return &appConnectorResource{}
@@ -140,19 +143,19 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 				Description:   "Physical location of the pripary Pop",
 				Optional:      true,
 				Attributes:    parse.SchemaNameID("Primary location"),
-				PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 			},
 			"secondary": schema.SingleNestedAttribute{
 				Description:   "Physical location of the secondary Pop",
 				Optional:      true,
 				Attributes:    parse.SchemaNameID("Secondary location"),
-				PlanModifiers: []planmodifier.Object{parse.IdNameModifier()},
+				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 			},
 		},
 	}
 }
 
-func (r *appConnectorResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *appConnectorResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -321,7 +324,11 @@ func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
-func (r *appConnectorResource) prepareLocation(ctx context.Context, addr types.Object, diags *diag.Diagnostics) *cato_models.ZtnaAppConnectorLocationInput {
+func (r *appConnectorResource) prepareLocation(
+	ctx context.Context,
+	addr types.Object,
+	diags *diag.Diagnostics,
+) *cato_models.ZtnaAppConnectorLocationInput {
 	if !utils.HasValue(addr) {
 		return nil
 	}
@@ -358,14 +365,14 @@ func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types
 	sdkLocation := cato_models.ZtnaAppConnectorPreferredPopLocationInput{
 		PreferredOnly: tfLocation.PreferredOnly.ValueBool(),
 		Automatic:     tfLocation.Automatic.ValueBool(),
-		Primary:       parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags, "preferred_pop_location.primary"),
-		Secondary:     parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Secondary, diags, "preferred_pop_location.secondary"),
+		Primary:       parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags),
+		Secondary:     parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Secondary, diags),
 	}
 
 	return &sdkLocation
 }
 
-func (r *appConnectorResource) parseLocation(ctx context.Context, addr cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location,
+func (r *appConnectorResource) parseLocation(ctx context.Context, addr appConnectorLocation,
 	diags *diag.Diagnostics,
 ) types.Object {
 	// Prepare AppConnectorLocation object
@@ -377,8 +384,8 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr cato_go_s
 		Timezone:    types.StringValue(addr.Timezone),
 	}
 
-	locObj, diag := types.ObjectValueFrom(ctx, AppConnectorLocationTypes, tfLocation)
-	diags.Append(diag...)
+	locObj, objDiags := types.ObjectValueFrom(ctx, AppConnectorLocationTypes, tfLocation)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(AppConnectorLocationTypes)
 	}
@@ -386,10 +393,10 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr cato_go_s
 	return locObj
 }
 
-func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation,
+func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appConnectorPreferredPopLocation,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objDiags diag.Diagnostics
 
 	if loc == nil {
 		return types.ObjectNull(PreferredPopLocationModelTypes)
@@ -399,18 +406,18 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *cato_g
 	tfLocation := PreferredPopLocationModel{
 		PreferredOnly: types.BoolValue(loc.PreferredOnly),
 		Automatic:     types.BoolValue(loc.Automatic),
-		Primary:       types.ObjectNull(parse.IdNameRefModelTypes),
-		Secondary:     types.ObjectNull(parse.IdNameRefModelTypes),
+		Primary:       types.ObjectNull(parse.IDNameRefModelTypes),
+		Secondary:     types.ObjectNull(parse.IDNameRefModelTypes),
 	}
 	if loc.Primary != nil {
-		tfLocation.Primary = parse.ParseIDRef(ctx, *loc.Primary, diags)
+		tfLocation.Primary = parse.IDRef(ctx, *loc.Primary, diags)
 	}
 	if loc.Secondary != nil {
-		tfLocation.Secondary = parse.ParseIDRef(ctx, *loc.Secondary, diags)
+		tfLocation.Secondary = parse.IDRef(ctx, *loc.Secondary, diags)
 	}
 
-	locObj, diag := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
-	diags.Append(diag...)
+	locObj, objDiags := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
+	diags.Append(objDiags...)
 	if diags.HasError() {
 		return types.ObjectNull(PreferredPopLocationModelTypes)
 	}
@@ -418,9 +425,12 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *cato_g
 	return locObj
 }
 
-// hydrateAppConnectorState fetches the current state of a appConnector from the API
-// It takes a plan parameter to match config members with API members correctly
-func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, appConnectorID string, plan AppConnectorModel) (*AppConnectorModel, diag.Diagnostics, error) {
+// hydrateAppConnectorState fetches the current state of an appConnector from the API.
+func (r *appConnectorResource) hydrateAppConnectorState(
+	ctx context.Context,
+	appConnectorID string,
+	_ AppConnectorModel,
+) (*AppConnectorModel, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	input := cato_models.ZtnaAppConnectorRefInput{
@@ -449,7 +459,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(ctx context.Context, app
 		Location:             r.parseLocation(ctx, con.Location, &diags),
 		Name:                 types.StringValue(con.Name),
 		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
-		PrivateAppRef:        parse.ParseIDRefSet(ctx, con.PrivateAppRef, &diags),
+		PrivateAppRef:        parse.IDRefSet(ctx, con.PrivateAppRef, &diags),
 		SerialNumber:         types.StringPointerValue(con.SerialNumber),
 		SocketID:             types.StringPointerValue(con.SocketID),
 		SocketModel:          types.StringPointerValue((*string)(con.SocketModel)),

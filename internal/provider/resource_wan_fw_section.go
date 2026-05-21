@@ -40,7 +40,10 @@ func (r *wanFwSectionResource) Metadata(_ context.Context, req resource.Metadata
 
 func (r *wanFwSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_wf_section` resource contains the configuration parameters necessary to WAN firewall section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at[mutation.policy.wanFirewall.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addSection).",
+		Description: "The `cato_wf_section` resource contains the configuration parameters necessary to WAN firewall section " +
+			"(https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). " +
+			"Documentation for the underlying API used in this resource can be found at " +
+			"[mutation.policy.wanFirewall.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addSection).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Section ID",
@@ -95,7 +98,7 @@ func (r *wanFwSectionResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *wanFwSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *wanFwSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -109,7 +112,6 @@ func (r *wanFwSectionResource) ImportState(ctx context.Context, req resource.Imp
 }
 
 func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan WanFirewallSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -119,18 +121,18 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 
 	input := cato_models.PolicyAddSectionInput{}
 
-	//setting at
+	// setting at
 	if !plan.At.IsNull() {
 		input.At = &cato_models.PolicySectionPositionInput{}
 		positionInput := PolicyRulePositionInput{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		input.At.Position = (cato_models.PolicySectionPositionEnum)(positionInput.Position.ValueString())
+		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
 		input.At.Ref = positionInput.Ref.ValueStringPointer()
 	}
 
-	//setting section
+	// setting section
 	if !plan.Section.IsNull() {
 		input.Section = &cato_models.PolicyAddSectionInfoInput{}
 		sectionInput := PolicyAddSectionInfoInput{}
@@ -158,7 +160,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		}
 	}
 
-	//publishing new section
+	// publishing new section
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
 	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
@@ -170,7 +172,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	plan.Id = types.StringValue(policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID)
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -183,11 +185,9 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		path.Root("section").AtName("id"),
 		policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID,
 	)
-
 }
 
 func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state WanFirewallSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -209,7 +209,7 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	//retrieve section ID
+	// retrieve section ID
 	section := PolicyUpdateSectionInfoInput{}
 	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
@@ -220,19 +220,24 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	sectionList := body.GetPolicy().WanFirewall.Policy.GetSections()
 	sectionExist := false
 	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID == section.Id.ValueString() {
-			sectionExist = true
-			state.Id = types.StringValue(sectionListItem.GetSection().ID)
-			curSectionObj, diagstmp := types.ObjectValue(
-				NameIDAttrTypes,
-				map[string]attr.Value{
-					"id":   types.StringValue(sectionListItem.GetSection().ID),
-					"name": types.StringValue(sectionListItem.GetSection().GetName()),
-				},
-			)
-			diags = append(diags, diagstmp...)
-			state.Section = curSectionObj
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
+			continue
 		}
+
+		sectionExist = true
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
+		curSectionObj, diagstmp := types.ObjectValue(
+			NameIDAttrTypes,
+			map[string]attr.Value{
+				"id":   types.StringValue(sectionListItem.GetSection().ID),
+				"name": types.StringValue(sectionListItem.GetSection().GetName()),
+			},
+		)
+		resp.Diagnostics.Append(diagstmp...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.Section = curSectionObj
 	}
 
 	// Hard coding LAST_IN_POLICY position as the API does not return any value and
@@ -246,7 +251,10 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 		},
 	)
 	state.At = curAtObj
-	diags = append(diags, diagstmp...)
+	resp.Diagnostics.Append(diagstmp...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// remove resource if it doesn't exist anymore
 	if !sectionExist {
@@ -260,11 +268,10 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 }
 
+//nolint:funlen
 func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan WanFirewallSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -275,7 +282,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	inputUpdateSection := cato_models.PolicyUpdateSectionInput{}
 	inputMoveSection := cato_models.PolicyMoveSectionInput{}
 
-	//setting section
+	// setting section
 	if !plan.Section.IsNull() {
 		inputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
 		sectionInput := PolicyUpdateSectionInfoInput{}
@@ -283,17 +290,17 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 		resp.Diagnostics.Append(diags...)
 
 		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.Id.ValueString()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
 	}
 
-	//setting at
+	// setting at
 	if !plan.At.IsNull() {
 		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
 		positionInput := PolicyRulePositionInput{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
-		inputMoveSection.To.Position = (cato_models.PolicySectionPositionEnum)(positionInput.Position.ValueString())
+		inputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
 		inputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
 		inputMoveSection.ID = inputUpdateSection.ID
 	}
@@ -314,7 +321,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// check for errors
-	if moveSection.Policy.WanFirewall.MoveSection.Status != "SUCCESS" {
+	if moveSection.Policy.WanFirewall.MoveSection.Status != ifwMutationStatusSuccess {
 		for _, item := range moveSection.Policy.WanFirewall.MoveSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
@@ -340,7 +347,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// check for errors
-	if updateSection.Policy.WanFirewall.UpdateSection.Status != "SUCCESS" {
+	if updateSection.Policy.WanFirewall.UpdateSection.Status != ifwMutationStatusSuccess {
 		for _, item := range updateSection.Policy.WanFirewall.UpdateSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
@@ -350,7 +357,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	//publishing new section
+	// publishing new section
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
 	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
@@ -370,7 +377,6 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 }
 
 func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state WanFirewallSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -378,7 +384,7 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	//retrieve section ID
+	// retrieve section ID
 	section := PolicyAddSectionInfoInput{}
 	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
@@ -387,7 +393,7 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.Id.ValueString(),
+		ID: section.ID.ValueString(),
 	}
 
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.request", map[string]interface{}{
@@ -414,5 +420,4 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 		)
 		return
 	}
-
 }

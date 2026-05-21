@@ -38,7 +38,8 @@ func (r *privAccessPolicyResource) Metadata(_ context.Context, req resource.Meta
 
 func (r *privAccessPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_private_access_policy` resource contains the configuration parameters for private access policies in the Cato platform.",
+		Description: "The `cato_private_access_policy` resource contains the configuration parameters for " +
+			"private access policies in the Cato platform.",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -68,7 +69,7 @@ func (r *privAccessPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 	}
 }
 
-func (r *privAccessPolicyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *privAccessPolicyResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -76,7 +77,7 @@ func (r *privAccessPolicyResource) Configure(ctx context.Context, req resource.C
 	r.client = req.ProviderData.(*catoClientData)
 }
 
-func (r *privAccessPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *privAccessPolicyResource) ImportState(ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("enabled"), false)...)
 }
 
@@ -91,6 +92,7 @@ func (r *privAccessPolicyResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	hydratedState, diags := r.callUpdate(ctx, plan.Enabled.ValueBool())
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -137,6 +139,7 @@ func (r *privAccessPolicyResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	hydratedState, diags := r.callUpdate(ctx, plan.Enabled.ValueBool())
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -149,11 +152,14 @@ func (r *privAccessPolicyResource) Update(ctx context.Context, req resource.Upda
 }
 
 // Delete does not do anything, the policy always exists
-func (r *privAccessPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *privAccessPolicyResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 }
 
 // callUpdate implements the actual update logic use by Update() or Create()
-func (r *privAccessPolicyResource) callUpdate(ctx context.Context, isEnabled bool) (newState *PrivAccessPolicyModel, diags diag.Diagnostics) {
+func (r *privAccessPolicyResource) callUpdate(
+	ctx context.Context,
+	isEnabled bool,
+) (newState *PrivAccessPolicyModel, diags diag.Diagnostics) {
 	// Set the enabled polEnabled
 	polEnabled := cato_models.PolicyToggleStateDisabled
 	if isEnabled {
@@ -185,10 +191,10 @@ func (r *privAccessPolicyResource) callUpdate(ctx context.Context, isEnabled boo
 	}
 
 	// Hydrate state from API
-	newState, diag, hydrateErr := r.hydratePrivAccessPolicyState(ctx)
+	newState, hydrateDiags, hydrateErr := r.hydratePrivAccessPolicyState(ctx)
 	if hydrateErr != nil {
 		diags.AddError("Error hydrating privateAccessRule state", hydrateErr.Error())
-		diags.Append(diag...)
+		diags.Append(hydrateDiags...)
 		return nil, diags
 	}
 	return newState, diags
@@ -219,20 +225,22 @@ func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Cont
 	return state, nil, nil
 }
 
-func (r *privAccessPolicyResource) parseAudit(ctx context.Context, aud *cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Audit,
+func (r *privAccessPolicyResource) parseAudit(
+	ctx context.Context,
+	aud *cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Audit,
 	diags *diag.Diagnostics,
 ) types.Object {
-	var diag diag.Diagnostics
+	var objectDiags diag.Diagnostics
 
 	// Prepare PolicyAudit object
-	var auditObj types.Object = types.ObjectNull(PolicyAuditTypes)
+	auditObj := types.ObjectNull(PolicyAuditTypes)
 	if aud != nil {
 		tfAudit := PolicyAudit{
 			PublishedBy:   types.StringValue(aud.PublishedBy),
 			PublishedTime: types.StringValue(aud.PublishedTime),
 		}
-		auditObj, diag = types.ObjectValueFrom(ctx, PolicyAuditTypes, tfAudit)
-		diags.Append(diag...)
+		auditObj, objectDiags = types.ObjectValueFrom(ctx, PolicyAuditTypes, tfAudit)
+		diags.Append(objectDiags...)
 		if diags.HasError() {
 			return auditObj
 		}

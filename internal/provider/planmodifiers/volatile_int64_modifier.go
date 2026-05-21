@@ -24,11 +24,11 @@ func (m volatileInt64Modifier) Description(_ context.Context) string {
 	return "Marks the value as unknown during Update to allow for external changes"
 }
 
-func (m volatileInt64Modifier) MarkdownDescription(_ context.Context) string {
-	return "Marks the value as unknown during Update to allow for external changes"
+func (m volatileInt64Modifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
 }
 
-func (m volatileInt64Modifier) PlanModifyInt64(ctx context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
+func (m volatileInt64Modifier) PlanModifyInt64(_ context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
 	// On Create (no prior state), use default behavior - value will be unknown until API returns it
 	if req.State.Raw.IsNull() {
 		return

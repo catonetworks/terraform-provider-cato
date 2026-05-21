@@ -31,7 +31,7 @@ func TransformObjectRefInput(input interface{}) (ObjectRefOutput, error) {
 		field := val.Field(i)
 		fieldType := val.Type().Field(i)
 
-		if field.Type() == reflect.TypeOf(types.String{}) && strings.ToUpper(fieldType.Name) == "ID" {
+		if field.Type() == reflect.TypeOf(types.String{}) && strings.EqualFold(fieldType.Name, "ID") {
 			terraformString := field.Interface().(types.String)
 
 			if !terraformString.IsNull() && !terraformString.IsUnknown() {
@@ -48,7 +48,7 @@ func TransformObjectRefInput(input interface{}) (ObjectRefOutput, error) {
 		field := val.Field(i)
 		fieldType := val.Type().Field(i)
 
-		if field.Type() == reflect.TypeOf(types.String{}) && strings.ToUpper(fieldType.Name) == "NAME" {
+		if field.Type() == reflect.TypeOf(types.String{}) && strings.EqualFold(fieldType.Name, "NAME") {
 			terraformString := field.Interface().(types.String)
 
 			if !terraformString.IsNull() && !terraformString.IsUnknown() {
@@ -60,7 +60,7 @@ func TransformObjectRefInput(input interface{}) (ObjectRefOutput, error) {
 		}
 	}
 
-	return ObjectRefOutput{}, fmt.Errorf("No valid Name or ID attribute found")
+	return ObjectRefOutput{}, fmt.Errorf("no valid Name or ID attribute found")
 }
 
 func ToMap(s interface{}) map[string]interface{} {

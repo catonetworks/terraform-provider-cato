@@ -11,9 +11,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRule *cato_go_sdk.Tlsinspectpolicy_Policy_TLSInspect_Policy_Rules_Rule) (Policy_Policy_TlsInspect_Policy_Rules_Rule, diag.Diagnostics) {
-
-	ruleInput := Policy_Policy_TlsInspect_Policy_Rules_Rule{}
+//nolint:gocyclo,funlen
+func hydrateTLSRuleState(
+	ctx context.Context,
+	state TLSInspectionRule,
+	currentRule *cato_go_sdk.Tlsinspectpolicy_Policy_TLSInspect_Policy_Rules_Rule,
+) (PolicyPolicyTLSInspectPolicyRulesRule, diag.Diagnostics) {
+	ruleInput := PolicyPolicyTLSInspectPolicyRulesRule{}
 	diags := make(diag.Diagnostics, 0)
 
 	// Handle case where state might be incomplete (e.g., during import)
@@ -24,7 +28,7 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 			// If conversion fails during import, log it but continue with empty ruleInput
 			tflog.Debug(ctx, "Failed to convert state to struct in hydrateTlsRuleState, using empty struct for hydration")
 			// Reset ruleInput to empty struct and clear diagnostics
-			ruleInput = Policy_Policy_TlsInspect_Policy_Rules_Rule{}
+			ruleInput = PolicyPolicyTLSInspectPolicyRulesRule{}
 			// Don't add the errors to diags, we'll handle this by populating from API response
 		} else {
 			diags = append(diags, diagstmp...)
@@ -62,9 +66,9 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 		ruleInput.Platform = types.StringNull()
 	}
 
-	// //////////// Rule -> Source ///////////////
+	// // /// /// /// / Rule -> Source // /// /// /// /// /
 	curRuleSourceObj, diagstmp := types.ObjectValue(
-		TlsSourceAttrTypes,
+		TLSSourceAttrTypes,
 		map[string]attr.Value{
 			"ip":                  parseList(ctx, types.StringType, currentRule.Source.IP, "rule.source.ip"),
 			"host":                parseNameIDList(ctx, currentRule.Source.Host, "rule.source.host"),
@@ -98,7 +102,7 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 	}
 
 	ruleInput.Source = curRuleSourceObj
-	////////////// end rule.source ///////////////
+	// /// /// /// /// end rule.source // /// /// /// /// /
 
 	// Rule -> Country
 	ruleInput.Country = parseNameIDList(ctx, currentRule.Country, "rule.country")
@@ -106,7 +110,7 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 	// Rule -> Device Posture Profile
 	ruleInput.DevicePostureProfile = parseNameIDList(ctx, currentRule.DevicePostureProfile, "rule.device_posture_profile")
 
-	// //////////// Rule -> Application ///////////////
+	// // /// /// /// / Rule -> Application // /// /// /// /// /
 	// Note: RemoteAsn is []scalars.Asn32 (which is type string in SDK), so parseList handles it directly
 
 	// Handle custom_service - only parse if it exists in API response
@@ -133,23 +137,23 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 
 	// Handle custom_service_ip - only parse if it exists in API response
 	// API returns an array, but schema expects a single object - take first element
-	var customServiceIpValue attr.Value
+	var customServiceIPValue attr.Value
 	if len(currentRule.Application.CustomServiceIP) > 0 {
-		customServiceIpValue = parseCustomServiceIp(ctx, currentRule.Application.CustomServiceIP[0], "rule.application.custom_service_ip")
+		customServiceIPValue = parseCustomServiceIP(ctx, currentRule.Application.CustomServiceIP[0], "rule.application.custom_service_ip")
 	} else {
 		// Fallback to state/plan value if present to avoid drift
 		if !ruleInput.Application.IsNull() && !ruleInput.Application.IsUnknown() {
 			if appAttrs := ruleInput.Application.Attributes(); appAttrs != nil {
 				if v, ok := appAttrs["custom_service_ip"]; ok && !v.IsNull() && !v.IsUnknown() {
-					customServiceIpValue = v
+					customServiceIPValue = v
 				} else {
-					customServiceIpValue = types.ObjectNull(CustomServiceIpAttrTypes)
+					customServiceIPValue = types.ObjectNull(CustomServiceIPAttrTypes)
 				}
 			} else {
-				customServiceIpValue = types.ObjectNull(CustomServiceIpAttrTypes)
+				customServiceIPValue = types.ObjectNull(CustomServiceIPAttrTypes)
 			}
 		} else {
-			customServiceIpValue = types.ObjectNull(CustomServiceIpAttrTypes)
+			customServiceIPValue = types.ObjectNull(CustomServiceIPAttrTypes)
 		}
 	}
 
@@ -157,7 +161,7 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 	// API returns an array, but schema expects a single string - take first element
 	var tlsInspectCategoryValue attr.Value
 	if len(currentRule.Application.TLSInspectCategory) > 0 {
-		tlsInspectCategoryValue = parseTlsInspectCategory(ctx, currentRule.Application.TLSInspectCategory[0])
+		tlsInspectCategoryValue = parseTLSInspectCategory(ctx, currentRule.Application.TLSInspectCategory[0])
 	} else {
 		// Fallback to state/plan value if present to avoid drift
 		if !ruleInput.Application.IsNull() && !ruleInput.Application.IsUnknown() {
@@ -176,7 +180,7 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 	}
 
 	curRuleApplicationObj, diagstmp := types.ObjectValue(
-		TlsApplicationAttrTypes,
+		TLSApplicationAttrTypes,
 		map[string]attr.Value{
 			"application":          parseNameIDList(ctx, currentRule.Application.Application, "rule.application.application"),
 			"custom_app":           parseNameIDList(ctx, currentRule.Application.CustomApp, "rule.application.custom_app"),
@@ -191,20 +195,20 @@ func hydrateTlsRuleState(ctx context.Context, state TlsInspectionRule, currentRu
 			"remote_asn":           parseList(ctx, types.StringType, currentRule.Application.RemoteAsn, "rule.application.remote_asn"),
 			"service":              parseNameIDList(ctx, currentRule.Application.Service, "rule.application.service"),
 			"custom_service":       customServiceValue,
-			"custom_service_ip":    customServiceIpValue,
+			"custom_service_ip":    customServiceIPValue,
 			"tls_inspect_category": tlsInspectCategoryValue,
 			"country":              parseNameIDList(ctx, currentRule.Application.Country, "rule.application.country"),
 		},
 	)
 	ruleInput.Application = curRuleApplicationObj
 	diags = append(diags, diagstmp...)
-	////////////// end Rule -> Application ///////////////
+	// /// /// /// /// end Rule -> Application // /// /// /// /// /
 
 	return ruleInput, diags
 }
 
-// parseTlsInspectCategory handles the TLS inspection category field
-func parseTlsInspectCategory(ctx context.Context, category interface{}) types.String {
+// parseTLSInspectCategory handles the TLS inspection category field
+func parseTLSInspectCategory(_ context.Context, category interface{}) types.String {
 	if category == nil {
 		return types.StringNull()
 	}

@@ -11,76 +11,61 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-// prepareIdName prepares the id and name input for the Cato API
+// PrepareIDName prepares the id and name input for the Cato API
 // on error it sets the diagnostics error
-func PrepareIdName(ctx context.Context, idName types.Object, diags *diag.Diagnostics, fieldName string, optional ...bool) (by cato_models.ObjectRefBy, input string, isSet bool) {
-	var tfIdName IdNameRefModel
+func PrepareIDName(ctx context.Context, idName types.Object, diags *diag.Diagnostics,
+) (by cato_models.ObjectRefBy, input string, isSet bool) {
+	var tfIDName IDNameRefModel
 	if !utils.HasValue(idName) {
 		return by, input, false
 	}
-	if utils.CheckErr(diags, idName.As(ctx, &tfIdName, basetypes.ObjectAsOptions{})) {
+	if utils.CheckErr(diags, idName.As(ctx, &tfIDName, basetypes.ObjectAsOptions{})) {
 		return by, input, false
 	}
 
 	// ref by ID
-	if !tfIdName.ID.IsUnknown() {
-		return cato_models.ObjectRefByID, tfIdName.ID.ValueString(), true
+	if !tfIDName.ID.IsUnknown() {
+		return cato_models.ObjectRefByID, tfIDName.ID.ValueString(), true
 	}
 
 	// ref by Name
-	if !tfIdName.Name.IsUnknown() {
-		return cato_models.ObjectRefByName, tfIdName.Name.ValueString(), true
+	if !tfIDName.Name.IsUnknown() {
+		return cato_models.ObjectRefByName, tfIDName.Name.ValueString(), true
 	}
 
 	return by, input, false
 }
 
-func PrepareIDRef[T idRefInputs](ctx context.Context, tfObj types.Object, diags *diag.Diagnostics, fieldName string) (sdkRef *T) {
-	refBy, refInput, isSet := PrepareIdName(ctx, tfObj, diags, fieldName)
+func PrepareIDRef[T idRefInputs](ctx context.Context, tfObj types.Object, diags *diag.Diagnostics) (sdkRef *T) {
+	refBy, refInput, isSet := PrepareIDName(ctx, tfObj, diags)
 	if !isSet {
 		return nil
 	}
 	return &T{By: refBy, Input: refInput}
 }
 
-func ParseIDRef[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnostics) types.Object {
+// IDRef parses the ID reference object for the given type T and returns a Terraform Object value
+func IDRef[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnostics) types.Object {
 	type idn struct {
 		ID   string `json:"id" tfsdk:"id"`
 		Name string `json:"name" tfsdk:"name"`
 	}
 
-	// make IdNameRefModel Object
-	obj, diag := types.ObjectValueFrom(ctx, IdNameRefModelTypes, idn(ref))
-	if utils.CheckErr(diags, diag) {
-		return types.ObjectNull(IdNameRefModelTypes)
+	// make IDNameRefModel Object
+	obj, valueDiag := types.ObjectValueFrom(ctx, IDNameRefModelTypes, idn(ref))
+	if utils.CheckErr(diags, valueDiag) {
+		return types.ObjectNull(IDNameRefModelTypes)
 	}
 	return obj
 }
 
-func PrepareIDRefSet[T idRefInputs](ctx context.Context, tfSet types.Set, diags *diag.Diagnostics, fieldName string) (sdkList []*T) {
+func PrepareIDRefSet[T idRefInputs](ctx context.Context, tfSet types.Set, diags *diag.Diagnostics) (sdkList []*T) {
 	if !utils.HasValue(tfSet) {
 		return nil
 	}
 
 	for _, idName := range tfSet.Elements() {
-		refBy, refInput, isSet := PrepareIdName(ctx, idName.(types.Object), diags, fieldName)
-		if diags.HasError() {
-			return nil
-		}
-		if isSet {
-			sdkList = append(sdkList, &T{By: refBy, Input: refInput})
-		}
-	}
-	return sdkList
-}
-
-func PrepareIDRefList[T idRefInputs](ctx context.Context, tfList types.List, diags *diag.Diagnostics, fieldName string) (sdkList []*T) {
-	if !utils.HasValue(tfList) {
-		return nil
-	}
-
-	for _, idName := range tfList.Elements() {
-		refBy, refInput, isSet := PrepareIdName(ctx, idName.(types.Object), diags, fieldName)
+		refBy, refInput, isSet := PrepareIDName(ctx, idName.(types.Object), diags)
 		if diags.HasError() {
 			return nil
 		}

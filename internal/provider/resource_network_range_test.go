@@ -19,7 +19,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
-const site_id = "site-1"
+const testSiteID = "site-1"
 
 func TestNewNetworkRangeResource(t *testing.T) {
 	t.Parallel()
@@ -179,7 +179,7 @@ func TestNetworkRangeCreateRejectsConflictingInterfaceConfig(t *testing.T) {
 	ctx := context.Background()
 	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
 	req := resource.CreateRequest{Plan: newNetworkRangePlan(ctx, t, networkRangeModel{
-		InterfaceId:    types.StringValue("if-1"),
+		InterfaceID:    types.StringValue("if-1"),
 		InterfaceIndex: types.StringValue("LAN1"),
 	})}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}}
@@ -228,8 +228,8 @@ func TestNetworkRangeReadSuccess(t *testing.T) {
 		networkRangeClient: mockClient,
 	}
 	req := resource.ReadRequest{State: newNetworkRangeState(ctx, t, networkRangeModel{
-		Id:          types.StringValue("nr-1"),
-		InterfaceId: types.StringValue("if-1"),
+		ID:          types.StringValue("nr-1"),
+		InterfaceID: types.StringValue("if-1"),
 	})}
 	resp := &resource.ReadResponse{State: tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}}
 
@@ -253,7 +253,7 @@ func TestNetworkRangeUpdateReturnsDiagnosticsOnAPIError(t *testing.T) {
 		client:             &catoClientData{AccountId: "account-123"},
 		networkRangeClient: mockClient,
 	}
-	req := resource.UpdateRequest{Plan: newNetworkRangePlan(ctx, t, networkRangeModel{Id: types.StringValue("nr-1")})}
+	req := resource.UpdateRequest{Plan: newNetworkRangePlan(ctx, t, networkRangeModel{ID: types.StringValue("nr-1")})}
 	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}}
 
 	r.Update(ctx, req, resp)
@@ -276,7 +276,7 @@ func TestNetworkRangeDeleteHandlesNotFoundGracefully(t *testing.T) {
 		client:             &catoClientData{AccountId: "account-123"},
 		networkRangeClient: mockClient,
 	}
-	req := resource.DeleteRequest{State: newNetworkRangeState(ctx, t, networkRangeModel{Id: types.StringValue("nr-1")})}
+	req := resource.DeleteRequest{State: newNetworkRangeState(ctx, t, networkRangeModel{ID: types.StringValue("nr-1")})}
 	resp := &resource.DeleteResponse{}
 
 	r.Delete(ctx, req, resp)
@@ -354,7 +354,7 @@ func TestGetSiteIDFromNetworkRange(t *testing.T) {
 					{
 						Entity: cato.EntityLookup_EntityLookup_Items_Entity{ID: "nr-1", Type: cato_models.EntityType("siteRange")},
 						HelperFields: map[string]any{
-							"siteId":        site_id,
+							"siteId":        testSiteID,
 							"interfaceName": "LAN 1",
 						},
 					},
@@ -368,11 +368,11 @@ func TestGetSiteIDFromNetworkRange(t *testing.T) {
 		networkRangeClient: mockClient,
 	}
 
-	siteID, interfaceName, err := r.getSiteIdFromNetworkRange(ctx, "nr-1")
+	siteID, interfaceName, err := r.getSiteIDFromNetworkRange(ctx, "nr-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if siteID != site_id {
+	if siteID != testSiteID {
 		t.Fatalf("expected site-1, got %q", siteID)
 	}
 	if interfaceName != "LAN 1" {
@@ -382,20 +382,24 @@ func TestGetSiteIDFromNetworkRange(t *testing.T) {
 
 func TestBuildAddNetworkRangeInput(t *testing.T) {
 	t.Parallel()
+	const (
+		name    = "NR"
+		xSubnet = "172.16.0.0/24"
+	)
 
 	model := networkRangeModel{
 		Name:             types.StringValue("NR"),
 		RangeType:        types.StringValue("Direct"),
 		Subnet:           types.StringValue("10.0.0.0/24"),
-		LocalIp:          types.StringValue("10.0.0.1"),
-		TranslatedSubnet: types.StringValue("172.16.0.0/24"),
+		LocalIP:          types.StringValue("10.0.0.1"),
+		TranslatedSubnet: types.StringValue(xSubnet),
 	}
 
 	input := buildAddNetworkRangeInput(model.toResourceModel(), nrBoolPtr(true))
-	if input.Name != "NR" {
-		t.Fatalf("expected name NR, got %q", input.Name)
+	if input.Name != name {
+		t.Fatalf("expected name %s, got %q", name, input.Name)
 	}
-	if input.TranslatedSubnet == nil || *input.TranslatedSubnet != "172.16.0.0/24" {
+	if input.TranslatedSubnet == nil || *input.TranslatedSubnet != xSubnet {
 		t.Fatalf("expected translated subnet to be set, got %v", input.TranslatedSubnet)
 	}
 }
@@ -407,7 +411,7 @@ func TestBuildUpdateNetworkRangeInput(t *testing.T) {
 		Name:             types.StringValue("NR"),
 		RangeType:        types.StringValue("Direct"),
 		Subnet:           types.StringValue("10.0.0.0/24"),
-		LocalIp:          types.StringValue("10.0.0.1"),
+		LocalIP:          types.StringValue("10.0.0.1"),
 		TranslatedSubnet: types.StringValue("172.16.0.0/24"),
 	}
 
@@ -451,14 +455,14 @@ func nonNullRawValue(t *testing.T) tftypes.Value {
 }
 
 type networkRangeModel struct {
-	Id               types.String
-	SiteId           types.String
-	InterfaceId      types.String
+	ID               types.String
+	SiteID           types.String
+	InterfaceID      types.String
 	InterfaceIndex   types.String
 	Name             types.String
 	RangeType        types.String
 	Subnet           types.String
-	LocalIp          types.String
+	LocalIP          types.String
 	Gateway          types.String
 	TranslatedSubnet types.String
 	DhcpSettings     types.Object
@@ -467,14 +471,14 @@ type networkRangeModel struct {
 	Vlan             types.Int64
 }
 
-func (m networkRangeModel) toResourceModel() NetworkRange {
-	id := m.Id
+func (m networkRangeModel) toResourceModel() NetworkRange { //nolint:gocyclo
+	id := m.ID
 	if id.IsNull() && !id.IsUnknown() && id.ValueString() == "" {
 		id = types.StringNull()
 	}
-	siteID := m.SiteId
+	siteID := m.SiteID
 	if siteID.IsNull() && !siteID.IsUnknown() && siteID.ValueString() == "" {
-		siteID = types.StringValue(site_id)
+		siteID = types.StringValue(testSiteID)
 	}
 	name := m.Name
 	if name.IsNull() && !name.IsUnknown() && name.ValueString() == "" {
@@ -488,7 +492,7 @@ func (m networkRangeModel) toResourceModel() NetworkRange {
 	if subnet.IsNull() && !subnet.IsUnknown() && subnet.ValueString() == "" {
 		subnet = types.StringValue("10.0.0.0/24")
 	}
-	localIP := m.LocalIp
+	localIP := m.LocalIP
 	if localIP.IsNull() && !localIP.IsUnknown() && localIP.ValueString() == "" {
 		localIP = types.StringValue("10.0.0.1")
 	}
@@ -496,7 +500,7 @@ func (m networkRangeModel) toResourceModel() NetworkRange {
 	if gateway.IsNull() && !gateway.IsUnknown() && gateway.ValueString() == "" {
 		gateway = types.StringNull()
 	}
-	interfaceID := m.InterfaceId
+	interfaceID := m.InterfaceID
 	if interfaceID.IsNull() && !interfaceID.IsUnknown() && interfaceID.ValueString() == "" {
 		interfaceID = types.StringNull()
 	}
@@ -522,14 +526,14 @@ func (m networkRangeModel) toResourceModel() NetworkRange {
 	}
 
 	return NetworkRange{
-		Id:               id,
-		SiteId:           siteID,
-		InterfaceId:      interfaceID,
+		ID:               id,
+		SiteID:           siteID,
+		InterfaceID:      interfaceID,
 		InterfaceIndex:   interfaceIndex,
 		Name:             name,
 		RangeType:        rangeType,
 		Subnet:           subnet,
-		LocalIp:          localIP,
+		LocalIP:          localIP,
 		Gateway:          gateway,
 		TranslatedSubnet: m.TranslatedSubnet,
 		DhcpSettings:     dhcp,

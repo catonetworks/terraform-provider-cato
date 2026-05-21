@@ -39,6 +39,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Run linter
+        run: make lint
+
       - name: Run unit tests
         run: make test
 

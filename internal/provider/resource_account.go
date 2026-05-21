@@ -75,6 +75,7 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Timezone of the account (e.g., Africa/Accra)",
 				Required:    true,
 				Validators: []validator.String{
+					//nolint:lll
 					stringvalidator.OneOf("Africa/Accra", "Africa/Addis_Ababa", "Africa/Algiers", "Africa/Asmara", "Africa/Bamako", "Africa/Bangui", "Africa/Banjul", "Africa/Bissau", "Africa/Bujumbura", "Africa/Cairo", "Africa/Casablanca", "Africa/Ceuta", "Africa/Conakry", "Africa/Dakar", "Africa/Dar_es_Salaam", "Africa/Djibouti", "Africa/Douala", "Africa/El_Aaiun", "Africa/Freetown", "Africa/Gaborone", "Africa/Harare", "Africa/Johannesburg", "Africa/Juba", "Africa/Kampala", "Africa/Khartoum", "Africa/Kigali", "Africa/Lagos", "Africa/Libreville", "Africa/Lome", "Africa/Luanda", "Africa/Lusaka", "Africa/Malabo", "Africa/Maputo", "Africa/Maseru", "Africa/Mbabane", "Africa/Mogadishu", "Africa/Monrovia", "Africa/Nairobi", "Africa/Ndjamena", "Africa/Niamey", "Africa/Nouakchott", "Africa/Ouagadougou", "Africa/Porto-Novo", "Africa/Tripoli", "Africa/Tunis", "Africa/Windhoek", "America/Anchorage", "America/Anguilla", "America/Antigua", "America/Argentina/Buenos_Aires", "America/Argentina/Catamarca", "America/Argentina/Cordoba", "America/Argentina/Jujuy", "America/Argentina/La_Rioja", "America/Argentina/Mendoza", "America/Argentina/Rio_Gallegos", "America/Argentina/Salta", "America/Argentina/San_Juan", "America/Argentina/San_Luis", "America/Argentina/Tucuman", "America/Argentina/Ushuaia", "America/Aruba", "America/Asuncion", "America/Atikokan", "America/Barbados", "America/Belize", "America/Blanc-Sablon", "America/Bogota", "America/Cambridge_Bay", "America/Caracas", "America/Cayenne", "America/Cayman", "America/Chicago", "America/Chihuahua", "America/Costa_Rica", "America/Creston", "America/Danmarkshavn", "America/Dawson", "America/Dawson_Creek", "America/Denver", "America/Dominica", "America/Edmonton", "America/El_Salvador", "America/Fort_Nelson", "America/Glace_Bay", "America/Godthab", "America/Goose_Bay", "America/Grand_Turk", "America/Grenada", "America/Guadeloupe", "America/Guatemala", "America/Guayaquil", "America/Guyana", "America/Halifax", "America/Havana", "America/Inuvik", "America/Iqaluit", "America/Jamaica", "America/La_Paz", "America/Lima", "America/Los_Angeles", "America/Lower_Princes", "America/Managua", "America/Martinique", "America/Miquelon", "America/Moncton", "America/Monterrey", "America/Montevideo", "America/Montserrat", "America/Nassau", "America/New_York", "America/Panama", "America/Pangnirtung", "America/Paramaribo", "America/Phoenix", "America/Port_of_Spain", "America/Port-au-Prince", "America/Puerto_Rico", "America/Punta_Arenas", "America/Rainy_River", "America/Rankin_Inlet", "America/Regina", "America/Resolute", "America/Santiago", "America/Santo_Domingo", "America/Scoresbysund", "America/St_Johns", "America/St_Kitts", "America/St_Lucia", "America/St_Thomas", "America/St_Vincent", "America/Swift_Current", "America/Tegucigalpa", "America/Thule", "America/Thunder_Bay", "America/Toronto", "America/Tortola", "America/Vancouver", "America/Whitehorse", "America/Winnipeg", "America/Yellowknife", "Arctic/Longyearbyen", "Asia/Aden", "Asia/Almaty", "Asia/Amman", "Asia/Anadyr", "Asia/Aqtau", "Asia/Aqtobe", "Asia/Ashgabat", "Asia/Atyrau", "Asia/Baghdad", "Asia/Bahrain", "Asia/Baku", "Asia/Bangkok", "Asia/Barnaul", "Asia/Beirut", "Asia/Bishkek", "Asia/Brunei", "Asia/Chita", "Asia/Choibalsan", "Asia/Colombo", "Asia/Damascus", "Asia/Dhaka", "Asia/Dubai", "Asia/Dushanbe", "Asia/Famagusta", "Asia/Ho_Chi_Minh", "Asia/Hong_Kong", "Asia/Hovd", "Asia/Hovd", "Asia/Irkutsk", "Asia/Jakarta", "Asia/Jayapura", "Asia/Jerusalem", "Asia/Kabul", "Asia/Kamchatka", "Asia/Karachi", "Asia/Kathmandu", "Asia/Khandyga", "Asia/Krasnoyarsk", "Asia/Kuala_Lumpur", "Asia/Kuching", "Asia/Kuwait", "Asia/Macau", "Asia/Magadan", "Asia/Makassar", "Asia/Manila", "Asia/Muscat", "Asia/Novokuznetsk", "Asia/Novosibirsk", "Asia/Omsk", "Asia/Oral", "Asia/Phnom_Penh", "Asia/Pontianak", "Asia/Pyongyang", "Asia/Qatar", "Asia/Qyzylorda", "Asia/Riyadh", "Asia/Sakhalin", "Asia/Samarkand", "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Srednekolymsk", "Asia/Taipei", "Asia/Tashkent", "Asia/Tbilisi", "Asia/Tehran", "Asia/Thimphu", "Asia/Tokyo", "Asia/Tomsk", "Asia/Ulaanbaatar", "Asia/Ulaanbaatar", "Asia/Urumqi", "Asia/Ust-Nera", "Asia/Vientiane", "Asia/Vladivostok", "Asia/Yakutsk", "Asia/Yangon", "Asia/Yekaterinburg", "Asia/Yerevan", "Atlantic/Azores", "Atlantic/Bermuda", "Atlantic/Canary", "Atlantic/Faroe", "Atlantic/Madeira", "Atlantic/Reykjavik", "Atlantic/South_Georgia", "Atlantic/Stanley", "Australia/ACT", "Australia/North", "Australia/NSW", "Australia/Queensland", "Australia/South", "Australia/Tasmania", "Australia/Victoria", "Australia/West", "Canada/Mountain", "Europe/Amsterdam", "Europe/Andorra", "Europe/Astrakhan", "Europe/Athens", "Europe/Belgrade", "Europe/Berlin", "Europe/Brussels", "Europe/Bucharest", "Europe/Budapest", "Europe/Busingen", "Europe/Chisinau", "Europe/Copenhagen", "Europe/Dublin", "Europe/Gibraltar", "Europe/Guernsey", "Europe/Helsinki", "Europe/Isle_of_Man", "Europe/Istanbul", "Europe/Jersey", "Europe/Kaliningrad", "Europe/Kiev", "Europe/Kirov", "Europe/Lisbon", "Europe/Ljubljana", "Europe/London", "Europe/Luxembourg", "Europe/Madrid", "Europe/Malta", "Europe/Minsk", "Europe/Monaco", "Europe/Moscow", "Europe/Nicosia", "Europe/Oslo", "Europe/Paris", "Europe/Podgorica", "Europe/Prague", "Europe/Riga", "Europe/Rome", "Europe/Samara", "Europe/San_Marino", "Europe/Sarajevo", "Europe/Saratov", "Europe/Skopje", "Europe/Sofia", "Europe/Stockholm", "Europe/Tallinn", "Europe/Tirane", "Europe/Ulyanovsk", "Europe/Uzhgorod", "Europe/Vaduz", "Europe/Vienna", "Europe/Vilnius", "Europe/Volgograd", "Europe/Warsaw", "Europe/Zagreb", "Europe/Zaporozhye", "Europe/Zurich", "Indian/Antananarivo", "Indian/Christmas", "Indian/Comoro", "Indian/Kerguelen", "Indian/Mahe", "Indian/Maldives", "Indian/Mauritius", "Indian/Mayotte", "Mexico/BajaNorte", "Pacific/Apia", "Pacific/Auckland", "Pacific/Bougainville", "Pacific/Chatham", "Pacific/Chuuk", "Pacific/Easter", "Pacific/Efate", "Pacific/Enderbury", "Pacific/Fakaofo", "Pacific/Fiji", "Pacific/Funafuti", "Pacific/Gambier", "Pacific/Guadalcanal", "Pacific/Guam", "Pacific/Honolulu", "Pacific/Kiritimati", "Pacific/Kosrae", "Pacific/Kwajalein", "Pacific/Majuro", "Pacific/Marquesas", "Pacific/Nauru", "Pacific/Niue", "Pacific/Norfolk", "Pacific/Noumea", "Pacific/Pago_Pago", "Pacific/Palau", "Pacific/Pitcairn", "Pacific/Pohnpei", "Pacific/Rarotonga", "Pacific/Saipan", "Pacific/Tahiti", "Pacific/Tarawa", "Pacific/Tongatapu", "Pacific/Wallis", "UTC-3", "UTC-4", "UTC-5", "UTC+05:30"),
 				},
 				PlanModifiers: []planmodifier.String{
@@ -97,7 +98,7 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	}
 }
 
-func (r *accountResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *accountResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -110,8 +111,8 @@ func (r *accountResource) ImportState(ctx context.Context, req resource.ImportSt
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+//nolint:gocyclo
 func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	var plan Account
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -142,7 +143,7 @@ func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest
 		input.Type = cato_models.AccountProfileType(plan.Type.ValueString())
 	}
 
-	//publishing new section
+	// publishing new section
 	tflog.Info(ctx, "Create.account")
 	tflog.Debug(ctx, "Create.Account.request", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
@@ -176,7 +177,7 @@ func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest
 	})
 
 	// Update the state with the complete account information from the create response
-	plan.Id = types.StringValue(createdAccount.ID)
+	plan.ID = types.StringValue(createdAccount.ID)
 	plan.Name = types.StringValue(createdAccount.Name)
 	plan.Tenancy = types.StringValue(string(createdAccount.Tenancy))
 	plan.Timezone = types.StringValue(createdAccount.TimeZone)
@@ -196,7 +197,6 @@ func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest
 }
 
 func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
 	var state Account
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -204,7 +204,7 @@ func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	readAccountResponse, err := r.client.catov2.AccountManagement(ctx, state.Id.ValueString())
+	readAccountResponse, err := r.client.catov2.AccountManagement(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Account error",
@@ -225,7 +225,7 @@ func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.Name = types.StringValue(readAccountResponse.AccountManagement.Account.Name)
 	state.Tenancy = types.StringValue(string(readAccountResponse.AccountManagement.Account.Tenancy))
 	state.Timezone = types.StringValue(readAccountResponse.AccountManagement.Account.TimeZone)
-	state.Id = types.StringValue(readAccountResponse.AccountManagement.Account.ID)
+	state.ID = types.StringValue(readAccountResponse.AccountManagement.Account.ID)
 	state.Type = types.StringValue(string(readAccountResponse.AccountManagement.Account.Type))
 
 	diags = resp.State.Set(ctx, &state)
@@ -235,8 +235,8 @@ func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 }
 
+//nolint:funlen
 func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 	var plan Account
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -298,12 +298,12 @@ func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest
 		input.Description = plan.Description.ValueStringPointer()
 	}
 
-	//publishing new section
+	// publishing new section
 	tflog.Info(ctx, "Update.account")
 	tflog.Debug(ctx, "Update.Account.request", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	updateAccountResult, err := r.client.catov2.AccountManagementUpdateAccount(ctx, input, plan.Id.ValueString())
+	updateAccountResult, err := r.client.catov2.AccountManagementUpdateAccount(ctx, input, plan.ID.ValueString())
 	tflog.Debug(ctx, "Update.Account.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateAccountResult),
 	})
@@ -332,7 +332,7 @@ func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest
 	})
 
 	// Update the state with the complete account information from the update response
-	plan.Id = types.StringValue(updatedAccount.ID)
+	plan.ID = types.StringValue(updatedAccount.ID)
 	plan.Name = types.StringValue(updatedAccount.Name)
 	plan.Tenancy = types.StringValue(string(updatedAccount.Tenancy))
 	plan.Timezone = types.StringValue(updatedAccount.TimeZone)
@@ -352,18 +352,16 @@ func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest
 }
 
 func (r *accountResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 	var state Account
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 	tflog.Debug(ctx, "Delete.AccountManagementRemoveAccount.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(state.Id),
+		"request": utils.InterfaceToJSONString(state.ID),
 	})
-	removedAccountResult, err := r.client.catov2.AccountManagementRemoveAccount(ctx, state.Id.ValueString(), r.client.AccountId)
+	removedAccountResult, err := r.client.catov2.AccountManagementRemoveAccount(ctx, state.ID.ValueString(), r.client.AccountId)
 	tflog.Debug(ctx, "Delete.AccountManagementRemoveAccount.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removedAccountResult),
 	})
@@ -390,5 +388,4 @@ func (r *accountResource) Delete(ctx context.Context, req resource.DeleteRequest
 			return
 		}
 	}
-
 }

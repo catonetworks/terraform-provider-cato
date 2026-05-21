@@ -19,7 +19,7 @@ func TestAccTlsRule_Simple(t *testing.T) {
 	mockSrv := accmock.NewMockServer(t, "TestAccTlsRule_Simple")
 	defer mockSrv.Close()
 	mockSrv.Run()
-	cfg := newTlsRuleCfg(t)
+	cfg := newTLSRuleCfg(t)
 	res := "cato_tls_rule.simple"
 
 	resource.Test(t, resource.TestCase{
@@ -70,7 +70,7 @@ type tlsRuleCfg struct {
 	t       *testing.T
 }
 
-func newTlsRuleCfg(t *testing.T) tlsRuleCfg {
+func newTLSRuleCfg(t *testing.T) tlsRuleCfg {
 	return tlsRuleCfg{
 		resName: acc.GetRandName("tls_rule"),
 		t:       t,

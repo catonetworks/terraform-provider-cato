@@ -12,12 +12,21 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
+const (
+	licenseSkuCatoPB       = "CATO_PB"
+	licenseSkuCatoPBSSE    = "CATO_PB_SSE"
+	licenseSkuCatoSite     = "CATO_SITE"
+	licenseSkuCatoSSESite  = "CATO_SSE_SITE"
+	bandwidthRequiredError = "Bandwidth must be set for 'CATO_PB' and 'CATO_PB_SSE' pooled bandwidth license type."
+)
+
+//nolint:gocyclo,funlen,ineffassign,lll,staticcheck
 func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData) (*cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses, error) {
 	diags := make(diag.Diagnostics, 0)
 	// Get all sites, check for valid siteID
 	siteExists := false
 	thousandInt64 := int64(1000)
-	tenThousandInt64 := int64(10000) //to give it a cap and avoid infinite loop - not a great solution but ok for current scale. Will need to be revisited and replace the lookup for a specific site.
+	tenThousandInt64 := int64(10000) // to cap the lookup and avoid an infinite loop at current scale.
 	fromInt64 := int64(0)
 	processedItems := int64(0)
 	for !siteExists && processedItems < tenThousandInt64 {
@@ -33,7 +42,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 
 		items := siteResponse.GetEntityLookup().GetItems()
 		for _, item := range items {
-			tflog.Warn(ctx, "Checking site IDs, input='"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', currentItem='"+item.GetEntity().GetID()+"'")
+			tflog.Warn(ctx, "Checking site IDs, input='"+plan.SiteID.ValueString()+"', currentItem='"+item.GetEntity().GetID()+"'")
 			if item.GetEntity().GetID() == plan.SiteID.ValueString() {
 				tflog.Warn(ctx, "Site ID matched! "+item.GetEntity().GetID())
 				siteExists = true
@@ -73,9 +82,9 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	}
 
 	// Check if the site has a license currently
-	curSiteLicenseId, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteId(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
+	curSiteLicenseID, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteID(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
 
-	if siteIsAssigned && curSiteLicenseId.IsNull() {
+	if siteIsAssigned && curSiteLicenseID.IsNull() {
 		message := "License ID not found: This could be due to the license or the account being set as trial where the license does not have an ID, or if there is a China license on the account.  If a trial license is assigned, please unassign the trial license and try to reapply."
 		diags = append(diags, diag.NewErrorDiagnostic("LICENSE API ERROR", message))
 		return nil, fmt.Errorf("LICENSE API ERROR: %s", message)
@@ -85,26 +94,28 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
 
 	// Check if site license is currently assigned
-	curLicenseSiteId, siteLicenseCurrentlyAssigned := checkStaticLicenseForAssignment(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
+	curLicenseSiteID, siteLicenseCurrentlyAssigned := checkStaticLicenseForAssignment(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
 	tflog.Debug(ctx, "checkStaticLicenseForAssignment().result", map[string]interface{}{
-		"curLicenseSiteId":                   fmt.Sprintf("%v", curLicenseSiteId),
+		"curLicenseSiteId":                   curLicenseSiteID.String(),
 		"siteLicenseCurrentlyAssigned":       fmt.Sprintf("%v", siteLicenseCurrentlyAssigned),
-		"siteLicenseCurrentlyAssigned==true": fmt.Sprintf("%t", (siteLicenseCurrentlyAssigned == true)),
+		"siteLicenseCurrentlyAssigned==true": fmt.Sprintf("%t", siteLicenseCurrentlyAssigned),
 	})
-	if siteLicenseCurrentlyAssigned == true {
-		if plan.SiteID.ValueString() == curLicenseSiteId.ValueString() {
-			tflog.Warn(ctx, "License '"+fmt.Sprintf("%v", license.ID)+"', already assigned to site ID '"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"', returning license successfully applied.")
+	if siteLicenseCurrentlyAssigned {
+		if plan.SiteID.ValueString() == curLicenseSiteID.ValueString() {
+			tflog.Warn(ctx, "License '"+fmt.Sprintf("%v", license.ID)+"', already assigned to site ID '"+plan.SiteID.ValueString()+"', returning license successfully applied.")
 			return license, nil
-		} else {
-			message := "The license ID '" + fmt.Sprintf("%v", plan.LicenseID.ValueString()) + "' is already assigned to site ID " + fmt.Sprintf("%v", curLicenseSiteId)
-			diags = append(diags, diag.NewErrorDiagnostic("LICENSE ALREADY ASSIGNED", message))
-			return nil, fmt.Errorf("LICENSE ALREADY ASSIGNED: %s", message)
 		}
+		message := "The license ID '" + plan.LicenseID.ValueString() + "' is already assigned to site ID " + curLicenseSiteID.String()
+		diags = append(diags, diag.NewErrorDiagnostic("LICENSE ALREADY ASSIGNED", message))
+		return nil, fmt.Errorf("LICENSE ALREADY ASSIGNED: %s", message)
 	}
 	if licenseExists {
 		// Check for the correct license type
 		tflog.Warn(ctx, "Checking license SKU for CATO_PB, CATO_PB_SSE, CATO_SITE, or CATO_SSE_SITE type, license.Sku='"+string(license.Sku)+"'")
-		if string(license.Sku) != "CATO_PB" && string(license.Sku) != "CATO_PB_SSE" && string(license.Sku) != "CATO_SITE" && string(license.Sku) != "CATO_SSE_SITE" {
+		if string(license.Sku) != licenseSkuCatoPB &&
+			string(license.Sku) != licenseSkuCatoPBSSE &&
+			string(license.Sku) != licenseSkuCatoSite &&
+			string(license.Sku) != licenseSkuCatoSSESite {
 			message := "Site License ID '" + plan.LicenseID.ValueString() + "' is not a valid site license. Must be 'CATO_PB', 'CATO_PB_SSE', 'CATO_SITE', or 'CATO_SSE_SITE' license type."
 			diags = append(diags, diag.NewErrorDiagnostic("INVALID LICENSE TYPE", message))
 			return nil, fmt.Errorf("INVALID LICENSE TYPE: %s", message)
@@ -113,21 +124,21 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 		// check if assigned, use replace else use assign
 		if siteIsAssigned {
 			// if the site is already assigned to this license
-			if curSiteLicenseId.ValueString() == plan.LicenseID.ValueString() {
-				tflog.Warn(ctx, "Site ID '"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"' is already assigned to license ID '"+fmt.Sprintf("%v", license.ID)+"'")
-				if string(license.Sku) == "CATO_PB" || string(license.Sku) == "CATO_PB_SSE" {
+			if curSiteLicenseID.ValueString() == plan.LicenseID.ValueString() {
+				tflog.Warn(ctx, "Site ID '"+plan.SiteID.ValueString()+"' is already assigned to license ID '"+fmt.Sprintf("%v", license.ID)+"'")
+				if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
 					if plan.BW.ValueInt64() != *allocatedBw {
 						// Checking license SKU type for PB
-						tflog.Warn(ctx, "Pooled bandwidth license identfied '"+fmt.Sprintf("%v", license.Sku)+"', assigning BW")
+						tflog.Warn(ctx, "Pooled bandwidth license identfied '"+license.Sku.String()+"', assigning BW")
 						if plan.BW.IsUnknown() || plan.BW.IsNull() {
-							message := "Bandwidth must be set for 'CATO_PB' and 'CATO_PB_SSE' pooled bandwidth license type."
+							message := bandwidthRequiredError
 							diags = append(diags, diag.NewErrorDiagnostic("INVALID CONFIGURATION", message))
 							return nil, fmt.Errorf("INVALID CONFIGURATION: %s", message)
 						}
 						input := cato_models.UpdateSiteBwLicenseInput{}
 						input.LicenseID = plan.LicenseID.ValueString()
 						siteRef := &cato_models.SiteRefInput{}
-						siteRef.By = "ID"
+						siteRef.By = licenseSiteRefByID
 						siteRef.Input = plan.SiteID.ValueString()
 						input.Site = siteRef
 						input.Bw = plan.BW.ValueInt64()
@@ -148,19 +159,19 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 				}
 			} else {
 				// call replace
-				tflog.Warn(ctx, "Site ID '"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"' is currently assigned to '"+fmt.Sprintf("%v", curSiteLicenseId)+"'")
+				tflog.Warn(ctx, "Site ID '"+plan.SiteID.ValueString()+"' is currently assigned to '"+curSiteLicenseID.String()+"'")
 				input := cato_models.ReplaceSiteBwLicenseInput{}
-				input.LicenseIDToRemove = curSiteLicenseId.ValueString()
+				input.LicenseIDToRemove = curSiteLicenseID.ValueString()
 				input.LicenseIDToAdd = plan.LicenseID.ValueString()
 				siteRef := &cato_models.SiteRefInput{}
-				siteRef.By = "ID"
+				siteRef.By = licenseSiteRefByID
 				siteRef.Input = plan.SiteID.ValueString()
 				input.Site = siteRef
 				// Check for BW if pooled
 				tflog.Warn(ctx, "Checking license SKU type for PB")
-				if string(license.Sku) == "CATO_PB" || string(license.Sku) == "CATO_PB_SSE" {
+				if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
 					if plan.BW.IsUnknown() || plan.BW.IsNull() {
-						message := "Bandwidth must be set for 'CATO_PB' and 'CATO_PB_SSE' pooled bandwidth license type."
+						message := bandwidthRequiredError
 						diags = append(diags, diag.NewErrorDiagnostic("INVALID CONFIGURATION", message))
 						return nil, fmt.Errorf("INVALID CONFIGURATION: %s", message)
 					}
@@ -181,18 +192,18 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 				}
 			}
 		} else {
-			tflog.Warn(ctx, "Site ID '"+fmt.Sprintf("%v", plan.SiteID.ValueString())+"' is not currently assigned to a license, ")
+			tflog.Warn(ctx, "Site ID '"+plan.SiteID.ValueString()+"' is not currently assigned to a license, ")
 			input := cato_models.AssignSiteBwLicenseInput{}
 			input.LicenseID = plan.LicenseID.ValueString()
 			siteRef := &cato_models.SiteRefInput{}
-			siteRef.By = "ID"
+			siteRef.By = licenseSiteRefByID
 			siteRef.Input = plan.SiteID.ValueString()
 			input.Site = siteRef
 			// Check for BW if pooled
 			tflog.Warn(ctx, "Checking license SKU type for PB")
-			if string(license.Sku) == "CATO_PB" || string(license.Sku) == "CATO_PB_SSE" {
+			if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
 				if plan.BW.IsUnknown() || plan.BW.IsNull() {
-					message := "Bandwidth must be set for 'CATO_PB' and 'CATO_PB_SSE' pooled bandwidth license type."
+					message := bandwidthRequiredError
 					diags = append(diags, diag.NewErrorDiagnostic("INVALID CONFIGURATION", message))
 					return nil, fmt.Errorf("INVALID CONFIGURATION: %s", message)
 				}
@@ -221,9 +232,8 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 			}
 		}
 		return license, nil
-	} else {
-		message := "License ID '" + plan.LicenseID.ValueString() + "' not found. Either the license ID specificed is not valid, or this account is not synced an does not support license updates via API.  Please contact Cato support."
-		diags = append(diags, diag.NewErrorDiagnostic("INVALID LICENSE ID", message))
-		return nil, fmt.Errorf("INVALID CONFIGURATION: %s", message)
 	}
+	message := "License ID '" + plan.LicenseID.ValueString() + "' not found. Either the license ID specificed is not valid, or this account is not synced an does not support license updates via API.  Please contact Cato support."
+	diags = append(diags, diag.NewErrorDiagnostic("INVALID LICENSE ID", message))
+	return nil, fmt.Errorf("INVALID CONFIGURATION: %s", message)
 }

@@ -15,31 +15,31 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-type AllocatedIpLookup struct {
+type AllocatedIPLookup struct {
 	NameFilter types.List `tfsdk:"name_filter"`
 	Items      types.List `tfsdk:"items"`
 }
 
-type AllocatedIp struct {
+type AllocatedIP struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Location    types.String `tfsdk:"location"`
 	CountryCode types.String `tfsdk:"cc"`
 }
 
-func AllocatedIpDataSource() datasource.DataSource {
-	return &allocatedIpDataSource{}
+func AllocatedIPDataSource() datasource.DataSource {
+	return &allocatedIPDataSource{}
 }
 
-type allocatedIpDataSource struct {
+type allocatedIPDataSource struct {
 	client *catoClientData
 }
 
-func (d *allocatedIpDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *allocatedIPDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_allocatedIp"
 }
 
-func (d *allocatedIpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *allocatedIPDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Retrieves account allocated IPs.",
 		Attributes: map[string]schema.Attribute{
@@ -77,7 +77,7 @@ func (d *allocatedIpDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 	}
 }
 
-func (d *allocatedIpDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *allocatedIPDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -85,15 +85,17 @@ func (d *allocatedIpDataSource) Configure(_ context.Context, req datasource.Conf
 	d.client = req.ProviderData.(*catoClientData)
 }
 
-func (d *allocatedIpDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var allocatedIpLookup AllocatedIpLookup
-	if diags := req.Config.Get(ctx, &allocatedIpLookup); diags.HasError() {
+func (d *allocatedIPDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var allocatedIPLookup AllocatedIPLookup
+	if diags := req.Config.Get(ctx, &allocatedIPLookup); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
 	}
 
 	zeroInt64 := int64(0)
-	result, err := d.client.catov2.EntityLookup(ctx, d.client.AccountId, cato_models.EntityTypeAllocatedIP, &zeroInt64, nil, nil, nil, nil, nil, nil, nil)
+	result, err := d.client.catov2.EntityLookup(
+		ctx, d.client.AccountId, cato_models.EntityTypeAllocatedIP, &zeroInt64, nil, nil, nil, nil, nil, nil, nil,
+	)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -102,10 +104,10 @@ func (d *allocatedIpDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	filterByName := !allocatedIpLookup.NameFilter.IsNull() && allocatedIpLookup.NameFilter.Elements() != nil
+	filterByName := !allocatedIPLookup.NameFilter.IsNull() && allocatedIPLookup.NameFilter.Elements() != nil
 	namesMap := make(map[string]struct{})
 	if filterByName {
-		for _, value := range allocatedIpLookup.NameFilter.Elements() {
+		for _, value := range allocatedIPLookup.NameFilter.Elements() {
 			// Trim any quotes if present
 			valueStr := strings.Trim(value.String(), "\"")
 			namesMap[valueStr] = struct{}{}
@@ -154,8 +156,8 @@ func (d *allocatedIpDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	allocatedIpLookup.Items = list
-	if diags := resp.State.Set(ctx, &allocatedIpLookup); diags.HasError() {
+	allocatedIPLookup.Items = list
+	if diags := resp.State.Set(ctx, &allocatedIPLookup); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
 }
