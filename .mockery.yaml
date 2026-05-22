@@ -11,3 +11,4 @@ packages:
       InternetFirewallPolicyClient:
       NetworkRangeClient:
       SocketSiteClient:
+      WanRulesIndexClient:
