@@ -264,7 +264,7 @@ func TestKeepPlannedMapKeys_UsesActualForPlannedKeysOnly(t *testing.T) {
 		"managed": mustSectionObject(t, "plan-id", "managed", 1),
 	})
 	actualMap := mustMapValue(t, WanSectionIndexResourceObjectTypes, map[string]attr.Value{
-		"managed":  mustSectionObject(t, "actual-id", "managed", 10),
+		"managed":   mustSectionObject(t, "actual-id", "managed", 10),
 		"unmanaged": mustSectionObject(t, "extra-id", "unmanaged", 20),
 	})
 
@@ -282,7 +282,7 @@ func TestKeepPlannedMapKeys_UsesActualForPlannedKeysOnly(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected managed value to be object, got %T", gotElements["managed"])
 	}
-	gotSection := asSectionItem(t, context.Background(), obj)
+	gotSection := asSectionItem(context.Background(), t, obj)
 	if gotSection.ID.ValueString() != "actual-id" {
 		t.Fatalf("expected managed element from actual state, got id %q", gotSection.ID.ValueString())
 	}
@@ -313,7 +313,7 @@ func TestKeepPlannedMapKeys_UsesPlanValueWhenActualKeyMissing(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected managed value to be object, got %T", gotElements["managed"])
 	}
-	gotSection := asSectionItem(t, context.Background(), obj)
+	gotSection := asSectionItem(context.Background(), t, obj)
 	if gotSection.ID.ValueString() != "plan-id" {
 		t.Fatalf("expected managed element to fall back to plan value, got id %q", gotSection.ID.ValueString())
 	}
@@ -403,7 +403,7 @@ func mustRuleObject(t *testing.T, id, sectionName, ruleName string, indexInSecti
 	return value
 }
 
-func asSectionItem(t *testing.T, ctx context.Context, object types.Object) WanRulesSectionItemIndex {
+func asSectionItem(ctx context.Context, t *testing.T, object types.Object) WanRulesSectionItemIndex {
 	t.Helper()
 
 	var item WanRulesSectionItemIndex
