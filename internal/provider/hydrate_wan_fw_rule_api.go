@@ -2461,6 +2461,9 @@ func hydrateWanRuleAPI(ctx context.Context, plan WanFirewallRule) (hydrateWanAPI
 		rootAddRule.ActionConfig = &cato_models.WanFirewallActionConfigInput{
 			UserNotification: make([]*cato_models.UserNotificationTemplateRefInput, 0),
 		}
+		rootUpdateRule.ActionConfig = &cato_models.WanFirewallActionConfigUpdateInput{
+			UserNotification: make([]*cato_models.UserNotificationTemplateRefInput, 0),
+		}
 
 		rootAddRule.Direction = cato_models.WanFirewallDirectionEnum(ruleInput.Direction.ValueString())
 		rootUpdateRule.Direction = (*cato_models.WanFirewallDirectionEnum)(ruleInput.Direction.ValueStringPointer())
@@ -2472,6 +2475,25 @@ func hydrateWanRuleAPI(ctx context.Context, plan WanFirewallRule) (hydrateWanAPI
 			rootAddRule.ConnectionOrigin = cato_models.ConnectionOriginEnum(defaultConnectionOriginAny)
 			connectionOrigin := defaultConnectionOriginAny
 			rootUpdateRule.ConnectionOrigin = (*cato_models.ConnectionOriginEnum)(&connectionOrigin)
+		}
+
+		// userAttributes became required by backend validation; send explicit defaults.
+		rootAddRule.UserAttributes = &cato_models.WanFirewallUserAttributesInput{
+			RiskScore: &cato_models.RiskScoreConditionInput{
+				Category: cato_models.RiskScoreCategoryAny,
+				Operator: cato_models.RiskScoreOperatorGte,
+			},
+			UserConfidenceLevel: nil,
+		}
+
+		riskScoreCategory := cato_models.RiskScoreCategoryAny
+		riskScoreOperator := cato_models.RiskScoreOperatorGte
+		rootUpdateRule.UserAttributes = &cato_models.WanFirewallUserAttributesUpdateInput{
+			RiskScore: &cato_models.RiskScoreConditionUpdateInput{
+				Category: &riskScoreCategory,
+				Operator: &riskScoreOperator,
+			},
+			UserConfidenceLevel: nil,
 		}
 	}
 
