@@ -31,7 +31,18 @@ func NewWanRulesIndexResource() resource.Resource {
 }
 
 type wanRulesIndexResource struct {
-	client *catoClientData
+	client              *catoClientData
+	wanRulesIndexClient WanRulesIndexClient
+}
+
+func (r *wanRulesIndexResource) getWanRulesIndexClient() WanRulesIndexClient {
+	if r.wanRulesIndexClient != nil {
+		return r.wanRulesIndexClient
+	}
+	if r.client == nil {
+		return nil
+	}
+	return r.client.catov2
 }
 
 func (r *wanRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -273,9 +284,15 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 ) (sectionObjects basetypes.MapValue, ruleObjects basetypes.MapValue, diagnostics diag.Diagnostics, err error) {
 	diags := []diag.Diagnostic{}
 	ruleObjectMap := make(map[string]attr.Value)
+	client := r.getWanRulesIndexClient()
+	if client == nil {
+		err := errors.New("wan rules index client is not configured")
+		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API EntityLookup error", err.Error()))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
 
 	if plan.SectionToStartAfterID.ValueString() != "" {
-		result, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+		result, err := client.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -305,7 +322,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 	// maps section_name -> section_id
 	sectionIDList := make(map[string]string)
-	sectionIndexAPIData, err := r.client.catov2.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+	sectionIndexAPIData, err := client.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
@@ -386,7 +403,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveAPIData, err := r.client.catov2.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveAPIData, err := client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
 		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
 			sectionMoveAPIData.GetPolicy().WanFirewall != nil &&
@@ -467,7 +484,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIDData, err := r.client.catov2.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
+		ruleNameIDData, err := client.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.PolicyWanFirewallRulesIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(ruleNameIDData),
 		})
@@ -547,7 +564,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		reorderInput := cato_models.PolicyReorderInput{
 			Sections: reorderSections,
 		}
-		reorderResult, err := r.client.catov2.PolicyWanFirewallReorderPolicy(ctx, nil, reorderInput, r.client.AccountId)
+		reorderResult, err := client.PolicyWanFirewallReorderPolicy(ctx, nil, reorderInput, r.client.AccountId)
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyWanFirewallReorderPolicy error",
@@ -591,7 +608,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		}
 	}
 
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
+	_, err = client.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
