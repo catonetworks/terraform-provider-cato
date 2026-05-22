@@ -3,14 +3,17 @@ package provider
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/stretchr/testify/mock"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 
@@ -154,6 +157,106 @@ func TestWanRulesIndexUpdateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 	}
 }
 
+func TestMoveWanRulesAndSectionsReturnsErrorWhenClientNotConfigured(t *testing.T) {
+	t.Parallel()
+
+	r := &wanRulesIndexResource{}
+
+	_, _, diags, err := r.moveWanRulesAndSections(context.Background(), WanRulesIndex{})
+	if err == nil {
+		t.Fatal("expected error when WAN client is not configured")
+	}
+	if !strings.Contains(err.Error(), "wan rules index client is not configured") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(diags) == 0 {
+		t.Fatal("expected diagnostics for missing WAN client")
+	}
+}
+
+func TestMoveWanRulesAndSectionsReturnsErrorForUnknownSectionToStartAfterID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	mockClient := mocks.NewWanRulesIndexClient(t)
+	mockClient.EXPECT().
+		PolicyWanFirewallSectionsIndex(ctx, "account-123").
+		Return(wanSectionsIndexResponse([]wanSection{{id: "section-1", name: "first"}}), nil).
+		Once()
+
+	r := &wanRulesIndexResource{
+		client:              &catoClientData{AccountId: "account-123"},
+		wanRulesIndexClient: mockClient,
+	}
+
+	_, _, diags, err := r.moveWanRulesAndSections(ctx, WanRulesIndex{
+		SectionToStartAfterID: types.StringValue("missing-id"),
+		SectionData:           mustMapValue(t, WanSectionIndexResourceObjectTypes, map[string]attr.Value{}),
+		RuleData:              mustMapValue(t, WanRuleIndexResourceObjectTypes, map[string]attr.Value{}),
+	})
+	if err == nil {
+		t.Fatal("expected error for missing section_to_start_after_id")
+	}
+	if !strings.Contains(err.Error(), "sectionToStartAfterId not found") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(diags) == 0 {
+		t.Fatal("expected diagnostics for missing section_to_start_after_id")
+	}
+}
+
+func TestMoveWanRulesAndSectionsReturnsReorderAPIErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	mockClient := mocks.NewWanRulesIndexClient(t)
+	sectionName := "managed-section"
+	ruleName := "managed-rule"
+
+	mockClient.EXPECT().
+		PolicyWanFirewallSectionsIndex(ctx, "account-123").
+		Return(wanSectionsIndexResponse([]wanSection{{id: "section-1", name: sectionName}}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyWanFirewallMoveSection(ctx, mock.Anything, "account-123").
+		Return(&cato_go_sdk.PolicyWanFirewallMoveSection{}, nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyWanFirewallRulesIndex(ctx, "account-123").
+		Return(wanRulesIndexResponse([]wanRule{{id: "rule-1", name: ruleName, sectionName: sectionName}}), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyWanFirewallReorderPolicy(ctx, (*cato_models.WanFirewallPolicyMutationInput)(nil), mock.Anything, "account-123").
+		Return(wanReorderResponseWithError("reorder failed from api"), nil).
+		Once()
+
+	r := &wanRulesIndexResource{
+		client:              &catoClientData{AccountId: "account-123"},
+		wanRulesIndexClient: mockClient,
+	}
+
+	sectionData := mustMapValue(t, WanSectionIndexResourceObjectTypes, map[string]attr.Value{
+		sectionName: mustSectionObject(t, "", sectionName, 1),
+	})
+	ruleData := mustMapValue(t, WanRuleIndexResourceObjectTypes, map[string]attr.Value{
+		ruleName: mustRuleObject(t, "", sectionName, ruleName, 1),
+	})
+	_, _, diags, err := r.moveWanRulesAndSections(ctx, WanRulesIndex{
+		SectionToStartAfterID: types.StringNull(),
+		SectionData:           sectionData,
+		RuleData:              ruleData,
+	})
+	if err == nil {
+		t.Fatal("expected error from reorder API failure")
+	}
+	if !strings.Contains(err.Error(), "reorder failed from api") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(diags) == 0 {
+		t.Fatal("expected diagnostics for reorder API failure")
+	}
+}
+
 func TestKeepPlannedMapKeys_UsesActualForPlannedKeysOnly(t *testing.T) {
 	t.Parallel()
 
@@ -280,6 +383,26 @@ func mustMapValue(t *testing.T, objectType types.ObjectType, elements map[string
 	return value
 }
 
+func mustRuleObject(t *testing.T, id, sectionName, ruleName string, indexInSection int64) basetypes.ObjectValue {
+	t.Helper()
+
+	value, diags := types.ObjectValue(
+		WanRuleIndexResourceAttrTypes,
+		map[string]attr.Value{
+			"id":               types.StringValue(id),
+			"index_in_section": types.Int64Value(indexInSection),
+			"section_name":     types.StringValue(sectionName),
+			"rule_name":        types.StringValue(ruleName),
+			"description":      types.StringValue(""),
+			"enabled":          types.BoolValue(true),
+		},
+	)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics creating rule object: %+v", diags)
+	}
+	return value
+}
+
 func asSectionItem(t *testing.T, ctx context.Context, object types.Object) WanRulesSectionItemIndex {
 	t.Helper()
 
@@ -317,4 +440,81 @@ func newWanRulesIndexPlan(ctx context.Context, t *testing.T) tfsdk.Plan {
 	}
 
 	return plan
+}
+
+type wanSection struct {
+	id   string
+	name string
+}
+
+func wanSectionsIndexResponse(sections []wanSection) *cato_go_sdk.WanSectionsIndexPolicy {
+	respSections := make([]*cato_go_sdk.Policy_Policy_WanFirewall_Policy_Sections, 0, len(sections))
+	for _, section := range sections {
+		respSections = append(respSections, &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Sections{
+			Section: cato_go_sdk.Policy_Policy_WanFirewall_Policy_Sections_Section{
+				ID:   section.id,
+				Name: section.name,
+			},
+		})
+	}
+
+	return &cato_go_sdk.WanSectionsIndexPolicy{
+		Policy: &cato_go_sdk.WanSectionsIndexPolicy_Policy{
+			WanFirewall: &cato_go_sdk.Policy_Policy_WanFirewall{
+				Policy: cato_go_sdk.Policy_Policy_WanFirewall_Policy{
+					Sections: respSections,
+				},
+			},
+		},
+	}
+}
+
+type wanRule struct {
+	id          string
+	name        string
+	sectionName string
+}
+
+func wanRulesIndexResponse(rules []wanRule) *cato_go_sdk.WanRulesIndexPolicy {
+	respRules := make([]*cato_go_sdk.WanRulesIndexPolicy_Policy_WanFirewall_Policy_Rules, 0, len(rules))
+	for _, rule := range rules {
+		respRules = append(respRules, &cato_go_sdk.WanRulesIndexPolicy_Policy_WanFirewall_Policy_Rules{
+			Rule: cato_go_sdk.WanRulesIndexPolicy_Policy_WanFirewall_Policy_Rules_Rule{
+				ID:   rule.id,
+				Name: rule.name,
+				Section: cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule_Section{
+					Name: rule.sectionName,
+				},
+			},
+		})
+	}
+
+	return &cato_go_sdk.WanRulesIndexPolicy{
+		Policy: &cato_go_sdk.WanRulesIndexPolicy_Policy{
+			WanFirewall: &cato_go_sdk.WanRulesIndexPolicy_Policy_WanFirewall{
+				Policy: cato_go_sdk.WanRulesIndexPolicy_Policy_WanFirewall_Policy{
+					Rules: respRules,
+				},
+			},
+		},
+	}
+}
+
+func wanReorderResponseWithError(message string) *cato_go_sdk.PolicyWanFirewallReorderPolicy {
+	status := cato_models.PolicyMutationStatus("FAILED")
+
+	return &cato_go_sdk.PolicyWanFirewallReorderPolicy{
+		Policy: &cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy{
+			WanFirewall: &cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall{
+				ReorderPolicy: cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall_ReorderPolicy{
+					Status: status,
+					Errors: []*cato_go_sdk.PolicyWanFirewallReorderPolicy_Policy_WanFirewall_ReorderPolicy_Errors{
+						{
+							ErrorMessage: &message,
+						},
+					},
+				},
+			},
+		},
+	}
 }
