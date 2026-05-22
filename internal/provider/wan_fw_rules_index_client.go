@@ -1,0 +1,41 @@
+package provider
+
+import (
+	"context"
+
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+)
+
+type WanRulesIndexClient interface {
+	PolicyWanFirewallSectionsIndex(
+		ctx context.Context,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.WanSectionsIndexPolicy, error)
+	PolicyWanFirewallMoveSection(
+		ctx context.Context,
+		policyMoveSectionInput cato_models.PolicyMoveSectionInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyWanFirewallMoveSection, error)
+	PolicyWanFirewallRulesIndex(
+		ctx context.Context,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.WanRulesIndexPolicy, error)
+	PolicyWanFirewallReorderPolicy(
+		ctx context.Context,
+		wanFirewallPolicyMutationInput *cato_models.WanFirewallPolicyMutationInput,
+		policyReorderInput cato_models.PolicyReorderInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyWanFirewallReorderPolicy, error)
+	PolicyWanFirewallPublishPolicyRevision(
+		ctx context.Context,
+		policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyWanFirewallPublishPolicyRevision, error)
+}
