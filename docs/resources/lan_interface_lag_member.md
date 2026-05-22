@@ -3,12 +3,12 @@
 page_title: "cato_lan_interface_lag_member Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The catolan_interface_lab_member resource contains the configuration parameters necessary to add a lan interface lan member to a socket lag interface (LAN_LAG_MASTER, or LAN_LAG_MASTER_AND_VRRP). (physical socket physical socket https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites). Documentation for the underlying API used in this resource can be found at mutation.updateSocketInterface() https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface.
+  The catolan_interface_lab_member resource contains the configuration parameters necessary to add a LAN interface member to a socket LAG interface.
 ---
 
 # cato_lan_interface_lag_member (Resource)
 
-The `catolan_interface_lab_member` resource contains the configuration parameters necessary to add a lan interface lan member to a socket lag interface (LAN_LAG_MASTER, or LAN_LAG_MASTER_AND_VRRP). ([physical socket physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).
+The `catolan_interface_lab_member` resource contains the configuration parameters necessary to add a LAN interface member to a socket LAG interface.
 
 ## Example Usage
 
@@ -46,7 +46,7 @@ resource "cato_lan_interface_lag_member" "lag3" {
 
 ### Required
 
-- `interface_id` (String) SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https://api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)
+- `interface_id` (String) SocketInterface available ids. INT_# stands for supported ids 1 through 12.
 - `name` (String) LAN LAG member interface name
 - `site_id` (String) Site ID
 
@@ -56,4 +56,4 @@ resource "cato_lan_interface_lag_member" "lag3" {
 
 ### Read-Only
 
-- `id` (String) The LAN LAG Member interface ID, which is a combination of the numeric interface ID and the interface Index (e.g., `site_id:interface_index`, 12345:INT_5). This is used to identify the primary LAN Master interface resource that the lag member is a part of.
+- `id` (String) The LAN LAG Member interface ID, formatted as `site_id:interface_index`.

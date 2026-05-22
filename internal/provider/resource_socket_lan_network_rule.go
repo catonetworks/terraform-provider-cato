@@ -53,7 +53,7 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 		Description: "The `cato_socket_lan_network_rule` resource contains the configuration parameters necessary " +
 			"to add a Socket LAN network rule. Documentation for the underlying API used in this resource can be " +
 			"found at [mutation.policy.socketLan.addRule()]" +
-			"(https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule).",
+			"(https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
 				Description: "Position of the rule in the policy",
@@ -963,7 +963,7 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 											},
 										},
 										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
+											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
 											Required:    false,
 											Optional:    true,
 										},

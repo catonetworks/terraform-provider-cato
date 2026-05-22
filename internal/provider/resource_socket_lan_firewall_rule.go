@@ -53,7 +53,7 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 		Description: "The `cato_socket_lan_firewall_rule` resource contains the configuration parameters necessary " +
 			"to add a Socket LAN firewall rule (child rule under a network rule). Documentation for the underlying " +
 			"API used in this resource can be found at [mutation.policy.socketLan.firewall.addRule()]" +
-			"(https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.firewall.addRule).",
+			"(https://api.catonetworks.com/documentation/#mutation-policy.socketLan.firewall.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
 				Description: "Position of the rule relative to the parent network rule",
@@ -1004,7 +1004,7 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 											},
 										},
 										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
+											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
 											Required:    false,
 											Optional:    true,
 										},
@@ -1052,7 +1052,7 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 									},
 									"frequency": schema.StringAttribute{
 										Description: "Returns data for the alert frequency " +
-											"(https:// api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
+											"(https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
 										Optional: true,
 										Required: false,
 										Validators: []validator.String{

@@ -49,7 +49,7 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 	resp.Schema = schema.Schema{
 		Description: "The `_tls_rule` resource contains the configuration parameters necessary to add rule to the TLS " +
 			"Inspection Policy. Documentation for the underlying API used in this resource can be found at " +
-			"[mutation.policy.tlsInspect.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule).",
+			"[mutation.policy.tlsInspect.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Identifier of the TLS Inspection Rule",

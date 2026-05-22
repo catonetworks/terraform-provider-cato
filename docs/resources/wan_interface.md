@@ -30,13 +30,13 @@ resource "cato_wan_interface" "wan1" {
 
 ### Required
 
-- `downstream_bandwidth` (Number) WAN interface downstream bandwitdh
+- `downstream_bandwidth` (Number) WAN interface downstream bandwidth
 - `interface_id` (String) The interface ID, which is a unique identifier for the WAN interface (e.g., `INT_1`, `INT_2`, etc.). This is used to identify the specific WAN interface resource.
 - `name` (String) WAN interface name
 - `precedence` (String) WAN interface precedence (https://api.catonetworks.com/documentation/#definition-SocketInterfacePrecedenceEnum)
 - `role` (String) WAN interface role (https://api.catonetworks.com/documentation/#definition-SocketInterfaceRole)
 - `site_id` (String) Site ID
-- `upstream_bandwidth` (Number) WAN interface upstream bandwitdh
+- `upstream_bandwidth` (Number) WAN interface upstream bandwidth
 
 ### Read-Only
 

@@ -87,7 +87,7 @@ func (r *bgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	resp.Schema = schema.Schema{
 		Description: "The `cato_bgp_peer`resource contains the configuration parameters necessary to add a BGP peer to a Cato site. " +
 			"Documentation for the underlying API used in this resource can be found at " +
-			"[mutation.site.AddBgpPeerPayload()](https:// api.catonetworks.com/documentation/#definition-AddBgpPeerPayload).",
+			"[mutation.site.AddBgpPeerPayload()](https://api.catonetworks.com/documentation/#definition-AddBgpPeerPayload).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Unique identifier for the BGP peer.",
