@@ -171,8 +171,12 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	resp.Diagnostics.Append(diags...)
-	plan.SectionData = sectionObjectsList
-	plan.RuleData = rulesObjectsList
+	filteredSections, sectionFilterDiags := keepPlannedMapKeys(plan.SectionData, sectionObjectsList, WanSectionIndexResourceObjectTypes)
+	resp.Diagnostics.Append(sectionFilterDiags...)
+	filteredRules, ruleFilterDiags := keepPlannedMapKeys(plan.RuleData, rulesObjectsList, WanRuleIndexResourceObjectTypes)
+	resp.Diagnostics.Append(ruleFilterDiags...)
+	plan.SectionData = filteredSections
+	plan.RuleData = filteredRules
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -217,8 +221,12 @@ func (r *wanRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 	resp.Diagnostics.Append(diags...)
-	plan.SectionData = sectionObjectsList
-	plan.RuleData = rulesObjectsList
+	filteredSections, sectionFilterDiags := keepPlannedMapKeys(plan.SectionData, sectionObjectsList, WanSectionIndexResourceObjectTypes)
+	resp.Diagnostics.Append(sectionFilterDiags...)
+	filteredRules, ruleFilterDiags := keepPlannedMapKeys(plan.RuleData, rulesObjectsList, WanRuleIndexResourceObjectTypes)
+	resp.Diagnostics.Append(ruleFilterDiags...)
+	plan.SectionData = filteredSections
+	plan.RuleData = filteredRules
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -236,6 +244,26 @@ func (r *wanRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	}
 
 	resp.State.RemoveResource(ctx)
+}
+
+func keepPlannedMapKeys(planMap types.Map, actualMap basetypes.MapValue, objectType types.ObjectType) (types.Map, diag.Diagnostics) {
+	if planMap.IsNull() || planMap.IsUnknown() {
+		return actualMap, nil
+	}
+
+	planElements := planMap.Elements()
+	actualElements := actualMap.Elements()
+	filtered := make(map[string]attr.Value, len(planElements))
+
+	for key, planValue := range planElements {
+		if actualValue, ok := actualElements[key]; ok {
+			filtered[key] = actualValue
+			continue
+		}
+		filtered[key] = planValue
+	}
+
+	return types.MapValue(objectType, filtered)
 }
 
 //nolint:gocyclo,funlen
@@ -461,29 +489,59 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"ruleNameIDMap": utils.InterfaceToJSONString(ruleNameIDMap),
 		})
 
-		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(listOfSectionNames))
-		sectionRules := make(map[string][]*cato_models.PolicyReorderRuleInput, len(listOfSectionNames))
+		topLevelRuleIDsBySection := make(map[string][]string)
+		topLevelRuleIDBySectionAndName := make(map[string]string)
+		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.WanFirewall.Policy.Rules {
+			sectionName := ruleNameIDDataItem.Rule.Section.Name
+			topLevelRuleIDsBySection[sectionName] = append(topLevelRuleIDsBySection[sectionName], ruleNameIDDataItem.Rule.ID)
+			topLevelRuleIDBySectionAndName[sectionName+"\x00"+ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
+		}
+
+		plannedRuleIDsBySection := make(map[string][]string)
 		for _, ruleItemFromPlan := range ruleListFromPlan {
-			ruleID, ok := ruleNameIDMap[ruleItemFromPlan.RuleName]
+			ruleID, ok := topLevelRuleIDBySectionAndName[ruleItemFromPlan.SectionName+"\x00"+ruleItemFromPlan.RuleName]
 			if !ok {
 				err := errors.New("failed to resolve rule ID for reorder operation")
 				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
 				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 			}
-			sectionRules[ruleItemFromPlan.SectionName] = append(sectionRules[ruleItemFromPlan.SectionName], &cato_models.PolicyReorderRuleInput{
-				Ref: &cato_models.PolicyElementRefInput{
-					By:    cato_models.ObjectRefByID,
-					Input: ruleID,
-				},
-			})
+			plannedRuleIDsBySection[ruleItemFromPlan.SectionName] = append(plannedRuleIDsBySection[ruleItemFromPlan.SectionName], ruleID)
 		}
+
+		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(listOfSectionNames))
 		for _, sectionName := range listOfSectionNames {
+			sectionRuleIDs := topLevelRuleIDsBySection[sectionName]
+			if plannedIDs := plannedRuleIDsBySection[sectionName]; len(plannedIDs) > 0 {
+				plannedSet := make(map[string]struct{}, len(plannedIDs))
+				for _, id := range plannedIDs {
+					plannedSet[id] = struct{}{}
+				}
+				remaining := make([]string, 0, len(sectionRuleIDs))
+				for _, id := range sectionRuleIDs {
+					if _, managed := plannedSet[id]; managed {
+						continue
+					}
+					remaining = append(remaining, id)
+				}
+				sectionRuleIDs = append(append(make([]string, 0, len(plannedIDs)+len(remaining)), plannedIDs...), remaining...)
+			}
+
+			reorderRules := make([]*cato_models.PolicyReorderRuleInput, 0, len(sectionRuleIDs))
+			for _, ruleID := range sectionRuleIDs {
+				reorderRules = append(reorderRules, &cato_models.PolicyReorderRuleInput{
+					Ref: &cato_models.PolicyElementRefInput{
+						By:    cato_models.ObjectRefByID,
+						Input: ruleID,
+					},
+				})
+			}
+
 			reorderSections = append(reorderSections, &cato_models.PolicyReorderSectionInput{
 				Ref: &cato_models.PolicyElementRefInput{
 					By:    cato_models.ObjectRefByID,
 					Input: sectionIDList[sectionName],
 				},
-				Rules: sectionRules[sectionName],
+				Rules: reorderRules,
 			})
 		}
 		reorderInput := cato_models.PolicyReorderInput{
