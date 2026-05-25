@@ -1,19 +1,19 @@
-//nolint:lll
 package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 
 	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -28,19 +28,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
-
-const defaultInterfaceByConnType = `{
-	"SOCKET_AWS1500":   "LAN1",
-	"SOCKET_AZ1500":    "LAN1",
-	"SOCKET_ESX1500":   "LAN1",
-	"SOCKET_GCP1500":   "LAN1",
-	"SOCKET_X1500":     "LAN1",
-	"SOCKET_X1600":     "INT_5",
-	"SOCKET_X1600_LTE": "INT_5",
-	"SOCKET_X1700":     "INT_3"
-}`
 
 const (
 	socketConnectionTypeAWS1500  = "SOCKET_AWS1500"
@@ -53,8 +46,6 @@ const (
 	socketConnectionTypeVGXAzure = "VSOCKET_VGX_AZURE"
 	socketConnectionTypeVGXESX   = "VSOCKET_VGX_ESX"
 	socketInterfaceDestTypeLAN   = "LAN"
-
-	socketNativeRangeValidatorDescription = "interface_index can only be specified for SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700; local_ip must be within the native_network_range subnet"
 )
 
 var (
@@ -80,7 +71,8 @@ type socketSiteResource struct {
 }
 
 type SocketSiteClient interface {
-	SiteAddSocketSite(ctx context.Context, addSocketSiteInput cato_models.AddSocketSiteInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddSocketSite, error)
+	SiteAddSocketSite(ctx context.Context, addSocketSiteInput cato_models.AddSocketSiteInput, accountID string,
+		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddSocketSite, error)
 }
 
 func (r *socketSiteResource) getSocketSiteClient() SocketSiteClient {
@@ -99,40 +91,30 @@ func (r *socketSiteResource) Metadata(_ context.Context, req resource.MetadataRe
 	resp.TypeName = req.ProviderTypeName + "_socket_site"
 }
 
-//nolint:funlen
 func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site to the Cato cloud ([virtual socket in AWS/Azure, or physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addSocketSite()](https:// api.catonetworks.com/documentation/#mutation-site.addSocketSite). \n\n **Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product](https:// aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).",
+		Description: "The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site " +
+			"to the Cato cloud ([virtual socket in AWS/Azure, or physical socket]" +
+			"(https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). " +
+			"Documentation for the underlying API used in this resource can be found at " +
+			"[mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite). \n\n" +
+			"**Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product]" +
+			"(https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "Site ID",
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				Description:   "Site ID",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
 				Description: "Site name",
 				Required:    true,
 			},
 			"connection_type": schema.StringAttribute{
-				Description: "Connection type for the site (SOCKET_X1500, SOCKET_AWS1500, SOCKET_AZ1500, ...)",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-				Validators: []validator.String{
-					stringvalidator.OneOf(
-						socketConnectionTypeAWS1500,
-						socketConnectionTypeAZ1500,
-						socketConnectionTypeESX1500,
-						"SOCKET_GCP1500",
-						"SOCKET_X1500",
-						socketConnectionTypeX1600,
-						socketConnectionTypeX1600LTE,
-						socketConnectionTypeX1700,
-					),
-				},
+				Description:   "Connection type for the site (SOCKET_X1500, SOCKET_AWS1500, SOCKET_AZ1500, ...)",
+				Required:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Validators:    []validator.String{validators.SiteConnectionTypeValidator{}},
 			},
 			"site_type": schema.StringAttribute{
 				Description: "Site type (https:// api.catonetworks.com/documentation/#definition-SiteType)",
@@ -142,193 +124,174 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Description: "Site description",
 				Optional:    true,
 			},
-			"native_range": schema.SingleNestedAttribute{
-				Description: "Site lan native range settings",
+			"native_range":  r.schemaNativeRange(),
+			"site_location": r.schemaSiteLocation(),
+		},
+	}
+}
+
+func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Site lan native range settings",
+		Required:    true,
+		Validators:  []validator.Object{validators.GetNativeRangeValidator()},
+		Attributes: map[string]schema.Attribute{
+			"interface_index": schema.StringAttribute{
+				Description: "LAN native range interface index, default is LAN1 for SOCKET_X1500 models, " +
+					"INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models",
+				Optional:      true,
+				Computed:      true,
+				Validators:    []validator.String{validators.SocketInterfaceIndexValidator{}},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"interface_id": schema.StringAttribute{
+				Description: "LAN native range interface id",
+				Computed:    true,
+			},
+			"native_network_range": schema.StringAttribute{
+				Description: "Site native IP range (CIDR)",
 				Required:    true,
-				Validators: []validator.Object{
-					socketSiteNativeRangeValidator{},
-				},
-				Attributes: map[string]schema.Attribute{
-					"interface_index": schema.StringAttribute{
-						Description: "LAN native range interface index, default is LAN1 for SOCKET_X1500 models, INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models",
-						Optional:    true,
-						Computed:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("LAN1", "LAN2", "INT_1", "INT_2", "INT_3", "INT_4", "INT_5", "INT_6", "INT_7", "INT_8", "INT_9", "INT_10", "INT_11", "INT_12"),
-						},
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"interface_id": schema.StringAttribute{
-						Description: "LAN native range interface id",
-						Computed:    true,
-					},
-					"native_network_range": schema.StringAttribute{
-						Description: "Site native IP range (CIDR)",
-						Required:    true,
-					},
-					"native_network_lan_interface_id": schema.StringAttribute{
-						Description: "ID of native range LAN interface (for additional network range update purposes)",
-						Optional:    true,
-						Computed:    true,
-					},
-					"native_network_range_id": schema.StringAttribute{
-						Description: "Site native IP range ID (for update purpose)",
-						Optional:    true,
-						Computed:    true,
-					},
-					"interface_name": schema.StringAttribute{
-						Description: "LAN native range interface name (e.g., 'LAN 01')",
-						Optional:    true,
-						Computed:    true,
-						// PlanModifiers: []planmodifier.String{
-						// 	stringplanmodifier.UseStateForUnknown(),
-						// },
-					},
-					"range_name": schema.StringAttribute{
-						Description: "Native range name (typically 'Native Range')",
-						Computed:    true,
-						Optional:    false,
-					},
-					"range_id": schema.StringAttribute{
-						Description: "Native range ID (base64 encoded identifier)",
-						Computed:    true,
-					},
-					"gateway": schema.StringAttribute{
-						Description: "Gateway IP address for the native range",
-						Computed:    true,
-					},
-					"vlan": schema.Int64Attribute{
-						Description: "VLAN ID for the site native range (optional)",
-						Optional:    true,
-						Validators: []validator.Int64{
-							int64validator.AtLeast(1),
-						},
-					},
-					// "internet_only": schema.BoolAttribute{
-					// 	Description: "Internet only network range (Only releveant for Routed range_type)",
-					// 	Computed:    true,
-					// 	Optional:    true,
-					// 	Default:     booldefault.StaticBool(false),
-					// 	PlanModifiers: []planmodifier.Bool{
-					// 		boolplanmodifier.UseStateForUnknown(),
-					// 	},
-					// },
-					"mdns_reflector": schema.BoolAttribute{
-						Description: "Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, it relays mDNS requests and response between all enabled subnets.",
-						Optional:    true,
-						Computed:    true,
-						Default:     booldefault.StaticBool(false),
-						PlanModifiers: []planmodifier.Bool{
-							boolplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"local_ip": schema.StringAttribute{
-						Description: "Site native range local ip",
-						Required:    true,
-					},
-					"range_type": schema.StringAttribute{
-						Description: "NATIVE",
-						Computed:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"translated_subnet": schema.StringAttribute{
-						Description: "Site translated native IP range (CIDR)",
-						Computed:    true,
-						Optional:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"lag_min_links": schema.Int64Attribute{
-						Description: "Number of interfaces to include in the link aggregation, only relevant for LAN_LAG_MASTER and LAN_LAG_MASTER_AND_VRRP interface destination types",
-						Optional:    true,
-						Validators: []validator.Int64{
-							int64validator.AtLeast(1),
-						},
-					},
-					"interface_dest_type": schema.StringAttribute{
-						Description: "Socket interface destination type for the native interface, example values: LAN, LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP, LAN_AND_HA, VRRP, VRRP_AND_LAN",
-						Optional:    true,
-						Computed:    true,
-						Default:     stringdefault.StaticString(socketInterfaceDestTypeLAN),
-						Validators: []validator.String{
-							stringvalidator.OneOf(
-								socketInterfaceDestTypeLAN,
-								lanLagMasterDestType,
-								lanLagMasterAndVrrpDestType,
-								"LAN_AND_HA",
-								"VRRP",
-								"VRRP_AND_LAN",
-							),
-						},
-					},
-					"dhcp_settings": schema.SingleNestedAttribute{
-						Description: "Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type)",
-						Optional:    true,
-						Attributes: map[string]schema.Attribute{
-							"dhcp_type": schema.StringAttribute{
-								Description: "Network range dhcp type (https:// api.catonetworks.com/documentation/#definition-DhcpType)",
-								Required:    true,
-							},
-							"ip_range": schema.StringAttribute{
-								Description: "Network range dhcp range (format \"192.168.1.10-192.168.1.20\")",
-								Optional:    true,
-							},
-							"relay_group_id": schema.StringAttribute{
-								Description: "Network range dhcp relay group id",
-								Optional:    true,
-								Computed:    true,
-							},
-							"relay_group_name": schema.StringAttribute{
-								Description: "Network range dhcp relay group name",
-								Optional:    true,
-								Computed:    true,
-								Validators: []validator.String{
-									stringvalidator.ConflictsWith(path.Expressions{
-										path.MatchRelative().AtParent().AtName("relay_group_id"),
-									}...),
-								},
-							},
-							"dhcp_microsegmentation": schema.BoolAttribute{
-								Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. Make sure to enable the proper Firewall rules and enable it with caution, as it is not supported on all operating systems; monitor the network closely after activation. This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
-								Optional:    true,
-								Computed:    true,
-							},
-						},
-					},
+			},
+			"native_network_lan_interface_id": schema.StringAttribute{
+				Description: "ID of native range LAN interface (for additional network range update purposes)",
+				Optional:    true,
+				Computed:    true,
+			},
+			"native_network_range_id": schema.StringAttribute{
+				Description: "Site native IP range ID (for update purpose)",
+				Optional:    true,
+				Computed:    true,
+			},
+			"interface_name": schema.StringAttribute{
+				Description: "LAN native range interface name (e.g., 'LAN 01')",
+				Optional:    true,
+				Computed:    true,
+			},
+			"range_name": schema.StringAttribute{
+				Description: "Native range name (typically 'Native Range')",
+				Computed:    true,
+				Optional:    false,
+			},
+			"range_id": schema.StringAttribute{
+				Description: "Native range ID (base64 encoded identifier)",
+				Computed:    true,
+			},
+			"gateway": schema.StringAttribute{
+				Description: "Gateway IP address for the native range",
+				Computed:    true,
+			},
+			"vlan": schema.Int64Attribute{
+				Description: "VLAN ID for the site native range (optional)",
+				Optional:    true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
 				},
 			},
-			"site_location": schema.SingleNestedAttribute{
-				Description: "Site location",
+			"mdns_reflector": schema.BoolAttribute{
+				Description: "Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, " +
+					"it relays mDNS requests and response between all enabled subnets.",
+				Optional:      true,
+				Computed:      true,
+				Default:       booldefault.StaticBool(false),
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			},
+			"local_ip": schema.StringAttribute{
+				Description: "Site native range local ip",
 				Required:    true,
-				Attributes: map[string]schema.Attribute{
-					"country_code": schema.StringAttribute{
-						Description: "Site country code (can be retrieve from entityLookup)",
-						Required:    true,
-					},
-					"state_code": schema.StringAttribute{
-						Description: "Optionnal site state code(can be retrieve from entityLookup)",
-						Optional:    true,
-					},
-					"timezone": schema.StringAttribute{
-						Description: "Site timezone (can be retrieve from entityLookup)",
-						Required:    true,
-					},
-					"city": schema.StringAttribute{
-						Description: "Optionnal city",
-						Optional:    true,
-						Computed:    true,
-					},
-					"address": schema.StringAttribute{
-						Description: "Optionnal address",
-						Optional:    true,
-						Computed:    true,
-					},
-				},
+			},
+			"range_type": schema.StringAttribute{
+				Description:   "NATIVE",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"translated_subnet": schema.StringAttribute{
+				Description:   "Site translated native IP range (CIDR)",
+				Computed:      true,
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"lag_min_links": schema.Int64Attribute{
+				Description: "Number of interfaces to include in the link aggregation, " +
+					"only relevant for LAN_LAG_MASTER and LAN_LAG_MASTER_AND_VRRP interface destination types",
+				Optional:   true,
+				Validators: []validator.Int64{int64validator.AtLeast(1)},
+			},
+			"interface_dest_type": schema.StringAttribute{
+				Description: "Socket interface destination type for the native interface, " +
+					"example values: LAN, LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP, LAN_AND_HA, VRRP, VRRP_AND_LAN",
+				Optional:   true,
+				Computed:   true,
+				Default:    stringdefault.StaticString(string(cato_models.SocketInterfaceDestTypeLan)),
+				Validators: []validator.String{validators.SocketInterfaceDestTypeValidator{}},
+			},
+			"dhcp_settings": r.schemaDhcpSettings(),
+		},
+	}
+}
+
+func (r *socketSiteResource) schemaDhcpSettings() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description:   "Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type)",
+		Optional:      true,
+		PlanModifiers: []planmodifier.Object{planmodifiers.DHCPSettingsModifier()},
+		Attributes: map[string]schema.Attribute{
+			"dhcp_type": schema.StringAttribute{
+				Description: "Network range dhcp type (https://api.catonetworks.com/documentation/#definition-DhcpType)",
+				Required:    true,
+				Validators:  []validator.String{validators.DHCPTypeValidator{}},
+			},
+			"ip_range": schema.StringAttribute{
+				Description: "Network range dhcp range (format \"192.168.1.10-192.168.1.20\")",
+				Optional:    true,
+			},
+			"relay_group_id": schema.StringAttribute{
+				Description: "Network range dhcp relay group id",
+				Optional:    true,
+				Computed:    true,
+			},
+			"relay_group_name": schema.StringAttribute{
+				Description: "Network range dhcp relay group name",
+				Optional:    true,
+				Computed:    true,
+			},
+			"dhcp_microsegmentation": schema.BoolAttribute{
+				Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. " +
+					"Make sure to enable the proper Firewall rules and enable it with caution, " +
+					"as it is not supported on all operating systems; monitor the network closely after activation. " +
+					"This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
+				Optional: true,
+				Computed: true,
+			},
+		},
+	}
+}
+
+func (r *socketSiteResource) schemaSiteLocation() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Site location",
+		Required:    true,
+		Attributes: map[string]schema.Attribute{
+			"country_code": schema.StringAttribute{
+				Description: "Site country code (can be retrieve from entityLookup)",
+				Required:    true,
+			},
+			"state_code": schema.StringAttribute{
+				Description: "Optionnal site state code(can be retrieve from entityLookup)",
+				Optional:    true,
+			},
+			"timezone": schema.StringAttribute{
+				Description: "Site timezone (can be retrieve from entityLookup)",
+				Required:    true,
+			},
+			"city": schema.StringAttribute{
+				Description: "Optionnal city",
+				Optional:    true,
+				Computed:    true,
+			},
+			"address": schema.StringAttribute{
+				Description: "Optionnal address",
+				Optional:    true,
+				Computed:    true,
 			},
 		},
 	}
@@ -346,6 +309,7 @@ func (r *socketSiteResource) ImportState(ctx context.Context, req resource.Impor
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
+	// TODO: check if this is really necessary
 	// Call Read to hydrate the full state from the API
 	readReq := resource.ReadRequest{State: resp.State}
 	readResp := resource.ReadResponse{State: resp.State, Diagnostics: resp.Diagnostics}
@@ -356,409 +320,48 @@ func (r *socketSiteResource) ImportState(ctx context.Context, req resource.Impor
 	resp.State = readResp.State
 }
 
-//nolint:gocyclo,funlen
+// Create cato_socket_site resource
 func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan SocketSite
+	var plan tf.SocketSite
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	tflog.Debug(ctx, "Create.plan", map[string]interface{}{
-		"plan": utils.InterfaceToJSONString(plan),
-	})
+	tflog.Debug(ctx, "Create.plan", map[string]any{"plan": utils.InterfaceToJSONString(plan)})
 
-	var interfaceByConnType map[string]string
-	err := json.Unmarshal([]byte(defaultInterfaceByConnType), &interfaceByConnType)
-	if err != nil {
-		panic(err)
-	}
-
-	// setting input & input to update network range
-	input := cato_models.AddSocketSiteInput{}
-	inputUpdateNetworkRange := cato_models.UpdateNetworkRangeInput{}
-	inputUpdateSocketInterface := cato_models.UpdateSocketInterfaceInput{}
-
-	// setting input site location
-	if !plan.SiteLocation.IsNull() && !plan.SiteLocation.IsUnknown() {
-		input.SiteLocation = &cato_models.AddSiteLocationInput{}
-		siteLocationInput := SiteLocation{}
-		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		// Normalize address: if not provided or empty, send nil (to avoid empty string -> null drift)
-		addrPtr := siteLocationInput.Address.ValueStringPointer()
-		if addrPtr != nil && *addrPtr == "" {
-			addrPtr = nil
-		}
-		input.SiteLocation.Address = addrPtr
-		// Normalize city: if not provided or empty, send nil (to avoid empty string -> null drift)
-		cityPtr := siteLocationInput.City.ValueStringPointer()
-		if cityPtr != nil && *cityPtr == "" {
-			cityPtr = nil
-		}
-		input.SiteLocation.City = cityPtr
-		input.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueString()
-		input.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
-		input.SiteLocation.Timezone = siteLocationInput.Timezone.ValueString()
-	}
-
-	// setting input native range
-	tflog.Debug(ctx, "Create.plan.NativeRange check", map[string]interface{}{
-		"IsNull":    plan.NativeRange.IsNull(),
-		"IsUnknown": plan.NativeRange.IsUnknown(),
-		"Value":     utils.InterfaceToJSONString(plan.NativeRange),
-	})
-
-	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
-		nativeRangeInput := NativeRange{}
-		diags = plan.NativeRange.As(ctx, &nativeRangeInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		if resp.Diagnostics.HasError() {
-			tflog.Error(ctx, "Error parsing native_range from plan", map[string]interface{}{
-				"diagnostics": utils.InterfaceToJSONString(resp.Diagnostics),
-			})
-			return
-		}
-
-		// Validate that local_ip is within native_network_range
-		if !nativeRangeInput.LocalIP.IsNull() && !nativeRangeInput.LocalIP.IsUnknown() &&
-			!nativeRangeInput.NativeNetworkRange.IsNull() && !nativeRangeInput.NativeNetworkRange.IsUnknown() {
-			localIPStr := nativeRangeInput.LocalIP.ValueString()
-			subnetStr := nativeRangeInput.NativeNetworkRange.ValueString()
-
-			// Parse the local IP
-			ip := net.ParseIP(localIPStr)
-			if ip == nil {
-				resp.Diagnostics.AddError(
-					"Invalid Local IP",
-					fmt.Sprintf("local_ip '%s' is not a valid IP address", localIPStr),
-				)
-				return
-			}
-
-			// Parse the subnet CIDR
-			_, ipNet, err := net.ParseCIDR(subnetStr)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Invalid Native Network Range",
-					fmt.Sprintf("native_network_range '%s' is not a valid CIDR notation", subnetStr),
-				)
-				return
-			}
-
-			// Check if the IP is within the subnet
-			if !ipNet.Contains(ip) {
-				resp.Diagnostics.AddError(
-					"Local IP Not in Native Range",
-					fmt.Sprintf("Local IP must be within the Native Range IP. local_ip '%s' is not within native_network_range '%s'", localIPStr, subnetStr),
-				)
-				return
-			}
-		}
-
-		tflog.Debug(ctx, "Create.nativeRangeInput.InterfaceDestType", map[string]interface{}{
-			"nativeRangeInput.InterfaceDestType": utils.InterfaceToJSONString(nativeRangeInput.InterfaceDestType.ValueString()),
-		})
-		interfaceDestType := nativeRangeInput.InterfaceDestType.ValueString()
-		if interfaceDestType == "" {
-			interfaceDestType = socketInterfaceDestTypeLAN // Use default if not specified
-		}
-		hasLagMinLinks := !nativeRangeInput.LagMinLinks.IsNull() && !nativeRangeInput.LagMinLinks.IsUnknown()
-
-		// Rule 1: If interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, lag_min_links must have a value
-		if (interfaceDestType == lanLagMasterDestType || interfaceDestType == lanLagMasterAndVrrpDestType) && !hasLagMinLinks {
-			resp.Diagnostics.AddError(
-				"Invalid LAG Configuration",
-				fmt.Sprintf("When interface_dest_type is %s, lag_min_links must be specified.", interfaceDestType),
-			)
-			return
-		}
-
-		// Rule 2: If lag_min_links has a value, interface_dest_type must be LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP
-		if hasLagMinLinks && interfaceDestType != lanLagMasterDestType && interfaceDestType != lanLagMasterAndVrrpDestType {
-			resp.Diagnostics.AddError(
-				"Invalid LAG Configuration",
-				fmt.Sprintf("lag_min_links can only be configured when interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, but interface_dest_type is %s.", interfaceDestType),
-			)
-			return
-		}
-
-		// Validate that interface_index can only be set for specific connection types
-		// Only validate if user is setting a non-default value
-		hasInterfaceIndex := !nativeRangeInput.InterfaceIndex.IsNull() && !nativeRangeInput.InterfaceIndex.IsUnknown() && nativeRangeInput.InterfaceIndex.ValueString() != ""
-		if hasInterfaceIndex {
-			connType := plan.ConnectionType.ValueString()
-			interfaceIndexValue := nativeRangeInput.InterfaceIndex.ValueString()
-			defaultInterface, hasDefault := interfaceByConnType[connType]
-
-			// Only validate if trying to set a non-default interface_index for non-X1600/X1700 types
-			if connType != socketConnectionTypeX1600 && connType != socketConnectionTypeX1600LTE && connType != socketConnectionTypeX1700 {
-				// Allow if it's the default interface for this connection type
-				if !hasDefault || interfaceIndexValue != defaultInterface {
-					resp.Diagnostics.AddError(
-						"Invalid Interface Index Configuration",
-						fmt.Sprintf("interface_index can only be explicitly configured for SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700 connection types, but connection_type is %s", connType),
-					)
-					return
-				}
-			}
-		}
-
-		tflog.Debug(ctx, "Create.nativeRangeInput", map[string]interface{}{
-			"nativeRangeInput":                    utils.InterfaceToJSONString(nativeRangeInput),
-			"nativeRangeInput.NativeNetworkRange": utils.InterfaceToJSONString(nativeRangeInput.NativeNetworkRange.ValueString()),
-			"nativeRangeInput.RangeName":          utils.InterfaceToJSONString(nativeRangeInput.RangeName.ValueStringPointer()),
-		})
-		input.NativeNetworkRange = nativeRangeInput.NativeNetworkRange.ValueString()
-		input.TranslatedSubnet = stringPointerForOptionalInput(nativeRangeInput.TranslatedSubnet)
-
-		inputUpdateNetworkRange.Subnet = nativeRangeInput.NativeNetworkRange.ValueStringPointer()
-		inputUpdateNetworkRange.LocalIP = nativeRangeInput.LocalIP.ValueStringPointer()
-		inputUpdateNetworkRange.MdnsReflector = nativeRangeInput.MdnsReflector.ValueBoolPointer()
-		inputUpdateNetworkRange.TranslatedSubnet = stringPointerForOptionalInput(nativeRangeInput.TranslatedSubnet)
-		inputUpdateNetworkRange.Vlan = nativeRangeInput.Vlan.ValueInt64Pointer()
-		inputUpdateSocketInterface.DestType = cato_models.SocketInterfaceDestType(interfaceDestType)
-		inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceName.ValueStringPointer()
-		if (interfaceDestType == lanLagMasterDestType || interfaceDestType == lanLagMasterAndVrrpDestType) && hasLagMinLinks {
-			lagConfig := cato_models.SocketInterfaceLagInput{
-				MinLinks: nativeRangeInput.LagMinLinks.ValueInt64(),
-			}
-			inputUpdateSocketInterface.Lag = &lagConfig
-		}
-		socketInterfaceLanInput := cato_models.SocketInterfaceLanInput{}
-		if localIP := nativeRangeInput.LocalIP.ValueStringPointer(); localIP != nil {
-			socketInterfaceLanInput.LocalIP = *localIP // string
-		}
-		if subnet := nativeRangeInput.NativeNetworkRange.ValueStringPointer(); subnet != nil {
-			socketInterfaceLanInput.Subnet = *subnet // string
-		}
-		inputUpdateSocketInterface.Lan = &socketInterfaceLanInput
-
-		// setting input native range DHCP settings
-		if !nativeRangeInput.DhcpSettings.IsNull() && !nativeRangeInput.DhcpSettings.IsUnknown() {
-			inputUpdateNetworkRange.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
-			dhcpSettingsInput := DhcpSettings{}
-			diags = nativeRangeInput.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-
-			inputUpdateNetworkRange.DhcpSettings.DhcpType = cato_models.DhcpType(dhcpSettingsInput.DhcpType.ValueString())
-			inputUpdateNetworkRange.DhcpSettings.IPRange = dhcpSettingsInput.IPRange.ValueStringPointer()
-
-			// Validate that relay_group_name or relay_group_id are only set when dhcp_type is DHCP_RELAY
-			if dhcpSettingsInput.DhcpType.ValueString() != networkRangeDHCPRelay {
-				hasRelayGroupName := !dhcpSettingsInput.RelayGroupName.IsNull() && !dhcpSettingsInput.RelayGroupName.IsUnknown() && dhcpSettingsInput.RelayGroupName.ValueString() != ""
-				hasRelayGroupID := !dhcpSettingsInput.RelayGroupID.IsNull() && !dhcpSettingsInput.RelayGroupID.IsUnknown() && dhcpSettingsInput.RelayGroupID.ValueString() != ""
-				if hasRelayGroupName || hasRelayGroupID {
-					resp.Diagnostics.AddError(
-						"Invalid DHCP Relay Configuration",
-						fmt.Sprintf("relay_group_name and relay_group_id can only be configured when dhcp_type is DHCP_RELAY, but dhcp_type is %s", dhcpSettingsInput.DhcpType.ValueString()),
-					)
-					return
-				}
-			}
-
-			// Validate that ip_range is only set when dhcp_type is DHCP_RANGE
-			if dhcpSettingsInput.DhcpType.ValueString() != networkRangeDHCPRange {
-				hasIPRange := !dhcpSettingsInput.IPRange.IsNull() && !dhcpSettingsInput.IPRange.IsUnknown() && dhcpSettingsInput.IPRange.ValueString() != ""
-				if hasIPRange {
-					resp.Diagnostics.AddError(
-						"Invalid DHCP Range Configuration",
-						fmt.Sprintf("ip_range can only be configured when dhcp_type is DHCP_RANGE, but dhcp_type is %s", dhcpSettingsInput.DhcpType.ValueString()),
-					)
-					return
-				}
-			}
-
-			// Validate that dhcp_microsegmentation is only set to true when dhcp_type is DHCP_RANGE
-			if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
-				// set to false if dhcp_microsegmentation is not set for DHCP_RANGE use case
-				fmt.Println("dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() " + fmt.Sprintf("%v", dhcpSettingsInput.DhcpMicrosegmentation.ValueBool()))
-				if dhcpSettingsInput.DhcpMicrosegmentation.ValueBool() && dhcpSettingsInput.DhcpType.ValueString() != networkRangeDHCPRange {
-					resp.Diagnostics.AddError(
-						"Invalid DHCP Microsegmentation Configuration",
-						"dhcp_microsegmentation can only be configured when dhcp_type is set to DHCP_RANGE",
-					)
-					return
-				}
-			}
-
-			// Only set dhcpMicrosegmentation for DHCP_RANGE type
-			if dhcpSettingsInput.DhcpType.ValueString() == networkRangeDHCPRange {
-				if !dhcpSettingsInput.DhcpMicrosegmentation.IsNull() && !dhcpSettingsInput.DhcpMicrosegmentation.IsUnknown() {
-					inputUpdateNetworkRange.DhcpSettings.DhcpMicrosegmentation = dhcpSettingsInput.DhcpMicrosegmentation.ValueBoolPointer()
-				}
-			}
-
-			// Validate DHCP relay group configuration when dhcp_type is DHCP_RELAY
-			if dhcpSettingsInput.DhcpType.ValueString() == networkRangeDHCPRelay {
-				relayGroupName := ""
-				relayGroupID := ""
-
-				if !dhcpSettingsInput.RelayGroupName.IsNull() && !dhcpSettingsInput.RelayGroupName.IsUnknown() {
-					relayGroupName = dhcpSettingsInput.RelayGroupName.ValueString()
-				}
-				if !dhcpSettingsInput.RelayGroupID.IsNull() && !dhcpSettingsInput.RelayGroupID.IsUnknown() {
-					relayGroupID = dhcpSettingsInput.RelayGroupID.ValueString()
-				}
-
-				resolvedRelayGroupID, success, err := checkForDhcpRelayGroup(ctx, r.client, relayGroupName, relayGroupID)
-				if err != nil {
-					resp.Diagnostics.AddError(
-						"DHCP Relay Configuration Error",
-						err.Error(),
-					)
-					return
-				}
-				if !success {
-					resp.Diagnostics.AddError(
-						"DHCP Relay Group Validation Failed",
-						"Failed to validate DHCP relay group configuration.",
-					)
-					return
-				}
-
-				// Set the resolved relay group ID
-				inputUpdateNetworkRange.DhcpSettings.RelayGroupID = &resolvedRelayGroupID
-			}
-		}
-	}
-
-	// setting input other attributes
-	input.Name = plan.Name.ValueString()
-	input.ConnectionType = cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())
-	input.SiteType = cato_models.SiteType(plan.SiteType.ValueString())
-	input.Description = plan.Description.ValueStringPointer()
-
-	tflog.Debug(ctx, "Create.SiteAddSocketSite.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(input),
-	})
-	socketSite, err := r.getSocketSiteClient().SiteAddSocketSite(ctx, input, r.client.AccountId)
-	tflog.Debug(ctx, "Create.SiteAddSocketSite.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(socketSite),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API SiteAddSocketSite error",
-			err.Error(),
-		)
-		return
-	}
-	siteID := socketSite.Site.AddSocketSite.GetSiteID()
-
-	// Added section to handle isDefault where socket site is not able to define custom index for lan
-	// Logic to move the interface by creating a secondary lan interface disabling the default after
-	// retrieving native-network range ID to update native range
-	// Lookup default lan index by socket connection type
-	var defaultLanInterfaceIndex *string
-	if val, ok := interfaceByConnType[plan.ConnectionType.ValueString()]; ok {
-		defaultLanInterfaceIndex = &val
-	}
-
-	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
-		nativeRangeCheck := NativeRange{}
-		diags = plan.NativeRange.As(ctx, &nativeRangeCheck, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		if defaultLanInterfaceIndex != nil && !nativeRangeCheck.InterfaceIndex.IsNull() && !nativeRangeCheck.InterfaceIndex.IsUnknown() &&
-			*defaultLanInterfaceIndex != nativeRangeCheck.InterfaceIndex.ValueString() {
-			// Move the default interface by creating a new interface, disabling the original
-			// then updating the new interface with the desired range
-			// cato_models.SocketInterfaceIDEnum
-			interfaceIndex := nativeRangeCheck.InterfaceIndex.ValueString()
-			interfaceName := nativeRangeCheck.InterfaceName.ValueString()
-			if interfaceName == "" {
-				interfaceName = interfaceIndex
-			}
-			localIP := nativeRangeCheck.LocalIP.ValueString()
-			nativeNetworkRange := nativeRangeCheck.NativeNetworkRange.ValueString()
-			interfaceDestType := nativeRangeCheck.InterfaceDestType.ValueString()
-			lagMinLinks := nativeRangeCheck.LagMinLinks.ValueInt64()
-			translatedSubnet := nativeRangeCheck.TranslatedSubnet.ValueString()
-			tflog.Debug(ctx, "Create.nativeRangeCheck", map[string]interface{}{
-				"interfaceIndex":     utils.InterfaceToJSONString(interfaceIndex),
-				"interfaceName":      utils.InterfaceToJSONString(interfaceName),
-				"localIP":            utils.InterfaceToJSONString(localIP),
-				"nativeNetworkRange": utils.InterfaceToJSONString(nativeNetworkRange),
-				"interfaceDestType":  utils.InterfaceToJSONString(interfaceDestType),
-				"lagMinLinks":        utils.InterfaceToJSONString(lagMinLinks),
-				"translatedSubnet":   utils.InterfaceToJSONString(translatedSubnet),
-			})
-			isDefaultPresent, err := r.attemptReassignNativeRangeIndex(ctx, cato_models.SocketInterfaceIDEnum(interfaceIndex), interfaceName, localIP, nativeNetworkRange, siteID, interfaceDestType, lagMinLinks, translatedSubnet)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Catov2 API SiteAddSocketSite error - create.attemptReassignNativeRangeIndex()",
-					err.Error(),
-				)
-				return
-			}
-			if isDefaultPresent == nil || !*isDefaultPresent {
-				resp.Diagnostics.AddError(
-					"Configuration Error",
-					"Invalid interface configuration, the api to support moving the lan interface index to '"+interfaceIndex+"' from the default index of '"+*defaultLanInterfaceIndex+"' for the socket connectionType of "+plan.ConnectionType.ValueString()+"' is not yet supported.  This API is being gradually rolled out.",
-				)
-				return
-			}
-		}
-	}
-
-	// Get native interface and subnet information
-	nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, string(input.ConnectionType), siteID, plan, interfaceByConnType)
-	if err != nil {
-		return
-	}
-	nativeNetworkRangeID := nativeInterfaceAndSubnet.NativeNetworkRangeID
-
-	tflog.Debug(ctx, "Create.SiteUpdateNetworkRange.request", map[string]interface{}{
-		"nativeNetworkRangeID": utils.InterfaceToJSONString(nativeNetworkRangeID),
-		"request":              utils.InterfaceToJSONString(inputUpdateNetworkRange),
-	})
-
-	// Update native network range
-	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, nativeNetworkRangeID, inputUpdateNetworkRange, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API SiteUpdateNetworkRange error",
-			err.Error(),
-		)
+	// Create a socket site - API call
+	siteID := r.createBasicSocketSite(ctx, &plan, &diags)
+	if diags.HasError() {
 		return
 	}
 
-	// Update native socket interface
-	if inputUpdateSocketInterface.Name == nil || (inputUpdateSocketInterface.Name != nil && *inputUpdateSocketInterface.Name == "") {
-		inputUpdateSocketInterface.Name = &nativeInterfaceAndSubnet.InterfaceIndex
-	}
-	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(inputUpdateSocketInterface),
-		"nativeInterfaceAndSubnet.InterfaceIndex": utils.InterfaceToJSONString(nativeInterfaceAndSubnet.InterfaceIndex),
-		"nativeInterfaceAndSubnet.InterfaceName":  utils.InterfaceToJSONString(nativeInterfaceAndSubnet.InterfaceName),
-		"inputUpdateSocketInterface.Name":         utils.InterfaceToJSONString(inputUpdateSocketInterface.Name),
-		"siteID":                                  utils.InterfaceToJSONString(siteID),
-	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, cato_models.SocketInterfaceIDEnum(nativeInterfaceAndSubnet.InterfaceIndex), inputUpdateSocketInterface, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API SiteUpdateNetworkRange error",
-			err.Error(),
-		)
+	// Find Network Range ID for the created site and update the NetworkRange details
+	networkRangeID := r.findNativeRange(ctx, siteID, &diags)
+	if diags.HasError() {
 		return
 	}
-	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
-	})
+	r.updateNetworkRange(ctx, &plan, networkRangeID, &diags)
+	if diags.HasError() {
+		return
+	}
+
+	// Move interface to a non-default index if specified in the plan
+	r.assignInterfaceIndex(ctx, &plan, siteID, &diags)
+	if diags.HasError() {
+		return
+	}
+	// Update Socket Interface
+	r.updateSocketInterface(ctx, &plan, siteID, &diags)
+	if diags.HasError() {
+		return
+	}
 
 	// hydrate the state with API data
 	hydratedState, siteExists, hydrateErr := r.hydrateSocketSiteState(ctx, plan, siteID)
 	if hydrateErr != nil {
-		resp.Diagnostics.AddError(
-			"Error hydrating socket site state",
-			hydrateErr.Error(),
-		)
+		resp.Diagnostics.AddError("Error hydrating socket site state", hydrateErr.Error())
 		return
 	}
 
@@ -778,11 +381,105 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	// overiding state with socket site id
 	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), siteID)
 	// overiding state with native network range id
-	resp.State.SetAttribute(ctx, path.Root("native_range").AtName("native_network_range_id"), nativeNetworkRangeID)
+
+	// TODO: IDs
+	// resp.State.SetAttribute(ctx, path.Root("native_range").AtName("native_network_range_id"), nativeNetworkRangeID)
+}
+
+func (r *socketSiteResource) createBasicSocketSite(ctx context.Context, plan *tf.SocketSite, diags *diag.Diagnostics) (siteID string) {
+	socketSiteInput := r.prepareSocketSiteInput(ctx, plan, diags)
+	if diags.HasError() {
+		return ""
+	}
+	socketSite, err := r.getSocketSiteClient().SiteAddSocketSite(ctx, *socketSiteInput, r.client.AccountId)
+	if err != nil {
+		diags.AddError("Catov2 API SiteAddSocketSite error", err.Error())
+		return ""
+	}
+	siteID = socketSite.Site.AddSocketSite.GetSiteID()
+	if siteID == "" {
+		diags.AddError("Catov2 API SiteAddSocketSite error", "empty site ID returned from API")
+		return ""
+	}
+	return siteID
+}
+
+func (r *socketSiteResource) findNativeRange(ctx context.Context, siteID string, diags *diag.Diagnostics) (networkRangeID string) {
+	input := cato_models.NetworkRangeListInput{Site: &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}}
+	queryNetworkRangeResult, err := r.client.catov2.NetworkRangeList(ctx, r.client.AccountId, input)
+	if err != nil {
+		diags.AddError("Catov2 API NetworkRangeList error", err.Error())
+		return
+	}
+	for _, netRange := range queryNetworkRangeResult.GetSite().GetNetworkRangeList().GetItems() {
+		if netRange.RangeType == cato_models.SubnetTypeNative {
+			return netRange.GetNetworkRangeID()
+		}
+	}
+	diags.AddError("Native network range not found", fmt.Sprintf("no native network range found for site ID %s", siteID))
+	return ""
+}
+
+func (r *socketSiteResource) assignInterfaceIndex(ctx context.Context, plan *tf.SocketSite, siteID string, diags *diag.Diagnostics) {
+	var tfNativeRange tf.NativeRange
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
+		return
+	}
+	if !utils.HasValue(tfNativeRange.InterfaceIndex) {
+		return
+	}
+
+	desiredInterfaceIndex := cato_models.SocketInterfaceIDEnum(tfNativeRange.InterfaceIndex.ValueString())
+	defaultInterfaceIndex := tf.InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]
+
+	if desiredInterfaceIndex == defaultInterfaceIndex {
+		return // No need to move the interface if the desired index is the default
+	}
+
+	exchangeInput := cato_models.ExchangeSocketPortsInput{
+		Site:            &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID},
+		FirstInterface:  &cato_models.SocketInterfaceRefInput{InterfaceID: defaultInterfaceIndex},
+		SecondInterface: &cato_models.SocketInterfaceRefInput{InterfaceID: desiredInterfaceIndex},
+	}
+
+	siteExchangeSocketPortsResponse, err := r.client.catov2.SiteExchangeSocketPorts(ctx, r.client.AccountId, exchangeInput)
+	if err != nil {
+		diags.AddError("Catov2 API SiteExchangeSocketPorts error", err.Error())
+		return
+	}
+	tflog.Debug(ctx, "attemptReassignNativeRangeIndex.tmpSiteUpdateSocketInterface.tmp.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteExchangeSocketPortsResponse),
+	})
+}
+
+func (r *socketSiteResource) updateNetworkRange(ctx context.Context, plan *tf.SocketSite, networkRangeID string, diags *diag.Diagnostics) {
+	networkRangeInput := r.prepareNetworkRangeInput(ctx, plan, diags)
+	if diags.HasError() {
+		return
+	}
+
+	// Update native network range
+	_, err := r.client.catov2.SiteUpdateNetworkRange(ctx, networkRangeID, *networkRangeInput, r.client.AccountId)
+	if err != nil {
+		diags.AddError("Catov2 API SiteUpdateNetworkRange error", err.Error())
+	}
+}
+
+func (r *socketSiteResource) updateSocketInterface(ctx context.Context, plan *tf.SocketSite, siteID string, diags *diag.Diagnostics) {
+	socketIfaceInput, interfaceID := r.prepareSocketInterfaceInput(ctx, plan, diags)
+	if diags.HasError() {
+		return
+	}
+
+	// Update socket interface
+	_, err := r.client.catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceID, *socketIfaceInput, r.client.AccountId)
+	if err != nil {
+		diags.AddError("Catov2 API SiteUpdateSocketInterface error", err.Error())
+	}
 }
 
 func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state SocketSite
+	var state tf.SocketSite
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -815,7 +512,7 @@ func (r *socketSiteResource) Read(ctx context.Context, req resource.ReadRequest,
 
 //nolint:gocyclo,funlen,gocritic
 func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan SocketSite
+	var plan tf.SocketSite
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -823,17 +520,11 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Get current state to preserve computed values
-	var state SocketSite
+	var state tf.SocketSite
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	var interfaceByConnType map[string]string
-	err := json.Unmarshal([]byte(defaultInterfaceByConnType), &interfaceByConnType)
-	if err != nil {
-		panic(err)
 	}
 
 	// setting input & input to update network range
@@ -851,12 +542,12 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	// setting input site location
 	if !plan.SiteLocation.IsNull() && !plan.SiteLocation.IsUnknown() {
 		inputSiteGeneral.SiteLocation = &cato_models.UpdateSiteLocationInput{}
-		siteLocationInput := SiteLocation{}
+		siteLocationInput := tf.SiteLocation{}
 		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
 		// Get state location for comparison
-		var stateLocationInput SiteLocation
+		var stateLocationInput tf.SiteLocation
 		if !state.SiteLocation.IsNull() && !state.SiteLocation.IsUnknown() {
 			diags = state.SiteLocation.As(ctx, &stateLocationInput, basetypes.ObjectAsOptions{})
 			resp.Diagnostics.Append(diags...)
@@ -907,12 +598,12 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// setting input native range
-	var nativeRangeState NativeRange
+	var nativeRangeState tf.NativeRange
 	diags = state.NativeRange.As(ctx, &nativeRangeState, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 
 	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
-		nativeRangeInput := NativeRange{}
+		nativeRangeInput := tf.NativeRange{}
 		diags = plan.NativeRange.As(ctx, &nativeRangeInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
@@ -946,7 +637,8 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			if !ipNet.Contains(ip) {
 				resp.Diagnostics.AddError(
 					"Local IP Not in Native Range",
-					fmt.Sprintf("Local IP must be within the Native Range IP. local_ip '%s' is not within native_network_range '%s'", localIPStr, subnetStr),
+					fmt.Sprintf("Local IP must be within the Native Range IP. local_ip '%s' is not within "+
+						"native_network_range '%s'", localIPStr, subnetStr),
 				)
 				return
 			}
@@ -972,26 +664,29 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		if hasLagMinLinks && interfaceDestType != lanLagMasterDestType && interfaceDestType != lanLagMasterAndVrrpDestType {
 			resp.Diagnostics.AddError(
 				"Invalid LAG Configuration",
-				fmt.Sprintf("lag_min_links can only be configured when interface_dest_type is LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP, but interface_dest_type is %s.", interfaceDestType),
+				fmt.Sprintf("lag_min_links can only be configured when interface_dest_type is LAN_LAG_MASTER or "+
+					"LAN_LAG_MASTER_AND_VRRP, but interface_dest_type is %s.", interfaceDestType),
 			)
 			return
 		}
 
 		// Validate that interface_index can only be set for specific connection types
 		// Only validate if user is setting a non-default value
-		hasInterfaceIndex := !nativeRangeInput.InterfaceIndex.IsNull() && !nativeRangeInput.InterfaceIndex.IsUnknown() && nativeRangeInput.InterfaceIndex.ValueString() != ""
+		hasInterfaceIndex := !nativeRangeInput.InterfaceIndex.IsNull() && !nativeRangeInput.InterfaceIndex.IsUnknown() &&
+			nativeRangeInput.InterfaceIndex.ValueString() != ""
 		if hasInterfaceIndex {
-			connType := plan.ConnectionType.ValueString()
+			connType := cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())
 			interfaceIndexValue := nativeRangeInput.InterfaceIndex.ValueString()
-			defaultInterface, hasDefault := interfaceByConnType[connType]
+			defaultInterface, hasDefault := tf.InterfaceByConnType[connType]
 
 			// Only validate if trying to set a non-default interface_index for non-X1600/X1700 types
 			if connType != socketConnectionTypeX1600 && connType != socketConnectionTypeX1600LTE && connType != socketConnectionTypeX1700 {
 				// Allow if it's the default interface for this connection type
-				if !hasDefault || interfaceIndexValue != defaultInterface {
+				if !hasDefault || interfaceIndexValue != string(defaultInterface) {
 					resp.Diagnostics.AddError(
 						"Invalid Interface Index Configuration",
-						fmt.Sprintf("interface_index can only be explicitly configured for SOCKET_X1600, SOCKET_X1600_LTE, or SOCKET_X1700 connection types, but connection_type is %s", connType),
+						fmt.Sprintf("interface_index can only be explicitly configured for SOCKET_X1600, SOCKET_X1600_LTE, "+
+							"or SOCKET_X1700 connection types, but connection_type is %s", connType),
 					)
 					return
 				}
@@ -1039,7 +734,8 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		if interfaceNameRemovedFromConfig {
 			// Removed from local config to reset todefault value of interface index
 			inputUpdateSocketInterface.Name = nativeRangeInput.InterfaceIndex.ValueStringPointer()
-			tflog.Info(ctx, "inputUpdateSocketInterface.Name=Removed from local config to reset to default value of interface index", map[string]interface{}{
+			tflog.Info(ctx, "inputUpdateSocketInterface.Name=Removed from local config to reset to default value of "+
+				"interface index", map[string]interface{}{
 				"inputUpdateSocketInterface.Name": utils.InterfaceToJSONString(inputUpdateSocketInterface.Name),
 			})
 		} else if !nativeRangeInput.InterfaceName.IsNull() && !nativeRangeInput.InterfaceName.IsUnknown() {
@@ -1081,11 +777,11 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		if !nativeRangeInput.DhcpSettings.IsNull() && !nativeRangeInput.DhcpSettings.IsUnknown() {
 			// Configuration has dhcp_settings block - use it
 			inputUpdateNetworkRange.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
-			dhcpSettingsState := DhcpSettings{}
+			dhcpSettingsState := tf.DhcpSettings{}
 			diags = nativeRangeInput.DhcpSettings.As(ctx, &dhcpSettingsState, basetypes.ObjectAsOptions{})
 			resp.Diagnostics.Append(diags...)
 
-			dhcpSettingsInput := DhcpSettings{}
+			dhcpSettingsInput := tf.DhcpSettings{}
 			diags = nativeRangeInput.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
 			resp.Diagnostics.Append(diags...)
 
@@ -1094,12 +790,16 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 			// Validate that relay_group_name or relay_group_id are only set when dhcp_type is DHCP_RELAY
 			if dhcpSettingsInput.DhcpType.ValueString() != networkRangeDHCPRelay {
-				hasRelayGroupName := !dhcpSettingsInput.RelayGroupName.IsNull() && !dhcpSettingsInput.RelayGroupName.IsUnknown() && dhcpSettingsInput.RelayGroupName.ValueString() != ""
-				hasRelayGroupID := !dhcpSettingsInput.RelayGroupID.IsNull() && !dhcpSettingsInput.RelayGroupID.IsUnknown() && dhcpSettingsInput.RelayGroupID.ValueString() != ""
+				hasRelayGroupName := !dhcpSettingsInput.RelayGroupName.IsNull() &&
+					!dhcpSettingsInput.RelayGroupName.IsUnknown() &&
+					dhcpSettingsInput.RelayGroupName.ValueString() != ""
+				hasRelayGroupID := !dhcpSettingsInput.RelayGroupID.IsNull() && !dhcpSettingsInput.RelayGroupID.IsUnknown() &&
+					dhcpSettingsInput.RelayGroupID.ValueString() != ""
 				if hasRelayGroupName || hasRelayGroupID {
 					resp.Diagnostics.AddError(
 						"Invalid DHCP Relay Configuration",
-						fmt.Sprintf("relay_group_name and relay_group_id can only be configured when dhcp_type is DHCP_RELAY, but dhcp_type is %s", dhcpSettingsInput.DhcpType.ValueString()),
+						fmt.Sprintf("relay_group_name and relay_group_id can only be configured when dhcp_type is DHCP_RELAY, "+
+							"but dhcp_type is %s", dhcpSettingsInput.DhcpType.ValueString()),
 					)
 					return
 				}
@@ -1107,11 +807,13 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 			// Validate that ip_range is only set when dhcp_type is DHCP_RANGE
 			if dhcpSettingsInput.DhcpType.ValueString() != networkRangeDHCPRange {
-				hasIPRange := !dhcpSettingsInput.IPRange.IsNull() && !dhcpSettingsInput.IPRange.IsUnknown() && dhcpSettingsInput.IPRange.ValueString() != ""
+				hasIPRange := !dhcpSettingsInput.IPRange.IsNull() && !dhcpSettingsInput.IPRange.IsUnknown() &&
+					dhcpSettingsInput.IPRange.ValueString() != ""
 				if hasIPRange {
 					resp.Diagnostics.AddError(
 						"Invalid DHCP Range Configuration",
-						fmt.Sprintf("ip_range can only be configured when dhcp_type is DHCP_RANGE, but dhcp_type is %s", dhcpSettingsInput.DhcpType.ValueString()),
+						fmt.Sprintf("ip_range can only be configured when dhcp_type is DHCP_RANGE, but dhcp_type is %s",
+							dhcpSettingsInput.DhcpType.ValueString()),
 					)
 					return
 				}
@@ -1168,12 +870,12 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		} else {
 			// Configuration has no dhcp_settings block - preserve dhcp_microsegmentation from state if it exists
 			if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
-				var stateNativeRange NativeRange
+				var stateNativeRange tf.NativeRange
 				diags = state.NativeRange.As(ctx, &stateNativeRange, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
 
 				if !stateNativeRange.DhcpSettings.IsNull() && !stateNativeRange.DhcpSettings.IsUnknown() {
-					var stateDhcpSettings DhcpSettings
+					var stateDhcpSettings tf.DhcpSettings
 					diags = stateNativeRange.DhcpSettings.As(ctx, &stateDhcpSettings, basetypes.ObjectAsOptions{})
 					resp.Diagnostics.Append(diags...)
 
@@ -1204,7 +906,8 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputSiteGeneral),
 	})
-	siteUpdateSiteGeneralDetailsResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), inputSiteGeneral, r.client.AccountId)
+	siteUpdateSiteGeneralDetailsResponse, err := r.client.catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(),
+		inputSiteGeneral, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateSiteGeneralDetails.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSiteGeneralDetailsResponse),
 	})
@@ -1217,7 +920,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// retrieve native range ID
-	nativeRange := NativeRange{}
+	nativeRange := tf.NativeRange{}
 	diags = state.NativeRange.As(ctx, &nativeRange, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -1229,7 +932,8 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		"nativeRange.NativeNetworkRangeID": utils.InterfaceToJSONString(nativeRange.NativeNetworkRangeID.ValueString()),
 		"r.client.AccountId":               utils.InterfaceToJSONString(r.client.AccountId),
 	})
-	siteUpdateNetworkRangeResponse, err := r.client.catov2.SiteUpdateNetworkRange(ctx, nativeRange.NativeNetworkRangeID.ValueString(), inputUpdateNetworkRange, r.client.AccountId)
+	siteUpdateNetworkRangeResponse, err := r.client.catov2.SiteUpdateNetworkRange(ctx,
+		nativeRange.NativeNetworkRangeID.ValueString(), inputUpdateNetworkRange, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateNetworkRangeResponse),
 	})
@@ -1248,7 +952,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	// retrieving native-network range ID to update native range
 	// Lookup default lan index by socket connection type
 	if !plan.NativeRange.IsNull() && !plan.NativeRange.IsUnknown() {
-		nativeRangeCheck := NativeRange{}
+		nativeRangeCheck := tf.NativeRange{}
 		diags = plan.NativeRange.As(ctx, &nativeRangeCheck, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -1257,7 +961,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 
 		// // Lookup default lan index by socket connection type
 		// var defaultLanInterfaceIndex *string
-		// if val, ok := interfaceByConnType[plan.ConnectionType.ValueString()]; ok {
+		// if val, ok := tf.InterfaceByConnType[plan.ConnectionType.ValueString()]; ok {
 		// 	defaultLanInterfaceIndex = &val
 		// }
 
@@ -1309,7 +1013,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 				"lagMinLinks":        utils.InterfaceToJSONString(lagMinLinks),
 				"translatedSubnet":   utils.InterfaceToJSONString(translatedSubnet),
 			})
-			isDefaultPresent, err := r.attemptReassignNativeRangeIndex(ctx, cato_models.SocketInterfaceIDEnum(interfaceIndex), interfaceName, localIP, nativeNetworkRange, plan.ID.ValueString(), interfaceDestType, lagMinLinks, translatedSubnet)
+			isDefaultPresent, err := r.attemptReassignNativeRangeIndex(ctx,
+				cato_models.SocketInterfaceIDEnum(interfaceIndex), interfaceName, localIP, nativeNetworkRange,
+				plan.ID.ValueString(), interfaceDestType, lagMinLinks, translatedSubnet)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Catov2 API SiteAddSocketSite error",
@@ -1320,13 +1026,17 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			if isDefaultPresent == nil || !*isDefaultPresent {
 				resp.Diagnostics.AddError(
 					"Configuration Error",
-					"Invalid interface configuration, the API to support moving the lan interface index to '"+interfaceIndex+"' from the previous index is not yet supported.  This API is being gradually rolled out.",
+					"Invalid interface configuration, the API to support moving the lan interface index to '"+
+						interfaceIndex+"' from the previous index is not yet supported. "+
+						"This API is being gradually rolled out.",
 				)
 				return
 			}
 			// Interface was reassigned - need to retrieve new native range ID and reapply DHCP settings
 			// Get the updated native interface and subnet information
-			nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, plan.ConnectionType.ValueString(), plan.ID.ValueString(), plan, interfaceByConnType)
+			nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx,
+				cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString()),
+				plan.ID.ValueString(), plan)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Error retrieving native interface after reassignment",
@@ -1342,7 +1052,8 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 				"nativeNetworkRangeID": utils.InterfaceToJSONString(nativeInterfaceAndSubnet.NativeNetworkRangeID),
 				"r.client.AccountId":   utils.InterfaceToJSONString(r.client.AccountId),
 			})
-			siteUpdateNetworkRangeResponseAfter, err := r.client.catov2.SiteUpdateNetworkRange(ctx, nativeInterfaceAndSubnet.NativeNetworkRangeID, inputUpdateNetworkRange, r.client.AccountId)
+			siteUpdateNetworkRangeResponseAfter, err := r.client.catov2.SiteUpdateNetworkRange(ctx,
+				nativeInterfaceAndSubnet.NativeNetworkRangeID, inputUpdateNetworkRange, r.client.AccountId)
 			tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.response (after interface reassignment)", map[string]interface{}{
 				"response": utils.InterfaceToJSONString(siteUpdateNetworkRangeResponseAfter),
 			})
@@ -1359,7 +1070,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 				"request":        utils.InterfaceToJSONString(inputUpdateSocketInterface),
 				"interfaceIndex": utils.InterfaceToJSONString(nativeRangeCheck.InterfaceIndex.ValueString()),
 			})
-			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.ID.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeCheck.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
+			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.ID.ValueString(),
+				cato_models.SocketInterfaceIDEnum(nativeRangeCheck.InterfaceIndex.ValueString()),
+				inputUpdateSocketInterface, r.client.AccountId)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Catov2 API SiteUpdateSocketInterface error (after interface reassignment)",
@@ -1369,7 +1082,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			}
 
 			// Clear computed IDs from plan so they can be refreshed during hydration
-			var nativeRangePlan NativeRange
+			var nativeRangePlan tf.NativeRange
 			diags := plan.NativeRange.As(ctx, &nativeRangePlan, basetypes.ObjectAsOptions{})
 			resp.Diagnostics.Append(diags...)
 			if resp.Diagnostics.HasError() {
@@ -1388,7 +1101,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 			tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request (no index change)", map[string]interface{}{
 				"request": utils.InterfaceToJSONString(inputUpdateSocketInterface),
 			})
-			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.ID.ValueString(), cato_models.SocketInterfaceIDEnum(nativeRangeState.InterfaceIndex.ValueString()), inputUpdateSocketInterface, r.client.AccountId)
+			_, err = r.client.catov2.SiteUpdateSocketInterface(ctx, plan.ID.ValueString(),
+				cato_models.SocketInterfaceIDEnum(nativeRangeState.InterfaceIndex.ValueString()),
+				inputUpdateSocketInterface, r.client.AccountId)
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Catov2 API SiteUpdateSocketInterface error",
@@ -1453,14 +1168,15 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 }
 
 func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state SocketSite
+	var state tf.SocketSite
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"),
+		nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
 	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -1540,14 +1256,16 @@ type NativeInterfaceAndSubnetResult struct {
 	InterfaceID          string
 	InterfaceName        string
 	SiteNetRangeAPIData  map[string]any
-	NativeRangeObj       NativeRange
+	NativeRangeObj       tf.NativeRange
 }
 
 // getNativeInterfaceAndSubnet retrieves native interface and subnet information
 // Returns: NativeInterfaceAndSubnetResult, error
 //
 //nolint:gocyclo,funlen,gocritic
-func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, connType string, siteID string, state SocketSite, interfaceByConnType map[string]string) (*NativeInterfaceAndSubnetResult, error) {
+func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, connType cato_models.SiteConnectionTypeEnum,
+	siteID string, state tf.SocketSite,
+) (*NativeInterfaceAndSubnetResult, error) {
 	var relayGroupName attr.Value = types.StringUnknown()
 	siteEntity := &cato_models.EntityInput{Type: "site", ID: siteID}
 	zeroInt64 := int64(0)
@@ -1566,11 +1284,11 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 	}
 
 	// Only assign interfaceIndex if it does not already exist in state
-	if _, ok := interfaceByConnType[connType]; !ok {
-		return nil, fmt.Errorf("connection type %s not found in interfaceByConnType", connType)
+	if _, ok := tf.InterfaceByConnType[connType]; !ok {
+		return nil, fmt.Errorf("connection type %s not found in tf.InterfaceByConnType", connType)
 	}
 	isMicrosegmentationKnown := false
-	var nativeRangeObj NativeRange
+	var nativeRangeObj tf.NativeRange
 	// Track if dhcp_settings was actually present in the original state/plan (before deserialization)
 	dhcpSettingsWasInOriginalState := false
 	if !state.NativeRange.IsNull() && !state.NativeRange.IsUnknown() {
@@ -1598,12 +1316,13 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		state.NativeRange.As(ctx, &nativeRangeObj, basetypes.ObjectAsOptions{})
 	}
 	// if nativeRangeObj.InterfaceIndex.IsNull() || nativeRangeObj.InterfaceIndex.ValueString() == "" {
-	defaultInterfaceIndexByConnType, ok := interfaceByConnType[connType]
+	defaultInterfaceIndexByConnType, ok := tf.InterfaceByConnType[connType]
 	if !ok {
-		return nil, fmt.Errorf("connection type %s not found in interfaceByConnType", connType)
+		return nil, fmt.Errorf("connection type %s not found in tf.InterfaceByConnType", connType)
 	}
 	// Retrieve default interface range attributes
-	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId,
+		cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
 	tflog.Warn(ctx, "Read.EntityLookupInterfaceRangeResult.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryInterfaceResult),
 	})
@@ -1611,50 +1330,6 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		return nil, err
 	}
 	isPresent := false
-
-	// // Check if user specified a different interface index than the default
-	// // If so, look for that interface first (this handles the case where attemptReassignNativeRangeIndex
-	// // has already moved the native range to the user-specified interface)
-	// userSpecifiedInterfaceIndex := ""
-	// if !nativeRangeObj.InterfaceIndex.IsNull() && !nativeRangeObj.InterfaceIndex.IsUnknown() {
-	// 	userSpecifiedInterfaceIndex = nativeRangeObj.InterfaceIndex.ValueString()
-	// }
-	// if userSpecifiedInterfaceIndex != "" && userSpecifiedInterfaceIndex != defaultInterfaceIndexByConnType {
-	// 	tflog.Debug(ctx, "getNativeInterfaceAndSubnet: User specified non-default interface index", map[string]interface{}{
-	// 		"userSpecifiedInterfaceIndex":     userSpecifiedInterfaceIndex,
-	// 		"defaultInterfaceIndexByConnType": defaultInterfaceIndexByConnType,
-	// 	})
-	// 	for _, curIint := range queryInterfaceResult.EntityLookup.Items {
-	// 		curSiteID := cast.ToString(curIint.HelperFields["siteId"])
-	// 		if curSiteID == siteID {
-	// 			curInterfaceID := curIint.HelperFields["interfaceId"]
-	// 			// Try to parse the interfaceId as int, otherwise prefix with "INT_"
-	// 			if idxInt, err := cast.ToIntE(curInterfaceID); err == nil {
-	// 				curInterfaceIDStr := fmt.Sprintf("INT_%d", idxInt)
-	// 				curInterfaceID = curInterfaceIDStr
-	// 			}
-	// 			// Check if this is the user-specified interface
-	// 			if cast.ToString(curInterfaceID) == userSpecifiedInterfaceIndex {
-	// 				isPresent = true
-	// 				nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceID))
-	// 				nativeRangeObj.InterfaceID = types.StringValue(curIint.Entity.ID)
-	// 				nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
-	// 				nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
-	// 				if destType, ok := curIint.HelperFields["destType"]; ok && destType != nil {
-	// 					nativeRangeObj.InterfaceDestType = types.StringValue(cast.ToString(destType))
-	// 				} else {
-	// 					nativeRangeObj.InterfaceDestType = types.StringNull()
-	// 				}
-	// 				tflog.Debug(ctx, "getNativeInterfaceAndSubnet: Found user-specified interface", map[string]interface{}{
-	// 					"interfaceIndex": userSpecifiedInterfaceIndex,
-	// 					"interfaceId":    curIint.Entity.ID,
-	// 					"interfaceName":  curIint.HelperFields["interfaceName"],
-	// 				})
-	// 				break
-	// 			}
-	// 		}
-	// 	}
-	// }
 
 	// If user-specified interface not found or not specified, check for isDefault flag
 	if !isPresent {
@@ -1724,7 +1399,7 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 					} else {
 						nativeRangeObj.InterfaceIndex = types.StringValue(cast.ToString(curInterfaceID))
 					}
-					nativeRangeObj.InterfaceIndex = types.StringValue(defaultInterfaceIndexByConnType)
+					nativeRangeObj.InterfaceIndex = types.StringValue(string(defaultInterfaceIndexByConnType))
 					nativeRangeObj.InterfaceID = types.StringValue(curIint.Entity.ID)
 					nativeRangeObj.InterfaceName = types.StringValue(curIint.HelperFields["interfaceName"].(string))
 					nativeRangeObj.NativeNetworkRange = types.StringValue(curIint.HelperFields["subnet"].(string))
@@ -1744,150 +1419,21 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 		}
 	}
 	if !isPresent {
-		return nil, fmt.Errorf("site does not contain configuration for default LAN interface index %s for connection type %s, please update this site configuratation once either in the cato management application or via API, and the correct interface should be marked as default resolving this issue", defaultInterfaceIndexByConnType, connType)
+		return nil, fmt.Errorf("site does not contain configuration for default LAN interface index %s for connection type %s, "+
+			"please update this site configuratation once either in the cato management application or via API, "+
+			"and the correct interface should be marked as default resolving this issue",
+			defaultInterfaceIndexByConnType, connType)
 	}
 
 	// updates *nativeRangeObj
-	if err = r.getNativeRange(ctx, siteID, &nativeRangeObj, isMicrosegmentationKnown, dhcpSettingsWasInOriginalState, relayGroupName); err != nil {
+	if err = r.getNativeRange(ctx, siteID, &nativeRangeObj, isMicrosegmentationKnown, dhcpSettingsWasInOriginalState,
+		relayGroupName); err != nil {
 		return nil, err
 	}
 	siteNetRangeAPIData := make(map[string]any)
 	nameParts := strings.Split(nativeRangeObj.RangeName.ValueString(), " \\ ")
 	siteNetRangeAPIData["rangeName"] = nameParts[len(nameParts)-1] // Store as string, not types.StringValue
 	siteNetRangeAPIData["native_network_range_id"] = nativeRangeObj.NativeNetworkRangeID.ValueString()
-
-	/*
-		// Retrieve default site range attributes
-		querySiteRangeResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
-		tflog.Warn(ctx, "Read.EntityLookupSiteRangeResult.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(querySiteRangeResult),
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		siteNetRangeAPIData := make(map[string]any)
-		for _, v := range querySiteRangeResult.GetEntityLookup().GetItems() {
-			curSubnet := v.GetHelperFields()["subnet"].(string)
-			if curSubnet == nativeRangeObj.NativeNetworkRange.ValueString() {
-				if v.GetEntity() != nil && v.GetEntity().Name != nil {
-					nameParts := strings.Split(*v.GetEntity().Name, " \\ ")
-					siteNetRangeAPIData["rangeName"] = nameParts[len(nameParts)-1] // Store as string, not types.StringValue
-				}
-				// siteNetRangeAPIData = v.GetHelperFields()
-				// Pull ID from entity attributes
-				siteNetRangeAPIData["native_network_range_id"] = v.Entity.GetID()
-				if vlanTag, ok := v.HelperFields["vlanTag"]; ok && vlanTag != nil {
-					if vlanInt, err := cast.ToInt64E(vlanTag); err == nil {
-						nativeRangeObj.Vlan = types.Int64Value(vlanInt)
-					} else {
-						nativeRangeObj.Vlan = types.Int64Null()
-					}
-				} else {
-					nativeRangeObj.Vlan = types.Int64Null()
-				}
-				// Set gateway from API
-				if gatewayVal, ok := v.HelperFields["gateway"]; ok && gatewayVal != nil {
-					nativeRangeObj.Gateway = types.StringValue(cast.ToString(gatewayVal))
-				} else {
-					nativeRangeObj.Gateway = types.StringNull()
-				}
-				// Set LocalIP to gateway value (they are the same in the API)
-				nativeRangeObj.LocalIP = nativeRangeObj.Gateway
-				// Set range_type from API
-				if rangeTypeVal, ok := v.HelperFields["rangeType"]; ok && rangeTypeVal != nil {
-					nativeRangeObj.RangeType = types.StringValue(cast.ToString(rangeTypeVal))
-				} else {
-					nativeRangeObj.RangeType = types.StringNull()
-				}
-				// Set mdns_reflector from API
-				if mdnsReflectorVal, ok := v.HelperFields["mdnsReflector"]; ok {
-					nativeRangeObj.MdnsReflector = types.BoolValue(cast.ToBool(mdnsReflectorVal))
-				} else {
-					nativeRangeObj.MdnsReflector = types.BoolValue(false)
-				}
-				// Set translated_subnet from API
-				if translatedSubnetVal, ok := v.HelperFields["translatedSubnet"]; ok && translatedSubnetVal != nil {
-					nativeRangeObj.TranslatedSubnet = types.StringValue(cast.ToString(translatedSubnetVal))
-				} else {
-					nativeRangeObj.TranslatedSubnet = types.StringNull()
-				}
-				// lag_min_links is not available in API - preserve from state if present
-				// (already set when nativeRangeObj was extracted from state at the top of this function)
-
-				// Hydrate DHCP settings ONLY if they were present in the state/plan
-				// Use the flag captured at the top of this function that checked the original state object
-				// before deserialization (avoids issues with zero-valued types.Object{})
-
-				// Check if API returned a non-default dhcp type
-				dhcpTypeVal, hasDhcpType := v.HelperFields["dhcpType"]
-				dhcpTypeStr := cast.ToString(dhcpTypeVal)
-				hasNonDefaultDhcp := hasDhcpType && dhcpTypeVal != nil && dhcpTypeStr != networkRangeDHCPDisabled && dhcpTypeStr != "ACCOUNT_DEFAULT"
-
-				// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
-				// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
-				if dhcpSettingsWasInOriginalState || hasNonDefaultDhcp {
-					// Hydrate DHCP settings - resolve unknown values to known values
-					// Start with null values as defaults - unknown values MUST be resolved to known values
-					dhcpType := types.StringNull()
-					ipRange := types.StringNull()
-					relayGroupID := types.StringNull()
-					relayGroupName := types.StringNull()
-					dhcpMicrosegmentation := types.BoolValue(false)
-
-					// Hydrate from API values (API is source of truth)
-					if dhcpTypeVal, ok := v.HelperFields["dhcpType"]; ok && dhcpTypeVal != nil {
-						dhcpType = types.StringValue(cast.ToString(dhcpTypeVal))
-					}
-
-					// Only hydrate relay group fields if dhcp_type is DHCP_RELAY
-					if dhcpType.ValueString() == networkRangeDHCPRelay {
-						if dhcpRelayGroupIdVal, ok := v.HelperFields["dhcpRelayGroupId"]; ok && dhcpRelayGroupIdVal != nil {
-							relayGroupID = types.StringValue(cast.ToString(dhcpRelayGroupIdVal))
-						}
-						if dhcpRelayGroupNameVal, ok := v.HelperFields["dhcpRelayGroupName"]; ok && dhcpRelayGroupNameVal != nil {
-							relayGroupName = types.StringValue(cast.ToString(dhcpRelayGroupNameVal))
-						}
-					} else {
-						// If dhcp_type is not DHCP_RELAY, explicitly set relay fields to null
-						// This prevents drift when config doesn't specify them but they exist in state
-						relayGroupID = types.StringNull()
-						relayGroupName = types.StringNull()
-					}
-					// Only hydrate ip_range if dhcp_type is DHCP_RANGE
-					if dhcpType.ValueString() == networkRangeDHCPRange {
-						if dhcpRangeVal, ok := v.HelperFields["dhcpRange"]; ok && dhcpRangeVal != nil {
-							ipRange = types.StringValue(cast.ToString(dhcpRangeVal))
-						}
-						if microsegmentationVal, ok := v.HelperFields["microsegmentation"]; ok && microsegmentationVal != nil {
-							dhcpMicrosegmentation = types.BoolValue(cast.ToBool(microsegmentationVal))
-						}
-					}
-
-					// Manually construct Object to ensure no Unknown values persist
-					dhcpSettingsObject, dErr := types.ObjectValue(
-						SiteNativeRangeDhcpResourceAttrTypes,
-						map[string]attr.Value{
-							"dhcp_type":              dhcpType,
-							"ip_range":               ipRange,
-							"relay_group_id":         relayGroupID,
-							"relay_group_name":       relayGroupName,
-							"dhcp_microsegmentation": dhcpMicrosegmentation,
-						},
-					)
-					if dErr.HasError() {
-						return nil, fmt.Errorf("failed to convert dhcp settings to object: %v", dErr)
-					}
-					nativeRangeObj.DhcpSettings = dhcpSettingsObject
-				} else {
-					// dhcp_settings was not in state and API didn't return it - keep it null
-					nativeRangeObj.DhcpSettings = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
-				}
-
-				break
-			}
-		}
-	*/
 
 	tflog.Debug(ctx, "Read.siteNetRangeAPIData", map[string]interface{}{
 		"siteNetRangeAPIData": utils.InterfaceToJSONString(siteNetRangeAPIData),
@@ -1920,14 +1466,14 @@ func (r *socketSiteResource) getNativeInterfaceAndSubnet(ctx context.Context, co
 }
 
 //nolint:gocyclo,funlen
-func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, nativeRangeObj *NativeRange,
+func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, nativeRangeObj *tf.NativeRange,
 	_, isDhcpKnown bool, relayGroupName attr.Value,
 ) error {
 	var microsegmentation attr.Value
 	var dhcpRelayGroupID attr.Value = types.StringNull()
 	var dhcpRelayGroupName attr.Value = types.StringNull()
 	var dhcpIPRange attr.Value = types.StringNull()
-	var dhcpSettingsObj = types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes)
+	var dhcpSettingsObj = types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
 
 	input := cato_models.NetworkRangeListInput{Site: &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}}
 	queryNetworkRangeResult, err := r.client.catov2.NetworkRangeList(ctx, r.client.AccountId, input)
@@ -1952,7 +1498,8 @@ func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, 
 		// Only populate DHCP settings if they were already in state OR the API returns a non-default dhcp type
 		// This prevents inconsistency when config doesn't include dhcp_settings and API returns default DHCP_DISABLED
 		dhcpType := rDhcp.GetDhcpType()
-		if isDhcpKnown || (dhcpType != nil && *dhcpType != "" && *dhcpType != cato_models.DhcpTypeDhcpDisabled && *dhcpType != cato_models.DhcpTypeAccountDefault) {
+		if isDhcpKnown || (dhcpType != nil && *dhcpType != "" && *dhcpType != cato_models.DhcpTypeDhcpDisabled &&
+			*dhcpType != cato_models.DhcpTypeAccountDefault) {
 			dType := cato_models.DhcpType("")
 			if dhcpType != nil {
 				dType = *dhcpType
@@ -1977,7 +1524,7 @@ func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, 
 			}
 
 			obj, dErr := types.ObjectValue(
-				SiteNativeRangeDhcpResourceAttrTypes,
+				tf.SiteNativeRangeDhcpResourceAttrTypes,
 				map[string]attr.Value{
 					"dhcp_type":              types.StringPointerValue((*string)(rDhcp.GetDhcpType())),
 					"ip_range":               dhcpIPRange,
@@ -2007,7 +1554,9 @@ func (r *socketSiteResource) getNativeRange(ctx context.Context, siteID string, 
 	return nil
 }
 
-func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context, interfaceIndex cato_models.SocketInterfaceIDEnum, _ string, _ string, _ string, siteID string, _ string, _ int64, _ string) (*bool, error) {
+func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context,
+	interfaceIndex cato_models.SocketInterfaceIDEnum, _ string, _ string, _ string, siteID string, _ string,
+	_ int64, _ string) (*bool, error) {
 	// Attempt to create a lan interface on non default index
 	// checking first for the isDefault flag to be present, if not present return false for isDefaultPresent
 	// return isValid or error if isDefault flag is not present on entityLookup interface query
@@ -2017,7 +1566,8 @@ func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context
 	tflog.Warn(ctx, "attemptReassignNativeRangeIndex.EntityLookupInterfaceRange", map[string]interface{}{
 		"siteEntity": utils.InterfaceToJSONString(siteEntity),
 	})
-	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
+	queryInterfaceResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId,
+		cato_models.EntityType("networkInterface"), &zeroInt64, nil, siteEntity, nil, nil, nil, nil, nil)
 	tflog.Warn(ctx, "attemptReassignNativeRangeIndex.EntityLookupInterfaceRange.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryInterfaceResult),
 	})
@@ -2083,19 +1633,13 @@ func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context
 	return &isDefaultPresent, err
 }
 
-// hydrateSocketSiteState populates the SocketSite state with data from API responses
+// hydrateSocketSiteState populates the tf.SocketSite state with data from API responses
 //
 //nolint:gocyclo,funlen
-func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state SocketSite, siteID string) (SocketSite, bool, error) {
-	// Unmarshal socketMapping into a map
-	var interfaceByConnType map[string]string
-	err := json.Unmarshal([]byte(defaultInterfaceByConnType), &interfaceByConnType)
-	if err != nil {
-		panic(err)
-	}
-
+func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state tf.SocketSite, siteID string) (tf.SocketSite, bool, error) {
 	// check if site exist, else remove resource
-	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{siteID}, nil, nil, nil)
+	querySiteResult, err := r.client.catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"),
+		nil, nil, nil, nil, []string{siteID}, nil, nil, nil)
 	tflog.Warn(ctx, "Read.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -2112,7 +1656,8 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 	}
 
 	// Get site general details for location data
-	siteGeneralDetailsData, err := r.client.catov2.SiteGeneralDetails(ctx, cato_models.SiteRefInput{By: cato_models.ObjectRefBy("ID"), Input: siteID}, r.client.AccountId)
+	siteGeneralDetailsData, err := r.client.catov2.SiteGeneralDetails(ctx,
+		cato_models.SiteRefInput{By: cato_models.ObjectRefBy("ID"), Input: siteID}, r.client.AccountId)
 	tflog.Debug(ctx, "Read.SiteGeneralDetails.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteGeneralDetailsData),
 	})
@@ -2140,9 +1685,9 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 
 			if thisSiteAccountSnapshot != nil {
 				// Get connection type and set state
-				connTypeVal := ""
+				connTypeVal := cato_models.SiteConnectionTypeEnum("")
 				if val := thisSiteAccountSnapshot.InfoSiteSnapshot.GetConnType(); val != nil {
-					connTypeVal = val.String()
+					connTypeVal = cato_models.SiteConnectionTypeEnum(val.String())
 				}
 
 				tflog.Debug(ctx, "Read.connTypeVal", map[string]interface{}{
@@ -2161,13 +1706,13 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 					case socketConnectionTypeVGXESX:
 						connTypeVal = socketConnectionTypeESX1500
 					}
-					state.ConnectionType = types.StringValue(connTypeVal)
+					state.ConnectionType = types.StringValue(string(connTypeVal))
 				} else {
 					state.ConnectionType = types.StringNull()
 				}
 
 				// Get native interface and subnet information
-				nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, connTypeVal, siteID, state, interfaceByConnType)
+				nativeInterfaceAndSubnet, err := r.getNativeInterfaceAndSubnet(ctx, connTypeVal, siteID, state)
 				if err != nil {
 					return state, false, err
 				}
@@ -2206,7 +1751,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 				// All values from API via nativeRangeObj
 				var stateNativeRange types.Object
 				stateNativeRange, _ = types.ObjectValue(
-					SiteNativeRangeResourceAttrTypes,
+					tf.SiteNativeRangeResourceAttrTypes,
 					map[string]attr.Value{
 						"interface_index":                 nativeRangeObj.InterfaceIndex,
 						"interface_id":                    nativeRangeObj.InterfaceID,
@@ -2249,7 +1794,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 				// Build state location from siteGeneralDetails response
 				// Always hydrate from API to ensure proper state during import and refresh
 				stateSiteLocation, _ = types.ObjectValue(
-					SiteLocationResourceAttrTypes,
+					tf.SiteLocationResourceAttrTypes,
 					map[string]attr.Value{
 						"country_code": types.StringValue(siteLocation.GetCountryCode()),
 						"state_code": func() types.String {
@@ -2280,108 +1825,194 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 	return state, true, nil
 }
 
-// socketSiteNativeRangeValidator validates that interface_index can only be specified
-// for certain connection types and that local_ip is within the native_network_range subnet
-type socketSiteNativeRangeValidator struct{}
+func (r *socketSiteResource) prepareSiteLocation(ctx context.Context, location types.Object, diags *diag.Diagnostics,
+) *cato_models.AddSiteLocationInput {
+	if !utils.HasValue(location) {
+		return nil
+	}
 
-func (v socketSiteNativeRangeValidator) Description(_ context.Context) string {
-	return socketNativeRangeValidatorDescription
+	var tfLocation tf.SiteLocation
+	if utils.CheckErr(diags, location.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+
+	return &cato_models.AddSiteLocationInput{
+		Address:     parse.KnownStringPointer(tfLocation.Address),
+		City:        parse.KnownStringPointer(tfLocation.City),
+		CountryCode: tfLocation.CountryCode.ValueString(),
+		StateCode:   parse.KnownStringPointer(tfLocation.StateCode),
+		Timezone:    tfLocation.Timezone.ValueString(),
+	}
 }
 
-func (v socketSiteNativeRangeValidator) MarkdownDescription(_ context.Context) string {
-	return socketNativeRangeValidatorDescription
+// prepareSocketSiteInput constructs the API input for SiteAddSocketSite() from the Terraform plan data.
+// It may add error(s) to the diagnostics if the input data is invalid.
+func (r *socketSiteResource) prepareSocketSiteInput(ctx context.Context, plan *tf.SocketSite, diags *diag.Diagnostics,
+) *cato_models.AddSocketSiteInput {
+	var tfNativeRange tf.NativeRange
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+
+	input := &cato_models.AddSocketSiteInput{
+		ConnectionType:     cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString()),
+		Description:        parse.KnownStringPointer(plan.Description),
+		Name:               plan.Name.ValueString(),
+		NativeNetworkRange: tfNativeRange.NativeNetworkRange.ValueString(),
+		SiteLocation:       r.prepareSiteLocation(ctx, plan.SiteLocation, diags),
+		SiteType:           cato_models.SiteType(plan.SiteType.ValueString()),
+		TranslatedSubnet:   parse.KnownStringPointer(tfNativeRange.TranslatedSubnet),
+		Vlan:               (*scalars.Vlan)(parse.KnownInt64Pointer(tfNativeRange.Vlan)),
+	}
+	return input
 }
 
-//nolint:gocyclo
-func (v socketSiteNativeRangeValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
-	// Get the connection_type value from the config
-	var connectionType types.String
-	diags := req.Config.GetAttribute(ctx, path.Root("connection_type"), &connectionType)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+// prepareDhcpSettings constructs the NetworkDhcpSettingsInput part of API input for SiteUpdateNetworkRange()
+// from the Terraform plan data.
+// It may add error(s) to the diagnostics if the input data is invalid.
+func (r *socketSiteResource) prepareDhcpSettings(ctx context.Context, dhcpSettings types.Object, diags *diag.Diagnostics,
+) *cato_models.NetworkDhcpSettingsInput {
+	var tfDhcpSettings tf.DhcpSettings
+
+	if !utils.HasValue(dhcpSettings) {
+		return nil
 	}
 
-	// Get the native_range object
-	var nativeRange types.Object
-	diags = req.Config.GetAttribute(ctx, path.Root("native_range"), &nativeRange)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() || nativeRange.IsNull() {
-		return
+	if utils.CheckErr(diags, dhcpSettings.As(ctx, &tfDhcpSettings, basetypes.ObjectAsOptions{})) {
+		return nil
 	}
 
-	// Get interface_index from native_range
-	var interfaceIndex types.String
-	diags = req.Config.GetAttribute(ctx, path.Root("native_range").AtName("interface_index"), &interfaceIndex)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() || interfaceIndex.IsNull() || interfaceIndex.IsUnknown() {
-		return
+	dhcpType := cato_models.DhcpType(tfDhcpSettings.DhcpType.ValueString())
+
+	input := &cato_models.NetworkDhcpSettingsInput{
+		DhcpType: dhcpType,
+		IPRange:  parse.KnownStringPointer(tfDhcpSettings.IPRange),
 	}
 
-	// Check if connection_type allows interface_index to be specified
-	allowedTypes := map[string]bool{
-		"SOCKET_X1500":     true,
-		"SOCKET_X1600":     true,
-		"SOCKET_X1600_LTE": true,
-		"SOCKET_X1700":     true,
+	// if dhcp type is DHCP_RELAY and we don't have relayGroupID (just Name), fetch the relayGroupID
+	if dhcpType == cato_models.DhcpTypeDhcpRelay && (!utils.HasValue(tfDhcpSettings.RelayGroupID)) {
+		if !utils.HasValue(tfDhcpSettings.RelayGroupName) {
+			diags.AddError("Missing DHCP relay group name", "DHCP settings of type DHCP_RELAY require a relay group name to be specified.")
+			return nil
+		}
+		relayGroupID := r.getDhcpRelayGroupID(ctx, r.client, tfDhcpSettings.RelayGroupName.ValueString(), diags)
+		if diags.HasError() {
+			return nil
+		}
+		input.RelayGroupID = &relayGroupID
 	}
 
-	if !allowedTypes[connectionType.ValueString()] {
-		resp.Diagnostics.AddAttributeError(
-			req.Path.AtName("interface_index"),
-			"Invalid Configuration",
-			fmt.Sprintf("interface_index can only be specified when connection_type is one of: SOCKET_X1500, SOCKET_X1600, SOCKET_X1600_LTE, SOCKET_X1700. Current connection_type: %s", connectionType.ValueString()),
-		)
+	// Microsegmentation is only relevant for DHCP range
+	if input.DhcpType == cato_models.DhcpTypeDhcpRange {
+		input.DhcpMicrosegmentation = parse.KnownBoolPointer(tfDhcpSettings.DhcpMicrosegmentation)
 	}
 
-	// Get local_ip from native_range
-	var localIP types.String
-	diags = req.Config.GetAttribute(ctx, path.Root("native_range").AtName("local_ip"), &localIP)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() || localIP.IsNull() || localIP.IsUnknown() {
-		return
+	return input
+}
+
+// prepareNetworkRangeInput constructs the API input for SiteUpdateNetworkRange() from the Terraform plan data.
+// It may add error(s) to the diagnostics if the input data is invalid.
+func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan *tf.SocketSite, diags *diag.Diagnostics,
+) *cato_models.UpdateNetworkRangeInput {
+	var tfNativeRange tf.NativeRange
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	input := &cato_models.UpdateNetworkRangeInput{
+		Subnet:           parse.KnownStringPointer(tfNativeRange.NativeNetworkRange),
+		TranslatedSubnet: parse.KnownStringPointer(tfNativeRange.TranslatedSubnet),
+		LocalIP:          parse.KnownStringPointer(tfNativeRange.LocalIP),
+		MdnsReflector:    parse.KnownBoolPointer(tfNativeRange.MdnsReflector),
+		Vlan:             parse.KnownInt64Pointer(tfNativeRange.Vlan),
+		DhcpSettings:     r.prepareDhcpSettings(ctx, tfNativeRange.DhcpSettings, diags),
+		//    AzureFloatingIP *string `json:"azureFloatingIp,omitempty"` TODO: implement when AZURE HA support is added
 	}
 
-	// Get native_network_range from native_range
-	var nativeNetworkRange types.String
-	diags = req.Config.GetAttribute(ctx, path.Root("native_range").AtName("native_network_range"), &nativeNetworkRange)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() || nativeNetworkRange.IsNull() || nativeNetworkRange.IsUnknown() {
-		return
+	return input
+}
+
+// prepareSocketInterfaceInput prepares inputs for SiteUpdateSocketInterface API,
+// on error updates diags
+func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, plan *tf.SocketSite, diags *diag.Diagnostics,
+) (*cato_models.UpdateSocketInterfaceInput, cato_models.SocketInterfaceIDEnum) {
+	var (
+		tfNativeRange     tf.NativeRange
+		lagLinksDestTypes = []cato_models.SocketInterfaceDestType{ // set lag input for these dest types
+			cato_models.SocketInterfaceDestTypeLanLagMaster,
+			cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp,
+		}
+		lanDestTypes = []cato_models.SocketInterfaceDestType{ // set lan input for these dest types
+			cato_models.SocketInterfaceDestTypeLan,
+			cato_models.SocketInterfaceDestTypeLanAndHa,
+			cato_models.SocketInterfaceDestTypeVrrpAndLan,
+			cato_models.SocketInterfaceDestTypeLanLagMaster,
+			cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp,
+		}
+	)
+
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
+		return nil, ""
 	}
 
-	// Validate that local_ip is within native_network_range
-	localIPStr := localIP.ValueString()
-	subnetStr := nativeNetworkRange.ValueString()
+	interfaceDestType := cato_models.SocketInterfaceDestType(tfNativeRange.InterfaceDestType.ValueString())
 
-	// Parse the local IP
-	ip := net.ParseIP(localIPStr)
-	if ip == nil {
-		resp.Diagnostics.AddAttributeError(
-			req.Path.AtName("local_ip"),
-			"Invalid Local IP",
-			fmt.Sprintf("local_ip '%s' is not a valid IP address", localIPStr),
-		)
-		return
+	// Determine interface ifaceName with the following precedence: InterfaceName > InterfaceIndex > default based on connection type
+	ifaceName := parse.KnownStringPointer(tfNativeRange.InterfaceName)
+	if ifaceName == nil {
+		ifaceName = parse.KnownStringPointer(tfNativeRange.InterfaceIndex)
+	}
+	if ifaceName == nil {
+		ifaceName = ptr(string(tf.InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]))
 	}
 
-	// Parse the subnet CIDR
-	_, ipNet, err := net.ParseCIDR(subnetStr)
+	input := &cato_models.UpdateSocketInterfaceInput{
+		DestType: interfaceDestType,
+		Name:     ifaceName,
+	}
+
+	// MinLinks for LAG
+	if utils.HasValue(tfNativeRange.LagMinLinks) && slices.Contains(lagLinksDestTypes, interfaceDestType) {
+		input.Lag = &cato_models.SocketInterfaceLagInput{MinLinks: tfNativeRange.LagMinLinks.ValueInt64()}
+	}
+
+	// LAN input
+	if slices.Contains(lanDestTypes, interfaceDestType) {
+		input.Lan = &cato_models.SocketInterfaceLanInput{
+			LocalIP:          tfNativeRange.LocalIP.ValueString(),
+			Subnet:           tfNativeRange.NativeNetworkRange.ValueString(),
+			TranslatedSubnet: tfNativeRange.TranslatedSubnet.ValueStringPointer(),
+		}
+	}
+
+	// get interface index if configured, otherwise use a default based on connection type
+	interfaceIndex := cato_models.SocketInterfaceIDEnum(tfNativeRange.InterfaceIndex.ValueString())
+	if interfaceIndex == "" {
+		interfaceIndex = tf.InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]
+	}
+
+	return input, interfaceIndex
+}
+
+// getDhcpRelayGroupID looks up the DHCP relay group ID based on the provided relay group name.
+func (r *socketSiteResource) getDhcpRelayGroupID(ctx context.Context, client *catoClientData,
+	relayGroupName string, diags *diag.Diagnostics,
+) (groupNameOrID string) {
+	// Lookup and validate the DHCP relay group exists
+	dhcpRelayGroupResult, err := client.catov2.EntityLookupMinimal(ctx, client.AccountId, cato_models.EntityTypeDhcpRelayGroup,
+		nil, nil, nil, nil, nil)
 	if err != nil {
-		resp.Diagnostics.AddAttributeError(
-			req.Path.AtName("native_network_range"),
-			"Invalid Native Network Range",
-			fmt.Sprintf("native_network_range '%s' is not a valid CIDR notation", subnetStr),
-		)
-		return
+		diags.AddError("Failed to lookup DHCP relay group", fmt.Sprintf("An error was encountered when looking up DHCP relay group: %v", err))
+		return ""
 	}
 
-	// Check if the IP is within the subnet
-	if !ipNet.Contains(ip) {
-		resp.Diagnostics.AddAttributeError(
-			req.Path.AtName("local_ip"),
-			"Local IP Not in Native Range",
-			fmt.Sprintf("Local IP must be within the Native Range IP. local_ip '%s' is not within native_network_range '%s'", localIPStr, subnetStr),
-		)
+	// Check if the specified relay group exists
+	for _, item := range dhcpRelayGroupResult.EntityLookup.Items {
+		if namePtr := item.Entity.GetName(); namePtr != nil && *namePtr == relayGroupName {
+			return item.Entity.GetID()
+		}
 	}
+
+	// Relay group not found
+	diags.AddError("Failed to lookup DHCP relay group", fmt.Sprintf("DHCP relay group: '%s' not found", relayGroupName))
+	return ""
 }

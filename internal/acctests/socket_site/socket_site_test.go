@@ -335,11 +335,11 @@ func newsocketSiteCfg(t *testing.T) socketSiteCfg {
 		"INT_3",
 	}
 	return socketSiteCfg{
-		resName:         acc.GetRandName("socket_site"),
-		connTypes:       connTypes,
-		defaultIface:    defaultIface,
-		dhcpRelayGroups: acc.GetDhcpRelayGroups(t),
-		t:               t,
+		resName:      acc.GetRandName("socket_site"),
+		connTypes:    connTypes,
+		defaultIface: defaultIface,
+		// dhcpRelayGroups: acc.GetDhcpRelayGroups(t),
+		t: t,
 	}
 }
 

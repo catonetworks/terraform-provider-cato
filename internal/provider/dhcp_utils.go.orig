@@ -1,0 +1,125 @@
+package provider
+
+import (
+	"context"
+	"fmt"
+
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+)
+
+// checkForDhcpRelayGroup validates DHCP relay group configuration and returns the relay group ID
+//
+//nolint:gocyclo
+func checkForDhcpRelayGroup(
+	ctx context.Context,
+	client *catoClientData,
+	relayGroupName,
+	relayGroupID string,
+) (groupID string, found bool, err error) {
+	// Add nil checks
+	if client == nil {
+		return "", false, fmt.Errorf("client is nil")
+	}
+	if client.catov2 == nil {
+		return "", false, fmt.Errorf("catov2 client is nil")
+	}
+
+	hasRelayGroupID := relayGroupID != ""
+	hasRelayGroupName := relayGroupName != ""
+
+	// Check that exactly one of relay_group_id or relay_group_name is specified
+	if !hasRelayGroupID && !hasRelayGroupName {
+		return "", false, fmt.Errorf("when dhcp_type is DHCP_RELAY, either relay_group_id or relay_group_name must be specified")
+	}
+
+	if hasRelayGroupID && hasRelayGroupName {
+		return "", false, fmt.Errorf("when dhcp_type is DHCP_RELAY, specify either relay_group_id or relay_group_name, but not both")
+	}
+
+<<<<<<< Updated upstream
+	// Lookup and validate the DHCP relay group exists
+	dhcpRelayGroupResult, err := client.catov2.EntityLookupMinimal(
+		ctx, client.AccountId, cato_models.EntityTypeDhcpRelayGroup, nil, nil, nil, nil, nil,
+	)
+||||||| Stash base
+	// Lookup and validate the DHCP relay group exists
+	dhcpRelayGroupResult, err := client.catov2.EntityLookupMinimal(ctx, client.AccountId, cato_models.EntityTypeDhcpRelayGroup, nil, nil, nil, nil, nil)
+=======
+	// FIX: If relay_group_id is provided, return it directly without lookup
+	// This avoids permission issues with EntityLookup and correctly sends the ID to the API
+	if hasRelayGroupId {
+		tflog.Debug(ctx, "checkForDhcpRelayGroup: using provided relay_group_id directly", map[string]interface{}{
+			"relay_group_id": relayGroupId,
+		})
+		return relayGroupId, true, nil
+	}
+
+	// Only do EntityLookup when relay_group_name is provided (to resolve name to ID)
+	dhcpRelayGroupResult, err := client.catov2.EntityLookupMinimal(ctx, client.AccountId, cato_models.EntityTypeDhcpRelayGroup, nil, nil, nil, nil, nil)
+>>>>>>> Stashed changes
+	tflog.Warn(ctx, "checkForDhcpRelayGroup.dhcpRelayGroupResult.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(dhcpRelayGroupResult),
+	})
+	if err != nil {
+		return "", false, fmt.Errorf("catov2 API EntityLookup error: %w", err)
+	}
+
+	// Lookup relay group by name and return the ID
+	for _, item := range dhcpRelayGroupResult.EntityLookup.Items {
+<<<<<<< Updated upstream
+		if hasRelayGroupID {
+			if item.Entity.GetID() == relayGroupID {
+				name := item.Entity.GetName()
+				if name == nil {
+					return "", false, fmt.Errorf("failed to get dhcpRelayGroup name for id %s", relayGroupID)
+				}
+				return *name, true, nil
+			}
+		} else if hasRelayGroupName {
+			if namePtr := item.Entity.GetName(); namePtr != nil && *namePtr == relayGroupName {
+				// Return the ID when found by name
+				return item.Entity.GetID(), true, nil
+			}
+||||||| Stash base
+		if hasRelayGroupId {
+			if item.Entity.GetID() == relayGroupId {
+				name := item.Entity.GetName()
+				if name == nil {
+					return "", false, fmt.Errorf("failed to get dhcpRelayGroup name for id %s", relayGroupId)
+				}
+				return *name, true, nil
+			}
+		} else if hasRelayGroupName {
+			if namePtr := item.Entity.GetName(); namePtr != nil && *namePtr == relayGroupName {
+				// Return the ID when found by name
+				return item.Entity.GetID(), true, nil
+			}
+=======
+		if namePtr := item.Entity.GetName(); namePtr != nil && *namePtr == relayGroupName {
+			// Return the ID when found by name
+			return item.Entity.GetID(), true, nil
+>>>>>>> Stashed changes
+		}
+	}
+
+<<<<<<< Updated upstream
+	// Relay group not found
+	if hasRelayGroupID {
+		return "", false, fmt.Errorf("DHCP relay group with ID '%s' not found", relayGroupID)
+	}
+	return "", false, fmt.Errorf("DHCP relay group with name '%s' not found", relayGroupName)
+||||||| Stash base
+	// Relay group not found
+	if hasRelayGroupId {
+		return "", false, fmt.Errorf("DHCP relay group with ID '%s' not found", relayGroupId)
+	} else {
+		return "", false, fmt.Errorf("DHCP relay group with name '%s' not found", relayGroupName)
+	}
+=======
+	// Relay group not found by name
+	return "", false, fmt.Errorf("DHCP relay group with name '%s' not found", relayGroupName)
+>>>>>>> Stashed changes
+}

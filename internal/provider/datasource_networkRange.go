@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
@@ -104,7 +105,7 @@ func (d *networkRangesDataSource) Configure(_ context.Context, req datasource.Co
 
 //nolint:gocyclo,funlen
 func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var networkRangesDataSource NetworkRangeLookup
+	var networkRangesDataSource tf.NetworkRangeLookup
 	if diags := req.Config.Get(ctx, &networkRangesDataSource); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return

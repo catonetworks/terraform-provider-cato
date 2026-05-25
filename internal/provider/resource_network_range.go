@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
@@ -88,7 +89,7 @@ func (r *networkRangeResource) getNetworkRangeClient() NetworkRangeClient {
 	return r.client.catov2
 }
 
-func buildAddNetworkRangeInput(plan NetworkRange, mdnsReflector *bool) cato_models.AddNetworkRangeInput {
+func buildAddNetworkRangeInput(plan tf.NetworkRange, mdnsReflector *bool) cato_models.AddNetworkRangeInput {
 	return cato_models.AddNetworkRangeInput{
 		Name:             plan.Name.ValueString(),
 		RangeType:        cato_models.SubnetType(plan.RangeType.ValueString()),
@@ -102,7 +103,7 @@ func buildAddNetworkRangeInput(plan NetworkRange, mdnsReflector *bool) cato_mode
 	}
 }
 
-func buildUpdateNetworkRangeInput(plan NetworkRange, mdnsReflector *bool, vlan *int64) cato_models.UpdateNetworkRangeInput {
+func buildUpdateNetworkRangeInput(plan tf.NetworkRange, mdnsReflector *bool, vlan *int64) cato_models.UpdateNetworkRangeInput {
 	return cato_models.UpdateNetworkRangeInput{
 		Name:             plan.Name.ValueStringPointer(),
 		RangeType:        (*cato_models.SubnetType)(plan.RangeType.ValueStringPointer()),
@@ -300,7 +301,7 @@ func (r *networkRangeResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
 	// Hydrate the state from the API
-	var state NetworkRange
+	var state tf.NetworkRange
 	state.ID = types.StringValue(req.ID)
 
 	hydratedState, rangeExists, hydrateErr := r.hydrateNetworkRangeState(ctx, state, req.ID)
@@ -327,7 +328,7 @@ func (r *networkRangeResource) ImportState(ctx context.Context, req resource.Imp
 
 //nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
 func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan NetworkRange
+	var plan tf.NetworkRange
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -413,7 +414,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	input := buildAddNetworkRangeInput(plan, curMdnsReflector)
 
 	// get planned DHCP settings Object value, or set default value if null (for VLAN Type)
-	var dhcpSettings DhcpSettings
+	var dhcpSettings tf.DhcpSettings
 	if !plan.DhcpSettings.IsNull() && plan.RangeType != types.StringValue("VLAN") && plan.RangeType != types.StringValue("NATIVE") {
 		resp.Diagnostics.AddError(
 			"Invalid dhcpSettings configuration",
@@ -515,7 +516,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 			// Only send DHCP settings to API - either defaults or user-specified
 			if dhcpSettingsWasSpecified {
 				input.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
-				var dhcpSettingsInput DhcpSettings
+				var dhcpSettingsInput tf.DhcpSettings
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
 
@@ -576,7 +577,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 					// Update the plan's DhcpSettings with the resolved relay group ID
 					// This ensures the value is known after apply
 					dhcpSettingsInput.RelayGroupID = types.StringValue(resolvedRelayGroupID)
-					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettingsInput)
+					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, dhcpSettingsInput)
 				}
 			}
 		}
@@ -624,7 +625,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 }
 
 func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state NetworkRange
+	var state tf.NetworkRange
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -656,7 +657,7 @@ func (r *networkRangeResource) Read(ctx context.Context, req resource.ReadReques
 
 //nolint:gocyclo,funlen // Existing CRUD validation is intentionally kept local to avoid changing behavior while fixing lint.
 func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan NetworkRange
+	var plan tf.NetworkRange
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -728,7 +729,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 	input := buildUpdateNetworkRangeInput(plan, curMdnsReflector, vlanValue)
 
 	// get planned DHCP settings Object value, or set default value if null (for VLAN Type)
-	var dhcpSettings DhcpSettings
+	var dhcpSettings tf.DhcpSettings
 	if !plan.DhcpSettings.IsNull() && plan.RangeType != types.StringValue("VLAN") && plan.RangeType != types.StringValue("NATIVE") {
 		resp.Diagnostics.AddError(
 			"Invalid dhcpSettings configuration",
@@ -824,7 +825,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 
 			if !plan.DhcpSettings.IsNull() && !plan.DhcpSettings.IsUnknown() {
 				input.DhcpSettings = &cato_models.NetworkDhcpSettingsInput{}
-				var dhcpSettingsInput DhcpSettings
+				var dhcpSettingsInput tf.DhcpSettings
 				diags = plan.DhcpSettings.As(ctx, &dhcpSettingsInput, basetypes.ObjectAsOptions{})
 				resp.Diagnostics.Append(diags...)
 
@@ -885,7 +886,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 					// Update the plan's DhcpSettings with the resolved relay group ID
 					// This ensures the value is known after apply
 					dhcpSettingsInput.RelayGroupID = types.StringValue(resolvedRelayGroupID)
-					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettingsInput)
+					plan.DhcpSettings, _ = types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, dhcpSettingsInput)
 				}
 			}
 		}
@@ -960,7 +961,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 }
 
 func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state NetworkRange
+	var state tf.NetworkRange
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -1000,9 +1001,9 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 //nolint:gocyclo,funlen // Hydration mirrors API shape and keeps state preservation logic in one place.
 func (r *networkRangeResource) hydrateNetworkRangeState(
 	ctx context.Context,
-	state NetworkRange,
+	state tf.NetworkRange,
 	networkRangeID string,
-) (NetworkRange, bool, error) {
+) (tf.NetworkRange, bool, error) {
 	const notFoundMsg = "Invalid network range id: "
 
 	queryRangeResult, err := r.getNetworkRangeClient().NetworkRange(ctx, r.client.AccountId, networkRangeID)
@@ -1011,13 +1012,13 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 		var gqlError *clientv2.ErrorResponse
 		if errors.As(err, &gqlError) {
 			if (gqlError.GqlErrors != nil) && (len(*gqlError.GqlErrors) > 0) && strings.Contains((*gqlError.GqlErrors)[0].Message, notFoundMsg) {
-				return NetworkRange{}, false, nil
+				return tf.NetworkRange{}, false, nil
 			}
 		}
-		return NetworkRange{}, false, fmt.Errorf("catov2 API NetworkRange error: %w", err)
+		return tf.NetworkRange{}, false, fmt.Errorf("catov2 API NetworkRange error: %w", err)
 	}
 	if queryRangeResult == nil || queryRangeResult.Site.NetworkRange == nil {
-		return NetworkRange{}, false, nil
+		return tf.NetworkRange{}, false, nil
 	}
 	responseRange := queryRangeResult.Site.NetworkRange
 
@@ -1033,19 +1034,19 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 		responseRange.RangeType == cato_models.SubnetTypeRouted ||
 		responseRange.RangeType == cato_models.SubnetTypeDirect ||
 		wasNullInPlan {
-		state.DhcpSettings = types.ObjectNull(DhcpSettingsAttrTypes)
+		state.DhcpSettings = types.ObjectNull(tf.DhcpSettingsAttrTypes)
 	} else {
 		// Get existing state values if available for preserving computed values
-		var stateDhcpSettings DhcpSettings
+		var stateDhcpSettings tf.DhcpSettings
 		hasExistingState := false
 		if !state.DhcpSettings.IsNull() && !state.DhcpSettings.IsUnknown() {
 			if state.DhcpSettings.As(ctx, &stateDhcpSettings, basetypes.ObjectAsOptions{}).HasError() {
-				return NetworkRange{}, false, fmt.Errorf("failed to parse existing dhcpSettings from state for network rangeID '%s'", networkRangeID)
+				return tf.NetworkRange{}, false, fmt.Errorf("failed to parse existing dhcpSettings from state for network rangeID '%s'", networkRangeID)
 			}
 			hasExistingState = true
 		}
 
-		dhcpSettings := DhcpSettings{
+		dhcpSettings := tf.DhcpSettings{
 			DhcpType:              types.StringValue(string(responseRange.DhcpSettings.DhcpType)),
 			IPRange:               types.StringNull(),
 			RelayGroupID:          types.StringNull(),
@@ -1068,7 +1069,8 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 			dhcpSettings.IPRange = types.StringPointerValue(responseRange.DhcpSettings.IPRange)
 		case cato_models.DhcpTypeDhcpRelay:
 			if responseRange.DhcpSettings.RelayGroupID == nil { // for DHCP_RELAY, groupID must be set
-				return NetworkRange{}, false, fmt.Errorf("dhcpSettings.RelayGroupID not returned by NetworkRange API for rangeID '%s'", networkRangeID)
+				return tf.NetworkRange{}, false, fmt.Errorf("dhcpSettings.RelayGroupID not returned by NetworkRange API "+
+					"for rangeID '%s'", networkRangeID)
 			}
 			// Set BOTH relay_group_id and relay_group_name in state
 			// This ensures no drift regardless of which field the user specified in config
@@ -1076,18 +1078,20 @@ func (r *networkRangeResource) hydrateNetworkRangeState(
 			dhcpSettings.RelayGroupID = types.StringValue(*responseRange.DhcpSettings.RelayGroupID)
 			relayGroupName, success, err := checkForDhcpRelayGroup(ctx, r.client, "", *responseRange.DhcpSettings.RelayGroupID)
 			if err != nil {
-				return NetworkRange{}, false, fmt.Errorf("failed to get dhcpSettings RelayGroup name for network rangeID '%s': %w", networkRangeID, err)
+				return tf.NetworkRange{}, false, fmt.Errorf("failed to get dhcpSettings RelayGroup name for "+
+					"network rangeID '%s': %w", networkRangeID, err)
 			}
 			if !success {
-				return NetworkRange{}, false, fmt.Errorf("failed to find dhcpSettings RelayGroup name for network rangeID '%s'", networkRangeID)
+				return tf.NetworkRange{}, false, fmt.Errorf("failed to find dhcpSettings RelayGroup name for "+
+					"network rangeID '%s'", networkRangeID)
 			}
 			dhcpSettings.RelayGroupName = types.StringValue(relayGroupName)
 		}
 		// For DHCP_DISABLED and ACCOUNT_DEFAULT, relay fields stay as StringNull() which is correct
 
-		dhcpSettingsObj, diag := types.ObjectValueFrom(ctx, DhcpSettingsAttrTypes, dhcpSettings)
+		dhcpSettingsObj, diag := types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, dhcpSettings)
 		if diag.HasError() {
-			return NetworkRange{}, false, fmt.Errorf("failed to create dhcpSettings object for network rangeID '%s'", networkRangeID)
+			return tf.NetworkRange{}, false, fmt.Errorf("failed to create dhcpSettings object for network rangeID '%s'", networkRangeID)
 		}
 		state.DhcpSettings = dhcpSettingsObj
 	}

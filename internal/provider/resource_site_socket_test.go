@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 func TestNewSocketSiteResource(t *testing.T) {
@@ -334,7 +336,8 @@ func TestSocketSiteNativeRangeValidator(t *testing.T) {
 			ctx := context.Background()
 			resp := &validator.ObjectResponse{}
 			nativeRange := newSocketSiteNativeRangeWithOptions(tt.options)
-			socketSiteNativeRangeValidator{}.ValidateObject(ctx, validator.ObjectRequest{
+			rangeValidator := validators.GetNativeRangeValidator()
+			rangeValidator.ValidateObject(ctx, validator.ObjectRequest{
 				Path:        path.Root("native_range"),
 				Config:      newSocketSiteConfig(ctx, t, tt.options),
 				ConfigValue: nativeRange,
@@ -357,7 +360,7 @@ func TestSocketSiteNativeRangeValidatorDescription(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	v := socketSiteNativeRangeValidator{}
+	v := validators.GetNativeRangeValidator()
 
 	if v.Description(ctx) == "" {
 		t.Fatal("expected non-empty description")
@@ -455,7 +458,7 @@ func newSocketSitePlanWithOptions(ctx context.Context, t *testing.T, options soc
 	t.Helper()
 
 	plan := tfsdk.Plan{Schema: getSocketSiteSchema(ctx, t)}
-	diags := plan.Set(ctx, SocketSite{
+	diags := plan.Set(ctx, tf.SocketSite{
 		ID:             types.StringNull(),
 		Name:           types.StringValue("aws-site-01"),
 		ConnectionType: types.StringValue(valueOrDefault(options.ConnectionType, "SOCKET_AWS1500")),
@@ -477,7 +480,7 @@ func newSocketSiteNativeRangeWithOptions(options socketSitePlanOptions) types.Ob
 		translatedSubnet = types.StringNull()
 	}
 
-	return types.ObjectValueMust(SiteNativeRangeResourceAttrTypes, map[string]attr.Value{
+	return types.ObjectValueMust(tf.SiteNativeRangeResourceAttrTypes, map[string]attr.Value{
 		"interface_index":                 stringValueFromSentinel(options.Interface, "LAN1"),
 		"interface_id":                    types.StringNull(),
 		"interface_name":                  types.StringNull(),
@@ -490,7 +493,7 @@ func newSocketSiteNativeRangeWithOptions(options socketSitePlanOptions) types.Ob
 		"translated_subnet":               translatedSubnet,
 		"gateway":                         types.StringNull(),
 		"range_type":                      types.StringNull(),
-		"dhcp_settings":                   types.ObjectNull(SiteNativeRangeDhcpResourceAttrTypes),
+		"dhcp_settings":                   types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes),
 		"vlan":                            types.Int64Null(),
 		"mdns_reflector":                  types.BoolValue(false),
 		"lag_min_links":                   types.Int64Null(),
@@ -507,7 +510,7 @@ func newSocketSiteConfig(ctx context.Context, t *testing.T, options socketSitePl
 }
 
 func newSocketSiteLocation() types.Object {
-	return types.ObjectValueMust(SiteLocationResourceAttrTypes, map[string]attr.Value{
+	return types.ObjectValueMust(tf.SiteLocationResourceAttrTypes, map[string]attr.Value{
 		"country_code": types.StringValue("US"),
 		"state_code":   types.StringValue("US-NY"),
 		"timezone":     types.StringValue("America/New_York"),

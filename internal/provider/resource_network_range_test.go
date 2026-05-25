@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 )
 
 const testSiteID = "site-1"
@@ -471,7 +472,7 @@ type networkRangeModel struct {
 	Vlan             types.Int64
 }
 
-func (m networkRangeModel) toResourceModel() NetworkRange { //nolint:gocyclo
+func (m networkRangeModel) toResourceModel() tf.NetworkRange { //nolint:gocyclo
 	id := m.ID
 	if id.IsNull() && !id.IsUnknown() && id.ValueString() == "" {
 		id = types.StringNull()
@@ -510,7 +511,7 @@ func (m networkRangeModel) toResourceModel() NetworkRange { //nolint:gocyclo
 	}
 	dhcp := m.DhcpSettings
 	if dhcp.IsNull() && !dhcp.IsUnknown() && len(dhcp.Attributes()) == 0 {
-		dhcp = types.ObjectNull(DhcpSettingsAttrTypes)
+		dhcp = types.ObjectNull(tf.DhcpSettingsAttrTypes)
 	}
 	internetOnly := m.InternetOnly
 	if internetOnly.IsNull() && !internetOnly.IsUnknown() {
@@ -525,7 +526,7 @@ func (m networkRangeModel) toResourceModel() NetworkRange { //nolint:gocyclo
 		vlan = types.Int64Null()
 	}
 
-	return NetworkRange{
+	return tf.NetworkRange{
 		ID:               id,
 		SiteID:           siteID,
 		InterfaceID:      interfaceID,

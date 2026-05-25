@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
@@ -647,7 +648,7 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 	// setting input site location
 	if !plan.SiteLocation.IsNull() {
 		inputSiteGeneral.SiteLocation = &cato_models.UpdateSiteLocationInput{}
-		siteLocationInput := SiteLocation{}
+		siteLocationInput := tf.SiteLocation{}
 		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 

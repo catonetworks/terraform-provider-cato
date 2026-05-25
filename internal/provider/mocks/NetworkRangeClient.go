@@ -6,9 +6,10 @@ package mocks
 
 import (
 	"context"
+
 	"github.com/Yamashou/gqlgenc/clientv2"
-	"github.com/catonetworks/cato-go-sdk"
-	"github.com/catonetworks/cato-go-sdk/models"
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	mock "github.com/stretchr/testify/mock"
 )
 
