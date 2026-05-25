@@ -263,6 +263,7 @@ func TestHydrateOptionalLocationString(t *testing.T) {
 	t.Parallel()
 
 	empty := ""
+	singleSpace := " "
 	value := "Berlin"
 
 	tests := []struct {
@@ -287,6 +288,12 @@ func TestHydrateOptionalLocationString(t *testing.T) {
 		{
 			name:       "api empty preserves explicit empty from prior state",
 			apiValue:   &empty,
+			priorValue: types.StringValue(""),
+			want:       "",
+		},
+		{
+			name:       "api whitespace preserves explicit empty from prior state",
+			apiValue:   &singleSpace,
 			priorValue: types.StringValue(""),
 			want:       "",
 		},

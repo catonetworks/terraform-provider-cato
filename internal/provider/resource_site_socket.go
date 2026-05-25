@@ -866,10 +866,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		cityPtr := siteLocationInput.City.ValueStringPointer()
 		if (cityPtr == nil || *cityPtr == "") &&
 			!stateLocationInput.City.IsNull() && !stateLocationInput.City.IsUnknown() && stateLocationInput.City.ValueString() != "" {
-			// API bug workaround: if city had a value in state and is now blank/null in plan,
-			// send " " (single space) to clear the field
-			spaceCityValue := " "
-			cityPtr = &spaceCityValue
+			// Preserve explicit empty-string intent when clearing city.
+			emptyCityValue := ""
+			cityPtr = &emptyCityValue
 		} else if cityPtr != nil && *cityPtr == "" {
 			// Normal case: empty string becomes nil
 			cityPtr = nil
@@ -2084,8 +2083,12 @@ func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context
 }
 
 func hydrateOptionalLocationString(apiValue *string, priorValue types.String) types.String {
-	if apiValue != nil && *apiValue != "" {
-		return types.StringValue(*apiValue)
+	if apiValue != nil {
+		// API sometimes returns a single space for "cleared" optional fields.
+		// Normalize whitespace-only values to empty/null semantics.
+		if strings.TrimSpace(*apiValue) != "" {
+			return types.StringValue(*apiValue)
+		}
 	}
 	if !priorValue.IsNull() && !priorValue.IsUnknown() && priorValue.ValueString() == "" {
 		return types.StringValue("")
