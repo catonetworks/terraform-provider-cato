@@ -266,32 +266,32 @@ func TestHydrateOptionalLocationString(t *testing.T) {
 	value := "Berlin"
 
 	tests := []struct {
-		name      string
+		name       string
 		apiValue   *string
 		priorValue types.String
 		wantNull   bool
 		want       string
 	}{
 		{
-			name:      "api value wins",
+			name:       "api value wins",
 			apiValue:   &value,
 			priorValue: types.StringValue("Old"),
 			want:       "Berlin",
 		},
 		{
-			name:      "preserve explicit empty from prior state",
+			name:       "preserve explicit empty from prior state",
 			apiValue:   nil,
 			priorValue: types.StringValue(""),
 			want:       "",
 		},
 		{
-			name:      "api empty preserves explicit empty from prior state",
+			name:       "api empty preserves explicit empty from prior state",
 			apiValue:   &empty,
 			priorValue: types.StringValue(""),
 			want:       "",
 		},
 		{
-			name:      "null when api and prior are unset",
+			name:       "null when api and prior are unset",
 			apiValue:   nil,
 			priorValue: types.StringNull(),
 			wantNull:   true,
