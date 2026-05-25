@@ -259,6 +259,68 @@ func TestCalculateLocalIP(t *testing.T) {
 	}
 }
 
+func TestHydrateOptionalLocationString(t *testing.T) {
+	t.Parallel()
+
+	empty := ""
+	value := "Berlin"
+
+	tests := []struct {
+		name      string
+		apiValue   *string
+		priorValue types.String
+		wantNull   bool
+		want       string
+	}{
+		{
+			name:      "api value wins",
+			apiValue:   &value,
+			priorValue: types.StringValue("Old"),
+			want:       "Berlin",
+		},
+		{
+			name:      "preserve explicit empty from prior state",
+			apiValue:   nil,
+			priorValue: types.StringValue(""),
+			want:       "",
+		},
+		{
+			name:      "api empty preserves explicit empty from prior state",
+			apiValue:   &empty,
+			priorValue: types.StringValue(""),
+			want:       "",
+		},
+		{
+			name:      "null when api and prior are unset",
+			apiValue:   nil,
+			priorValue: types.StringNull(),
+			wantNull:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := hydrateOptionalLocationString(tt.apiValue, tt.priorValue)
+			if tt.wantNull {
+				if !got.IsNull() {
+					t.Fatalf("expected null, got %q", got.ValueString())
+				}
+				return
+			}
+
+			if got.IsNull() || got.IsUnknown() {
+				t.Fatalf("expected value %q, got null/unknown", tt.want)
+			}
+			if got.ValueString() != tt.want {
+				t.Fatalf("expected %q, got %q", tt.want, got.ValueString())
+			}
+		})
+	}
+}
+
 func TestSocketSiteNativeRangeValidator(t *testing.T) {
 	t.Parallel()
 

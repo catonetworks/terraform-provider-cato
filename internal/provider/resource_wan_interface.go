@@ -386,6 +386,89 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
+func normalizedInterfaceIDCandidates(rawID string) []string {
+	id := strings.TrimSpace(rawID)
+	if id == "" {
+		return nil
+	}
+
+	candidatesMap := map[string]struct{}{
+		id: {},
+	}
+
+	upper := strings.ToUpper(id)
+	if strings.HasPrefix(upper, "INT_") {
+		candidatesMap[strings.TrimPrefix(upper, "INT_")] = struct{}{}
+	}
+	if strings.HasPrefix(upper, "WAN") {
+		suffix := strings.TrimPrefix(upper, "WAN")
+		if suffix != "" {
+			candidatesMap[suffix] = struct{}{}
+			candidatesMap["INT_"+suffix] = struct{}{}
+		}
+	}
+
+	// If the raw ID is numeric (e.g., "1"), include common aliases.
+	isNumeric := true
+	for _, ch := range id {
+		if ch < '0' || ch > '9' {
+			isNumeric = false
+			break
+		}
+	}
+	if isNumeric {
+		candidatesMap["INT_"+id] = struct{}{}
+		candidatesMap["WAN"+id] = struct{}{}
+	}
+
+	candidates := make([]string, 0, len(candidatesMap))
+	for candidate := range candidatesMap {
+		candidates = append(candidates, strings.ToUpper(candidate))
+	}
+
+	return candidates
+}
+
+func wanInterfaceIDsMatch(resourceInterfaceID string, snapshotInterfaceID string, deviceInterfaceID string) bool {
+	resourceCandidates := normalizedInterfaceIDCandidates(resourceInterfaceID)
+	if len(resourceCandidates) == 0 {
+		return false
+	}
+
+	otherCandidatesMap := map[string]struct{}{}
+	for _, candidate := range normalizedInterfaceIDCandidates(snapshotInterfaceID) {
+		otherCandidatesMap[candidate] = struct{}{}
+	}
+	for _, candidate := range normalizedInterfaceIDCandidates(deviceInterfaceID) {
+		otherCandidatesMap[candidate] = struct{}{}
+	}
+
+	for _, candidate := range resourceCandidates {
+		if _, ok := otherCandidatesMap[candidate]; ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func precedenceFromNaturalOrder(naturalOrder *int64) types.String {
+	if naturalOrder == nil {
+		return types.StringNull()
+	}
+
+	switch *naturalOrder {
+	case wanInterfaceActiveNaturalOrder:
+		return types.StringValue("ACTIVE")
+	case wanInterfacePassiveNaturalOrder:
+		return types.StringValue("PASSIVE")
+	case wanInterfaceLastResortNaturalOrder:
+		return types.StringValue("LAST_RESORT")
+	default:
+		return types.StringNull()
+	}
+}
+
 // hydrateWanInterfaceState fetches the current state of a WAN interface from the API
 // and populates the state object with the latest values, including precedence mapping
 //
@@ -448,30 +531,15 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, sta
 				if deviceIface.ID != nil {
 					deviceIfaceID = *deviceIface.ID
 				}
-				if deviceIfaceID == foundInterface.ID || "INT_"+deviceIfaceID == state.InterfaceID.ValueString() {
-					// Map naturalOrder to precedence - naturalOrder is a pointer to int64
-					if deviceIface.NaturalOrder != nil {
-						switch *deviceIface.NaturalOrder {
-						case wanInterfaceActiveNaturalOrder:
-							state.Precedence = types.StringValue("ACTIVE")
-						case wanInterfacePassiveNaturalOrder:
-							state.Precedence = types.StringValue("PASSIVE")
-						case wanInterfaceLastResortNaturalOrder:
-							state.Precedence = types.StringValue("LAST_RESORT")
-						default:
-							// If naturalOrder is not 1, 2, or 3, preserve existing precedence or set to null
-							if state.Precedence.IsNull() || state.Precedence.IsUnknown() {
-								state.Precedence = types.StringNull()
-							}
-						}
+				if wanInterfaceIDsMatch(state.InterfaceID.ValueString(), foundInterface.ID, deviceIfaceID) {
+					mappedPrecedence := precedenceFromNaturalOrder(deviceIface.NaturalOrder)
+					if !mappedPrecedence.IsNull() && !mappedPrecedence.IsUnknown() {
+						state.Precedence = mappedPrecedence
 					}
 					break
 				}
 			}
 		}
-	} else if state.Precedence.IsNull() || state.Precedence.IsUnknown() {
-		// No devices data available, preserve existing precedence or set to null
-		state.Precedence = types.StringNull()
 	}
 
 	return state, true, nil

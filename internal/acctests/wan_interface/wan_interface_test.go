@@ -63,6 +63,22 @@ func TestAccWanInterface(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "upstream_bandwidth", "50"),
 				),
 			},
+			{
+				// Update precedence to ACTIVE (regression coverage for repeated precedence drift)
+				Config: cfg.getTfConfig(2),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "8"),
+					resource.TestCheckResourceAttr(res, "downstream_bandwidth", "100"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "interface_id", "WAN2"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_wan-2"),
+					resource.TestCheckResourceAttr(res, "precedence", "ACTIVE"),
+					resource.TestCheckResourceAttr(res, "role", "wan_2"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+					resource.TestCheckResourceAttr(res, "upstream_bandwidth", "50"),
+				),
+			},
 		},
 	})
 }
@@ -118,6 +134,17 @@ var wanInterfaceTFs = []string{
 		downstream_bandwidth = 100
 		role                 = "wan_2"
 		precedence           = "PASSIVE"
+	}
+	`,
+	siteResource + `
+	resource "cato_wan_interface" "this" {
+		site_id              = cato_socket_site.this.id
+		interface_id         = "WAN2"
+		name                 = "{{.Name}}_wan-2"
+		upstream_bandwidth   = 50
+		downstream_bandwidth = 100
+		role                 = "wan_2"
+		precedence           = "ACTIVE"
 	}
 	`,
 }
