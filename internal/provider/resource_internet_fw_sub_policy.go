@@ -275,6 +275,9 @@ mutation policyInternetFirewallAddSubPolicy(
 ) {
   policy(accountId: $accountId) {
     internetFirewall(input: $internetFirewallPolicyMutationInput) {
+      # Keep this payload minimal intentionally.
+      # Backend bug ENG-185930 can fail with non-null violations when
+      # addSubPolicy response includes policy.subPolicies.
       addSubPolicy(input: $input) {
         status
         errors {
@@ -341,6 +344,10 @@ func (r *internetFwSubPolicyResource) addInternetFirewallSubPolicy(
 		},
 	}
 	var res ifwAddSubPolicyResponse
+	// Do not switch to the SDK path that hydrates subPolicies from addSubPolicy response yet.
+	// We rely on status/errors here and fetch sub-policies via a separate read query to
+	// avoid backend instability tracked in ENG-185930:
+	// https://catonetworks.atlassian.net/browse/ENG-185930
 	if err := r.client.catov2.Client.Post(ctx, "policyInternetFirewallAddSubPolicy", mutationIfwAddSubPolicy, &res, vars); err != nil {
 		return nil, err
 	}
@@ -355,6 +362,7 @@ func (r *internetFwSubPolicyResource) addInternetFirewallSubPolicy(
 }
 
 func (r *internetFwSubPolicyResource) readInternetFirewallSubPolicies(ctx context.Context) (*ifwReadSubPoliciesResponse, error) {
+	// Read-after-write is intentional; see ENG-185930.
 	vars := map[string]any{"accountId": r.client.AccountId}
 	var res ifwReadSubPoliciesResponse
 	if err := r.client.catov2.Client.Post(ctx, "internetFirewallSubPolicies", queryIfwSubPolicies, &res, vars); err != nil {
