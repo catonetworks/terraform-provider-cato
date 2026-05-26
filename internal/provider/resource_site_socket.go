@@ -866,10 +866,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		cityPtr := siteLocationInput.City.ValueStringPointer()
 		if (cityPtr == nil || *cityPtr == "") &&
 			!stateLocationInput.City.IsNull() && !stateLocationInput.City.IsUnknown() && stateLocationInput.City.ValueString() != "" {
-			// API bug workaround: if city had a value in state and is now blank/null in plan,
-			// send " " (single space) to clear the field
-			spaceCityValue := " "
-			cityPtr = &spaceCityValue
+			// Preserve explicit empty-string intent when clearing city.
+			emptyCityValue := ""
+			cityPtr = &emptyCityValue
 		} else if cityPtr != nil && *cityPtr == "" {
 			// Normal case: empty string becomes nil
 			cityPtr = nil
@@ -2083,6 +2082,20 @@ func (r *socketSiteResource) attemptReassignNativeRangeIndex(ctx context.Context
 	return &isDefaultPresent, err
 }
 
+func hydrateOptionalLocationString(apiValue *string, priorValue types.String) types.String {
+	if apiValue != nil {
+		// API sometimes returns a single space for "cleared" optional fields.
+		// Normalize whitespace-only values to empty/null semantics.
+		if strings.TrimSpace(*apiValue) != "" {
+			return types.StringValue(*apiValue)
+		}
+	}
+	if !priorValue.IsNull() && !priorValue.IsUnknown() && priorValue.ValueString() == "" {
+		return types.StringValue("")
+	}
+	return types.StringNull()
+}
+
 // hydrateSocketSiteState populates the SocketSite state with data from API responses
 //
 //nolint:gocyclo,funlen
@@ -2248,6 +2261,16 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 
 				// Build state location from siteGeneralDetails response
 				// Always hydrate from API to ensure proper state during import and refresh
+				var priorLocation SiteLocation
+				hasPriorLocation := !state.SiteLocation.IsNull() && !state.SiteLocation.IsUnknown()
+				if hasPriorLocation {
+					diags := state.SiteLocation.As(ctx, &priorLocation, basetypes.ObjectAsOptions{})
+					// Keep hydration resilient: if prior state cannot be decoded, continue with API-only values.
+					if diags.HasError() {
+						hasPriorLocation = false
+					}
+				}
+
 				stateSiteLocation, _ = types.ObjectValue(
 					SiteLocationResourceAttrTypes,
 					map[string]attr.Value{
@@ -2260,16 +2283,16 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, state S
 						}(),
 						"timezone": types.StringValue(siteLocation.GetTimezone()),
 						"address": func() types.String {
-							if siteLocation.GetAddress() != nil && *siteLocation.GetAddress() != "" {
-								return types.StringValue(*siteLocation.GetAddress())
+							if hasPriorLocation {
+								return hydrateOptionalLocationString(siteLocation.GetAddress(), priorLocation.Address)
 							}
-							return types.StringNull()
+							return hydrateOptionalLocationString(siteLocation.GetAddress(), types.StringNull())
 						}(),
 						"city": func() types.String {
-							if siteLocation.GetCityName() != nil && *siteLocation.GetCityName() != "" {
-								return types.StringValue(*siteLocation.GetCityName())
+							if hasPriorLocation {
+								return hydrateOptionalLocationString(siteLocation.GetCityName(), priorLocation.City)
 							}
-							return types.StringNull()
+							return hydrateOptionalLocationString(siteLocation.GetCityName(), types.StringNull())
 						}(),
 					},
 				)
