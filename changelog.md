@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.79 (2026-05-26)
+
+### Fixed
+- Fixed city and WAN precedence regressions.
+- Fixed DHCP relay group handling.
+- Fixed linter issues.
+
+### Changed
+- Improved the unit test skill guidance.
+
 ## 0.0.78 (2026-05-20)
 - Fixed network range drift and added unit test coverage for the updated behavior.
 - Fixed internet firewall rule device attribute handling to ensure correct state and API mapping.
