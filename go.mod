@@ -298,4 +298,4 @@ tool (
 	golang.org/x/vuln/cmd/govulncheck
 )
 
-replace github.com/catonetworks/cato-go-sdk => /Users/ilya/work/cato-go-sdk
+// replace github.com/catonetworks/cato-go-sdk => /Users/ilya/work/cato-go-sdk
