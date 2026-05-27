@@ -209,58 +209,6 @@ func TestSocketSiteCreateValidatesNativeRangeBeforeAPI(t *testing.T) {
 	}
 }
 
-func TestCalculateLocalIP(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		subnet   string
-		connType string
-		want     string
-	}{
-		"empty_subnet": {
-			subnet:   "",
-			connType: "SOCKET_X1500",
-			want:     "",
-		},
-		"invalid_subnet": {
-			subnet:   "not-a-cidr",
-			connType: "SOCKET_X1500",
-			want:     "",
-		},
-		"x1500_uses_first_available_ip": {
-			subnet:   "192.168.10.0/24",
-			connType: "SOCKET_X1500",
-			want:     "192.168.10.1",
-		},
-		"aws1500_uses_fourth_offset": {
-			subnet:   "192.168.10.0/24",
-			connType: "SOCKET_AWS1500",
-			want:     "192.168.10.4",
-		},
-		"gcp1500_uses_fourth_offset": {
-			subnet:   "192.168.10.0/24",
-			connType: "SOCKET_GCP1500",
-			want:     "192.168.10.4",
-		},
-		"ipv6_subnet_is_ignored": {
-			subnet:   "2001:db8::/64",
-			connType: "SOCKET_X1500",
-			want:     "",
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			got := calculateLocalIP(context.Background(), tt.subnet, tt.connType)
-			if got != tt.want {
-				t.Fatalf("expected local IP %q, got %q", tt.want, got)
-			}
-		})
-	}
-}
-
 func TestSocketSiteNativeRangeValidator(t *testing.T) {
 	t.Parallel()
 

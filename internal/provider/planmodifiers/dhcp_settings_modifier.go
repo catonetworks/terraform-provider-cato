@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -41,17 +42,14 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 	var plan tf.DhcpSettings
 
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
-	if !utils.HasValue(req.ConfigValue) {
+	if req.ConfigValue.IsUnknown() {
 		return
 	}
 	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &cfg, basetypes.ObjectAsOptions{})) {
 		return
 	}
 	if cfg == nil { // removed from the config
-		if req.StateValue.IsNull() {
-			return
-		}
-		resp.PlanValue = types.ObjectNull(tf.DhcpSettingsAttrTypes)
+		resp.PlanValue = m.makeUnknownValue(ctx, &resp.Diagnostics) // API may return a value even if the config is removed
 		return
 	}
 
@@ -119,4 +117,19 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 		return
 	}
 	resp.PlanValue = planObj
+}
+func (m dhcpSettingsModifier) makeUnknownValue(ctx context.Context, diags *diag.Diagnostics) types.Object {
+	plan := tf.DhcpSettings{
+		DhcpType:              types.StringUnknown(),
+		IPRange:               types.StringUnknown(),
+		RelayGroupID:          types.StringUnknown(),
+		RelayGroupName:        types.StringUnknown(),
+		DhcpMicrosegmentation: types.BoolUnknown(),
+	}
+
+	planObj, diag := types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, plan)
+	if utils.CheckErr(diags, diag) {
+		return types.ObjectNull(tf.DhcpSettingsAttrTypes)
+	}
+	return planObj
 }

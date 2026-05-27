@@ -75,7 +75,7 @@ func TestAccSocketSite_Basic(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "%", "7"),
-					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_AWS1500"),
+					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description 2"),
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName+" 2"),
@@ -85,14 +85,14 @@ func TestAccSocketSite_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "native_range.interface_id"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_index", "LAN1"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_name", "LAN1"),
-					resource.TestCheckResourceAttr(res, "native_range.local_ip", "192.168.30.4"),
+					resource.TestCheckResourceAttr(res, "native_range.local_ip", "192.168.20.5"),
 					resource.TestCheckResourceAttr(res, "native_range.mdns_reflector", "false"),
 					resource.TestCheckResourceAttrSet(res, "native_range.native_network_lan_interface_id"),
-					resource.TestCheckResourceAttr(res, "native_range.native_network_range", "192.168.30.0/24"),
+					resource.TestCheckResourceAttr(res, "native_range.native_network_range", "192.168.20.0/22"),
 					resource.TestCheckResourceAttrSet(res, "native_range.native_network_range_id"),
 					resource.TestCheckResourceAttr(res, "native_range.range_name", "Native Range"),
 					resource.TestCheckResourceAttr(res, "native_range.range_type", "NATIVE"),
-					resource.TestCheckResourceAttr(res, "native_range.translated_subnet", "192.168.30.0/24"),
+					resource.TestCheckResourceAttr(res, "native_range.translated_subnet", "192.168.20.0/22"),
 
 					resource.TestCheckResourceAttr(res, "site_location.%", "5"),
 					resource.TestCheckResourceAttr(res, "site_location.country_code", "US"),
@@ -335,11 +335,11 @@ func newsocketSiteCfg(t *testing.T) socketSiteCfg {
 		"INT_3",
 	}
 	return socketSiteCfg{
-		resName:      acc.GetRandName("socket_site"),
-		connTypes:    connTypes,
-		defaultIface: defaultIface,
-		// dhcpRelayGroups: acc.GetDhcpRelayGroups(t),
-		t: t,
+		resName:         acc.GetRandName("socket_site"),
+		connTypes:       connTypes,
+		defaultIface:    defaultIface,
+		dhcpRelayGroups: acc.GetDhcpRelayGroups(t),
+		t:               t,
 	}
 }
 
@@ -396,11 +396,12 @@ var socketSiteBasicTFs = []string{
 		name            = "{{.Name}} 2"
 		description     = "{{.Name}} description 2"
 		site_type       = "CLOUD_DC"
-		connection_type = "SOCKET_AWS1500"
+		connection_type = "SOCKET_X1500"
 
 		native_range = {
-			native_network_range = "192.168.30.0/24"
-			local_ip             = "192.168.30.4"
+			native_network_range = "192.168.20.0/22"
+			translated_subnet    = "192.168.20.0/22"
+			local_ip             = "192.168.20.5"
 		}
 
 		site_location = {
