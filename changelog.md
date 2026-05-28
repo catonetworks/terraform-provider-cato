@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.80 (2026-05-28)
+
+### Fixed
+- Fixed internet firewall rule app reference handling to fail fast on invalid object references instead of emitting partial payloads.
+- Fixed internet firewall rule refresh/apply consistency by preserving `rule.service = null` when no service values are returned.
+- Added regression unit and acceptance test coverage for IFW invalid destination app references and empty-service refresh behavior.
+
 ## 0.0.79 (2026-05-26)
 
 ### Fixed
