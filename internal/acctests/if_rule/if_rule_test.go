@@ -5,6 +5,7 @@ package if_rule
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"testing"
 	"text/template"
 
@@ -129,6 +130,58 @@ func TestAccInternetFw_Timeframe(t *testing.T) {
 				Config: cfg.getTfConfigTimeframe(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
+				),
+			},
+		},
+	})
+}
+
+func TestAccInternetFw_InvalidDestinationApplicationRef(t *testing.T) {
+	acc.SkipByEnv(t)
+	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_InvalidDestinationApplicationRef")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newInternetFwCfg(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				Config:      cfg.getTfConfigInvalidDestinationApplicationRef(0),
+				ExpectError: regexp.MustCompile("Invalid object reference"),
+			},
+		},
+	})
+}
+
+func TestAccInternetFw_ServiceEmptyKnownAfterRefresh(t *testing.T) {
+	acc.SkipByEnv(t)
+	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_ServiceEmptyKnownAfterRefresh")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newInternetFwCfg(t)
+	res := "cato_if_rule.service_empty_refresh"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				Config: cfg.getTfConfigServiceEmptyKnownAfterRefresh(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckNoResourceAttr(res, "rule.service.%"),
+					resource.TestCheckNoResourceAttr(res, "rule.service.standard.#"),
+					resource.TestCheckNoResourceAttr(res, "rule.service.custom.#"),
+				),
+			},
+			{
+				Config: cfg.getTfConfigServiceEmptyKnownAfterRefresh(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(res, "rule.service.%"),
+					resource.TestCheckNoResourceAttr(res, "rule.service.standard.#"),
+					resource.TestCheckNoResourceAttr(res, "rule.service.custom.#"),
 				),
 			},
 		},
@@ -807,6 +860,39 @@ var internetFwIDNameTFs = []string{
 }
 
 // ------------------------------------------------------------------
+// Invalid destination application ref cato_if_rule configuration
+// ------------------------------------------------------------------
+func (p internetFwCfg) getTfConfigInvalidDestinationApplicationRef(index int) string {
+	data := map[string]any{
+		"Name": p.resName,
+	}
+	return p.prepareTfCfg(data, internetFwInvalidDestinationApplicationRefTFs[index])
+}
+
+var internetFwInvalidDestinationApplicationRefTFs = []string{
+	`resource "cato_if_rule" "invalid_destination_app_ref" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name    = "{{ .Name }} invalid-app-ref"
+			enabled = true
+			action  = "ALLOW"
+			tracking = {
+				event = {
+					enabled = true
+				}
+			}
+			destination = {
+				application = [ {} ]
+			}
+			source = {}
+		}
+	}
+	`,
+}
+
+// ------------------------------------------------------------------
 // Timeframe cato_if_rule configurations
 // - test combination of name and ID attributes in the rule configuration
 // ------------------------------------------------------------------
@@ -939,6 +1025,39 @@ var internetFwUserIDTFs = []string{
 					}
 				}
 			]
+		}
+	}
+	`,
+}
+
+// ------------------------------------------------------------------
+// Empty service known-value cato_if_rule configuration
+// ------------------------------------------------------------------
+func (p internetFwCfg) getTfConfigServiceEmptyKnownAfterRefresh(index int) string {
+	data := map[string]any{
+		"Name": p.resName,
+	}
+	return p.prepareTfCfg(data, internetFwServiceEmptyKnownAfterRefreshTFs[index])
+}
+
+var internetFwServiceEmptyKnownAfterRefreshTFs = []string{
+	`resource "cato_if_rule" "service_empty_refresh" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name    = "{{ .Name }} service-empty"
+			enabled = true
+			action  = "ALLOW"
+			tracking = {
+				event = {
+					enabled = true
+				}
+			}
+			destination = {
+				domain = [ "service-empty.example.com" ]
+			}
+			source = {}
 		}
 	}
 	`,

@@ -22,11 +22,6 @@ func hydrateIfwRuleState(
 ) PolicyPolicyInternetFirewallPolicyRulesRule {
 	ruleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags := make(diag.Diagnostics, 0)
-	diagstmp := state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
-	diags = append(diags, diagstmp...)
-	if diags.HasError() {
-		return ruleInput
-	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
 	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 	if currentRule.Description == "" {
@@ -143,20 +138,18 @@ func hydrateIfwRuleState(
 	// /// /// /// /// end Rule -> Destination // /// /// /// /// /
 
 	// /// /// /// /// start Rule -> Service // /// /// /// /// /
-	if len(currentRule.Service.Custom) > 0 || len(currentRule.Service.Standard) > 0 {
-		// Initialize Service object with null values
+	if len(currentRule.Service.Custom) == 0 && len(currentRule.Service.Standard) == 0 {
+		ruleInput.Service = types.ObjectNull(IfwServiceAttrTypes)
+	} else {
 		curRuleServiceObj, diagstmp := types.ObjectValue(
 			IfwServiceAttrTypes,
 			map[string]attr.Value{
-				"standard": types.SetNull(NameIDObjectType),
-				"custom":   types.ListNull(CustomServiceObjectType),
+				"standard": parseNameIDList(ctx, currentRule.Service.Standard, "rule.service.standard"),
+				"custom":   types.ListValueMust(CustomServiceObjectType, []attr.Value{}),
 			},
 		)
 		diags = append(diags, diagstmp...)
 		curRuleServiceObjAttrs := curRuleServiceObj.Attributes()
-
-		// Rule -> Service -> Standard
-		curRuleServiceObjAttrs["standard"] = parseNameIDList(ctx, currentRule.Service.Standard, "rule.service.standard")
 
 		// Rule -> Service -> Custom
 		if len(currentRule.Service.Custom) > 0 {
@@ -168,7 +161,6 @@ func hydrateIfwRuleState(
 			curRuleServiceObjAttrs["custom"], diagstmp = types.ListValueFrom(ctx, CustomServiceObjectType, curRuleCustomServices)
 			diags = append(diags, diagstmp...)
 		}
-
 		curRuleServiceObj, diagstmp = types.ObjectValue(curRuleServiceObj.AttributeTypes(ctx), curRuleServiceObjAttrs)
 		diags = append(diags, diagstmp...)
 		ruleInput.Service = curRuleServiceObj
@@ -395,9 +387,14 @@ func hydrateIfwRuleState(
 	}
 
 	configuredActivePeriod := PolicyPolicyInternetFirewallPolicyRulesRuleActivePeriod{}
-	if !ruleInput.ActivePeriod.IsNull() && !ruleInput.ActivePeriod.IsUnknown() {
-		diagstmp = ruleInput.ActivePeriod.As(ctx, &configuredActivePeriod, basetypes.ObjectAsOptions{})
+	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
+		stateRuleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
+		diagstmp = state.Rule.As(ctx, &stateRuleInput, basetypes.ObjectAsOptions{})
 		diags = append(diags, diagstmp...)
+		if !stateRuleInput.ActivePeriod.IsNull() && !stateRuleInput.ActivePeriod.IsUnknown() {
+			diagstmp = stateRuleInput.ActivePeriod.As(ctx, &configuredActivePeriod, basetypes.ObjectAsOptions{})
+			diags = append(diags, diagstmp...)
+		}
 	}
 
 	// If API returned nil but we have configured values in state, preserve them

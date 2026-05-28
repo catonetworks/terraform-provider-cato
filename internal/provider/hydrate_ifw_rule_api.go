@@ -19,6 +19,13 @@ const (
 	defaultConnectionOriginAny = "ANY"
 )
 
+func appendObjectRefTransformError(diags []diag.Diagnostic, fieldPath string, err error) []diag.Diagnostic {
+	return append(diags, diag.NewErrorDiagnostic(
+		"Invalid object reference",
+		fmt.Sprintf("Unable to convert %s into API reference: %v", fieldPath, err),
+	))
+}
+
 // hydrateIfwAPITypes create sub-types for both create and update calls to populate both entries
 type hydrateIfwAPITypes struct {
 	create cato_models.InternetFirewallAddRuleInput
@@ -523,7 +530,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationApplicationInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.destination.application", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleDestinationInput.Application = append(ruleDestinationInput.Application, &cato_models.ApplicationRefInput{
@@ -547,7 +555,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationCustomAppInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.destination.custom_app", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleDestinationInput.CustomApp = append(ruleDestinationInput.CustomApp, &cato_models.CustomApplicationRefInput{
@@ -614,7 +623,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationAppCategoryInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.destination.app_category", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleDestinationInput.AppCategory = append(ruleDestinationInput.AppCategory, &cato_models.ApplicationCategoryRefInput{
@@ -638,7 +648,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationCustomCategoryInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.destination.custom_category", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleDestinationInput.CustomCategory = append(ruleDestinationInput.CustomCategory, &cato_models.CustomCategoryRefInput{
@@ -665,7 +676,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationSanctionedAppsCategoryInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.destination.sanctioned_apps_category", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleDestinationInput.SanctionedAppsCategory = append(
@@ -1479,7 +1491,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationApplicationInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.destination.application", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Destination.Application = append(exceptionAddInput.Destination.Application, &cato_models.ApplicationRefInput{
@@ -1503,7 +1516,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationCustomAppInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.destination.custom_app", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Destination.CustomApp = append(exceptionAddInput.Destination.CustomApp, &cato_models.CustomApplicationRefInput{
@@ -1570,7 +1584,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationAppCategoryInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.destination.app_category", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Destination.AppCategory = append(
@@ -1597,7 +1612,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationCustomCategoryInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.destination.custom_category", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Destination.CustomCategory = append(
@@ -1627,7 +1643,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationSanctionedAppsCategoryInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.destination.sanctioned_apps_category", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Destination.SanctionedAppsCategory = append(
