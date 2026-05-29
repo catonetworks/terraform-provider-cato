@@ -201,15 +201,56 @@ func TestHydrateIfwRuleAPIFailsOnInvalidDestinationApplicationRef(t *testing.T) 
 	}
 }
 
+func TestHydrateIfwRuleAPIFailsOnInvalidSourceHostRef(t *testing.T) {
+	ctx := context.Background()
+
+	model := newMinimalInternetFwRuleModel("")
+	ruleAttrs := model.Rule.Attributes()
+	sourceAttrs := ruleAttrs["source"].(types.Object).Attributes()
+	sourceAttrs["host"] = types.SetValueMust(NameIDObjectType, []attr.Value{
+		types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{
+			"id":   types.StringNull(),
+			"name": types.StringNull(),
+		}),
+	})
+	ruleAttrs["source"] = types.ObjectValueMust(IfwSourceAttrTypes, sourceAttrs)
+	model.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	_, diags := hydrateIfwRuleAPI(ctx, model)
+	if !diags.HasError() {
+		t.Fatal("expected diagnostics for invalid source host object reference")
+	}
+}
+
 func TestHydrateIfwRuleStateKeepsServiceNullWhenAPIReturnsEmpty(t *testing.T) {
+	ctx := context.Background()
+
+	state := newMinimalInternetFwRuleModel("rule-123")
+	ruleAttrs := state.Rule.Attributes()
+	ruleAttrs["service"] = types.ObjectNull(IfwServiceAttrTypes)
+	state.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	currentRule := minimalAPIRule("test-ifw-rule", 10)
+	hydrated := hydrateIfwRuleState(ctx, state, &currentRule)
+
+	if !hydrated.Service.IsNull() {
+		t.Fatalf("expected hydrated service to be null when API returns empty service, got %+v", hydrated.Service)
+	}
+}
+
+func TestHydrateIfwRuleStatePreservesServiceObjectShapeWhenAPIReturnsEmpty(t *testing.T) {
 	ctx := context.Background()
 
 	state := newMinimalInternetFwRuleModel("rule-123")
 	currentRule := minimalAPIRule("test-ifw-rule", 10)
 	hydrated := hydrateIfwRuleState(ctx, state, &currentRule)
 
-	if !hydrated.Service.IsNull() {
-		t.Fatalf("expected hydrated service to be null when API returns empty service, got %+v", hydrated.Service)
+	if hydrated.Service.IsNull() || hydrated.Service.IsUnknown() {
+		t.Fatalf("expected hydrated service object shape to be preserved, got %+v", hydrated.Service)
+	}
+
+	if !hydrated.Service.Equal(emptyIfwServiceObject()) {
+		t.Fatalf("expected hydrated service to match prior object shape, got %+v", hydrated.Service)
 	}
 }
 

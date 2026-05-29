@@ -22,6 +22,11 @@ func hydrateIfwRuleState(
 ) PolicyPolicyInternetFirewallPolicyRulesRule {
 	ruleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
 	diags := make(diag.Diagnostics, 0)
+	stateRuleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
+	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
+		diagstmp := state.Rule.As(ctx, &stateRuleInput, basetypes.ObjectAsOptions{})
+		diags = append(diags, diagstmp...)
+	}
 	ruleInput.Name = types.StringValue(currentRule.Name)
 	ruleInput.Enabled = types.BoolValue(currentRule.Enabled)
 	if currentRule.Description == "" {
@@ -139,7 +144,13 @@ func hydrateIfwRuleState(
 
 	// /// /// /// /// start Rule -> Service // /// /// /// /// /
 	if len(currentRule.Service.Custom) == 0 && len(currentRule.Service.Standard) == 0 {
-		ruleInput.Service = types.ObjectNull(IfwServiceAttrTypes)
+		// Preserve prior known non-null service shape for backward compatibility.
+		// Some existing states carry an object with null nested fields instead of null.
+		if !stateRuleInput.Service.IsUnknown() && !stateRuleInput.Service.IsNull() {
+			ruleInput.Service = stateRuleInput.Service
+		} else {
+			ruleInput.Service = types.ObjectNull(IfwServiceAttrTypes)
+		}
 	} else {
 		curRuleServiceObj, diagstmp := types.ObjectValue(
 			IfwServiceAttrTypes,
@@ -387,14 +398,9 @@ func hydrateIfwRuleState(
 	}
 
 	configuredActivePeriod := PolicyPolicyInternetFirewallPolicyRulesRuleActivePeriod{}
-	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		stateRuleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
-		diagstmp = state.Rule.As(ctx, &stateRuleInput, basetypes.ObjectAsOptions{})
+	if !stateRuleInput.ActivePeriod.IsNull() && !stateRuleInput.ActivePeriod.IsUnknown() {
+		diagstmp = stateRuleInput.ActivePeriod.As(ctx, &configuredActivePeriod, basetypes.ObjectAsOptions{})
 		diags = append(diags, diagstmp...)
-		if !stateRuleInput.ActivePeriod.IsNull() && !stateRuleInput.ActivePeriod.IsUnknown() {
-			diagstmp = stateRuleInput.ActivePeriod.As(ctx, &configuredActivePeriod, basetypes.ObjectAsOptions{})
-			diags = append(diags, diagstmp...)
-		}
 	}
 
 	// If API returned nil but we have configured values in state, preserve them
