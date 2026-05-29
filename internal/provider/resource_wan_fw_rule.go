@@ -53,7 +53,7 @@ func (r *wanFwRuleResource) Metadata(_ context.Context, req resource.MetadataReq
 //nolint:funlen
 func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).",
+		Description: "The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).",
 		Attributes: map[string]schema.Attribute{
 			"at": schema.SingleNestedAttribute{
 				Description: "Position of the rule in the policy",
@@ -120,14 +120,14 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					// 	},
 					// },
 					"action": schema.StringAttribute{
-						Description: "The action applied by the Wan Firewall if the rule is matched (https:// api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
+						Description: "The action applied by the Wan Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT"),
 						},
 					},
 					"direction": schema.StringAttribute{
-						Description: "Define the direction on which the rule is applied (https:// api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)",
+						Description: "Define the direction on which the rule is applied (https://api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf("TO", "BOTH"),
@@ -1009,7 +1009,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"connection_origin": schema.StringAttribute{
-						Description: "Connection origin of the traffic (https:// api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
+						Description: "Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)",
 						Optional:    true,
 						Required:    false,
 						PlanModifiers: []planmodifier.String{
@@ -1175,7 +1175,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					},
 					"device_os": schema.ListAttribute{
 						ElementType: types.StringType,
-						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
+						Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 						Optional:    true,
 						Required:    false,
 						Validators: []validator.List{
@@ -1548,7 +1548,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											},
 										},
 										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)",
+											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
 											Required:    false,
 											Optional:    true,
 										},
@@ -1595,7 +1595,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										Default:  booldefault.StaticBool(false),
 									},
 									"frequency": schema.StringAttribute{
-										Description: "Returns data for the alert frequency (https:// api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
+										Description: "Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)",
 										Optional:    true,
 										Required:    false,
 										Validators: []validator.String{
@@ -1726,7 +1726,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						},
 						Attributes: map[string]schema.Attribute{
 							"active_on": schema.StringAttribute{
-								Description: "Define when the rule is active (https:// api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
+								Description: "Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)",
 								Required:    false,
 								Optional:    true,
 								Computed:    true,
@@ -1777,7 +1777,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									},
 									"days": schema.ListAttribute{
 										ElementType: types.StringType,
-										Description: "Custom Recurring Days - (https:// api.catonetworks.com/documentation/#definition-DayOfWeek)",
+										Description: "Custom Recurring Days - (https://api.catonetworks.com/documentation/#definition-DayOfWeek)",
 										Required:    false,
 										Optional:    true,
 										Validators: []validator.List{
@@ -2832,7 +2832,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								},
 								"device_os": schema.ListAttribute{
 									ElementType: types.StringType,
-									Description: "Source device OS matching criteria for the exception. (https:// api.catonetworks.com/documentation/#definition-OperatingSystem)",
+									Description: "Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)",
 									Optional:    true,
 									Required:    false,
 									PlanModifiers: []planmodifier.List{

@@ -28,6 +28,7 @@ var (
 const (
 	ifwRulePositionFirstInSection = "FIRST_IN_SECTION"
 	ifwRulePositionAfterRule      = "AFTER_RULE"
+	reorderPolicyAPIErrorMsg      = "reorder policy failed with api error"
 )
 
 func NewIfwRulesIndexResource() resource.Resource {
@@ -69,6 +70,17 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Required:    false,
 							Optional:    true,
 							Computed:    true,
+						},
+						"index_in_parent": schema.Int64Attribute{
+							Description: "Index value remapped within parent sub-policy rule",
+							Required:    false,
+							Optional:    true,
+							Computed:    true,
+						},
+						"parent_rule_name": schema.StringAttribute{
+							Description: "Parent sub-policy rule name for sub-rules",
+							Required:    false,
+							Optional:    true,
 						},
 						"section_name": schema.StringAttribute{
 							Description: "IFW section name housing rule",
@@ -131,6 +143,8 @@ var IfwRuleIndexResourceObjectTypes = types.ObjectType{AttrTypes: IfwRuleIndexRe
 var IfwRuleIndexResourceAttrTypes = map[string]attr.Type{
 	"id":               types.StringType,
 	"index_in_section": types.Int64Type,
+	"index_in_parent":  types.Int64Type,
+	"parent_rule_name": types.StringType,
 	"section_name":     types.StringType,
 	"rule_name":        types.StringType,
 	"description":      types.StringType,
@@ -276,6 +290,8 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 				map[string]attr.Value{
 					"id":               types.StringValue(ruleIDMap[ruleName]),
 					"index_in_section": existingRule.IndexInSection,                     // Preserve planned value
+					"index_in_parent":  existingRule.IndexInParent,                      // Preserve planned value
+					"parent_rule_name": existingRule.ParentRuleName,                     // Preserve planned value
 					"section_name":     existingRule.SectionName,                        // Preserve planned value
 					"rule_name":        existingRule.RuleName,                           // Preserve planned value
 					"description":      types.StringValue(ruleDescriptionMap[ruleName]), // Update computed value
@@ -373,8 +389,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		}
 	}
 
-	listOfSectionNames := make([]string, 0)
-
 	// maps section_name -> sectionID
 	// initially used to find ID of Default section
 	sectionIDList := make(map[string]string)
@@ -454,7 +468,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 	// create the sections from the list provided following the section ID provided in firstSectionID
 	for _, workingSectionName := range sectionListFromPlan {
-		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
 		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
 			ID: sectionIDList[workingSectionName.SectionName],
 		}
@@ -544,6 +557,8 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 			rulenDataTmp := IfwRulesRuleDataIndex{
 				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
+				IndexInParent:  planSourceRuleIndex.IndexInParent.ValueInt64(),
+				ParentRuleName: planSourceRuleIndex.ParentRuleName.ValueString(),
 				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
 				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
 				Description:    planSourceRuleIndex.Description.ValueString(),
@@ -558,28 +573,61 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			sectionIndexMap[section.SectionName] = section.SectionIndex
 		}
 
-		// Sort rules by section index first, then by IndexInSection to ensure proper ordering
+		// Sort entries so deterministic order is preserved for:
+		// - top-level rules: section index + index_in_section
+		// - sub-rules: parent_rule_name + index_in_parent
 		sort.Slice(ruleListFromPlan, func(i, j int) bool {
-			// First sort by section index (not alphabetical section name), then by index within section
+			isSubI := ruleListFromPlan[i].ParentRuleName != ""
+			isSubJ := ruleListFromPlan[j].ParentRuleName != ""
+			if isSubI != isSubJ {
+				return !isSubI // keep top-level rules first
+			}
+			if isSubI {
+				if ruleListFromPlan[i].ParentRuleName != ruleListFromPlan[j].ParentRuleName {
+					return ruleListFromPlan[i].ParentRuleName < ruleListFromPlan[j].ParentRuleName
+				}
+				return ruleListFromPlan[i].IndexInParent < ruleListFromPlan[j].IndexInParent
+			}
 			if ruleListFromPlan[i].SectionName != ruleListFromPlan[j].SectionName {
 				return sectionIndexMap[ruleListFromPlan[i].SectionName] < sectionIndexMap[ruleListFromPlan[j].SectionName]
 			}
 			return ruleListFromPlan[i].IndexInSection < ruleListFromPlan[j].IndexInSection
 		})
 
-		ruleNameIDData, err := r.client.catov2.PolicyInternetFirewallRulesIndex(ctx, r.client.AccountId)
+		fullPolicy, err := r.client.catov2.PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API PolicyInternetFirewallRulesIndex error",
+				"Catov2 API PolicyInternetFirewall error",
 				err.Error(),
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 		ruleNameIDMap := make(map[string]string)
-
-		// create map of IFW rule names from the API to their IDs for easy lookup
-		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.InternetFirewall.Policy.Rules {
-			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
+		topLevelRuleIDsBySection := make(map[string][]string)
+		topLevelRuleIDBySectionAndName := make(map[string]string)
+		topLevelRuleIDByName := make(map[string]string)
+		subRuleIDsByParent := make(map[string][]string)
+		subRuleIDByParentAndName := make(map[string]string)
+		currentSubPolicyParentID := ""
+		for _, apiRulePayload := range fullPolicy.Policy.InternetFirewall.Policy.Rules {
+			apiRule := apiRulePayload.Rule
+			ruleNameIDMap[apiRule.Name] = apiRule.ID
+			if apiRule.Section.ID != "" {
+				topLevelRuleIDsBySection[apiRule.Section.Name] = append(topLevelRuleIDsBySection[apiRule.Section.Name], apiRule.ID)
+				topLevelRuleIDBySectionAndName[apiRule.Section.Name+"\x00"+apiRule.Name] = apiRule.ID
+				topLevelRuleIDByName[apiRule.Name] = apiRule.ID
+				if apiRule.Action == cato_models.InternetFirewallActionEnumSubPolicy {
+					currentSubPolicyParentID = apiRule.ID
+				} else {
+					currentSubPolicyParentID = ""
+				}
+				continue
+			}
+			if currentSubPolicyParentID == "" {
+				continue
+			}
+			subRuleIDsByParent[currentSubPolicyParentID] = append(subRuleIDsByParent[currentSubPolicyParentID], apiRule.ID)
+			subRuleIDByParentAndName[currentSubPolicyParentID+"\x00"+apiRule.Name] = apiRule.ID
 		}
 
 		tflog.Debug(ctx, "Processing rules in correct order", map[string]interface{}{
@@ -587,69 +635,133 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			"ruleNameIDMap":    utils.InterfaceToJSONString(ruleNameIDMap),
 		})
 
-		// Move rules to their correct positions by processing them in section order
-		for _, sectionNameItem := range listOfSectionNames {
-			tflog.Debug(ctx, "Processing section", map[string]interface{}{
-				"sectionNameItem": sectionNameItem,
-			})
-
-			// Create maps for easier processing
-			mapRuleIndexToRuleName := make(map[int64]string)
-			mapRuleIndexToSectionName := make(map[int64]string)
-
-			// Build index maps for current section
-			for _, ruleItemFromPlan := range ruleListFromPlan {
-				if ruleItemFromPlan.SectionName == sectionNameItem {
-					mapRuleIndexToRuleName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.RuleName
-					mapRuleIndexToSectionName[ruleItemFromPlan.IndexInSection] = ruleItemFromPlan.SectionName
-				}
-			}
-
-			// Move rules within this section to their correct positions
-			currentRuleID := ""
-			for x := 1; x < len(mapRuleIndexToRuleName)+1; x++ {
-				toPosition := &cato_models.PolicyRulePositionInput{}
-				if x == 1 {
-					pos := ifwRulePositionFirstInSection
-					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					firstSectionID := sectionIDList[mapRuleIndexToSectionName[1]]
-					toPosition.Ref = &firstSectionID
-				} else {
-					pos := ifwRulePositionAfterRule
-					toPosition.Position = (*cato_models.PolicyRulePositionEnum)(&pos)
-					currentRuleID = ruleNameIDMap[mapRuleIndexToRuleName[int64(x)-1]]
-					toPosition.Ref = &currentRuleID
-				}
-
-				moveRuleConfig := cato_models.PolicyMoveRuleInput{
-					ID: ruleNameIDMap[mapRuleIndexToRuleName[int64(x)]],
-					To: toPosition,
-				}
-
-				tflog.Debug(ctx, "Moving rule", map[string]interface{}{
-					"ruleName":   mapRuleIndexToRuleName[int64(x)],
-					"ruleIndex":  x,
-					"moveConfig": utils.InterfaceToJSONString(moveRuleConfig),
-				})
-
-				ruleMoveAPIData, err := r.client.catov2.PolicyInternetFirewallMoveRule(
-					ctx,
-					&cato_models.InternetFirewallPolicyMutationInput{},
-					moveRuleConfig,
-					r.client.AccountId,
-				)
-				if err != nil {
-					diags = append(diags, diag.NewErrorDiagnostic(
-						"Catov2 API PolicyInternetFirewallMoveRule error",
-						err.Error(),
+		plannedRuleIDsBySection := make(map[string][]string)
+		plannedSubRuleIDsByParent := make(map[string][]string)
+		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(sectionIndexAPIData.Policy.InternetFirewall.Policy.Sections))
+		for _, ruleItemFromPlan := range ruleListFromPlan {
+			if ruleItemFromPlan.ParentRuleName != "" {
+				parentRuleID := topLevelRuleIDByName[ruleItemFromPlan.ParentRuleName]
+				if parentRuleID == "" {
+					diags = append(diags, diag.NewWarningDiagnostic(
+						"Skipped sub-rule in IF reorder",
+						"Parent sub-policy rule '"+ruleItemFromPlan.ParentRuleName+"' was not found for sub-rule '"+ruleItemFromPlan.RuleName+"'.",
 					))
-					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+					continue
 				}
-
-				tflog.Debug(ctx, "Rule move result", map[string]interface{}{
-					"response": utils.InterfaceToJSONString(ruleMoveAPIData),
-				})
+				subRuleID := subRuleIDByParentAndName[parentRuleID+"\x00"+ruleItemFromPlan.RuleName]
+				if subRuleID == "" {
+					diags = append(diags, diag.NewWarningDiagnostic(
+						"Skipped sub-rule in IF reorder",
+						"Sub-rule '"+ruleItemFromPlan.RuleName+"' was not found under parent '"+ruleItemFromPlan.ParentRuleName+"'.",
+					))
+					continue
+				}
+				plannedSubRuleIDsByParent[parentRuleID] = append(plannedSubRuleIDsByParent[parentRuleID], subRuleID)
+				continue
 			}
+			ruleID, ok := topLevelRuleIDBySectionAndName[ruleItemFromPlan.SectionName+"\x00"+ruleItemFromPlan.RuleName]
+			if !ok {
+				diags = append(diags, diag.NewWarningDiagnostic(
+					"Skipped rule in IF reorder",
+					"Rule '"+ruleItemFromPlan.RuleName+"' was not found as a top-level rule in section '"+ruleItemFromPlan.SectionName+"'.",
+				))
+				continue
+			}
+			plannedRuleIDsBySection[ruleItemFromPlan.SectionName] = append(plannedRuleIDsBySection[ruleItemFromPlan.SectionName], ruleID)
+		}
+
+		for _, section := range sectionIndexAPIData.Policy.InternetFirewall.Policy.Sections {
+			sectionName := section.Section.Name
+			sectionRuleIDs := topLevelRuleIDsBySection[sectionName]
+			if plannedIDs := plannedRuleIDsBySection[sectionName]; len(plannedIDs) > 0 {
+				plannedSet := make(map[string]struct{}, len(plannedIDs))
+				for _, id := range plannedIDs {
+					plannedSet[id] = struct{}{}
+				}
+				remaining := make([]string, 0, len(sectionRuleIDs))
+				for _, id := range sectionRuleIDs {
+					if _, managed := plannedSet[id]; managed {
+						continue
+					}
+					remaining = append(remaining, id)
+				}
+				sectionRuleIDs = append(plannedIDs, remaining...)
+			}
+
+			reorderRules := make([]*cato_models.PolicyReorderRuleInput, 0, len(sectionRuleIDs))
+			for _, ruleID := range sectionRuleIDs {
+				reorderRule := &cato_models.PolicyReorderRuleInput{
+					Ref: &cato_models.PolicyElementRefInput{
+						By:    cato_models.ObjectRefByID,
+						Input: ruleID,
+					},
+				}
+				if plannedSubRules := plannedSubRuleIDsByParent[ruleID]; len(plannedSubRules) > 0 {
+					plannedSet := make(map[string]struct{}, len(plannedSubRules))
+					for _, id := range plannedSubRules {
+						plannedSet[id] = struct{}{}
+					}
+					remainingSubRules := make([]string, 0, len(subRuleIDsByParent[ruleID]))
+					for _, id := range subRuleIDsByParent[ruleID] {
+						if _, managed := plannedSet[id]; managed {
+							continue
+						}
+						remainingSubRules = append(remainingSubRules, id)
+					}
+					finalSubRuleIDs := append(plannedSubRules, remainingSubRules...)
+					reorderRule.SubRules = make([]*cato_models.PolicyReorderSubRuleInput, 0, len(finalSubRuleIDs))
+					for _, subRuleID := range finalSubRuleIDs {
+						reorderRule.SubRules = append(reorderRule.SubRules, &cato_models.PolicyReorderSubRuleInput{
+							Ref: &cato_models.PolicyElementRefInput{
+								By:    cato_models.ObjectRefByID,
+								Input: subRuleID,
+							},
+						})
+					}
+				}
+				reorderRules = append(reorderRules, reorderRule)
+			}
+
+			reorderSections = append(reorderSections, &cato_models.PolicyReorderSectionInput{
+				Ref: &cato_models.PolicyElementRefInput{
+					By:    cato_models.ObjectRefByID,
+					Input: section.Section.ID,
+				},
+				Rules: reorderRules,
+			})
+		}
+		reorderInput := cato_models.PolicyReorderInput{
+			Sections: reorderSections,
+		}
+
+		reorderResult, err := r.client.catov2.PolicyInternetFirewallReorderPolicy(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			reorderInput,
+			r.client.AccountId,
+		)
+		if err != nil {
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"Catov2 API PolicyInternetFirewallReorderPolicy error",
+				err.Error(),
+			))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+		}
+		reorderPayload := reorderResult.GetPolicy().GetInternetFirewall().GetReorderPolicy()
+		if reorderPayload != nil && reorderPayload.GetStatus() != nil && *reorderPayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+			apiErrors := reorderPayload.GetErrors()
+			if len(apiErrors) > 0 {
+				errMsg := reorderPolicyAPIErrorMsg
+				if apiErrors[0].GetErrorMessage() != nil {
+					errMsg = *apiErrors[0].GetErrorMessage()
+				}
+				err := errors.New(errMsg)
+				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewallReorderPolicy error", err.Error()))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+			}
+			err := errors.New("reorder policy failed")
+			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewallReorderPolicy error", err.Error()))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 
 		// Now create the rule objects map with proper IDs from the API
@@ -660,6 +772,8 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 				map[string]attr.Value{
 					"id":               types.StringValue(ruleID),
 					"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
+					"index_in_parent":  types.Int64Value(ruleFromPlan.IndexInParent),
+					"parent_rule_name": types.StringValue(ruleFromPlan.ParentRuleName),
 					"section_name":     types.StringValue(ruleFromPlan.SectionName),
 					"rule_name":        types.StringValue(ruleFromPlan.RuleName),
 					"description":      types.StringValue(ruleFromPlan.Description),

@@ -485,8 +485,18 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 		// setting destination
 		if !ruleInput.Destination.IsUnknown() && !ruleInput.Destination.IsNull() {
-			ruleDestinationInput := &cato_models.InternetFirewallDestinationInput{}
-			ruleDestinationUpdateInput := &cato_models.InternetFirewallDestinationUpdateInput{}
+			ruleDestinationInput := &cato_models.InternetFirewallDestinationInput{
+				Containers: &cato_models.InternetFirewallContainerInput{
+					FqdnContainer:           make([]*cato_models.FqdnContainerRefInput, 0),
+					IPAddressRangeContainer: make([]*cato_models.IPAddressRangeContainerRefInput, 0),
+				},
+			}
+			ruleDestinationUpdateInput := &cato_models.InternetFirewallDestinationUpdateInput{
+				Containers: &cato_models.InternetFirewallContainerUpdateInput{
+					FqdnContainer:           make([]*cato_models.FqdnContainerRefInput, 0),
+					IPAddressRangeContainer: make([]*cato_models.IPAddressRangeContainerRefInput, 0),
+				},
+			}
 
 			destinationInput := PolicyPolicyInternetFirewallPolicyRulesRuleDestination{}
 			diags = append(diags, ruleInput.Destination.As(ctx, &destinationInput, basetypes.ObjectAsOptions{})...)
@@ -736,6 +746,15 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 		}
 
 		// setting service
+		rootAddRule.Service = &cato_models.InternetFirewallServiceTypeInput{
+			Standard: make([]*cato_models.ServiceRefInput, 0),
+			Custom:   make([]*cato_models.CustomServiceInput, 0),
+		}
+		rootUpdateRule.Service = &cato_models.InternetFirewallServiceTypeUpdateInput{
+			Standard: make([]*cato_models.ServiceRefInput, 0),
+			Custom:   make([]*cato_models.CustomServiceInput, 0),
+		}
+
 		if !ruleInput.Service.IsNull() {
 			ruleServiceInput := &cato_models.InternetFirewallServiceTypeInput{}
 			ruleServiceUpdateInput := &cato_models.InternetFirewallServiceTypeUpdateInput{}
@@ -1916,6 +1935,14 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 		rootAddRule.Action = cato_models.InternetFirewallActionEnum(ruleInput.Action.ValueString())
 		rootUpdateRule.Action = (*cato_models.InternetFirewallActionEnum)(ruleInput.Action.ValueStringPointer())
+		rootAddRule.ActionConfig = &cato_models.InternetFirewallActionConfigInput{
+			RbiProfile:       make([]*cato_models.RbiProfileRefInput, 0),
+			UserNotification: make([]*cato_models.UserNotificationTemplateRefInput, 0),
+		}
+		rootUpdateRule.ActionConfig = &cato_models.InternetFirewallActionConfigUpdateInput{
+			RbiProfile:       make([]*cato_models.RbiProfileRefInput, 0),
+			UserNotification: make([]*cato_models.UserNotificationTemplateRefInput, 0),
+		}
 
 		if !ruleInput.ConnectionOrigin.IsNull() && !ruleInput.ConnectionOrigin.IsUnknown() {
 			rootAddRule.ConnectionOrigin = cato_models.ConnectionOriginEnum(ruleInput.ConnectionOrigin.ValueString())
@@ -1924,6 +1951,25 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			rootAddRule.ConnectionOrigin = cato_models.ConnectionOriginEnum(defaultConnectionOriginAny)
 			connectionOrigin := defaultConnectionOriginAny
 			rootUpdateRule.ConnectionOrigin = (*cato_models.ConnectionOriginEnum)(&connectionOrigin)
+		}
+
+		// userAttributes became required by backend validation; send explicit defaults.
+		rootAddRule.UserAttributes = &cato_models.InternetFirewallUserAttributesInput{
+			RiskScore: &cato_models.RiskScoreConditionInput{
+				Category: cato_models.RiskScoreCategoryAny,
+				Operator: cato_models.RiskScoreOperatorGte,
+			},
+			UserConfidenceLevel: nil,
+		}
+
+		riskScoreCategory := cato_models.RiskScoreCategoryAny
+		riskScoreOperator := cato_models.RiskScoreOperatorGte
+		rootUpdateRule.UserAttributes = &cato_models.InternetFirewallUserAttributesUpdateInput{
+			RiskScore: &cato_models.RiskScoreConditionUpdateInput{
+				Category: &riskScoreCategory,
+				Operator: &riskScoreOperator,
+			},
+			UserConfidenceLevel: nil,
 		}
 	}
 

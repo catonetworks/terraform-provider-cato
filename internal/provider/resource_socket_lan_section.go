@@ -42,7 +42,7 @@ func (r *socketLanSectionResource) Schema(_ context.Context, _ resource.SchemaRe
 	resp.Schema = schema.Schema{
 		Description: "The `cato_socket_lan_section` resource contains the configuration parameters necessary to add a Socket LAN " +
 			"firewall section. Documentation for the underlying API used in this resource can be found at " +
-			"[mutation.policy.socketLan.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).",
+			"[mutation.policy.socketLan.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Section ID",
