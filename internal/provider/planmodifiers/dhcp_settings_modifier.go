@@ -14,6 +14,8 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
+var dhcpSettingNull = types.ObjectNull(tf.DhcpSettingsAttrTypes)
+
 // DHCPSettingsModifier returns a plan modifier for DHCP settings objects
 // handle ID/Name for relay_group reference
 func DHCPSettingsModifier() planmodifier.Object {
@@ -35,101 +37,137 @@ func (m dhcpSettingsModifier) MarkdownDescription(ctx context.Context) string {
 
 // PlanModifyString implements the plan modification logic.
 // If DHCP type is DHCP_RELAY, ensures that the relay group reference is properly handled (ID/Name)
-//
-//nolint:gocyclo
 func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
 	var cfg, state *tf.DhcpSettings
-	var plan tf.DhcpSettings
 
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
 	if req.ConfigValue.IsUnknown() {
 		return
 	}
+
 	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &cfg, basetypes.ObjectAsOptions{})) {
 		return
 	}
-	if cfg == nil { // removed from the config
-		resp.PlanValue = m.makeUnknownValue(ctx, &resp.Diagnostics) // API may return a value even if the config is removed
+	if cfg == nil { // removed from the config, use the default
+		resp.PlanValue = m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeAccountDefault), &resp.Diagnostics)
+		return
+	}
+	if !req.StateValue.IsNull() && utils.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
 		return
 	}
 
-	// If not DHCP_RELAY type, do nothing
+	// DHCPSettings configured - different rules depending on the DHCP type
 	dhcpType := cato_models.DhcpType(cfg.DhcpType.ValueString())
-	if dhcpType != cato_models.DhcpTypeDhcpRelay {
+	switch dhcpType {
+	case cato_models.DhcpTypeDhcpRelay:
+		resp.PlanValue = m.planDhcpRelay(ctx, state, cfg, &resp.Diagnostics)
+		return
+	case cato_models.DhcpTypeDhcpRange:
+		resp.PlanValue = m.planDhcpRange(ctx, state, cfg, &resp.Diagnostics)
+		return
+	case cato_models.DhcpTypeAccountDefault, cato_models.DhcpTypeDhcpDisabled:
+		resp.PlanValue = m.planDhcpEmpty(ctx, dhcpType.String(), &resp.Diagnostics)
+		return
+	default:
+		resp.Diagnostics.AddError("Unsupported DHCP type", "Unknown DHCP type: "+dhcpType.String())
 		return
 	}
+}
 
+func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
 	// Ensure there is exactly one name or id in the config
 	if cfg.RelayGroupName.IsNull() && cfg.RelayGroupID.IsNull() {
-		resp.Diagnostics.AddError("DHCP configuration error in "+req.Path.String(), "'relay_group_name' or 'relay_group_id' "+
+		diags.AddError("DHCP configuration error in dhcp_settings", "'relay_group_name' or 'relay_group_id' "+
 			"must be defined in the config ")
+		return dhcpSettingNull
 	}
 	if !cfg.RelayGroupName.IsNull() && !cfg.RelayGroupID.IsNull() {
-		resp.Diagnostics.AddError("DHCP configuration error in "+req.Path.String(),
+		diags.AddError("DHCP configuration error in dhcp_settings",
 			fmt.Sprintf("only one of 'relay_group_name' or 'relay_group_id' can be specified in the config, "+
 				"[relay_group_id:%q, relay_group_name:%q]",
 				cfg.RelayGroupID.ValueString(), cfg.RelayGroupName.ValueString()))
+		return dhcpSettingNull
 	}
 
-	// Do nothing if there is no state value.
-	if req.StateValue.IsNull() {
-		return
-	}
-
-	if utils.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
-		return
-	}
-	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &plan, basetypes.ObjectAsOptions{})) {
-		return
-	}
-
-	fmt.Println(plan) // TODO: is it filled in?
-
-	// Name is configured
-	if !cfg.RelayGroupName.IsNull() {
-		// if Relay group name is in the state and it is the same, use the known ID value (if available)
-		if state != nil && utils.HasValue(state.RelayGroupName) && state.RelayGroupName.ValueString() == cfg.RelayGroupName.ValueString() {
-			resp.PlanValue = req.StateValue
-			return
-		}
-		// Name is different -> set ID as unknown
-		plan.RelayGroupName = cfg.RelayGroupName
-		plan.RelayGroupID = types.StringUnknown()
-		planObj, diag := types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, plan)
-		if utils.CheckErr(&resp.Diagnostics, diag) {
-			return
-		}
-		resp.PlanValue = planObj
-		return
-	}
-
-	// ID is configured
-	// if ID is in the state and it is the same, use the known Name value (if available)
-	if state != nil && utils.HasValue(state.RelayGroupID) && state.RelayGroupID.ValueString() == cfg.RelayGroupID.ValueString() {
-		resp.PlanValue = req.StateValue
-		return
-	}
-	// ID is different -> set Name as unknown
-	plan.RelayGroupName = types.StringUnknown()
-	plan.RelayGroupID = cfg.RelayGroupID
-	planObj, diag := types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, plan)
-	if utils.CheckErr(&resp.Diagnostics, diag) {
-		return
-	}
-	resp.PlanValue = planObj
-}
-func (m dhcpSettingsModifier) makeUnknownValue(ctx context.Context, diags *diag.Diagnostics) types.Object {
 	plan := tf.DhcpSettings{
-		DhcpType:              types.StringUnknown(),
-		IPRange:               types.StringUnknown(),
+		DhcpType:              cfg.DhcpType,       // required
+		IPRange:               types.StringNull(), // only for DHCP_RANGE
+		DhcpMicrosegmentation: types.BoolNull(),   // only for DHCP_RANGE
 		RelayGroupID:          types.StringUnknown(),
 		RelayGroupName:        types.StringUnknown(),
-		DhcpMicrosegmentation: types.BoolUnknown(),
+	}
+	// RelayGroup Name configured
+	if !cfg.RelayGroupName.IsNull() {
+		plan.RelayGroupName = cfg.RelayGroupName
+		// if the name is the same as state, use known ID value (if available)
+		if state != nil && utils.HasValue(state.RelayGroupName) &&
+			state.RelayGroupName.ValueString() == cfg.RelayGroupName.ValueString() {
+			plan.RelayGroupID = state.RelayGroupID
+		}
+	}
+	if !cfg.RelayGroupID.IsNull() {
+		plan.RelayGroupID = cfg.RelayGroupID
+		// if the id is the same as state, use known Name value (if available)
+		if state != nil && utils.HasValue(state.RelayGroupID) &&
+			state.RelayGroupID.ValueString() == cfg.RelayGroupID.ValueString() {
+			plan.RelayGroupName = state.RelayGroupName
+		}
 	}
 
-	planObj, diag := types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, plan)
-	if utils.CheckErr(diags, diag) {
+	return m.makePlanObj(ctx, plan, diags)
+}
+
+func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
+	// Ensure IP Range is provided for DHCP_RANGE type
+	if cfg.IPRange.IsNull() {
+		diags.AddError("DHCP configuration error in dhcp_settings", "'ip_range' must be defined in the config ")
+		return dhcpSettingNull
+	}
+	myState := state
+	if myState == nil {
+		myState = &tf.DhcpSettings{}
+	}
+
+	plan := tf.DhcpSettings{
+		DhcpType:              cfg.DhcpType, // required
+		IPRange:               cfg.IPRange,  // required for DHCP_RANGE
+		DhcpMicrosegmentation: m.getOptionalBoolValue(cfg.DhcpMicrosegmentation, myState.DhcpMicrosegmentation, state != nil),
+		RelayGroupID:          types.StringNull(),
+		RelayGroupName:        types.StringNull(),
+	}
+
+	return m.makePlanObj(ctx, plan, diags)
+}
+
+func (m dhcpSettingsModifier) planDhcpEmpty(ctx context.Context, dhcpType string, diags *diag.Diagnostics) types.Object {
+	plan := tf.DhcpSettings{
+		DhcpType:              types.StringValue(dhcpType),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+		RelayGroupID:          types.StringNull(),
+		RelayGroupName:        types.StringNull(),
+	}
+
+	return m.makePlanObj(ctx, plan, diags)
+}
+
+func (m dhcpSettingsModifier) makePlanObj(ctx context.Context, plan tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
+	planObj, objDiag := types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, plan)
+	if utils.CheckErr(diags, objDiag) {
 		return types.ObjectNull(tf.DhcpSettingsAttrTypes)
 	}
 	return planObj
+}
+
+func (m dhcpSettingsModifier) getOptionalBoolValue(cfgVal, stateVal types.Bool, isState bool) types.Bool {
+	// if it is in the config, use the config value
+	if !cfgVal.IsNull() {
+		return cfgVal
+	}
+	// if it is not in the config but is in state, use the state value
+	if isState && !stateVal.IsNull() {
+		return stateVal
+	}
+	// otherwise return unknown - not in the state yet, but API can return it
+	return types.BoolUnknown()
 }

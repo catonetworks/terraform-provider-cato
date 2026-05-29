@@ -3,12 +3,12 @@
 page_title: "cato_tls_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_tls_section resource contains the configuration parameters necessary to add TLS Inspection section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at mutation.policy.tlsInspect.addSection() https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addSection.
+  The cato_tls_section resource contains the configuration parameters necessary to add TLS Inspection section (https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addSection).
 ---
 
 # cato_tls_section (Resource)
 
-The `cato_tls_section` resource contains the configuration parameters necessary to add TLS Inspection section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addSection).
+The `cato_tls_section` resource contains the configuration parameters necessary to add TLS Inspection section (https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addSection).
 
 ## Example Usage
 

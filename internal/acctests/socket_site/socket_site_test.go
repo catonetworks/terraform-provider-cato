@@ -304,6 +304,65 @@ func TestAccSocketSite_DHCP(t *testing.T) {
 	})
 }
 
+// TestAccSocketSite_Interface tests moving default interface
+func TestAccSocketSite_Interface(t *testing.T) {
+	acc.SkipByEnv(t)
+	t.Parallel()
+	mockSrv := accmock.NewMockServer(t, "TestAccSocketSite_Interface")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newsocketSiteCfg(t)
+	res := "cato_socket_site.interface"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				// Create the resource DHCP-RANGE
+				Config: cfg.getTfConfigInterface(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "7"),
+					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1700"),
+					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName),
+
+					resource.TestCheckResourceAttr(res, "native_range.%", "17"),
+					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.%", "5"),
+					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_microsegmentation", "false"),
+					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "DHCP_RANGE"),
+					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.ip_range", "192.168.150.10-192.168.150.22"),
+					resource.TestCheckResourceAttr(res, "native_range.interface_dest_type", "LAN"),
+					resource.TestCheckResourceAttrSet(res, "native_range.interface_id"),
+					resource.TestCheckResourceAttr(res, "native_range.interface_index", "INT_5"),
+					resource.TestCheckResourceAttr(res, "native_range.interface_name", "INT_5"),
+					resource.TestCheckResourceAttr(res, "native_range.local_ip", "192.168.150.1"),
+					resource.TestCheckResourceAttr(res, "native_range.mdns_reflector", "false"),
+					resource.TestCheckResourceAttrSet(res, "native_range.native_network_lan_interface_id"),
+					resource.TestCheckResourceAttr(res, "native_range.native_network_range", "192.168.150.0/24"),
+					resource.TestCheckResourceAttrSet(res, "native_range.native_network_range_id"),
+					resource.TestCheckResourceAttr(res, "native_range.range_name", "Native Range"),
+					resource.TestCheckResourceAttr(res, "native_range.range_type", "NATIVE"),
+					resource.TestCheckResourceAttr(res, "native_range.translated_subnet", "192.168.150.0/24"),
+
+					resource.TestCheckResourceAttr(res, "site_location.%", "5"),
+					resource.TestCheckResourceAttr(res, "site_location.country_code", "FR"),
+					resource.TestCheckResourceAttr(res, "site_location.timezone", "Europe/Paris"),
+					resource.TestCheckResourceAttr(res, "site_type", "BRANCH"),
+				),
+			},
+			{
+				// Test import mode
+				ImportState:  true,
+				ResourceName: res,
+			},
+			// TODO: test update & fix
+		},
+	})
+}
+
 type socketSiteCfg struct {
 	resName         string
 	connTypes       []string
@@ -585,6 +644,64 @@ var socketSiteDhcpTFs = []string{
 			local_ip             = "192.168.140.1"
 			dhcp_settings = {
 				dhcp_type = "DHCP_DISABLED"
+			}
+		}
+
+		site_location = {
+			country_code = "FR"
+			timezone     = "Europe/Paris"
+		}
+	}`,
+}
+
+// ------------------------------------------------------------------
+// Interface cato_socket_site configurations
+// ------------------------------------------------------------------
+func (p socketSiteCfg) getTfConfigInterface(index int) string {
+	data := map[string]any{
+		"Name": p.resName,
+	}
+	return p.prepareTfCfg(data, socketSiteInterfaceTFs[index])
+}
+
+var socketSiteInterfaceTFs = []string{
+	// SOCKET_X1700 INT_5
+	`resource "cato_socket_site" "interface" {
+		name            = "{{.Name}}"
+		description     = "{{.Name}} description"
+		site_type       = "BRANCH"
+		connection_type = "SOCKET_X1700"
+
+		native_range = {
+			interface_index = "INT_5"
+			native_network_range = "192.168.150.0/24"
+			local_ip             = "192.168.150.1"
+			dhcp_settings = {
+				dhcp_type = "DHCP_RANGE"
+				ip_range  = "192.168.150.10-192.168.150.22"
+			}
+		}
+
+		site_location = {
+			country_code = "FR"
+			timezone     = "Europe/Paris"
+		}
+	}`,
+
+	// Update site type - INT_3
+	`resource "cato_socket_site" "interface" {
+		name            = "{{.Name}}"
+		description     = "{{.Name}} description"
+		site_type       = "BRANCH"
+		connection_type = "SOCKET_X1700"
+
+		native_range = {
+			interface_index = "INT_3"
+			native_network_range = "192.168.150.0/24"
+			local_ip             = "192.168.150.1"
+			dhcp_settings = {
+				dhcp_type = "DHCP_RANGE"
+				ip_range  = "192.168.150.10-192.168.150.22"
 			}
 		}
 

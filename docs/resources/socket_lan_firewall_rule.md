@@ -3,12 +3,12 @@
 page_title: "cato_socket_lan_firewall_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_socket_lan_firewall_rule resource contains the configuration parameters necessary to add a Socket LAN firewall rule (child rule under a network rule). Documentation for the underlying API used in this resource can be found at mutation.policy.socketLan.firewall.addRule() https://api.catonetworks.com/documentation/#mutation-policy.socketLan.firewall.addRule.
+  The cato_socket_lan_firewall_rule resource contains the configuration parameters necessary to add a Socket LAN firewall rule (child rule under a network rule). Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.firewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.firewall.addRule).
 ---
 
 # cato_socket_lan_firewall_rule (Resource)
 
-The `cato_socket_lan_firewall_rule` resource contains the configuration parameters necessary to add a Socket LAN firewall rule (child rule under a network rule). Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.firewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.socketLan.firewall.addRule).
+The `cato_socket_lan_firewall_rule` resource contains the configuration parameters necessary to add a Socket LAN firewall rule (child rule under a network rule). Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.firewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.firewall.addRule).
 
 ## Example Usage
 
@@ -631,7 +631,7 @@ Optional:
 Optional:
 
 - `enabled` (Boolean) Alert creation enabled
-- `frequency` (String) Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
+- `frequency` (String) Returns data for the alert frequency (https:// api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
 - `mailing_list` (Attributes Set) Returns data for the Mailing List that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--mailing_list))
 - `subscription_group` (Attributes Set) Returns data for the Subscription Group that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--subscription_group))
 - `webhook` (Attributes Set) Returns data for the Webhook that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--webhook))
@@ -732,7 +732,7 @@ Optional:
 
 - `port` (List of String) List of TCP/UDP port
 - `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--rule--service--custom--port_range))
-- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
+- `protocol` (String) IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)
 
 <a id="nestedatt--rule--service--custom--port_range"></a>
 ### Nested Schema for `rule.service.custom.port_range`
