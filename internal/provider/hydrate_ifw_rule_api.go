@@ -96,7 +96,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceHostInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.host", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.Host = append(ruleSourceInput.Host, &cato_models.HostRefInput{
@@ -120,7 +121,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceSiteInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.site", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.Site = append(ruleSourceInput.Site, &cato_models.SiteRefInput{
@@ -163,7 +165,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceGlobalIPRangeInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.global_ip_range", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.GlobalIPRange = append(ruleSourceInput.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
@@ -187,7 +190,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceNetworkInterfaceInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.network_interface", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.NetworkInterface = append(ruleSourceInput.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
@@ -211,7 +215,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceSiteNetworkSubnetInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.site_network_subnet", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.SiteNetworkSubnet = append(ruleSourceInput.SiteNetworkSubnet, &cato_models.SiteNetworkSubnetRefInput{
@@ -235,7 +240,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceFloatingSubnetInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.floating_subnet", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.FloatingSubnet = append(ruleSourceInput.FloatingSubnet, &cato_models.FloatingSubnetRefInput{
@@ -259,7 +265,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceUserInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.user", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.User = append(ruleSourceInput.User, &cato_models.UserRefInput{
@@ -283,7 +290,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceUsersGroupInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.users_group", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.UsersGroup = append(ruleSourceInput.UsersGroup, &cato_models.UsersGroupRefInput{
@@ -307,7 +315,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceGroupInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.group", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.Group = append(ruleSourceInput.Group, &cato_models.GroupRefInput{
@@ -331,7 +340,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceSystemGroupInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.source.system_group", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleSourceInput.SystemGroup = append(ruleSourceInput.SystemGroup, &cato_models.SystemGroupRefInput{
@@ -359,7 +369,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 				ObjectRefOutput, err := utils.TransformObjectRefInput(itemCountryInput)
 				if err != nil {
-					tflog.Error(ctx, err.Error())
+					diags = appendObjectRefTransformError(diags, "rule.country", err)
+					return hydrateAPIReturn, diags
 				}
 
 				rootAddRule.Country = append(rootAddRule.Country, &cato_models.CountryRefInput{
@@ -383,7 +394,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 				ObjectRefOutput, err := utils.TransformObjectRefInput(itemDeviceInput)
 				if err != nil {
-					tflog.Error(ctx, err.Error())
+					diags = appendObjectRefTransformError(diags, "rule.device", err)
+					return hydrateAPIReturn, diags
 				}
 
 				rootAddRule.Device = append(rootAddRule.Device, &cato_models.DeviceProfileRefInput{
@@ -599,7 +611,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationGlobalIPRangeInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.destination.global_ip_range", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleDestinationInput.GlobalIPRange = append(ruleDestinationInput.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
@@ -704,7 +717,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationCountryInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.destination.country", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleDestinationInput.Country = append(ruleDestinationInput.Country, &cato_models.CountryRefInput{
@@ -740,7 +754,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 					ObjectRefOutput, err := utils.TransformObjectRefInput(itemServiceStandardInput)
 					if err != nil {
-						tflog.Error(ctx, err.Error())
+						diags = appendObjectRefTransformError(diags, "rule.service.standard", err)
+						return hydrateAPIReturn, diags
 					}
 
 					ruleServiceInput.Standard = append(ruleServiceInput.Standard, &cato_models.ServiceRefInput{
@@ -869,7 +884,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 						ObjectRefOutput, err := utils.TransformObjectRefInput(itemAlertSubscriptionGroupInput)
 						if err != nil {
-							tflog.Error(ctx, err.Error())
+							diags = appendObjectRefTransformError(diags, "rule.tracking.alert.subscription_group", err)
+							return hydrateAPIReturn, diags
 						}
 
 						rootAddRule.Tracking.Alert.SubscriptionGroup = append(
@@ -896,7 +912,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 						ObjectRefOutput, err := utils.TransformObjectRefInput(itemAlertWebHookInput)
 						if err != nil {
-							tflog.Error(ctx, err.Error())
+							diags = appendObjectRefTransformError(diags, "rule.tracking.alert.webhook", err)
+							return hydrateAPIReturn, diags
 						}
 
 						rootAddRule.Tracking.Alert.Webhook = append(rootAddRule.Tracking.Alert.Webhook, &cato_models.SubscriptionWebhookRefInput{
@@ -921,7 +938,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 						ObjectRefOutput, err := utils.TransformObjectRefInput(itemAlertMailingListInput)
 						if err != nil {
-							tflog.Error(ctx, err.Error())
+							diags = appendObjectRefTransformError(diags, "rule.tracking.alert.mailing_list", err)
+							return hydrateAPIReturn, diags
 						}
 
 						rootAddRule.Tracking.Alert.MailingList = append(rootAddRule.Tracking.Alert.MailingList, &cato_models.SubscriptionMailingListRefInput{
@@ -1054,7 +1072,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceHostInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.host", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.Host = append(exceptionAddInput.Source.Host, &cato_models.HostRefInput{
@@ -1078,7 +1097,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceSiteInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.site", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.Site = append(exceptionAddInput.Source.Site, &cato_models.SiteRefInput{
@@ -1121,7 +1141,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceGlobalIPRangeInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.global_ip_range", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.GlobalIPRange = append(exceptionAddInput.Source.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
@@ -1145,7 +1166,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceNetworkInterfaceInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.network_interface", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.NetworkInterface = append(exceptionAddInput.Source.NetworkInterface, &cato_models.NetworkInterfaceRefInput{
@@ -1169,7 +1191,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceSiteNetworkSubnetInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.site_network_subnet", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.SiteNetworkSubnet = append(
@@ -1196,7 +1219,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceFloatingSubnetInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.floating_subnet", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.FloatingSubnet = append(exceptionAddInput.Source.FloatingSubnet, &cato_models.FloatingSubnetRefInput{
@@ -1220,7 +1244,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceUserInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.user", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.User = append(exceptionAddInput.Source.User, &cato_models.UserRefInput{
@@ -1244,7 +1269,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceUsersGroupInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.users_group", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.UsersGroup = append(exceptionAddInput.Source.UsersGroup, &cato_models.UsersGroupRefInput{
@@ -1268,7 +1294,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceGroupInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.group", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.Group = append(exceptionAddInput.Source.Group, &cato_models.GroupRefInput{
@@ -1292,7 +1319,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemSourceSystemGroupInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.source.system_group", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Source.SystemGroup = append(exceptionAddInput.Source.SystemGroup, &cato_models.SystemGroupRefInput{
@@ -1318,7 +1346,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 						ObjectRefOutput, err := utils.TransformObjectRefInput(itemCountryInput)
 						if err != nil {
-							tflog.Error(ctx, err.Error())
+							diags = appendObjectRefTransformError(diags, "rule.exceptions.country", err)
+							return hydrateAPIReturn, diags
 						}
 
 						exceptionAddInput.Country = append(exceptionAddInput.Country, &cato_models.CountryRefInput{
@@ -1343,7 +1372,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 						ObjectRefOutput, err := utils.TransformObjectRefInput(itemDeviceInput)
 						if err != nil {
-							tflog.Error(ctx, err.Error())
+							diags = appendObjectRefTransformError(diags, "rule.exceptions.device", err)
+							return hydrateAPIReturn, diags
 						}
 
 						exceptionAddInput.Device = append(exceptionAddInput.Device, &cato_models.DeviceProfileRefInput{
@@ -1560,7 +1590,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationGlobalIPRangeInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.destination.global_ip_range", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Destination.GlobalIPRange = append(exceptionAddInput.Destination.GlobalIPRange, &cato_models.GlobalIPRangeRefInput{
@@ -1671,7 +1702,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemDestinationCountryInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.destination.country", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Destination.Country = append(exceptionAddInput.Destination.Country, &cato_models.CountryRefInput{
@@ -1706,7 +1738,8 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 							ObjectRefOutput, err := utils.TransformObjectRefInput(itemServiceStandardInput)
 							if err != nil {
-								tflog.Error(ctx, err.Error())
+								diags = appendObjectRefTransformError(diags, "rule.exceptions.service.standard", err)
+								return hydrateAPIReturn, diags
 							}
 
 							exceptionAddInput.Service.Standard = append(exceptionAddInput.Service.Standard, &cato_models.ServiceRefInput{
