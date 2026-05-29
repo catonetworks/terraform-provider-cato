@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.81 (2026-05-29)
+
+### Fixed
+- Fixed internet firewall rule state drift for service, users_group, and bulk metadata handling.
+- Hardened internet firewall object-reference validation and improved service state compatibility.
+
 ## 0.0.80 (2026-05-28)
 
 ### Fixed
