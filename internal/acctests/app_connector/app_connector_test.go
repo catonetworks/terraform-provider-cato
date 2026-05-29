@@ -112,8 +112,8 @@ func TestAccAppConnector(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.automatic", "false"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.preferred_only", "false"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.primary.%", "2"),
-					resource.TestCheckResourceAttr(res, "preferred_pop_location.primary.id", cfg.locations[3].ID),
-					resource.TestCheckResourceAttr(res, "preferred_pop_location.primary.name", cfg.locations[3].Name),
+					resource.TestCheckResourceAttr(res, "preferred_pop_location.primary.id", cfg.locations[1].ID),
+					resource.TestCheckResourceAttr(res, "preferred_pop_location.primary.name", cfg.locations[1].Name),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.secondary.%", "2"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.secondary.id", cfg.locations[0].ID),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.secondary.name", cfg.locations[0].Name),
@@ -208,8 +208,8 @@ var appConnectorTFs = []string{`
 		preferred_pop_location = {
 			automatic      = false
 			preferred_only = false
-			primary        = { id = "{{(index .Location 3).ID}}" }
-			secondary      = { id = "{{(index .Location 0).ID}}" }
+			primary        = { name = "{{(index .Location 1).Name}}" }
+			secondary      = { name = "{{(index .Location 0).Name}}" }
 		}
 		type = "VIRTUAL"
 	}`,
