@@ -547,7 +547,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
 				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
 				Description:    planSourceRuleIndex.Description.ValueString(),
-				Enabled:        planSourceRuleIndex.Enabled.ValueBool(),
+				Enabled:        planSourceRuleIndex.Enabled,
 			}
 			ruleListFromPlan = append(ruleListFromPlan, rulenDataTmp)
 		}
@@ -663,7 +663,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 					"section_name":     types.StringValue(ruleFromPlan.SectionName),
 					"rule_name":        types.StringValue(ruleFromPlan.RuleName),
 					"description":      types.StringValue(ruleFromPlan.Description),
-					"enabled":          types.BoolValue(ruleFromPlan.Enabled),
+					"enabled":          ruleFromPlan.Enabled,
 				},
 			)
 			diags = append(diags, ruleDiags...)
