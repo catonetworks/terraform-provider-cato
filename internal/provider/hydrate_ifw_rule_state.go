@@ -58,6 +58,16 @@ func hydrateIfwRuleState(
 		},
 	)
 	diags = append(diags, diagstmp...)
+	curRuleSourceObjAttrs := curRuleSourceObj.Attributes()
+	if !stateRuleInput.Source.IsNull() && !stateRuleInput.Source.IsUnknown() {
+		stateSourceAttrs := stateRuleInput.Source.Attributes()
+		curRuleSourceObjAttrs["users_group"] = preserveNullIDNameIDSet(
+			curRuleSourceObjAttrs["users_group"].(types.Set),
+			stateSourceAttrs["users_group"].(types.Set),
+		)
+	}
+	curRuleSourceObj, diagstmp = types.ObjectValue(curRuleSourceObj.AttributeTypes(ctx), curRuleSourceObjAttrs)
+	diags = append(diags, diagstmp...)
 	ruleInput.Source = curRuleSourceObj
 	// /// /// /// /// end rule.source // /// /// /// /// /
 
@@ -152,11 +162,18 @@ func hydrateIfwRuleState(
 			ruleInput.Service = types.ObjectNull(IfwServiceAttrTypes)
 		}
 	} else {
+		customServiceValue := types.ListNull(CustomServiceObjectType)
+		if !stateRuleInput.Service.IsNull() && !stateRuleInput.Service.IsUnknown() {
+			if stateServiceCustom, ok := stateRuleInput.Service.Attributes()["custom"]; ok && !stateServiceCustom.IsUnknown() {
+				customServiceValue = stateServiceCustom.(types.List)
+			}
+		}
+
 		curRuleServiceObj, diagstmp := types.ObjectValue(
 			IfwServiceAttrTypes,
 			map[string]attr.Value{
 				"standard": parseNameIDList(ctx, currentRule.Service.Standard, "rule.service.standard"),
-				"custom":   types.ListValueMust(CustomServiceObjectType, []attr.Value{}),
+				"custom":   customServiceValue,
 			},
 		)
 		diags = append(diags, diagstmp...)
@@ -471,6 +488,39 @@ func hydrateIfwRuleState(
 	// /// /// /// /// end Rule -> ActivePeriod // /// /// /// /// /
 
 	return ruleInput
+}
+
+func preserveNullIDNameIDSet(apiSet types.Set, stateSet types.Set) types.Set {
+	if apiSet.IsNull() || apiSet.IsUnknown() || stateSet.IsNull() || stateSet.IsUnknown() {
+		return apiSet
+	}
+
+	stateByName := make(map[string]types.Object)
+	for _, stateElem := range stateSet.Elements() {
+		stateObj := stateElem.(types.Object)
+		name := stateObj.Attributes()["name"].(types.String).ValueString()
+		stateByName[name] = stateObj
+	}
+
+	apiElems := apiSet.Elements()
+	updatedElems := make([]attr.Value, 0, len(apiElems))
+	for _, apiElem := range apiElems {
+		apiObj := apiElem.(types.Object)
+		apiAttrs := apiObj.Attributes()
+		apiName := apiAttrs["name"].(types.String).ValueString()
+
+		if stateObj, ok := stateByName[apiName]; ok {
+			stateID := stateObj.Attributes()["id"].(types.String)
+			if stateID.IsNull() || stateID.IsUnknown() {
+				apiAttrs["id"] = stateID
+				apiObj = types.ObjectValueMust(NameIDAttrTypes, apiAttrs)
+			}
+		}
+
+		updatedElems = append(updatedElems, apiObj)
+	}
+
+	return types.SetValueMust(NameIDObjectType, updatedElems)
 }
 
 func useStateExceptionDeviceAttributes(ctx context.Context, state InternetFirewallRule, exceptionName string) types.Object {

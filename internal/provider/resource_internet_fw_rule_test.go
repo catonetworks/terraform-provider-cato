@@ -254,6 +254,73 @@ func TestHydrateIfwRuleStatePreservesServiceObjectShapeWhenAPIReturnsEmpty(t *te
 	}
 }
 
+func TestHydrateIfwRuleStatePreservesNullCustomServiceWhenAPIReturnsEmptyCustom(t *testing.T) {
+	ctx := context.Background()
+
+	state := newMinimalInternetFwRuleModel("rule-123")
+	ruleAttrs := state.Rule.Attributes()
+	ruleAttrs["service"] = types.ObjectValueMust(IfwServiceAttrTypes, map[string]attr.Value{
+		"standard": types.SetValueMust(NameIDObjectType, []attr.Value{
+			types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{
+				"id":   types.StringValue("svc-1"),
+				"name": types.StringValue("SMTP"),
+			}),
+		}),
+		"custom": types.ListNull(CustomServiceObjectType),
+	})
+	state.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	currentRule := minimalAPIRule("test-ifw-rule", 10)
+	currentRule.Service = cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service{
+		Standard: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Standard{
+			{
+				ID:   "svc-1",
+				Name: "SMTP",
+			},
+		},
+		Custom: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Service_Custom{},
+	}
+
+	hydrated := hydrateIfwRuleState(ctx, state, &currentRule)
+	serviceAttrs := hydrated.Service.Attributes()
+	if !serviceAttrs["custom"].(types.List).IsNull() {
+		t.Fatalf("expected hydrated service.custom to remain null, got %+v", serviceAttrs["custom"])
+	}
+}
+
+func TestHydrateIfwRuleStatePreservesNullIDForSourceUsersGroup(t *testing.T) {
+	ctx := context.Background()
+
+	state := newMinimalInternetFwRuleModel("rule-123")
+	ruleAttrs := state.Rule.Attributes()
+	sourceAttrs := ruleAttrs["source"].(types.Object).Attributes()
+	sourceAttrs["users_group"] = types.SetValueMust(NameIDObjectType, []attr.Value{
+		types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{
+			"id":   types.StringNull(),
+			"name": types.StringValue("Corp Users"),
+		}),
+	})
+	ruleAttrs["source"] = types.ObjectValueMust(IfwSourceAttrTypes, sourceAttrs)
+	state.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	currentRule := minimalAPIRule("test-ifw-rule", 10)
+	currentRule.Source.UsersGroup = []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup{
+		{
+			ID:   "ug-123",
+			Name: "Corp Users",
+		},
+	}
+
+	hydrated := hydrateIfwRuleState(ctx, state, &currentRule)
+	hydratedUsersGroup := hydrated.Source.Attributes()["users_group"].(types.Set)
+	hydratedUserGroupObj := hydratedUsersGroup.Elements()[0].(types.Object)
+	hydratedUserGroupID := hydratedUserGroupObj.Attributes()["id"].(types.String)
+
+	if !hydratedUserGroupID.IsNull() {
+		t.Fatalf("expected hydrated users_group id to remain null for planned name-only ref, got %+v", hydratedUserGroupID)
+	}
+}
+
 func TestInternetFwRuleDelete(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)

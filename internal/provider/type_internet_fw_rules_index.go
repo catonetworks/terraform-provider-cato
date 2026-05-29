@@ -20,7 +20,7 @@ type IfwRulesRuleDataIndex struct {
 	SectionName    string
 	RuleName       string
 	Description    string
-	Enabled        bool
+	Enabled        types.Bool
 }
 
 type IfwRulesSectionItemIndex struct {
