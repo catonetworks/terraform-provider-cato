@@ -221,6 +221,45 @@ func TestAccSocketSite_Location(t *testing.T) {
 	})
 }
 
+// TestAccSocketSite_LocationEmptyCity verifies city can be cleared to explicit empty string
+// without provider/state inconsistency after apply.
+func TestAccSocketSite_LocationEmptyCity(t *testing.T) {
+	acc.SkipByEnv(t)
+	t.Parallel()
+	mockSrv := accmock.NewMockServer(t, "TestAccSocketSite_LocationEmptyCity")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newsocketSiteCfg(t)
+	const res = "cato_socket_site.this"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				// Create with non-empty city
+				Config: cfg.getTfConfigLocationEmptyCity(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "site_location.country_code", "FR"),
+					resource.TestCheckResourceAttr(res, "site_location.city", "Paris"),
+					resource.TestCheckResourceAttr(res, "site_location.timezone", "Europe/Paris"),
+				),
+			},
+			{
+				// Update city to empty string; should remain empty in state (not null)
+				Config: cfg.getTfConfigLocationEmptyCity(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "site_location.country_code", "FR"),
+					resource.TestCheckResourceAttr(res, "site_location.city", ""),
+					resource.TestCheckResourceAttr(res, "site_location.timezone", "Europe/Paris"),
+				),
+			},
+		},
+	})
+}
+
 // TestAccSocketSite_DHCP tests creating a socket site with DHCP settings and updating those settings
 func TestAccSocketSite_DHCP(t *testing.T) {
 	acc.SkipByEnv(t)
@@ -512,6 +551,13 @@ func (p socketSiteCfg) getTfConfigLocation(index int) string {
 	return p.prepareTfCfg(data, socketSiteLocationTFs[index])
 }
 
+func (p socketSiteCfg) getTfConfigLocationEmptyCity(index int) string {
+	data := map[string]any{
+		"Name": p.resName,
+	}
+	return p.prepareTfCfg(data, socketSiteLocationEmptyCityTFs[index])
+}
+
 // Test switch from US,US-CA to FR,null -> should delete state_code
 var socketSiteLocationTFs = []string{
 	// Set site location to US,US-CA
@@ -547,6 +593,46 @@ var socketSiteLocationTFs = []string{
 
 		site_location = {
 			country_code = "FR"
+			timezone     = "Europe/Paris"
+		}
+	}`,
+}
+
+var socketSiteLocationEmptyCityTFs = []string{
+	// Set city to non-empty value
+	`resource "cato_socket_site" "this" {
+		name            = "{{.Name}}-city"
+		description     = "{{.Name}} city description"
+		site_type       = "BRANCH"
+		connection_type = "SOCKET_X1700"
+
+		native_range = {
+			native_network_range = "192.168.131.0/24"
+			local_ip             = "192.168.131.4"
+		}
+
+		site_location = {
+			country_code = "FR"
+			city         = "Paris"
+			timezone     = "Europe/Paris"
+		}
+	}`,
+
+	// Update city to explicit empty string
+	`resource "cato_socket_site" "this" {
+		name            = "{{.Name}}-city"
+		description     = "{{.Name}} city description"
+		site_type       = "BRANCH"
+		connection_type = "SOCKET_X1700"
+
+		native_range = {
+			native_network_range = "192.168.131.0/24"
+			local_ip             = "192.168.131.4"
+		}
+
+		site_location = {
+			country_code = "FR"
+			city         = ""
 			timezone     = "Europe/Paris"
 		}
 	}`,

@@ -180,6 +180,80 @@ func TestUseStateExceptionDeviceAttributesReturnsNullWithoutMatch(t *testing.T) 
 	}
 }
 
+func TestHydrateIfwRuleAPIFailsOnInvalidDestinationApplicationRef(t *testing.T) {
+	ctx := context.Background()
+
+	model := newMinimalInternetFwRuleModel("")
+	ruleAttrs := model.Rule.Attributes()
+	destinationAttrs := ruleAttrs["destination"].(types.Object).Attributes()
+	destinationAttrs["application"] = types.SetValueMust(NameIDObjectType, []attr.Value{
+		types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{
+			"id":   types.StringNull(),
+			"name": types.StringNull(),
+		}),
+	})
+	ruleAttrs["destination"] = types.ObjectValueMust(IfwDestAttrTypes, destinationAttrs)
+	model.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	_, diags := hydrateIfwRuleAPI(ctx, model)
+	if !diags.HasError() {
+		t.Fatal("expected diagnostics for invalid destination application object reference")
+	}
+}
+
+func TestHydrateIfwRuleAPIFailsOnInvalidSourceHostRef(t *testing.T) {
+	ctx := context.Background()
+
+	model := newMinimalInternetFwRuleModel("")
+	ruleAttrs := model.Rule.Attributes()
+	sourceAttrs := ruleAttrs["source"].(types.Object).Attributes()
+	sourceAttrs["host"] = types.SetValueMust(NameIDObjectType, []attr.Value{
+		types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{
+			"id":   types.StringNull(),
+			"name": types.StringNull(),
+		}),
+	})
+	ruleAttrs["source"] = types.ObjectValueMust(IfwSourceAttrTypes, sourceAttrs)
+	model.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	_, diags := hydrateIfwRuleAPI(ctx, model)
+	if !diags.HasError() {
+		t.Fatal("expected diagnostics for invalid source host object reference")
+	}
+}
+
+func TestHydrateIfwRuleStateKeepsServiceNullWhenAPIReturnsEmpty(t *testing.T) {
+	ctx := context.Background()
+
+	state := newMinimalInternetFwRuleModel("rule-123")
+	ruleAttrs := state.Rule.Attributes()
+	ruleAttrs["service"] = types.ObjectNull(IfwServiceAttrTypes)
+	state.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	currentRule := minimalAPIRule("test-ifw-rule", 10)
+	hydrated := hydrateIfwRuleState(ctx, state, &currentRule)
+
+	if !hydrated.Service.IsNull() {
+		t.Fatalf("expected hydrated service to be null when API returns empty service, got %+v", hydrated.Service)
+	}
+}
+
+func TestHydrateIfwRuleStatePreservesServiceObjectShapeWhenAPIReturnsEmpty(t *testing.T) {
+	ctx := context.Background()
+
+	state := newMinimalInternetFwRuleModel("rule-123")
+	currentRule := minimalAPIRule("test-ifw-rule", 10)
+	hydrated := hydrateIfwRuleState(ctx, state, &currentRule)
+
+	if hydrated.Service.IsNull() || hydrated.Service.IsUnknown() {
+		t.Fatalf("expected hydrated service object shape to be preserved, got %+v", hydrated.Service)
+	}
+
+	if !hydrated.Service.Equal(emptyIfwServiceObject()) {
+		t.Fatalf("expected hydrated service to match prior object shape, got %+v", hydrated.Service)
+	}
+}
+
 func TestInternetFwRuleDelete(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
@@ -245,7 +319,7 @@ func TestInternetFwRuleCreateSuccess(t *testing.T) {
 		Once()
 	mockClient.EXPECT().
 		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(internetFirewallPolicyResponseWithRule(minimalAPIRule("rule-123", "test-ifw-rule", 10)), nil).
+		Return(internetFirewallPolicyResponseWithRule(minimalAPIRule("test-ifw-rule", 10)), nil).
 		Once()
 
 	r := &internetFwRuleResource{
@@ -298,7 +372,7 @@ func TestInternetFwRuleReadSuccess(t *testing.T) {
 
 	mockClient.EXPECT().
 		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(internetFirewallPolicyResponseWithRule(minimalAPIRule("rule-123", "updated-name", 11)), nil).
+		Return(internetFirewallPolicyResponseWithRule(minimalAPIRule("updated-name", 11)), nil).
 		Once()
 
 	r := &internetFwRuleResource{
@@ -363,7 +437,7 @@ func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 		Once()
 	mockClient.EXPECT().
 		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(internetFirewallPolicyResponseWithRule(minimalAPIRule("rule-123", "test-ifw-rule", 12)), nil).
+		Return(internetFirewallPolicyResponseWithRule(minimalAPIRule("test-ifw-rule", 12)), nil).
 		Once()
 
 	r := &internetFwRuleResource{
@@ -675,9 +749,9 @@ func internetFirewallPolicyResponseWithRule(rule cato_go_sdk.Policy_Policy_Inter
 	}
 }
 
-func minimalAPIRule(ruleID, name string, index int64) cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule {
+func minimalAPIRule(name string, index int64) cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule {
 	return cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{
-		ID:               ruleID,
+		ID:               "rule-123",
 		Name:             name,
 		Index:            index,
 		Enabled:          true,

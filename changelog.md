@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.80 (2026-05-28)
+
+### Fixed
+- Fixed internet firewall rule app reference handling to fail fast on invalid object references instead of emitting partial payloads.
+- Fixed internet firewall rule refresh/apply consistency by preserving `rule.service = null` when no service values are returned.
+- Added regression unit and acceptance test coverage for IFW invalid destination app references and empty-service refresh behavior.
+
+## 0.0.79 (2026-05-26)
+
+### Fixed
+- Fixed city and WAN precedence regressions.
+- Fixed DHCP relay group handling.
+- Fixed linter issues.
+
+### Changed
+- Improved the unit test skill guidance.
+
 ## 0.0.78 (2026-05-20)
 - Fixed network range drift and added unit test coverage for the updated behavior.
 - Fixed internet firewall rule device attribute handling to ensure correct state and API mapping.
