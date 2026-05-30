@@ -47,8 +47,15 @@ func (v NativeRangeValidator) ValidateObject(ctx context.Context, req validator.
 	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &nativeRange, basetypes.ObjectAsOptions{})) {
 		return
 	}
+	if v.isUnknown(nativeRange) {
+		return
+	}
+
 	// get connection type
 	if utils.CheckErr(&resp.Diagnostics, req.Config.GetAttribute(ctx, path.Root("connection_type"), &connectionType)) {
+		return
+	}
+	if connectionType.IsUnknown() {
 		return
 	}
 
@@ -274,4 +281,24 @@ func (v NativeRangeValidator) checkDHCPRange(diags *diag.Diagnostics, dhcpSettin
 	}
 
 	return nil
+}
+
+func (v NativeRangeValidator) isUnknown(nativeRange tf.NativeRange) bool { //nolint:gocyclo
+	return nativeRange.InterfaceIndex.IsUnknown() ||
+		nativeRange.InterfaceID.IsUnknown() ||
+		nativeRange.InterfaceName.IsUnknown() ||
+		nativeRange.NativeNetworkLanInterfaceID.IsUnknown() ||
+		nativeRange.NativeNetworkRange.IsUnknown() ||
+		nativeRange.NativeNetworkRangeID.IsUnknown() ||
+		nativeRange.RangeName.IsUnknown() ||
+		nativeRange.RangeID.IsUnknown() ||
+		nativeRange.LocalIP.IsUnknown() ||
+		nativeRange.TranslatedSubnet.IsUnknown() ||
+		nativeRange.Gateway.IsUnknown() ||
+		nativeRange.RangeType.IsUnknown() ||
+		nativeRange.DhcpSettings.IsUnknown() ||
+		nativeRange.Vlan.IsUnknown() ||
+		nativeRange.MdnsReflector.IsUnknown() ||
+		nativeRange.LagMinLinks.IsUnknown() ||
+		nativeRange.InterfaceDestType.IsUnknown()
 }
