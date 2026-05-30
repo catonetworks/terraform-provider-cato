@@ -3,12 +3,12 @@
 page_title: "cato_bgp_peer Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_bgp_peerresource contains the configuration parameters necessary to add a BGP peer to a Cato site. Documentation for the underlying API used in this resource can be found at mutation.site.AddBgpPeerPayload() https://api.catonetworks.com/documentation/#definition-AddBgpPeerPayload.
+  The cato_bgp_peerresource contains the configuration parameters necessary to add a BGP peer to a Cato site. Documentation for the underlying API used in this resource can be found at [mutation.site.AddBgpPeerPayload()](https:// api.catonetworks.com/documentation/#definition-AddBgpPeerPayload).
 ---
 
 # cato_bgp_peer (Resource)
 
-The `cato_bgp_peer`resource contains the configuration parameters necessary to add a BGP peer to a Cato site. Documentation for the underlying API used in this resource can be found at [mutation.site.AddBgpPeerPayload()](https://api.catonetworks.com/documentation/#definition-AddBgpPeerPayload).
+The `cato_bgp_peer`resource contains the configuration parameters necessary to add a BGP peer to a Cato site. Documentation for the underlying API used in this resource can be found at [mutation.site.AddBgpPeerPayload()](https:// api.catonetworks.com/documentation/#definition-AddBgpPeerPayload).
 
 ## Example Usage
 

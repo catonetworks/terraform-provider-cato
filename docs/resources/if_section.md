@@ -3,12 +3,12 @@
 page_title: "cato_if_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_if_section resource contains the configuration parameters necessary to Internet firewall section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found atmutation.policy.internetFirewall.addSection() https://api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addSection.
+  The cato_if_section resource contains the configuration parameters necessary to Internet firewall section (https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at mutation.policy.internetFirewall.addSection().
 ---
 
 # cato_if_section (Resource)
 
-The `cato_if_section` resource contains the configuration parameters necessary to Internet firewall section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at[mutation.policy.internetFirewall.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.internetFirewall.addSection).
+The `cato_if_section` resource contains the configuration parameters necessary to Internet firewall section (https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at mutation.policy.internetFirewall.addSection().
 
 ## Example Usage
 

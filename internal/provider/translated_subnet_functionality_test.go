@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 )
 
 func TestBuildAddNetworkRangeInputTranslatedSubnet(t *testing.T) {
@@ -35,7 +37,7 @@ func TestBuildAddNetworkRangeInputTranslatedSubnet(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			plan := NetworkRange{
+			plan := tf.NetworkRange{
 				Name:             types.StringValue("nr"),
 				RangeType:        types.StringValue("VLAN"),
 				Subnet:           types.StringValue("10.10.10.0/24"),
@@ -79,7 +81,7 @@ func TestBuildUpdateNetworkRangeInputTranslatedSubnet(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			plan := NetworkRange{
+			plan := tf.NetworkRange{
 				Name:             types.StringValue("nr"),
 				RangeType:        types.StringValue("VLAN"),
 				Subnet:           types.StringValue("10.20.20.0/24"),

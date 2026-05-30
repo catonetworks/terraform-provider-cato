@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
@@ -181,7 +182,7 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 			// The AccountSnapshot returns the full state name, not the code
 			// We'll preserve whatever is in the current state
 			if !state.SiteLocation.IsNull() {
-				var currentLocation SiteLocation
+				var currentLocation tf.SiteLocation
 				state.SiteLocation.As(ctx, &currentLocation, basetypes.ObjectAsOptions{})
 				if !currentLocation.StateCode.IsNull() {
 					siteLocationAttrs["state_code"] = currentLocation.StateCode
@@ -191,7 +192,7 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 		// Note: AccountSnapshot doesn't have timezone, address separately
 		// We preserve from state if they exist
 		if !state.SiteLocation.IsNull() {
-			var currentLocation SiteLocation
+			var currentLocation tf.SiteLocation
 			state.SiteLocation.As(ctx, &currentLocation, basetypes.ObjectAsOptions{})
 			if !currentLocation.Timezone.IsNull() {
 				siteLocationAttrs["timezone"] = currentLocation.Timezone
@@ -204,7 +205,7 @@ func (r *siteIpsecResource) hydrateIpsecSiteState(ctx context.Context, state Sit
 			siteLocationAttrs["city"] = types.StringValue(*thisSite.InfoSiteSnapshot.CityName)
 		}
 
-		siteLocationObj, diags := types.ObjectValue(SiteLocationResourceAttrTypes, siteLocationAttrs)
+		siteLocationObj, diags := types.ObjectValue(tf.SiteLocationResourceAttrTypes, siteLocationAttrs)
 		if diags.HasError() {
 			return state, false, nil
 		}

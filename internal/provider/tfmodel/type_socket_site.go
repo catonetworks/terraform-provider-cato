@@ -1,6 +1,7 @@
-package provider
+package tfmodel
 
 import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -79,4 +80,17 @@ var SiteLocationResourceAttrTypes = map[string]attr.Type{
 	"timezone":     types.StringType,
 	"address":      types.StringType,
 	"city":         types.StringType,
+}
+
+// InterfaceByConnType maps each socket site connection type to a default socket interface index.
+// Note: InterfaceIndex (e.g. "LAN_1") is not the same as InterfaceID (e.g. 479631);  SocketInterfaceIDEnum is about Index, not ID.
+var InterfaceByConnType = map[cato_models.SiteConnectionTypeEnum]cato_models.SocketInterfaceIDEnum{
+	cato_models.SiteConnectionTypeEnumSocketAWS1500:  cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketAz1500:   cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketEsx1500:  cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketGCP1500:  cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketX1500:    cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketX1600:    cato_models.SocketInterfaceIDEnumInt5,
+	cato_models.SiteConnectionTypeEnumSocketX1600Lte: cato_models.SocketInterfaceIDEnumInt5,
+	cato_models.SiteConnectionTypeEnumSocketX1700:    cato_models.SocketInterfaceIDEnumInt3,
 }

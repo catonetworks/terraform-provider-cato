@@ -3,12 +3,12 @@
 page_title: "cato_wnw_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_wnw_section resource contains the configuration parameters necessary to WAN Network rule section. Documentation for the underlying API used in this resource can be found at mutation.policy.internetFirewall.addSection() https://api.catonetworks.com/documentation/#mutation-policy.wanNetwork.addSection.
+  The cato_wnw_section resource contains the configuration parameters necessary to WAN Network rule section. Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.wanNetwork.addSection).
 ---
 
 # cato_wnw_section (Resource)
 
-The `cato_wnw_section` resource contains the configuration parameters necessary to WAN Network rule section. Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.wanNetwork.addSection).
+The `cato_wnw_section` resource contains the configuration parameters necessary to WAN Network rule section. Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.wanNetwork.addSection).
 
 ## Example Usage
 

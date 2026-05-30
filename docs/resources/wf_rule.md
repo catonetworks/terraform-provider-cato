@@ -3,12 +3,12 @@
 page_title: "cato_wf_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_wf_rule resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at mutation.policy.wanFirewall.addRule() https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule.
+  The cato_wf_rule resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).
 ---
 
 # cato_wf_rule (Resource)
 
-The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).
+The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https:// support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).
 
 ## Example Usage
 
@@ -646,10 +646,10 @@ Optional:
 
 Required:
 
-- `action` (String) The action applied by the Wan Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)
+- `action` (String) The action applied by the Wan Firewall if the rule is matched (https:// api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)
 - `application` (Attributes) Application traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. Can be an empty object {} to match any application. (see [below for nested schema](#nestedatt--rule--application))
 - `destination` (Attributes) Destination traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. Can be an empty object {} to match any destination. (see [below for nested schema](#nestedatt--rule--destination))
-- `direction` (String) Define the direction on which the rule is applied (https://api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)
+- `direction` (String) Define the direction on which the rule is applied (https:// api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)
 - `enabled` (Boolean) Attribute to define rule status (enabled or disabled)
 - `name` (String) Name of the rule
 - `source` (Attributes) Source traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. Can be an empty object {} to match any source. (see [below for nested schema](#nestedatt--rule--source))
@@ -658,12 +658,12 @@ Required:
 Optional:
 
 - `active_period` (Attributes) Time period during which the rule is active. Outside this period, the rule is inactive. Times should be in RFC3339 format (e.g., '2024-12-31T23:59:59Z'). (see [below for nested schema](#nestedatt--rule--active_period))
-- `connection_origin` (String) Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
+- `connection_origin` (String) Connection origin of the traffic (https:// api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
 - `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--country))
 - `description` (String) Description of the rule
 - `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
 - `device_attributes` (Attributes) Device attributes matching criteria for the rule. (see [below for nested schema](#nestedatt--rule--device_attributes))
-- `device_os` (List of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)
+- `device_os` (List of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https:// api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `exceptions` (Attributes Set) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--rule--exceptions))
 - `schedule` (Attributes) The time period specifying when the rule is enabled, otherwise it is disabled. (see [below for nested schema](#nestedatt--rule--schedule))
 - `service` (Attributes) Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--service))
@@ -1016,7 +1016,7 @@ Optional:
 Optional:
 
 - `enabled` (Boolean) Alert creation enabled
-- `frequency` (String) Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
+- `frequency` (String) Returns data for the alert frequency (https:// api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
 - `mailing_list` (Attributes Set) Returns data for the Mailing List that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--mailing_list))
 - `subscription_group` (Attributes Set) Returns data for the Subscription Group that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--subscription_group))
 - `webhook` (Attributes Set) Returns data for the Webhook that receives the alert (see [below for nested schema](#nestedatt--rule--tracking--alert--webhook))
@@ -1111,7 +1111,7 @@ Optional:
 - `destination` (Attributes) Destination traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--destination))
 - `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--device))
 - `device_attributes` (Attributes) Device attributes matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--device_attributes))
-- `device_os` (List of String) Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)
+- `device_os` (List of String) Source device OS matching criteria for the exception. (https:// api.catonetworks.com/documentation/#definition-OperatingSystem)
 - `name` (String) A unique name of the rule exception.
 - `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--exceptions--source))
 
@@ -1508,7 +1508,7 @@ Optional:
 
 Optional:
 
-- `active_on` (String) Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)
+- `active_on` (String) Define when the rule is active (https:// api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)
 - `custom_recurring` (Attributes) Input of data for a custom recurring time range that a rule is active (see [below for nested schema](#nestedatt--rule--schedule--custom_recurring))
 - `custom_timeframe` (Attributes) Input of data for a custom one-time time range that a rule is active (see [below for nested schema](#nestedatt--rule--schedule--custom_timeframe))
 
@@ -1517,7 +1517,7 @@ Optional:
 
 Optional:
 
-- `days` (List of String) Custom Recurring Days - (https://api.catonetworks.com/documentation/#definition-DayOfWeek)
+- `days` (List of String) Custom Recurring Days - (https:// api.catonetworks.com/documentation/#definition-DayOfWeek)
 - `from` (String) Custom Recurring Name
 - `to` (String) Custom Recurring ID
 
@@ -1547,7 +1547,7 @@ Optional:
 
 - `port` (List of String) List of TCP/UDP port
 - `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--rule--service--custom--port_range))
-- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
+- `protocol` (String) IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)
 
 <a id="nestedatt--rule--service--custom--port_range"></a>
 ### Nested Schema for `rule.service.custom.port_range`

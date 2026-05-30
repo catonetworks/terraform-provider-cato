@@ -11,7 +11,7 @@ description: |-
 
 The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site to the Cato cloud ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite). 
 
- **Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product](https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).
+**Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product](https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).
 
 ## Example Usage
 
@@ -88,7 +88,7 @@ resource "cato_socket_site" "branch_site" {
 - `name` (String) Site name
 - `native_range` (Attributes) Site lan native range settings (see [below for nested schema](#nestedatt--native_range))
 - `site_location` (Attributes) Site location (see [below for nested schema](#nestedatt--site_location))
-- `site_type` (String) Site type (https://api.catonetworks.com/documentation/#definition-SiteType)
+- `site_type` (String) Site type (https:// api.catonetworks.com/documentation/#definition-SiteType)
 
 ### Optional
 

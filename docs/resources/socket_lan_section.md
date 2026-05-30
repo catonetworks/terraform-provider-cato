@@ -3,12 +3,12 @@
 page_title: "cato_socket_lan_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_socket_lan_section resource contains the configuration parameters necessary to add a Socket LAN firewall section. Documentation for the underlying API used in this resource can be found at mutation.policy.socketLan.addSection() https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection.
+  The cato_socket_lan_section resource contains the configuration parameters necessary to add a Socket LAN firewall section. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).
 ---
 
 # cato_socket_lan_section (Resource)
 
-The `cato_socket_lan_section` resource contains the configuration parameters necessary to add a Socket LAN firewall section. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).
+The `cato_socket_lan_section` resource contains the configuration parameters necessary to add a Socket LAN firewall section. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).
 
 ## Example Usage
 

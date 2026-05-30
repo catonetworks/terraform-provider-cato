@@ -3,12 +3,12 @@
 page_title: "cato_wan_interface Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_wan_interface resource contains the configuration parameters necessary to add a wan interface to a socket. (virtual socket in AWS/Azure, or physical socket https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites). Documentation for the underlying API used in this resource can be found at mutation.updateSocketInterface() https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface.
+  The cato_wan_interface resource contains the configuration parameters necessary to add a wan interface to a socket. ([virtual socket in AWS/Azure, or physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https:// api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).
 ---
 
 # cato_wan_interface (Resource)
 
-The `cato_wan_interface` resource contains the configuration parameters necessary to add a wan interface to a socket. ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).
+The `cato_wan_interface` resource contains the configuration parameters necessary to add a wan interface to a socket. ([virtual socket in AWS/Azure, or physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https:// api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).
 
 ## Example Usage
 
@@ -30,13 +30,13 @@ resource "cato_wan_interface" "wan1" {
 
 ### Required
 
-- `downstream_bandwidth` (Number) WAN interface downstream bandwitdh
+- `downstream_bandwidth` (Number) WAN interface downstream bandwidth
 - `interface_id` (String) The interface ID, which is a unique identifier for the WAN interface (e.g., `INT_1`, `INT_2`, etc.). This is used to identify the specific WAN interface resource.
 - `name` (String) WAN interface name
-- `precedence` (String) WAN interface precedence (https://api.catonetworks.com/documentation/#definition-SocketInterfacePrecedenceEnum)
-- `role` (String) WAN interface role (https://api.catonetworks.com/documentation/#definition-SocketInterfaceRole)
+- `precedence` (String) WAN interface precedence (https:// api.catonetworks.com/documentation/#definition-SocketInterfacePrecedenceEnum)
+- `role` (String) WAN interface role (https:// api.catonetworks.com/documentation/#definition-SocketInterfaceRole)
 - `site_id` (String) Site ID
-- `upstream_bandwidth` (Number) WAN interface upstream bandwitdh
+- `upstream_bandwidth` (Number) WAN interface upstream bandwidth
 
 ### Read-Only
 
