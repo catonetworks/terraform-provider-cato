@@ -14,6 +14,7 @@ type SocketSite struct {
 	Description    types.String `tfsdk:"description"`
 	NativeRange    types.Object `tfsdk:"native_range"`
 	SiteLocation   types.Object `tfsdk:"site_location"`
+	Sockets        types.Set    `tfsdk:"sockets"` // []Socket
 }
 
 type NativeRange struct {
@@ -26,6 +27,8 @@ type NativeRange struct {
 	RangeName                   types.String `tfsdk:"range_name"`
 	RangeID                     types.String `tfsdk:"range_id"`
 	LocalIP                     types.String `tfsdk:"local_ip"`
+	PrimaryManagementIP         types.String `tfsdk:"primary_management_ip"`
+	SecondaryManagementIP       types.String `tfsdk:"secondary_management_ip"`
 	TranslatedSubnet            types.String `tfsdk:"translated_subnet"`
 	Gateway                     types.String `tfsdk:"gateway"`
 	RangeType                   types.String `tfsdk:"range_type"`
@@ -55,6 +58,8 @@ var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
 	"range_name":                      types.StringType,
 	"range_id":                        types.StringType,
 	"local_ip":                        types.StringType,
+	"primary_management_ip":           types.StringType,
+	"secondary_management_ip":         types.StringType,
 	"translated_subnet":               types.StringType,
 	"gateway":                         types.StringType,
 	"range_type":                      types.StringType,
@@ -80,6 +85,20 @@ var SiteLocationResourceAttrTypes = map[string]attr.Type{
 	"timezone":     types.StringType,
 	"address":      types.StringType,
 	"city":         types.StringType,
+}
+
+type Socket struct {
+	ID           types.String `tfsdk:"id"`
+	SerialNumber types.String `tfsdk:"serial_number"`
+	IsPrimary    types.Bool   `tfsdk:"is_primary"`
+	Platform     types.String `tfsdk:"platform"`
+}
+
+var SocketTypes = map[string]attr.Type{
+	"id":            types.StringType,
+	"serial_number": types.StringType,
+	"is_primary":    types.BoolType,
+	"platform":      types.StringType,
 }
 
 // InterfaceByConnType maps each socket site connection type to a default socket interface index.

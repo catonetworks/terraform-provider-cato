@@ -39,7 +39,7 @@ func TestAccSocketSite_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 
-					resource.TestCheckResourceAttr(res, "native_range.%", "17"),
+					resource.TestCheckResourceAttr(res, "native_range.%", "19"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.%", "5"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_microsegmentation", "false"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "DHCP_RANGE"),
@@ -80,7 +80,7 @@ func TestAccSocketSite_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName+" 2"),
 
-					resource.TestCheckResourceAttr(res, "native_range.%", "17"),
+					resource.TestCheckResourceAttr(res, "native_range.%", "19"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_dest_type", "LAN"),
 					resource.TestCheckResourceAttrSet(res, "native_range.interface_id"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_index", "LAN1"),
@@ -128,7 +128,7 @@ func TestAccSocketSite_ConnType(t *testing.T) {
 				resource.TestCheckResourceAttrSet(res, "id"),
 				resource.TestCheckResourceAttr(res, "name", fmt.Sprintf("%s-%d", cfg.resName, i)),
 
-				resource.TestCheckResourceAttr(res, "native_range.%", "17"),
+				resource.TestCheckResourceAttr(res, "native_range.%", "19"),
 				resource.TestCheckResourceAttr(res, "native_range.interface_dest_type", "LAN"),
 				resource.TestCheckResourceAttrSet(res, "native_range.interface_id"),
 				resource.TestCheckResourceAttr(res, "native_range.interface_index", iface),
@@ -184,7 +184,7 @@ func TestAccSocketSite_Location(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 
-					resource.TestCheckResourceAttr(res, "native_range.%", "17"),
+					resource.TestCheckResourceAttr(res, "native_range.%", "19"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_dest_type", "LAN"),
 					resource.TestCheckResourceAttrSet(res, "native_range.interface_id"),
 					resource.TestCheckResourceAttr(res, "native_range.interface_index", "LAN1"),
@@ -285,7 +285,7 @@ func TestAccSocketSite_DHCP(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 
-					resource.TestCheckResourceAttr(res, "native_range.%", "17"),
+					resource.TestCheckResourceAttr(res, "native_range.%", "19"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.%", "5"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_microsegmentation", "false"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "DHCP_RANGE"),
@@ -368,7 +368,7 @@ func TestAccSocketSite_Interface(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 
-					resource.TestCheckResourceAttr(res, "native_range.%", "17"),
+					resource.TestCheckResourceAttr(res, "native_range.%", "19"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.%", "5"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_microsegmentation", "false"),
 					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "DHCP_RANGE"),
