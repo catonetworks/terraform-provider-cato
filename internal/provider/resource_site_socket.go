@@ -684,7 +684,7 @@ func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetai
 		if utils.CheckErr(diags, siteLocation.As(ctx, &planLocation, basetypes.ObjectAsOptions{})) {
 			return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
 		}
-		if planLocation.City.IsNull() || (planLocation.City.ValueString() == "") {
+		if planLocation.City.IsNull() || (utils.HasValue(planLocation.City) && (planLocation.City.ValueString() == "")) {
 			tfLocation.City = planLocation.City
 		}
 	}
@@ -856,6 +856,7 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 	nativeInterface *nativeInterfaceDetails, stateNativeRange types.Object, diags *diag.Diagnostics,
 ) types.Object {
 	var objDiags diag.Diagnostics
+	var tfStateNativeRange tf.NativeRange
 
 	if networkRange == nil {
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
@@ -875,14 +876,17 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 		nativeInterface = &nativeInterfaceDetails{}
 	}
 
+	// decode status NativeRange
+	if utils.HasValue(stateNativeRange) {
+		if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
+			return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
+		}
+	}
+
 	// try to get LagMinLinks from state; not available in API; TODO: add to API
 	lagMinLinks := types.Int64Null()
 	if utils.HasValue(stateNativeRange) {
-		var tfNativeRange tf.NativeRange
-		if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
-			return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
-		}
-		lagMinLinks = tfNativeRange.LagMinLinks
+		lagMinLinks = tfStateNativeRange.LagMinLinks
 	}
 
 	// Fix interface index - API sometimes returns 'INT_5', sometimes just 5
@@ -892,8 +896,12 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 	}
 
 	localIP := types.StringPointerValue(networkRange.LocalIP)
-	if networkRange.LocalIP == nil && networkRange.PrimaryManagementIP != nil { // HA scenario - use primary management IP as local IP
-		localIP = types.StringPointerValue(networkRange.PrimaryManagementIP)
+	if networkRange.LocalIP == nil { // In HA scenario the API does not return local IP
+		if networkRange.PrimaryManagementIP != nil { // AWS: use primary management IP as local IP
+			localIP = types.StringPointerValue(networkRange.PrimaryManagementIP)
+		} else if utils.HasValue(stateNativeRange) { // try state local IP
+			localIP = tfStateNativeRange.LocalIP
+		}
 	}
 
 	// Prepare native range object
@@ -1066,6 +1074,7 @@ func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, pl
 	}
 
 	interfaceDestType := cato_models.SocketInterfaceDestType(tfNativeRange.InterfaceDestType.ValueString())
+
 	if interfaceDestType == "" {
 		interfaceDestType = cato_models.SocketInterfaceDestTypeLan // default to LAN if not specified
 	}
@@ -1348,6 +1357,10 @@ func (r *socketSiteResource) updateNetworkRange(ctx context.Context, plan *tf.So
 func (r *socketSiteResource) updateSocketInterface(ctx context.Context, plan *tf.SocketSite, siteID string,
 	isHA bool, diags *diag.Diagnostics,
 ) {
+	if isHA && plan.ConnectionType.ValueString() == string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
+		return // update does not work on GCP HA
+	}
+
 	socketIfaceInput, interfaceID := r.prepareSocketInterfaceInput(ctx, plan, isHA, diags)
 	if diags.HasError() {
 		return
