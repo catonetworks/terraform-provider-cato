@@ -626,7 +626,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *tf
 		SiteType:       types.StringPointerValue((*string)(siteInfo.GetType())),
 		Description:    types.StringPointerValue(siteInfo.GetDescription()),
 		NativeRange:    r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
-		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, diags),
+		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
 		Sockets:        r.parseSockets(ctx, siteInfo, diags),
 	}
 	if diags.HasError() {
@@ -655,9 +655,10 @@ func (r *socketSiteResource) fixConnectionType(connTypeFromAPI *cato_models.Prot
 
 // parseSiteLocation converts API site location data to the types.Object or tf.SiteLocation
 func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetails *cato_go_sdk.SiteGeneralDetails,
-	diags *diag.Diagnostics,
+	siteLocation types.Object, diags *diag.Diagnostics,
 ) types.Object {
 	var objDiags diag.Diagnostics
+	var planLocation tf.SiteLocation
 
 	if siteGenDetails == nil || siteGenDetails.Site.SiteGeneralDetails == nil {
 		return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
@@ -675,6 +676,17 @@ func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetai
 		Timezone:    types.StringValue(siteLoc.GetTimezone()),
 		Address:     types.StringPointerValue(siteLoc.GetAddress()),
 		City:        types.StringPointerValue(siteLoc.GetCityName()),
+	}
+
+	// API sometimes returns empty string and sometimes null for city - use what is in the plan in that case
+	city := siteLoc.GetCityName()
+	if ((city == nil) || (*city == "")) && utils.HasValue(siteLocation) {
+		if utils.CheckErr(diags, siteLocation.As(ctx, &planLocation, basetypes.ObjectAsOptions{})) {
+			return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
+		}
+		if planLocation.City.IsNull() || (planLocation.City.ValueString() == "") {
+			tfLocation.City = planLocation.City
+		}
 	}
 
 	locObj, objDiags := types.ObjectValueFrom(ctx, tf.SiteLocationResourceAttrTypes, tfLocation)
