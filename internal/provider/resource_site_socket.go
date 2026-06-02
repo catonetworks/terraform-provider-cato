@@ -45,6 +45,7 @@ const (
 	socketConnectionTypeVGXAzure = "VSOCKET_VGX_AZURE"
 	socketConnectionTypeVGXESX   = "VSOCKET_VGX_ESX"
 	socketInterfaceDestTypeLAN   = "LAN"
+	socketCreateHydrationRetries = 6
 )
 
 var (
@@ -382,6 +383,8 @@ func (r *socketSiteResource) ImportState(ctx context.Context, req resource.Impor
 }
 
 // Create cato_socket_site resource
+//
+//nolint:funlen // create flow composes multiple API calls and hydration checks in sequence.
 func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan, cfg tf.SocketSite
 	diags := req.Plan.Get(ctx, &plan)
@@ -430,11 +433,11 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		hydratedState tf.SocketSite
 		siteExists    bool
 	)
-	for attempt := 0; attempt < 6; attempt++ {
+	for attempt := 0; attempt < socketCreateHydrationRetries; attempt++ {
 		attemptDiags := diag.Diagnostics{}
 		hydratedState, siteExists = r.hydrateSocketSiteState(ctx, &cfg, plan, siteID, &attemptDiags)
 		if attemptDiags.HasError() {
-			if attempt == 5 {
+			if attempt == socketCreateHydrationRetries-1 {
 				resp.Diagnostics.Append(attemptDiags...)
 				return
 			}
