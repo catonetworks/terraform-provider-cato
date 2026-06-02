@@ -469,6 +469,21 @@ func precedenceFromNaturalOrder(naturalOrder *int64) types.String {
 	}
 }
 
+func wanRoleFromInterfaceID(interfaceID string) string {
+	switch strings.ToUpper(interfaceID) {
+	case "WAN1", "INT_1":
+		return "wan_1"
+	case "WAN2", "INT_2":
+		return "wan_2"
+	case "WAN3", "INT_3":
+		return "wan_3"
+	case "WAN4", "INT_4":
+		return "wan_4"
+	default:
+		return ""
+	}
+}
+
 // hydrateWanInterfaceState fetches the current state of a WAN interface from the API
 // and populates the state object with the latest values, including precedence mapping
 //
@@ -519,7 +534,11 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, sta
 	state.Name = types.StringValue(*foundInterface.Name)
 	state.UpstreamBandwidth = types.Int64Value(*foundInterface.UpstreamBandwidth)
 	state.DownstreamBandwidth = types.Int64Value(*foundInterface.DownstreamBandwidth)
-	state.Role = types.StringValue(string(*foundInterface.WanRoleInterfaceInfo))
+	if derivedRole := wanRoleFromInterfaceID(foundInterface.ID); derivedRole != "" {
+		state.Role = types.StringValue(derivedRole)
+	} else {
+		state.Role = types.StringNull()
+	}
 
 	// Map precedence from naturalOrder in devices.interfaces
 	// naturalOrder: 1 = ACTIVE, 2 = PASSIVE, 3 = LAST_RESORT
