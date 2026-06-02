@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -394,16 +395,19 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	// Create a socket site - API call
 	siteID := r.createBasicSocketSite(ctx, &plan, &diags)
 	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
 	// Find Network Range ID for the created site and update the NetworkRange details
 	networkRange := r.findNativeRange(ctx, siteID, &diags)
 	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 	r.updateNetworkRange(ctx, &plan, networkRange.GetNetworkRangeID(), false, &diags)
 	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
@@ -411,24 +415,45 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	defaultInterfaceIndex := tf.InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]
 	r.assignInterfaceIndex(ctx, defaultInterfaceIndex, &plan, siteID, &diags)
 	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 	// Update Socket Interface
 	r.updateSocketInterface(ctx, &plan, siteID, false, &diags)
 	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
-	// hydrate the state with API data
-	hydratedState, siteExists := r.hydrateSocketSiteState(ctx, &cfg, plan, siteID, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
+	// hydrate the state with API data, retrying briefly for eventual consistency
+	var (
+		hydratedState tf.SocketSite
+		siteExists    bool
+	)
+	for attempt := 0; attempt < 6; attempt++ {
+		attemptDiags := diag.Diagnostics{}
+		hydratedState, siteExists = r.hydrateSocketSiteState(ctx, &cfg, plan, siteID, &attemptDiags)
+		if attemptDiags.HasError() {
+			if attempt == 5 {
+				resp.Diagnostics.Append(attemptDiags...)
+				return
+			}
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		if siteExists {
+			break
+		}
+		time.Sleep(2 * time.Second)
 	}
 
-	// check if site was found, else remove resource
+	// if the site is still not visible, keep minimal state to avoid losing created resource
 	if !siteExists {
-		tflog.Warn(ctx, "site not found, site resource removed")
-		resp.State.RemoveResource(ctx)
+		fallbackState := cfg
+		fallbackState.ID = types.StringValue(siteID)
+		tflog.Warn(ctx, "site not found after create; preserving minimal state until next refresh")
+		diags = resp.State.Set(ctx, &fallbackState)
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
