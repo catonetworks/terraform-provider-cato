@@ -107,7 +107,10 @@ acctest-clean: ## Delete stale acctest resources
 acctest: acctest-clean ## Run acceptance tests (real API calls)
 	TF_ACC=1 DISABLE_POLICY_RULE_CLEANUP=true go test -tags acctest -count=1 -json --timeout=10m -parallel=1 -p=2 ./internal/acctests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 acctest-flaky: ## Run acceptance tests - retry on error (real API calls) [ t=<test_dir> ] [ coverage=true ]
-	@enable_coverage=''; if [ "$(coverage)" = true ]; then enable_coverage='--coverage'; fi; \
+	@TFACC_ENABLE_ACCOUNT_CRUD=true \
+	TFACC_ENABLE_BGP_PEER_CRUD=true \
+	TFACC_ENABLE_RULES_INDEX_CRUD=true \
+	enable_coverage=''; if [ "$(coverage)" = true ]; then enable_coverage='--coverage'; fi; \
 	test_data/flaky_acctest.sh $$enable_coverage $(t)
 
 lint:  ## Run the linters configured in .golangci.yml locally
