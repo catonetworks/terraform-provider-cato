@@ -581,7 +581,7 @@ func parseGroupMember(_ context.Context, item interface{}, _ string) types.Objec
 
 	// Handle nil or invalid input
 	if item == nil || itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			if itemValue.Kind() != reflect.Struct {
 				return types.ObjectNull(GroupMemberAttrTypes)
@@ -592,7 +592,7 @@ func parseGroupMember(_ context.Context, item interface{}, _ string) types.Objec
 	}
 
 	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
+	if itemValue.Kind() == reflect.Pointer {
 		if itemValue.IsNil() {
 			return types.ObjectNull(GroupMemberAttrTypes)
 		}
@@ -612,7 +612,7 @@ func parseGroupMember(_ context.Context, item interface{}, _ string) types.Objec
 	var nameValue, idValue, typeValue types.String
 
 	// Handle ID field
-	if idField.Kind() == reflect.Ptr {
+	if idField.Kind() == reflect.Pointer {
 		if idField.IsNil() || idField.Elem().String() == "" {
 			idValue = types.StringNull()
 		} else {
@@ -628,7 +628,7 @@ func parseGroupMember(_ context.Context, item interface{}, _ string) types.Objec
 	}
 
 	// Handle name field
-	if nameField.Kind() == reflect.Ptr {
+	if nameField.Kind() == reflect.Pointer {
 		if nameField.IsNil() || nameField.Elem().String() == "" {
 			nameValue = types.StringNull()
 		} else {
@@ -644,7 +644,7 @@ func parseGroupMember(_ context.Context, item interface{}, _ string) types.Objec
 	}
 
 	// Handle type field (this is an enum, convert to string)
-	if typeField.Kind() == reflect.Ptr {
+	if typeField.Kind() == reflect.Pointer {
 		if typeField.IsNil() {
 			typeValue = types.StringNull()
 		} else {

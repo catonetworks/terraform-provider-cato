@@ -241,7 +241,7 @@ func parseNameID(ctx context.Context, item interface{}, attrName string) types.O
 
 	// Handle nil or invalid input (must be a struct, not a slice/array)
 	if item == nil || itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			if itemValue.Kind() != reflect.Struct {
 				return types.ObjectNull(NameIDAttrTypes)
@@ -252,7 +252,7 @@ func parseNameID(ctx context.Context, item interface{}, attrName string) types.O
 	}
 
 	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
+	if itemValue.Kind() == reflect.Pointer {
 		if itemValue.IsNil() {
 			return types.ObjectNull(NameIDAttrTypes)
 		}
@@ -273,7 +273,7 @@ func parseNameID(ctx context.Context, item interface{}, attrName string) types.O
 	var idValue types.String
 
 	// Handle ID field first (this is always populated)
-	if idField.Kind() == reflect.Ptr {
+	if idField.Kind() == reflect.Pointer {
 		if idField.IsNil() {
 			idValue = types.StringNull()
 		} else {
@@ -296,7 +296,7 @@ func parseNameID(ctx context.Context, item interface{}, attrName string) types.O
 	// Handle name field - use UseStateForUnknown logic to prevent spurious diffs
 	// If name would be empty/null, keep it as null to match Terraform's expectations
 	// for computed optional fields
-	if nameField.Kind() == reflect.Ptr {
+	if nameField.Kind() == reflect.Pointer {
 		if nameField.IsNil() {
 			nameValue = types.StringNull()
 		} else {
@@ -369,10 +369,10 @@ func parseFromTo(ctx context.Context, item interface{}, attrName string) types.O
 	// Handle nil or invalid input
 	tflog.Debug(ctx, "parseFromTo() itemValue.Kind()- "+itemValue.Kind().String())
 	if itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			// Keep dereferencing until we get to a struct or can't anymore
-			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			for itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 				itemValue = itemValue.Elem()
 			}
 			if itemValue.Kind() != reflect.Struct {
@@ -384,7 +384,7 @@ func parseFromTo(ctx context.Context, item interface{}, attrName string) types.O
 	}
 
 	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
+	if itemValue.Kind() == reflect.Pointer {
 		if itemValue.IsNil() {
 			return types.ObjectNull(FromToAttrTypes)
 		}
@@ -432,10 +432,10 @@ func parseFromToDays(ctx context.Context, item interface{}, attrName string) typ
 	// Handle nil or invalid input
 	tflog.Debug(ctx, "parseFromToDays() itemValue.Kind()- "+itemValue.Kind().String())
 	if itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			// Keep dereferencing until we get to a struct or can't anymore
-			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			for itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 				itemValue = itemValue.Elem()
 			}
 			if itemValue.Kind() != reflect.Struct {
@@ -447,7 +447,7 @@ func parseFromToDays(ctx context.Context, item interface{}, attrName string) typ
 	}
 
 	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
+	if itemValue.Kind() == reflect.Pointer {
 		if itemValue.IsNil() {
 			return types.ObjectNull(FromToDaysAttrTypes)
 		}
@@ -488,10 +488,10 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 
 	// Handle nil or invalid input
 	if item == nil || itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			// Keep dereferencing until we get to a struct or can't anymore
-			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			for itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 				itemValue = itemValue.Elem()
 			}
 			if itemValue.Kind() != reflect.Struct {
@@ -503,7 +503,7 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 	}
 
 	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
+	if itemValue.Kind() == reflect.Pointer {
 		tflog.Debug(ctx, "parseCustomService() itemValue.Kind()- "+fmt.Sprintf("%v", itemValue))
 		if itemValue.IsNil() {
 			return types.ObjectNull(CustomServiceAttrTypes)
@@ -523,7 +523,7 @@ func parseCustomService(ctx context.Context, item interface{}, attrName string) 
 	// Handle port_range first to check if it's set
 	var portRangeVal types.Object
 	var hasPortRange bool
-	if portRangeField.Kind() == reflect.Ptr {
+	if portRangeField.Kind() == reflect.Pointer {
 		if portRangeField.IsNil() {
 			portRangeVal = types.ObjectNull(FromToAttrTypes)
 			hasPortRange = false
@@ -624,9 +624,9 @@ func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string
 
 	// Handle nil or invalid input
 	if item == nil || itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
-			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			for itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 				itemValue = itemValue.Elem()
 			}
 			if itemValue.Kind() != reflect.Struct {
@@ -638,7 +638,7 @@ func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string
 	}
 
 	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
+	if itemValue.Kind() == reflect.Pointer {
 		if itemValue.IsNil() {
 			return types.ObjectNull(CustomServiceIPAttrTypes)
 		}
@@ -669,7 +669,7 @@ func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string
 	// Handle IP range
 	var ipRangeVal types.Object
 	switch {
-	case ipRangeField.Kind() == reflect.Ptr:
+	case ipRangeField.Kind() == reflect.Pointer:
 		if ipRangeField.IsNil() {
 			ipRangeVal = types.ObjectNull(FromToAttrTypes)
 		} else {
@@ -727,10 +727,10 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 
 	// Handle nil or invalid input
 	if item == nil || itemValue.Kind() != reflect.Struct {
-		if itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 			itemValue = itemValue.Elem()
 			// Keep dereferencing until we get to a struct or can't anymore
-			for itemValue.Kind() == reflect.Ptr && !itemValue.IsNil() {
+			for itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
 				itemValue = itemValue.Elem()
 			}
 			if itemValue.Kind() != reflect.Struct {
@@ -742,7 +742,7 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 	}
 
 	// Handle pointer to struct
-	if itemValue.Kind() == reflect.Ptr {
+	if itemValue.Kind() == reflect.Pointer {
 		tflog.Debug(ctx, "parseExceptionCustomService() itemValue.Kind()- "+fmt.Sprintf("%v", itemValue))
 		if itemValue.IsNil() {
 			return types.ObjectNull(CustomServiceAttrTypes)
@@ -763,7 +763,7 @@ func parseExceptionCustomService(ctx context.Context, item interface{}, attrName
 	// Handle port_range first (from PortRangeCustomService field) to check if it's set
 	var portRangeVal types.Object
 	var hasPortRange bool
-	if portRangeField.Kind() == reflect.Ptr {
+	if portRangeField.Kind() == reflect.Pointer {
 		if portRangeField.IsNil() {
 			portRangeVal = types.ObjectNull(FromToAttrTypes)
 			hasPortRange = false

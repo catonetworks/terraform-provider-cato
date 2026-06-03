@@ -32,7 +32,7 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 - `docs/` - generated provider docs output
 
 ## Setup
-- Go `1.26.3` (see `go.mod`).
+- Go `1.26.4` (see `go.mod`).
 - Terraform CLI for running examples and acceptance tests.
 - Required env vars for API access: `CATO_BASEURL`, `CATO_TOKEN`, provider
   `account_id`. Examples also accept `TF_VAR_token` / `TF_VAR_account_id`.

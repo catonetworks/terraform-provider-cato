@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -124,7 +124,7 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Validators:    []validator.String{validators.SiteConnectionTypeValidator{}},
 			},
 			"site_type": schema.StringAttribute{
-				Description: "Site type (https:// api.catonetworks.com/documentation/#definition-SiteType)",
+				Description: "Site type (https://api.catonetworks.com/documentation/#definition-SiteType)",
 				Required:    true,
 			},
 			"description": schema.StringAttribute{
@@ -133,6 +133,7 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 			"native_range":  r.schemaNativeRange(),
 			"site_location": r.schemaSiteLocation(),
+			"sockets":       r.schemaSockets(),
 		},
 	}
 }
@@ -213,6 +214,16 @@ func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { 
 				Description: "Site native range local ip",
 				Required:    true,
 			},
+			"primary_management_ip": schema.StringAttribute{
+				Description:   "Site native range primary management IP",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"secondary_management_ip": schema.StringAttribute{
+				Description:   "Site native range secondary management IP",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
 			"range_type": schema.StringAttribute{
 				Description:   "NATIVE",
 				Computed:      true,
@@ -233,10 +244,10 @@ func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { 
 			"interface_dest_type": schema.StringAttribute{
 				Description: "Socket interface destination type for the native interface, " +
 					"example values: LAN, LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP, LAN_AND_HA, VRRP, VRRP_AND_LAN",
-				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString(string(cato_models.SocketInterfaceDestTypeLan)),
-				Validators: []validator.String{validators.SocketInterfaceDestTypeValidator{}},
+				Optional:      true,
+				Computed:      true,
+				Validators:    []validator.String{validators.SocketInterfaceDestTypeValidator{}},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"dhcp_settings": r.schemaDhcpSettings(),
 		},
@@ -314,6 +325,38 @@ func (r *socketSiteResource) schemaSiteLocation() schema.SingleNestedAttribute {
 	}
 }
 
+func (r *socketSiteResource) schemaSockets() schema.SetNestedAttribute {
+	return schema.SetNestedAttribute{
+		Description:   "Socket information",
+		Computed:      true,
+		PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				"id": schema.StringAttribute{
+					Description:   "Socket ID",
+					Computed:      true,
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
+				"serial_number": schema.StringAttribute{
+					Description:   "Socket serial number",
+					Computed:      true,
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
+				"is_primary": schema.BoolAttribute{
+					Description:   "Indicates if the socket is primary",
+					Computed:      true,
+					PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+				},
+				"platform": schema.StringAttribute{
+					Description:   "Socket platform",
+					Computed:      true,
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
+			},
+		},
+	}
+}
+
 func (r *socketSiteResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -359,7 +402,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	if diags.HasError() {
 		return
 	}
-	r.updateNetworkRange(ctx, &plan, networkRange.GetNetworkRangeID(), &diags)
+	r.updateNetworkRange(ctx, &plan, networkRange.GetNetworkRangeID(), false, &diags)
 	if diags.HasError() {
 		return
 	}
@@ -371,7 +414,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	// Update Socket Interface
-	r.updateSocketInterface(ctx, &plan, siteID, &diags)
+	r.updateSocketInterface(ctx, &plan, siteID, false, &diags)
 	if diags.HasError() {
 		return
 	}
@@ -444,6 +487,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	siteID := plan.ID.ValueString()
+	isHA := r.isHA(&state)
 
 	// Update general socket site details
 	r.updateBasicSocketSite(ctx, &plan, &resp.Diagnostics)
@@ -456,7 +500,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 	networkRangeID := planNativeRange.NativeNetworkRangeID.ValueString()
-	r.updateNetworkRange(ctx, &plan, networkRangeID, &resp.Diagnostics)
+	r.updateNetworkRange(ctx, &plan, networkRangeID, isHA, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -472,7 +516,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Update Socket Interface
-	r.updateSocketInterface(ctx, &plan, siteID, &resp.Diagnostics)
+	r.updateSocketInterface(ctx, &plan, siteID, isHA, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -582,7 +626,8 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *tf
 		SiteType:       types.StringPointerValue((*string)(siteInfo.GetType())),
 		Description:    types.StringPointerValue(siteInfo.GetDescription()),
 		NativeRange:    r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
-		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, diags),
+		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
+		Sockets:        r.parseSockets(ctx, siteInfo, diags),
 	}
 	if diags.HasError() {
 		return state, true
@@ -610,9 +655,10 @@ func (r *socketSiteResource) fixConnectionType(connTypeFromAPI *cato_models.Prot
 
 // parseSiteLocation converts API site location data to the types.Object or tf.SiteLocation
 func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetails *cato_go_sdk.SiteGeneralDetails,
-	diags *diag.Diagnostics,
+	siteLocation types.Object, diags *diag.Diagnostics,
 ) types.Object {
 	var objDiags diag.Diagnostics
+	var planLocation tf.SiteLocation
 
 	if siteGenDetails == nil || siteGenDetails.Site.SiteGeneralDetails == nil {
 		return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
@@ -632,6 +678,17 @@ func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetai
 		City:        types.StringPointerValue(siteLoc.GetCityName()),
 	}
 
+	// API sometimes returns empty string and sometimes null for city - use what is in the plan in that case
+	city := siteLoc.GetCityName()
+	if ((city == nil) || (*city == "")) && utils.HasValue(siteLocation) {
+		if utils.CheckErr(diags, siteLocation.As(ctx, &planLocation, basetypes.ObjectAsOptions{})) {
+			return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
+		}
+		if planLocation.City.IsNull() || (utils.HasValue(planLocation.City) && (planLocation.City.ValueString() == "")) {
+			tfLocation.City = planLocation.City
+		}
+	}
+
 	locObj, objDiags := types.ObjectValueFrom(ctx, tf.SiteLocationResourceAttrTypes, tfLocation)
 	diags.Append(objDiags...)
 	if diags.HasError() {
@@ -639,6 +696,49 @@ func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetai
 	}
 
 	return locObj
+}
+
+// parseSockets converts API site socket data to the types.Set of tf.Socket
+func (r *socketSiteResource) parseSockets(ctx context.Context, siteInfo *cato_go_sdk.AccountSnapshot_AccountSnapshot_Sites_InfoSiteSnapshot,
+	diags *diag.Diagnostics,
+) types.Set {
+	var objDiags diag.Diagnostics
+	setNull := types.SetNull(types.ObjectType{AttrTypes: tf.SocketTypes})
+
+	if siteInfo == nil || len(siteInfo.Sockets) == 0 {
+		return setNull
+	}
+
+	socketObjects := make([]types.Object, 0, len(siteInfo.Sockets))
+
+	for _, soc := range siteInfo.Sockets {
+		if soc == nil {
+			continue
+		}
+
+		// ProtocolPorts item
+		tfSocket := tf.Socket{
+			ID:           types.StringPointerValue(soc.ID),
+			SerialNumber: types.StringPointerValue(soc.Serial),
+			IsPrimary:    types.BoolPointerValue(soc.IsPrimary),
+			Platform:     types.StringPointerValue((*string)(soc.PlatformSocketInfo)),
+		}
+		tfSocketObj, objDiags := types.ObjectValueFrom(ctx, tf.SocketTypes, tfSocket)
+		diags.Append(objDiags...)
+		if diags.HasError() {
+			return setNull
+		}
+		socketObjects = append(socketObjects, tfSocketObj)
+	}
+
+	// convert slice to types.Set
+	tfSocketSet, objDiags := types.SetValueFrom(ctx, types.ObjectType{AttrTypes: tf.SocketTypes}, socketObjects)
+	diags.Append(objDiags...)
+	if diags.HasError() {
+		return setNull
+	}
+
+	return tfSocketSet
 }
 
 // dhcpSettingsDefault returns types.Object or tf.DhcpSettings, with type=ACCOUNT_DEFAULT, other fields null.
@@ -756,6 +856,7 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 	nativeInterface *nativeInterfaceDetails, stateNativeRange types.Object, diags *diag.Diagnostics,
 ) types.Object {
 	var objDiags diag.Diagnostics
+	var tfStateNativeRange tf.NativeRange
 
 	if networkRange == nil {
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
@@ -775,20 +876,32 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 		nativeInterface = &nativeInterfaceDetails{}
 	}
 
+	// decode status NativeRange
+	if utils.HasValue(stateNativeRange) {
+		if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
+			return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
+		}
+	}
+
 	// try to get LagMinLinks from state; not available in API; TODO: add to API
 	lagMinLinks := types.Int64Null()
 	if utils.HasValue(stateNativeRange) {
-		var tfNativeRange tf.NativeRange
-		if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
-			return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
-		}
-		lagMinLinks = tfNativeRange.LagMinLinks
+		lagMinLinks = tfStateNativeRange.LagMinLinks
 	}
 
 	// Fix interface index - API sometimes returns 'INT_5', sometimes just 5
 	fixedIfaceIndex := nativeInterface.interfaceIndex
 	if fixedIfaceIndex != nil && numberRE.MatchString(*fixedIfaceIndex) {
 		fixedIfaceIndex = ptr("INT_" + *fixedIfaceIndex)
+	}
+
+	localIP := types.StringPointerValue(networkRange.LocalIP)
+	if networkRange.LocalIP == nil { // In HA scenario the API does not return local IP
+		if networkRange.PrimaryManagementIP != nil { // AWS: use primary management IP as local IP
+			localIP = types.StringPointerValue(networkRange.PrimaryManagementIP)
+		} else if utils.HasValue(stateNativeRange) { // try state local IP
+			localIP = tfStateNativeRange.LocalIP
+		}
 	}
 
 	// Prepare native range object
@@ -798,19 +911,21 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 		InterfaceName:               types.StringPointerValue(nativeInterface.interfaceName),
 		NativeNetworkLanInterfaceID: types.StringPointerValue(nativeInterface.interfaceID),
 
-		NativeNetworkRange:   types.StringValue(networkRange.Subnet),
-		NativeNetworkRangeID: types.StringValue(networkRange.NetworkRangeID),
-		RangeName:            types.StringValue(networkRange.Name),
-		RangeID:              types.StringValue(networkRange.NetworkRangeID),
-		LocalIP:              types.StringPointerValue(networkRange.LocalIP),
-		TranslatedSubnet:     types.StringPointerValue(networkRange.TranslatedSubnet),
-		Gateway:              types.StringPointerValue(networkRange.Gateway),
-		RangeType:            types.StringValue(strings.ToUpper(string(networkRange.RangeType))),
-		DhcpSettings:         dhcpSettingsObj,
-		Vlan:                 types.Int64PointerValue(networkRange.Vlan),
-		MdnsReflector:        types.BoolValue(networkRange.MdnsReflector),
-		LagMinLinks:          lagMinLinks,
-		InterfaceDestType:    types.StringPointerValue(nativeInterface.destType),
+		NativeNetworkRange:    types.StringValue(networkRange.Subnet),
+		NativeNetworkRangeID:  types.StringValue(networkRange.NetworkRangeID),
+		RangeName:             types.StringValue(networkRange.Name),
+		RangeID:               types.StringValue(networkRange.NetworkRangeID),
+		LocalIP:               localIP,
+		PrimaryManagementIP:   types.StringPointerValue(networkRange.PrimaryManagementIP),
+		SecondaryManagementIP: types.StringPointerValue(networkRange.SecondaryManagementIP),
+		TranslatedSubnet:      types.StringPointerValue(networkRange.TranslatedSubnet),
+		Gateway:               types.StringPointerValue(networkRange.Gateway),
+		RangeType:             types.StringValue(strings.ToUpper(string(networkRange.RangeType))),
+		DhcpSettings:          dhcpSettingsObj,
+		Vlan:                  types.Int64PointerValue(networkRange.Vlan),
+		MdnsReflector:         types.BoolValue(networkRange.MdnsReflector),
+		LagMinLinks:           lagMinLinks,
+		InterfaceDestType:     types.StringPointerValue(nativeInterface.destType),
 	}
 
 	netRangeObj, objDiags := types.ObjectValueFrom(ctx, tf.SiteNativeRangeResourceAttrTypes, tfNativeRange)
@@ -913,7 +1028,7 @@ func (r *socketSiteResource) prepareDhcpSettings(ctx context.Context, dhcpSettin
 
 // prepareNetworkRangeInput constructs the API input for SiteUpdateNetworkRange() from the Terraform plan data.
 // It may add error(s) to the diagnostics if the input data is invalid.
-func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan *tf.SocketSite, diags *diag.Diagnostics,
+func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
 ) *cato_models.UpdateNetworkRangeInput {
 	var tfNativeRange tf.NativeRange
 	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
@@ -922,11 +1037,14 @@ func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan 
 	input := &cato_models.UpdateNetworkRangeInput{
 		Subnet:           parse.KnownStringPointer(tfNativeRange.NativeNetworkRange),
 		TranslatedSubnet: parse.KnownStringPointer(tfNativeRange.TranslatedSubnet),
-		LocalIP:          parse.KnownStringPointer(tfNativeRange.LocalIP),
 		MdnsReflector:    parse.KnownBoolPointer(tfNativeRange.MdnsReflector),
 		Vlan:             parse.KnownInt64Pointer(tfNativeRange.Vlan),
 		DhcpSettings:     r.prepareDhcpSettings(ctx, tfNativeRange.DhcpSettings, diags),
 		//    AzureFloatingIP *string `json:"azureFloatingIp,omitempty"` TODO: implement when AZURE HA support is added
+	}
+
+	if !isHA { // for HA scenario, local IP is not allowed to be modified
+		input.LocalIP = parse.KnownStringPointer(tfNativeRange.LocalIP)
 	}
 
 	return input
@@ -934,7 +1052,7 @@ func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan 
 
 // prepareSocketInterfaceInput prepares inputs for SiteUpdateSocketInterface API,
 // on error updates diags
-func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, plan *tf.SocketSite, diags *diag.Diagnostics,
+func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
 ) (*cato_models.UpdateSocketInterfaceInput, cato_models.SocketInterfaceIDEnum) {
 	var (
 		tfNativeRange     tf.NativeRange
@@ -957,6 +1075,10 @@ func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, pl
 
 	interfaceDestType := cato_models.SocketInterfaceDestType(tfNativeRange.InterfaceDestType.ValueString())
 
+	if interfaceDestType == "" {
+		interfaceDestType = cato_models.SocketInterfaceDestTypeLan // default to LAN if not specified
+	}
+
 	// Determine interface ifaceName with the following precedence: InterfaceName > InterfaceIndex > default based on connection type
 	ifaceName := parse.KnownStringPointer(tfNativeRange.InterfaceName)
 	if ifaceName == nil {
@@ -977,7 +1099,7 @@ func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, pl
 	}
 
 	// LAN input
-	if slices.Contains(lanDestTypes, interfaceDestType) {
+	if slices.Contains(lanDestTypes, interfaceDestType) && !isHA {
 		input.Lan = &cato_models.SocketInterfaceLanInput{
 			LocalIP:          tfNativeRange.LocalIP.ValueString(),
 			Subnet:           tfNativeRange.NativeNetworkRange.ValueString(),
@@ -1216,8 +1338,10 @@ func (r *socketSiteResource) assignInterfaceIndex(ctx context.Context, currentIn
 }
 
 // updateNativeRange updates the native network range details by calling SiteUpdateNetworkRange API.
-func (r *socketSiteResource) updateNetworkRange(ctx context.Context, plan *tf.SocketSite, networkRangeID string, diags *diag.Diagnostics) {
-	networkRangeInput := r.prepareNetworkRangeInput(ctx, plan, diags)
+func (r *socketSiteResource) updateNetworkRange(ctx context.Context, plan *tf.SocketSite, networkRangeID string,
+	isHA bool, diags *diag.Diagnostics,
+) {
+	networkRangeInput := r.prepareNetworkRangeInput(ctx, plan, isHA, diags)
 	if diags.HasError() {
 		return
 	}
@@ -1230,8 +1354,14 @@ func (r *socketSiteResource) updateNetworkRange(ctx context.Context, plan *tf.So
 }
 
 // updateSocketInterface updates the socket interface details.
-func (r *socketSiteResource) updateSocketInterface(ctx context.Context, plan *tf.SocketSite, siteID string, diags *diag.Diagnostics) {
-	socketIfaceInput, interfaceID := r.prepareSocketInterfaceInput(ctx, plan, diags)
+func (r *socketSiteResource) updateSocketInterface(ctx context.Context, plan *tf.SocketSite, siteID string,
+	isHA bool, diags *diag.Diagnostics,
+) {
+	if isHA && plan.ConnectionType.ValueString() == string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
+		return // update does not work on GCP HA
+	}
+
+	socketIfaceInput, interfaceID := r.prepareSocketInterfaceInput(ctx, plan, isHA, diags)
 	if diags.HasError() {
 		return
 	}
@@ -1241,4 +1371,12 @@ func (r *socketSiteResource) updateSocketInterface(ctx context.Context, plan *tf
 	if err != nil {
 		diags.AddError("Catov2 API SiteUpdateSocketInterface error", err.Error())
 	}
+}
+
+// isHA determines if the site is in HA scenario based on the number of sockets
+func (r *socketSiteResource) isHA(state *tf.SocketSite) bool {
+	if state == nil || !utils.HasValue(state.Sockets) {
+		return false
+	}
+	return len(state.Sockets.Elements()) > 1
 }
