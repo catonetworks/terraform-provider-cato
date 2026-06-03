@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.82 (2026-06-03)
+
+### Changed
+- Refactored socket site handling and related validators for native ranges, DHCP settings, interface indexes, destination types, and site connection types.
+
+### Fixed
+- Fixed HA support for AWS, GCP, and Azure socket sites.
+- Fixed native range validation when Terraform values are unknown.
+- Fixed socket site location hydration when `cityName` is null.
+
 ## 0.0.81 (2026-05-29)
 
 ### Fixed
