@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v0.2.7-0.20260601132537-51e2f2559dcf
+	github.com/catonetworks/cato-go-sdk v0.2.7-0.20260603083328-a39d94add207
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
