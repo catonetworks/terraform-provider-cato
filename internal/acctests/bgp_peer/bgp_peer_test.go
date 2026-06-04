@@ -122,31 +122,34 @@ func testAccBgpPeerDestroy(st *terraform.State) error {
 }
 
 type bgpPeerCfg struct {
-	name           string
-	peerIP         string
-	allocatedIPIDs []string
-	t              *testing.T
+	name          string
+	peerIP        string
+	allocatedIPID string
+	t             *testing.T
 }
 
 func newBgpPeerCfg(t *testing.T) bgpPeerCfg {
 	return bgpPeerCfg{
-		name:           acc.GetRandName("bgp_peer"),
-		peerIP:         "192.168.254.20",
-		allocatedIPIDs: getAllocatedIPIDs(t),
-		t:              t,
+		name:   acc.GetRandName("bgp_peer"),
+		peerIP: "192.168.254.20",
+		t:      t,
 	}
 }
 
-func (p bgpPeerCfg) getTfConfig(index int) string {
+func (p *bgpPeerCfg) getTfConfig(index int) string {
 	tmpl, err := template.New("tmpl").Parse(bgpPeerTFs[index])
 	if err != nil {
 		p.t.Fatal(err)
 	}
 	var buf bytes.Buffer
+	if p.allocatedIPID == "" {
+		ids := getAllocatedIPIDs(p.t)
+		p.allocatedIPID = ids[0]
+	}
 	data := map[string]any{
 		"Name":          p.name,
 		"PeerIP":        p.peerIP,
-		"AllocatedIPID": p.allocatedIPIDs[0],
+		"AllocatedIPID": p.allocatedIPID,
 	}
 	if err := tmpl.Execute(&buf, data); err != nil {
 		p.t.Fatal(err)
@@ -203,6 +206,12 @@ var bgpPeerTFs = []string{
 		hold_time              = 60
 		keepalive_interval     = 20
 		bfd_enabled            = false
+		bfd_settings = {
+			transmit_interval = 1000
+			receive_interval  = 1000
+			multiplier        = 5
+		}
+		summary_route = []
 	}`,
 	`resource "cato_ipsec_site" "this" {
 		name                 = "{{.Name}}-site"
@@ -249,6 +258,12 @@ var bgpPeerTFs = []string{
 		hold_time              = 60
 		keepalive_interval     = 20
 		bfd_enabled            = false
+		bfd_settings = {
+			transmit_interval = 1000
+			receive_interval  = 1000
+			multiplier        = 5
+		}
+		summary_route = []
 	}`,
 	`resource "cato_ipsec_site" "this" {
 		name                 = "{{.Name}}-site"
@@ -292,6 +307,10 @@ var bgpPeerTFs = []string{
 }
 
 func getAllocatedIPIDs(t *testing.T) []string {
+	if os.Getenv("CATO_BASEURL") == "" || os.Getenv("CATO_TOKEN") == "" || os.Getenv("CATO_ACCOUNT_ID") == "" {
+		t.Skip("skipping bgp_peer acceptance test: required CATO_* variables are not set")
+	}
+
 	client := acc.GetClient(t)
 	result, err := client.EntityLookup(context.Background(), acc.CatoAccountID, cato_models.EntityTypeAllocatedIP, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
