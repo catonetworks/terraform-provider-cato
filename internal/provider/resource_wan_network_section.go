@@ -41,7 +41,7 @@ func (r *wanNetworkSectionResource) Metadata(_ context.Context, req resource.Met
 
 func (r *wanNetworkSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_wnw_section` resource contains the configuration parameters necessary to WAN Network rule section. Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.wanNetwork.addSection).",
+		Description: "The `cato_wnw_section` resource contains the configuration parameters necessary to WAN Network rule section. Documentation for the underlying API used in this resource can be found at [mutation.policy.internetFirewall.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.wanNetwork.addSection).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Section ID",

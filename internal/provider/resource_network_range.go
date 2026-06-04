@@ -41,9 +41,9 @@ const (
 
 	networkRangeDescription = "The `cato_network_range` resource contains the configuration parameters necessary to " +
 		"add a network range to a cato site. ([virtual socket in AWS/Azure, or physical socket]" +
-		"(https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). " +
+		"(https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). " +
 		"Documentation for the underlying API used in this resource can be found at [mutation.addNetworkRange()]" +
-		"(https:// api.catonetworks.com/documentation/#mutation-site.addNetworkRange)."
+		"(https://api.catonetworks.com/documentation/#mutation-site.addNetworkRange)."
 	networkRangeMDNSReflectorDescription = "Site native range mDNS reflector. When enabled, the Socket functions as an " +
 		"mDNS gateway, it relays mDNS requests and response between all enabled subnets."
 	networkRangeDHCPMicrosegmentationDescription = "DHCP Microsegmentation. When enabled, the DHCP server will allocate " +
@@ -210,7 +210,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"range_type": schema.StringAttribute{
-				Description: "Network range type (https:// api.catonetworks.com/documentation/#definition-SubnetType)",
+				Description: "Network range type (https://api.catonetworks.com/documentation/#definition-SubnetType)",
 				Required:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(
@@ -243,7 +243,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 				Attributes: map[string]schema.Attribute{
 					"dhcp_type": schema.StringAttribute{
-						Description: "Network range dhcp type (https:// api.catonetworks.com/documentation/#definition-DhcpType)",
+						Description: "Network range dhcp type (https://api.catonetworks.com/documentation/#definition-DhcpType)",
 						Required:    true,
 						Validators: []validator.String{
 							stringvalidator.OneOf(

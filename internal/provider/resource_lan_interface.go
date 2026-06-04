@@ -46,7 +46,7 @@ func (r *lanInterfaceResource) Metadata(_ context.Context, req resource.Metadata
 //nolint:lll
 func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_lan_interface` resource contains the configuration parameters necessary to add a lan interface to a socket. ([physical socket physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https:// api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
+		Description: "The `cato_lan_interface` resource contains the configuration parameters necessary to add a lan interface to a socket. ([physical socket physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.updateSocketInterface()](https://api.catonetworks.com/documentation/#mutation-site.updateSocketInterface).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Network Interface ID",
@@ -67,7 +67,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"interface_id": schema.StringAttribute{
-				Description: "SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https:// api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)",
+				Description: "SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https://api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

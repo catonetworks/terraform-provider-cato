@@ -47,7 +47,7 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 		Description: "The `cato_group` resource contains the configuration parameters necessary to manage a group. " +
 			"Groups can contain various member types including sites, hosts, network ranges, and more. Documentation for the " +
 			"underlying API used in this resource can be found at [mutation.groups.createGroup()]" +
-			"(https:// api.catonetworks.com/documentation/#mutation-groups.createGroup).",
+			"(https://api.catonetworks.com/documentation/#mutation-groups.createGroup).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Group ID",

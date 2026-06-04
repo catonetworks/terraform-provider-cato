@@ -79,7 +79,7 @@ func (r *lanInterfaceLagMemberResource) Schema(_ context.Context, _ resource.Sch
 				},
 			},
 			"dest_type": schema.StringAttribute{
-				Description: "SocketInterface destination type (https:// api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
+				Description: "SocketInterface destination type (https://api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
