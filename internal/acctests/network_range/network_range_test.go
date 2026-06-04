@@ -174,9 +174,8 @@ const siteResource = `
 		}
 
 		site_location = {
-			country_code = "US"
-			state_code   = "NY"
-			timezone     = "America/New_York"
+			country_code = "FR"
+			timezone     = "Europe/Paris"
 		}
 	}
 `
