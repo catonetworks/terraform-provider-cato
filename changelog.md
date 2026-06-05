@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.84 (2026-06-05)
+
+### Fixed
+- Fixed bulk firewall rule reorder computed-state handling.
+
 ## 0.0.82 (2026-06-03)
 
 ### Changed
