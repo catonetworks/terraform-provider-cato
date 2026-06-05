@@ -444,10 +444,14 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 		ruleNameIDMap := make(map[string]string)
+		ruleNameDescriptionMap := make(map[string]string)
+		ruleNameEnabledMap := make(map[string]bool)
 
 		// create map of TLS rule names from the API to their IDs for easy lookup
 		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.TLSInspect.Policy.Rules {
 			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
+			ruleNameDescriptionMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Description
+			ruleNameEnabledMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Enabled
 		}
 
 		tflog.Warn(ctx, "Read.ruleNameIDMap.response", map[string]interface{}{
@@ -532,19 +536,13 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 			}
 		}
 
-		// Now create the rule objects map with proper IDs from the API
+		// Build final state using API values for computed fields so they are always known post-apply.
 		for _, ruleFromPlan := range ruleListFromPlan {
-			ruleID := ruleNameIDMap[ruleFromPlan.RuleName]
-			ruleIndexStateData, diagsSection := types.ObjectValue(
-				TLSRuleIndexResourceAttrTypes,
-				map[string]attr.Value{
-					"id":               types.StringValue(ruleID),
-					"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
-					"section_name":     types.StringValue(ruleFromPlan.SectionName),
-					"rule_name":        types.StringValue(ruleFromPlan.RuleName),
-					"description":      types.StringValue(ruleFromPlan.Description),
-					"enabled":          types.BoolValue(ruleFromPlan.Enabled),
-				},
+			ruleIndexStateData, diagsSection := buildTLSRuleIndexStateData(
+				ruleFromPlan,
+				ruleNameIDMap,
+				ruleNameDescriptionMap,
+				ruleNameEnabledMap,
 			)
 			diags = append(diags, diagsSection...)
 			ruleObjectMap[ruleFromPlan.RuleName] = ruleIndexStateData
@@ -573,4 +571,23 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 	diags = append(diags, ruleMapDiags...)
 
 	return sectionObjectsMap, ruleObjectsMap, diags, nil
+}
+
+func buildTLSRuleIndexStateData(
+	ruleFromPlan TLSRulesRuleDataIndex,
+	ruleNameIDMap map[string]string,
+	ruleNameDescriptionMap map[string]string,
+	ruleNameEnabledMap map[string]bool,
+) (basetypes.ObjectValue, diag.Diagnostics) {
+	return types.ObjectValue(
+		TLSRuleIndexResourceAttrTypes,
+		map[string]attr.Value{
+			"id":               types.StringValue(ruleNameIDMap[ruleFromPlan.RuleName]),
+			"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
+			"section_name":     types.StringValue(ruleFromPlan.SectionName),
+			"rule_name":        types.StringValue(ruleFromPlan.RuleName),
+			"description":      types.StringValue(ruleNameDescriptionMap[ruleFromPlan.RuleName]),
+			"enabled":          types.BoolValue(ruleNameEnabledMap[ruleFromPlan.RuleName]),
+		},
+	)
 }
