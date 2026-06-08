@@ -79,6 +79,30 @@ func TestAccNetworkRange(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "vlan", "202"),
 				),
 			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(2),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "14"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.%", "5"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.dhcp_microsegmentation", "true"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.dhcp_type", "DHCP_RANGE"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.ip_range", "192.168.242.20-192.168.242.32"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttrSet(res, "interface_id"),
+					resource.TestCheckResourceAttr(res, "interface_index", "LAN1"),
+					resource.TestCheckResourceAttr(res, "internet_only", "false"),
+					resource.TestCheckResourceAttr(res, "local_ip", "192.168.242.2"),
+					resource.TestCheckResourceAttr(res, "mdns_reflector", "false"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_range"),
+					resource.TestCheckResourceAttr(res, "range_type", "VLAN"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+					resource.TestCheckResourceAttr(res, "subnet", "192.168.242.0/24"),
+					resource.TestCheckResourceAttr(res, "translated_subnet", "192.168.242.0/24"),
+					resource.TestCheckResourceAttr(res, "vlan", "202"),
+				),
+			},
 		},
 	})
 }
@@ -144,6 +168,16 @@ var networkRangeTFs = []string{
 			ip_range               = "192.168.242.20-192.168.242.32"
 			dhcp_microsegmentation = true
 		}
+	}
+	`,
+	siteResource + `
+	resource "cato_network_range" "this" {
+		site_id         = cato_socket_site.this.id
+		interface_index = "LAN1"
+		name            = "{{.Name}}_range"
+		range_type      = "Direct"
+		subnet          = "192.168.242.0/24"
+		local_ip        = "192.168.242.2"
 	}
 	`,
 }

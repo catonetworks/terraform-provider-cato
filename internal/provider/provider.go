@@ -61,6 +61,9 @@ type catoClientData struct {
 	catov2    *cato.Client
 }
 
+func (p *catoClientData) V2() *cato.Client  { return p.catov2 }
+func (p *catoClientData) AccountID() string { return p.AccountId }
+
 func (p *catoProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "cato"
 	resp.Version = p.version

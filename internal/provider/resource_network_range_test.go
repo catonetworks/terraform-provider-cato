@@ -8,6 +8,7 @@ import (
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -324,8 +325,10 @@ func TestHydrateNetworkRangeStateNetworkRangeError(t *testing.T) {
 		networkRangeClient: mockClient,
 	}
 
-	_, _, err := r.hydrateNetworkRangeState(ctx, networkRangeModel{}.toResourceModel(), "nr-1")
-	if err == nil {
+	var diags diag.Diagnostics
+	state := networkRangeModel{}.toResourceModel()
+	r.hydrateNetworkRangeState(ctx, nil, &state, "nr-1", &diags)
+	if !diags.HasError() {
 		t.Fatal("expected hydrate error")
 	}
 }

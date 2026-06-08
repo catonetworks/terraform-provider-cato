@@ -6,6 +6,7 @@ import (
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -18,12 +19,14 @@ var dhcpSettingNull = types.ObjectNull(tf.DhcpSettingsAttrTypes)
 
 // DHCPSettingsModifier returns a plan modifier for DHCP settings objects
 // handle ID/Name for relay_group reference
-func DHCPSettingsModifier() planmodifier.Object {
-	return dhcpSettingsModifier{}
+func DHCPSettingsModifier(isRangeResource bool) planmodifier.Object {
+	return dhcpSettingsModifier{isRangeResource: isRangeResource}
 }
 
 // dhcpSettingsModifier implements the plan modifier.
-type dhcpSettingsModifier struct{}
+type dhcpSettingsModifier struct {
+	isRangeResource bool // if true, take rangeType from  `/range_type', otherwise '/native_range/range_type'
+}
 
 // Description returns a human-readable description of the plan modifier.
 func (m dhcpSettingsModifier) Description(_ context.Context) string {
@@ -49,7 +52,7 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 		return
 	}
 	if cfg == nil { // removed from the config, use the default
-		resp.PlanValue = m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeAccountDefault), &resp.Diagnostics)
+		resp.PlanValue = m.planDhcpDefault(ctx, req, &resp.Diagnostics)
 		return
 	}
 	if !req.StateValue.IsNull() && utils.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
@@ -170,4 +173,28 @@ func (m dhcpSettingsModifier) getOptionalBoolValue(cfgVal, stateVal types.Bool, 
 	}
 	// otherwise return unknown - not in the state yet, but API can return it
 	return types.BoolUnknown()
+}
+
+func (m dhcpSettingsModifier) planDhcpDefault(ctx context.Context, req planmodifier.ObjectRequest, diags *diag.Diagnostics) types.Object {
+	var rangeType types.String
+	if m.isRangeResource {
+		if utils.CheckErr(diags, req.Config.GetAttribute(ctx, path.Root("range_type"), &rangeType)) {
+			return dhcpSettingNull
+		}
+	} else {
+		if utils.CheckErr(diags, req.Config.GetAttribute(ctx, path.Root("native_range").AtName("range_type"), &rangeType)) {
+			return dhcpSettingNull
+		}
+	}
+	if !utils.HasValue(rangeType) {
+		diags.AddError("internal error", "failed to get range_type")
+		return dhcpSettingNull
+	}
+
+	switch cato_models.SubnetType(rangeType.ValueString()) {
+	case cato_models.SubnetTypeNative, cato_models.SubnetTypeVlan:
+		return m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeAccountDefault), diags)
+	default:
+		return m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeDhcpDisabled), diags)
+	}
 }
