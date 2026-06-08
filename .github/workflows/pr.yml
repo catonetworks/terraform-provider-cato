@@ -30,6 +30,7 @@ jobs:
       CATO_TOKEN: ${{ secrets.CATO_TOKEN }}
       TFACC_TEST_VARS: ${{ vars.TFACC_TEST_VARS }}
       TFACC_TEST_SKIP: ${{ vars.TFACC_TEST_SKIP }}
+      TFACC_ENABLE_RULES_INDEX_CRUD: "true"
 
     steps:
       - uses: actions/checkout@v6
