@@ -109,15 +109,21 @@ func (v NetworkRangeValidator) checkRangeTypeAttributes(diags *diag.Diagnostics,
 		return ErrConfig
 	}
 
+	if !isAllowed(diags, rangeType, "vlan", networkRange.Vlan, []cato_models.SubnetType{
+		cato_models.SubnetTypeVlan}) {
+		return ErrConfig
+	}
+
 	// Validate that mDNS reflector is not set to true when rangeType is "Routed"
-	if utils.HasValue(networkRange.MdnsReflector) && networkRange.MdnsReflector.ValueBool() {
+	if rangeType == cato_models.SubnetTypeRouted &&
+		utils.HasValue(networkRange.MdnsReflector) && networkRange.MdnsReflector.ValueBool() {
 		diags.AddError("Invalid network range configuration", "mDNS cannot be enabled when rangeType is 'Routed'")
 		return ErrConfig
 	}
 
-	// gateway is required for Routed range
-	if !utils.HasValue(networkRange.Gateway) && rangeType == cato_models.SubnetTypeRouted {
-		diags.AddError("Invalid network range configuration", "gateway is required for rangeType 'Routed'")
+	// Validate that vlan is set for "VLAN" ranges
+	if !utils.HasValue(networkRange.Vlan) && rangeType == cato_models.SubnetTypeVlan {
+		diags.AddError("Invalid network range configuration", "vlan number must be set for VLAN range type")
 		return ErrConfig
 	}
 

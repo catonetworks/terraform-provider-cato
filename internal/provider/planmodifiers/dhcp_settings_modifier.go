@@ -59,8 +59,16 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 		return
 	}
 
-	// DHCPSettings configured - different rules depending on the DHCP type
 	dhcpType := cato_models.DhcpType(cfg.DhcpType.ValueString())
+
+	// microsegmentation is only relevant for DHCP_RANGE
+	if dhcpType != cato_models.DhcpTypeDhcpRange && utils.HasValue(cfg.DhcpMicrosegmentation) {
+		resp.Diagnostics.AddError("configuration error in dhcp_settings",
+			"'dhcp_microsegmentation' can only be set when 'dhcp_type' is 'DHCP_RANGE'")
+		return
+	}
+
+	// DHCPSettings configured - different rules depending on the DHCP type
 	switch dhcpType {
 	case cato_models.DhcpTypeDhcpRelay:
 		resp.PlanValue = m.planDhcpRelay(ctx, state, cfg, &resp.Diagnostics)

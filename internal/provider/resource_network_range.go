@@ -108,6 +108,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 			"gateway": schema.StringAttribute{
 				Description: "Network range gateway (Only releveant for Routed range_type)",
 				Optional:    true,
+				Computed:    true,
 			},
 			"interface_id": schema.StringAttribute{
 				Description: "Network Interface ID",
@@ -137,6 +138,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 			"local_ip": schema.StringAttribute{
 				Description: "Network range local ip",
 				Optional:    true,
+				Computed:    true,
 			},
 			"mdns_reflector": schema.BoolAttribute{
 				Description:   networkRangeMDNSReflectorDescription,
@@ -150,9 +152,10 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"range_type": schema.StringAttribute{
-				Description: "Network range type (https://api.catonetworks.com/documentation/#definition-SubnetType)",
-				Required:    true,
-				Validators:  []validator.String{validators.SubnetTypeValidator{}},
+				Description:   "Network range type (https://api.catonetworks.com/documentation/#definition-SubnetType)",
+				Required:      true,
+				Validators:    []validator.String{validators.SubnetTypeValidator{}},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"site_id": schema.StringAttribute{
 				Description:   "Site ID",
@@ -189,7 +192,9 @@ func (r *networkRangeResource) Configure(_ context.Context, req resource.Configu
 // ModifyPlan ensures that exactlu one of interface_id or interface_index is set,
 // and if one changes in the config, the other one is markerd as unknown.
 func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	var state, plan, cfg *tf.NetworkRange
+	var plan, cfg *tf.NetworkRange
+	state := &tf.NetworkRange{} // avoid nil pointer dereference
+	stateDefined := !req.State.Raw.IsNull()
 
 	if req.Plan.Raw.IsNull() { // resource destruction
 		return
@@ -207,14 +212,56 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 		return
 	}
 
-	// state does not exist yet, no need to set unknowns
-	if req.State.Raw.IsNull() {
+	// get plan
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
+	// get state
+	if stateDefined {
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	rangeType := cato_models.SubnetType(plan.RangeType.ValueString())
+
+	// mdns reflector is only relevant for native, direct and vlan ranges
+	if rangeType == cato_models.SubnetTypeRouted {
+		plan.MdnsReflector = types.BoolNull()
+		if utils.HasValue(cfg.MdnsReflector) {
+			resp.Diagnostics.AddError("Invalid network range configuration",
+				"mdns_reflector cannot be used when rangeType is 'Routed'")
+			return
+		}
+	}
+
+	// set interfaceIndex and interfaceID
+	r.planInterfaceIDIndex(cfg, plan, state, stateDefined)
+
+	// Gateway is only relevant for Routed range type
+	plan.Gateway = types.StringNull()
+	if rangeType == cato_models.SubnetTypeRouted {
+		plan.Gateway = defaultPlanValue(cfg.Gateway, state.Gateway, stateDefined)
+	}
+
+	// Local IP is only relevant for Direct, Native and VLAN range types
+	plan.LocalIP = types.StringNull()
+	if rangeType != cato_models.SubnetTypeRouted {
+		plan.LocalIP = defaultPlanValue(cfg.LocalIP, state.LocalIP, stateDefined)
+	}
+
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
+// planInterfaceIDIndex - plan mutex interface fields
+// - Ensures that exactly one of interface_id or interface_index is set in the plan.
+// - If one changes in the config, the other one is marked as unknown.
+// - If neither changes in the config, the known value from state is used in the plan (if available)
+func (r *networkRangeResource) planInterfaceIDIndex(cfg, plan, state *tf.NetworkRange, stateDefined bool) {
+	if !stateDefined {
 		return
 	}
 
@@ -223,7 +270,7 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 		plan.InterfaceIndex = cfg.InterfaceIndex
 		plan.InterfaceID = types.StringUnknown()
 		// if the configured interfaceIndex is the same as in the state, use known ID value (if available)
-		if state != nil && utils.HasValue(state.InterfaceIndex) &&
+		if stateDefined && utils.HasValue(state.InterfaceIndex) &&
 			state.InterfaceIndex.ValueString() == cfg.InterfaceIndex.ValueString() {
 			plan.InterfaceID = state.InterfaceID
 		}
@@ -233,17 +280,22 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 		plan.InterfaceID = cfg.InterfaceID
 		plan.InterfaceIndex = types.StringUnknown()
 		// if the configured interfaceID is the same as in the state, use known Index value (if available)
-		if state != nil && utils.HasValue(state.InterfaceID) &&
+		if stateDefined && utils.HasValue(state.InterfaceID) &&
 			state.InterfaceID.ValueString() == cfg.InterfaceID.ValueString() {
 			plan.InterfaceIndex = state.InterfaceIndex
 		}
 	}
+}
 
-	// mdns reflector is only relevant for native, direct and vlan ranges
-	if plan.RangeType.ValueString() == string(cato_models.SubnetTypeRouted) {
-		plan.MdnsReflector = types.BoolNull()
+// defaultPlanValue returns the appropriate plan value: cfg -> state -> unknown
+func defaultPlanValue(cfgValue, stateValue types.String, stateDefined bool) (planValue types.String) {
+	newValue := types.StringUnknown()
+	if utils.HasValue(cfgValue) {
+		newValue = cfgValue
+	} else if stateDefined && utils.HasValue(stateValue) {
+		newValue = stateValue
 	}
-	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+	return newValue
 }
 
 func (r *networkRangeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -523,6 +575,9 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, cfg
 	}
 	if state.MdnsReflector.IsNull() {
 		newState.MdnsReflector = types.BoolNull()
+	}
+	if !state.Gateway.IsUnknown() {
+		newState.Gateway = state.Gateway
 	}
 
 	return newState, true
