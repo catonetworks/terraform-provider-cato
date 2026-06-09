@@ -15,8 +15,13 @@ import (
 //	        { "name": "acctest_private_app_1", "id": "219" },
 //	        { "name": "acctest_private_app_2", "id": "220" }
 //	   ],
-//	   "users": [ ]
-//	   ...
+//	   "global_ip_ranges": [],
+//	   "floating_ranges": [],
+//	   "user_groups": [],
+//	   "system_groups": [],
+//	   "device_postures": [],
+//	   "custom_apps": [],
+//	   "custom_categories": []
 //	}'
 type CMAVars map[string][]Ref
 

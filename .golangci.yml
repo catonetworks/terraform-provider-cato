@@ -119,6 +119,12 @@ linters:
         text: 'package-comments: should have a package comment'
       - path: (.+)\.go$
         text: exported (var|type|method|function|const) (.+) should have comment (.+)
+      - linters:
+          - goconst
+        path: (.+)\.go$
+      - linters:
+          - govet
+        text: 'inline: Constant reflect\.Ptr should be inlined'
     paths:
       - libci
       - tmp
