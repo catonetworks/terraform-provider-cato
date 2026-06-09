@@ -2458,6 +2458,9 @@ func hydrateWanRuleAPI(ctx context.Context, plan WanFirewallRule) (hydrateWanAPI
 
 		rootAddRule.Action = cato_models.WanFirewallActionEnum(ruleInput.Action.ValueString())
 		rootUpdateRule.Action = (*cato_models.WanFirewallActionEnum)(ruleInput.Action.ValueStringPointer())
+		rootAddRule.ActionConfig = &cato_models.WanFirewallActionConfigInput{
+			UserNotification: make([]*cato_models.UserNotificationTemplateRefInput, 0),
+		}
 
 		rootAddRule.Direction = cato_models.WanFirewallDirectionEnum(ruleInput.Direction.ValueString())
 		rootUpdateRule.Direction = (*cato_models.WanFirewallDirectionEnum)(ruleInput.Direction.ValueStringPointer())

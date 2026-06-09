@@ -4,11 +4,16 @@ package admin
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"os"
+	"regexp"
 	"testing"
 	"text/template"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
@@ -25,6 +30,7 @@ func TestAccAdmin(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
 		PreCheck:                 acc.CheckCMAVars(t),
+		CheckDestroy:             testAccAdminDestroy,
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
@@ -51,13 +57,36 @@ func TestAccAdmin(t *testing.T) {
 				ImportState:  true,
 				ResourceName: res,
 			},
-			// TODO: fix the bug in TF - parsing response from API
-			//				 {
-			//				 	// Update the resource - USA state
-			//				 	Config: cfg.getTfConfig(1),
-			//				 },
+			{
+				// Update path is known to fail on read-back enum decode (backend/API mismatch).
+				// Keep this step to cover update mutation behavior while tracking the known issue.
+				Config:      cfg.getTfConfig(1),
+				ExpectError: regexp.MustCompile("unmarshal gql error: systemGroup is not a valid EntityType"),
+			},
 		},
 	})
+}
+
+func testAccAdminDestroy(st *terraform.State) error {
+	client, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, nil, map[string]string{
+		"User-Agent": "cato-terraform-test",
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, rs := range st.RootModule().Resources {
+		if rs.Type != "cato_admin" {
+			continue
+		}
+
+		adminID := rs.Primary.Attributes["admin_id"]
+		result, readErr := client.Admins(context.Background(), acc.CatoAccountID, nil, nil, nil, nil, []string{adminID})
+		if readErr == nil && result.GetAdmins() != nil && len(result.GetAdmins().Items) > 0 {
+			return fmt.Errorf("admin %s still exists", adminID)
+		}
+	}
+	return nil
 }
 
 type adminCfg struct {
