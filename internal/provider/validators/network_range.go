@@ -35,20 +35,23 @@ func (v NetworkRangeValidator) ValidateObject(ctx context.Context, req validator
 	if v.isUnknown(networkRange) {
 		return
 	}
+	v.ValidateNetworkRange(ctx, &networkRange, &resp.Diagnostics)
+}
 
+func (v NetworkRangeValidator) ValidateNetworkRange(ctx context.Context, networkRange *tf.NetworkRange, diags *diag.Diagnostics) {
 	// Validate that local_ip is within network_network_range
-	if checkLocalIP(&resp.Diagnostics, networkRange.LocalIP, networkRange.Subnet) != nil {
+	if checkLocalIP(diags, networkRange.LocalIP, networkRange.Subnet) != nil {
 		return
 	}
 
 	// Validate DHCP settings
-	if DHCPChecker.Check(ctx, &resp.Diagnostics, networkRange.DhcpSettings) != nil {
+	if DHCPChecker.Check(ctx, diags, networkRange.DhcpSettings) != nil {
 		return
 	}
 
 	// Validate that interface_id and interface_index cannot be set simultaneously
 	if utils.HasValue(networkRange.InterfaceID) && utils.HasValue(networkRange.InterfaceIndex) {
-		resp.Diagnostics.AddError("Invalid network range Configuration",
+		diags.AddError("Invalid network range Configuration",
 			fmt.Sprintf("interface_id '%s' and interface_index '%s' cannot be set simultaneously.",
 				networkRange.InterfaceID.ValueString(), networkRange.InterfaceIndex.ValueString()))
 		return
@@ -57,7 +60,7 @@ func (v NetworkRangeValidator) ValidateObject(ctx context.Context, req validator
 	// Validate that InternetOnly and MdnsReflector cannot be set simultaneously
 	if utils.HasValue(networkRange.InternetOnly) && utils.HasValue(networkRange.MdnsReflector) &&
 		networkRange.InternetOnly.ValueBool() && networkRange.MdnsReflector.ValueBool() {
-		resp.Diagnostics.AddError(
+		diags.AddError(
 			"Invalid network range Configuration",
 			"InternetOnly and MdnsReflector cannot be set simultaneously",
 		)
@@ -65,7 +68,7 @@ func (v NetworkRangeValidator) ValidateObject(ctx context.Context, req validator
 	}
 
 	// Validate attributes based on rangeType
-	if v.checkRangeTypeAttributes(&resp.Diagnostics, &networkRange) != nil {
+	if v.checkRangeTypeAttributes(diags, networkRange) != nil {
 		return
 	}
 }
@@ -106,11 +109,18 @@ func (v NetworkRangeValidator) checkRangeTypeAttributes(diags *diag.Diagnostics,
 		return ErrConfig
 	}
 
-	// Validate that mDNS is not set to true when rangeType is "Routed"
+	// Validate that mDNS reflector is not set to true when rangeType is "Routed"
 	if utils.HasValue(networkRange.MdnsReflector) && networkRange.MdnsReflector.ValueBool() {
-		diags.AddError("Invalid network range Configuration", "mDNS cannot be enabled when rangeType is 'Routed'")
+		diags.AddError("Invalid network range configuration", "mDNS cannot be enabled when rangeType is 'Routed'")
 		return ErrConfig
 	}
+
+	// gateway is required for Routed range
+	if !utils.HasValue(networkRange.Gateway) && rangeType == cato_models.SubnetTypeRouted {
+		diags.AddError("Invalid network range configuration", "gateway is required for rangeType 'Routed'")
+		return ErrConfig
+	}
+
 	return nil
 }
 

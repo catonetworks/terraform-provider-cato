@@ -176,15 +176,14 @@ func (m dhcpSettingsModifier) getOptionalBoolValue(cfgVal, stateVal types.Bool, 
 }
 
 func (m dhcpSettingsModifier) planDhcpDefault(ctx context.Context, req planmodifier.ObjectRequest, diags *diag.Diagnostics) types.Object {
+	if !m.isRangeResource { // native range -> use ACCOUNT_DEFAULT as the default DHCP type
+		return m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeAccountDefault), diags)
+	}
+
+	// non-native range - default DHCP type depends on the range type
 	var rangeType types.String
-	if m.isRangeResource {
-		if utils.CheckErr(diags, req.Config.GetAttribute(ctx, path.Root("range_type"), &rangeType)) {
-			return dhcpSettingNull
-		}
-	} else {
-		if utils.CheckErr(diags, req.Config.GetAttribute(ctx, path.Root("native_range").AtName("range_type"), &rangeType)) {
-			return dhcpSettingNull
-		}
+	if utils.CheckErr(diags, req.Config.GetAttribute(ctx, path.Root("range_type"), &rangeType)) {
+		return dhcpSettingNull
 	}
 	if !utils.HasValue(rangeType) {
 		diags.AddError("internal error", "failed to get range_type")

@@ -67,7 +67,8 @@ func SchemaDhcpSettings(isRangeResource bool) schema.SingleNestedAttribute {
 // PrepareDHCPSettings constructs the NetworkDhcpSettingsInput part of API input for SiteUpdateNetworkRange()
 // from the Terraform plan data.
 // It may add error(s) to the diagnostics if the input data is invalid.
-func PrepareDHCPSettings(ctx context.Context, client SdkClienter, rangeType cato_models.SubnetType, dhcpSettings types.Object, diags *diag.Diagnostics,
+func PrepareDHCPSettings(ctx context.Context, client SdkClienter, rangeType cato_models.SubnetType,
+	dhcpSettings types.Object, diags *diag.Diagnostics,
 ) *cato_models.NetworkDhcpSettingsInput {
 	var tfDhcpSettings tf.DhcpSettings
 

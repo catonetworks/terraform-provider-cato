@@ -89,34 +89,6 @@ func (r *networkRangeResource) getNetworkRangeClient() NetworkRangeClient {
 	return r.client.catov2
 }
 
-func buildAddNetworkRangeInput(plan tf.NetworkRange, mdnsReflector *bool) cato_models.AddNetworkRangeInput {
-	return cato_models.AddNetworkRangeInput{
-		Name:             plan.Name.ValueString(),
-		RangeType:        cato_models.SubnetType(plan.RangeType.ValueString()),
-		Subnet:           plan.Subnet.ValueString(),
-		LocalIP:          plan.LocalIP.ValueStringPointer(),
-		TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
-		Gateway:          plan.Gateway.ValueStringPointer(),
-		Vlan:             plan.Vlan.ValueInt64Pointer(),
-		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
-		MdnsReflector:    mdnsReflector,
-	}
-}
-
-func buildUpdateNetworkRangeInput(plan tf.NetworkRange, mdnsReflector *bool, vlan *int64) cato_models.UpdateNetworkRangeInput {
-	return cato_models.UpdateNetworkRangeInput{
-		Name:             plan.Name.ValueStringPointer(),
-		RangeType:        (*cato_models.SubnetType)(plan.RangeType.ValueStringPointer()),
-		Subnet:           plan.Subnet.ValueStringPointer(),
-		LocalIP:          plan.LocalIP.ValueStringPointer(),
-		TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
-		Gateway:          plan.Gateway.ValueStringPointer(),
-		Vlan:             vlan,
-		InternetOnly:     plan.InternetOnly.ValueBoolPointer(),
-		MdnsReflector:    mdnsReflector,
-	}
-}
-
 func (r *networkRangeResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_network_range"
 }
@@ -192,9 +164,10 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"translated_subnet": schema.StringAttribute{
-				Description: "Network range translated native IP range (CIDR)",
-				Optional:    true,
-				Computed:    true,
+				Description:   "Network range translated native IP range (CIDR)",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"dhcp_settings": dhcp.SchemaDhcpSettings(true),
 			"vlan": schema.Int64Attribute{
@@ -228,7 +201,9 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 	}
 
 	// Validate config - ensure there is exactly one interface_index or interface_id
-	if r.validateConfig(cfg, &resp.Diagnostics) != nil {
+	nrValidator := validators.NetworkRangeValidator{}
+	nrValidator.ValidateNetworkRange(ctx, cfg, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -263,37 +238,12 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 			plan.InterfaceIndex = state.InterfaceIndex
 		}
 	}
+
+	// mdns reflector is only relevant for native, direct and vlan ranges
+	if plan.RangeType.ValueString() == string(cato_models.SubnetTypeRouted) {
+		plan.MdnsReflector = types.BoolNull()
+	}
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
-}
-
-// validateConfig - ensure the top-level configuration is ok,
-// update diags and return error if the config is invalid
-func (r *networkRangeResource) validateConfig(cfg *tf.NetworkRange, diags *diag.Diagnostics) error {
-	// ensure there is exactly one interface_index or interface_id.
-	if cfg.InterfaceID.IsNull() && cfg.InterfaceIndex.IsNull() {
-		diags.AddError("network range configuration error",
-			"'interface_id' or 'interface_index' must be defined in the config ")
-		return validators.ErrConfig
-	}
-	if !cfg.InterfaceID.IsNull() && !cfg.InterfaceIndex.IsNull() {
-		diags.AddError("network range configuration error",
-			fmt.Sprintf("only one of 'interface_id' or 'interface_index' can be specified in the config, "+
-				"[interface_id:%q, interface_index:%q]",
-				cfg.InterfaceID.ValueString(), cfg.InterfaceIndex.ValueString()))
-		return validators.ErrConfig
-	}
-
-	// ensure that the dhcp settings are valid based on the dhcp type
-	if utils.HasValue(cfg.DhcpSettings) {
-		switch cato_models.SubnetType(cfg.RangeType.ValueString()) {
-		case cato_models.SubnetTypeVlan, cato_models.SubnetTypeNative: // OK, allowed
-		default: // for other range types, dhcp settings must not be set
-			diags.AddError("network range configuration error",
-				fmt.Sprintf("dhcp settings are not allowed for range type %q", cfg.RangeType.ValueString()))
-			return validators.ErrConfig
-		}
-	}
-	return nil
 }
 
 func (r *networkRangeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -522,28 +472,11 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, cfg, state *tf.NetworkRange,
 	networkRangeID string, diags *diag.Diagnostics,
 ) (netRange tf.NetworkRange, rangeExists bool) {
-	const notFoundMsg = "Invalid network range id: "
-
 	// fetch network range details from API, handle 'not found'
-	queryRangeResult, err := r.getNetworkRangeClient().NetworkRange(ctx, r.client.AccountId, networkRangeID)
-	if err != nil {
-		// Check if error is not found error, if so return (nil, false, nil) to indicate resource should be removed from state without error
-		var gqlError *clientv2.ErrorResponse
-		if errors.As(err, &gqlError) {
-			if (gqlError.GqlErrors != nil) && (len(*gqlError.GqlErrors) > 0) && strings.Contains((*gqlError.GqlErrors)[0].Message, notFoundMsg) {
-				return tf.NetworkRange{}, false
-			}
-		}
-		diags.AddError(
-			"Catov2 NetworkRange API error",
-			fmt.Sprintf("error fetching network range details for range ID '%s': %v", networkRangeID, err),
-		)
+	responseRange := r.fetchNetworkRange(ctx, networkRangeID, diags)
+	if responseRange == nil {
 		return tf.NetworkRange{}, false
 	}
-	if queryRangeResult == nil || queryRangeResult.Site.NetworkRange == nil {
-		return tf.NetworkRange{}, false
-	}
-	responseRange := queryRangeResult.Site.NetworkRange
 
 	// fetch interface details from API - either by interface_id or interface_index depending on what's available in config
 	interfaceIndex, interfaceID := state.InterfaceIndex.ValueString(), state.InterfaceID.ValueString()
@@ -588,8 +521,37 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, cfg
 	if responseRange.RangeType != cato_models.SubnetTypeVlan {
 		newState.Vlan = types.Int64Null()
 	}
+	if state.MdnsReflector.IsNull() {
+		newState.MdnsReflector = types.BoolNull()
+	}
 
 	return newState, true
+}
+
+// fetchNetworkRange retrieves the network range details from the API, and returns nil if the network range is not found,
+// on error the diags gets updated.
+func (r *networkRangeResource) fetchNetworkRange(ctx context.Context, networkRangeID string, diags *diag.Diagnostics,
+) (responseRange *cato.NetworkRange_Site_NetworkRange) {
+	const notFoundMsg = "Invalid network range id: "
+
+	queryRangeResult, err := r.getNetworkRangeClient().NetworkRange(ctx, r.client.AccountId, networkRangeID)
+	if err != nil {
+		// Check if error is not found error, if so return (nil, false, nil) to indicate resource should be removed from state without error
+		if gqlError, ok := errors.AsType[*clientv2.ErrorResponse](err); ok {
+			if (gqlError.GqlErrors != nil) && (len(*gqlError.GqlErrors) > 0) && strings.Contains((*gqlError.GqlErrors)[0].Message, notFoundMsg) {
+				return nil
+			}
+		}
+		diags.AddError(
+			"Catov2 NetworkRange API error",
+			fmt.Sprintf("error fetching network range details for range ID '%s': %v", networkRangeID, err),
+		)
+		return nil
+	}
+	if queryRangeResult == nil || queryRangeResult.Site.NetworkRange == nil {
+		return nil
+	}
+	return queryRangeResult.Site.NetworkRange
 }
 
 // getSiteIdFromNetworkRange retrieves the site_id and interface info for a network range using entityLookup
