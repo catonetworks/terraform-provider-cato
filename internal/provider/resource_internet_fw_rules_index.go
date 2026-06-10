@@ -822,6 +822,8 @@ func buildIfwRuleIndexStateData(
 		map[string]attr.Value{
 			"id":               types.StringValue(ruleNameIDMap[ruleFromPlan.RuleName]),
 			"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
+			"index_in_parent":  types.Int64Value(ruleFromPlan.IndexInParent),
+			"parent_rule_name": types.StringValue(ruleFromPlan.ParentRuleName),
 			"section_name":     types.StringValue(ruleFromPlan.SectionName),
 			"rule_name":        types.StringValue(ruleFromPlan.RuleName),
 			"description":      types.StringValue(ruleNameDescriptionMap[ruleFromPlan.RuleName]),
