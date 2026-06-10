@@ -297,5 +297,3 @@ tool (
 	golang.org/x/tools/cmd/goimports
 	golang.org/x/vuln/cmd/govulncheck
 )
-
-// replace github.com/catonetworks/cato-go-sdk => /Users/ilya/work/cato-go-sdk

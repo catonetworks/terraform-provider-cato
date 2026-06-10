@@ -620,7 +620,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 				topLevelRuleIDsBySection[apiRule.Section.Name] = append(topLevelRuleIDsBySection[apiRule.Section.Name], apiRule.ID)
 				topLevelRuleIDBySectionAndName[apiRule.Section.Name+"\x00"+apiRule.Name] = apiRule.ID
 				topLevelRuleIDByName[apiRule.Name] = apiRule.ID
-				if apiRule.Action == cato_models.InternetFirewallActionEnumSubPolicy {
+				if string(apiRule.Action) == "SUB_POLICY" {
 					currentSubPolicyParentID = apiRule.ID
 				} else {
 					currentSubPolicyParentID = ""

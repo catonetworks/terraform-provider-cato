@@ -1981,25 +1981,6 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			connectionOrigin := defaultConnectionOriginAny
 			rootUpdateRule.ConnectionOrigin = (*cato_models.ConnectionOriginEnum)(&connectionOrigin)
 		}
-
-		// userAttributes became required by backend validation; send explicit defaults.
-		rootAddRule.UserAttributes = &cato_models.InternetFirewallUserAttributesInput{
-			RiskScore: &cato_models.RiskScoreConditionInput{
-				Category: cato_models.RiskScoreCategoryAny,
-				Operator: cato_models.RiskScoreOperatorGte,
-			},
-			UserConfidenceLevel: nil,
-		}
-
-		riskScoreCategory := cato_models.RiskScoreCategoryAny
-		riskScoreOperator := cato_models.RiskScoreOperatorGte
-		rootUpdateRule.UserAttributes = &cato_models.InternetFirewallUserAttributesUpdateInput{
-			RiskScore: &cato_models.RiskScoreConditionUpdateInput{
-				Category: &riskScoreCategory,
-				Operator: &riskScoreOperator,
-			},
-			UserConfidenceLevel: nil,
-		}
 	}
 
 	hydrateAPIReturn.create.Rule = rootAddRule
