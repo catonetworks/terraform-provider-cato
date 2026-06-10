@@ -558,7 +558,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			rulenDataTmp := IfwRulesRuleDataIndex{
 				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
 				IndexInParent:  planSourceRuleIndex.IndexInParent.ValueInt64(),
-				ParentRuleName: planSourceRuleIndex.ParentRuleName.ValueString(),
+				ParentRuleName: planSourceRuleIndex.ParentRuleName,
 				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
 				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
 				Description:    planSourceRuleIndex.Description.ValueString(),
@@ -577,14 +577,16 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		// - top-level rules: section index + index_in_section
 		// - sub-rules: parent_rule_name + index_in_parent
 		sort.Slice(ruleListFromPlan, func(i, j int) bool {
-			isSubI := ruleListFromPlan[i].ParentRuleName != ""
-			isSubJ := ruleListFromPlan[j].ParentRuleName != ""
+			parentI := ruleListFromPlan[i].ParentRuleName
+			parentJ := ruleListFromPlan[j].ParentRuleName
+			isSubI := !parentI.IsNull() && !parentI.IsUnknown() && parentI.ValueString() != ""
+			isSubJ := !parentJ.IsNull() && !parentJ.IsUnknown() && parentJ.ValueString() != ""
 			if isSubI != isSubJ {
 				return !isSubI // keep top-level rules first
 			}
 			if isSubI {
-				if ruleListFromPlan[i].ParentRuleName != ruleListFromPlan[j].ParentRuleName {
-					return ruleListFromPlan[i].ParentRuleName < ruleListFromPlan[j].ParentRuleName
+				if parentI.ValueString() != parentJ.ValueString() {
+					return parentI.ValueString() < parentJ.ValueString()
 				}
 				return ruleListFromPlan[i].IndexInParent < ruleListFromPlan[j].IndexInParent
 			}
@@ -643,12 +645,15 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		plannedSubRuleIDsByParent := make(map[string][]string)
 		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(sectionIndexAPIData.Policy.InternetFirewall.Policy.Sections))
 		for _, ruleItemFromPlan := range ruleListFromPlan {
-			if ruleItemFromPlan.ParentRuleName != "" {
-				parentRuleID := topLevelRuleIDByName[ruleItemFromPlan.ParentRuleName]
+			if !ruleItemFromPlan.ParentRuleName.IsNull() &&
+				!ruleItemFromPlan.ParentRuleName.IsUnknown() &&
+				ruleItemFromPlan.ParentRuleName.ValueString() != "" {
+				parentRuleName := ruleItemFromPlan.ParentRuleName.ValueString()
+				parentRuleID := topLevelRuleIDByName[parentRuleName]
 				if parentRuleID == "" {
 					diags = append(diags, diag.NewWarningDiagnostic(
 						"Skipped sub-rule in IF reorder",
-						"Parent sub-policy rule '"+ruleItemFromPlan.ParentRuleName+"' was not found for sub-rule '"+ruleItemFromPlan.RuleName+"'.",
+						"Parent sub-policy rule '"+parentRuleName+"' was not found for sub-rule '"+ruleItemFromPlan.RuleName+"'.",
 					))
 					continue
 				}
@@ -656,7 +661,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 				if subRuleID == "" {
 					diags = append(diags, diag.NewWarningDiagnostic(
 						"Skipped sub-rule in IF reorder",
-						"Sub-rule '"+ruleItemFromPlan.RuleName+"' was not found under parent '"+ruleItemFromPlan.ParentRuleName+"'.",
+						"Sub-rule '"+ruleItemFromPlan.RuleName+"' was not found under parent '"+parentRuleName+"'.",
 					))
 					continue
 				}
@@ -823,7 +828,7 @@ func buildIfwRuleIndexStateData(
 			"id":               types.StringValue(ruleNameIDMap[ruleFromPlan.RuleName]),
 			"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
 			"index_in_parent":  types.Int64Value(ruleFromPlan.IndexInParent),
-			"parent_rule_name": types.StringValue(ruleFromPlan.ParentRuleName),
+			"parent_rule_name": ruleFromPlan.ParentRuleName,
 			"section_name":     types.StringValue(ruleFromPlan.SectionName),
 			"rule_name":        types.StringValue(ruleFromPlan.RuleName),
 			"description":      types.StringValue(ruleNameDescriptionMap[ruleFromPlan.RuleName]),

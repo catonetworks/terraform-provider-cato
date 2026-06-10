@@ -18,7 +18,7 @@ type IfwRulesRuleDataIndex struct {
 	ID             string
 	IndexInSection int64
 	IndexInParent  int64
-	ParentRuleName string
+	ParentRuleName types.String
 	SectionName    string
 	RuleName       string
 	Description    string
