@@ -1,12 +1,36 @@
 #!/usr/bin/env bash
-
+PRG=$(basename "$0")
+HELP="$PRG runs terraform acceptance tests
+Usage:
+  $PRG [ --coverage ] [ --suite <file-name> | <test-dir> ]
+"
 export OUT=tmp_recorded/output
 export COVERAGE=tmp_recorded/coverage
 export TF_ACC=1
 export TF_ACC_MOCK=''
 enable_coverage=''
+test_suite=''
+single_tests=''
 retry_count=3
 result=ok
+count=0
+
+parse_args() {
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			-help|--help|-h) printf "%s\n\n" "$HELP"; exit 1;;
+			--coverage) enable_coverage=y;;
+			--suite) [ $# -gt 1 ] || { echo "Error: test suite file name expected"; exit 1; }
+				shift; test_suite=$1;;
+			*) single_tests="$single_tests $1"
+		esac
+		shift
+	done
+	if [ -n "$test_suite" ]; then
+		[ -f "$test_suite" ] || { echo "Error: test suite file '$test_suite' does not exist"; exit 1; }
+		single_tests=$(<$test_suite)
+	fi
+}
 
 cleanup() {
 	ACCTEST_CLEANUP=true go test -tags acctest -count=1 --timeout=3m -run TestCleanupAccTestResources ./internal/acctests/acc > /dev/null
@@ -58,20 +82,30 @@ compute_coverage() {
 	)
 }
 
+get_test_dirs() {
+	test_dirs=$(find ./internal/acctests/ -type f -name '*_test.go' | sed 's|/[^/]*$||' | sort | uniq | grep -v '^./internal/acctests/acc$')
+	count="$(echo "$test_dirs" | wc -l)"
+	[ -n "$single_tests" ] || return
+
+	new_tests=''; count=0
+	for td in $test_dirs; do
+		base_dir=$(basename "$td")
+		for st in $single_tests; do
+			if [ "$base_dir" = "$(basename "$st")" ]; then
+				new_tests="$new_tests $td"; count=$((count + 1)); break
+			fi
+		done
+	done
+	test_dirs=$new_tests
+}
+
+parse_args "$@"
+get_test_dirs # -> $test_dirs
+
 rm -rf "$OUT" "$COVERAGE"
 mkdir -p "$OUT" "$COVERAGE"
 
-test_dirs=$(find ./internal/acctests/ -type f -name '*_test.go' | sed 's|/[^/]*$||' | sort | uniq | grep -v '^./internal/acctests/acc$')
-if [ "$1" = "--coverage" ]; then
-	enable_coverage=y
-	shift
-fi
-if [ -n "$1" ]; then
-	one_test=$(basename "$1")
-	test_dirs=$(echo "$test_dirs" | grep "./internal/acctests/$one_test\$")
-fi
 [ -n "$test_dirs" ] || { echo "No tests selected"; exit; }
-count="$(echo "$test_dirs" | wc -l)"
 
 cleanup
 i=0
