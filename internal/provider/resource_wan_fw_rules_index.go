@@ -445,6 +445,18 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 		currentSectionID = sectionIDList[workingSectionName.SectionName]
 	}
+	plannedSectionSet := make(map[string]struct{}, len(listOfSectionNames))
+	for _, sectionName := range listOfSectionNames {
+		plannedSectionSet[sectionName] = struct{}{}
+	}
+	// WAN reorder requires all sections to be present in input; append unmanaged sections.
+	for _, apiSection := range sectionIndexAPIData.Policy.WanFirewall.Policy.Sections {
+		sectionName := apiSection.Section.Name
+		if _, planned := plannedSectionSet[sectionName]; planned {
+			continue
+		}
+		listOfSectionNames = append(listOfSectionNames, sectionName)
+	}
 
 	// now that the sections are ordered properly, move the rules to the correct locations
 	if len(plan.RuleData.Elements()) > 0 {
@@ -522,29 +534,39 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		for _, ruleItemFromPlan := range ruleListFromPlan {
 			ruleID, ok := topLevelRuleIDBySectionAndName[ruleItemFromPlan.SectionName+"\x00"+ruleItemFromPlan.RuleName]
 			if !ok {
-				err := errors.New("failed to resolve rule ID for reorder operation")
-				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
-				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				// Rules can be moved across sections in one operation, so fallback by
+				// name when current API section does not match the target section.
+				ruleID, ok = ruleNameIDMap[ruleItemFromPlan.RuleName]
+				if !ok {
+					err := errors.New("failed to resolve rule ID for reorder operation")
+					diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				}
 			}
 			plannedRuleIDsBySection[ruleItemFromPlan.SectionName] = append(plannedRuleIDsBySection[ruleItemFromPlan.SectionName], ruleID)
+		}
+		plannedRuleIDsGlobal := make(map[string]struct{})
+		for _, plannedIDs := range plannedRuleIDsBySection {
+			for _, id := range plannedIDs {
+				plannedRuleIDsGlobal[id] = struct{}{}
+			}
 		}
 
 		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(listOfSectionNames))
 		for _, sectionName := range listOfSectionNames {
 			sectionRuleIDs := topLevelRuleIDsBySection[sectionName]
-			if plannedIDs := plannedRuleIDsBySection[sectionName]; len(plannedIDs) > 0 {
-				plannedSet := make(map[string]struct{}, len(plannedIDs))
-				for _, id := range plannedIDs {
-					plannedSet[id] = struct{}{}
-				}
-				remaining := make([]string, 0, len(sectionRuleIDs))
+			if len(plannedRuleIDsGlobal) > 0 {
+				filtered := make([]string, 0, len(sectionRuleIDs))
 				for _, id := range sectionRuleIDs {
-					if _, managed := plannedSet[id]; managed {
+					if _, moved := plannedRuleIDsGlobal[id]; moved {
 						continue
 					}
-					remaining = append(remaining, id)
+					filtered = append(filtered, id)
 				}
-				sectionRuleIDs = append(append(make([]string, 0, len(plannedIDs)+len(remaining)), plannedIDs...), remaining...)
+				sectionRuleIDs = filtered
+			}
+			if plannedIDs := plannedRuleIDsBySection[sectionName]; len(plannedIDs) > 0 {
+				sectionRuleIDs = append(append(make([]string, 0, len(plannedIDs)+len(sectionRuleIDs)), plannedIDs...), sectionRuleIDs...)
 			}
 
 			reorderRules := make([]*cato_models.PolicyReorderRuleInput, 0, len(sectionRuleIDs))
