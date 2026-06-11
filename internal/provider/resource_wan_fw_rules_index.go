@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -404,6 +405,19 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
 		sectionMoveAPIData, err := client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		if err != nil && strings.Contains(err.Error(), "other active revisions exist") {
+			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry", map[string]interface{}{
+				"error": err.Error(),
+			})
+			_, publishErr := client.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
+			if publishErr != nil {
+				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry.publish_error", map[string]interface{}{
+					"error": publishErr.Error(),
+				})
+			} else {
+				sectionMoveAPIData, err = client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+			}
+		}
 		// Check for API errors safely with nil checks
 		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
 			sectionMoveAPIData.GetPolicy().WanFirewall != nil &&
@@ -591,6 +605,19 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			Sections: reorderSections,
 		}
 		reorderResult, err := client.PolicyWanFirewallReorderPolicy(ctx, nil, reorderInput, r.client.AccountId)
+		if err != nil && strings.Contains(err.Error(), "other active revisions exist") {
+			tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry", map[string]interface{}{
+				"error": err.Error(),
+			})
+			_, publishErr := client.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
+			if publishErr != nil {
+				tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry.publish_error", map[string]interface{}{
+					"error": publishErr.Error(),
+				})
+			} else {
+				reorderResult, err = client.PolicyWanFirewallReorderPolicy(ctx, nil, reorderInput, r.client.AccountId)
+			}
+		}
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyWanFirewallReorderPolicy error",
