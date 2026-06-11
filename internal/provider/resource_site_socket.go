@@ -27,8 +27,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/dhcp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
@@ -251,45 +251,7 @@ func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { 
 				Validators:    []validator.String{validators.SocketInterfaceDestTypeValidator{}},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"dhcp_settings": r.schemaDhcpSettings(),
-		},
-	}
-}
-
-func (r *socketSiteResource) schemaDhcpSettings() schema.SingleNestedAttribute {
-	return schema.SingleNestedAttribute{
-		Description:   "Site native range DHCP settings (Only releveant for NATIVE and VLAN range_type)",
-		Optional:      true,
-		Computed:      true,
-		PlanModifiers: []planmodifier.Object{planmodifiers.DHCPSettingsModifier()},
-		Attributes: map[string]schema.Attribute{
-			"dhcp_type": schema.StringAttribute{
-				Description: "Network range dhcp type (https://api.catonetworks.com/documentation/#definition-DhcpType)",
-				Required:    true,
-				Validators:  []validator.String{validators.DHCPTypeValidator{}},
-			},
-			"ip_range": schema.StringAttribute{
-				Description: "Network range dhcp range (format \"192.168.1.10-192.168.1.20\")",
-				Optional:    true,
-			},
-			"relay_group_id": schema.StringAttribute{
-				Description: "Network range dhcp relay group id",
-				Optional:    true,
-				Computed:    true,
-			},
-			"relay_group_name": schema.StringAttribute{
-				Description: "Network range dhcp relay group name",
-				Optional:    true,
-				Computed:    true,
-			},
-			"dhcp_microsegmentation": schema.BoolAttribute{
-				Description: "DHCP Microsegmentation. When enabled, the DHCP server will allocate /32 subnet mask. " +
-					"Make sure to enable the proper Firewall rules and enable it with caution, " +
-					"as it is not supported on all operating systems; monitor the network closely after activation. " +
-					"This setting can only be configured when dhcp_type is set to DHCP_RANGE.",
-				Optional: true,
-				Computed: true,
-			},
+			"dhcp_settings": dhcp.SchemaDhcpSettings(false),
 		},
 	}
 }
@@ -769,64 +731,6 @@ func (r *socketSiteResource) parseSockets(ctx context.Context, siteInfo *cato_go
 	return tfSocketSet
 }
 
-// dhcpSettingsDefault returns types.Object or tf.DhcpSettings, with type=ACCOUNT_DEFAULT, other fields null.
-func (r *socketSiteResource) dhcpSettingsDefault(ctx context.Context, diags *diag.Diagnostics) types.Object {
-	tfDhcpSettings := tf.DhcpSettings{
-		DhcpType:              types.StringValue(string(cato_models.DhcpTypeAccountDefault)),
-		IPRange:               types.StringNull(),
-		RelayGroupID:          types.StringNull(),
-		RelayGroupName:        types.StringNull(),
-		DhcpMicrosegmentation: types.BoolNull(),
-	}
-	dhcpSettingsObj, objDiags := types.ObjectValueFrom(ctx, tf.SiteNativeRangeDhcpResourceAttrTypes, tfDhcpSettings)
-	diags.Append(objDiags...)
-	if diags.HasError() {
-		return types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
-	}
-	return dhcpSettingsObj
-}
-
-// parseDhcpSettings converts API DHCP settings data to the types.Object or tf.DhcpSettings
-func (r *socketSiteResource) parseDhcpSettings(ctx context.Context,
-	dhcpSettings *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items_DhcpSettings,
-	diags *diag.Diagnostics,
-) types.Object {
-	tfDhcpSettings := tf.DhcpSettings{
-		DhcpType:              types.StringValue(string(dhcpSettings.DhcpType)),
-		IPRange:               types.StringNull(),
-		RelayGroupID:          types.StringNull(),
-		RelayGroupName:        types.StringNull(),
-		DhcpMicrosegmentation: types.BoolNull(),
-	}
-
-	switch dhcpSettings.DhcpType {
-	case cato_models.DhcpTypeDhcpRelay:
-		tfDhcpSettings.RelayGroupID = types.StringPointerValue(dhcpSettings.RelayGroupID)
-		if dhcpSettings.RelayGroupID != nil {
-			relayGroupName := r.getDhcpRelayGroupName(ctx, *dhcpSettings.RelayGroupID, diags)
-			tfDhcpSettings.RelayGroupName = types.StringPointerValue(relayGroupName)
-		}
-
-	case cato_models.DhcpTypeDhcpRange:
-		tfDhcpSettings.IPRange = types.StringPointerValue(dhcpSettings.IPRange)
-		tfDhcpSettings.DhcpMicrosegmentation = types.BoolValue(dhcpSettings.DhcpMicrosegmentation)
-
-	case cato_models.DhcpTypeAccountDefault, cato_models.DhcpTypeDhcpDisabled:
-		// nullValues
-
-	default:
-		diags.AddError("Unsupported DHCP type", "Unknown DHCP type from API: "+string(dhcpSettings.DhcpType))
-		return types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
-	}
-
-	dhcpSettingsObj, objDiags := types.ObjectValueFrom(ctx, tf.SiteNativeRangeDhcpResourceAttrTypes, tfDhcpSettings)
-	diags.Append(objDiags...)
-	if diags.HasError() {
-		return types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
-	}
-	return dhcpSettingsObj
-}
-
 // checkDhcpSettingsDefault checks DHCP settings config or state,
 // If config is provided,
 // return true if it is not defined or if dhcp_type is set to ACCOUNT_DEFAULT, false otherwise
@@ -892,9 +796,16 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 
 	// DHCP settings
 	isDhcpSettingsDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
-	dhcpSettingsObj := r.dhcpSettingsDefault(ctx, diags)
+	dhcpSettingsObj := dhcp.SettingsDefault(ctx, diags)
 	if networkRange.DhcpSettings != nil && !isDhcpSettingsDefault {
-		dhcpSettingsObj = r.parseDhcpSettings(ctx, networkRange.DhcpSettings, diags)
+		dhcpSettingsObj = dhcp.ParseSettings(ctx, r.client,
+			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
+				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
+				DhcpType:              networkRange.DhcpSettings.DhcpType,
+				IPRange:               networkRange.DhcpSettings.IPRange,
+				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
+			},
+			diags)
 	}
 	if diags.HasError() {
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
@@ -1008,52 +919,6 @@ func (r *socketSiteResource) prepareSocketSiteInput(ctx context.Context, plan *t
 	return input
 }
 
-// prepareDhcpSettings constructs the NetworkDhcpSettingsInput part of API input for SiteUpdateNetworkRange()
-// from the Terraform plan data.
-// It may add error(s) to the diagnostics if the input data is invalid.
-func (r *socketSiteResource) prepareDhcpSettings(ctx context.Context, dhcpSettings types.Object, diags *diag.Diagnostics,
-) *cato_models.NetworkDhcpSettingsInput {
-	var tfDhcpSettings tf.DhcpSettings
-
-	if !utils.HasValue(dhcpSettings) {
-		return nil
-	}
-
-	if utils.CheckErr(diags, dhcpSettings.As(ctx, &tfDhcpSettings, basetypes.ObjectAsOptions{})) {
-		return nil
-	}
-	if !utils.HasValue(tfDhcpSettings.DhcpType) {
-		return nil
-	}
-
-	dhcpType := cato_models.DhcpType(tfDhcpSettings.DhcpType.ValueString())
-
-	input := &cato_models.NetworkDhcpSettingsInput{
-		DhcpType: dhcpType,
-		IPRange:  parse.KnownStringPointer(tfDhcpSettings.IPRange),
-	}
-
-	// if dhcp type is DHCP_RELAY and we don't have relayGroupID (just Name), fetch the relayGroupID
-	if dhcpType == cato_models.DhcpTypeDhcpRelay && (!utils.HasValue(tfDhcpSettings.RelayGroupID)) {
-		if !utils.HasValue(tfDhcpSettings.RelayGroupName) {
-			diags.AddError("Missing DHCP relay group name", "DHCP settings of type DHCP_RELAY require a relay group name to be specified.")
-			return nil
-		}
-		relayGroupID := r.getDhcpRelayGroupID(ctx, tfDhcpSettings.RelayGroupName.ValueString(), diags)
-		if diags.HasError() {
-			return nil
-		}
-		input.RelayGroupID = &relayGroupID
-	}
-
-	// Microsegmentation is only relevant for DHCP range
-	if input.DhcpType == cato_models.DhcpTypeDhcpRange {
-		input.DhcpMicrosegmentation = parse.KnownBoolPointer(tfDhcpSettings.DhcpMicrosegmentation)
-	}
-
-	return input
-}
-
 // prepareNetworkRangeInput constructs the API input for SiteUpdateNetworkRange() from the Terraform plan data.
 // It may add error(s) to the diagnostics if the input data is invalid.
 func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
@@ -1067,7 +932,7 @@ func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan 
 		TranslatedSubnet: parse.KnownStringPointer(tfNativeRange.TranslatedSubnet),
 		MdnsReflector:    parse.KnownBoolPointer(tfNativeRange.MdnsReflector),
 		Vlan:             parse.KnownInt64Pointer(tfNativeRange.Vlan),
-		DhcpSettings:     r.prepareDhcpSettings(ctx, tfNativeRange.DhcpSettings, diags),
+		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, r.client, cato_models.SubnetTypeNative, tfNativeRange.DhcpSettings, diags),
 		//    AzureFloatingIP *string `json:"azureFloatingIp,omitempty"` TODO: implement when AZURE HA support is added
 	}
 
@@ -1142,61 +1007,6 @@ func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, pl
 	}
 
 	return input, interfaceIndex
-}
-
-// lookupDhcpRelayGroupID looks up the DHCP relay groups
-func (r *socketSiteResource) lookupDhcpRelayGroupID(ctx context.Context, client *catoClientData, diags *diag.Diagnostics,
-) *cato_go_sdk.EntityLookup {
-	// Lookup and validate the DHCP relay group exists
-	dhcpRelayGroupResult, err := client.catov2.EntityLookupMinimal(ctx, client.AccountId, cato_models.EntityTypeDhcpRelayGroup,
-		nil, nil, nil, nil, nil)
-	if err != nil {
-		diags.AddError("Failed to lookup DHCP relay group", fmt.Sprintf("An error was encountered when looking up DHCP relay group: %v", err))
-		return nil
-	}
-	return dhcpRelayGroupResult
-}
-
-// getDhcpRelayGroupID looks up the DHCP relay group ID based on the provided relay group name.
-func (r *socketSiteResource) getDhcpRelayGroupID(ctx context.Context, relayGroupName string, diags *diag.Diagnostics,
-) (groupID string) {
-	// Lookup and validate the DHCP relay group exists
-	dhcpRelayGroupResult := r.lookupDhcpRelayGroupID(ctx, r.client, diags)
-	if diags.HasError() {
-		return ""
-	}
-
-	// Check if the specified relay group exists
-	for _, item := range dhcpRelayGroupResult.EntityLookup.Items {
-		if namePtr := item.Entity.GetName(); namePtr != nil && *namePtr == relayGroupName {
-			return item.Entity.GetID()
-		}
-	}
-
-	// Relay group not found
-	diags.AddError("Failed to lookup DHCP relay group", fmt.Sprintf("DHCP relay group: '%s' not found", relayGroupName))
-	return ""
-}
-
-// getDhcpRelayGroupName looks up the DHCP relay group name based on the provided relay group ID.
-func (r *socketSiteResource) getDhcpRelayGroupName(ctx context.Context, relayGroupID string, diags *diag.Diagnostics,
-) (groupName *string) {
-	// Lookup and validate the DHCP relay group exists
-	dhcpRelayGroupResult := r.lookupDhcpRelayGroupID(ctx, r.client, diags)
-	if diags.HasError() {
-		return nil
-	}
-
-	// Check if the specified relay group exists
-	for _, item := range dhcpRelayGroupResult.EntityLookup.Items {
-		if item.Entity.GetID() == relayGroupID {
-			return item.Entity.GetName()
-		}
-	}
-
-	// Relay group not found
-	diags.AddError("Failed to lookup DHCP relay group", fmt.Sprintf("DHCP relay group: '%s' not found", relayGroupID))
-	return nil
 }
 
 // createBasicSocketSite creates a socket site and returns the new site ID.

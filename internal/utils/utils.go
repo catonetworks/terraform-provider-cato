@@ -104,9 +104,9 @@ func CheckErr(diags *diag.Diagnostics, in diag.Diagnostics) bool {
 	return diags.HasError()
 }
 
-type hasValuer interface {
+type HasValuer interface {
 	IsUnknown() bool
 	IsNull() bool
 }
 
-func HasValue(v hasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }
+func HasValue(v HasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }

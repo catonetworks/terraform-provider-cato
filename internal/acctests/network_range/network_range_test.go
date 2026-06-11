@@ -65,7 +65,7 @@ func TestAccNetworkRange(t *testing.T) {
 				ResourceName: res,
 			},
 			{
-				// Update the resource
+				// Update the resource - VLAN
 				Config: cfg.getTfConfig(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
@@ -86,6 +86,55 @@ func TestAccNetworkRange(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "subnet", "192.168.242.0/24"),
 					resource.TestCheckResourceAttr(res, "translated_subnet", "192.168.242.0/24"),
 					resource.TestCheckResourceAttr(res, "vlan", "202"),
+				),
+			},
+			{
+				// Update the resource - Direct
+				Config: cfg.getTfConfig(2),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "14"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.%", "5"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.dhcp_type", "DHCP_DISABLED"),
+					resource.TestCheckNoResourceAttr(res, "dhcp_settings.dhcp_microsegmentation"),
+					resource.TestCheckNoResourceAttr(res, "dhcp_settings.ip_range"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttrSet(res, "interface_id"),
+					resource.TestCheckResourceAttr(res, "interface_index", "LAN1"),
+					resource.TestCheckResourceAttr(res, "internet_only", "false"),
+					resource.TestCheckResourceAttr(res, "local_ip", "192.168.242.2"),
+					resource.TestCheckResourceAttr(res, "mdns_reflector", "false"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_range"),
+					resource.TestCheckResourceAttr(res, "range_type", "Direct"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+					resource.TestCheckResourceAttr(res, "subnet", "192.168.242.0/24"),
+					resource.TestCheckResourceAttr(res, "translated_subnet", "192.168.242.0/24"),
+					resource.TestCheckNoResourceAttr(res, "vlan"),
+				),
+			},
+			{
+				// Update the resource - Routed
+				Config: cfg.getTfConfig(3),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "%", "14"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.%", "5"),
+					resource.TestCheckResourceAttr(res, "dhcp_settings.dhcp_type", "DHCP_DISABLED"),
+					resource.TestCheckNoResourceAttr(res, "dhcp_settings.dhcp_microsegmentation"),
+					resource.TestCheckNoResourceAttr(res, "dhcp_settings.ip_range"),
+					resource.TestCheckResourceAttr(res, "gateway", "192.168.252.245"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttrSet(res, "interface_id"),
+					resource.TestCheckResourceAttr(res, "interface_index", "LAN1"),
+					resource.TestCheckResourceAttr(res, "internet_only", "false"),
+					resource.TestCheckNoResourceAttr(res, "local_ip"),
+					resource.TestCheckNoResourceAttr(res, "mdns_reflector"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_range"),
+					resource.TestCheckResourceAttr(res, "range_type", "Routed"),
+					resource.TestCheckResourceAttrSet(res, "site_id"),
+					resource.TestCheckResourceAttr(res, "subnet", "192.168.242.0/24"),
+					resource.TestCheckResourceAttr(res, "translated_subnet", "192.168.242.0/24"),
+					resource.TestCheckNoResourceAttr(res, "vlan"),
 				),
 			},
 		},
@@ -123,6 +172,7 @@ func (p networkRangeCfg) getTfConfig(index int) string {
 }
 
 var networkRangeTFs = []string{
+	// VLAN
 	siteResource + `
 	resource "cato_network_range" "this" {
 		site_id         = cato_socket_site.this.id
@@ -139,6 +189,7 @@ var networkRangeTFs = []string{
 		}
 	}
 	`,
+	// VLAN update
 	siteResource + `
 	resource "cato_network_range" "this" {
 		site_id         = cato_socket_site.this.id
@@ -153,6 +204,28 @@ var networkRangeTFs = []string{
 			ip_range               = "192.168.242.20-192.168.242.32"
 			dhcp_microsegmentation = true
 		}
+	}
+	`,
+	// Direct
+	siteResource + `
+	resource "cato_network_range" "this" {
+		site_id         = cato_socket_site.this.id
+		interface_index = "LAN1"
+		name            = "{{.Name}}_range"
+		range_type      = "Direct"
+		subnet          = "192.168.242.0/24"
+		local_ip        = "192.168.242.2"
+	}
+	`,
+	// Routed
+	siteResource + `
+	resource "cato_network_range" "this" {
+		site_id         = cato_socket_site.this.id
+		interface_index = "LAN1"
+		name            = "{{.Name}}_range"
+		range_type      = "Routed"
+		subnet          = "192.168.242.0/24"
+		gateway         = "192.168.252.245"
 	}
 	`,
 }

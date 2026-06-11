@@ -8,6 +8,7 @@ import (
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -179,13 +180,20 @@ func TestNetworkRangeCreateRejectsConflictingInterfaceConfig(t *testing.T) {
 
 	ctx := context.Background()
 	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
-	req := resource.CreateRequest{Plan: newNetworkRangePlan(ctx, t, networkRangeModel{
+	model := networkRangeModel{
 		InterfaceID:    types.StringValue("if-1"),
 		InterfaceIndex: types.StringValue("LAN1"),
-	})}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}}
+	}
+	req := resource.CreateRequest{
+		Plan:   newNetworkRangePlan(ctx, t, model),
+		Config: newNetworkRangeConfig(ctx, t, model),
+	}
+	resp := &resource.ModifyPlanResponse{Plan: req.Plan}
 
-	r.Create(ctx, req, resp)
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   req.Plan,
+		Config: req.Config,
+	}, resp)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected diagnostics for conflicting interface_id and interface_index")
 	}
@@ -197,7 +205,7 @@ func TestNetworkRangeCreateReturnsDiagnosticsOnAPIError(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewNetworkRangeClient(t)
 	mockClient.EXPECT().
-		SiteAddNetworkRange(mock.Anything, "", mock.Anything, "account-123").
+		SiteAddNetworkRange(mock.Anything, "if-1", mock.Anything, "account-123").
 		Return(nil, errors.New("add failed")).
 		Once()
 
@@ -205,7 +213,11 @@ func TestNetworkRangeCreateReturnsDiagnosticsOnAPIError(t *testing.T) {
 		client:             &catoClientData{AccountId: "account-123"},
 		networkRangeClient: mockClient,
 	}
-	req := resource.CreateRequest{Plan: newNetworkRangePlan(ctx, t, networkRangeModel{})}
+	model := networkRangeModel{InterfaceID: types.StringValue("if-1")}
+	req := resource.CreateRequest{
+		Plan:   newNetworkRangePlan(ctx, t, model),
+		Config: newNetworkRangeConfig(ctx, t, model),
+	}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}}
 
 	r.Create(ctx, req, resp)
@@ -254,7 +266,11 @@ func TestNetworkRangeUpdateReturnsDiagnosticsOnAPIError(t *testing.T) {
 		client:             &catoClientData{AccountId: "account-123"},
 		networkRangeClient: mockClient,
 	}
-	req := resource.UpdateRequest{Plan: newNetworkRangePlan(ctx, t, networkRangeModel{ID: types.StringValue("nr-1")})}
+	model := networkRangeModel{ID: types.StringValue("nr-1")}
+	req := resource.UpdateRequest{
+		Plan:   newNetworkRangePlan(ctx, t, model),
+		Config: newNetworkRangeConfig(ctx, t, model),
+	}
 	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}}
 
 	r.Update(ctx, req, resp)
@@ -324,8 +340,10 @@ func TestHydrateNetworkRangeStateNetworkRangeError(t *testing.T) {
 		networkRangeClient: mockClient,
 	}
 
-	_, _, err := r.hydrateNetworkRangeState(ctx, networkRangeModel{}.toResourceModel(), "nr-1")
-	if err == nil {
+	var diags diag.Diagnostics
+	state := networkRangeModel{}.toResourceModel()
+	r.hydrateNetworkRangeState(ctx, nil, &state, "nr-1", &diags)
+	if !diags.HasError() {
 		t.Fatal("expected hydrate error")
 	}
 }
@@ -378,50 +396,6 @@ func TestGetSiteIDFromNetworkRange(t *testing.T) {
 	}
 	if interfaceName != "LAN 1" {
 		t.Fatalf("expected LAN 1, got %q", interfaceName)
-	}
-}
-
-func TestBuildAddNetworkRangeInput(t *testing.T) {
-	t.Parallel()
-	const (
-		name    = "NR"
-		xSubnet = "172.16.0.0/24"
-	)
-
-	model := networkRangeModel{
-		Name:             types.StringValue("NR"),
-		RangeType:        types.StringValue("Direct"),
-		Subnet:           types.StringValue("10.0.0.0/24"),
-		LocalIP:          types.StringValue("10.0.0.1"),
-		TranslatedSubnet: types.StringValue(xSubnet),
-	}
-
-	input := buildAddNetworkRangeInput(model.toResourceModel(), nrBoolPtr(true))
-	if input.Name != name {
-		t.Fatalf("expected name %s, got %q", name, input.Name)
-	}
-	if input.TranslatedSubnet == nil || *input.TranslatedSubnet != xSubnet {
-		t.Fatalf("expected translated subnet to be set, got %v", input.TranslatedSubnet)
-	}
-}
-
-func TestBuildUpdateNetworkRangeInput(t *testing.T) {
-	t.Parallel()
-
-	model := networkRangeModel{
-		Name:             types.StringValue("NR"),
-		RangeType:        types.StringValue("Direct"),
-		Subnet:           types.StringValue("10.0.0.0/24"),
-		LocalIP:          types.StringValue("10.0.0.1"),
-		TranslatedSubnet: types.StringValue("172.16.0.0/24"),
-	}
-
-	input := buildUpdateNetworkRangeInput(model.toResourceModel(), nrBoolPtr(false), nil)
-	if input.Name == nil || *input.Name != "NR" {
-		t.Fatalf("expected name NR, got %v", input.Name)
-	}
-	if input.TranslatedSubnet == nil || *input.TranslatedSubnet != "172.16.0.0/24" {
-		t.Fatalf("expected translated subnet to be set, got %v", input.TranslatedSubnet)
 	}
 }
 
@@ -578,6 +552,12 @@ func newNetworkRangePlan(ctx context.Context, t *testing.T, model networkRangeMo
 	return plan
 }
 
+func newNetworkRangeConfig(ctx context.Context, t *testing.T, model networkRangeModel) tfsdk.Config {
+	t.Helper()
+	plan := newNetworkRangePlan(ctx, t, model)
+	return tfsdk.Config(plan)
+}
+
 func newNetworkRangeState(ctx context.Context, t *testing.T, model networkRangeModel) tfsdk.State {
 	t.Helper()
 	state := tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}
@@ -589,9 +569,5 @@ func newNetworkRangeState(ctx context.Context, t *testing.T, model networkRangeM
 }
 
 func nrStringPtr(v string) *string {
-	return &v
-}
-
-func nrBoolPtr(v bool) *bool {
 	return &v
 }
