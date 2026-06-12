@@ -180,7 +180,7 @@ func StringList[T fmt.Stringer](ctx context.Context, stringers []T, diags *diag.
 
 // KnownStringPointer returns a pointer to the known string value, nil for a null or unknown value.
 func KnownStringPointer(s types.String) *string {
-	if s.IsUnknown() {
+	if s.IsUnknown() || s.IsNull() {
 		return nil
 	}
 	return s.ValueStringPointer()
