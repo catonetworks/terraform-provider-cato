@@ -83,17 +83,6 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Optional:    true,
 							Computed:    true,
 						},
-						"index_in_parent": schema.Int64Attribute{
-							Description: "Index value remapped within parent sub-policy rule",
-							Required:    false,
-							Optional:    true,
-							Computed:    true,
-						},
-						"parent_rule_name": schema.StringAttribute{
-							Description: "Parent sub-policy rule name for sub-rules",
-							Required:    false,
-							Optional:    true,
-						},
 						"section_name": schema.StringAttribute{
 							Description: "IFW section name housing rule",
 							Required:    false,
@@ -155,8 +144,6 @@ var IfwRuleIndexResourceObjectTypes = types.ObjectType{AttrTypes: IfwRuleIndexRe
 var IfwRuleIndexResourceAttrTypes = map[string]attr.Type{
 	"id":               types.StringType,
 	"index_in_section": types.Int64Type,
-	"index_in_parent":  types.Int64Type,
-	"parent_rule_name": types.StringType,
 	"section_name":     types.StringType,
 	"rule_name":        types.StringType,
 	"description":      types.StringType,
@@ -306,8 +293,6 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 				map[string]attr.Value{
 					"id":               types.StringValue(ruleIDMap[ruleName]),
 					"index_in_section": existingRule.IndexInSection,                     // Preserve planned value
-					"index_in_parent":  existingRule.IndexInParent,                      // Preserve planned value
-					"parent_rule_name": existingRule.ParentRuleName,                     // Preserve planned value
 					"section_name":     existingRule.SectionName,                        // Preserve planned value
 					"rule_name":        existingRule.RuleName,                           // Preserve planned value
 					"description":      types.StringValue(ruleDescriptionMap[ruleName]), // Update computed value
@@ -626,8 +611,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 			rulenDataTmp := IfwRulesRuleDataIndex{
 				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
-				IndexInParent:  planSourceRuleIndex.IndexInParent.ValueInt64(),
-				ParentRuleName: planSourceRuleIndex.ParentRuleName,
 				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
 				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
 				Description:    planSourceRuleIndex.Description.ValueString(),
@@ -642,23 +625,8 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			sectionIndexMap[section.SectionName] = section.SectionIndex
 		}
 
-		// Sort entries so deterministic order is preserved for:
-		// - top-level rules: section index + index_in_section
-		// - sub-rules: parent_rule_name + index_in_parent
+		// Sort rules by section index, then index within section.
 		sort.Slice(ruleListFromPlan, func(i, j int) bool {
-			parentI := ruleListFromPlan[i].ParentRuleName
-			parentJ := ruleListFromPlan[j].ParentRuleName
-			isSubI := !parentI.IsNull() && !parentI.IsUnknown() && parentI.ValueString() != ""
-			isSubJ := !parentJ.IsNull() && !parentJ.IsUnknown() && parentJ.ValueString() != ""
-			if isSubI != isSubJ {
-				return !isSubI // keep top-level rules first
-			}
-			if isSubI {
-				if parentI.ValueString() != parentJ.ValueString() {
-					return parentI.ValueString() < parentJ.ValueString()
-				}
-				return ruleListFromPlan[i].IndexInParent < ruleListFromPlan[j].IndexInParent
-			}
 			if ruleListFromPlan[i].SectionName != ruleListFromPlan[j].SectionName {
 				return sectionIndexMap[ruleListFromPlan[i].SectionName] < sectionIndexMap[ruleListFromPlan[j].SectionName]
 			}
@@ -679,30 +647,17 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		topLevelRuleIDsBySection := make(map[string][]string)
 		topLevelRuleIDBySectionAndName := make(map[string]string)
 		topLevelRuleIDByName := make(map[string]string)
-		subRuleIDsByParent := make(map[string][]string)
-		subRuleIDByParentAndName := make(map[string]string)
-		currentSubPolicyParentID := ""
 		for _, apiRulePayload := range fullPolicy.Policy.InternetFirewall.Policy.Rules {
 			apiRule := apiRulePayload.Rule
+			if apiRule.Section.ID == "" {
+				continue
+			}
 			ruleNameIDMap[apiRule.Name] = apiRule.ID
 			ruleNameDescriptionMap[apiRule.Name] = apiRule.Description
 			ruleNameEnabledMap[apiRule.Name] = apiRule.Enabled
-			if apiRule.Section.ID != "" {
-				topLevelRuleIDsBySection[apiRule.Section.Name] = append(topLevelRuleIDsBySection[apiRule.Section.Name], apiRule.ID)
-				topLevelRuleIDBySectionAndName[apiRule.Section.Name+"\x00"+apiRule.Name] = apiRule.ID
-				topLevelRuleIDByName[apiRule.Name] = apiRule.ID
-				if string(apiRule.Action) == "SUB_POLICY" {
-					currentSubPolicyParentID = apiRule.ID
-				} else {
-					currentSubPolicyParentID = ""
-				}
-				continue
-			}
-			if currentSubPolicyParentID == "" {
-				continue
-			}
-			subRuleIDsByParent[currentSubPolicyParentID] = append(subRuleIDsByParent[currentSubPolicyParentID], apiRule.ID)
-			subRuleIDByParentAndName[currentSubPolicyParentID+"\x00"+apiRule.Name] = apiRule.ID
+			topLevelRuleIDsBySection[apiRule.Section.Name] = append(topLevelRuleIDsBySection[apiRule.Section.Name], apiRule.ID)
+			topLevelRuleIDBySectionAndName[apiRule.Section.Name+"\x00"+apiRule.Name] = apiRule.ID
+			topLevelRuleIDByName[apiRule.Name] = apiRule.ID
 		}
 
 		tflog.Debug(ctx, "Processing rules in correct order", map[string]interface{}{
@@ -711,31 +666,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		})
 
 		plannedRuleIDsBySection := make(map[string][]string)
-		plannedSubRuleIDsByParent := make(map[string][]string)
 		for _, ruleItemFromPlan := range ruleListFromPlan {
-			if !ruleItemFromPlan.ParentRuleName.IsNull() &&
-				!ruleItemFromPlan.ParentRuleName.IsUnknown() &&
-				ruleItemFromPlan.ParentRuleName.ValueString() != "" {
-				parentRuleName := ruleItemFromPlan.ParentRuleName.ValueString()
-				parentRuleID := topLevelRuleIDByName[parentRuleName]
-				if parentRuleID == "" {
-					diags = append(diags, diag.NewWarningDiagnostic(
-						"Skipped sub-rule in IF reorder",
-						"Parent sub-policy rule '"+parentRuleName+"' was not found for sub-rule '"+ruleItemFromPlan.RuleName+"'.",
-					))
-					continue
-				}
-				subRuleID := subRuleIDByParentAndName[parentRuleID+"\x00"+ruleItemFromPlan.RuleName]
-				if subRuleID == "" {
-					diags = append(diags, diag.NewWarningDiagnostic(
-						"Skipped sub-rule in IF reorder",
-						"Sub-rule '"+ruleItemFromPlan.RuleName+"' was not found under parent '"+parentRuleName+"'.",
-					))
-					continue
-				}
-				plannedSubRuleIDsByParent[parentRuleID] = append(plannedSubRuleIDsByParent[parentRuleID], subRuleID)
-				continue
-			}
 			ruleID, ok := topLevelRuleIDBySectionAndName[ruleItemFromPlan.SectionName+"\x00"+ruleItemFromPlan.RuleName]
 			if !ok {
 				ruleID, ok = topLevelRuleIDByName[ruleItemFromPlan.RuleName]
@@ -773,37 +704,13 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 			reorderRules := make([]*cato_models.PolicyReorderRuleInput, 0, len(sectionRuleIDs))
 			for _, ruleID := range sectionRuleIDs {
-				reorderRule := &cato_models.PolicyReorderRuleInput{
+				reorderRules = append(reorderRules, &cato_models.PolicyReorderRuleInput{
 					Ref: &cato_models.PolicyElementRefInput{
 						By:    cato_models.ObjectRefByID,
 						Input: ruleID,
 					},
 					SubRules: []*cato_models.PolicyReorderSubRuleInput{},
-				}
-				if plannedSubRules := plannedSubRuleIDsByParent[ruleID]; len(plannedSubRules) > 0 {
-					plannedSet := make(map[string]struct{}, len(plannedSubRules))
-					for _, id := range plannedSubRules {
-						plannedSet[id] = struct{}{}
-					}
-					remainingSubRules := make([]string, 0, len(subRuleIDsByParent[ruleID]))
-					for _, id := range subRuleIDsByParent[ruleID] {
-						if _, managed := plannedSet[id]; managed {
-							continue
-						}
-						remainingSubRules = append(remainingSubRules, id)
-					}
-					finalSubRuleIDs := append(plannedSubRules, remainingSubRules...)
-					reorderRule.SubRules = make([]*cato_models.PolicyReorderSubRuleInput, 0, len(finalSubRuleIDs))
-					for _, subRuleID := range finalSubRuleIDs {
-						reorderRule.SubRules = append(reorderRule.SubRules, &cato_models.PolicyReorderSubRuleInput{
-							Ref: &cato_models.PolicyElementRefInput{
-								By:    cato_models.ObjectRefByID,
-								Input: subRuleID,
-							},
-						})
-					}
-				}
-				reorderRules = append(reorderRules, reorderRule)
+				})
 			}
 
 			reorderSections = append(reorderSections, &cato_models.PolicyReorderSectionInput{
@@ -925,8 +832,6 @@ func buildIfwRuleIndexStateData(
 		map[string]attr.Value{
 			"id":               types.StringValue(ruleNameIDMap[ruleFromPlan.RuleName]),
 			"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
-			"index_in_parent":  types.Int64Value(ruleFromPlan.IndexInParent),
-			"parent_rule_name": ruleFromPlan.ParentRuleName,
 			"section_name":     types.StringValue(ruleFromPlan.SectionName),
 			"rule_name":        types.StringValue(ruleFromPlan.RuleName),
 			"description":      types.StringValue(ruleNameDescriptionMap[ruleFromPlan.RuleName]),

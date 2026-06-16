@@ -291,8 +291,8 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	if err := publishWanStaleDraftRevisions(ctx, client, r.client.AccountId); err != nil {
-		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallPublishPolicyRevision error", err.Error()))
+	if err := discardWanStaleDraftRevisions(ctx, client, r.client.AccountId); err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallDiscardPolicyRevision error", err.Error()))
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
@@ -414,9 +414,9 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry", map[string]interface{}{
 				"error": moveErr.Error(),
 			})
-			if publishErr := publishWanStaleDraftRevisions(ctx, client, r.client.AccountId); publishErr != nil {
-				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry.publish_error", map[string]interface{}{
-					"error": publishErr.Error(),
+			if discardErr := discardWanStaleDraftRevisions(ctx, client, r.client.AccountId); discardErr != nil {
+				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry.discard_error", map[string]interface{}{
+					"error": discardErr.Error(),
 				})
 			} else {
 				sectionMoveAPIData, err = client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
@@ -604,9 +604,9 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry", map[string]interface{}{
 				"error": err.Error(),
 			})
-			if publishErr := publishWanStaleDraftRevisions(ctx, client, r.client.AccountId); publishErr != nil {
-				tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry.publish_error", map[string]interface{}{
-					"error": publishErr.Error(),
+			if discardErr := discardWanStaleDraftRevisions(ctx, client, r.client.AccountId); discardErr != nil {
+				tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry.discard_error", map[string]interface{}{
+					"error": discardErr.Error(),
 				})
 			} else {
 				mutationInput, err = ensureWanDraftMutationInput(ctx, client, r.client.AccountId)

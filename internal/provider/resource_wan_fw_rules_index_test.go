@@ -19,6 +19,13 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
+func expectWanDiscardDraft(mockClient *mocks.WanRulesIndexClient, ctx context.Context, accountID string) {
+	mockClient.EXPECT().
+		PolicyWanFirewallDiscardPolicyRevision(ctx, mock.Anything, accountID).
+		Return(&cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision{}, nil).
+		Once()
+}
+
 func TestNewWanRulesIndexResource(t *testing.T) {
 	t.Parallel()
 
@@ -113,10 +120,7 @@ func TestWanRulesIndexCreateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
-	mockClient.EXPECT().
-		PolicyWanFirewall(ctx, mock.Anything, "account-123").
-		Return(wanPolicyWithoutDrafts(), nil).
-		Once()
+	expectWanDiscardDraft(mockClient, ctx, "account-123")
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(nil, errors.New("sections index failed")).
@@ -141,10 +145,7 @@ func TestWanRulesIndexUpdateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
-	mockClient.EXPECT().
-		PolicyWanFirewall(ctx, mock.Anything, "account-123").
-		Return(wanPolicyWithoutDrafts(), nil).
-		Once()
+	expectWanDiscardDraft(mockClient, ctx, "account-123")
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(nil, errors.New("sections index failed")).
@@ -186,10 +187,7 @@ func TestMoveWanRulesAndSectionsReturnsErrorForUnknownSectionToStartAfterID(t *t
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
-	mockClient.EXPECT().
-		PolicyWanFirewall(ctx, mock.Anything, "account-123").
-		Return(wanPolicyWithoutDrafts(), nil).
-		Once()
+	expectWanDiscardDraft(mockClient, ctx, "account-123")
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(wanSectionsIndexResponse([]wanSection{{id: "section-1", name: "first"}}), nil).
@@ -227,8 +225,8 @@ func TestMoveWanRulesAndSectionsReturnsReorderAPIErrors(t *testing.T) {
 	revisionID := "draft-rev-1"
 
 	mockClient.EXPECT().
-		PolicyWanFirewall(ctx, mock.Anything, "account-123").
-		Return(wanPolicyWithoutDrafts(), nil).
+		PolicyWanFirewallDiscardPolicyRevision(ctx, mock.Anything, "account-123").
+		Return(&cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision{}, nil).
 		Once()
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
@@ -302,21 +300,17 @@ func TestEnsureWanDraftMutationInputReusesExistingDraft(t *testing.T) {
 	}
 }
 
-func TestPublishWanStaleDraftRevisionsPublishesWhenDraftExists(t *testing.T) {
+func TestDiscardWanStaleDraftRevisionsDiscardsDraft(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
 	mockClient.EXPECT().
-		PolicyWanFirewall(ctx, mock.Anything, "account-123").
-		Return(wanPolicyWithDraftRevision("draft-rev-1"), nil).
-		Once()
-	mockClient.EXPECT().
-		PolicyWanFirewallPublishPolicyRevision(ctx, mock.Anything, "account-123").
-		Return(&cato_go_sdk.PolicyWanFirewallPublishPolicyRevision{}, nil).
+		PolicyWanFirewallDiscardPolicyRevision(ctx, mock.Anything, "account-123").
+		Return(&cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision{}, nil).
 		Once()
 
-	if err := publishWanStaleDraftRevisions(ctx, mockClient, "account-123"); err != nil {
+	if err := discardWanStaleDraftRevisions(ctx, mockClient, "account-123"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

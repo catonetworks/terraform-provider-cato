@@ -328,8 +328,6 @@ func mustIfwRuleObject(t *testing.T, id, sectionName, ruleName string, indexInSe
 		map[string]attr.Value{
 			"id":               types.StringValue(id),
 			"index_in_section": types.Int64Value(indexInSection),
-			"index_in_parent":  types.Int64Null(),
-			"parent_rule_name": types.StringNull(),
 			"section_name":     types.StringValue(sectionName),
 			"rule_name":        types.StringValue(ruleName),
 			"description":      types.StringValue(""),

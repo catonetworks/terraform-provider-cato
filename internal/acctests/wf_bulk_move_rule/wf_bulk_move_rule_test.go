@@ -49,18 +49,20 @@ func TestAccWanFwBulkReorderPolicy(t *testing.T) {
 }
 
 type wfBulkReorderCfg struct {
-	sectionName string
-	rule1Name   string
-	rule2Name   string
-	t           *testing.T
+	anchorSectionName string
+	sectionName       string
+	rule1Name         string
+	rule2Name         string
+	t                 *testing.T
 }
 
 func newWfBulkReorderCfg(t *testing.T) wfBulkReorderCfg {
 	return wfBulkReorderCfg{
-		sectionName: acc.GetRandName("wf_reorder_section"),
-		rule1Name:   acc.GetRandName("wf_reorder_rule_1"),
-		rule2Name:   acc.GetRandName("wf_reorder_rule_2"),
-		t:           t,
+		anchorSectionName: acc.GetRandName("wf_reorder_anchor_section"),
+		sectionName:       acc.GetRandName("wf_reorder_section"),
+		rule1Name:         acc.GetRandName("wf_reorder_rule_1"),
+		rule2Name:         acc.GetRandName("wf_reorder_rule_2"),
+		t:                 t,
 	}
 }
 
@@ -71,9 +73,10 @@ func (c wfBulkReorderCfg) getTfConfig(index int) string {
 	}
 	var buf bytes.Buffer
 	data := map[string]any{
-		"SectionName": c.sectionName,
-		"Rule1Name":   c.rule1Name,
-		"Rule2Name":   c.rule2Name,
+		"AnchorSectionName": c.anchorSectionName,
+		"SectionName":       c.sectionName,
+		"Rule1Name":         c.rule1Name,
+		"Rule2Name":         c.rule2Name,
 	}
 	if err := tmpl.Execute(&buf, data); err != nil {
 		c.t.Fatal(err)
@@ -121,6 +124,15 @@ func checkWfRuleOrderInSection(resourceName, ruleName, sectionName string, expec
 
 var wfBulkReorderTfs = []string{
 	`
+resource "cato_wf_section" "anchor_section" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "{{ .AnchorSectionName }}"
+  }
+}
+
 resource "cato_wf_section" "reorder_section" {
   at = {
     position = "LAST_IN_POLICY"
@@ -173,6 +185,15 @@ resource "cato_wf_rule" "rule_2" {
 }
 `,
 	`
+resource "cato_wf_section" "anchor_section" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "{{ .AnchorSectionName }}"
+  }
+}
+
 resource "cato_wf_section" "reorder_section" {
   at = {
     position = "LAST_IN_POLICY"
@@ -226,9 +247,9 @@ resource "cato_wf_rule" "rule_2" {
 
 resource "cato_bulk_wf_move_rule" "reorder" {
   section_data = {
-    "tf section" = {
+    (cato_wf_section.anchor_section.section.name) = {
       section_index = 1
-      section_name  = "tf section"
+      section_name  = cato_wf_section.anchor_section.section.name
     }
     (cato_wf_section.reorder_section.section.name) = {
       section_index = 2

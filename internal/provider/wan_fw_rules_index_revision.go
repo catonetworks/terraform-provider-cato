@@ -16,7 +16,7 @@ func isActiveRevisionConflict(message string) bool {
 	return strings.Contains(message, "other active revisions exist")
 }
 
-func publishWanStaleDraftRevisions(
+func discardWanStaleDraftRevisions(
 	ctx context.Context,
 	client WanRulesIndexClient,
 	accountID string,
@@ -25,22 +25,48 @@ func publishWanStaleDraftRevisions(
 		return errors.New("wan rules index client is not configured")
 	}
 
-	policy, err := client.PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, accountID)
+	discardResp, err := client.PolicyWanFirewallDiscardPolicyRevision(
+		ctx,
+		&cato_models.PolicyDiscardRevisionInput{},
+		accountID,
+	)
 	if err != nil {
-		return fmt.Errorf("policy wan firewall query failed: %w", err)
+		return fmt.Errorf("discard policy revision failed: %w", err)
 	}
 
-	revisions := policy.GetPolicy().GetWanFirewall().GetRevisionsWanFirewallPolicyQueries()
-	if revisions == nil || len(revisions.GetRevision()) == 0 {
+	return wanDiscardPolicyRevisionError(discardResp, nil)
+}
+
+func wanDiscardPolicyRevisionError(
+	discardResp *cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision,
+	err error,
+) error {
+	if err != nil {
+		return err
+	}
+	if discardResp == nil || discardResp.GetPolicy() == nil || discardResp.GetPolicy().GetWanFirewall() == nil {
 		return nil
 	}
 
-	_, err = client.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, accountID)
-	if err != nil {
-		return fmt.Errorf("publish policy revision failed: %w", err)
+	payload := discardResp.GetPolicy().GetWanFirewall().GetDiscardPolicyRevision()
+	if payload == nil {
+		return nil
+	}
+	if payload.GetStatus() != nil && *payload.GetStatus() == cato_models.PolicyMutationStatusSuccess {
+		return nil
 	}
 
-	return nil
+	apiErrors := payload.GetErrors()
+	if len(apiErrors) > 0 {
+		if apiErrors[0].GetErrorCode() != nil && *apiErrors[0].GetErrorCode() == policyRevisionNotFound {
+			return nil
+		}
+		if apiErrors[0].GetErrorMessage() != nil {
+			return errors.New(*apiErrors[0].GetErrorMessage())
+		}
+	}
+
+	return errors.New("discard policy revision failed")
 }
 
 func ensureWanDraftMutationInput(

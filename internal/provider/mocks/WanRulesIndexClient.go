@@ -217,6 +217,95 @@ func (_c *WanRulesIndexClient_PolicyWanFirewallCreatePolicyRevision_Call) RunAnd
 	return _c
 }
 
+// PolicyWanFirewallDiscardPolicyRevision provides a mock function for the type WanRulesIndexClient
+func (_mock *WanRulesIndexClient) PolicyWanFirewallDiscardPolicyRevision(ctx context.Context, policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision, error) {
+	var tmpRet mock.Arguments
+	if len(interceptors) > 0 {
+		tmpRet = _mock.Called(ctx, policyDiscardRevisionInput, accountID, interceptors)
+	} else {
+		tmpRet = _mock.Called(ctx, policyDiscardRevisionInput, accountID)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for PolicyWanFirewallDiscardPolicyRevision")
+	}
+
+	var r0 *cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *cato_models.PolicyDiscardRevisionInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision, error)); ok {
+		return returnFunc(ctx, policyDiscardRevisionInput, accountID, interceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *cato_models.PolicyDiscardRevisionInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision); ok {
+		r0 = returnFunc(ctx, policyDiscardRevisionInput, accountID, interceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *cato_models.PolicyDiscardRevisionInput, string, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, policyDiscardRevisionInput, accountID, interceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicyWanFirewallDiscardPolicyRevision'
+type WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call struct {
+	*mock.Call
+}
+
+// PolicyWanFirewallDiscardPolicyRevision is a helper method to define mock.On call
+//   - ctx context.Context
+//   - policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput
+//   - accountID string
+//   - interceptors ...clientv2.RequestInterceptor
+func (_e *WanRulesIndexClient_Expecter) PolicyWanFirewallDiscardPolicyRevision(ctx interface{}, policyDiscardRevisionInput interface{}, accountID interface{}, interceptors ...interface{}) *WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call {
+	return &WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call{Call: _e.mock.On("PolicyWanFirewallDiscardPolicyRevision",
+		append([]interface{}{ctx, policyDiscardRevisionInput, accountID}, interceptors...)...)}
+}
+
+func (_c *WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call) Run(run func(ctx context.Context, policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *cato_models.PolicyDiscardRevisionInput
+		if args[1] != nil {
+			arg1 = args[1].(*cato_models.PolicyDiscardRevisionInput)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 3 {
+			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
+	})
+	return _c
+}
+
+func (_c *WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call) Return(policyWanFirewallDiscardPolicyRevision *cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision, err error) *WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call {
+	_c.Call.Return(policyWanFirewallDiscardPolicyRevision, err)
+	return _c
+}
+
+func (_c *WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call) RunAndReturn(run func(ctx context.Context, policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision, error)) *WanRulesIndexClient_PolicyWanFirewallDiscardPolicyRevision_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PolicyWanFirewallMoveSection provides a mock function for the type WanRulesIndexClient
 func (_mock *WanRulesIndexClient) PolicyWanFirewallMoveSection(ctx context.Context, policyMoveSectionInput cato_models.PolicyMoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallMoveSection, error) {
 	var tmpRet mock.Arguments

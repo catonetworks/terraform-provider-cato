@@ -50,4 +50,10 @@ type WanRulesIndexClient interface {
 		accountID string,
 		interceptors ...clientv2.RequestInterceptor,
 	) (*cato_go_sdk.PolicyWanFirewallPublishPolicyRevision, error)
+	PolicyWanFirewallDiscardPolicyRevision(
+		ctx context.Context,
+		policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision, error)
 }

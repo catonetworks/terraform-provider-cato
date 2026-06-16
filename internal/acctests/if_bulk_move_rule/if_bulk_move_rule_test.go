@@ -177,13 +177,11 @@ resource "cato_bulk_if_move_rule" "reorder" {
   rule_data = {
     (cato_if_rule.rule_2.rule.name) = {
       index_in_section = 1
-      parent_rule_name = ""
       section_name     = cato_if_section.reorder_section.section.name
       rule_name        = cato_if_rule.rule_2.rule.name
     }
     (cato_if_rule.rule_1.rule.name) = {
       index_in_section = 2
-      parent_rule_name = ""
       section_name     = cato_if_section.reorder_section.section.name
       rule_name        = cato_if_rule.rule_1.rule.name
     }

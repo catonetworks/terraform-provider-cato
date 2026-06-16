@@ -122,9 +122,7 @@ Optional:
 - `description` (String) IFW rule description
 - `enabled` (Boolean) IFW rule enabled
 - `id` (String) IFW rule id
-- `index_in_parent` (Number) Index value remapped within parent sub-policy rule
 - `index_in_section` (Number) Index value remapped per section
-- `parent_rule_name` (String) Parent sub-policy rule name for sub-rules
 - `rule_name` (String) IFW rule name housing rule
 - `section_name` (String) IFW section name housing rule
 
