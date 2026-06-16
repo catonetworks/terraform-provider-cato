@@ -5,10 +5,12 @@ import (
 	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
@@ -169,4 +171,85 @@ func TestStringPointerForOptionalInput(t *testing.T) {
 
 func stringPtr(value string) *string {
 	return &value
+}
+
+func TestSocketSitePrepareInputsTranslatedSubnet(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		translatedSubnet types.String
+		wantNil          bool
+		wantValue        string
+	}{
+		"null_omitted": {
+			translatedSubnet: types.StringNull(),
+			wantNil:          true,
+		},
+		"empty_omitted": {
+			translatedSubnet: types.StringValue(""),
+			wantNil:          true,
+		},
+		"unknown_omitted": {
+			translatedSubnet: types.StringUnknown(),
+			wantNil:          true,
+		},
+		"value_set": {
+			translatedSubnet: types.StringValue("192.168.20.0/24"),
+			wantValue:        "192.168.20.0/24",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			plan := newSocketSitePlanWithTranslatedSubnet(ctx, t, tt.translatedSubnet)
+			r := &socketSiteResource{client: &catoClientData{}}
+			var diags diag.Diagnostics
+
+			addInput := r.prepareSocketSiteInput(ctx, plan, &diags)
+			if diags.HasError() {
+				t.Fatalf("prepareSocketSiteInput: %v", diags)
+			}
+			assertTranslatedSubnetPointer(t, addInput.TranslatedSubnet, tt.wantNil, tt.wantValue)
+
+			networkRangeInput := r.prepareNetworkRangeInput(ctx, plan, false, &diags)
+			if diags.HasError() {
+				t.Fatalf("prepareNetworkRangeInput: %v", diags)
+			}
+			assertTranslatedSubnetPointer(t, networkRangeInput.TranslatedSubnet, tt.wantNil, tt.wantValue)
+
+			socketIfaceInput, _ := r.prepareSocketInterfaceInput(ctx, plan, false, &diags)
+			if diags.HasError() {
+				t.Fatalf("prepareSocketInterfaceInput: %v", diags)
+			}
+			if socketIfaceInput.Lan == nil {
+				t.Fatal("expected LAN input")
+			}
+			assertTranslatedSubnetPointer(t, socketIfaceInput.Lan.TranslatedSubnet, tt.wantNil, tt.wantValue)
+		})
+	}
+}
+
+func newSocketSitePlanWithTranslatedSubnet(ctx context.Context, t *testing.T, translatedSubnet types.String) *tf.SocketSite {
+	t.Helper()
+
+	nativeRange, diags := types.ObjectValueFrom(ctx, tf.SiteNativeRangeResourceAttrTypes, tf.NativeRange{
+		NativeNetworkRange: types.StringValue("10.51.0.128/25"),
+		LocalIP:            types.StringValue("10.51.0.1"),
+		TranslatedSubnet:   translatedSubnet,
+		DhcpSettings:       types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes),
+	})
+	if diags.HasError() {
+		t.Fatalf("build native range: %v", diags)
+	}
+
+	return &tf.SocketSite{
+		Name:           types.StringValue("aws-site-01"),
+		ConnectionType: types.StringValue("SOCKET_AWS1500"),
+		SiteType:       types.StringValue("DATACENTER"),
+		NativeRange:    nativeRange,
+		SiteLocation:   types.ObjectNull(tf.SiteLocationResourceAttrTypes),
+	}
 }

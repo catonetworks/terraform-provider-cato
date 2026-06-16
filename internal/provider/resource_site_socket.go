@@ -913,7 +913,7 @@ func (r *socketSiteResource) prepareSocketSiteInput(ctx context.Context, plan *t
 		NativeNetworkRange: tfNativeRange.NativeNetworkRange.ValueString(),
 		SiteLocation:       r.prepareSiteLocation(ctx, plan.SiteLocation, diags),
 		SiteType:           cato_models.SiteType(plan.SiteType.ValueString()),
-		TranslatedSubnet:   parse.KnownStringPointer(tfNativeRange.TranslatedSubnet),
+		TranslatedSubnet:   stringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
 		Vlan:               (*scalars.Vlan)(parse.KnownInt64Pointer(tfNativeRange.Vlan)),
 	}
 	return input
@@ -929,7 +929,7 @@ func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan 
 	}
 	input := &cato_models.UpdateNetworkRangeInput{
 		Subnet:           parse.KnownStringPointer(tfNativeRange.NativeNetworkRange),
-		TranslatedSubnet: parse.KnownStringPointer(tfNativeRange.TranslatedSubnet),
+		TranslatedSubnet: stringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
 		MdnsReflector:    parse.KnownBoolPointer(tfNativeRange.MdnsReflector),
 		Vlan:             parse.KnownInt64Pointer(tfNativeRange.Vlan),
 		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, r.client, cato_models.SubnetTypeNative, tfNativeRange.DhcpSettings, diags),
@@ -996,7 +996,7 @@ func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, pl
 		input.Lan = &cato_models.SocketInterfaceLanInput{
 			LocalIP:          tfNativeRange.LocalIP.ValueString(),
 			Subnet:           tfNativeRange.NativeNetworkRange.ValueString(),
-			TranslatedSubnet: tfNativeRange.TranslatedSubnet.ValueStringPointer(),
+			TranslatedSubnet: stringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
 		}
 	}
 
