@@ -205,6 +205,7 @@ func TestSocketSitePrepareInputsTranslatedSubnet(t *testing.T) {
 
 			ctx := context.Background()
 			plan := newSocketSitePlanWithTranslatedSubnet(ctx, t, tt.translatedSubnet)
+			cfg := plan
 			r := &socketSiteResource{client: &catoClientData{}}
 			var diags diag.Diagnostics
 
@@ -214,13 +215,13 @@ func TestSocketSitePrepareInputsTranslatedSubnet(t *testing.T) {
 			}
 			assertTranslatedSubnetPointer(t, addInput.TranslatedSubnet, tt.wantNil, tt.wantValue)
 
-			networkRangeInput := r.prepareNetworkRangeInput(ctx, plan, false, &diags)
+			networkRangeInput := r.prepareNetworkRangeInput(ctx, cfg, plan, false, &diags)
 			if diags.HasError() {
 				t.Fatalf("prepareNetworkRangeInput: %v", diags)
 			}
 			assertTranslatedSubnetPointer(t, networkRangeInput.TranslatedSubnet, tt.wantNil, tt.wantValue)
 
-			socketIfaceInput, _ := r.prepareSocketInterfaceInput(ctx, plan, false, &diags)
+			socketIfaceInput, _ := r.prepareSocketInterfaceInput(ctx, cfg, plan, false, &diags)
 			if diags.HasError() {
 				t.Fatalf("prepareSocketInterfaceInput: %v", diags)
 			}
@@ -228,6 +229,82 @@ func TestSocketSitePrepareInputsTranslatedSubnet(t *testing.T) {
 				t.Fatal("expected LAN input")
 			}
 			assertTranslatedSubnetPointer(t, socketIfaceInput.Lan.TranslatedSubnet, tt.wantNil, tt.wantValue)
+		})
+	}
+}
+
+func TestSocketSitePrepareUpdateInputsTranslatedSubnetFromConfig(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	plan := newSocketSitePlanWithTranslatedSubnet(ctx, t, types.StringValue("10.24.150.0/24"))
+	cfg := newSocketSitePlanWithTranslatedSubnet(ctx, t, types.StringNull())
+	r := &socketSiteResource{client: &catoClientData{}}
+	var diags diag.Diagnostics
+
+	networkRangeInput := r.prepareNetworkRangeInput(ctx, cfg, plan, false, &diags)
+	if diags.HasError() {
+		t.Fatalf("prepareNetworkRangeInput: %v", diags)
+	}
+	if networkRangeInput.TranslatedSubnet != nil {
+		t.Fatalf("expected translated subnet omitted when not in config, got %q", *networkRangeInput.TranslatedSubnet)
+	}
+
+	socketIfaceInput, _ := r.prepareSocketInterfaceInput(ctx, cfg, plan, false, &diags)
+	if diags.HasError() {
+		t.Fatalf("prepareSocketInterfaceInput: %v", diags)
+	}
+	if socketIfaceInput.Lan == nil {
+		t.Fatal("expected LAN input")
+	}
+	if socketIfaceInput.Lan.TranslatedSubnet != nil {
+		t.Fatalf("expected translated subnet omitted when not in config, got %q", *socketIfaceInput.Lan.TranslatedSubnet)
+	}
+}
+
+func TestNativeRangeTranslatedSubnetFromAPI(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		translatedSubnet *string
+		nativeSubnet     string
+		wantNull         bool
+		wantValue        string
+	}{
+		"nil": {
+			wantNull: true,
+		},
+		"empty": {
+			translatedSubnet: stringPtr(""),
+			nativeSubnet:     "10.0.0.0/24",
+			wantNull:         true,
+		},
+		"equals_native": {
+			translatedSubnet: stringPtr("10.0.0.0/24"),
+			nativeSubnet:     "10.0.0.0/24",
+			wantNull:         true,
+		},
+		"distinct": {
+			translatedSubnet: stringPtr("192.168.20.0/24"),
+			nativeSubnet:     "10.0.0.0/24",
+			wantValue:        "192.168.20.0/24",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := nativeRangeTranslatedSubnetFromAPI(tt.translatedSubnet, tt.nativeSubnet)
+			if tt.wantNull {
+				if !got.IsNull() {
+					t.Fatalf("expected null, got %q", got.ValueString())
+				}
+				return
+			}
+			if got.IsNull() || got.ValueString() != tt.wantValue {
+				t.Fatalf("expected %q, got %v", tt.wantValue, got)
+			}
 		})
 	}
 }
