@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -36,7 +37,18 @@ func NewIfwRulesIndexResource() resource.Resource {
 }
 
 type ifwRulesIndexResource struct {
-	client *catoClientData
+	client              *catoClientData
+	ifwRulesIndexClient IfwRulesIndexClient
+}
+
+func (r *ifwRulesIndexResource) getIfwRulesIndexClient() IfwRulesIndexClient {
+	if r.ifwRulesIndexClient != nil {
+		return r.ifwRulesIndexClient
+	}
+	if r.client == nil {
+		return nil
+	}
+	return r.client.catov2
 }
 
 func (r *ifwRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -188,8 +200,12 @@ func (r *ifwRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 	resp.Diagnostics.Append(diags...)
-	plan.SectionData = sectionObjectsList
-	plan.RuleData = rulesObjectsList
+	filteredSections, sectionFilterDiags := keepPlannedMapKeys(plan.SectionData, sectionObjectsList, IfwSectionIndexResourceObjectTypes)
+	resp.Diagnostics.Append(sectionFilterDiags...)
+	filteredRules, ruleFilterDiags := keepPlannedMapKeys(plan.RuleData, rulesObjectsList, IfwRuleIndexResourceObjectTypes)
+	resp.Diagnostics.Append(ruleFilterDiags...)
+	plan.SectionData = filteredSections
+	plan.RuleData = filteredRules
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -333,8 +349,12 @@ func (r *ifwRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 	resp.Diagnostics.Append(diags...)
-	plan.SectionData = sectionObjectsList
-	plan.RuleData = rulesObjectsList
+	filteredSections, sectionFilterDiags := keepPlannedMapKeys(plan.SectionData, sectionObjectsList, IfwSectionIndexResourceObjectTypes)
+	resp.Diagnostics.Append(sectionFilterDiags...)
+	filteredRules, ruleFilterDiags := keepPlannedMapKeys(plan.RuleData, rulesObjectsList, IfwRuleIndexResourceObjectTypes)
+	resp.Diagnostics.Append(ruleFilterDiags...)
+	plan.SectionData = filteredSections
+	plan.RuleData = filteredRules
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -361,10 +381,23 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 ) (basetypes.MapValue, basetypes.MapValue, diag.Diagnostics, error) {
 	diags := []diag.Diagnostic{}
 
+	client := r.getIfwRulesIndexClient()
+	if client == nil {
+		err := errors.New("ifw rules index client is not configured")
+		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API client error", err.Error()))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
+
+	mutationInput, err := ensureIfwDraftMutationInput(ctx, client, r.client.AccountId)
+	if err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewall draft revision error", err.Error()))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
+
 	ruleObjectMap := make(map[string]attr.Value)
 
 	if plan.SectionToStartAfterID.ValueString() != "" {
-		result, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+		result, err := client.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -392,7 +425,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	// maps section_name -> sectionID
 	// initially used to find ID of Default section
 	sectionIDList := make(map[string]string)
-	sectionIndexAPIData, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+	sectionIndexAPIData, err := client.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
@@ -418,9 +451,9 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 				Name: "Default Outbound Internet",
 			},
 		}
-		sectionCreateAPIData, err := r.client.catov2.PolicyInternetFirewallAddSection(
+		sectionCreateAPIData, err := client.PolicyInternetFirewallAddSection(
 			ctx,
-			&cato_models.InternetFirewallPolicyMutationInput{},
+			mutationInput,
 			input,
 			r.client.AccountId,
 		)
@@ -463,11 +496,13 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	})
 
 	currentSectionID := ""
+	listOfSectionNames := make([]string, 0, len(sectionListFromPlan))
 
 	sectionObjectMap := make(map[string]attr.Value)
 
 	// create the sections from the list provided following the section ID provided in firstSectionID
 	for _, workingSectionName := range sectionListFromPlan {
+		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
 		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
 			ID: sectionIDList[workingSectionName.SectionName],
 		}
@@ -500,7 +535,30 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveAPIData, err := r.client.catov2.PolicyInternetFirewallMoveSection(ctx, nil, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveAPIData, err := client.PolicyInternetFirewallMoveSection(ctx, mutationInput, policyMoveSectionInputInt, r.client.AccountId)
+		if err != nil && strings.Contains(err.Error(), "other active revisions exist") {
+			tflog.Warn(ctx, "Write.PolicyInternetFirewallMoveSection.active_revision_retry", map[string]interface{}{
+				"error": err.Error(),
+			})
+			_, publishErr := client.PolicyInternetFirewallPublishPolicyRevision(
+				ctx,
+				mutationInput,
+				&cato_models.PolicyPublishRevisionInput{},
+				r.client.AccountId,
+			)
+			if publishErr != nil {
+				tflog.Warn(ctx, "Write.PolicyInternetFirewallMoveSection.active_revision_retry.publish_error", map[string]interface{}{
+					"error": publishErr.Error(),
+				})
+			} else {
+				mutationInput, err = ensureIfwDraftMutationInput(ctx, client, r.client.AccountId)
+				if err != nil {
+					diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewall draft revision error", err.Error()))
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				}
+				sectionMoveAPIData, err = client.PolicyInternetFirewallMoveSection(ctx, mutationInput, policyMoveSectionInputInt, r.client.AccountId)
+			}
+		}
 		// Check for API errors safely with nil checks
 		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
 			sectionMoveAPIData.GetPolicy().InternetFirewall != nil &&
@@ -541,6 +599,17 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
 
 		currentSectionID = sectionIDList[workingSectionName.SectionName]
+	}
+	plannedSectionSet := make(map[string]struct{}, len(listOfSectionNames))
+	for _, sectionName := range listOfSectionNames {
+		plannedSectionSet[sectionName] = struct{}{}
+	}
+	for _, apiSection := range sectionIndexAPIData.Policy.InternetFirewall.Policy.Sections {
+		sectionName := apiSection.Section.Name
+		if _, planned := plannedSectionSet[sectionName]; planned {
+			continue
+		}
+		listOfSectionNames = append(listOfSectionNames, sectionName)
 	}
 
 	// now that the sections are ordered properly, move the rules to the correct locations
@@ -596,7 +665,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			return ruleListFromPlan[i].IndexInSection < ruleListFromPlan[j].IndexInSection
 		})
 
-		fullPolicy, err := r.client.catov2.PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+		fullPolicy, err := client.PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyInternetFirewall error",
@@ -643,7 +712,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 		plannedRuleIDsBySection := make(map[string][]string)
 		plannedSubRuleIDsByParent := make(map[string][]string)
-		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(sectionIndexAPIData.Policy.InternetFirewall.Policy.Sections))
 		for _, ruleItemFromPlan := range ruleListFromPlan {
 			if !ruleItemFromPlan.ParentRuleName.IsNull() &&
 				!ruleItemFromPlan.ParentRuleName.IsUnknown() &&
@@ -670,31 +738,37 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			}
 			ruleID, ok := topLevelRuleIDBySectionAndName[ruleItemFromPlan.SectionName+"\x00"+ruleItemFromPlan.RuleName]
 			if !ok {
-				diags = append(diags, diag.NewWarningDiagnostic(
-					"Skipped rule in IF reorder",
-					"Rule '"+ruleItemFromPlan.RuleName+"' was not found as a top-level rule in section '"+ruleItemFromPlan.SectionName+"'.",
-				))
-				continue
+				ruleID, ok = topLevelRuleIDByName[ruleItemFromPlan.RuleName]
+				if !ok {
+					err := errors.New("failed to resolve rule ID for reorder operation")
+					diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewallReorderPolicy error", err.Error()))
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				}
 			}
 			plannedRuleIDsBySection[ruleItemFromPlan.SectionName] = append(plannedRuleIDsBySection[ruleItemFromPlan.SectionName], ruleID)
 		}
+		plannedRuleIDsGlobal := make(map[string]struct{})
+		for _, plannedIDs := range plannedRuleIDsBySection {
+			for _, id := range plannedIDs {
+				plannedRuleIDsGlobal[id] = struct{}{}
+			}
+		}
 
-		for _, section := range sectionIndexAPIData.Policy.InternetFirewall.Policy.Sections {
-			sectionName := section.Section.Name
+		reorderSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(listOfSectionNames))
+		for _, sectionName := range listOfSectionNames {
 			sectionRuleIDs := topLevelRuleIDsBySection[sectionName]
-			if plannedIDs := plannedRuleIDsBySection[sectionName]; len(plannedIDs) > 0 {
-				plannedSet := make(map[string]struct{}, len(plannedIDs))
-				for _, id := range plannedIDs {
-					plannedSet[id] = struct{}{}
-				}
-				remaining := make([]string, 0, len(sectionRuleIDs))
+			if len(plannedRuleIDsGlobal) > 0 {
+				filtered := make([]string, 0, len(sectionRuleIDs))
 				for _, id := range sectionRuleIDs {
-					if _, managed := plannedSet[id]; managed {
+					if _, moved := plannedRuleIDsGlobal[id]; moved {
 						continue
 					}
-					remaining = append(remaining, id)
+					filtered = append(filtered, id)
 				}
-				sectionRuleIDs = append(plannedIDs, remaining...)
+				sectionRuleIDs = filtered
+			}
+			if plannedIDs := plannedRuleIDsBySection[sectionName]; len(plannedIDs) > 0 {
+				sectionRuleIDs = append(append(make([]string, 0, len(plannedIDs)+len(sectionRuleIDs)), plannedIDs...), sectionRuleIDs...)
 			}
 
 			reorderRules := make([]*cato_models.PolicyReorderRuleInput, 0, len(sectionRuleIDs))
@@ -704,6 +778,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 						By:    cato_models.ObjectRefByID,
 						Input: ruleID,
 					},
+					SubRules: []*cato_models.PolicyReorderSubRuleInput{},
 				}
 				if plannedSubRules := plannedSubRuleIDsByParent[ruleID]; len(plannedSubRules) > 0 {
 					plannedSet := make(map[string]struct{}, len(plannedSubRules))
@@ -734,7 +809,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			reorderSections = append(reorderSections, &cato_models.PolicyReorderSectionInput{
 				Ref: &cato_models.PolicyElementRefInput{
 					By:    cato_models.ObjectRefByID,
-					Input: section.Section.ID,
+					Input: sectionIDList[sectionName],
 				},
 				Rules: reorderRules,
 			})
@@ -743,12 +818,35 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			Sections: reorderSections,
 		}
 
-		reorderResult, err := r.client.catov2.PolicyInternetFirewallReorderPolicy(
+		reorderResult, err := client.PolicyInternetFirewallReorderPolicy(
 			ctx,
-			&cato_models.InternetFirewallPolicyMutationInput{},
+			mutationInput,
 			reorderInput,
 			r.client.AccountId,
 		)
+		if err != nil && strings.Contains(err.Error(), "other active revisions exist") {
+			tflog.Warn(ctx, "Write.PolicyInternetFirewallReorderPolicy.active_revision_retry", map[string]interface{}{
+				"error": err.Error(),
+			})
+			_, publishErr := client.PolicyInternetFirewallPublishPolicyRevision(
+				ctx,
+				mutationInput,
+				&cato_models.PolicyPublishRevisionInput{},
+				r.client.AccountId,
+			)
+			if publishErr != nil {
+				tflog.Warn(ctx, "Write.PolicyInternetFirewallReorderPolicy.active_revision_retry.publish_error", map[string]interface{}{
+					"error": publishErr.Error(),
+				})
+			} else {
+				mutationInput, err = ensureIfwDraftMutationInput(ctx, client, r.client.AccountId)
+				if err != nil {
+					diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewall draft revision error", err.Error()))
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				}
+				reorderResult, err = client.PolicyInternetFirewallReorderPolicy(ctx, mutationInput, reorderInput, r.client.AccountId)
+			}
+		}
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyInternetFirewallReorderPolicy error",
@@ -787,9 +885,9 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	}
 
 	// Publish changes
-	_, err = r.client.catov2.PolicyInternetFirewallPublishPolicyRevision(
+	_, err = client.PolicyInternetFirewallPublishPolicyRevision(
 		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
+		mutationInput,
 		&cato_models.PolicyPublishRevisionInput{},
 		r.client.AccountId,
 	)
