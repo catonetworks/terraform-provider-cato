@@ -8,6 +8,7 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 const wanTerraformDraftRevisionName = "terraform-wf-bulk-move"
@@ -132,18 +133,52 @@ func wanMutationInputForRevision(revisionID string) *cato_models.WanFirewallPoli
 	}
 }
 
-func wanMoveSectionError(
-	moveResp *cato_go_sdk.PolicyWanFirewallMoveSection,
+func wanReorderPolicyWithRetry(
+	ctx context.Context,
+	client WanRulesIndexClient,
+	accountID string,
+	mutationInput *cato_models.WanFirewallPolicyMutationInput,
+	reorderInput cato_models.PolicyReorderInput,
+) (*cato_go_sdk.PolicyWanFirewallReorderPolicy, *cato_models.WanFirewallPolicyMutationInput, error) {
+	reorderResult, err := client.PolicyWanFirewallReorderPolicy(ctx, mutationInput, reorderInput, accountID)
+	if err != nil && isActiveRevisionConflict(err.Error()) {
+		tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry", map[string]interface{}{
+			"error": err.Error(),
+		})
+		_, publishErr := client.PolicyWanFirewallPublishPolicyRevision(
+			ctx,
+			&cato_models.PolicyPublishRevisionInput{},
+			accountID,
+		)
+		if publishErr != nil {
+			tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry.publish_error", map[string]interface{}{
+				"error": publishErr.Error(),
+			})
+			return reorderResult, mutationInput, err
+		}
+
+		mutationInput, err = ensureWanDraftMutationInput(ctx, client, accountID)
+		if err != nil {
+			return nil, mutationInput, err
+		}
+		reorderResult, err = client.PolicyWanFirewallReorderPolicy(ctx, mutationInput, reorderInput, accountID)
+	}
+
+	return reorderResult, mutationInput, err
+}
+
+func wanReorderPolicyError(
+	reorderResp *cato_go_sdk.PolicyWanFirewallReorderPolicy,
 	err error,
 ) error {
 	if err != nil {
 		return err
 	}
-	if moveResp == nil || moveResp.GetPolicy() == nil || moveResp.GetPolicy().GetWanFirewall() == nil {
+	if reorderResp == nil || reorderResp.GetPolicy() == nil || reorderResp.GetPolicy().GetWanFirewall() == nil {
 		return nil
 	}
 
-	payload := moveResp.GetPolicy().GetWanFirewall().GetMoveSection()
+	payload := reorderResp.GetPolicy().GetWanFirewall().GetReorderPolicy()
 	if payload == nil {
 		return nil
 	}
@@ -156,5 +191,5 @@ func wanMoveSectionError(
 		return errors.New(*apiErrors[0].GetErrorMessage())
 	}
 
-	return errors.New("move section failed")
+	return errors.New("reorder policy failed")
 }

@@ -175,7 +175,7 @@ func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	sectionObjectsList, rulesObjectsList, diags, err := r.moveWanRulesAndSections(ctx, plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API PolicyWanFirewallMoveSection error",
+			"Catov2 API PolicyWanFirewallReorderPolicy error",
 			err.Error(),
 		)
 		return
@@ -226,7 +226,7 @@ func (r *wanRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 	sectionObjectsList, rulesObjectsList, diags, err := r.moveWanRulesAndSections(ctx, plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Catov2 API PolicyWanFirewallMoveSection error",
+			"Catov2 API PolicyWanFirewallReorderPolicy error",
 			err.Error(),
 		)
 		return
@@ -291,8 +291,9 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	if err := discardWanStaleDraftRevisions(ctx, client, r.client.AccountId); err != nil {
-		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallDiscardPolicyRevision error", err.Error()))
+	mutationInput, err := ensureWanDraftMutationInput(ctx, client, r.client.AccountId)
+	if err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewall draft revision error", err.Error()))
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
@@ -322,10 +323,6 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		}
 	}
 
-	// as the name indicates, a slice of string containing WF sections names
-	listOfSectionNames := make([]string, 0)
-
-	// maps section_name -> section_id
 	sectionIDList := make(map[string]string)
 	sectionIndexAPIData, err := client.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
@@ -339,28 +336,23 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	// for easier processing, a map of section name to ID is created
 	for _, v := range sectionIndexAPIData.Policy.WanFirewall.Policy.Sections {
 		sectionIDList[v.Section.Name] = v.Section.ID
 	}
 
 	sectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
-
-	// Convert map to slice for processing
 	sectionDataMapElements := plan.SectionData.Elements()
 	for _, sectionValue := range sectionDataMapElements {
 		sectionObject := sectionValue.(types.Object)
 		var sectionSourceRuleIndex WanRulesSectionItemIndex
 		diags = append(diags, sectionObject.As(ctx, &sectionSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
-		sectionDataTmp := WanRulesSectionDataIndex{
+		sectionListFromPlan = append(sectionListFromPlan, WanRulesSectionDataIndex{
 			SectionIndex: sectionSourceRuleIndex.SectionIndex.ValueInt64(),
 			SectionName:  sectionSourceRuleIndex.SectionName.ValueString(),
-		}
-		sectionListFromPlan = append(sectionListFromPlan, sectionDataTmp)
+		})
 	}
 
-	// Sort sections by SectionIndex to ensure proper ordering
 	sort.Slice(sectionListFromPlan, func(i, j int) bool {
 		return sectionListFromPlan[i].SectionIndex < sectionListFromPlan[j].SectionIndex
 	})
@@ -369,140 +361,56 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		"sections": utils.InterfaceToJSONString(sectionListFromPlan),
 	})
 
-	currentSectionID := ""
-
 	sectionObjectMap := make(map[string]attr.Value)
-
-	// create the sections from the list provided following the section ID provided in firstSectionId
-	for _, workingSectionName := range sectionListFromPlan {
-		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
-		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
-			ID: sectionIDList[workingSectionName.SectionName],
-		}
-
-		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionID to the SectionToStartAfterID otherwise set to id of first section for next in list
-		if currentSectionID == "" {
-			if plan.SectionToStartAfterID.ValueString() != "" {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterID.ValueStringPointer(),
-					Position: "AFTER_SECTION",
-				}
-			} else {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Position: "LAST_IN_POLICY",
-				}
-			}
-		} else {
-			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionID,
-				Position: "AFTER_SECTION",
-			}
-		}
-		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
-			"sectionToStartAfterId":          plan.SectionToStartAfterID.ValueString(),
-			"moveFrom":                       workingSectionName.SectionName,
-			"toAfter":                        currentSectionID,
-			"sectionIDList":                  sectionIDList,
-			"workingSectionName.SectionName": workingSectionName.SectionName,
-			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
-			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
-		})
-		sectionMoveAPIData, err := client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
-		moveErr := wanMoveSectionError(sectionMoveAPIData, err)
-		if moveErr != nil && isActiveRevisionConflict(moveErr.Error()) {
-			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry", map[string]interface{}{
-				"error": moveErr.Error(),
-			})
-			if discardErr := discardWanStaleDraftRevisions(ctx, client, r.client.AccountId); discardErr != nil {
-				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry.discard_error", map[string]interface{}{
-					"error": discardErr.Error(),
-				})
-			} else {
-				sectionMoveAPIData, err = client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
-				moveErr = wanMoveSectionError(sectionMoveAPIData, err)
-			}
-		}
-		if moveErr != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API PolicyWanFirewallMoveSection error",
-				moveErr.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, moveErr
-		}
-		tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(sectionMoveAPIData),
-		})
-
-		sectionIndexStateData, diagsSection := types.ObjectValue(
+	for _, workingSection := range sectionListFromPlan {
+		sectionIndexStateData, sectionDiags := types.ObjectValue(
 			WanSectionIndexResourceAttrTypes,
 			map[string]attr.Value{
-				"id":            types.StringValue(sectionIDList[workingSectionName.SectionName]),
-				"section_name":  types.StringValue(workingSectionName.SectionName),
-				"section_index": types.Int64Value(workingSectionName.SectionIndex),
+				"id":            types.StringValue(sectionIDList[workingSection.SectionName]),
+				"section_name":  types.StringValue(workingSection.SectionName),
+				"section_index": types.Int64Value(workingSection.SectionIndex),
 			},
 		)
-		diags = append(diags, diagsSection...)
-
-		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
-
-		currentSectionID = sectionIDList[workingSectionName.SectionName]
-	}
-	plannedSectionSet := make(map[string]struct{}, len(listOfSectionNames))
-	for _, sectionName := range listOfSectionNames {
-		plannedSectionSet[sectionName] = struct{}{}
-	}
-	// WAN reorder requires all sections to be present in input; append unmanaged sections.
-	for _, apiSection := range sectionIndexAPIData.Policy.WanFirewall.Policy.Sections {
-		sectionName := apiSection.Section.Name
-		if _, planned := plannedSectionSet[sectionName]; planned {
-			continue
-		}
-		listOfSectionNames = append(listOfSectionNames, sectionName)
+		diags = append(diags, sectionDiags...)
+		sectionObjectMap[workingSection.SectionName] = sectionIndexStateData
 	}
 
-	// now that the sections are ordered properly, move the rules to the correct locations
-	if len(plan.RuleData.Elements()) > 0 {
-		mutationInput, err := ensureWanDraftMutationInput(ctx, client, r.client.AccountId)
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewall draft revision error", err.Error()))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
-
-		// get all of the list elements from the plan
+	listOfSectionNames := buildWanPolicySectionOrder(
+		sectionIndexAPIData.Policy.WanFirewall.Policy.Sections,
+		sectionListFromPlan,
+		plan.SectionToStartAfterID.ValueString(),
+	)
+	needsReorder := len(sectionListFromPlan) > 0 || len(plan.RuleData.Elements()) > 0
+	if needsReorder {
 		ruleListFromPlan := make([]WanRulesRuleDataIndex, 0)
-
-		// Convert map to slice for processing
 		ruleDataMapElements := plan.RuleData.Elements()
 		for _, ruleValue := range ruleDataMapElements {
 			ruleObject := ruleValue.(types.Object)
 			var planSourceRuleIndex WanRulesRuleItemIndex
 			diags = append(diags, ruleObject.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
 
-			rulenDataTmp := WanRulesRuleDataIndex{
+			ruleListFromPlan = append(ruleListFromPlan, WanRulesRuleDataIndex{
 				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
 				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
 				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
 				Description:    planSourceRuleIndex.Description.ValueString(),
 				Enabled:        planSourceRuleIndex.Enabled.ValueBool(),
-			}
-			ruleListFromPlan = append(ruleListFromPlan, rulenDataTmp)
-			tflog.Warn(ctx, "Read.rulenDataTmp.response", map[string]interface{}{
-				"rulenDataTmp": utils.InterfaceToJSONString(rulenDataTmp),
 			})
 		}
 
-		// Sort rules by IndexInSection to ensure proper ordering within sections
+		sectionIndexMap := make(map[string]int64, len(sectionListFromPlan))
+		for _, section := range sectionListFromPlan {
+			sectionIndexMap[section.SectionName] = section.SectionIndex
+		}
+
 		sort.Slice(ruleListFromPlan, func(i, j int) bool {
-			// First sort by section name, then by index within section
 			if ruleListFromPlan[i].SectionName != ruleListFromPlan[j].SectionName {
-				return ruleListFromPlan[i].SectionName < ruleListFromPlan[j].SectionName
+				if len(sectionIndexMap) == 0 {
+					return ruleListFromPlan[i].SectionName < ruleListFromPlan[j].SectionName
+				}
+				return sectionIndexMap[ruleListFromPlan[i].SectionName] < sectionIndexMap[ruleListFromPlan[j].SectionName]
 			}
 			return ruleListFromPlan[i].IndexInSection < ruleListFromPlan[j].IndexInSection
-		})
-
-		tflog.Warn(ctx, "Read.ruleListFromPlan.response (sorted by section_name and index_in_section)", map[string]interface{}{
-			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
 		ruleNameIDData, err := client.PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
@@ -516,25 +424,17 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
+
 		ruleNameIDMap := make(map[string]string)
 		ruleNameDescriptionMap := make(map[string]string)
 		ruleNameEnabledMap := make(map[string]bool)
-
-		// create map of IFW rule names from the API to their IDs for easy lookup
-		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.WanFirewall.Policy.Rules {
-			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
-			ruleNameDescriptionMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Description
-			ruleNameEnabledMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Enabled
-		}
-
-		tflog.Warn(ctx, "Read.ruleNameIDMap.response", map[string]interface{}{
-			"ruleNameIDMap": utils.InterfaceToJSONString(ruleNameIDMap),
-		})
-
 		topLevelRuleIDsBySection := make(map[string][]string)
 		topLevelRuleIDBySectionAndName := make(map[string]string)
 		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.WanFirewall.Policy.Rules {
 			sectionName := ruleNameIDDataItem.Rule.Section.Name
+			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
+			ruleNameDescriptionMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Description
+			ruleNameEnabledMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Enabled
 			topLevelRuleIDsBySection[sectionName] = append(topLevelRuleIDsBySection[sectionName], ruleNameIDDataItem.Rule.ID)
 			topLevelRuleIDBySectionAndName[sectionName+"\x00"+ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
 		}
@@ -543,8 +443,6 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		for _, ruleItemFromPlan := range ruleListFromPlan {
 			ruleID, ok := topLevelRuleIDBySectionAndName[ruleItemFromPlan.SectionName+"\x00"+ruleItemFromPlan.RuleName]
 			if !ok {
-				// Rules can be moved across sections in one operation, so fallback by
-				// name when current API section does not match the target section.
 				ruleID, ok = ruleNameIDMap[ruleItemFromPlan.RuleName]
 				if !ok {
 					err := errors.New("failed to resolve rule ID for reorder operation")
@@ -596,60 +494,27 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 				Rules: reorderRules,
 			})
 		}
+
 		reorderInput := cato_models.PolicyReorderInput{
 			Sections: reorderSections,
 		}
-		reorderResult, err := client.PolicyWanFirewallReorderPolicy(ctx, mutationInput, reorderInput, r.client.AccountId)
-		if err != nil && isActiveRevisionConflict(err.Error()) {
-			tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry", map[string]interface{}{
-				"error": err.Error(),
-			})
-			if discardErr := discardWanStaleDraftRevisions(ctx, client, r.client.AccountId); discardErr != nil {
-				tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry.discard_error", map[string]interface{}{
-					"error": discardErr.Error(),
-				})
-			} else {
-				mutationInput, err = ensureWanDraftMutationInput(ctx, client, r.client.AccountId)
-				if err != nil {
-					diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewall draft revision error", err.Error()))
-					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-				}
-				reorderResult, err = client.PolicyWanFirewallReorderPolicy(ctx, mutationInput, reorderInput, r.client.AccountId)
-			}
-		}
-		if err != nil {
+		reorderResult, _, err := wanReorderPolicyWithRetry(ctx, client, r.client.AccountId, mutationInput, reorderInput)
+		if reorderErr := wanReorderPolicyError(reorderResult, err); reorderErr != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyWanFirewallReorderPolicy error",
-				err.Error(),
+				reorderErr.Error(),
 			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
-		reorderPayload := reorderResult.GetPolicy().GetWanFirewall().GetReorderPolicy()
-		if reorderPayload != nil && reorderPayload.GetStatus() != nil && *reorderPayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-			apiErrors := reorderPayload.GetErrors()
-			if len(apiErrors) > 0 {
-				errMsg := "reorder policy failed with api error"
-				if apiErrors[0].GetErrorMessage() != nil {
-					errMsg = *apiErrors[0].GetErrorMessage()
-				}
-				err := errors.New(errMsg)
-				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
-				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-			}
-			err := errors.New("reorder policy failed")
-			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallReorderPolicy error", err.Error()))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, reorderErr
 		}
 
-		// Build final state using API values for computed fields so they are always known post-apply.
 		for _, ruleFromPlan := range ruleListFromPlan {
-			ruleIndexStateData, diagsSection := buildWanRuleIndexStateData(
+			ruleIndexStateData, ruleDiags := buildWanRuleIndexStateData(
 				ruleFromPlan,
 				ruleNameIDMap,
 				ruleNameDescriptionMap,
 				ruleNameEnabledMap,
 			)
-			diags = append(diags, diagsSection...)
+			diags = append(diags, ruleDiags...)
 			ruleObjectMap[ruleFromPlan.RuleName] = ruleIndexStateData
 		}
 	}
