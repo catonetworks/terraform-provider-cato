@@ -3,12 +3,12 @@
 page_title: "cato_tls_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The _tls_rule resource contains the configuration parameters necessary to add rule to the TLS Inspection Policy. Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule).
+  The _tls_rule resource contains the configuration parameters necessary to add rule to the TLS Inspection Policy. Documentation for the underlying API used in this resource can be found at mutation.policy.tlsInspect.addRule() https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule.
 ---
 
 # cato_tls_rule (Resource)
 
-The `_tls_rule` resource contains the configuration parameters necessary to add rule to the TLS Inspection Policy. Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule).
+The `_tls_rule` resource contains the configuration parameters necessary to add rule to the TLS Inspection Policy. Documentation for the underlying API used in this resource can be found at [mutation.policy.tlsInspect.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.tlsInspect.addRule).
 
 ## Example Usage
 

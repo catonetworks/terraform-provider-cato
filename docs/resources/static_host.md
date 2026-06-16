@@ -3,12 +3,12 @@
 page_title: "cato_static_host Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_static_host resource contains the configuration parameters necessary to add a static host. Documentation for the underlying API used in this resource can be found at [mutation.addStaticHost()](https:// api.catonetworks.com/documentation/#mutation-site.addStaticHost).
+  The cato_static_host resource contains the configuration parameters necessary to add a static host. Documentation for the underlying API used in this resource can be found at mutation.addStaticHost() https://api.catonetworks.com/documentation/#mutation-site.addStaticHost.
 ---
 
 # cato_static_host (Resource)
 
-The `cato_static_host` resource contains the configuration parameters necessary to add a static host. Documentation for the underlying API used in this resource can be found at [mutation.addStaticHost()](https:// api.catonetworks.com/documentation/#mutation-site.addStaticHost).
+The `cato_static_host` resource contains the configuration parameters necessary to add a static host. Documentation for the underlying API used in this resource can be found at [mutation.addStaticHost()](https://api.catonetworks.com/documentation/#mutation-site.addStaticHost).
 
 ## Example Usage
 

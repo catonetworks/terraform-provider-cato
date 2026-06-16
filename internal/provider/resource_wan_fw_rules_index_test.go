@@ -19,7 +19,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
-func expectWanDiscardDraft(mockClient *mocks.WanRulesIndexClient, ctx context.Context, accountID string) {
+func expectWanDiscardDraft(ctx context.Context, mockClient *mocks.WanRulesIndexClient, accountID string) {
 	mockClient.EXPECT().
 		PolicyWanFirewallDiscardPolicyRevision(ctx, mock.Anything, accountID).
 		Return(&cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision{}, nil).
@@ -120,7 +120,7 @@ func TestWanRulesIndexCreateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
-	expectWanDiscardDraft(mockClient, ctx, "account-123")
+	expectWanDiscardDraft(ctx, mockClient, "account-123")
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(nil, errors.New("sections index failed")).
@@ -145,7 +145,7 @@ func TestWanRulesIndexUpdateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
-	expectWanDiscardDraft(mockClient, ctx, "account-123")
+	expectWanDiscardDraft(ctx, mockClient, "account-123")
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(nil, errors.New("sections index failed")).
@@ -187,7 +187,7 @@ func TestMoveWanRulesAndSectionsReturnsErrorForUnknownSectionToStartAfterID(t *t
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
-	expectWanDiscardDraft(mockClient, ctx, "account-123")
+	expectWanDiscardDraft(ctx, mockClient, "account-123")
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(wanSectionsIndexResponse([]wanSection{{id: "section-1", name: "first"}}), nil).

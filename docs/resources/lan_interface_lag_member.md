@@ -52,7 +52,7 @@ resource "cato_lan_interface_lag_member" "lag3" {
 
 ### Optional
 
-- `dest_type` (String) SocketInterface destination type (https:// api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)
+- `dest_type` (String) SocketInterface destination type (https://api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)
 
 ### Read-Only
 
