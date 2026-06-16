@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -292,6 +291,11 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
+	if err := publishWanStaleDraftRevisions(ctx, client, r.client.AccountId); err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallPublishPolicyRevision error", err.Error()))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
+
 	if plan.SectionToStartAfterID.ValueString() != "" {
 		result, err := client.PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndex.response", map[string]interface{}{
@@ -405,45 +409,30 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
 		sectionMoveAPIData, err := client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
-		if err != nil && strings.Contains(err.Error(), "other active revisions exist") {
+		moveErr := wanMoveSectionError(sectionMoveAPIData, err)
+		if moveErr != nil && isActiveRevisionConflict(moveErr.Error()) {
 			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry", map[string]interface{}{
-				"error": err.Error(),
+				"error": moveErr.Error(),
 			})
-			_, publishErr := client.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
-			if publishErr != nil {
+			if publishErr := publishWanStaleDraftRevisions(ctx, client, r.client.AccountId); publishErr != nil {
 				tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.active_revision_retry.publish_error", map[string]interface{}{
 					"error": publishErr.Error(),
 				})
 			} else {
 				sectionMoveAPIData, err = client.PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+				moveErr = wanMoveSectionError(sectionMoveAPIData, err)
 			}
 		}
-		// Check for API errors safely with nil checks
-		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
-			sectionMoveAPIData.GetPolicy().WanFirewall != nil &&
-			sectionMoveAPIData.GetPolicy().WanFirewall.GetMoveSection() != nil &&
-			len(sectionMoveAPIData.GetPolicy().WanFirewall.GetMoveSection().Errors) != 0 {
-			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSectionMoveSection.response", map[string]interface{}{
-				"response": utils.InterfaceToJSONString(sectionMoveAPIData),
-			})
-			if err != nil {
-				diags = append(diags, diag.NewErrorDiagnostic(
-					"Catov2 API EntityLookup error",
-					err.Error(),
-				))
-				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-			}
+		if moveErr != nil {
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"Catov2 API PolicyWanFirewallMoveSection error",
+				moveErr.Error(),
+			))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, moveErr
 		}
 		tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 		})
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API EntityLookup error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
 
 		sectionIndexStateData, diagsSection := types.ObjectValue(
 			WanSectionIndexResourceAttrTypes,
@@ -474,6 +463,12 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 	// now that the sections are ordered properly, move the rules to the correct locations
 	if len(plan.RuleData.Elements()) > 0 {
+		mutationInput, err := ensureWanDraftMutationInput(ctx, client, r.client.AccountId)
+		if err != nil {
+			diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewall draft revision error", err.Error()))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+		}
+
 		// get all of the list elements from the plan
 		ruleListFromPlan := make([]WanRulesRuleDataIndex, 0)
 
@@ -604,18 +599,22 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		reorderInput := cato_models.PolicyReorderInput{
 			Sections: reorderSections,
 		}
-		reorderResult, err := client.PolicyWanFirewallReorderPolicy(ctx, nil, reorderInput, r.client.AccountId)
-		if err != nil && strings.Contains(err.Error(), "other active revisions exist") {
+		reorderResult, err := client.PolicyWanFirewallReorderPolicy(ctx, mutationInput, reorderInput, r.client.AccountId)
+		if err != nil && isActiveRevisionConflict(err.Error()) {
 			tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry", map[string]interface{}{
 				"error": err.Error(),
 			})
-			_, publishErr := client.PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
-			if publishErr != nil {
+			if publishErr := publishWanStaleDraftRevisions(ctx, client, r.client.AccountId); publishErr != nil {
 				tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry.publish_error", map[string]interface{}{
 					"error": publishErr.Error(),
 				})
 			} else {
-				reorderResult, err = client.PolicyWanFirewallReorderPolicy(ctx, nil, reorderInput, r.client.AccountId)
+				mutationInput, err = ensureWanDraftMutationInput(ctx, client, r.client.AccountId)
+				if err != nil {
+					diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewall draft revision error", err.Error()))
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				}
+				reorderResult, err = client.PolicyWanFirewallReorderPolicy(ctx, mutationInput, reorderInput, r.client.AccountId)
 			}
 		}
 		if err != nil {

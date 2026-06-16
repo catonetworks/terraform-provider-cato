@@ -112,7 +112,6 @@ func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-b"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "1"),
 				),
-				ExpectNonEmptyPlan: true, // cato_if_rule currently refreshes with drift on optional fields.
 			},
 			{
 				Config: cfg.getTfConfig(4),
@@ -127,7 +126,6 @@ func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-a"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "2"),
 				),
-				ExpectNonEmptyPlan: true, // cato_if_rule currently refreshes with drift on optional fields.
 			},
 		},
 	})

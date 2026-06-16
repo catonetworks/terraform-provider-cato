@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -14,8 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/mock"
-
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
@@ -115,6 +114,10 @@ func TestWanRulesIndexCreateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
 	mockClient.EXPECT().
+		PolicyWanFirewall(ctx, mock.Anything, "account-123").
+		Return(wanPolicyWithoutDrafts(), nil).
+		Once()
+	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(nil, errors.New("sections index failed")).
 		Once()
@@ -138,6 +141,10 @@ func TestWanRulesIndexUpdateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
+	mockClient.EXPECT().
+		PolicyWanFirewall(ctx, mock.Anything, "account-123").
+		Return(wanPolicyWithoutDrafts(), nil).
+		Once()
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(nil, errors.New("sections index failed")).
@@ -180,6 +187,10 @@ func TestMoveWanRulesAndSectionsReturnsErrorForUnknownSectionToStartAfterID(t *t
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
 	mockClient.EXPECT().
+		PolicyWanFirewall(ctx, mock.Anything, "account-123").
+		Return(wanPolicyWithoutDrafts(), nil).
+		Once()
+	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(wanSectionsIndexResponse([]wanSection{{id: "section-1", name: "first"}}), nil).
 		Once()
@@ -213,6 +224,12 @@ func TestMoveWanRulesAndSectionsReturnsReorderAPIErrors(t *testing.T) {
 	sectionName := "managed-section"
 	ruleName := "managed-rule"
 
+	revisionID := "draft-rev-1"
+
+	mockClient.EXPECT().
+		PolicyWanFirewall(ctx, mock.Anything, "account-123").
+		Return(wanPolicyWithoutDrafts(), nil).
+		Once()
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
 		Return(wanSectionsIndexResponse([]wanSection{{id: "section-1", name: sectionName}}), nil).
@@ -222,11 +239,17 @@ func TestMoveWanRulesAndSectionsReturnsReorderAPIErrors(t *testing.T) {
 		Return(&cato_go_sdk.PolicyWanFirewallMoveSection{}, nil).
 		Once()
 	mockClient.EXPECT().
+		PolicyWanFirewall(ctx, mock.Anything, "account-123").
+		Return(wanPolicyWithDraftRevision(revisionID), nil).
+		Once()
+	mockClient.EXPECT().
 		PolicyWanFirewallRulesIndex(ctx, "account-123").
 		Return(wanRulesIndexResponse([]wanRule{{id: "rule-1", name: ruleName, sectionName: sectionName}}), nil).
 		Once()
 	mockClient.EXPECT().
-		PolicyWanFirewallReorderPolicy(ctx, (*cato_models.WanFirewallPolicyMutationInput)(nil), mock.Anything, "account-123").
+		PolicyWanFirewallReorderPolicy(ctx, mock.MatchedBy(func(input *cato_models.WanFirewallPolicyMutationInput) bool {
+			return input != nil && input.Revision != nil && input.Revision.ID != nil && *input.Revision.ID == revisionID
+		}), mock.Anything, "account-123").
 		Return(wanReorderResponseWithError("reorder failed from api"), nil).
 		Once()
 
@@ -254,6 +277,47 @@ func TestMoveWanRulesAndSectionsReturnsReorderAPIErrors(t *testing.T) {
 	}
 	if len(diags) == 0 {
 		t.Fatal("expected diagnostics for reorder API failure")
+	}
+}
+
+func TestEnsureWanDraftMutationInputReusesExistingDraft(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	mockClient := mocks.NewWanRulesIndexClient(t)
+	mockClient.EXPECT().
+		PolicyWanFirewall(ctx, mock.Anything, "account-123").
+		Return(wanPolicyWithDraftRevision("draft-rev-1"), nil).
+		Once()
+
+	got, err := ensureWanDraftMutationInput(ctx, mockClient, "account-123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil || got.Revision == nil || got.Revision.ID == nil {
+		t.Fatal("expected revision id in mutation input")
+	}
+	if *got.Revision.ID != "draft-rev-1" {
+		t.Fatalf("expected draft-rev-1, got %q", *got.Revision.ID)
+	}
+}
+
+func TestPublishWanStaleDraftRevisionsPublishesWhenDraftExists(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	mockClient := mocks.NewWanRulesIndexClient(t)
+	mockClient.EXPECT().
+		PolicyWanFirewall(ctx, mock.Anything, "account-123").
+		Return(wanPolicyWithDraftRevision("draft-rev-1"), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyWanFirewallPublishPolicyRevision(ctx, mock.Anything, "account-123").
+		Return(&cato_go_sdk.PolicyWanFirewallPublishPolicyRevision{}, nil).
+		Once()
+
+	if err := publishWanStaleDraftRevisions(ctx, mockClient, "account-123"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -445,6 +509,26 @@ func newWanRulesIndexPlan(ctx context.Context, t *testing.T) tfsdk.Plan {
 type wanSection struct {
 	id   string
 	name string
+}
+
+func wanPolicyWithoutDrafts() *cato_go_sdk.Policy {
+	return &cato_go_sdk.Policy{
+		Policy: &cato_go_sdk.Policy_Policy{
+			WanFirewall: &cato_go_sdk.Policy_Policy_WanFirewall{},
+		},
+	}
+}
+
+func wanPolicyWithDraftRevision(revisionID string) *cato_go_sdk.Policy {
+	policy := wanPolicyWithoutDrafts()
+	if revisionID != "" {
+		policy.Policy.WanFirewall.RevisionsWanFirewallPolicyQueries = &cato_go_sdk.Policy_Policy_WanFirewall_RevisionsWanFirewallPolicyQueries{
+			Revision: []*cato_go_sdk.Policy_Policy_WanFirewall_RevisionsWanFirewallPolicyQueries_Revision{
+				{ID: revisionID},
+			},
+		}
+	}
+	return policy
 }
 
 func wanSectionsIndexResponse(sections []wanSection) *cato_go_sdk.WanSectionsIndexPolicy {

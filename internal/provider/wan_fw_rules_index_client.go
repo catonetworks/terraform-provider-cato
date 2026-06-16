@@ -9,11 +9,23 @@ import (
 )
 
 type WanRulesIndexClient interface {
+	PolicyWanFirewall(
+		ctx context.Context,
+		wanFirewallPolicyInput *cato_models.WanFirewallPolicyInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.Policy, error)
 	PolicyWanFirewallSectionsIndex(
 		ctx context.Context,
 		accountID string,
 		interceptors ...clientv2.RequestInterceptor,
 	) (*cato_go_sdk.WanSectionsIndexPolicy, error)
+	PolicyWanFirewallCreatePolicyRevision(
+		ctx context.Context,
+		policyCreateRevisionInput cato_models.PolicyCreateRevisionInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyWanFirewallCreatePolicyRevision, error)
 	PolicyWanFirewallMoveSection(
 		ctx context.Context,
 		policyMoveSectionInput cato_models.PolicyMoveSectionInput,
