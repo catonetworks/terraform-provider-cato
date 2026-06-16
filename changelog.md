@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.85 (2026-06-16)
+
+### Added
+- Added acceptance test coverage for account, BGP peer, internet firewall rule indexes, TLS rule indexes, WAN firewall rule indexes, and WAN network rule indexes.
+
+### Changed
+- Refactored `cato_network_range` with shared DHCP settings helpers, extracted validators, and streamlined CRUD flow.
+- Updated the Cato Go SDK dependency.
+
+### Fixed
+- Fixed `translated_subnet` handling for socket site and network range API payloads to omit empty or unset values.
+
 ## 0.0.84 (2026-06-05)
 
 ### Fixed
