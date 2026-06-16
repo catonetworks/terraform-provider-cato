@@ -978,8 +978,8 @@ func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, cfg, 
 func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, cfg, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
 ) (*cato_models.UpdateSocketInterfaceInput, cato_models.SocketInterfaceIDEnum) {
 	var (
-		cfgNativeRange  tf.NativeRange
-		planNativeRange tf.NativeRange
+		cfgNativeRange    tf.NativeRange
+		planNativeRange   tf.NativeRange
 		lagLinksDestTypes = []cato_models.SocketInterfaceDestType{ // set lag input for these dest types
 			cato_models.SocketInterfaceDestTypeLanLagMaster,
 			cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp,
