@@ -65,6 +65,15 @@ func stringPointerForOptionalInput(value types.String) *string {
 	return value.ValueStringPointer()
 }
 
+// translatedSubnetForAPIInput omits translated_subnet from update payloads when the attribute is not
+// explicitly set in Terraform config, even if plan/state still carry an API-hydrated value.
+func translatedSubnetForAPIInput(configValue, planValue types.String) *string {
+	if configValue.IsNull() || configValue.IsUnknown() {
+		return nil
+	}
+	return stringPointerForOptionalInput(planValue)
+}
+
 type socketSiteResource struct {
 	client           *catoClientData
 	socketSiteClient SocketSiteClient
@@ -370,7 +379,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-	r.updateNetworkRange(ctx, &plan, networkRange.GetNetworkRangeID(), false, &diags)
+	r.updateNetworkRange(ctx, &cfg, &plan, networkRange.GetNetworkRangeID(), false, &diags)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -384,7 +393,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	// Update Socket Interface
-	r.updateSocketInterface(ctx, &plan, siteID, false, &diags)
+	r.updateSocketInterface(ctx, &cfg, &plan, siteID, false, &diags)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -490,7 +499,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 	networkRangeID := planNativeRange.NativeNetworkRangeID.ValueString()
-	r.updateNetworkRange(ctx, &plan, networkRangeID, isHA, &resp.Diagnostics)
+	r.updateNetworkRange(ctx, &cfg, &plan, networkRangeID, isHA, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -506,7 +515,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Update Socket Interface
-	r.updateSocketInterface(ctx, &plan, siteID, isHA, &resp.Diagnostics)
+	r.updateSocketInterface(ctx, &cfg, &plan, siteID, isHA, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -921,23 +930,33 @@ func (r *socketSiteResource) prepareSocketSiteInput(ctx context.Context, plan *t
 
 // prepareNetworkRangeInput constructs the API input for SiteUpdateNetworkRange() from the Terraform plan data.
 // It may add error(s) to the diagnostics if the input data is invalid.
-func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
+func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, cfg, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
 ) *cato_models.UpdateNetworkRangeInput {
-	var tfNativeRange tf.NativeRange
-	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
+	var (
+		cfgNativeRange  tf.NativeRange
+		planNativeRange tf.NativeRange
+	)
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &planNativeRange, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
+	configTranslatedSubnet := types.StringNull()
+	if cfg != nil && utils.HasValue(cfg.NativeRange) {
+		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
+			return nil
+		}
+		configTranslatedSubnet = cfgNativeRange.TranslatedSubnet
+	}
 	input := &cato_models.UpdateNetworkRangeInput{
-		Subnet:           parse.KnownStringPointer(tfNativeRange.NativeNetworkRange),
-		TranslatedSubnet: stringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
-		MdnsReflector:    parse.KnownBoolPointer(tfNativeRange.MdnsReflector),
-		Vlan:             parse.KnownInt64Pointer(tfNativeRange.Vlan),
-		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, r.client, cato_models.SubnetTypeNative, tfNativeRange.DhcpSettings, diags),
+		Subnet:           parse.KnownStringPointer(planNativeRange.NativeNetworkRange),
+		TranslatedSubnet: translatedSubnetForAPIInput(configTranslatedSubnet, planNativeRange.TranslatedSubnet),
+		MdnsReflector:    parse.KnownBoolPointer(planNativeRange.MdnsReflector),
+		Vlan:             parse.KnownInt64Pointer(planNativeRange.Vlan),
+		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, r.client, cato_models.SubnetTypeNative, planNativeRange.DhcpSettings, diags),
 		//    AzureFloatingIP *string `json:"azureFloatingIp,omitempty"` TODO: implement when AZURE HA support is added
 	}
 
 	if !isHA { // for HA scenario, local IP is not allowed to be modified
-		input.LocalIP = parse.KnownStringPointer(tfNativeRange.LocalIP)
+		input.LocalIP = parse.KnownStringPointer(planNativeRange.LocalIP)
 	}
 
 	return input
@@ -945,10 +964,11 @@ func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, plan 
 
 // prepareSocketInterfaceInput prepares inputs for SiteUpdateSocketInterface API,
 // on error updates diags
-func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
+func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, cfg, plan *tf.SocketSite, isHA bool, diags *diag.Diagnostics,
 ) (*cato_models.UpdateSocketInterfaceInput, cato_models.SocketInterfaceIDEnum) {
 	var (
-		tfNativeRange     tf.NativeRange
+		cfgNativeRange    tf.NativeRange
+		planNativeRange   tf.NativeRange
 		lagLinksDestTypes = []cato_models.SocketInterfaceDestType{ // set lag input for these dest types
 			cato_models.SocketInterfaceDestTypeLanLagMaster,
 			cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp,
@@ -962,20 +982,27 @@ func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, pl
 		}
 	)
 
-	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &planNativeRange, basetypes.ObjectAsOptions{})) {
 		return nil, ""
 	}
+	configTranslatedSubnet := types.StringNull()
+	if cfg != nil && utils.HasValue(cfg.NativeRange) {
+		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
+			return nil, ""
+		}
+		configTranslatedSubnet = cfgNativeRange.TranslatedSubnet
+	}
 
-	interfaceDestType := cato_models.SocketInterfaceDestType(tfNativeRange.InterfaceDestType.ValueString())
+	interfaceDestType := cato_models.SocketInterfaceDestType(planNativeRange.InterfaceDestType.ValueString())
 
 	if interfaceDestType == "" {
 		interfaceDestType = cato_models.SocketInterfaceDestTypeLan // default to LAN if not specified
 	}
 
 	// Determine interface ifaceName with the following precedence: InterfaceName > InterfaceIndex > default based on connection type
-	ifaceName := parse.KnownStringPointer(tfNativeRange.InterfaceName)
+	ifaceName := parse.KnownStringPointer(planNativeRange.InterfaceName)
 	if ifaceName == nil {
-		ifaceName = parse.KnownStringPointer(tfNativeRange.InterfaceIndex)
+		ifaceName = parse.KnownStringPointer(planNativeRange.InterfaceIndex)
 	}
 	if ifaceName == nil {
 		ifaceName = ptr(string(tf.InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]))
@@ -987,21 +1014,21 @@ func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, pl
 	}
 
 	// MinLinks for LAG
-	if utils.HasValue(tfNativeRange.LagMinLinks) && slices.Contains(lagLinksDestTypes, interfaceDestType) {
-		input.Lag = &cato_models.SocketInterfaceLagInput{MinLinks: tfNativeRange.LagMinLinks.ValueInt64()}
+	if utils.HasValue(planNativeRange.LagMinLinks) && slices.Contains(lagLinksDestTypes, interfaceDestType) {
+		input.Lag = &cato_models.SocketInterfaceLagInput{MinLinks: planNativeRange.LagMinLinks.ValueInt64()}
 	}
 
 	// LAN input
 	if slices.Contains(lanDestTypes, interfaceDestType) && !isHA {
 		input.Lan = &cato_models.SocketInterfaceLanInput{
-			LocalIP:          tfNativeRange.LocalIP.ValueString(),
-			Subnet:           tfNativeRange.NativeNetworkRange.ValueString(),
-			TranslatedSubnet: stringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
+			LocalIP:          planNativeRange.LocalIP.ValueString(),
+			Subnet:           planNativeRange.NativeNetworkRange.ValueString(),
+			TranslatedSubnet: translatedSubnetForAPIInput(configTranslatedSubnet, planNativeRange.TranslatedSubnet),
 		}
 	}
 
 	// get interface index if configured, otherwise use a default based on connection type
-	interfaceIndex := cato_models.SocketInterfaceIDEnum(tfNativeRange.InterfaceIndex.ValueString())
+	interfaceIndex := cato_models.SocketInterfaceIDEnum(planNativeRange.InterfaceIndex.ValueString())
 	if interfaceIndex == "" {
 		interfaceIndex = tf.InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]
 	}
@@ -1176,10 +1203,10 @@ func (r *socketSiteResource) assignInterfaceIndex(ctx context.Context, currentIn
 }
 
 // updateNativeRange updates the native network range details by calling SiteUpdateNetworkRange API.
-func (r *socketSiteResource) updateNetworkRange(ctx context.Context, plan *tf.SocketSite, networkRangeID string,
+func (r *socketSiteResource) updateNetworkRange(ctx context.Context, cfg, plan *tf.SocketSite, networkRangeID string,
 	isHA bool, diags *diag.Diagnostics,
 ) {
-	networkRangeInput := r.prepareNetworkRangeInput(ctx, plan, isHA, diags)
+	networkRangeInput := r.prepareNetworkRangeInput(ctx, cfg, plan, isHA, diags)
 	if diags.HasError() {
 		return
 	}
@@ -1192,14 +1219,14 @@ func (r *socketSiteResource) updateNetworkRange(ctx context.Context, plan *tf.So
 }
 
 // updateSocketInterface updates the socket interface details.
-func (r *socketSiteResource) updateSocketInterface(ctx context.Context, plan *tf.SocketSite, siteID string,
+func (r *socketSiteResource) updateSocketInterface(ctx context.Context, cfg, plan *tf.SocketSite, siteID string,
 	isHA bool, diags *diag.Diagnostics,
 ) {
 	if isHA && plan.ConnectionType.ValueString() == string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
 		return // update does not work on GCP HA
 	}
 
-	socketIfaceInput, interfaceID := r.prepareSocketInterfaceInput(ctx, plan, isHA, diags)
+	socketIfaceInput, interfaceID := r.prepareSocketInterfaceInput(ctx, cfg, plan, isHA, diags)
 	if diags.HasError() {
 		return
 	}
