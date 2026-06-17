@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.86 (2026-06-17)
+
+### Fixed
+- Fixed `cato_socket_site` updates so `translated_subnet` is omitted from `siteUpdateNetworkRange` and `siteUpdateSocketInterface` when it is not set in Terraform config, even if plan/state still carry an API-hydrated value (accounts with Static Range Translation disabled).
+
 ## 0.0.85 (2026-06-16)
 
 ### Added
