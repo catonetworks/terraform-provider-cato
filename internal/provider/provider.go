@@ -18,6 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/dhcp"
 )
 
 var (
@@ -61,8 +63,8 @@ type catoClientData struct {
 	catov2    *cato.Client
 }
 
-func (p *catoClientData) V2() *cato.Client  { return p.catov2 }
-func (p *catoClientData) AccountID() string { return p.AccountId }
+func (p *catoClientData) V2() dhcp.V2EntityLookup { return p.catov2 }
+func (p *catoClientData) AccountID() string       { return p.AccountId }
 
 func (p *catoProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "cato"

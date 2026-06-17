@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,8 +21,17 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
+// V2EntityLookup is the subset of the Cato GraphQL client used for DHCP relay group resolution.
+// It is implemented by *cato_go_sdk.Client.
+type V2EntityLookup interface {
+	EntityLookupMinimal(ctx context.Context, accountID string, typeArg cato_models.EntityType,
+		limit *int64, from *int64, parent *cato_models.EntityInput, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput,
+		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error)
+}
+
+// SdkClienter is the provider client surface required by this package.
 type SdkClienter interface {
-	V2() *cato_go_sdk.Client // return SDK Client v2
+	V2() V2EntityLookup
 	AccountID() string
 }
 
@@ -96,17 +106,25 @@ func PrepareDHCPSettings(ctx context.Context, client SdkClienter, rangeType cato
 		IPRange:  parse.KnownStringPointer(tfDhcpSettings.IPRange),
 	}
 
-	// if dhcp type is DHCP_RELAY and we don't have relayGroupID (just Name), fetch the relayGroupID
-	if dhcpType == cato_models.DhcpTypeDhcpRelay && (!utils.HasValue(tfDhcpSettings.RelayGroupID)) {
-		if !utils.HasValue(tfDhcpSettings.RelayGroupName) {
-			diags.AddError("Missing DHCP relay group name", "DHCP settings of type DHCP_RELAY require a relay group name to be specified.")
+	// DHCP_RELAY: API needs relayGroupId. When relay_group_name is set (including updates), always resolve
+	// the id from the name — otherwise a stale relay_group_id left in state/plan masks a changed name and
+	// relayGroupId is never sent on the wire.
+	if dhcpType == cato_models.DhcpTypeDhcpRelay {
+		switch {
+		case utils.HasValue(tfDhcpSettings.RelayGroupName):
+			relayGroupID := getDhcpRelayGroupID(ctx, client, tfDhcpSettings.RelayGroupName.ValueString(), diags)
+			if diags.HasError() {
+				return nil
+			}
+			input.RelayGroupID = &relayGroupID
+		case utils.HasValue(tfDhcpSettings.RelayGroupID):
+			id := tfDhcpSettings.RelayGroupID.ValueString()
+			input.RelayGroupID = &id
+		default:
+			diags.AddError("Missing DHCP relay group reference",
+				"DHCP settings of type DHCP_RELAY require relay_group_name or relay_group_id.")
 			return nil
 		}
-		relayGroupID := getDhcpRelayGroupID(ctx, client, tfDhcpSettings.RelayGroupName.ValueString(), diags)
-		if diags.HasError() {
-			return nil
-		}
-		input.RelayGroupID = &relayGroupID
 	}
 
 	// Microsegmentation is only relevant for DHCP range
