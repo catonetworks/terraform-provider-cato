@@ -291,6 +291,11 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
+	if err := discardWanStaleDraftRevisions(ctx, client, r.client.AccountId); err != nil {
+		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewallDiscardPolicyRevision error", err.Error()))
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+	}
+
 	mutationInput, err := ensureWanDraftMutationInput(ctx, client, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyWanFirewall draft revision error", err.Error()))

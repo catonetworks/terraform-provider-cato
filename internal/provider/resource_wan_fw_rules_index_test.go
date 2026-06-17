@@ -19,6 +19,13 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
+func expectWanDiscardDraft(ctx context.Context, mockClient *mocks.WanRulesIndexClient) {
+	mockClient.EXPECT().
+		PolicyWanFirewallDiscardPolicyRevision(ctx, mock.Anything, "account-123").
+		Return(&cato_go_sdk.PolicyWanFirewallDiscardPolicyRevision{}, nil).
+		Once()
+}
+
 func expectWanEnsureDraft(ctx context.Context, mockClient *mocks.WanRulesIndexClient) {
 	mockClient.EXPECT().
 		PolicyWanFirewall(ctx, mock.Anything, "account-123").
@@ -120,6 +127,7 @@ func TestWanRulesIndexCreateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
+	expectWanDiscardDraft(ctx, mockClient)
 	expectWanEnsureDraft(ctx, mockClient)
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
@@ -145,6 +153,7 @@ func TestWanRulesIndexUpdateReturnsDiagnosticsOnSectionsIndexError(t *testing.T)
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
+	expectWanDiscardDraft(ctx, mockClient)
 	expectWanEnsureDraft(ctx, mockClient)
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
@@ -187,6 +196,7 @@ func TestMoveWanRulesAndSectionsReturnsErrorForUnknownSectionToStartAfterID(t *t
 
 	ctx := context.Background()
 	mockClient := mocks.NewWanRulesIndexClient(t)
+	expectWanDiscardDraft(ctx, mockClient)
 	expectWanEnsureDraft(ctx, mockClient)
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
@@ -223,6 +233,7 @@ func TestMoveWanRulesAndSectionsReordersSectionsOnly(t *testing.T) {
 	sectionB := "section-b"
 	revisionID := "draft-rev-1"
 
+	expectWanDiscardDraft(ctx, mockClient)
 	expectWanEnsureDraft(ctx, mockClient)
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").
@@ -278,6 +289,7 @@ func TestMoveWanRulesAndSectionsReturnsReorderAPIErrors(t *testing.T) {
 
 	revisionID := "draft-rev-1"
 
+	expectWanDiscardDraft(ctx, mockClient)
 	expectWanEnsureDraft(ctx, mockClient)
 	mockClient.EXPECT().
 		PolicyWanFirewallSectionsIndex(ctx, "account-123").

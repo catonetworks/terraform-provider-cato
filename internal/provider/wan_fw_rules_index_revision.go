@@ -133,6 +133,32 @@ func wanMutationInputForRevision(revisionID string) *cato_models.WanFirewallPoli
 	}
 }
 
+// wanReorderPolicyConflictMessage returns a non-empty message when the reorder call failed with an
+// API-reported error (including GraphQL success responses that embed errors in the payload).
+func wanReorderPolicyConflictMessage(
+	reorderResp *cato_go_sdk.PolicyWanFirewallReorderPolicy,
+	err error,
+) string {
+	if err != nil {
+		return err.Error()
+	}
+	if reorderResp == nil || reorderResp.GetPolicy() == nil || reorderResp.GetPolicy().GetWanFirewall() == nil {
+		return ""
+	}
+	payload := reorderResp.GetPolicy().GetWanFirewall().GetReorderPolicy()
+	if payload == nil {
+		return ""
+	}
+	if payload.GetStatus() != nil && *payload.GetStatus() == cato_models.PolicyMutationStatusSuccess {
+		return ""
+	}
+	apiErrors := payload.GetErrors()
+	if len(apiErrors) > 0 && apiErrors[0].GetErrorMessage() != nil {
+		return *apiErrors[0].GetErrorMessage()
+	}
+	return ""
+}
+
 func wanReorderPolicyWithRetry(
 	ctx context.Context,
 	client WanRulesIndexClient,
@@ -141,9 +167,10 @@ func wanReorderPolicyWithRetry(
 	reorderInput cato_models.PolicyReorderInput,
 ) (*cato_go_sdk.PolicyWanFirewallReorderPolicy, *cato_models.WanFirewallPolicyMutationInput, error) {
 	reorderResult, err := client.PolicyWanFirewallReorderPolicy(ctx, mutationInput, reorderInput, accountID)
-	if err != nil && isActiveRevisionConflict(err.Error()) {
+	conflictMsg := wanReorderPolicyConflictMessage(reorderResult, err)
+	if isActiveRevisionConflict(conflictMsg) {
 		tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry", map[string]interface{}{
-			"error": err.Error(),
+			"error": conflictMsg,
 		})
 		_, publishErr := client.PolicyWanFirewallPublishPolicyRevision(
 			ctx,
@@ -154,7 +181,10 @@ func wanReorderPolicyWithRetry(
 			tflog.Warn(ctx, "Write.PolicyWanFirewallReorderPolicy.active_revision_retry.publish_error", map[string]interface{}{
 				"error": publishErr.Error(),
 			})
-			return reorderResult, mutationInput, err
+			if err != nil {
+				return reorderResult, mutationInput, err
+			}
+			return reorderResult, mutationInput, publishErr
 		}
 
 		mutationInput, err = ensureWanDraftMutationInput(ctx, client, accountID)

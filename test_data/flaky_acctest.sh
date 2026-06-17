@@ -61,7 +61,17 @@ compute_coverage() {
 rm -rf "$OUT" "$COVERAGE"
 mkdir -p "$OUT" "$COVERAGE"
 
-test_dirs=$(find ./internal/acctests/ -type f -name '*_test.go' | sed 's|/[^/]*$||' | sort | uniq | grep -v '^./internal/acctests/acc$')
+# Run Internet Firewall packages first, then WAN firewall / WAN network / WAN interface packages,
+# then everything else (alphabetically). Reduces cross-suite interference on shared STA accounts.
+test_dirs=$(
+	find ./internal/acctests/ -type f -name '*_test.go' | sed 's|/[^/]*$||' | sort -u | grep -v '^./internal/acctests/acc$' | while read -r d; do
+		case "$d" in
+			./internal/acctests/if_*) printf '0\t%s\n' "$d" ;;
+			./internal/acctests/wf_*|./internal/acctests/wnw_*|./internal/acctests/wan_*) printf '1\t%s\n' "$d" ;;
+			*) printf '2\t%s\n' "$d" ;;
+		esac
+	done | sort -t "$(printf '\t')" -k1,1 -k2,2 | cut -f2-
+)
 if [ "$1" = "--coverage" ]; then
 	enable_coverage=y
 	shift
