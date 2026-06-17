@@ -262,53 +262,6 @@ func TestSocketSitePrepareUpdateInputsTranslatedSubnetFromConfig(t *testing.T) {
 	}
 }
 
-func TestNativeRangeTranslatedSubnetFromAPI(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		translatedSubnet *string
-		nativeSubnet     string
-		wantNull         bool
-		wantValue        string
-	}{
-		"nil": {
-			wantNull: true,
-		},
-		"empty": {
-			translatedSubnet: stringPtr(""),
-			nativeSubnet:     "10.0.0.0/24",
-			wantNull:         true,
-		},
-		"equals_native": {
-			translatedSubnet: stringPtr("10.0.0.0/24"),
-			nativeSubnet:     "10.0.0.0/24",
-			wantNull:         true,
-		},
-		"distinct": {
-			translatedSubnet: stringPtr("192.168.20.0/24"),
-			nativeSubnet:     "10.0.0.0/24",
-			wantValue:        "192.168.20.0/24",
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			got := nativeRangeTranslatedSubnetFromAPI(tt.translatedSubnet, tt.nativeSubnet)
-			if tt.wantNull {
-				if !got.IsNull() {
-					t.Fatalf("expected null, got %q", got.ValueString())
-				}
-				return
-			}
-			if got.IsNull() || got.ValueString() != tt.wantValue {
-				t.Fatalf("expected %q, got %v", tt.wantValue, got)
-			}
-		})
-	}
-}
-
 func newSocketSitePlanWithTranslatedSubnet(ctx context.Context, t *testing.T, translatedSubnet types.String) *tf.SocketSite {
 	t.Helper()
 

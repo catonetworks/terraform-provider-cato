@@ -74,17 +74,6 @@ func translatedSubnetForAPIInput(configValue, planValue types.String) *string {
 	return stringPointerForOptionalInput(planValue)
 }
 
-func nativeRangeTranslatedSubnetFromAPI(translatedSubnet *string, nativeSubnet string) types.String {
-	if translatedSubnet == nil {
-		return types.StringNull()
-	}
-	value := *translatedSubnet
-	if value == "" || value == nativeSubnet {
-		return types.StringNull()
-	}
-	return types.StringValue(value)
-}
-
 type socketSiteResource struct {
 	client           *catoClientData
 	socketSiteClient SocketSiteClient
@@ -877,7 +866,7 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 		LocalIP:               localIP,
 		PrimaryManagementIP:   types.StringPointerValue(networkRange.PrimaryManagementIP),
 		SecondaryManagementIP: types.StringPointerValue(networkRange.SecondaryManagementIP),
-		TranslatedSubnet:      nativeRangeTranslatedSubnetFromAPI(networkRange.TranslatedSubnet, networkRange.Subnet),
+		TranslatedSubnet:      types.StringPointerValue(networkRange.TranslatedSubnet),
 		Gateway:               types.StringPointerValue(networkRange.Gateway),
 		RangeType:             types.StringValue(strings.ToUpper(string(networkRange.RangeType))),
 		DhcpSettings:          dhcpSettingsObj,
