@@ -42,14 +42,36 @@ func TestHydrateLanInterfaceAPITranslatedSubnet(t *testing.T) {
 				TranslatedSubnet: tt.translatedSubnet,
 				VrrpType:         types.StringNull(),
 			}
+			cfg := plan
 
-			input := hydrateLanInterfaceAPI(context.Background(), plan)
+			input := hydrateLanInterfaceAPI(context.Background(), cfg, plan)
 			if input.Lan == nil {
 				t.Fatal("expected LAN input")
 			}
 			assertTranslatedSubnetPointer(t, input.Lan.TranslatedSubnet, tt.wantNil, tt.wantValue)
 		})
 	}
+}
+
+func TestHydrateLanInterfaceAPIOmitTranslatedSubnetWhenNotInConfig(t *testing.T) {
+	t.Parallel()
+
+	plan := LanInterface{
+		Name:             types.StringValue("lan-1"),
+		DestType:         types.StringValue("LAN"),
+		LocalIP:          types.StringValue("10.12.62.1"),
+		Subnet:           types.StringValue("10.12.62.0/24"),
+		TranslatedSubnet: types.StringValue("10.12.62.0/24"),
+		VrrpType:         types.StringNull(),
+	}
+	cfg := plan
+	cfg.TranslatedSubnet = types.StringNull()
+
+	input := hydrateLanInterfaceAPI(context.Background(), cfg, plan)
+	if input.Lan == nil {
+		t.Fatal("expected LAN input")
+	}
+	assertTranslatedSubnetPointer(t, input.Lan.TranslatedSubnet, true, "")
 }
 
 func assertTranslatedSubnetPointer(t *testing.T, got *string, wantNil bool, wantValue string) {

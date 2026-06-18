@@ -58,22 +58,6 @@ func NewSocketSiteResource() resource.Resource {
 	return &socketSiteResource{}
 }
 
-func stringPointerForOptionalInput(value types.String) *string {
-	if value.IsNull() || value.IsUnknown() || value.ValueString() == "" {
-		return nil
-	}
-	return value.ValueStringPointer()
-}
-
-// translatedSubnetForAPIInput omits translated_subnet from update payloads when the attribute is not
-// explicitly set in Terraform config, even if plan/state still carry an API-hydrated value.
-func translatedSubnetForAPIInput(configValue, planValue types.String) *string {
-	if configValue.IsNull() || configValue.IsUnknown() {
-		return nil
-	}
-	return stringPointerForOptionalInput(planValue)
-}
-
 type socketSiteResource struct {
 	client           *catoClientData
 	socketSiteClient SocketSiteClient

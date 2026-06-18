@@ -143,8 +143,10 @@ func (r *lanInterfaceResource) ImportState(ctx context.Context, req resource.Imp
 
 //nolint:gocyclo,funlen,lll
 func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan LanInterface
+	var cfg, plan LanInterface
 	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	diags = req.Config.Get(ctx, &cfg)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -172,7 +174,7 @@ func (r *lanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	input := hydrateLanInterfaceAPI(ctx, plan)
+	input := hydrateLanInterfaceAPI(ctx, cfg, plan)
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
@@ -291,8 +293,10 @@ func (r *lanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 
 //nolint:gocyclo,lll
 func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan LanInterface
+	var cfg, plan LanInterface
 	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	diags = req.Config.Get(ctx, &cfg)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -320,7 +324,7 @@ func (r *lanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	input := hydrateLanInterfaceAPI(ctx, plan)
+	input := hydrateLanInterfaceAPI(ctx, cfg, plan)
 	tflog.Debug(ctx, "lan_interface update", map[string]interface{}{
 		"input": utils.InterfaceToJSONString(input),
 	})
@@ -477,7 +481,7 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
-func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.UpdateSocketInterfaceInput {
+func hydrateLanInterfaceAPI(ctx context.Context, cfg, plan LanInterface) cato_models.UpdateSocketInterfaceInput {
 	tflog.Debug(ctx, "lan_interface update", map[string]interface{}{
 		"plan.DestType.String()": utils.InterfaceToJSONString(plan.DestType.ValueString()),
 		"plan.Name.String()":     utils.InterfaceToJSONString(plan.Name.ValueStringPointer()),
@@ -496,7 +500,7 @@ func hydrateLanInterfaceAPI(ctx context.Context, plan LanInterface) cato_models.
 		// Add LAN configuration for non-LAG member interfaces
 		input.Lan = &cato_models.SocketInterfaceLanInput{
 			Subnet:           plan.Subnet.ValueString(),
-			TranslatedSubnet: stringPointerForOptionalInput(plan.TranslatedSubnet),
+			TranslatedSubnet: translatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
 			LocalIP:          plan.LocalIP.ValueString(),
 		}
 
