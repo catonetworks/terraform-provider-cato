@@ -31,7 +31,7 @@ func TestBuildPolicyReorderInput_twoRulesSwapOrder(t *testing.T) {
 	require.Equal(t, "r1", in.Sections[0].Rules[1].Ref.Input)
 }
 
-func TestBuildPolicyReorderInput_skipsSectionsWithNoRules(t *testing.T) {
+func TestBuildPolicyReorderInput_includesEmptySection(t *testing.T) {
 	t.Parallel()
 	sections := []BulkPolicySectionRef{
 		{ID: "empty", Name: "EmptySec"},
@@ -43,8 +43,11 @@ func TestBuildPolicyReorderInput_skipsSectionsWithNoRules(t *testing.T) {
 	planned := []BulkPlannedRuleIndex{{SectionName: "Sec", RuleName: "A", IndexInSection: 1}}
 	in, err := buildPolicyReorderInput(sections, rules, planned)
 	require.NoError(t, err)
-	require.Len(t, in.Sections, 1)
-	require.Equal(t, "s1", in.Sections[0].Ref.Input)
+	require.Len(t, in.Sections, 2)
+	require.Equal(t, "empty", in.Sections[0].Ref.Input)
+	require.Len(t, in.Sections[0].Rules, 0)
+	require.Equal(t, "s1", in.Sections[1].Ref.Input)
+	require.Len(t, in.Sections[1].Rules, 1)
 }
 
 func TestBuildPolicyReorderInput_plannedUnknownRule(t *testing.T) {
@@ -70,18 +73,20 @@ func TestBuildPolicyReorderInput_crossSectionPlannedRules(t *testing.T) {
 		{SectionID: "sa", SectionName: "SecA", RuleID: "idX", RuleName: "X", Index: 1},
 		{SectionID: "sb", SectionName: "SecB", RuleID: "idY", RuleName: "Y", Index: 1},
 	}
-	// Move Y into SecA above X; SecB ends up with no rules in the reorder payload.
+	// Move Y into SecA above X; SecB remains in the payload with an empty rule list.
 	planned := []BulkPlannedRuleIndex{
 		{SectionName: "SecA", RuleName: "Y", IndexInSection: 1},
 		{SectionName: "SecA", RuleName: "X", IndexInSection: 2},
 	}
 	in, err := buildPolicyReorderInput(sections, rules, planned)
 	require.NoError(t, err)
-	require.Len(t, in.Sections, 1)
+	require.Len(t, in.Sections, 2)
 	require.Equal(t, "sa", in.Sections[0].Ref.Input)
 	require.Len(t, in.Sections[0].Rules, 2)
 	require.Equal(t, "idY", in.Sections[0].Rules[0].Ref.Input)
 	require.Equal(t, "idX", in.Sections[0].Rules[1].Ref.Input)
+	require.Equal(t, "sb", in.Sections[1].Ref.Input)
+	require.Len(t, in.Sections[1].Rules, 0)
 }
 
 func TestInternetFirewallReorderError_propagatesCallError(t *testing.T) {

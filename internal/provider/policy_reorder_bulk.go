@@ -160,6 +160,9 @@ func buildSectionReorderInput(
 // buildPolicyReorderInput builds a full PolicyReorderInput from the current API
 // snapshot plus Terraform planned indices. Planned rules are stacked first in
 // index_in_section order; remaining rules in the section keep their relative API order.
+// Every section from the index must appear in the output (WAN and IF return
+// reorderPolicyMissingSections if any section is omitted), including sections whose
+// final rule list is empty after moves.
 func buildPolicyReorderInput(
 	sections []BulkPolicySectionRef,
 	rules []BulkPolicyRuleRow,
@@ -184,10 +187,6 @@ func buildPolicyReorderInput(
 		)
 		if err != nil {
 			return cato_models.PolicyReorderInput{}, err
-		}
-		// Omit sections with no rules: reorderPolicy rejects empty rule lists for WAN/IF.
-		if len(secInput.Rules) == 0 {
-			continue
 		}
 		outSections = append(outSections, secInput)
 	}
