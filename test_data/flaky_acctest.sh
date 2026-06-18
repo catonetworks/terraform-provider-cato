@@ -7,6 +7,7 @@ Usage:
 export OUT=tmp_recorded/output
 export COVERAGE=tmp_recorded/coverage
 export TF_ACC=1
+export DISABLE_POLICY_RULE_CLEANUP=true
 export TF_ACC_MOCK=''
 enable_coverage=''
 nocolor=''
@@ -48,7 +49,7 @@ run_test() {
 }
 
 should_retry() {
-	grep '\(internal server error\|connection refused\|message\\":\\"Internal server\\n"\)' "$1" > /dev/null && return 0
+	grep -E '(internal server error|connection refused|message\\":\\"Internal server\\n")' "$1" > /dev/null && return 0
 	return 1
 }
 retry_test() {

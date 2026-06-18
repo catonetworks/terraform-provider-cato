@@ -5,7 +5,6 @@ package wf_rules_index
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 	"text/template"
@@ -16,13 +15,8 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-const envEnableWfRulesIndexCRUD = "TFACC_ENABLE_RULES_INDEX_CRUD"
-
 func TestAccWfRulesIndex(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableWfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk WF rules index acceptance test", envEnableWfRulesIndexCRUD)
-	}
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -60,10 +54,6 @@ func TestAccWfRulesIndex(t *testing.T) {
 
 func TestAccWfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableWfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk WF rules index acceptance test", envEnableWfRulesIndexCRUD)
-	}
-
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex_InvalidSectionStartAfterID")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -84,10 +74,6 @@ func TestAccWfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 
 func TestAccWfRulesIndex_WithRuleData(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableWfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk WF rules index acceptance test", envEnableWfRulesIndexCRUD)
-	}
-
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex_WithRuleData")
 	defer mockSrv.Close()
 	mockSrv.Run()

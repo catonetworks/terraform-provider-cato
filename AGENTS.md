@@ -90,6 +90,16 @@ resources. Run with:
 make acctest
 ```
 
+To load credentials and account settings from a local shell file (not committed
+to the repo), run `source /path/to/your-env.sh` in the same shell before
+`make acctest` or a targeted `go test -tags=acctest ./internal/acctests/...`.
+
+`make acctest-flaky` runs `test_data/flaky_acctest.sh`, which retries a package on
+transient failures (including `reorderPolicyBlockedByActiveSessions` when the API
+reports concurrent policy revisions). Pass `t=<suite>` to run one directory under
+`internal/acctests/` (basename only, e.g. `t=wf_rules_index`). The script exports
+`DISABLE_POLICY_RULE_CLEANUP=true` (same as `make acctest`).
+
 Set `DISABLE_POLICY_RULE_CLEANUP=true` when running acceptance tests to prevent
 the provider from discarding draft policy revisions during `Configure()` (already
 included in `make acctest`).

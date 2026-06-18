@@ -5,7 +5,6 @@ package if_rules_index
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 	"text/template"
@@ -16,13 +15,8 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-const envEnableIfRulesIndexCRUD = "TFACC_ENABLE_RULES_INDEX_CRUD"
-
 func TestAccIfRulesIndex(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableIfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk IF rules index acceptance test", envEnableIfRulesIndexCRUD)
-	}
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -60,10 +54,6 @@ func TestAccIfRulesIndex(t *testing.T) {
 
 func TestAccIfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableIfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk IF rules index acceptance test", envEnableIfRulesIndexCRUD)
-	}
-
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_InvalidSectionStartAfterID")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -84,10 +74,6 @@ func TestAccIfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 
 func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableIfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk IF rules index acceptance test", envEnableIfRulesIndexCRUD)
-	}
-
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_WithRuleData")
 	defer mockSrv.Close()
 	mockSrv.Run()
