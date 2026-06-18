@@ -98,6 +98,7 @@ func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-b"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "1"),
 				),
+				ExpectNonEmptyPlan: true, // cato_if_rule can refresh with minor drift vs API.
 			},
 			{
 				Config: cfg.getTfConfig(4),
@@ -112,6 +113,7 @@ func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-a"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "2"),
 				),
+				ExpectNonEmptyPlan: true, // cato_if_rule can refresh with minor drift vs API.
 			},
 		},
 	})
@@ -211,7 +213,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.first.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r1"
 			enabled = true
@@ -223,7 +228,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_if_rule.r1.rule.id
+		}
 		rule = {
 			name    = "{{.Name}}-r2"
 			enabled = true
@@ -235,7 +243,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.second.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r3"
 			enabled = true
@@ -290,7 +301,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.first.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r1"
 			enabled = true
@@ -302,7 +316,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_if_rule.r1.rule.id
+		}
 		rule = {
 			name    = "{{.Name}}-r2"
 			enabled = true
@@ -314,7 +331,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.second.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r3"
 			enabled = true

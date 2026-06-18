@@ -83,23 +83,35 @@ func indexPlannedBySectionName(planned []BulkPlannedRuleIndex) map[string][]Bulk
 	return plannedBySection
 }
 
+func ruleNameToIDGlobal(rules []BulkPolicyRuleRow) map[string]string {
+	out := make(map[string]string, len(rules))
+	for _, r := range rules {
+		out[r.RuleName] = r.RuleID
+	}
+	return out
+}
+
 func buildSectionReorderInput(
 	sec BulkPolicySectionRef,
 	apiRules []BulkPolicyRuleRow,
 	plannedForSec []BulkPlannedRuleIndex,
+	globalNameToID map[string]string,
+	allPlanned []BulkPlannedRuleIndex,
 ) (*cato_models.PolicyReorderSectionInput, error) {
 	plannedNames := make(map[string]struct{}, len(plannedForSec))
 	for _, p := range plannedForSec {
 		plannedNames[p.RuleName] = struct{}{}
 	}
 
-	nameToID := make(map[string]string, len(apiRules))
-	for _, r := range apiRules {
-		nameToID[r.RuleName] = r.RuleID
+	plannedToOtherSection := make(map[string]struct{})
+	for _, p := range allPlanned {
+		if p.SectionName != sec.Name {
+			plannedToOtherSection[p.RuleName] = struct{}{}
+		}
 	}
 
 	for _, p := range plannedForSec {
-		if _, ok := nameToID[p.RuleName]; !ok {
+		if _, ok := globalNameToID[p.RuleName]; !ok {
 			return nil, fmt.Errorf(
 				"planned rule %q in section %q not found in current policy", p.RuleName, sec.Name)
 		}
@@ -107,12 +119,15 @@ func buildSectionReorderInput(
 
 	orderedPlannedIDs := make([]string, 0, len(plannedForSec))
 	for _, p := range plannedForSec {
-		orderedPlannedIDs = append(orderedPlannedIDs, nameToID[p.RuleName])
+		orderedPlannedIDs = append(orderedPlannedIDs, globalNameToID[p.RuleName])
 	}
 
 	tailIDs := make([]string, 0, len(apiRules))
 	for _, r := range apiRules {
 		if _, ok := plannedNames[r.RuleName]; ok {
+			continue
+		}
+		if _, ok := plannedToOtherSection[r.RuleName]; ok {
 			continue
 		}
 		tailIDs = append(tailIDs, r.RuleID)
@@ -156,10 +171,17 @@ func buildPolicyReorderInput(
 		return cato_models.PolicyReorderInput{}, err
 	}
 	plannedBySection := indexPlannedBySectionName(planned)
+	globalNameToID := ruleNameToIDGlobal(rules)
 
 	outSections := make([]*cato_models.PolicyReorderSectionInput, 0, len(sections))
 	for _, sec := range sections {
-		secInput, err := buildSectionReorderInput(sec, rulesBySectionID[sec.ID], plannedBySection[sec.Name])
+		secInput, err := buildSectionReorderInput(
+			sec,
+			rulesBySectionID[sec.ID],
+			plannedBySection[sec.Name],
+			globalNameToID,
+			planned,
+		)
 		if err != nil {
 			return cato_models.PolicyReorderInput{}, err
 		}

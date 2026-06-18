@@ -60,6 +60,30 @@ func TestBuildPolicyReorderInput_plannedUnknownRule(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestBuildPolicyReorderInput_crossSectionPlannedRules(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{
+		{ID: "sa", Name: "SecA"},
+		{ID: "sb", Name: "SecB"},
+	}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "sa", SectionName: "SecA", RuleID: "idX", RuleName: "X", Index: 1},
+		{SectionID: "sb", SectionName: "SecB", RuleID: "idY", RuleName: "Y", Index: 1},
+	}
+	// Move Y into SecA above X; SecB ends up with no rules in the reorder payload.
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "SecA", RuleName: "Y", IndexInSection: 1},
+		{SectionName: "SecA", RuleName: "X", IndexInSection: 2},
+	}
+	in, err := buildPolicyReorderInput(sections, rules, planned)
+	require.NoError(t, err)
+	require.Len(t, in.Sections, 1)
+	require.Equal(t, "sa", in.Sections[0].Ref.Input)
+	require.Len(t, in.Sections[0].Rules, 2)
+	require.Equal(t, "idY", in.Sections[0].Rules[0].Ref.Input)
+	require.Equal(t, "idX", in.Sections[0].Rules[1].Ref.Input)
+}
+
 func TestInternetFirewallReorderError_propagatesCallError(t *testing.T) {
 	t.Parallel()
 	err := internetFirewallReorderError(nil, errors.New("network"))

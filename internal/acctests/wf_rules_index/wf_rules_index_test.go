@@ -213,7 +213,10 @@ var wfRulesIndexTFs = []string{
 	}
 
 	resource "cato_wf_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_wf_section.first.section.id
+		}
 		rule = {
 			name        = "{{.Name}}-r1"
 			enabled     = true
@@ -227,7 +230,10 @@ var wfRulesIndexTFs = []string{
 	}
 
 	resource "cato_wf_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_wf_rule.r1.rule.id
+		}
 		rule = {
 			name        = "{{.Name}}-r2"
 			enabled     = true
@@ -241,7 +247,10 @@ var wfRulesIndexTFs = []string{
 	}
 
 	resource "cato_wf_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_wf_section.second.section.id
+		}
 		rule = {
 			name        = "{{.Name}}-r3"
 			enabled     = true
@@ -298,7 +307,10 @@ var wfRulesIndexTFs = []string{
 	}
 
 	resource "cato_wf_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_wf_section.first.section.id
+		}
 		rule = {
 			name        = "{{.Name}}-r1"
 			enabled     = true
@@ -312,7 +324,10 @@ var wfRulesIndexTFs = []string{
 	}
 
 	resource "cato_wf_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_wf_rule.r1.rule.id
+		}
 		rule = {
 			name        = "{{.Name}}-r2"
 			enabled     = true
@@ -326,7 +341,10 @@ var wfRulesIndexTFs = []string{
 	}
 
 	resource "cato_wf_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_wf_section.second.section.id
+		}
 		rule = {
 			name        = "{{.Name}}-r3"
 			enabled     = true

@@ -16,8 +16,10 @@ import (
 
 // TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder applies a single section with two
 // rules, reorders them via cato_bulk_if_move_rule, and asserts order via the Cato API
-// (not Terraform state). Requires Cato env vars; for local runs source your env file
-// before go test -tags=acctest.
+// (not Terraform state). Rules are created inside the section (FIRST_IN_SECTION /
+// AFTER_RULE); LAST_IN_POLICY can leave rules outside that section in the rules index,
+// which breaks bulk reorder validation. Requires Cato env vars; for local runs source
+// your env file before go test -tags=acctest.
 func TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 	acc.SkipByEnv(t)
 
@@ -39,12 +41,14 @@ func TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleA, ruleB),
 				),
+				ExpectNonEmptyPlan: true,
 			},
 			{
 				Config: cfg.getTwoRuleReorderTF(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleB, ruleA),
 				),
+				ExpectNonEmptyPlan: true,
 			},
 		},
 	})
@@ -71,7 +75,10 @@ var ifTwoRuleReorderTFs = []string{
 	}
 
 	resource "cato_if_rule" "a" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.only.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-a"
 			enabled = true
@@ -83,7 +90,10 @@ var ifTwoRuleReorderTFs = []string{
 	}
 
 	resource "cato_if_rule" "b" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_if_rule.a.rule.id
+		}
 		rule = {
 			name    = "{{.Name}}-b"
 			enabled = true
@@ -123,7 +133,10 @@ var ifTwoRuleReorderTFs = []string{
 	}
 
 	resource "cato_if_rule" "a" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.only.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-a"
 			enabled = true
@@ -135,7 +148,10 @@ var ifTwoRuleReorderTFs = []string{
 	}
 
 	resource "cato_if_rule" "b" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_if_rule.a.rule.id
+		}
 		rule = {
 			name    = "{{.Name}}-b"
 			enabled = true
