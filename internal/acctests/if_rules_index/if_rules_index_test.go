@@ -72,6 +72,9 @@ func TestAccIfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	})
 }
 
+// TestAccIfRulesIndex_WithRuleData exercises bulk IF move with rule_data (including cross-section
+// ordering). Steps do not use ExpectNonEmptyPlan: cato_if_rule refresh usually matches state
+// (WAN wf_rule tests may set ExpectNonEmptyPlan due to known drift).
 func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_WithRuleData")
@@ -98,7 +101,6 @@ func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-b"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "1"),
 				),
-				ExpectNonEmptyPlan: true, // cato_if_rule can refresh with minor drift vs API.
 			},
 			{
 				Config: cfg.getTfConfig(4),
@@ -113,7 +115,6 @@ func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-a"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "2"),
 				),
-				ExpectNonEmptyPlan: true, // cato_if_rule can refresh with minor drift vs API.
 			},
 		},
 	})

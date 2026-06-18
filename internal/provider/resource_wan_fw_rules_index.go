@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sort"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -365,33 +366,23 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveAPIData, err := r.wanBulkPolicy().PolicyWanFirewallMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
-		// Check for API errors safely with nil checks
-		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
-			sectionMoveAPIData.GetPolicy().WanFirewall != nil &&
-			sectionMoveAPIData.GetPolicy().WanFirewall.GetMoveSection() != nil &&
-			len(sectionMoveAPIData.GetPolicy().WanFirewall.GetMoveSection().Errors) != 0 {
-			tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSectionMoveSection.response", map[string]interface{}{
-				"response": utils.InterfaceToJSONString(sectionMoveAPIData),
-			})
-			if err != nil {
-				diags = append(diags, diag.NewErrorDiagnostic(
-					"Catov2 API EntityLookup error",
-					err.Error(),
-				))
-				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-			}
+		var sectionMoveAPIData *cato_go_sdk.PolicyWanFirewallMoveSection
+		moveErr := withPolicyRevisionConflictRetry(ctx, "PolicyWanFirewallMoveSection", func() error {
+			var callErr error
+			sectionMoveAPIData, callErr = r.wanBulkPolicy().PolicyWanFirewallMoveSection(
+				ctx, policyMoveSectionInputInt, r.client.AccountId)
+			return wanFirewallMoveSectionError(sectionMoveAPIData, callErr)
+		})
+		if moveErr != nil {
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"Catov2 API PolicyWanFirewallMoveSection error",
+				moveErr.Error(),
+			))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, moveErr
 		}
 		tflog.Warn(ctx, "Write.PolicyWanFirewallMoveSection.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 		})
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API EntityLookup error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
 
 		sectionIndexStateData, diagsSection := types.ObjectValue(
 			WanSectionIndexResourceAttrTypes,
@@ -522,13 +513,18 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"policyReorderInput": utils.InterfaceToJSONString(reorderIn),
 		})
 
-		reorderOut, reorderCallErr := r.wanBulkPolicy().PolicyWanFirewallReorderPolicy(
-			ctx,
-			&cato_models.WanFirewallPolicyMutationInput{},
-			reorderIn,
-			r.client.AccountId,
-		)
-		if reorderErr := wanFirewallReorderError(reorderOut, reorderCallErr); reorderErr != nil {
+		var reorderOut *cato_go_sdk.PolicyWanFirewallReorderPolicy
+		reorderErr := withPolicyRevisionConflictRetry(ctx, "PolicyWanFirewallReorderPolicy", func() error {
+			var callErr error
+			reorderOut, callErr = r.wanBulkPolicy().PolicyWanFirewallReorderPolicy(
+				ctx,
+				&cato_models.WanFirewallPolicyMutationInput{},
+				reorderIn,
+				r.client.AccountId,
+			)
+			return wanFirewallReorderError(reorderOut, callErr)
+		})
+		if reorderErr != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyWanFirewallReorderPolicy error",
 				reorderErr.Error(),
@@ -553,13 +549,20 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		}
 	}
 
-	_, err = r.wanBulkPolicy().PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
-	if err != nil {
+	pubErr := withPolicyRevisionConflictRetry(ctx, "PolicyWanFirewallPublishPolicyRevision", func() error {
+		_, errPub := r.wanBulkPolicy().PolicyWanFirewallPublishPolicyRevision(
+			ctx,
+			&cato_models.PolicyPublishRevisionInput{},
+			r.client.AccountId,
+		)
+		return errPub
+	})
+	if pubErr != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
-			err.Error(),
+			pubErr.Error(),
 		))
-		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+		return basetypes.MapValue{}, basetypes.MapValue{}, diags, pubErr
 	}
 
 	sectionObjectsMap, sectionMapDiags := types.MapValue(
