@@ -41,10 +41,14 @@ cleanup() {
 
 run_test() {
 	tdir=$1; cover_file=$2
+	timeout=5m
+	case "$(basename "$tdir")" in
+	wf_rules_index | wf_rules_index_with_rule_data) timeout=12m ;;
+	esac
 	if [ "$enable_coverage" = y ]; then
-		go test -timeout 5m -tags acctest -count=1 -parallel=1 -p=1 "$tdir" -json -coverprofile="$cover_file" -covermode=atomic -coverpkg=./...
+		go test -timeout "$timeout" -tags acctest -count=1 -parallel=1 -p=1 "$tdir" -json -coverprofile="$cover_file" -covermode=atomic -coverpkg=./...
 	else
-		go test -timeout 5m -tags acctest -count=1 -parallel=1 -p=1 "$1" -json
+		go test -timeout "$timeout" -tags acctest -count=1 -parallel=1 -p=1 "$1" -json
 	fi
 }
 

@@ -97,7 +97,7 @@ to the repo), run `source /path/to/your-env.sh` in the same shell before
 `make acctest-flaky` runs `test_data/flaky_acctest.sh`, which retries a package on
 transient failures (including `reorderPolicyBlockedByActiveSessions` when the API
 reports concurrent policy revisions). Pass `t=<suite>` to run one directory under
-`internal/acctests/` (basename only, e.g. `t=wf_rules_index`). The script exports
+`internal/acctests/` (basename only, e.g. `t=wf_rules_index` or `t=wf_rules_index_with_rule_data`). The script exports
 `DISABLE_POLICY_RULE_CLEANUP=true` (same as `make acctest`).
 
 Set `DISABLE_POLICY_RULE_CLEANUP=true` when running acceptance tests to prevent
