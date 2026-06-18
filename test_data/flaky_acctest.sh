@@ -9,6 +9,7 @@ export COVERAGE=tmp_recorded/coverage
 export TF_ACC=1
 export TF_ACC_MOCK=''
 enable_coverage=''
+nocolor=''
 test_suite=''
 single_tests=''
 retry_count=3
@@ -20,6 +21,7 @@ parse_args() {
 		case "$1" in
 			-help|--help|-h) printf "%s\n\n" "$HELP"; exit 1;;
 			--coverage) enable_coverage=y;;
+			--nocolor) nocolor='-nocolor';;
 			--suite) [ $# -gt 1 ] || { echo "Error: test suite file name expected"; exit 1; }
 				shift; test_suite=$1;;
 			*) single_tests="$single_tests $1"
@@ -121,6 +123,6 @@ for tdir in $test_dirs; do
 done
 
 compute_coverage
-cat "$OUT/"* | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
+cat "$OUT/"* | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all $nocolor
 if [ "$result" = ok ]; then exit 0; fi
 exit 1
