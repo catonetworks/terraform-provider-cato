@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.86 (2026-06-17)
+
+### Fixed
+- Fixed `cato_socket_site` updates so `translated_subnet` is omitted from `siteUpdateNetworkRange` and `siteUpdateSocketInterface` when it is not set in Terraform config, even if plan/state still carry an API-hydrated value (accounts with Static Range Translation disabled).
+
+## 0.0.85 (2026-06-16)
+
+### Added
+- Added acceptance test coverage for account, BGP peer, internet firewall rule indexes, TLS rule indexes, WAN firewall rule indexes, and WAN network rule indexes.
+
+### Changed
+- Refactored `cato_network_range` with shared DHCP settings helpers, extracted validators, and streamlined CRUD flow.
+- Updated the Cato Go SDK dependency.
+
+### Fixed
+- Fixed `translated_subnet` handling for socket site and network range API payloads to omit empty or unset values.
+
 ## 0.0.84 (2026-06-05)
 
 ### Fixed

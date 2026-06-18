@@ -347,7 +347,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 		Name:             plan.Name.ValueString(),
 		RangeType:        cato_models.SubnetType(plan.RangeType.ValueString()),
 		Subnet:           plan.Subnet.ValueString(),
-		TranslatedSubnet: parse.KnownStringPointer(plan.TranslatedSubnet),
+		TranslatedSubnet: translatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
 		Vlan:             parse.KnownInt64Pointer(plan.Vlan),
 	}
 	// TODO: check if !isHA { // for HA scenario, local IP is not allowed to be modified
@@ -440,7 +440,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		Name:             parse.KnownStringPointer(plan.Name),
 		RangeType:        (*cato_models.SubnetType)(parse.KnownStringPointer(plan.RangeType)),
 		Subnet:           parse.KnownStringPointer(plan.Subnet),
-		TranslatedSubnet: parse.KnownStringPointer(plan.TranslatedSubnet),
+		TranslatedSubnet: translatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
 		Vlan:             parse.KnownInt64Pointer(plan.Vlan),
 	}
 
