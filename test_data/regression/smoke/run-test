@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -e
+
+cd "$(dirname "$0")"
+wd=$(pwd -P)
+export TF_CLI_CONFIG_FILE="$wd/terraformrc"
+export TF_VAR_baseurl="$CATO_BASEURL"
+export TF_VAR_account_id="$CATO_ACCOUNT_ID"
+export TF_VAR_cato_token="$CATO_TOKEN"
+
+rm -rf .terraform .terraform.lock.hcl dump terraform.tfstate terraform.tfstate.backup
+go run cleanup.go
+
+terraform init
+terraform version
+color_flag='-no-color'; if [ -t 1 ]; then color_flag=''; fi
+terraform test $color_flag
