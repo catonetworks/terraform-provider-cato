@@ -1,0 +1,24 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+{{ tffile "examples/resources/cato_application_control_policy/resource.tf" }}
+
+## Import
+
+Import uses the fixed identifier `application_control`. After import, run `terraform apply` to align `enabled` and `data_control_enabled` with the account.
+
+```shell
+terraform import cato_application_control_policy.main application_control
+```
+
+{{ .SchemaMarkdown | trimspace }}

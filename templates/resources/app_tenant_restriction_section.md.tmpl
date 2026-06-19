@@ -1,0 +1,24 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+{{ tffile "examples/resources/cato_app_tenant_restriction_section/resource.tf" }}
+
+## Import
+
+Import uses the Cato **section id** as the import `id` (written into `section.id` in state).
+
+```shell
+terraform import cato_app_tenant_restriction_section.example <section_id>
+```
+
+{{ .SchemaMarkdown | trimspace }}

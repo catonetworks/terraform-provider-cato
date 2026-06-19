@@ -94,7 +94,7 @@ clean: install ## install and clean caches
 	go clean -cache -modcache -i -r
 
 docs: ## Generate documentation
-	tfplugindocs generate --provider-dir . -provider-name terraform-provider-cato
+	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-dir . -provider-name terraform-provider-cato
 
 mocks: ## Generate mockery mocks
 	go tool mockery
