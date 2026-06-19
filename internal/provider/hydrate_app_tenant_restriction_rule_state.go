@@ -2,12 +2,36 @@ package provider
 
 import (
 	"context"
+	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// normalizePolicyTimestampString normalizes API datetime strings (e.g. ...00.000) to RFC3339-style
+// values that match typical Terraform configuration (…00Z).
+func normalizePolicyTimestampString(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasSuffix(s, ".000") {
+		s = strings.TrimSuffix(s, ".000")
+		if !strings.HasSuffix(s, "Z") {
+			s += "Z"
+		}
+	}
+	return s
+}
+
+// normalizePolicyRecurringClock maps API values like "08:00:00" to "08:00" so state
+// matches common Terraform configuration and avoids inconsistent-result errors.
+func normalizePolicyRecurringClock(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) == 8 && strings.Count(s, ":") == 2 && strings.HasSuffix(s, ":00") {
+		return s[:5]
+	}
+	return s
+}
 
 // hydrateAppTenantRestrictionRuleStateFromClient maps a policy read rule into Terraform nested objects.
 //
@@ -21,6 +45,10 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 	if r == nil {
 		return out, diags
 	}
+
+	out.Application = types.ObjectNull(NameIDAttrTypes)
+	out.Headers = types.ListNull(types.ObjectType{AttrTypes: AppTenantRestrictionHeaderAttrTypes})
+	out.Source = types.ObjectNull(ApplicationControlSourceAttrTypes)
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())
@@ -66,8 +94,8 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 		if ct := sch.GetCustomTimeframeAppTenantRestriction(); ct != nil {
 			var dtf diag.Diagnostics
 			ctfObj, dtf = types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
-				"from": types.StringValue(ct.GetFrom()),
-				"to":   types.StringValue(ct.GetTo()),
+				"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
+				"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 			})
 			diags.Append(dtf...)
 		} else {
@@ -79,10 +107,10 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 			fromS := ""
 			toS := ""
 			if cr.GetFrom() != nil {
-				fromS = string(*cr.GetFrom())
+				fromS = normalizePolicyRecurringClock(string(*cr.GetFrom()))
 			}
 			if cr.GetTo() != nil {
-				toS = string(*cr.GetTo())
+				toS = normalizePolicyRecurringClock(string(*cr.GetTo()))
 			}
 			days := parseList(ctx, types.StringType, cr.GetDays(), "rule.schedule.custom_recurring.days")
 			var dcr diag.Diagnostics

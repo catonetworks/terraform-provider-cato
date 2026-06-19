@@ -151,8 +151,8 @@ func (r *appTenantRestrictionSectionResource) Create(ctx context.Context, req re
 		return
 	}
 
-	if _, err := r.client.catov2.PolicyAppTenantRestrictionPublishPolicyRevision(ctx, r.client.AccountId); err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionPublishPolicyRevision error", err.Error())
+	resp.Diagnostics.Append(publishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -282,8 +282,8 @@ func (r *appTenantRestrictionSectionResource) Update(ctx context.Context, req re
 		}
 	}
 
-	if _, err := r.client.catov2.PolicyAppTenantRestrictionPublishPolicyRevision(ctx, r.client.AccountId); err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionPublishPolicyRevision error", err.Error())
+	resp.Diagnostics.Append(publishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
@@ -305,8 +305,8 @@ func (r *appTenantRestrictionSectionResource) Delete(ctx context.Context, req re
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionRemoveSection error", err.Error())
 		return
 	}
-	if _, err := r.client.catov2.PolicyAppTenantRestrictionPublishPolicyRevision(ctx, r.client.AccountId); err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionPublishPolicyRevision error", err.Error())
+	resp.Diagnostics.Append(publishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 }

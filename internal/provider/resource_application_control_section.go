@@ -151,8 +151,8 @@ func (r *applicationControlSectionResource) Create(ctx context.Context, req reso
 		return
 	}
 
-	if _, err := r.client.catov2.PolicyApplicationControlPublishPolicyRevision(ctx, r.client.AccountId); err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyApplicationControlPublishPolicyRevision error", err.Error())
+	resp.Diagnostics.Append(publishApplicationControlPolicyRevision(ctx, r.client)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -282,8 +282,8 @@ func (r *applicationControlSectionResource) Update(ctx context.Context, req reso
 		}
 	}
 
-	if _, err := r.client.catov2.PolicyApplicationControlPublishPolicyRevision(ctx, r.client.AccountId); err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyApplicationControlPublishPolicyRevision error", err.Error())
+	resp.Diagnostics.Append(publishApplicationControlPolicyRevision(ctx, r.client)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
@@ -305,8 +305,8 @@ func (r *applicationControlSectionResource) Delete(ctx context.Context, req reso
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlRemoveSection error", err.Error())
 		return
 	}
-	if _, err := r.client.catov2.PolicyApplicationControlPublishPolicyRevision(ctx, r.client.AccountId); err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyApplicationControlPublishPolicyRevision error", err.Error())
+	resp.Diagnostics.Append(publishApplicationControlPolicyRevision(ctx, r.client)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 }

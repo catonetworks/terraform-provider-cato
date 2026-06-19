@@ -12,6 +12,41 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
+func acEmptyApplicationControlActionConfigInput() *cato_models.ApplicationControlActionConfigInput {
+	return &cato_models.ApplicationControlActionConfigInput{
+		UserNotification: []*cato_models.UserNotificationTemplateRefInput{},
+	}
+}
+
+// acEmptyApplicationContextInput returns a non-nil context object required by the
+// Application Control GraphQL mutations (applicationContext cannot be null).
+func acEmptyApplicationContextInput() *cato_models.ApplicationControlContextInput {
+	return &cato_models.ApplicationControlContextInput{
+		ApplicationTenant: []*cato_models.ApplicationControlTenantInput{},
+	}
+}
+
+// acEmptyApplicationCriteriaInput returns a non-nil criteria object required by
+// Application Control GraphQL for application-type rules.
+func acEmptyApplicationCriteriaInput() *cato_models.ApplicationControlCriteriaInput {
+	anyV := cato_models.ApplicationControlAttributeValueAny
+	return &cato_models.ApplicationControlCriteriaInput{
+		Attributes: &cato_models.ApplicationControlAttributesInput{
+			ComplianceAttributes: &cato_models.ApplicationControlComplianceAttributesInput{
+				Hippa: anyV, Isae3402: anyV, Iso27001: anyV, PciDss: anyV,
+				Soc1: anyV, Soc2: anyV, Soc3: anyV, Sox: anyV,
+			},
+			SecurityAttributes: &cato_models.ApplicationControlSecurityAttributesInput{
+				AuditTrail: anyV, EncryptionAtRest: anyV, HTTPSecurityHeaders: anyV,
+				Mfa: anyV, Rbac: anyV, RememberPassword: anyV, Sso: anyV,
+				TLSEnforcement: anyV, TrustedCertificate: anyV,
+			},
+		},
+		OriginCountry: []*cato_models.CountryRefInput{},
+		Risk:          []*cato_models.ApplicationControlRiskCriteriaInput{},
+	}
+}
+
 func hydrateApplicationControlAddRuleInput(
 	ctx context.Context,
 	plan ApplicationControlRule,
@@ -22,13 +57,13 @@ func hydrateApplicationControlAddRuleInput(
 	if !plan.At.IsNull() {
 		out.At = &cato_models.PolicyRulePositionInput{}
 		pos := PolicyRulePositionInput{}
-		diags.Append(plan.At.As(ctx, &pos, basetypes.ObjectAsOptions{})...)
+		diags.Append(plan.At.As(ctx, &pos, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 		out.At.Position = (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer())
 		out.At.Ref = pos.Ref.ValueStringPointer()
 	}
 
 	rule := ApplicationControlRuleRulePlan{}
-	diags.Append(plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
+	diags.Append(plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return out, diags
 	}
@@ -73,7 +108,7 @@ func hydrateApplicationControlUpdateRuleInput(
 ) (cato_models.ApplicationControlUpdateRuleInput, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	rule := ApplicationControlRuleRulePlan{}
-	diags.Append(plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
+	diags.Append(plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return cato_models.ApplicationControlUpdateRuleInput{}, diags
 	}
@@ -116,7 +151,7 @@ func hydrateACApplicationRuleAdd(
 ) (*cato_models.ApplicationControlApplicationRuleInput, diag.Diagnostics) {
 	p := ApplicationControlTypedRulePlan{}
 	var diags diag.Diagnostics
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -125,10 +160,15 @@ func hydrateACApplicationRuleAdd(
 		Severity:                   cato_models.ApplicationControlSeverity(p.Severity.ValueString()),
 		ApplicationActivitySatisfy: cato_models.ApplicationControlSatisfyAll,
 		ApplicationCriteriaSatisfy: cato_models.ApplicationControlSatisfyAll,
+		ApplicationContext:         acEmptyApplicationContextInput(),
+		ApplicationCriteria:        acEmptyApplicationCriteriaInput(),
 	}
 	diags.Append(acFillCommonAdd(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
+	if out.ActionConfig == nil {
+		out.ActionConfig = acEmptyApplicationControlActionConfigInput()
+	}
 	return out, diags
 }
 
@@ -138,7 +178,7 @@ func hydrateACApplicationRuleUpdate(
 ) (*cato_models.ApplicationControlApplicationRuleUpdateInput, diag.Diagnostics) {
 	p := ApplicationControlTypedRulePlan{}
 	var diags diag.Diagnostics
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -163,7 +203,7 @@ func hydrateACDataRuleAdd(
 ) (*cato_models.ApplicationControlDataRuleInput, diag.Diagnostics) {
 	p := ApplicationControlTypedRulePlan{}
 	var diags diag.Diagnostics
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -172,6 +212,7 @@ func hydrateACDataRuleAdd(
 		Severity:                   cato_models.ApplicationControlSeverity(p.Severity.ValueString()),
 		ApplicationActivitySatisfy: cato_models.ApplicationControlSatisfyAll,
 		FileAttributeSatisfy:       cato_models.ApplicationControlSatisfyAll,
+		ApplicationContext:         acEmptyApplicationContextInput(),
 	}
 	if !p.FileAttributeSatisfy.IsNull() {
 		out.FileAttributeSatisfy = cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
@@ -179,9 +220,23 @@ func hydrateACDataRuleAdd(
 	diags.Append(acFillCommonAdd(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
-	if !p.DlpProfile.IsNull() {
-		out.DlpProfile, diags = acDlpProfileAdd(ctx, p.DlpProfile, diags)
+	if p.DlpProfile.IsNull() || p.DlpProfile.IsUnknown() {
+		diags.AddError(
+			"data_rule.dlp_profile required",
+			"The Cato API requires a data rule to include dlp_profile with at least one content_profile or edm_profile reference.",
+		)
+		return nil, diags
 	}
+	dlp, dlpDiags := acDlpProfileAdd(ctx, p.DlpProfile, diags)
+	diags.Append(dlpDiags...)
+	if len(dlp.ContentProfile) == 0 && len(dlp.EdmProfile) == 0 {
+		diags.AddError(
+			"data_rule.dlp_profile invalid",
+			"dlp_profile must contain at least one content_profile or edm_profile entry.",
+		)
+		return nil, diags
+	}
+	out.DlpProfile = dlp
 	if !p.FileAttribute.IsNull() {
 		out.FileAttribute, diags = acFileAttributesAdd(ctx, p.FileAttribute, diags)
 	}
@@ -194,7 +249,7 @@ func hydrateACDataRuleUpdate(
 ) (*cato_models.ApplicationControlDataRuleUpdateInput, diag.Diagnostics) {
 	p := ApplicationControlTypedRulePlan{}
 	var diags diag.Diagnostics
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -214,8 +269,10 @@ func hydrateACDataRuleUpdate(
 	diags.Append(acFillCommonUpdate(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
-	if !p.DlpProfile.IsNull() {
-		out.DlpProfile, diags = acDlpProfileUpdate(ctx, p.DlpProfile, diags)
+	if !p.DlpProfile.IsNull() && !p.DlpProfile.IsUnknown() {
+		dlp, dlpDiags := acDlpProfileUpdate(ctx, p.DlpProfile, diags)
+		diags.Append(dlpDiags...)
+		out.DlpProfile = dlp
 	}
 	if !p.FileAttribute.IsNull() {
 		out.FileAttribute, diags = acFileAttributesUpdate(ctx, p.FileAttribute, diags)
@@ -229,7 +286,7 @@ func hydrateACFileRuleAdd(
 ) (*cato_models.ApplicationControlFileRuleInput, diag.Diagnostics) {
 	p := ApplicationControlTypedRulePlan{}
 	var diags diag.Diagnostics
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -257,7 +314,7 @@ func hydrateACFileRuleUpdate(
 ) (*cato_models.ApplicationControlFileRuleUpdateInput, diag.Diagnostics) {
 	p := ApplicationControlTypedRulePlan{}
 	var diags diag.Diagnostics
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -292,9 +349,12 @@ func acDlpProfileAdd(
 		ContentProfile types.Set `tfsdk:"content_profile"`
 		EdmProfile     types.Set `tfsdk:"edm_profile"`
 	}
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
-	out := &cato_models.ApplicationControlDlpProfileInput{}
-	if !p.ContentProfile.IsNull() {
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+	out := &cato_models.ApplicationControlDlpProfileInput{
+		ContentProfile: []*cato_models.DlpContentProfileRefInput{},
+		EdmProfile:     []*cato_models.DlpEdmProfileRefInput{},
+	}
+	if !p.ContentProfile.IsNull() && !p.ContentProfile.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.ContentProfile.Elements()))
 		diags.Append(p.ContentProfile.ElementsAs(ctx, &objs, false)...)
 		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
@@ -310,7 +370,7 @@ func acDlpProfileAdd(
 			})
 		}
 	}
-	if !p.EdmProfile.IsNull() {
+	if !p.EdmProfile.IsNull() && !p.EdmProfile.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.EdmProfile.Elements()))
 		diags.Append(p.EdmProfile.ElementsAs(ctx, &objs, false)...)
 		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
@@ -335,9 +395,6 @@ func acDlpProfileUpdate(
 	diags diag.Diagnostics,
 ) (*cato_models.ApplicationControlDlpProfileUpdateInput, diag.Diagnostics) {
 	add, diags := acDlpProfileAdd(ctx, o, diags)
-	if add == nil {
-		return &cato_models.ApplicationControlDlpProfileUpdateInput{}, diags
-	}
 	return &cato_models.ApplicationControlDlpProfileUpdateInput{
 		ContentProfile: add.ContentProfile,
 		EdmProfile:     add.EdmProfile,
@@ -379,6 +436,7 @@ func acFileAttributesUpdate(
 	return acFileAttributesAdd(ctx, list, diags)
 }
 
+//nolint:gocyclo
 func acFillCommonAdd(
 	ctx context.Context,
 	p ApplicationControlTypedRulePlan,
@@ -391,38 +449,41 @@ func acFillCommonAdd(
 	actionConfig **cato_models.ApplicationControlActionConfigInput,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
-	if !p.Schedule.IsNull() {
+	if !p.Schedule.IsNull() && !p.Schedule.IsUnknown() {
 		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
-		diags.Append(p.Schedule.As(ctx, &sch, basetypes.ObjectAsOptions{})...)
+		scheduleTopOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
+		diags.Append(p.Schedule.As(ctx, &sch, scheduleTopOpts)...)
 		in := &cato_models.PolicyScheduleInput{ActiveOn: cato_models.PolicyActiveOnEnum(policyActiveOnAlways)}
 		if !sch.ActiveOn.IsNull() {
 			in.ActiveOn = cato_models.PolicyActiveOnEnum(sch.ActiveOn.ValueString())
 		}
-		if !sch.CustomTimeframe.IsNull() {
+		if !sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
 			ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
 			diags.Append(sch.CustomTimeframe.As(ctx, &ctf, basetypes.ObjectAsOptions{})...)
 			in.CustomTimeframe = &cato_models.PolicyCustomTimeframeInput{From: ctf.From.ValueString(), To: ctf.To.ValueString()}
 		}
-		if !sch.CustomRecurring.IsNull() {
+		if !sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
 			cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
 			diags.Append(sch.CustomRecurring.As(ctx, &cr, basetypes.ObjectAsOptions{})...)
 			in.CustomRecurring = &cato_models.PolicyCustomRecurringInput{
 				From: cato_scalars.Time(cr.From.ValueString()),
 				To:   cato_scalars.Time(cr.To.ValueString()),
 			}
-			diags.Append(cr.Days.ElementsAs(ctx, &in.CustomRecurring.Days, false)...)
+			if !cr.Days.IsNull() && !cr.Days.IsUnknown() {
+				diags.Append(cr.Days.ElementsAs(ctx, &in.CustomRecurring.Days, false)...)
+			}
 		}
 		*schedule = in
 	}
-	if !p.Source.IsNull() {
+	if !p.Source.IsNull() && !p.Source.IsUnknown() {
 		add, _, sdiags := applicationControlSourcePairFromTerraformObject(ctx, p.Source)
 		diags.Append(sdiags...)
 		*source = add
 	}
-	if !p.Tracking.IsNull() {
+	if !p.Tracking.IsNull() && !p.Tracking.IsUnknown() {
 		*tracking, diags = acTrackingAdd(ctx, p.Tracking, diags)
 	}
-	if !p.Device.IsNull() {
+	if !p.Device.IsNull() && !p.Device.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.Device.Elements()))
 		diags.Append(p.Device.ElementsAs(ctx, &objs, false)...)
 		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
@@ -436,7 +497,7 @@ func acFillCommonAdd(
 			*device = append(*device, &cato_models.DeviceProfileRefInput{By: cato_models.ObjectRefBy(ref.By), Input: ref.Input})
 		}
 	}
-	if !p.AccessMethod.IsNull() {
+	if !p.AccessMethod.IsNull() && !p.AccessMethod.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.AccessMethod.Elements()))
 		diags.Append(p.AccessMethod.ElementsAs(ctx, &objs, false)...)
 		for _, o := range objs {
@@ -449,15 +510,16 @@ func acFillCommonAdd(
 			})
 		}
 	}
-	if !p.Application.IsNull() {
+	if !p.Application.IsNull() && !p.Application.IsUnknown() {
 		*application, diags = acApplicationInputFromWanShape(ctx, p.Application, diags)
 	}
-	if !p.ActionConfig.IsNull() {
+	if !p.ActionConfig.IsNull() && !p.ActionConfig.IsUnknown() {
 		*actionConfig, diags = acActionConfigAdd(ctx, p.ActionConfig, diags)
 	}
 	return diags
 }
 
+//nolint:gocyclo
 func acFillCommonUpdate(
 	ctx context.Context,
 	p ApplicationControlTypedRulePlan,
@@ -470,13 +532,14 @@ func acFillCommonUpdate(
 	actionConfig **cato_models.ApplicationControlActionConfigUpdateInput,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
-	if !p.Schedule.IsNull() {
+	if !p.Schedule.IsNull() && !p.Schedule.IsUnknown() {
 		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
-		diags.Append(p.Schedule.As(ctx, &sch, basetypes.ObjectAsOptions{})...)
+		scheduleTopOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
+		diags.Append(p.Schedule.As(ctx, &sch, scheduleTopOpts)...)
 		upd := &cato_models.PolicyScheduleUpdateInput{
 			ActiveOn: (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer()),
 		}
-		if !sch.CustomTimeframe.IsNull() {
+		if !sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
 			ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
 			diags.Append(sch.CustomTimeframe.As(ctx, &ctf, basetypes.ObjectAsOptions{})...)
 			upd.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{
@@ -485,28 +548,30 @@ func acFillCommonUpdate(
 		} else {
 			upd.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{}
 		}
-		if !sch.CustomRecurring.IsNull() {
+		if !sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
 			cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
 			diags.Append(sch.CustomRecurring.As(ctx, &cr, basetypes.ObjectAsOptions{})...)
 			upd.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{
 				From: (*cato_scalars.Time)(cr.From.ValueStringPointer()),
 				To:   (*cato_scalars.Time)(cr.To.ValueStringPointer()),
 			}
-			diags.Append(cr.Days.ElementsAs(ctx, &upd.CustomRecurring.Days, false)...)
+			if !cr.Days.IsNull() && !cr.Days.IsUnknown() {
+				diags.Append(cr.Days.ElementsAs(ctx, &upd.CustomRecurring.Days, false)...)
+			}
 		} else {
 			upd.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{}
 		}
 		*schedule = upd
 	}
-	if !p.Source.IsNull() {
+	if !p.Source.IsNull() && !p.Source.IsUnknown() {
 		_, supd, sdiags := applicationControlSourcePairFromTerraformObject(ctx, p.Source)
 		diags.Append(sdiags...)
 		*source = supd
 	}
-	if !p.Tracking.IsNull() {
+	if !p.Tracking.IsNull() && !p.Tracking.IsUnknown() {
 		*tracking, diags = acTrackingUpdate(ctx, p.Tracking, diags)
 	}
-	if !p.Device.IsNull() {
+	if !p.Device.IsNull() && !p.Device.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.Device.Elements()))
 		diags.Append(p.Device.ElementsAs(ctx, &objs, false)...)
 		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
@@ -520,7 +585,7 @@ func acFillCommonUpdate(
 			*device = append(*device, &cato_models.DeviceProfileRefInput{By: cato_models.ObjectRefBy(ref.By), Input: ref.Input})
 		}
 	}
-	if !p.AccessMethod.IsNull() {
+	if !p.AccessMethod.IsNull() && !p.AccessMethod.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.AccessMethod.Elements()))
 		diags.Append(p.AccessMethod.ElementsAs(ctx, &objs, false)...)
 		for _, o := range objs {
@@ -533,10 +598,10 @@ func acFillCommonUpdate(
 			})
 		}
 	}
-	if !p.Application.IsNull() {
+	if !p.Application.IsNull() && !p.Application.IsUnknown() {
 		*application, diags = acApplicationUpdateFromWanShape(ctx, p.Application, diags)
 	}
-	if !p.ActionConfig.IsNull() {
+	if !p.ActionConfig.IsNull() && !p.ActionConfig.IsUnknown() {
 		*actionConfig, diags = acActionConfigUpdate(ctx, p.ActionConfig, diags)
 	}
 	return diags
@@ -550,9 +615,9 @@ func acActionConfigAdd(
 	var p struct {
 		UserNotification types.Set `tfsdk:"user_notification"`
 	}
-	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &p, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	out := &cato_models.ApplicationControlActionConfigInput{}
-	if !p.UserNotification.IsNull() {
+	if !p.UserNotification.IsNull() && !p.UserNotification.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.UserNotification.Elements()))
 		diags.Append(p.UserNotification.ElementsAs(ctx, &objs, false)...)
 		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
@@ -590,10 +655,10 @@ func acApplicationInputFromWanShape(
 	diags diag.Diagnostics,
 ) (*cato_models.ApplicationControlApplicationInput, diag.Diagnostics) {
 	wan := PolicyPolicyWanFirewallPolicyRulesRuleApplication{}
-	diags.Append(o.As(ctx, &wan, basetypes.ObjectAsOptions{})...)
+	diags.Append(o.As(ctx, &wan, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	out := &cato_models.ApplicationControlApplicationInput{}
 	appendFirst := func(set types.Set, setter func(*cato_models.ApplicationRefInput)) {
-		if set.IsNull() {
+		if set.IsNull() || set.IsUnknown() {
 			return
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
@@ -611,7 +676,7 @@ func acApplicationInputFromWanShape(
 		setter(&cato_models.ApplicationRefInput{By: cato_models.ObjectRefBy(ref.By), Input: ref.Input})
 	}
 	appendFirstCat := func(set types.Set, setter func(*cato_models.ApplicationCategoryRefInput)) {
-		if set.IsNull() {
+		if set.IsNull() || set.IsUnknown() {
 			return
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
@@ -629,7 +694,7 @@ func acApplicationInputFromWanShape(
 		setter(&cato_models.ApplicationCategoryRefInput{By: cato_models.ObjectRefBy(ref.By), Input: ref.Input})
 	}
 	appendFirst(wan.Application, func(v *cato_models.ApplicationRefInput) { out.Application = v })
-	if out.Application == nil && !wan.CustomApp.IsNull() {
+	if out.Application == nil && !wan.CustomApp.IsNull() && !wan.CustomApp.IsUnknown() {
 		objs := make([]types.Object, 0, len(wan.CustomApp.Elements()))
 		diags.Append(wan.CustomApp.ElementsAs(ctx, &objs, false)...)
 		if len(objs) > 0 {
@@ -642,7 +707,7 @@ func acApplicationInputFromWanShape(
 		}
 	}
 	appendFirstCat(wan.AppCategory, func(v *cato_models.ApplicationCategoryRefInput) { out.AppCategory = v })
-	if !wan.CustomCategory.IsNull() {
+	if !wan.CustomCategory.IsNull() && !wan.CustomCategory.IsUnknown() {
 		objs := make([]types.Object, 0, len(wan.CustomCategory.Elements()))
 		diags.Append(wan.CustomCategory.ElementsAs(ctx, &objs, false)...)
 		if len(objs) > 0 {
@@ -654,7 +719,7 @@ func acApplicationInputFromWanShape(
 			}
 		}
 	}
-	if !wan.SanctionedAppsCategory.IsNull() {
+	if !wan.SanctionedAppsCategory.IsNull() && !wan.SanctionedAppsCategory.IsUnknown() {
 		objs := make([]types.Object, 0, len(wan.SanctionedAppsCategory.Elements()))
 		diags.Append(wan.SanctionedAppsCategory.ElementsAs(ctx, &objs, false)...)
 		if len(objs) > 0 {
@@ -694,19 +759,20 @@ func acTrackingAdd(
 	diags diag.Diagnostics,
 ) (*cato_models.PolicyTrackingInput, diag.Diagnostics) {
 	t := PolicyPolicyWanFirewallPolicyRulesRuleTracking{}
-	diags.Append(o.As(ctx, &t, basetypes.ObjectAsOptions{})...)
+	trackOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
+	diags.Append(o.As(ctx, &t, trackOpts)...)
 	out := &cato_models.PolicyTrackingInput{
 		Event: &cato_models.PolicyRuleTrackingEventInput{},
 		Alert: &cato_models.PolicyRuleTrackingAlertInput{Enabled: false, Frequency: "DAILY"},
 	}
-	if !t.Event.IsNull() {
+	if !t.Event.IsNull() && !t.Event.IsUnknown() {
 		ev := PolicyPolicyWanFirewallPolicyRulesRuleTrackingEvent{}
-		diags.Append(t.Event.As(ctx, &ev, basetypes.ObjectAsOptions{})...)
+		diags.Append(t.Event.As(ctx, &ev, trackOpts)...)
 		out.Event.Enabled = ev.Enabled.ValueBool()
 	}
-	if !t.Alert.IsNull() {
+	if !t.Alert.IsNull() && !t.Alert.IsUnknown() {
 		al := PolicyPolicyWanFirewallPolicyRulesRuleTrackingAlert{}
-		diags.Append(t.Alert.As(ctx, &al, basetypes.ObjectAsOptions{})...)
+		diags.Append(t.Alert.As(ctx, &al, trackOpts)...)
 		out.Alert.Enabled = al.Enabled.ValueBool()
 		out.Alert.Frequency = cato_models.PolicyRuleTrackingFrequencyEnum(al.Frequency.ValueString())
 		// subscription groups etc. omitted for brevity — extend as needed

@@ -6,13 +6,12 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
-//nolint:gocyclo
+//nolint:gocyclo,funlen
 func hydrateAppTenantRestrictionAddRuleInput(
 	ctx context.Context,
 	plan AppTenantRestrictionRule,
@@ -20,16 +19,18 @@ func hydrateAppTenantRestrictionAddRuleInput(
 	var diags diag.Diagnostics
 	out := cato_models.AppTenantRestrictionAddRuleInput{}
 
+	asOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
+
 	if !plan.At.IsNull() {
 		out.At = &cato_models.PolicyRulePositionInput{}
 		pos := PolicyRulePositionInput{}
-		diags.Append(plan.At.As(ctx, &pos, basetypes.ObjectAsOptions{})...)
+		diags.Append(plan.At.As(ctx, &pos, asOpts)...)
 		out.At.Position = (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer())
 		out.At.Ref = pos.Ref.ValueStringPointer()
 	}
 
 	rule := AppTenantRestrictionRuleRulePlan{}
-	diags.Append(plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
+	diags.Append(plan.Rule.As(ctx, &rule, asOpts)...)
 	if diags.HasError() {
 		return out, diags
 	}
@@ -44,7 +45,7 @@ func hydrateAppTenantRestrictionAddRuleInput(
 
 	if !rule.Application.IsNull() && !rule.Application.IsUnknown() {
 		app := PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost{}
-		diags.Append(rule.Application.As(ctx, &app, basetypes.ObjectAsOptions{})...)
+		diags.Append(rule.Application.As(ctx, &app, asOpts)...)
 		if !diags.HasError() {
 			ref, err := utils.TransformObjectRefInput(app)
 			if err != nil {
@@ -59,11 +60,9 @@ func hydrateAppTenantRestrictionAddRuleInput(
 	}
 
 	if !rule.Headers.IsNull() && !rule.Headers.IsUnknown() {
-		objs := make([]types.Object, 0, len(rule.Headers.Elements()))
-		diags.Append(rule.Headers.ElementsAs(ctx, &objs, false)...)
-		for _, o := range objs {
-			var h AppTenantRestrictionHeaderPlan
-			diags.Append(o.As(ctx, &h, basetypes.ObjectAsOptions{})...)
+		var headers []AppTenantRestrictionHeaderPlan
+		diags.Append(rule.Headers.ElementsAs(ctx, &headers, false)...)
+		for _, h := range headers {
 			data.Headers = append(data.Headers, &cato_models.AppTenantRestrictionHeaderValueInput{
 				Name:  h.Name.ValueString(),
 				Value: h.Value.ValueString(),
@@ -72,28 +71,40 @@ func hydrateAppTenantRestrictionAddRuleInput(
 	}
 
 	if !rule.Schedule.IsNull() && !rule.Schedule.IsUnknown() {
+		scheduleAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
-		diags.Append(rule.Schedule.As(ctx, &sch, basetypes.ObjectAsOptions{})...)
+		diags.Append(rule.Schedule.As(ctx, &sch, scheduleAsOpts)...)
 		if !diags.HasError() {
-			data.Schedule = &cato_models.PolicyScheduleInput{
-				ActiveOn: cato_models.PolicyActiveOnEnum(sch.ActiveOn.ValueString()),
-			}
-			if !sch.CustomTimeframe.IsNull() {
+			active := cato_models.PolicyActiveOnEnum(sch.ActiveOn.ValueString())
+			data.Schedule = &cato_models.PolicyScheduleInput{ActiveOn: active}
+			if active == cato_models.PolicyActiveOnEnumCustomTimeframe &&
+				!sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
 				ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
-				diags.Append(sch.CustomTimeframe.As(ctx, &ctf, basetypes.ObjectAsOptions{})...)
-				data.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeInput{
-					From: ctf.From.ValueString(),
-					To:   ctf.To.ValueString(),
+				diags.Append(sch.CustomTimeframe.As(ctx, &ctf, scheduleAsOpts)...)
+				from := ctf.From.ValueString()
+				to := ctf.To.ValueString()
+				if from != "" || to != "" {
+					data.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeInput{
+						From: from,
+						To:   to,
+					}
 				}
 			}
-			if !sch.CustomRecurring.IsNull() {
+			if active == cato_models.PolicyActiveOnEnumCustomRecurring &&
+				!sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
 				cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
-				diags.Append(sch.CustomRecurring.As(ctx, &cr, basetypes.ObjectAsOptions{})...)
-				data.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringInput{
-					From: cato_scalars.Time(cr.From.ValueString()),
-					To:   cato_scalars.Time(cr.To.ValueString()),
+				diags.Append(sch.CustomRecurring.As(ctx, &cr, scheduleAsOpts)...)
+				from := cr.From.ValueString()
+				to := cr.To.ValueString()
+				if from != "" && to != "" {
+					data.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringInput{
+						From: cato_scalars.Time(from),
+						To:   cato_scalars.Time(to),
+					}
+					if !cr.Days.IsNull() && !cr.Days.IsUnknown() {
+						diags.Append(cr.Days.ElementsAs(ctx, &data.Schedule.CustomRecurring.Days, false)...)
+					}
 				}
-				diags.Append(cr.Days.ElementsAs(ctx, &data.Schedule.CustomRecurring.Days, false)...)
 			}
 		}
 	}
@@ -116,8 +127,10 @@ func hydrateAppTenantRestrictionUpdateRuleInput(
 	plan AppTenantRestrictionRule,
 ) (cato_models.AppTenantRestrictionUpdateRuleInput, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	asOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
+
 	rule := AppTenantRestrictionRuleRulePlan{}
-	diags.Append(plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
+	diags.Append(plan.Rule.As(ctx, &rule, asOpts)...)
 	if diags.HasError() {
 		return cato_models.AppTenantRestrictionUpdateRuleInput{}, diags
 	}
@@ -135,7 +148,7 @@ func hydrateAppTenantRestrictionUpdateRuleInput(
 
 	if !rule.Application.IsNull() && !rule.Application.IsUnknown() {
 		app := PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost{}
-		diags.Append(rule.Application.As(ctx, &app, basetypes.ObjectAsOptions{})...)
+		diags.Append(rule.Application.As(ctx, &app, asOpts)...)
 		if !diags.HasError() {
 			ref, err := utils.TransformObjectRefInput(app)
 			if err != nil {
@@ -150,11 +163,9 @@ func hydrateAppTenantRestrictionUpdateRuleInput(
 	}
 
 	if !rule.Headers.IsNull() && !rule.Headers.IsUnknown() {
-		objs := make([]types.Object, 0, len(rule.Headers.Elements()))
-		diags.Append(rule.Headers.ElementsAs(ctx, &objs, false)...)
-		for _, o := range objs {
-			var h AppTenantRestrictionHeaderPlan
-			diags.Append(o.As(ctx, &h, basetypes.ObjectAsOptions{})...)
+		var headers []AppTenantRestrictionHeaderPlan
+		diags.Append(rule.Headers.ElementsAs(ctx, &headers, false)...)
+		for _, h := range headers {
 			upd.Rule.Headers = append(upd.Rule.Headers, &cato_models.AppTenantRestrictionHeaderValueInput{
 				Name:  h.Name.ValueString(),
 				Value: h.Value.ValueString(),
@@ -163,32 +174,40 @@ func hydrateAppTenantRestrictionUpdateRuleInput(
 	}
 
 	if !rule.Schedule.IsNull() && !rule.Schedule.IsUnknown() {
+		scheduleAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
-		diags.Append(rule.Schedule.As(ctx, &sch, basetypes.ObjectAsOptions{})...)
+		diags.Append(rule.Schedule.As(ctx, &sch, scheduleAsOpts)...)
 		if !diags.HasError() {
-			upd.Rule.Schedule = &cato_models.PolicyScheduleUpdateInput{
-				ActiveOn: (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer()),
-			}
-			if !sch.CustomTimeframe.IsNull() {
+			active := (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer())
+			upd.Rule.Schedule = &cato_models.PolicyScheduleUpdateInput{ActiveOn: active}
+			if active != nil && *active == cato_models.PolicyActiveOnEnumCustomTimeframe &&
+				!sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
 				ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
-				diags.Append(sch.CustomTimeframe.As(ctx, &ctf, basetypes.ObjectAsOptions{})...)
-				upd.Rule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{
-					From: ctf.From.ValueStringPointer(),
-					To:   ctf.To.ValueStringPointer(),
+				diags.Append(sch.CustomTimeframe.As(ctx, &ctf, scheduleAsOpts)...)
+				from := ctf.From.ValueStringPointer()
+				to := ctf.To.ValueStringPointer()
+				if (from != nil && *from != "") || (to != nil && *to != "") {
+					upd.Rule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{
+						From: from,
+						To:   to,
+					}
 				}
-			} else {
-				upd.Rule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{}
 			}
-			if !sch.CustomRecurring.IsNull() {
+			if active != nil && *active == cato_models.PolicyActiveOnEnumCustomRecurring &&
+				!sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
 				cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
-				diags.Append(sch.CustomRecurring.As(ctx, &cr, basetypes.ObjectAsOptions{})...)
-				upd.Rule.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{
-					From: (*cato_scalars.Time)(cr.From.ValueStringPointer()),
-					To:   (*cato_scalars.Time)(cr.To.ValueStringPointer()),
+				diags.Append(sch.CustomRecurring.As(ctx, &cr, scheduleAsOpts)...)
+				from := cr.From.ValueString()
+				to := cr.To.ValueString()
+				if from != "" && to != "" {
+					upd.Rule.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{
+						From: (*cato_scalars.Time)(cr.From.ValueStringPointer()),
+						To:   (*cato_scalars.Time)(cr.To.ValueStringPointer()),
+					}
+					if !cr.Days.IsNull() && !cr.Days.IsUnknown() {
+						diags.Append(cr.Days.ElementsAs(ctx, &upd.Rule.Schedule.CustomRecurring.Days, false)...)
+					}
 				}
-				diags.Append(cr.Days.ElementsAs(ctx, &upd.Rule.Schedule.CustomRecurring.Days, false)...)
-			} else {
-				upd.Rule.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{}
 			}
 		}
 	}

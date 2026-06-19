@@ -192,8 +192,6 @@ func (r *applicationControlPolicyResource) updatePolicy(ctx context.Context, pla
 		}
 		return diags
 	}
-	if _, err := r.client.catov2.PolicyApplicationControlPublishPolicyRevision(ctx, r.client.AccountId); err != nil {
-		diags.AddError("PolicyApplicationControlPublishPolicyRevision", err.Error())
-	}
+	diags.Append(publishApplicationControlPolicyRevision(ctx, r.client)...)
 	return diags
 }

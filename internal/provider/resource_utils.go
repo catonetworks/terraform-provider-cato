@@ -23,7 +23,6 @@ func contains(nameToIDMap map[string]struct{}, name string) bool {
 
 func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrName string) types.List {
 	tflog.Debug(ctx, "parseList() "+attrName+" - "+fmt.Sprintf("%v", items))
-	diags := make(diag.Diagnostics, 0)
 
 	// Handle empty list - return null (len(nil) == 0 so nil check is redundant)
 	if len(items) == 0 {
@@ -35,7 +34,9 @@ func parseList[T any](ctx context.Context, elemType attr.Type, items []T, attrNa
 
 	// Convert to types.List using ListValueFrom
 	listValue, listDiags := types.ListValueFrom(ctx, elemType, items)
-	diags.Append(listDiags...)
+	if listDiags.HasError() || listValue.IsUnknown() {
+		return types.ListNull(elemType)
+	}
 	return listValue
 }
 
@@ -63,8 +64,15 @@ func parseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 		}
 	}
 
-	// Convert to types.List using SetValueFrom
-	setValue, _ := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
+	if len(nameIDValues) == 0 {
+		tflog.Debug(ctx, "parseNameIDList() - all items skipped, returning null")
+		return types.SetNull(NameIDObjectType)
+	}
+
+	setValue, setDiags := types.SetValueFrom(ctx, NameIDObjectType, nameIDValues)
+	if setDiags.HasError() || setValue.IsUnknown() {
+		return types.SetNull(NameIDObjectType)
+	}
 	return setValue
 }
 

@@ -28,6 +28,10 @@ func hydrateApplicationControlRuleStateFromClient(
 	out.Enabled = types.BoolValue(r.GetEnabled())
 	out.RuleType = types.StringValue(string(r.RuleType))
 
+	out.ApplicationRule = types.ObjectNull(applicationControlTypedRuleAttrTypes)
+	out.DataRule = types.ObjectNull(applicationControlTypedRuleAttrTypes)
+	out.FileRule = types.ObjectNull(applicationControlTypedRuleAttrTypes)
+
 	switch r.RuleType {
 	case cato_models.ApplicationControlRuleTypeApplication:
 		if ar := r.GetApplicationRule(); ar != nil {
@@ -222,8 +226,8 @@ func acScheduleObjectFromApplicationRuleSchedule(
 	var ctfObj types.Object
 	if ct := sch.GetCustomTimeframeApplicationRule(); ct != nil {
 		o, d := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
-			"from": types.StringValue(ct.GetFrom()),
-			"to":   types.StringValue(ct.GetTo()),
+			"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
+			"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 		})
 		diags.Append(d...)
 		ctfObj = o
@@ -232,14 +236,22 @@ func acScheduleObjectFromApplicationRuleSchedule(
 	}
 	var crObj types.Object
 	if cr := sch.GetCustomRecurringApplicationRule(); cr != nil {
-		days := parseList(ctx, types.StringType, cr.GetDays(), "application_rule.schedule.custom_recurring.days")
+		dayStrings := make([]string, 0, len(cr.GetDays()))
+		for _, d := range cr.GetDays() {
+			dayStrings = append(dayStrings, d.String())
+		}
+		days := parseList(ctx, types.StringType, dayStrings, "application_rule.schedule.custom_recurring.days")
 		o, d := types.ObjectValue(FromToDaysAttrTypes, map[string]attr.Value{
-			"from": types.StringValue(string(cr.From)),
-			"to":   types.StringValue(string(cr.To)),
+			"from": types.StringValue(normalizePolicyRecurringClock(string(cr.From))),
+			"to":   types.StringValue(normalizePolicyRecurringClock(string(cr.To))),
 			"days": days,
 		})
 		diags.Append(d...)
-		crObj = o
+		if d.HasError() || o.IsUnknown() {
+			crObj = types.ObjectNull(FromToDaysAttrTypes)
+		} else {
+			crObj = o
+		}
 	} else {
 		crObj = types.ObjectNull(FromToDaysAttrTypes)
 	}
@@ -249,6 +261,9 @@ func acScheduleObjectFromApplicationRuleSchedule(
 		"custom_recurring": crObj,
 	})
 	diags.Append(d...)
+	if d.HasError() || o.IsUnknown() {
+		return types.ObjectNull(ScheduleAttrTypes)
+	}
 	return o
 }
 
@@ -267,8 +282,8 @@ func acScheduleObjectFromDataRuleSchedule(
 	var ctfObj types.Object
 	if ct := sch.GetCustomTimeframeDataRule(); ct != nil {
 		o, d := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
-			"from": types.StringValue(ct.GetFrom()),
-			"to":   types.StringValue(ct.GetTo()),
+			"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
+			"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 		})
 		diags.Append(d...)
 		ctfObj = o
@@ -277,14 +292,18 @@ func acScheduleObjectFromDataRuleSchedule(
 	}
 	var crObj types.Object
 	if cr := sch.GetCustomRecurringDataRule(); cr != nil {
-		days := parseList(ctx, types.StringType, cr.GetDays(), "data_rule.schedule.custom_recurring.days")
+		dayStrings := make([]string, 0, len(cr.GetDays()))
+		for _, d := range cr.GetDays() {
+			dayStrings = append(dayStrings, d.String())
+		}
+		days := parseList(ctx, types.StringType, dayStrings, "data_rule.schedule.custom_recurring.days")
 		fromS := ""
 		toS := ""
 		if cr.GetFrom() != nil {
-			fromS = string(*cr.GetFrom())
+			fromS = normalizePolicyRecurringClock(string(*cr.GetFrom()))
 		}
 		if cr.GetTo() != nil {
-			toS = string(*cr.GetTo())
+			toS = normalizePolicyRecurringClock(string(*cr.GetTo()))
 		}
 		o, d := types.ObjectValue(FromToDaysAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(fromS),
@@ -292,7 +311,11 @@ func acScheduleObjectFromDataRuleSchedule(
 			"days": days,
 		})
 		diags.Append(d...)
-		crObj = o
+		if d.HasError() || o.IsUnknown() {
+			crObj = types.ObjectNull(FromToDaysAttrTypes)
+		} else {
+			crObj = o
+		}
 	} else {
 		crObj = types.ObjectNull(FromToDaysAttrTypes)
 	}
@@ -302,6 +325,9 @@ func acScheduleObjectFromDataRuleSchedule(
 		"custom_recurring": crObj,
 	})
 	diags.Append(d...)
+	if d.HasError() || o.IsUnknown() {
+		return types.ObjectNull(ScheduleAttrTypes)
+	}
 	return o
 }
 
@@ -320,8 +346,8 @@ func acScheduleObjectFromFileRuleSchedule(
 	var ctfObj types.Object
 	if ct := sch.GetCustomTimeframeFileRule(); ct != nil {
 		o, d := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
-			"from": types.StringValue(ct.GetFrom()),
-			"to":   types.StringValue(ct.GetTo()),
+			"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
+			"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 		})
 		diags.Append(d...)
 		ctfObj = o
@@ -330,14 +356,18 @@ func acScheduleObjectFromFileRuleSchedule(
 	}
 	var crObj types.Object
 	if cr := sch.GetCustomRecurringFileRule(); cr != nil {
-		days := parseList(ctx, types.StringType, cr.GetDays(), "file_rule.schedule.custom_recurring.days")
+		dayStrings := make([]string, 0, len(cr.GetDays()))
+		for _, d := range cr.GetDays() {
+			dayStrings = append(dayStrings, d.String())
+		}
+		days := parseList(ctx, types.StringType, dayStrings, "file_rule.schedule.custom_recurring.days")
 		fromS := ""
 		toS := ""
 		if cr.GetFrom() != nil {
-			fromS = string(*cr.GetFrom())
+			fromS = normalizePolicyRecurringClock(string(*cr.GetFrom()))
 		}
 		if cr.GetTo() != nil {
-			toS = string(*cr.GetTo())
+			toS = normalizePolicyRecurringClock(string(*cr.GetTo()))
 		}
 		o, d := types.ObjectValue(FromToDaysAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(fromS),
@@ -345,7 +375,11 @@ func acScheduleObjectFromFileRuleSchedule(
 			"days": days,
 		})
 		diags.Append(d...)
-		crObj = o
+		if d.HasError() || o.IsUnknown() {
+			crObj = types.ObjectNull(FromToDaysAttrTypes)
+		} else {
+			crObj = o
+		}
 	} else {
 		crObj = types.ObjectNull(FromToDaysAttrTypes)
 	}
@@ -355,6 +389,9 @@ func acScheduleObjectFromFileRuleSchedule(
 		"custom_recurring": crObj,
 	})
 	diags.Append(d...)
+	if d.HasError() || o.IsUnknown() {
+		return types.ObjectNull(ScheduleAttrTypes)
+	}
 	return o
 }
 
@@ -709,6 +746,10 @@ func acAccessMethodListFromApplicationRule(
 	rows []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_ApplicationRule_AccessMethod,
 	diags *diag.Diagnostics,
 ) types.List {
+	elemType := types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}
+	if len(rows) == 0 {
+		return types.ListNull(elemType)
+	}
 	elems := make([]attr.Value, 0, len(rows))
 	for _, row := range rows {
 		if row == nil {
@@ -720,10 +761,19 @@ func acAccessMethodListFromApplicationRule(
 			"value":         acAccessMethodValueString(row),
 		})
 		diags.Append(d...)
+		if d.HasError() {
+			continue
+		}
 		elems = append(elems, o)
 	}
-	lst, d := types.ListValue(types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}, elems)
+	if len(elems) == 0 {
+		return types.ListNull(elemType)
+	}
+	lst, d := types.ListValue(elemType, elems)
 	diags.Append(d...)
+	if d.HasError() || lst.IsUnknown() {
+		return types.ListNull(elemType)
+	}
 	return lst
 }
 
