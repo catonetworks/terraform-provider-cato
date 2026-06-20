@@ -3,12 +3,12 @@
 page_title: "cato_socket_lan_network_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_socket_lan_network_rule resource contains the configuration parameters necessary to add a Socket LAN network rule. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule).
+  The cato_socket_lan_network_rule resource contains the configuration parameters necessary to add a Socket LAN network rule. Documentation for the underlying API used in this resource can be found at mutation.policy.socketLan.addRule() https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule.
 ---
 
 # cato_socket_lan_network_rule (Resource)
 
-The `cato_socket_lan_network_rule` resource contains the configuration parameters necessary to add a Socket LAN network rule. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addRule()](https:// api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule).
+The `cato_socket_lan_network_rule` resource contains the configuration parameters necessary to add a Socket LAN network rule. Documentation for the underlying API used in this resource can be found at [mutation.policy.socketLan.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addRule).
 
 ## Example Usage
 
@@ -525,7 +525,7 @@ Optional:
 
 - `port` (List of String) List of TCP/UDP port
 - `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--rule--service--custom--port_range))
-- `protocol` (String) IP Protocol (https:// api.catonetworks.com/documentation/#definition-IpProtocol)
+- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
 
 <a id="nestedatt--rule--service--custom--port_range"></a>
 ### Nested Schema for `rule.service.custom.port_range`

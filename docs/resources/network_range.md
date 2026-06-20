@@ -3,12 +3,12 @@
 page_title: "cato_network_range Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_network_range resource contains the configuration parameters necessary to add a network range to a cato site. ([virtual socket in AWS/Azure, or physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addNetworkRange()](https:// api.catonetworks.com/documentation/#mutation-site.addNetworkRange).
+  The cato_network_range resource contains the configuration parameters necessary to add a network range to a cato site. (virtual socket in AWS/Azure, or physical socket https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites). Documentation for the underlying API used in this resource can be found at mutation.addNetworkRange() https://api.catonetworks.com/documentation/#mutation-site.addNetworkRange.
 ---
 
 # cato_network_range (Resource)
 
-The `cato_network_range` resource contains the configuration parameters necessary to add a network range to a cato site. ([virtual socket in AWS/Azure, or physical socket](https:// support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addNetworkRange()](https:// api.catonetworks.com/documentation/#mutation-site.addNetworkRange).
+The `cato_network_range` resource contains the configuration parameters necessary to add a network range to a cato site. ([virtual socket in AWS/Azure, or physical socket](https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). Documentation for the underlying API used in this resource can be found at [mutation.addNetworkRange()](https://api.catonetworks.com/documentation/#mutation-site.addNetworkRange).
 
 ## Example Usage
 
@@ -79,7 +79,7 @@ resource "cato_network_range" "vlan201_relay" {
 ### Required
 
 - `name` (String) Network range name
-- `range_type` (String) Network range type (https:// api.catonetworks.com/documentation/#definition-SubnetType)
+- `range_type` (String) Network range type (https://api.catonetworks.com/documentation/#definition-SubnetType)
 - `site_id` (String) Site ID
 - `subnet` (String) Network range (CIDR)
 
@@ -104,7 +104,7 @@ resource "cato_network_range" "vlan201_relay" {
 
 Required:
 
-- `dhcp_type` (String) Network range dhcp type (https:// api.catonetworks.com/documentation/#definition-DhcpType)
+- `dhcp_type` (String) Network range dhcp type (https://api.catonetworks.com/documentation/#definition-DhcpType)
 
 Optional:
 
