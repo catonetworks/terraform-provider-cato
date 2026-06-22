@@ -328,6 +328,90 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 	return testAdvancedGroups
 }
 
+func GetGlobalIPRanges(t *testing.T) []Ref {
+	var rangesFound []string
+	accTestRanges := []*cato_models.CreateGlobalIPRangeInput{
+		{Name: "acctest_global_ip_range_000", Description: ptr("acctest_global_ip_range_000 description"), IPRange: "255.255.0.0/24"},
+		{Name: "acctest_global_ip_range_001", Description: ptr("acctest_global_ip_range_001 description"), IPRange: "255.255.1.0/24"},
+		{Name: "acctest_global_ip_range_002", Description: ptr("acctest_global_ip_range_002 description"), IPRange: "255.255.2.0/24"},
+	}
+
+	client := GetClient(t)
+	mu.Lock()
+	defer mu.Unlock()
+
+	testIPRanges := resourceRefs[resGlobalIPRanges]
+	if testIPRanges != nil {
+		return testIPRanges
+	}
+
+	// try to fetch IP ranges
+	result, err := client.ObjectGlobalIPRangeList(ctx, CatoAccountID, nil)
+	if err != nil {
+		t.Fatalf("failed to load global IP ranges: %v", err)
+		return nil
+	}
+
+	items := result.GetObject().GetGlobalIPRangeList().GetItems()
+	for _, item := range items {
+		testIPRanges = append(testIPRanges, Ref{ID: item.GetID(), Name: item.GetName()})
+		rangesFound = append(rangesFound, item.GetName())
+	}
+
+	// check if all ranges were found, if not create the missing ones
+	var rangesToCreate []*cato_models.CreateGlobalIPRangeInput
+	for _, ipRange := range accTestRanges {
+		if !slices.Contains(rangesFound, ipRange.Name) {
+			rangesToCreate = append(rangesToCreate, ipRange)
+		}
+	}
+	if len(rangesToCreate) > 0 {
+		// create the IP ranges
+		result, err := client.ObjectCreateGlobalIPRangeBulk(ctx, CatoAccountID, rangesToCreate)
+		if err != nil {
+			t.Fatalf("ERROR creating global IP ranges: %v", err)
+		}
+
+		items := result.GetObject().GetCreateGlobalIPRangeBulk().GetGlobalIPRange()
+		for _, item := range items {
+			testIPRanges = append(testIPRanges, Ref{ID: item.GetID(), Name: item.GetName()})
+		}
+	}
+
+	resourceRefs[resGlobalIPRanges] = testIPRanges
+	return testIPRanges
+}
+
+func DeleteGlobalIPRanges(t *testing.T) {
+	if accmock.ACCMockActive {
+		return
+	}
+	client := GetClient(t)
+
+	// try to fetch IP ranges
+	result, err := client.ObjectGlobalIPRangeList(ctx, CatoAccountID, nil)
+	if err != nil {
+		t.Fatalf("failed to load global IP ranges: %v", err)
+		return
+	}
+	ranges := result.GetObject().GetGlobalIPRangeList().GetItems()
+	// delete IP ranges
+	if len(ranges) == 0 {
+		return
+	}
+
+	// prepare input for deletion
+	input := make([]*cato_models.GlobalIPRangeRefInput, 0, len(ranges))
+	for _, r := range ranges {
+		input = append(input, &cato_models.GlobalIPRangeRefInput{By: cato_models.ObjectRefByID, Input: r.ID})
+	}
+	_, err = client.ObjectDeleteGlobalIPRangeBulk(ctx, CatoAccountID, input)
+	if err != nil {
+		t.Fatalf("failed to delete global IP ranges: %v", err)
+		return
+	}
+}
+
 func ProviderCfg() string {
 	return fmt.Sprintf("provider \"cato\" {\n  account_id = %q\n}\n", CatoAccountID)
 }
@@ -420,7 +504,6 @@ func GetSubscriptionGroups(t *testing.T) []Ref { return getFromEntityLookup(t, r
 func GetWebhooks(t *testing.T) []Ref           { return getFromEntityLookup(t, resWebhookSubscription) }
 func GetMailingLists(t *testing.T) []Ref       { return getFromEntityLookup(t, resMailingListSubscription) }
 
-func GetGlobalIPRanges(t *testing.T) []Ref   { return getFromVars(t, resGlobalIPRanges) }
 func GetFloatingRanges(t *testing.T) []Ref   { return getFromVars(t, resFloatingRanges) }
 func GetUserGroups(t *testing.T) []Ref       { return getFromVars(t, resUserGroups) }
 func GetSystemGroups(t *testing.T) []Ref     { return getFromVars(t, resSystemGroups) }
