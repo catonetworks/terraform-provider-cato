@@ -17,6 +17,7 @@ import (
 
 func TestAccIfRulesIndex(t *testing.T) {
 	acc.SkipByEnv(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -54,6 +55,7 @@ func TestAccIfRulesIndex(t *testing.T) {
 
 func TestAccIfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	acc.SkipByEnv(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_InvalidSectionStartAfterID")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -77,6 +79,7 @@ func TestAccIfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 // (WAN wf_rule tests may set ExpectNonEmptyPlan due to known drift).
 func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 	acc.SkipByEnv(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_WithRuleData")
 	defer mockSrv.Close()
 	mockSrv.Run()

@@ -20,6 +20,7 @@ import (
 // rules index, which breaks bulk reorder validation. Requires Cato credentials.
 func TestAccWfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 	acc.SkipByEnv(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex_ReorderTwoRules_VerifiesAPIOrder")
 	defer mockSrv.Close()

@@ -20,6 +20,7 @@ import (
 
 func TestAccWfRulesIndex_WithRuleData(t *testing.T) {
 	acc.SkipByEnv(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex_WithRuleData")
 	defer mockSrv.Close()
 	mockSrv.Run()
