@@ -112,6 +112,36 @@ func TestAccInternetFw_IDName(t *testing.T) {
 	})
 }
 
+func TestAccInternetFw_Application(t *testing.T) {
+	acc.SkipByEnv(t)
+	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Application")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newInternetFwCfg(t)
+	res := "cato_if_rule.application"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				// Create the resource
+				Config: cfg.getTfConfigApplication(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+				),
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfigApplication(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+				),
+			},
+		},
+	})
+}
+
 // TestAccInternetFw_Timeframe tests the datetime format - it should be returned in RFC3339
 func TestAccInternetFw_Timeframe(t *testing.T) {
 	acc.SkipByEnv(t)
@@ -149,7 +179,7 @@ func TestAccInternetFw_InvalidDestinationApplicationRef(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      cfg.getTfConfigInvalidDestinationApplicationRef(0),
-				ExpectError: regexp.MustCompile("Invalid object reference"),
+				ExpectError: regexp.MustCompile("'name' or 'id' must be defined in the config"),
 			},
 		},
 	})
@@ -852,6 +882,74 @@ var internetFwIDNameTFs = []string{
 				user = [
 					{ id   = "{{ (index .Users 0).ID }}" },
 					{ name = "{{ (index .Users 1).Name }}" },
+				]
+			}
+		}
+	}
+	`,
+}
+
+// ------------------------------------------------------------------
+// Application cato_if_rule configurations
+// - test combination of name and ID attributes in the rule configuration
+// ------------------------------------------------------------------
+func (p internetFwCfg) getTfConfigApplication(index int) string {
+	data := map[string]any{
+		"Name":  p.resName,
+		"Users": p.users,
+	}
+	return p.prepareTfCfg(data, internetFwApplicationTFs[index])
+}
+
+var internetFwApplicationTFs = []string{
+	`resource "cato_if_rule" "application" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name    = "{{ .Name }}"
+			enabled = true
+			action  = "ALLOW"
+			tracking = {
+				event = {
+					enabled = true
+				}
+			}
+			destination = {
+				application = [
+					{ name = "Politico" }
+				]
+			}
+			source = {
+				user = [
+					{ id   = "{{ (index .Users 0).ID }}" }
+				]
+			}
+		}
+	}
+	`,
+	// change destination.application.name
+	`resource "cato_if_rule" "application" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			name    = "{{ .Name }}"
+			enabled = true
+			action  = "ALLOW"
+			tracking = {
+				event = {
+					enabled = true
+				}
+			}
+			destination = {
+				application = [
+					{ name = "Telecom" }
+				]
+			}
+			source = {
+				user = [
+					{ id   = "{{ (index .Users 0).ID }}" }
 				]
 			}
 		}
