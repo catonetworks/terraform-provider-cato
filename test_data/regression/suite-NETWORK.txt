@@ -1,3 +1,10 @@
-group
-group_members
+app_connector
+bgp_peer
+ipsec_site
+lan_interface
+lan_interface_lag_member
+network_range
+socket_lan_section
+socket_site
 static_host
+wan_interface
