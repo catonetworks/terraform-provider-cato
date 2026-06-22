@@ -378,7 +378,7 @@ func GetGlobalIPRanges(t *testing.T) []Ref {
 		}
 	}
 
-	resourceRefs[resAdvancedGroups] = testIPRanges
+	resourceRefs[resGlobalIPRanges] = testIPRanges
 	return testIPRanges
 }
 
