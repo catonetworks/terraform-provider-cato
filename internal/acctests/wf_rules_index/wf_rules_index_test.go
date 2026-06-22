@@ -17,6 +17,7 @@ import (
 
 func TestAccWfRulesIndex(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
 	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex")
 	defer mockSrv.Close()
@@ -55,6 +56,7 @@ func TestAccWfRulesIndex(t *testing.T) {
 
 func TestAccWfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
 	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex_InvalidSectionStartAfterID")
 	defer mockSrv.Close()

@@ -23,6 +23,7 @@ import (
 // Cato env vars; for local runs source your env file before go test -tags=acctest.
 func TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
 	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder")
