@@ -14,6 +14,7 @@ import (
 
 func TestAccGlobalIPRanges(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.DeleteGlobalIPRanges(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccGlobalIPRanges")
 	defer mockSrv.Close()
 	mockSrv.Run()
