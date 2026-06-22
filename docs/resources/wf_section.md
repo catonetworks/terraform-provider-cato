@@ -3,12 +3,12 @@
 page_title: "cato_wf_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_wf_section resource contains the configuration parameters necessary to WAN firewall section (https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addSection).
+  The cato_wf_section resource contains the configuration parameters necessary to WAN firewall section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at mutation.policy.wanFirewall.addSection() https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addSection.
 ---
 
 # cato_wf_section (Resource)
 
-The `cato_wf_section` resource contains the configuration parameters necessary to WAN firewall section (https:// support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addSection()](https:// api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addSection).
+The `cato_wf_section` resource contains the configuration parameters necessary to WAN firewall section (https://support.catonetworks.com/hc/en-us/articles/5590037900701-Adding-Sections-to-the-WAN-and-Internet-Firewalls). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addSection).
 
 ## Example Usage
 
