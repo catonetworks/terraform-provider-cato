@@ -106,7 +106,7 @@ acctest-clean: ## Delete stale acctest resources
 	@ACCTEST_CLEANUP=true go test -tags acctest -count=1 --timeout=5m -run TestCleanupAccTestResources ./internal/acctests/acc
 acctest: acctest-clean ## Run acceptance tests (real API calls)
 	TF_ACC=1 DISABLE_POLICY_RULE_CLEANUP=true go test -tags acctest -count=1 -json --timeout=10m -parallel=1 -p=2 ./internal/acctests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
-acctest-flaky: ## Run acceptance tests - retry on error (real API calls) [ t=<test_dir> ] [ coverage=true ]
+acctest-flaky: ## Run acceptance tests - retry on error (real API calls) [ t=<test_dir> ] [ coverage=true ] (exports DISABLE_POLICY_RULE_CLEANUP like acctest)
 	@TFACC_ENABLE_ACCOUNT_CRUD=$${TFACC_ENABLE_ACCOUNT_CRUD:-false} \
 	TFACC_ACCOUNT_CRUD_ALLOWED=$${TFACC_ACCOUNT_CRUD_ALLOWED:-false} \
 	TFACC_ENABLE_BGP_PEER_CRUD=$${TFACC_ENABLE_BGP_PEER_CRUD:-true} \

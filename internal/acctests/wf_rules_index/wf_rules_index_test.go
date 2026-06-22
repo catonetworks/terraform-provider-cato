@@ -5,7 +5,6 @@ package wf_rules_index
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 	"text/template"
@@ -16,13 +15,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-const envEnableWfRulesIndexCRUD = "TFACC_ENABLE_RULES_INDEX_CRUD"
-
 func TestAccWfRulesIndex(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableWfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk WF rules index acceptance test", envEnableWfRulesIndexCRUD)
-	}
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -60,10 +56,8 @@ func TestAccWfRulesIndex(t *testing.T) {
 
 func TestAccWfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableWfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk WF rules index acceptance test", envEnableWfRulesIndexCRUD)
-	}
-
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex_InvalidSectionStartAfterID")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -82,56 +76,8 @@ func TestAccWfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	})
 }
 
-func TestAccWfRulesIndex_WithRuleData(t *testing.T) {
-	acc.SkipByEnv(t)
-	if os.Getenv(envEnableWfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk WF rules index acceptance test", envEnableWfRulesIndexCRUD)
-	}
-
-	mockSrv := accmock.NewMockServer(t, "TestAccWfRulesIndex_WithRuleData")
-	defer mockSrv.Close()
-	mockSrv.Run()
-
-	cfg := newWfRulesIndexCfg(t)
-	res := "cato_bulk_wf_move_rule.this"
-
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
-		PreCheck:                 acc.CheckCMAVars(t),
-		Steps: []resource.TestStep{
-			{
-				Config: cfg.getTfConfig(3),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "section_data.%", "2"),
-					resource.TestCheckResourceAttr(res, "rule_data.%", "3"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r1.section_name", cfg.name+"-a"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r1.index_in_section", "1"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r2.section_name", cfg.name+"-a"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r2.index_in_section", "2"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-b"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "1"),
-				),
-				ExpectNonEmptyPlan: true, // cato_wf_rule currently refreshes with exceptions drift.
-			},
-			{
-				Config: cfg.getTfConfig(4),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "section_data.%", "2"),
-					resource.TestCheckResourceAttr(res, "rule_data.%", "3"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r1.section_name", cfg.name+"-b"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r1.index_in_section", "1"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r2.section_name", cfg.name+"-a"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r2.index_in_section", "1"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-a"),
-					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "2"),
-				),
-				ExpectNonEmptyPlan: true, // cato_wf_rule currently refreshes with exceptions drift.
-			},
-		},
-	})
-}
+// TestAccWfRulesIndex_WithRuleData lives in package wf_rules_index_with_rule_data so flaky
+// CI (per-directory go test -timeout=5m) gives it its own budget alongside other WAN tests.
 
 type wfRulesIndexCfg struct {
 	name string
@@ -162,6 +108,8 @@ func (p wfRulesIndexCfg) getTfConfig(index int) string {
 	return cfg
 }
 
+// wfRulesIndexTFs holds Terraform configs for section-only bulk move tests (indices 0–2).
+// rule_data cases (former indices 3–4) live in package wf_rules_index_with_rule_data.
 var wfRulesIndexTFs = []string{
 	`resource "cato_wf_section" "first" {
 		at = { position = "LAST_IN_POLICY" }
@@ -214,176 +162,6 @@ var wfRulesIndexTFs = []string{
 	`resource "cato_bulk_wf_move_rule" "this" {
 		section_to_start_after_id = "999999999"
 		section_data = {}
-	}
-	`,
-	`resource "cato_wf_section" "first" {
-		at = { position = "LAST_IN_POLICY" }
-		section = { name = "{{.Name}}-a" }
-	}
-
-	resource "cato_wf_section" "second" {
-		at = { position = "LAST_IN_POLICY" }
-		section = { name = "{{.Name}}-b" }
-	}
-
-	resource "cato_wf_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
-		rule = {
-			name        = "{{.Name}}-r1"
-			enabled     = true
-			action      = "ALLOW"
-			direction   = "BOTH"
-			source      = {}
-			destination = {}
-			application = {}
-			tracking = { event = { enabled = true } }
-		}
-	}
-
-	resource "cato_wf_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
-		rule = {
-			name        = "{{.Name}}-r2"
-			enabled     = true
-			action      = "ALLOW"
-			direction   = "BOTH"
-			source      = {}
-			destination = {}
-			application = {}
-			tracking = { event = { enabled = true } }
-		}
-	}
-
-	resource "cato_wf_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
-		rule = {
-			name        = "{{.Name}}-r3"
-			enabled     = true
-			action      = "ALLOW"
-			direction   = "BOTH"
-			source      = {}
-			destination = {}
-			application = {}
-			tracking = { event = { enabled = true } }
-		}
-	}
-
-	resource "cato_bulk_wf_move_rule" "this" {
-		section_data = {
-			"{{.Name}}-a" = {
-				section_name  = cato_wf_section.first.section.name
-				section_index = 1
-			}
-			"{{.Name}}-b" = {
-				section_name  = cato_wf_section.second.section.name
-				section_index = 2
-			}
-		}
-		rule_data = {
-			"{{.Name}}-r1" = {
-				rule_name        = cato_wf_rule.r1.rule.name
-				section_name     = cato_wf_section.first.section.name
-				index_in_section = 1
-				enabled          = true
-			}
-			"{{.Name}}-r2" = {
-				rule_name        = cato_wf_rule.r2.rule.name
-				section_name     = cato_wf_section.first.section.name
-				index_in_section = 2
-				enabled          = true
-			}
-			"{{.Name}}-r3" = {
-				rule_name        = cato_wf_rule.r3.rule.name
-				section_name     = cato_wf_section.second.section.name
-				index_in_section = 1
-				enabled          = true
-			}
-		}
-	}
-	`,
-	`resource "cato_wf_section" "first" {
-		at = { position = "LAST_IN_POLICY" }
-		section = { name = "{{.Name}}-a" }
-	}
-
-	resource "cato_wf_section" "second" {
-		at = { position = "LAST_IN_POLICY" }
-		section = { name = "{{.Name}}-b" }
-	}
-
-	resource "cato_wf_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
-		rule = {
-			name        = "{{.Name}}-r1"
-			enabled     = true
-			action      = "ALLOW"
-			direction   = "BOTH"
-			source      = {}
-			destination = {}
-			application = {}
-			tracking = { event = { enabled = true } }
-		}
-	}
-
-	resource "cato_wf_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
-		rule = {
-			name        = "{{.Name}}-r2"
-			enabled     = true
-			action      = "ALLOW"
-			direction   = "BOTH"
-			source      = {}
-			destination = {}
-			application = {}
-			tracking = { event = { enabled = true } }
-		}
-	}
-
-	resource "cato_wf_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
-		rule = {
-			name        = "{{.Name}}-r3"
-			enabled     = true
-			action      = "ALLOW"
-			direction   = "BOTH"
-			source      = {}
-			destination = {}
-			application = {}
-			tracking = { event = { enabled = true } }
-		}
-	}
-
-	resource "cato_bulk_wf_move_rule" "this" {
-		section_data = {
-			"{{.Name}}-a" = {
-				section_name  = cato_wf_section.first.section.name
-				section_index = 1
-			}
-			"{{.Name}}-b" = {
-				section_name  = cato_wf_section.second.section.name
-				section_index = 2
-			}
-		}
-		rule_data = {
-			"{{.Name}}-r1" = {
-				rule_name        = cato_wf_rule.r1.rule.name
-				section_name     = cato_wf_section.second.section.name
-				index_in_section = 1
-				enabled          = true
-			}
-			"{{.Name}}-r2" = {
-				rule_name        = cato_wf_rule.r2.rule.name
-				section_name     = cato_wf_section.first.section.name
-				index_in_section = 1
-				enabled          = true
-			}
-			"{{.Name}}-r3" = {
-				rule_name        = cato_wf_rule.r3.rule.name
-				section_name     = cato_wf_section.first.section.name
-				index_in_section = 2
-				enabled          = true
-			}
-		}
 	}
 	`,
 }

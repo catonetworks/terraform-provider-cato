@@ -17,6 +17,8 @@ import (
 
 func TestAccInternetFw_Simple(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Simple")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -91,6 +93,8 @@ func TestAccInternetFw_Simple(t *testing.T) {
 
 func TestAccInternetFw_IDName(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_IDName")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -145,6 +149,8 @@ func TestAccInternetFw_Application(t *testing.T) {
 // TestAccInternetFw_Timeframe tests the datetime format - it should be returned in RFC3339
 func TestAccInternetFw_Timeframe(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Timeframe")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -168,6 +174,8 @@ func TestAccInternetFw_Timeframe(t *testing.T) {
 
 func TestAccInternetFw_InvalidDestinationApplicationRef(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_InvalidDestinationApplicationRef")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -187,6 +195,8 @@ func TestAccInternetFw_InvalidDestinationApplicationRef(t *testing.T) {
 
 func TestAccInternetFw_ServiceEmptyKnownAfterRefresh(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_ServiceEmptyKnownAfterRefresh")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -220,6 +230,8 @@ func TestAccInternetFw_ServiceEmptyKnownAfterRefresh(t *testing.T) {
 
 func TestAccInternetFw_UserID(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_UserID")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -312,6 +324,8 @@ func TestAccInternetFw_UserID(t *testing.T) {
 }
 func TestAccInternetFw_Full(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFw_Full")
 	defer mockSrv.Close()
 	mockSrv.Run()

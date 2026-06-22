@@ -23,6 +23,8 @@ func TestAccWnwRulesIndex(t *testing.T) {
 	if os.Getenv(envEnableWnwRulesIndexCRUD) != "true" {
 		t.Skipf("set %s=true to run bulk WNW rules index acceptance test", envEnableWnwRulesIndexCRUD)
 	}
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccWnwRulesIndex")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -63,6 +65,8 @@ func TestAccWnwRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	if os.Getenv(envEnableWnwRulesIndexCRUD) != "true" {
 		t.Skipf("set %s=true to run bulk WNW rules index acceptance test", envEnableWnwRulesIndexCRUD)
 	}
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 
 	mockSrv := accmock.NewMockServer(t, "TestAccWnwRulesIndex_InvalidSectionStartAfterID")
 	defer mockSrv.Close()
@@ -87,6 +91,8 @@ func TestAccWnwRulesIndex_WithRuleData(t *testing.T) {
 	if os.Getenv(envEnableWnwRulesIndexCRUD) != "true" {
 		t.Skipf("set %s=true to run bulk WNW rules index acceptance test", envEnableWnwRulesIndexCRUD)
 	}
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 
 	mockSrv := accmock.NewMockServer(t, "TestAccWnwRulesIndex_WithRuleData")
 	defer mockSrv.Close()
