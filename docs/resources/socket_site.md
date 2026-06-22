@@ -88,7 +88,7 @@ resource "cato_socket_site" "branch_site" {
 - `name` (String) Site name
 - `native_range` (Attributes) Site lan native range settings (see [below for nested schema](#nestedatt--native_range))
 - `site_location` (Attributes) Site location (see [below for nested schema](#nestedatt--site_location))
-- `site_type` (String) Site type (https:// api.catonetworks.com/documentation/#definition-SiteType)
+- `site_type` (String) Site type (https://api.catonetworks.com/documentation/#definition-SiteType)
 
 ### Optional
 
@@ -97,6 +97,7 @@ resource "cato_socket_site" "branch_site" {
 ### Read-Only
 
 - `id` (String) Site ID
+- `sockets` (Attributes Set) Socket information (see [below for nested schema](#nestedatt--sockets))
 
 <a id="nestedatt--native_range"></a>
 ### Nested Schema for `native_range`
@@ -123,9 +124,11 @@ Read-Only:
 
 - `gateway` (String) Gateway IP address for the native range
 - `interface_id` (String) LAN native range interface id
+- `primary_management_ip` (String) Site native range primary management IP
 - `range_id` (String) Native range ID (base64 encoded identifier)
 - `range_name` (String) Native range name (typically 'Native Range')
 - `range_type` (String) NATIVE
+- `secondary_management_ip` (String) Site native range secondary management IP
 
 <a id="nestedatt--native_range--dhcp_settings"></a>
 ### Nested Schema for `native_range.dhcp_settings`
@@ -156,3 +159,14 @@ Optional:
 - `address` (String) Optionnal address
 - `city` (String) Optionnal city
 - `state_code` (String) Optionnal site state code(can be retrieve from entityLookup)
+
+
+<a id="nestedatt--sockets"></a>
+### Nested Schema for `sockets`
+
+Read-Only:
+
+- `id` (String) Socket ID
+- `is_primary` (Boolean) Indicates if the socket is primary
+- `platform` (String) Socket platform
+- `serial_number` (String) Socket serial number
