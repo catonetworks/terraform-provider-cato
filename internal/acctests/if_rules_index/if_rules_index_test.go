@@ -5,7 +5,6 @@ package if_rules_index
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 	"text/template"
@@ -16,13 +15,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-const envEnableIfRulesIndexCRUD = "TFACC_ENABLE_RULES_INDEX_CRUD"
-
 func TestAccIfRulesIndex(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableIfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk IF rules index acceptance test", envEnableIfRulesIndexCRUD)
-	}
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -60,10 +56,8 @@ func TestAccIfRulesIndex(t *testing.T) {
 
 func TestAccIfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableIfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk IF rules index acceptance test", envEnableIfRulesIndexCRUD)
-	}
-
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_InvalidSectionStartAfterID")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -82,12 +76,13 @@ func TestAccIfRulesIndex_InvalidSectionStartAfterID(t *testing.T) {
 	})
 }
 
+// TestAccIfRulesIndex_WithRuleData exercises bulk IF move with rule_data (including cross-section
+// ordering). Steps do not use ExpectNonEmptyPlan: cato_if_rule refresh usually matches state
+// (WAN wf_rule tests may set ExpectNonEmptyPlan due to known drift).
 func TestAccIfRulesIndex_WithRuleData(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv(envEnableIfRulesIndexCRUD) != "true" {
-		t.Skipf("set %s=true to run bulk IF rules index acceptance test", envEnableIfRulesIndexCRUD)
-	}
-
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccIfRulesIndex_WithRuleData")
 	defer mockSrv.Close()
 	mockSrv.Run()
@@ -225,7 +220,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.first.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r1"
 			enabled = true
@@ -237,7 +235,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_if_rule.r1.rule.id
+		}
 		rule = {
 			name    = "{{.Name}}-r2"
 			enabled = true
@@ -249,7 +250,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.second.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r3"
 			enabled = true
@@ -304,7 +308,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r1" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.first.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r1"
 			enabled = true
@@ -316,7 +323,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r2" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "AFTER_RULE"
+			ref      = cato_if_rule.r1.rule.id
+		}
 		rule = {
 			name    = "{{.Name}}-r2"
 			enabled = true
@@ -328,7 +338,10 @@ var ifRulesIndexTFs = []string{
 	}
 
 	resource "cato_if_rule" "r3" {
-		at = { position = "LAST_IN_POLICY" }
+		at = {
+			position = "FIRST_IN_SECTION"
+			ref      = cato_if_section.second.section.id
+		}
 		rule = {
 			name    = "{{.Name}}-r3"
 			enabled = true

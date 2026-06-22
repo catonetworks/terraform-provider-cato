@@ -16,6 +16,8 @@ import (
 
 func TestAccInternetFwSection(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccInternetFwSection")
 	defer mockSrv.Close()
 	mockSrv.Run()
