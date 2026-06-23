@@ -164,7 +164,8 @@ func hydrateACApplicationRuleAdd(
 		ApplicationCriteria:        acEmptyApplicationCriteriaInput(),
 		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
-	if !p.ApplicationActivitySatisfy.IsNull() && !p.ApplicationActivitySatisfy.IsUnknown() && p.ApplicationActivitySatisfy.ValueString() != "" {
+	satisfy := p.ApplicationActivitySatisfy
+	if !satisfy.IsNull() && !satisfy.IsUnknown() && satisfy.ValueString() != "" {
 		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
 	}
 	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
@@ -220,7 +221,8 @@ func hydrateACDataRuleAdd(
 		ApplicationContext:         acEmptyApplicationContextInput(),
 		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
-	if !p.ApplicationActivitySatisfy.IsNull() && !p.ApplicationActivitySatisfy.IsUnknown() && p.ApplicationActivitySatisfy.ValueString() != "" {
+	satisfy := p.ApplicationActivitySatisfy
+	if !satisfy.IsNull() && !satisfy.IsUnknown() && satisfy.ValueString() != "" {
 		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
 	}
 	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
@@ -307,7 +309,8 @@ func hydrateACFileRuleAdd(
 		FileAttributeSatisfy:       cato_models.ApplicationControlSatisfyAll,
 		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
-	if !p.ApplicationActivitySatisfy.IsNull() && !p.ApplicationActivitySatisfy.IsUnknown() && p.ApplicationActivitySatisfy.ValueString() != "" {
+	satisfy := p.ApplicationActivitySatisfy
+	if !satisfy.IsNull() && !satisfy.IsUnknown() && satisfy.ValueString() != "" {
 		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
 	}
 	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
