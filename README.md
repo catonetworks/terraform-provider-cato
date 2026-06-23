@@ -38,8 +38,8 @@ Using the Provider
 ---------------------------
 Set the following 2 environment variables: 
 ```
-export TF_VAR_token="abcde12345abcde12345"
-export TF_VAR_account_id="12345"
+export TF_VAR_CATO_TOKEN="abcde12345abcde12345"
+export TF_VAR_CATO_ACCOUNT_ID="12345"
 ```
 Optional retry configuration:
 ```
