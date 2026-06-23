@@ -14,6 +14,8 @@ nocolor=''
 test_suite=''
 single_tests=''
 retry_count=3
+result=ok
+count=0
 
 parse_args() {
 	while [ $# -gt 0 ]; do
@@ -51,20 +53,27 @@ run_test() {
 }
 
 should_retry() {
-	grep -E '(internal server error|connection refused|rate limit|reorderPolicyBlockedByActiveSessions|message\\":\\"Internal server\\n")' "$1" > /dev/null && return 0
+	grep -E '(internal server error|connection refused|message\\":\\"Internal server\\n")' "$1" > /dev/null && return 0
 	return 1
 }
+retry_test() {
+	log="$1"; i=$2; count=$3; tdir=$4; cover_file=$5
+	sleeptime=5
 
-# is_shared_policy returns 0 if the package shares the IF/WF/WAN-Network policy
-# cleanup and must run sequentially relative to other shared-policy packages.
-is_shared_policy() {
-	case "$(basename "$1")" in
-		if_rule|if_rules_index|if_section|\
-		wf_rule|wf_rules_index|wf_rules_index_with_rule_data|wf_section|\
-		wnw_rule|wnw_rules_index|wan_network_section)
-			return 0 ;;
-	esac
-	return 1
+	for r in `seq $retry_count`; do
+		if should_retry "$log"; then
+			sleep $sleeptime; sleeptime=$((sleeptime+5))
+			printf "  Retrying test %d/%d:\t%-30s" "$i" "$count" "$(basename "$tdir")"
+
+			cleanup
+			run_test "$tdir" "$cover_file" &> "$log" && { echo OK; return 0; }
+			echo ERROR
+		else
+			result=error
+			return
+		fi
+	done
+	result=error
 }
 
 compute_coverage() {
@@ -72,7 +81,7 @@ compute_coverage() {
 	(
 		cd "$COVERAGE"
 		echo 'mode: atomic' > cover.out
-		cat -- * | grep -v '^mode: atomic' >> cover.out
+		cat [0-9]* | grep -v '^mode: atomic' >> cover.out
 		go tool cover -html=cover.out -o cover.html
 		grep '<option value="file' cover.html | sed -e 's|.*catonetworks/terraform-provider-cato/||' -e 's/<.*//' -e 's/\(.*\) (\([0-9][0-9.%]*\))/\2\t\1/' | sort -n  > cover-stats.txt
 		printf "\nTest Coverage\n~~~~~~~~~~~~~\n"
@@ -97,45 +106,6 @@ get_test_dirs() {
 	test_dirs=$new_tests
 }
 
-# run_stream runs a list of package directories sequentially and exits with 0/1.
-# needs_cleanup=y means call cleanup() before each retry.
-run_stream() {
-	local needs_cleanup="$1"; shift
-	local stream_result=0
-	for tdir in "$@"; do
-		local pkg log_file cover_file
-		pkg=$(basename "$tdir")
-		log_file="$OUT/$pkg"
-		cover_file="$COVERAGE/$pkg"
-
-		printf "Starting:\t%s\n" "$pkg"
-		if run_test "$tdir" "$cover_file" &> "$log_file"; then
-			printf "OK:\t\t%s\n" "$pkg"
-			continue
-		fi
-		printf "ERROR:\t\t%s\n" "$pkg"
-
-		local retried=n
-		for r in $(seq $retry_count); do
-			if ! should_retry "$log_file"; then
-				stream_result=1; break
-			fi
-			sleep 5
-			[ "$needs_cleanup" = y ] && cleanup
-			printf "Retrying (%d/%d):\t%s\n" "$r" "$retry_count" "$pkg"
-			retried=y
-			if run_test "$tdir" "$cover_file" &> "$log_file"; then
-				printf "OK (retry %d):\t%s\n" "$r" "$pkg"
-				break
-			fi
-			printf "ERROR (retry %d):\t%s\n" "$r" "$pkg"
-			[ "$r" = "$retry_count" ] && stream_result=1
-		done
-		[ "$retried" = n ] && stream_result=1
-	done
-	return "$stream_result"
-}
-
 parse_args "$@"
 get_test_dirs # -> $test_dirs
 
@@ -145,61 +115,19 @@ mkdir -p "$OUT" "$COVERAGE"
 [ -n "$test_dirs" ] || { echo "No tests selected"; exit; }
 
 cleanup
-
-# Split packages into two groups:
-#   serial_dirs  — share the IF/WF/WAN-Network policy cleanup; must run sequentially.
-#   parallel_dirs — independent; each runs as its own background job.
-serial_dirs=""
-parallel_dirs=""
+i=0
 for tdir in $test_dirs; do
-	if is_shared_policy "$tdir"; then
-		serial_dirs="$serial_dirs $tdir"
-	else
-		parallel_dirs="$parallel_dirs $tdir"
-	fi
-done
+	i=$((i+1))
+	log_file="$(printf '%03d-%s' "$i" "$(basename "$tdir")")"
 
-serial_count=$(echo $serial_dirs | wc -w | tr -d ' ')
-parallel_count=$(echo $parallel_dirs | wc -w | tr -d ' ')
-# ACCTEST_MAX_PARALLEL caps how many independent packages run at once.
-# Cato's query_entityLookup endpoint rate-limits under heavy concurrency;
-# 6 concurrent streams stay safely below that threshold in practice.
-MAX_PARALLEL="${ACCTEST_MAX_PARALLEL:-6}"
-echo "Parallel streams: $parallel_count independent (max $MAX_PARALLEL concurrent) + 1 shared-policy ($serial_count packages)"
+	printf "Running test %d/%d:\t%-30s" "$i" "$count" "$(basename "$tdir")"
+	run_test "$tdir" "$COVERAGE/$log_file" &> "$OUT/$log_file" && { echo OK; continue; }
+	echo ERROR
 
-# Launch the shared-policy stream as one sequential background subshell.
-# shellcheck disable=SC2086
-(run_stream y $serial_dirs) &
-serial_pid="$!"
-
-# Launch independent packages in batches of MAX_PARALLEL.
-# Batching avoids saturating query_entityLookup while still running far
-# faster than fully sequential.  Each batch is awaited before the next
-# batch starts, so at most MAX_PARALLEL+1 (including the serial stream)
-# packages run concurrently.
-overall_result=0
-batch_pids=""
-batch_size=0
-for tdir in $parallel_dirs; do
-	(run_stream n "$tdir") &
-	batch_pids="$batch_pids $!"
-	batch_size=$((batch_size + 1))
-	if [ "$batch_size" -ge "$MAX_PARALLEL" ]; then
-		for pid in $batch_pids; do
-			wait "$pid" || overall_result=1
-		done
-		batch_pids=""
-		batch_size=0
-	fi
+	retry_test "$OUT/$log_file" "$i" "$count" "$tdir" "$COVERAGE/$log_file"
 done
-# Drain remaining batch.
-for pid in $batch_pids; do
-	wait "$pid" || overall_result=1
-done
-# Wait for the serial stream.
-wait "$serial_pid" || overall_result=1
 
 compute_coverage
 cat "$OUT/"* | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all $nocolor
-if [ "$overall_result" -eq 0 ]; then exit 0; fi
+if [ "$result" = ok ]; then exit 0; fi
 exit 1
