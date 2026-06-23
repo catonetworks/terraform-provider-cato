@@ -206,12 +206,16 @@ func (r *applicationControlSectionResource) Read(ctx context.Context, req resour
 		break
 	}
 
-	atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
-		"position": types.StringValue("LAST_IN_POLICY"),
-		"ref":      types.StringNull(),
-	})
-	resp.Diagnostics.Append(d...)
-	state.At = atObj
+	// Preserve the at block from existing state; the API does not return positioning
+	// info on read. Only default to LAST_IN_POLICY when state has nothing (e.g. import).
+	if state.At.IsNull() || state.At.IsUnknown() {
+		atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+			"position": types.StringValue("LAST_IN_POLICY"),
+			"ref":      types.StringNull(),
+		})
+		resp.Diagnostics.Append(d...)
+		state.At = atObj
+	}
 
 	if !found {
 		tflog.Warn(ctx, "application control section not found, removing from state")

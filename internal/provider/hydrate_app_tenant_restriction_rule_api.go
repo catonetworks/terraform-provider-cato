@@ -70,13 +70,16 @@ func hydrateAppTenantRestrictionAddRuleInput(
 		}
 	}
 
+	data.Schedule = &cato_models.PolicyScheduleInput{ActiveOn: cato_models.PolicyActiveOnEnum(policyActiveOnAlways)}
 	if !rule.Schedule.IsNull() && !rule.Schedule.IsUnknown() {
 		scheduleAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
 		diags.Append(rule.Schedule.As(ctx, &sch, scheduleAsOpts)...)
 		if !diags.HasError() {
-			active := cato_models.PolicyActiveOnEnum(sch.ActiveOn.ValueString())
-			data.Schedule = &cato_models.PolicyScheduleInput{ActiveOn: active}
+			if !sch.ActiveOn.IsNull() && !sch.ActiveOn.IsUnknown() && sch.ActiveOn.ValueString() != "" {
+				data.Schedule.ActiveOn = cato_models.PolicyActiveOnEnum(sch.ActiveOn.ValueString())
+			}
+			active := data.Schedule.ActiveOn
 			if active == cato_models.PolicyActiveOnEnumCustomTimeframe &&
 				!sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
 				ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
@@ -109,6 +112,7 @@ func hydrateAppTenantRestrictionAddRuleInput(
 		}
 	}
 
+	data.Source = &cato_models.AppTenantRestrictionSourceInput{}
 	if !rule.Source.IsNull() && !rule.Source.IsUnknown() {
 		acAdd, _, sdiags := applicationControlSourcePairFromTerraformObject(ctx, rule.Source)
 		diags.Append(sdiags...)
@@ -173,13 +177,17 @@ func hydrateAppTenantRestrictionUpdateRuleInput(
 		}
 	}
 
+	defaultActive := cato_models.PolicyActiveOnEnum(policyActiveOnAlways)
+	upd.Rule.Schedule = &cato_models.PolicyScheduleUpdateInput{ActiveOn: &defaultActive}
 	if !rule.Schedule.IsNull() && !rule.Schedule.IsUnknown() {
 		scheduleAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
 		diags.Append(rule.Schedule.As(ctx, &sch, scheduleAsOpts)...)
 		if !diags.HasError() {
-			active := (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer())
-			upd.Rule.Schedule = &cato_models.PolicyScheduleUpdateInput{ActiveOn: active}
+			if !sch.ActiveOn.IsNull() && !sch.ActiveOn.IsUnknown() && sch.ActiveOn.ValueString() != "" {
+				upd.Rule.Schedule.ActiveOn = (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer())
+			}
+			active := upd.Rule.Schedule.ActiveOn
 			if active != nil && *active == cato_models.PolicyActiveOnEnumCustomTimeframe &&
 				!sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
 				ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
@@ -212,6 +220,7 @@ func hydrateAppTenantRestrictionUpdateRuleInput(
 		}
 	}
 
+	upd.Rule.Source = &cato_models.AppTenantRestrictionSourceUpdateInput{}
 	if !rule.Source.IsNull() && !rule.Source.IsUnknown() {
 		_, acUpd, sdiags := applicationControlSourcePairFromTerraformObject(ctx, rule.Source)
 		diags.Append(sdiags...)

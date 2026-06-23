@@ -52,7 +52,11 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())
-	out.Description = types.StringValue(r.GetDescription())
+	if d := r.GetDescription(); d != "" {
+		out.Description = types.StringValue(d)
+	} else {
+		out.Description = types.StringNull()
+	}
 	out.Enabled = types.BoolValue(r.GetEnabled())
 	if r.GetAction() != nil {
 		out.Action = types.StringValue(string(*r.GetAction()))

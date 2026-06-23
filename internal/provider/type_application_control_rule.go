@@ -12,20 +12,26 @@ var ApplicationControlAccessMethodAttrTypes = map[string]attr.Type{
 	"value":         types.StringType,
 }
 
+var applicationControlActivityAttrTypes = map[string]attr.Type{
+	"activity": NameIDObjectType,
+}
+
 // applicationControlTypedRuleAttrTypes is shared shape for application/data/file nested blocks.
 var applicationControlTypedRuleAttrTypes = map[string]attr.Type{
-	"action":                 types.StringType,
-	"severity":               types.StringType,
-	"schedule":               ScheduleObjectType,
-	"source":                 ApplicationControlSourceObjectType,
-	"tracking":               TrackingObjectType,
-	"device":                 types.SetType{ElemType: NameIDObjectType},
-	"access_method":          types.ListType{ElemType: types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}},
-	"application":            WanApplicationObjectType,
-	"action_config":          types.ObjectType{AttrTypes: applicationControlActionConfigAttrTypes},
-	"file_attribute":         types.ListType{ElemType: types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}},
-	"file_attribute_satisfy": types.StringType,
-	"dlp_profile":            types.ObjectType{AttrTypes: applicationControlDlpProfileAttrTypes},
+	"action":                       types.StringType,
+	"severity":                     types.StringType,
+	"schedule":                     ScheduleObjectType,
+	"source":                       ApplicationControlSourceObjectType,
+	"tracking":                     TrackingObjectType,
+	"device":                       types.SetType{ElemType: NameIDObjectType},
+	"access_method":                types.ListType{ElemType: types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}},
+	"application":                  WanApplicationObjectType,
+	"application_activity":         types.ListType{ElemType: types.ObjectType{AttrTypes: applicationControlActivityAttrTypes}},
+	"application_activity_satisfy": types.StringType,
+	"action_config":                types.ObjectType{AttrTypes: applicationControlActionConfigAttrTypes},
+	"file_attribute":               types.ListType{ElemType: types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}},
+	"file_attribute_satisfy":       types.StringType,
+	"dlp_profile":                  types.ObjectType{AttrTypes: applicationControlDlpProfileAttrTypes},
 }
 
 var applicationControlActionConfigAttrTypes = map[string]attr.Type{
@@ -83,18 +89,25 @@ type ApplicationControlRuleRulePlan struct {
 
 // ApplicationControlTypedRulePlan maps application_rule / data_rule / file_rule blocks.
 type ApplicationControlTypedRulePlan struct {
-	Action               types.String `tfsdk:"action"`
-	Severity             types.String `tfsdk:"severity"`
-	Schedule             types.Object `tfsdk:"schedule"`
-	Source               types.Object `tfsdk:"source"`
-	Tracking             types.Object `tfsdk:"tracking"`
-	Device               types.Set    `tfsdk:"device"`
-	AccessMethod         types.List   `tfsdk:"access_method"`
-	Application          types.Object `tfsdk:"application"`
-	ActionConfig         types.Object `tfsdk:"action_config"`
-	FileAttribute        types.List   `tfsdk:"file_attribute"`
-	FileAttributeSatisfy types.String `tfsdk:"file_attribute_satisfy"`
-	DlpProfile           types.Object `tfsdk:"dlp_profile"`
+	Action                     types.String `tfsdk:"action"`
+	Severity                   types.String `tfsdk:"severity"`
+	Schedule                   types.Object `tfsdk:"schedule"`
+	Source                     types.Object `tfsdk:"source"`
+	Tracking                   types.Object `tfsdk:"tracking"`
+	Device                     types.Set    `tfsdk:"device"`
+	AccessMethod               types.List   `tfsdk:"access_method"`
+	Application                types.Object `tfsdk:"application"`
+	ApplicationActivity        types.List   `tfsdk:"application_activity"`
+	ApplicationActivitySatisfy types.String `tfsdk:"application_activity_satisfy"`
+	ActionConfig               types.Object `tfsdk:"action_config"`
+	FileAttribute              types.List   `tfsdk:"file_attribute"`
+	FileAttributeSatisfy       types.String `tfsdk:"file_attribute_satisfy"`
+	DlpProfile                 types.Object `tfsdk:"dlp_profile"`
+}
+
+// ApplicationControlActivityPlan is one application_activity element.
+type ApplicationControlActivityPlan struct {
+	Activity types.Object `tfsdk:"activity"`
 }
 
 // ApplicationControlAccessMethodPlan is one access_method element.

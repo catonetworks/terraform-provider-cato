@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -172,25 +171,19 @@ func (r *appTenantRestrictionRuleResource) Schema(_ context.Context, _ resource.
 							},
 							"custom_timeframe": schema.SingleNestedAttribute{
 								Optional: true,
-								Computed: true,
 								Attributes: map[string]schema.Attribute{
-									"from": schema.StringAttribute{Optional: true, Computed: true},
-									"to":   schema.StringAttribute{Optional: true, Computed: true},
+									"from": schema.StringAttribute{Optional: true},
+									"to":   schema.StringAttribute{Optional: true},
 								},
 							},
 							"custom_recurring": schema.SingleNestedAttribute{
 								Optional: true,
-								Computed: true,
 								Attributes: map[string]schema.Attribute{
-									"from": schema.StringAttribute{Optional: true, Computed: true},
-									"to":   schema.StringAttribute{Optional: true, Computed: true},
+									"from": schema.StringAttribute{Optional: true},
+									"to":   schema.StringAttribute{Optional: true},
 									"days": schema.ListAttribute{
 										ElementType: types.StringType,
 										Optional:    true,
-										Computed:    true,
-										PlanModifiers: []planmodifier.List{
-											listplanmodifier.UseStateForUnknown(),
-										},
 									},
 								},
 							},
@@ -292,6 +285,14 @@ func (r *appTenantRestrictionRuleResource) Create(ctx context.Context, req resou
 
 	rulePlan, hdiags := hydrateAppTenantRestrictionRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
+
+	// Preserve plan headers — the API never returns sensitive header values.
+	var planRule AppTenantRestrictionRuleRulePlan
+	resp.Diagnostics.Append(plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+	if !planRule.Headers.IsNull() && !planRule.Headers.IsUnknown() {
+		rulePlan.Headers = planRule.Headers
+	}
+
 	ruleObj, odiags := types.ObjectValueFrom(ctx, AppTenantRestrictionRuleRuleAttrTypes, rulePlan)
 	resp.Diagnostics.Append(odiags...)
 	if resp.Diagnostics.HasError() {
@@ -342,18 +343,29 @@ func (r *appTenantRestrictionRuleResource) Read(ctx context.Context, req resourc
 
 	hydrated, hdiags := hydrateAppTenantRestrictionRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
+
+	// Preserve headers from state — the API never returns sensitive header values.
+	if !rulePlan.Headers.IsNull() && !rulePlan.Headers.IsUnknown() {
+		hydrated.Headers = rulePlan.Headers
+	}
+
 	ruleObj, odiags := types.ObjectValueFrom(ctx, AppTenantRestrictionRuleRuleAttrTypes, hydrated)
 	resp.Diagnostics.Append(odiags...)
 
-	atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
-		"position": types.StringValue("LAST_IN_POLICY"),
-		"ref":      types.StringNull(),
-	})
-	resp.Diagnostics.Append(d...)
+	// Preserve the 'at' block from state — the API does not return placement
+	// information, so we keep whatever was previously configured. On import the
+	// state has no 'at', so we fall back to the safe default LAST_IN_POLICY.
+	if state.At.IsNull() || state.At.IsUnknown() {
+		atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+			"position": types.StringValue("LAST_IN_POLICY"),
+			"ref":      types.StringNull(),
+		})
+		resp.Diagnostics.Append(d...)
+		state.At = atObj
+	}
 
 	state.ID = types.StringValue(cur.GetID())
 	state.Rule = ruleObj
-	state.At = atObj
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
@@ -443,6 +455,12 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 
 	rulePlan, hdiags := hydrateAppTenantRestrictionRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
+
+	// Preserve plan headers — the API never returns sensitive header values.
+	if !rule.Headers.IsNull() && !rule.Headers.IsUnknown() {
+		rulePlan.Headers = rule.Headers
+	}
+
 	ruleObj, odiags := types.ObjectValueFrom(ctx, AppTenantRestrictionRuleRuleAttrTypes, rulePlan)
 	resp.Diagnostics.Append(odiags...)
 	if resp.Diagnostics.HasError() {

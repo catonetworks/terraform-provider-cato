@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -25,25 +26,19 @@ func applicationControlScheduleSchemaAttributes() map[string]schema.Attribute {
 		},
 		"custom_timeframe": schema.SingleNestedAttribute{
 			Optional: true,
-			Computed: true,
 			Attributes: map[string]schema.Attribute{
-				"from": schema.StringAttribute{Optional: true, Computed: true},
-				"to":   schema.StringAttribute{Optional: true, Computed: true},
+				"from": schema.StringAttribute{Optional: true},
+				"to":   schema.StringAttribute{Optional: true},
 			},
 		},
 		"custom_recurring": schema.SingleNestedAttribute{
 			Optional: true,
-			Computed: true,
 			Attributes: map[string]schema.Attribute{
-				"from": schema.StringAttribute{Optional: true, Computed: true},
-				"to":   schema.StringAttribute{Optional: true, Computed: true},
+				"from": schema.StringAttribute{Optional: true},
+				"to":   schema.StringAttribute{Optional: true},
 				"days": schema.ListAttribute{
 					ElementType: types.StringType,
 					Optional:    true,
-					Computed:    true,
-					PlanModifiers: []planmodifier.List{
-						listplanmodifier.UseStateForUnknown(),
-					},
 				},
 			},
 		},
@@ -109,16 +104,25 @@ func applicationControlTrackingSchemaAttributes() map[string]schema.Attribute {
 					Optional:     true,
 					Computed:     true,
 					NestedObject: nameID,
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.UseStateForUnknown(),
+					},
 				},
 				"webhook": schema.SetNestedAttribute{
 					Optional:     true,
 					Computed:     true,
 					NestedObject: nameID,
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.UseStateForUnknown(),
+					},
 				},
 				"mailing_list": schema.SetNestedAttribute{
 					Optional:     true,
 					Computed:     true,
 					NestedObject: nameID,
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.UseStateForUnknown(),
+					},
 				},
 			},
 		},
@@ -204,11 +208,17 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			Optional:     true,
 			Computed:     true,
 			NestedObject: deviceNested,
+			PlanModifiers: []planmodifier.Set{
+				setplanmodifier.UseStateForUnknown(),
+			},
 		},
 		"access_method": schema.ListNestedAttribute{
 			Description: "Access method rows",
 			Optional:    true,
 			Computed:    true,
+			PlanModifiers: []planmodifier.List{
+				listplanmodifier.UseStateForUnknown(),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"access_method": schema.StringAttribute{Required: true},
@@ -225,6 +235,50 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 				objectplanmodifier.UseStateForUnknown(),
 			},
 			Attributes: wanApplicationSchemaAttributes(),
+		},
+		"application_activity": schema.ListNestedAttribute{
+			Description: "Application activities to match (required for file/data rules when an application is specified)",
+			Optional:    true,
+			Computed:    true,
+			PlanModifiers: []planmodifier.List{
+				listplanmodifier.UseStateForUnknown(),
+			},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"activity": schema.SingleNestedAttribute{
+						Required: true,
+						Attributes: map[string]schema.Attribute{
+							"id": schema.StringAttribute{
+								Optional: true,
+								Computed: true,
+								Validators: []validator.String{
+									stringvalidator.ConflictsWith(path.Expressions{
+										path.MatchRelative().AtParent().AtName("name"),
+									}...),
+								},
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+							"name": schema.StringAttribute{
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+						},
+					},
+				},
+			},
+		},
+		"application_activity_satisfy": schema.StringAttribute{
+			Description: "How application activities are combined (ALL | ANY)",
+			Optional:    true,
+			Computed:    true,
+			Default:     stringdefault.StaticString("ALL"),
+			Validators: []validator.String{
+				stringvalidator.OneOf(
+					string(cato_models.ApplicationControlSatisfyAll),
+					string(cato_models.ApplicationControlSatisfyAny),
+				),
+			},
 		},
 		"action_config": schema.SingleNestedAttribute{
 			Description: "Action configuration (e.g. user notifications)",
@@ -263,6 +317,9 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			Description: "File attribute rows (data/file rules)",
 			Optional:    true,
 			Computed:    true,
+			PlanModifiers: []planmodifier.List{
+				listplanmodifier.UseStateForUnknown(),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"file_attribute": schema.StringAttribute{Required: true},
@@ -275,6 +332,9 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			Description: "How file attributes are combined",
 			Optional:    true,
 			Computed:    true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
 			Validators: []validator.String{
 				stringvalidator.OneOf(
 					string(cato_models.ApplicationControlSatisfyAll),

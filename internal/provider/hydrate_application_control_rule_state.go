@@ -24,7 +24,11 @@ func hydrateApplicationControlRuleStateFromClient(
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())
-	out.Description = types.StringValue(r.GetDescription())
+	if d := r.GetDescription(); d != "" {
+		out.Description = types.StringValue(d)
+	} else {
+		out.Description = types.StringNull()
+	}
 	out.Enabled = types.BoolValue(r.GetEnabled())
 	out.RuleType = types.StringValue(string(r.RuleType))
 
@@ -79,6 +83,11 @@ func applicationControlTypedRuleStateFromApplicationRule(
 	appObj := wanApplicationObjectFromApplicationRuleApplication(ctx, ar.GetApplication(), &diags)
 
 	acList := acAccessMethodListFromApplicationRule(ctx, ar.GetAccessMethod(), &diags)
+	activityList := acApplicationActivityListFromApplicationRule(ar.GetApplicationActivity(), &diags)
+	actSatisfy := types.StringValue("ALL")
+	if s := ar.GetApplicationActivitySatisfy(); s != nil {
+		actSatisfy = types.StringValue(string(*s))
+	}
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := ar.GetActionConfig(); cfg != nil {
@@ -91,18 +100,20 @@ func applicationControlTypedRuleStateFromApplicationRule(
 	}
 
 	attrs := map[string]attr.Value{
-		"action":                 types.StringValue(ar.GetAction().String()),
-		"severity":               types.StringValue(ar.GetSeverity().String()),
-		"schedule":               schObj,
-		"source":                 srcObj,
-		"tracking":               trObj,
-		"device":                 parseNameIDList(ctx, ar.GetDevice(), "application_rule.device"),
-		"access_method":          acList,
-		"application":            appObj,
-		"action_config":          actionCfg,
-		"file_attribute":         types.ListNull(types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}),
-		"file_attribute_satisfy": types.StringNull(),
-		"dlp_profile":            types.ObjectNull(applicationControlDlpProfileAttrTypes),
+		"action":                       types.StringValue(ar.GetAction().String()),
+		"severity":                     types.StringValue(ar.GetSeverity().String()),
+		"schedule":                     schObj,
+		"source":                       srcObj,
+		"tracking":                     trObj,
+		"device":                       parseNameIDList(ctx, ar.GetDevice(), "application_rule.device"),
+		"access_method":                acList,
+		"application":                  appObj,
+		"application_activity":         activityList,
+		"application_activity_satisfy": actSatisfy,
+		"action_config":                actionCfg,
+		"file_attribute":               types.ListNull(types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}),
+		"file_attribute_satisfy":       types.StringNull(),
+		"dlp_profile":                  types.ObjectNull(applicationControlDlpProfileAttrTypes),
 	}
 	o, d := types.ObjectValue(applicationControlTypedRuleAttrTypes, attrs)
 	diags.Append(d...)
@@ -123,6 +134,11 @@ func applicationControlTypedRuleStateFromDataRule(
 	trObj := acTrackingObjectFromDataRuleTracking(ctx, dr.GetTracking(), &diags)
 	appObj := wanApplicationObjectFromDataRuleApplication(ctx, dr.GetApplication(), &diags)
 	acList := acAccessMethodListFromDataRule(ctx, dr.GetAccessMethod(), &diags)
+	activityList := acApplicationActivityListFromDataRule(dr.GetApplicationActivity(), &diags)
+	actSatisfy := types.StringValue("ALL")
+	if s := dr.GetApplicationActivitySatisfy(); s != nil {
+		actSatisfy = types.StringValue(string(*s))
+	}
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := dr.GetActionConfig(); cfg != nil {
@@ -147,18 +163,20 @@ func applicationControlTypedRuleStateFromDataRule(
 	faList := acFileAttributeListFromDataRule(ctx, dr.GetFileAttribute(), &diags)
 
 	attrs := map[string]attr.Value{
-		"action":                 types.StringValue(dr.GetAction().String()),
-		"severity":               types.StringValue(dr.GetSeverity().String()),
-		"schedule":               schObj,
-		"source":                 srcObj,
-		"tracking":               trObj,
-		"device":                 parseNameIDList(ctx, dr.GetDevice(), "data_rule.device"),
-		"access_method":          acList,
-		"application":            appObj,
-		"action_config":          actionCfg,
-		"file_attribute":         faList,
-		"file_attribute_satisfy": types.StringValue(dr.GetFileAttributeSatisfy().String()),
-		"dlp_profile":            dlpObj,
+		"action":                       types.StringValue(dr.GetAction().String()),
+		"severity":                     types.StringValue(dr.GetSeverity().String()),
+		"schedule":                     schObj,
+		"source":                       srcObj,
+		"tracking":                     trObj,
+		"device":                       parseNameIDList(ctx, dr.GetDevice(), "data_rule.device"),
+		"access_method":                acList,
+		"application":                  appObj,
+		"application_activity":         activityList,
+		"application_activity_satisfy": actSatisfy,
+		"action_config":                actionCfg,
+		"file_attribute":               faList,
+		"file_attribute_satisfy":       types.StringValue(dr.GetFileAttributeSatisfy().String()),
+		"dlp_profile":                  dlpObj,
 	}
 	o, d := types.ObjectValue(applicationControlTypedRuleAttrTypes, attrs)
 	diags.Append(d...)
@@ -179,6 +197,11 @@ func applicationControlTypedRuleStateFromFileRule(
 	trObj := acTrackingObjectFromFileRuleTracking(ctx, fr.GetTracking(), &diags)
 	appObj := wanApplicationObjectFromFileRuleApplication(ctx, fr.GetApplication(), &diags)
 	acList := acAccessMethodListFromFileRule(ctx, fr.GetAccessMethod(), &diags)
+	activityList := acApplicationActivityListFromFileRule(fr.GetApplicationActivity(), &diags)
+	actSatisfy := types.StringValue("ALL")
+	if s := fr.GetApplicationActivitySatisfy(); s != nil {
+		actSatisfy = types.StringValue(string(*s))
+	}
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := fr.GetActionConfig(); cfg != nil {
@@ -193,18 +216,20 @@ func applicationControlTypedRuleStateFromFileRule(
 	faList := acFileAttributeListFromFileRule(ctx, fr.GetFileAttribute(), &diags)
 
 	attrs := map[string]attr.Value{
-		"action":                 types.StringValue(fr.GetAction().String()),
-		"severity":               types.StringValue(fr.GetSeverity().String()),
-		"schedule":               schObj,
-		"source":                 srcObj,
-		"tracking":               trObj,
-		"device":                 parseNameIDList(ctx, fr.GetDevice(), "file_rule.device"),
-		"access_method":          acList,
-		"application":            appObj,
-		"action_config":          actionCfg,
-		"file_attribute":         faList,
-		"file_attribute_satisfy": types.StringValue(fr.GetFileAttributeSatisfy().String()),
-		"dlp_profile":            types.ObjectNull(applicationControlDlpProfileAttrTypes),
+		"action":                       types.StringValue(fr.GetAction().String()),
+		"severity":                     types.StringValue(fr.GetSeverity().String()),
+		"schedule":                     schObj,
+		"source":                       srcObj,
+		"tracking":                     trObj,
+		"device":                       parseNameIDList(ctx, fr.GetDevice(), "file_rule.device"),
+		"access_method":                acList,
+		"application":                  appObj,
+		"application_activity":         activityList,
+		"application_activity_satisfy": actSatisfy,
+		"action_config":                actionCfg,
+		"file_attribute":               faList,
+		"file_attribute_satisfy":       types.StringValue(fr.GetFileAttributeSatisfy().String()),
+		"dlp_profile":                  types.ObjectNull(applicationControlDlpProfileAttrTypes),
 	}
 	o, d := types.ObjectValue(applicationControlTypedRuleAttrTypes, attrs)
 	diags.Append(d...)
@@ -503,9 +528,9 @@ func acTrackingObjectFromApplicationRuleTracking(
 	alObj, d := types.ObjectValue(TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
-		"subscription_group": parseNameIDList(ctx, al.GetSubscriptionGroup(), "application_rule.tracking.alert.subscription_group"),
-		"webhook":            parseNameIDList(ctx, al.GetWebhook(), "application_rule.tracking.alert.webhook"),
-		"mailing_list":       parseNameIDList(ctx, al.GetMailingList(), "application_rule.tracking.alert.mailing_list"),
+		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "application_rule.tracking.alert.subscription_group"),
+		"webhook":            parseNameIDListOrEmptySet(ctx, al.GetWebhook(), "application_rule.tracking.alert.webhook"),
+		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "application_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(TrackingAttrTypes, map[string]attr.Value{
@@ -537,9 +562,9 @@ func acTrackingObjectFromDataRuleTracking(
 	alObj, d := types.ObjectValue(TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
-		"subscription_group": parseNameIDList(ctx, al.GetSubscriptionGroup(), "data_rule.tracking.alert.subscription_group"),
-		"webhook":            parseNameIDList(ctx, al.GetWebhook(), "data_rule.tracking.alert.webhook"),
-		"mailing_list":       parseNameIDList(ctx, al.GetMailingList(), "data_rule.tracking.alert.mailing_list"),
+		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "data_rule.tracking.alert.subscription_group"),
+		"webhook":            parseNameIDListOrEmptySet(ctx, al.GetWebhook(), "data_rule.tracking.alert.webhook"),
+		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "data_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(TrackingAttrTypes, map[string]attr.Value{
@@ -571,9 +596,9 @@ func acTrackingObjectFromFileRuleTracking(
 	alObj, d := types.ObjectValue(TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
-		"subscription_group": parseNameIDList(ctx, al.GetSubscriptionGroup(), "file_rule.tracking.alert.subscription_group"),
-		"webhook":            parseNameIDList(ctx, al.GetWebhook(), "file_rule.tracking.alert.webhook"),
-		"mailing_list":       parseNameIDList(ctx, al.GetMailingList(), "file_rule.tracking.alert.mailing_list"),
+		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "file_rule.tracking.alert.subscription_group"),
+		"webhook":            parseNameIDListOrEmptySet(ctx, al.GetWebhook(), "file_rule.tracking.alert.webhook"),
+		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "file_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(TrackingAttrTypes, map[string]attr.Value{
@@ -613,18 +638,21 @@ func wanApplicationObjectFromApplicationRuleApplication(
 	if p := a.GetSanctionedAppsCategory(); p != nil {
 		sac = append(sac, p)
 	}
+	emptyStrList, _ := types.ListValue(types.StringType, []attr.Value{})
+	emptyIPRangeList, _ := types.ListValue(FromToObjectType, []attr.Value{})
+	emptyNameIDSet, _ := types.SetValue(NameIDObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              parseNameIDList(ctx, apps, "application_rule.application.application"),
-		"custom_app":               parseNameIDList(ctx, customs, "application_rule.application.custom_app"),
-		"app_category":             parseNameIDList(ctx, cats, "application_rule.application.app_category"),
-		"custom_category":          parseNameIDList(ctx, customCats, "application_rule.application.custom_category"),
-		"sanctioned_apps_category": parseNameIDList(ctx, sac, "application_rule.application.sanctioned_apps_category"),
-		"domain":                   types.ListNull(types.StringType),
-		"fqdn":                     types.ListNull(types.StringType),
-		"ip":                       types.ListNull(types.StringType),
-		"subnet":                   types.ListNull(types.StringType),
-		"ip_range":                 types.ListNull(FromToObjectType),
-		"global_ip_range":          types.SetNull(NameIDObjectType),
+		"application":              parseNameIDListOrEmptySet(ctx, apps, "application_rule.application.application"),
+		"custom_app":               parseNameIDListOrEmptySet(ctx, customs, "application_rule.application.custom_app"),
+		"app_category":             parseNameIDListOrEmptySet(ctx, cats, "application_rule.application.app_category"),
+		"custom_category":          parseNameIDListOrEmptySet(ctx, customCats, "application_rule.application.custom_category"),
+		"sanctioned_apps_category": parseNameIDListOrEmptySet(ctx, sac, "application_rule.application.sanctioned_apps_category"),
+		"domain":                   emptyStrList,
+		"fqdn":                     emptyStrList,
+		"ip":                       emptyStrList,
+		"subnet":                   emptyStrList,
+		"ip_range":                 emptyIPRangeList,
+		"global_ip_range":          emptyNameIDSet,
 	}
 	o, d := types.ObjectValue(WanApplicationAttrTypes, attrs)
 	diags.Append(d...)
@@ -659,18 +687,21 @@ func wanApplicationObjectFromDataRuleApplication(
 	if p := a.GetSanctionedAppsCategory(); p != nil {
 		sac = append(sac, p)
 	}
+	emptyStrList2, _ := types.ListValue(types.StringType, []attr.Value{})
+	emptyIPRangeList2, _ := types.ListValue(FromToObjectType, []attr.Value{})
+	emptyNameIDSet2, _ := types.SetValue(NameIDObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              parseNameIDList(ctx, apps, "data_rule.application.application"),
-		"custom_app":               parseNameIDList(ctx, customs, "data_rule.application.custom_app"),
-		"app_category":             parseNameIDList(ctx, cats, "data_rule.application.app_category"),
-		"custom_category":          parseNameIDList(ctx, customCats, "data_rule.application.custom_category"),
-		"sanctioned_apps_category": parseNameIDList(ctx, sac, "data_rule.application.sanctioned_apps_category"),
-		"domain":                   types.ListNull(types.StringType),
-		"fqdn":                     types.ListNull(types.StringType),
-		"ip":                       types.ListNull(types.StringType),
-		"subnet":                   types.ListNull(types.StringType),
-		"ip_range":                 types.ListNull(FromToObjectType),
-		"global_ip_range":          types.SetNull(NameIDObjectType),
+		"application":              parseNameIDListOrEmptySet(ctx, apps, "data_rule.application.application"),
+		"custom_app":               parseNameIDListOrEmptySet(ctx, customs, "data_rule.application.custom_app"),
+		"app_category":             parseNameIDListOrEmptySet(ctx, cats, "data_rule.application.app_category"),
+		"custom_category":          parseNameIDListOrEmptySet(ctx, customCats, "data_rule.application.custom_category"),
+		"sanctioned_apps_category": parseNameIDListOrEmptySet(ctx, sac, "data_rule.application.sanctioned_apps_category"),
+		"domain":                   emptyStrList2,
+		"fqdn":                     emptyStrList2,
+		"ip":                       emptyStrList2,
+		"subnet":                   emptyStrList2,
+		"ip_range":                 emptyIPRangeList2,
+		"global_ip_range":          emptyNameIDSet2,
 	}
 	o, d := types.ObjectValue(WanApplicationAttrTypes, attrs)
 	diags.Append(d...)
@@ -705,18 +736,21 @@ func wanApplicationObjectFromFileRuleApplication(
 	if p := a.GetSanctionedAppsCategory(); p != nil {
 		sac = append(sac, p)
 	}
+	emptyStrList3, _ := types.ListValue(types.StringType, []attr.Value{})
+	emptyIPRangeList3, _ := types.ListValue(FromToObjectType, []attr.Value{})
+	emptyNameIDSet3, _ := types.SetValue(NameIDObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              parseNameIDList(ctx, apps, "file_rule.application.application"),
-		"custom_app":               parseNameIDList(ctx, customs, "file_rule.application.custom_app"),
-		"app_category":             parseNameIDList(ctx, cats, "file_rule.application.app_category"),
-		"custom_category":          parseNameIDList(ctx, customCats, "file_rule.application.custom_category"),
-		"sanctioned_apps_category": parseNameIDList(ctx, sac, "file_rule.application.sanctioned_apps_category"),
-		"domain":                   types.ListNull(types.StringType),
-		"fqdn":                     types.ListNull(types.StringType),
-		"ip":                       types.ListNull(types.StringType),
-		"subnet":                   types.ListNull(types.StringType),
-		"ip_range":                 types.ListNull(FromToObjectType),
-		"global_ip_range":          types.SetNull(NameIDObjectType),
+		"application":              parseNameIDListOrEmptySet(ctx, apps, "file_rule.application.application"),
+		"custom_app":               parseNameIDListOrEmptySet(ctx, customs, "file_rule.application.custom_app"),
+		"app_category":             parseNameIDListOrEmptySet(ctx, cats, "file_rule.application.app_category"),
+		"custom_category":          parseNameIDListOrEmptySet(ctx, customCats, "file_rule.application.custom_category"),
+		"sanctioned_apps_category": parseNameIDListOrEmptySet(ctx, sac, "file_rule.application.sanctioned_apps_category"),
+		"domain":                   emptyStrList3,
+		"fqdn":                     emptyStrList3,
+		"ip":                       emptyStrList3,
+		"subnet":                   emptyStrList3,
+		"ip_range":                 emptyIPRangeList3,
+		"global_ip_range":          emptyNameIDSet3,
 	}
 	o, d := types.ObjectValue(WanApplicationAttrTypes, attrs)
 	diags.Append(d...)
@@ -911,4 +945,69 @@ func acFileAttributeListFromFileRule(
 	lst, d := types.ListValue(types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}, elems)
 	diags.Append(d...)
 	return lst
+}
+
+// acBuildActivityList builds the application_activity list from pre-extracted (id, name) pairs.
+func acBuildActivityList(pairs [][2]string, diags *diag.Diagnostics) types.List {
+	elems := make([]attr.Value, 0, len(pairs))
+	for _, p := range pairs {
+		actObj, d := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			"id":   types.StringValue(p[0]),
+			"name": types.StringValue(p[1]),
+		})
+		diags.Append(d...)
+		outer, d2 := types.ObjectValue(applicationControlActivityAttrTypes, map[string]attr.Value{
+			"activity": actObj,
+		})
+		diags.Append(d2...)
+		elems = append(elems, outer)
+	}
+	lst, d := types.ListValue(types.ObjectType{AttrTypes: applicationControlActivityAttrTypes}, elems)
+	diags.Append(d...)
+	return lst
+}
+
+func acApplicationActivityListFromApplicationRule(
+	rows []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_ApplicationRule_ApplicationActivity,
+	diags *diag.Diagnostics,
+) types.List {
+	pairs := make([][2]string, 0, len(rows))
+	for _, r := range rows {
+		if r == nil {
+			continue
+		}
+		a := r.GetActivity()
+		pairs = append(pairs, [2]string{a.GetID(), a.GetName()})
+	}
+	return acBuildActivityList(pairs, diags)
+}
+
+func acApplicationActivityListFromDataRule(
+	rows []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_DataRule_ApplicationActivity,
+	diags *diag.Diagnostics,
+) types.List {
+	pairs := make([][2]string, 0, len(rows))
+	for _, r := range rows {
+		if r == nil {
+			continue
+		}
+		a := r.GetActivity()
+		pairs = append(pairs, [2]string{a.GetID(), a.GetName()})
+	}
+	return acBuildActivityList(pairs, diags)
+}
+
+func acApplicationActivityListFromFileRule(
+	rows []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_FileRule_ApplicationActivity,
+	diags *diag.Diagnostics,
+) types.List {
+	pairs := make([][2]string, 0, len(rows))
+	for _, r := range rows {
+		if r == nil {
+			continue
+		}
+		a := r.GetActivity()
+		pairs = append(pairs, [2]string{a.GetID(), a.GetName()})
+	}
+	return acBuildActivityList(pairs, diags)
 }

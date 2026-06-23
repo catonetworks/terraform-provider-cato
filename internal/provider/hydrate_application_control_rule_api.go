@@ -162,7 +162,12 @@ func hydrateACApplicationRuleAdd(
 		ApplicationCriteriaSatisfy: cato_models.ApplicationControlSatisfyAll,
 		ApplicationContext:         acEmptyApplicationContextInput(),
 		ApplicationCriteria:        acEmptyApplicationCriteriaInput(),
+		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
+	if !p.ApplicationActivitySatisfy.IsNull() && !p.ApplicationActivitySatisfy.IsUnknown() && p.ApplicationActivitySatisfy.ValueString() != "" {
+		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
+	}
+	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
 	diags.Append(acFillCommonAdd(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
@@ -213,8 +218,13 @@ func hydrateACDataRuleAdd(
 		ApplicationActivitySatisfy: cato_models.ApplicationControlSatisfyAll,
 		FileAttributeSatisfy:       cato_models.ApplicationControlSatisfyAll,
 		ApplicationContext:         acEmptyApplicationContextInput(),
+		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
-	if !p.FileAttributeSatisfy.IsNull() {
+	if !p.ApplicationActivitySatisfy.IsNull() && !p.ApplicationActivitySatisfy.IsUnknown() && p.ApplicationActivitySatisfy.ValueString() != "" {
+		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
+	}
+	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		out.FileAttributeSatisfy = cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 	}
 	diags.Append(acFillCommonAdd(
@@ -237,7 +247,7 @@ func hydrateACDataRuleAdd(
 		return nil, diags
 	}
 	out.DlpProfile = dlp
-	if !p.FileAttribute.IsNull() {
+	if !p.FileAttribute.IsNull() && !p.FileAttribute.IsUnknown() {
 		out.FileAttribute, diags = acFileAttributesAdd(ctx, p.FileAttribute, diags)
 	}
 	return out, diags
@@ -262,7 +272,7 @@ func hydrateACDataRuleUpdate(
 		v := cato_models.ApplicationControlSeverity(p.Severity.ValueString())
 		out.Severity = &v
 	}
-	if !p.FileAttributeSatisfy.IsNull() {
+	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		v := cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 		out.FileAttributeSatisfy = &v
 	}
@@ -274,7 +284,7 @@ func hydrateACDataRuleUpdate(
 		diags.Append(dlpDiags...)
 		out.DlpProfile = dlp
 	}
-	if !p.FileAttribute.IsNull() {
+	if !p.FileAttribute.IsNull() && !p.FileAttribute.IsUnknown() {
 		out.FileAttribute, diags = acFileAttributesUpdate(ctx, p.FileAttribute, diags)
 	}
 	return out, diags
@@ -295,14 +305,19 @@ func hydrateACFileRuleAdd(
 		Severity:                   cato_models.ApplicationControlSeverity(p.Severity.ValueString()),
 		ApplicationActivitySatisfy: cato_models.ApplicationControlSatisfyAll,
 		FileAttributeSatisfy:       cato_models.ApplicationControlSatisfyAll,
+		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
-	if !p.FileAttributeSatisfy.IsNull() {
+	if !p.ApplicationActivitySatisfy.IsNull() && !p.ApplicationActivitySatisfy.IsUnknown() && p.ApplicationActivitySatisfy.ValueString() != "" {
+		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
+	}
+	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		out.FileAttributeSatisfy = cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 	}
 	diags.Append(acFillCommonAdd(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
-	if !p.FileAttribute.IsNull() {
+	if !p.FileAttribute.IsNull() && !p.FileAttribute.IsUnknown() {
 		out.FileAttribute, diags = acFileAttributesAdd(ctx, p.FileAttribute, diags)
 	}
 	return out, diags
@@ -327,7 +342,7 @@ func hydrateACFileRuleUpdate(
 		v := cato_models.ApplicationControlSeverity(p.Severity.ValueString())
 		out.Severity = &v
 	}
-	if !p.FileAttributeSatisfy.IsNull() {
+	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		v := cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 		out.FileAttributeSatisfy = &v
 	}
@@ -401,13 +416,44 @@ func acDlpProfileUpdate(
 	}, diags
 }
 
+func acApplicationActivityFromPlan(
+	ctx context.Context,
+	p ApplicationControlTypedRulePlan,
+	diags diag.Diagnostics,
+) ([]*cato_models.ApplicationControlActivityInput, diag.Diagnostics) {
+	out := []*cato_models.ApplicationControlActivityInput{}
+	if p.ApplicationActivity.IsNull() || p.ApplicationActivity.IsUnknown() {
+		return out, diags
+	}
+	objs := make([]types.Object, 0, len(p.ApplicationActivity.Elements()))
+	diags.Append(p.ApplicationActivity.ElementsAs(ctx, &objs, false)...)
+	for _, o := range objs {
+		var row ApplicationControlActivityPlan
+		diags.Append(o.As(ctx, &row, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+		var act PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		diags.Append(row.Activity.As(ctx, &act, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+		ref, err := utils.TransformObjectRefInput(act)
+		if err != nil {
+			diags.AddError("application_activity", err.Error())
+			return out, diags
+		}
+		out = append(out, &cato_models.ApplicationControlActivityInput{
+			Activity: &cato_models.ApplicationControlActivityRefInput{
+				By:    cato_models.ObjectRefBy(ref.By),
+				Input: ref.Input,
+			},
+		})
+	}
+	return out, diags
+}
+
 func acFileAttributesAdd(
 	ctx context.Context,
 	list types.List,
 	diags diag.Diagnostics,
 ) ([]*cato_models.ApplicationControlFileAttributeInput, diag.Diagnostics) {
 	out := []*cato_models.ApplicationControlFileAttributeInput{}
-	if list.IsNull() {
+	if list.IsNull() || list.IsUnknown() {
 		return out, diags
 	}
 	objs := make([]types.Object, 0, len(list.Elements()))
@@ -449,11 +495,11 @@ func acFillCommonAdd(
 	actionConfig **cato_models.ApplicationControlActionConfigInput,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
+	in := &cato_models.PolicyScheduleInput{ActiveOn: cato_models.PolicyActiveOnEnum(policyActiveOnAlways)}
 	if !p.Schedule.IsNull() && !p.Schedule.IsUnknown() {
 		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
 		scheduleTopOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 		diags.Append(p.Schedule.As(ctx, &sch, scheduleTopOpts)...)
-		in := &cato_models.PolicyScheduleInput{ActiveOn: cato_models.PolicyActiveOnEnum(policyActiveOnAlways)}
 		if !sch.ActiveOn.IsNull() {
 			in.ActiveOn = cato_models.PolicyActiveOnEnum(sch.ActiveOn.ValueString())
 		}
@@ -473,8 +519,8 @@ func acFillCommonAdd(
 				diags.Append(cr.Days.ElementsAs(ctx, &in.CustomRecurring.Days, false)...)
 			}
 		}
-		*schedule = in
 	}
+	*schedule = in
 	if !p.Source.IsNull() && !p.Source.IsUnknown() {
 		add, _, sdiags := applicationControlSourcePairFromTerraformObject(ctx, p.Source)
 		diags.Append(sdiags...)

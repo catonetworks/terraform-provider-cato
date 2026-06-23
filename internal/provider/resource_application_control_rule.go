@@ -299,15 +299,19 @@ func (r *applicationControlRuleResource) Read(ctx context.Context, req resource.
 	ruleObj, odiags := applicationControlRuleRuleObjectFromPlan(hydrated)
 	resp.Diagnostics.Append(odiags...)
 
-	atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
-		"position": types.StringValue("LAST_IN_POLICY"),
-		"ref":      types.StringNull(),
-	})
-	resp.Diagnostics.Append(d...)
+	// Preserve 'at' from state — the API does not return placement info.
+	// Default to LAST_IN_POLICY only when state has no 'at' (e.g. after import).
+	if state.At.IsNull() || state.At.IsUnknown() {
+		atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+			"position": types.StringValue("LAST_IN_POLICY"),
+			"ref":      types.StringNull(),
+		})
+		resp.Diagnostics.Append(d...)
+		state.At = atObj
+	}
 
 	state.ID = types.StringValue(cur.GetID())
 	state.Rule = ruleObj
-	state.At = atObj
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 

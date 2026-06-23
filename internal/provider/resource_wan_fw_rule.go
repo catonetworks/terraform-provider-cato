@@ -1797,6 +1797,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 							setvalidator.SizeAtLeast(1),
 						},
 						PlanModifiers: []planmodifier.Set{
+							setplanmodifier.UseStateForUnknown(),     // Preserve state value (e.g. empty set) when not in config
 							planmodifiers.WanExceptionsSetModifier(), // Handle ID correlation for exceptions
 						},
 						NestedObject: schema.NestedAttributeObject{
