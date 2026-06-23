@@ -46,7 +46,6 @@ func TestAccWfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-b"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "1"),
 				),
-				ExpectNonEmptyPlan: true, // cato_wf_rule currently refreshes with exceptions drift.
 			},
 			{
 				Config: cfg.getTfConfig(1),
@@ -61,7 +60,6 @@ func TestAccWfRulesIndex_WithRuleData(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.section_name", cfg.name+"-a"),
 					resource.TestCheckResourceAttr(res, "rule_data."+cfg.name+"-r3.index_in_section", "2"),
 				),
-				ExpectNonEmptyPlan: true, // cato_wf_rule currently refreshes with exceptions drift.
 			},
 		},
 	})

@@ -41,14 +41,12 @@ func TestAccWfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertWanRuleNamesOrderInSection(t, secName, ruleA, ruleB),
 				),
-				ExpectNonEmptyPlan: true,
 			},
 			{
 				Config: cfg.getTwoRuleReorderTF(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertWanRuleNamesOrderInSection(t, secName, ruleB, ruleA),
 				),
-				ExpectNonEmptyPlan: true,
 			},
 		},
 	})
