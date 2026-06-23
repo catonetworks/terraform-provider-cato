@@ -724,6 +724,30 @@ func (r *socketSiteResource) parseSockets(ctx context.Context, siteInfo *cato_go
 	return tfSocketSet
 }
 
+// isDhcpSettingsExplicit returns true when dhcp_settings was explicitly set in config or state
+// (i.e. the object is non-null), even if the value is ACCOUNT_DEFAULT.
+// Returns false when dhcp_settings is null (user never configured it).
+func (r *socketSiteResource) isDhcpSettingsExplicit(ctx context.Context, cfg *tf.SocketSite,
+	stateNativeRange types.Object, diags *diag.Diagnostics,
+) bool {
+	if cfg != nil {
+		var cfgNativeRange tf.NativeRange
+		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
+			return false
+		}
+		return utils.HasValue(cfgNativeRange.DhcpSettings) || cfgNativeRange.DhcpSettings.IsUnknown()
+	}
+	// cfg is nil → Read(); check state
+	if !utils.HasValue(stateNativeRange) {
+		return false
+	}
+	var tfStateNativeRange tf.NativeRange
+	if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
+		return false
+	}
+	return !tfStateNativeRange.DhcpSettings.IsNull()
+}
+
 // checkDhcpSettingsDefault checks DHCP settings config or state,
 // If config is provided,
 // return true if it is not defined or if dhcp_type is set to ACCOUNT_DEFAULT, false otherwise
@@ -788,9 +812,14 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 	}
 
 	// DHCP settings
+	// Three cases:
+	//   1. User configured a specific type (not ACCOUNT_DEFAULT) → parse from API response.
+	//   2. User explicitly set dhcp_type = ACCOUNT_DEFAULT → store the default sentinel object.
+	//   3. User did not configure dhcp_settings at all → keep null to match the plan.
 	isDhcpSettingsDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
-	dhcpSettingsObj := dhcp.SettingsDefault(ctx, diags)
-	if networkRange.DhcpSettings != nil && !isDhcpSettingsDefault {
+	dhcpSettingsObj := types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
+	switch {
+	case networkRange.DhcpSettings != nil && !isDhcpSettingsDefault:
 		dhcpSettingsObj = dhcp.ParseSettings(ctx, r.client,
 			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
 				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
@@ -799,6 +828,8 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
 			},
 			diags)
+	case isDhcpSettingsDefault && r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags):
+		dhcpSettingsObj = dhcp.SettingsDefault(ctx, diags)
 	}
 	if diags.HasError() {
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)

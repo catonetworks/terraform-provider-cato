@@ -184,8 +184,11 @@ func (m dhcpSettingsModifier) getOptionalBoolValue(cfgVal, stateVal types.Bool, 
 }
 
 func (m dhcpSettingsModifier) planDhcpDefault(ctx context.Context, req planmodifier.ObjectRequest, diags *diag.Diagnostics) types.Object {
-	if !m.isRangeResource { // native range -> use ACCOUNT_DEFAULT as the default DHCP type
-		return m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeAccountDefault), diags)
+	if !m.isRangeResource {
+		// Native range: user did not configure dhcp_settings. Keep null so that
+		// plan and post-apply state are consistent (parseNativeRange also returns
+		// null in this case). Users who want explicit ACCOUNT_DEFAULT must set it.
+		return dhcpSettingNull
 	}
 
 	// non-native range - default DHCP type depends on the range type
