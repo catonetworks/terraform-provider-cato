@@ -51,7 +51,7 @@ run_test() {
 }
 
 should_retry() {
-	grep -E '(internal server error|connection refused|message\\":\\"Internal server\\n")' "$1" > /dev/null && return 0
+	grep -E '(internal server error|connection refused|rate limit|reorderPolicyBlockedByActiveSessions|message\\":\\"Internal server\\n")' "$1" > /dev/null && return 0
 	return 1
 }
 
@@ -161,26 +161,43 @@ done
 
 serial_count=$(echo $serial_dirs | wc -w | tr -d ' ')
 parallel_count=$(echo $parallel_dirs | wc -w | tr -d ' ')
-echo "Parallel streams: $parallel_count independent + 1 shared-policy ($serial_count packages)"
+# ACCTEST_MAX_PARALLEL caps how many independent packages run at once.
+# Cato's query_entityLookup endpoint rate-limits under heavy concurrency;
+# 6 concurrent streams stay safely below that threshold in practice.
+MAX_PARALLEL="${ACCTEST_MAX_PARALLEL:-6}"
+echo "Parallel streams: $parallel_count independent (max $MAX_PARALLEL concurrent) + 1 shared-policy ($serial_count packages)"
 
 # Launch the shared-policy stream as one sequential background subshell.
 # shellcheck disable=SC2086
 (run_stream y $serial_dirs) &
-bg_pids="$!"
+serial_pid="$!"
 
-# Launch each independent package as its own background job (fully parallel).
-# Both the serial stream and all independent jobs run concurrently.
-for tdir in $parallel_dirs; do
-	# shellcheck disable=SC2086
-	(run_stream n $tdir) &
-	bg_pids="$bg_pids $!"
-done
-
-# Wait for all background jobs; collect failures.
+# Launch independent packages in batches of MAX_PARALLEL.
+# Batching avoids saturating query_entityLookup while still running far
+# faster than fully sequential.  Each batch is awaited before the next
+# batch starts, so at most MAX_PARALLEL+1 (including the serial stream)
+# packages run concurrently.
 overall_result=0
-for pid in $bg_pids; do
+batch_pids=""
+batch_size=0
+for tdir in $parallel_dirs; do
+	(run_stream n "$tdir") &
+	batch_pids="$batch_pids $!"
+	batch_size=$((batch_size + 1))
+	if [ "$batch_size" -ge "$MAX_PARALLEL" ]; then
+		for pid in $batch_pids; do
+			wait "$pid" || overall_result=1
+		done
+		batch_pids=""
+		batch_size=0
+	fi
+done
+# Drain remaining batch.
+for pid in $batch_pids; do
 	wait "$pid" || overall_result=1
 done
+# Wait for the serial stream.
+wait "$serial_pid" || overall_result=1
 
 compute_coverage
 cat "$OUT/"* | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all $nocolor
