@@ -125,7 +125,56 @@ func hydrateAppTenantRestrictionAddRuleInput(
 	return out, diags
 }
 
+// atrUpdateScheduleFromPlan builds the PolicyScheduleUpdateInput for an update call.
+//
 //nolint:gocyclo
+func atrUpdateScheduleFromPlan(
+	ctx context.Context,
+	rule AppTenantRestrictionRuleRulePlan,
+	diags *diag.Diagnostics,
+) *cato_models.PolicyScheduleUpdateInput {
+	asOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
+	defaultActive := cato_models.PolicyActiveOnEnum(policyActiveOnAlways)
+	sched := &cato_models.PolicyScheduleUpdateInput{ActiveOn: &defaultActive}
+	if rule.Schedule.IsNull() || rule.Schedule.IsUnknown() {
+		return sched
+	}
+	sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
+	diags.Append(rule.Schedule.As(ctx, &sch, asOpts)...)
+	if diags.HasError() {
+		return sched
+	}
+	if !sch.ActiveOn.IsNull() && !sch.ActiveOn.IsUnknown() && sch.ActiveOn.ValueString() != "" {
+		sched.ActiveOn = (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer())
+	}
+	active := sched.ActiveOn
+	if active != nil && *active == cato_models.PolicyActiveOnEnumCustomTimeframe &&
+		!sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
+		ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
+		diags.Append(sch.CustomTimeframe.As(ctx, &ctf, asOpts)...)
+		from, to := ctf.From.ValueStringPointer(), ctf.To.ValueStringPointer()
+		if (from != nil && *from != "") || (to != nil && *to != "") {
+			sched.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{From: from, To: to}
+		}
+	}
+	if active != nil && *active == cato_models.PolicyActiveOnEnumCustomRecurring &&
+		!sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
+		cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
+		diags.Append(sch.CustomRecurring.As(ctx, &cr, asOpts)...)
+		from, to := cr.From.ValueString(), cr.To.ValueString()
+		if from != "" && to != "" {
+			sched.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{
+				From: (*cato_scalars.Time)(cr.From.ValueStringPointer()),
+				To:   (*cato_scalars.Time)(cr.To.ValueStringPointer()),
+			}
+			if !cr.Days.IsNull() && !cr.Days.IsUnknown() {
+				diags.Append(cr.Days.ElementsAs(ctx, &sched.CustomRecurring.Days, false)...)
+			}
+		}
+	}
+	return sched
+}
+
 func hydrateAppTenantRestrictionUpdateRuleInput(
 	ctx context.Context,
 	plan AppTenantRestrictionRule,
@@ -177,48 +226,7 @@ func hydrateAppTenantRestrictionUpdateRuleInput(
 		}
 	}
 
-	defaultActive := cato_models.PolicyActiveOnEnum(policyActiveOnAlways)
-	upd.Rule.Schedule = &cato_models.PolicyScheduleUpdateInput{ActiveOn: &defaultActive}
-	if !rule.Schedule.IsNull() && !rule.Schedule.IsUnknown() {
-		scheduleAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
-		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
-		diags.Append(rule.Schedule.As(ctx, &sch, scheduleAsOpts)...)
-		if !diags.HasError() {
-			if !sch.ActiveOn.IsNull() && !sch.ActiveOn.IsUnknown() && sch.ActiveOn.ValueString() != "" {
-				upd.Rule.Schedule.ActiveOn = (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer())
-			}
-			active := upd.Rule.Schedule.ActiveOn
-			if active != nil && *active == cato_models.PolicyActiveOnEnumCustomTimeframe &&
-				!sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
-				ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
-				diags.Append(sch.CustomTimeframe.As(ctx, &ctf, scheduleAsOpts)...)
-				from := ctf.From.ValueStringPointer()
-				to := ctf.To.ValueStringPointer()
-				if (from != nil && *from != "") || (to != nil && *to != "") {
-					upd.Rule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{
-						From: from,
-						To:   to,
-					}
-				}
-			}
-			if active != nil && *active == cato_models.PolicyActiveOnEnumCustomRecurring &&
-				!sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
-				cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
-				diags.Append(sch.CustomRecurring.As(ctx, &cr, scheduleAsOpts)...)
-				from := cr.From.ValueString()
-				to := cr.To.ValueString()
-				if from != "" && to != "" {
-					upd.Rule.Schedule.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{
-						From: (*cato_scalars.Time)(cr.From.ValueStringPointer()),
-						To:   (*cato_scalars.Time)(cr.To.ValueStringPointer()),
-					}
-					if !cr.Days.IsNull() && !cr.Days.IsUnknown() {
-						diags.Append(cr.Days.ElementsAs(ctx, &upd.Rule.Schedule.CustomRecurring.Days, false)...)
-					}
-				}
-			}
-		}
-	}
+	upd.Rule.Schedule = atrUpdateScheduleFromPlan(ctx, rule, &diags)
 
 	upd.Rule.Source = &cato_models.AppTenantRestrictionSourceUpdateInput{}
 	if !rule.Source.IsNull() && !rule.Source.IsUnknown() {
