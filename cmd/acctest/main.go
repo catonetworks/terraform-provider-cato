@@ -204,7 +204,7 @@ func discoverTestDirs(filter []string) ([]string, error) {
 			dir := filepath.Dir(path)
 			if !seen[dir] && filepath.Base(dir) != "acc" {
 				seen[dir] = true
-				all = append(all, dir)
+				all = append(all, "./"+dir)
 			}
 		}
 		return nil
