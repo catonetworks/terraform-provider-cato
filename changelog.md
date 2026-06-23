@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.87 (2026-06-23)
+
+### Added
+- Added `cato_global_ip_ranges` resource support, including schema, validators, provider registration, examples, documentation, and acceptance tests.
+- Added regression test support, regression environment files, network suite coverage updates, and acctest mock skill guidance.
+
+### Changed
+- Updated internet and WAN firewall rules index handling to use the `reorderPolicy` API for bulk rule reordering, with policy revision retry and cleanup support.
+- Updated generated provider documentation.
+- Updated the Cato Go SDK dependency.
+
+### Fixed
+- Fixed `translated_subnet` API payload handling for network range and LAN interface resources so it is omitted unless configured.
+- Fixed ID/name handling in `cato_if_rule`.
+
 ## 0.0.86 (2026-06-17)
 
 ### Fixed
