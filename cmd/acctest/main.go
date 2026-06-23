@@ -71,12 +71,35 @@ var testEnv = map[string]string{
 	"TF_ACC_MOCK":                 "",
 }
 
-var printMu sync.Mutex
+const (
+	colorReset = "\033[0m"
+	colorGreen = "\033[32m"
+	colorRed   = "\033[31m"
+)
+
+var (
+	printMu     sync.Mutex
+	colorOutput = true // disabled by --nocolor
+)
 
 func logf(format string, args ...any) {
 	printMu.Lock()
 	fmt.Printf(format+"\n", args...)
 	printMu.Unlock()
+}
+
+func green(s string) string {
+	if !colorOutput {
+		return s
+	}
+	return colorGreen + s + colorReset
+}
+
+func red(s string) string {
+	if !colorOutput {
+		return s
+	}
+	return colorRed + s + colorReset
 }
 
 // buildEnv merges os.Environ() with overrides, deduplicating by key so that
@@ -167,10 +190,10 @@ func runPkg(tdir string, needsCleanup, coverage bool, retries int) bool {
 
 	logf("Starting:\t%s", pkg)
 	if runTest(tdir, logFile, coverFile, coverage) == nil {
-		logf("OK:\t\t%s", pkg)
+		logf("%s\t\t%s", green("OK:"), pkg)
 		return true
 	}
-	logf("ERROR:\t\t%s", pkg)
+	logf("%s\t\t%s", red("ERROR:"), pkg)
 
 	for r := 1; r <= retries; r++ {
 		if !shouldRetry(logFile) {
@@ -182,10 +205,10 @@ func runPkg(tdir string, needsCleanup, coverage bool, retries int) bool {
 		}
 		logf("Retrying (%d/%d):\t%s", r, retries, pkg)
 		if runTest(tdir, logFile, coverFile, coverage) == nil {
-			logf("OK (retry %d):\t%s", r, pkg)
+			logf("%s (retry %d):\t%s", green("OK"), r, pkg)
 			return true
 		}
-		logf("ERROR (retry %d):\t%s", r, pkg)
+		logf("%s (retry %d):\t%s", red("ERROR"), r, pkg)
 	}
 	return false
 }
@@ -324,12 +347,16 @@ func main() {
 	}
 
 	coverage := flag.Bool("coverage", false, "enable coverage profiling")
-	nocolor := flag.Bool("nocolor", false, "disable color in tparse output")
+	nocolor := flag.Bool("nocolor", false, "disable color output")
 	suiteFile := flag.String("suite", "", "file containing test directory names to run (one per line)")
 	maxParallel := flag.Int("max-parallel", defaultMaxParallel,
 		"max concurrent independent packages (ACCTEST_MAX_PARALLEL env sets default)")
 	retries := flag.Int("retry-count", 3, "retries on transient API failures")
 	flag.Parse()
+
+	if *nocolor {
+		colorOutput = false
+	}
 
 	// Collect filter list from --suite file and/or positional args.
 	var filter []string
