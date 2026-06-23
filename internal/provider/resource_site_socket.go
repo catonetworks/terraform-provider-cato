@@ -800,6 +800,35 @@ func (r *socketSiteResource) checkDhcpSettingsDefault(ctx context.Context, cfg *
 }
 
 // parseNativeRange converts API native range data to the types.Object or tf.NativeRange
+// parseDhcpSettingsObj resolves the dhcp_settings object for a native range.
+// Three cases:
+//  1. User configured a specific type (not ACCOUNT_DEFAULT) → parse from API response.
+//  2. User explicitly set dhcp_type = ACCOUNT_DEFAULT → store the default sentinel object.
+//  3. User did not configure dhcp_settings at all → keep null to match the plan.
+func (r *socketSiteResource) parseDhcpSettingsObj(
+	ctx context.Context,
+	cfg *tf.SocketSite,
+	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
+	stateNativeRange types.Object,
+	diags *diag.Diagnostics,
+) types.Object {
+	isDhcpDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
+	if networkRange.DhcpSettings != nil && !isDhcpDefault {
+		return dhcp.ParseSettings(ctx, r.client,
+			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
+				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
+				DhcpType:              networkRange.DhcpSettings.DhcpType,
+				IPRange:               networkRange.DhcpSettings.IPRange,
+				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
+			},
+			diags)
+	}
+	if isDhcpDefault && r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags) {
+		return dhcp.SettingsDefault(ctx, diags)
+	}
+	return types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
+}
+
 func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.SocketSite,
 	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
 	nativeInterface *nativeInterfaceDetails, stateNativeRange types.Object, diags *diag.Diagnostics,
@@ -811,26 +840,7 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
 	}
 
-	// DHCP settings
-	// Three cases:
-	//   1. User configured a specific type (not ACCOUNT_DEFAULT) → parse from API response.
-	//   2. User explicitly set dhcp_type = ACCOUNT_DEFAULT → store the default sentinel object.
-	//   3. User did not configure dhcp_settings at all → keep null to match the plan.
-	isDhcpSettingsDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
-	dhcpSettingsObj := types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
-	switch {
-	case networkRange.DhcpSettings != nil && !isDhcpSettingsDefault:
-		dhcpSettingsObj = dhcp.ParseSettings(ctx, r.client,
-			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
-				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
-				DhcpType:              networkRange.DhcpSettings.DhcpType,
-				IPRange:               networkRange.DhcpSettings.IPRange,
-				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
-			},
-			diags)
-	case isDhcpSettingsDefault && r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags):
-		dhcpSettingsObj = dhcp.SettingsDefault(ctx, diags)
-	}
+	dhcpSettingsObj := r.parseDhcpSettingsObj(ctx, cfg, networkRange, stateNativeRange, diags)
 	if diags.HasError() {
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
 	}
