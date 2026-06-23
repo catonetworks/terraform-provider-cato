@@ -195,7 +195,7 @@ var applicationRuleTFs = []string{
     application_rule = {
       action   = "MONITOR"
       severity = "LOW"
-      application = {}
+      application = { application = [{ id = "slack" }] }
       source      = {}
       tracking = {
         event = { enabled = false }
@@ -248,7 +248,7 @@ resource "cato_application_control_rule" "in_section" {
     application_rule = {
       action   = "MONITOR"
       severity = "LOW"
-      application = {}
+      application = { application = [{ id = "slack" }] }
       source      = {}
       tracking = {
         event = { enabled = false }
