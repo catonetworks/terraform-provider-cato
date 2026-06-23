@@ -1,0 +1,4 @@
+interface:
+  display_name: "Terraform Acctest Mocks"
+  short_description: "Create or update Terraform acctest mocks"
+  default_prompt: "Use $terraform-acctest-mocks to create or update mock data for a Terraform acceptance test."
