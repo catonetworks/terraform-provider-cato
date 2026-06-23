@@ -1,5 +1,9 @@
 # Application Control rule — rule_type APPLICATION (most common).
 # Monitors or blocks access to specific cloud applications.
+#
+# NOTE: For APPLICATION and DATA rules the `application` block must have exactly
+# one non-empty matcher (e.g. application, app_category, custom_app …).
+# An empty `application = {}` is only valid for FILE rules.
 resource "cato_application_control_rule" "application" {
   # position values: LAST_IN_POLICY | LAST_IN_SECTION | AFTER_RULE | BEFORE_RULE
   at = {
@@ -129,7 +133,8 @@ resource "cato_application_control_rule" "file" {
         # country = [{ name = "France" }]
       }
 
-      # application = {} matches all cloud apps; use application = [{ id = "..." }] to narrow scope.
+      # FILE rules accept application = {} to match all cloud apps.
+      # For APPLICATION and DATA rules a non-empty matcher is required.
       application = {}
 
       # content_transfer_action_upload / content_transfer_action_download are generic
