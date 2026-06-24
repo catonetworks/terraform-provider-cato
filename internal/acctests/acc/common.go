@@ -1,5 +1,28 @@
 //go:build acctest
 
+// Subnet allocation for acceptance tests
+//
+// The Cato API enforces global uniqueness of native_network_range across all
+// sites on an account. Tests that run in parallel MUST use non-overlapping
+// subnets. Each package that creates IPsec/BGP/socket sites owns a dedicated
+// /24 block from the 192.168.0.0/16 range. Reserve a new block here before
+// adding a new package that creates sites.
+//
+//	192.168.20.0/22   socket_site (20, 120, 130, 131, 140, 150)
+//	192.168.210.0/24  lan_interface
+//	192.168.220.0/24  static_host
+//	192.168.230.0/24  wan_interface
+//	192.168.240.0/24  lan_interface_lag_member
+//	192.168.246.0/24  socket_lan_firewall_rule
+//	192.168.247.0/24  socket_lan_network_rule
+//	192.168.248.0/24  (reserved — do not use without updating this map)
+//	192.168.249.0/24  ipsec_site (step 1)
+//	192.168.250.0/24  license
+//	192.168.251.0/24  license (update step)
+//	192.168.252.0/24  network_range
+//	192.168.253.0/24  ipsec_site (update step)
+//	192.168.254.0/24  bgp_peer
+
 package acc
 
 import (
