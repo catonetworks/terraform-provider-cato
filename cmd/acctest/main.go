@@ -11,16 +11,19 @@
 //	--nocolor           Disable color in tparse output
 //	--suite <file>      File listing test directory names to run (one per line)
 //	--max-parallel <n>  Max concurrent independent packages (default 6; ACCTEST_MAX_PARALLEL env sets default)
-//	--retry-count <n>   Retries on transient API failures (default 3)
+//	--retry-count <n>   Retries on transient API failures per package in first pass (default 3)
 //
-// Packages are split into two groups:
+// Execution phases:
 //
-//	serial   — share the IF/WF/WAN-Network policy and must run sequentially.
-//	           cleanup() is called before each retry in this group.
-//	parallel — independent packages, up to --max-parallel run concurrently.
-//
-// Both groups run simultaneously; the serial stream is one goroutine, the
-// parallel packages are bounded by a semaphore channel.
+//  1. cleanup — remove stale acctest resources from previous runs.
+//  2. First pass — serial and parallel streams run concurrently; each package
+//     retries up to --retry-count times on transient API errors (rate limits,
+//     server errors, policy locks).
+//  3. Post-run cleanup — clean up any resources left by the first pass.
+//  4. Sequential retry — every package that failed in the first pass is retried
+//     once, sequentially, giving cleanup a chance to resolve stale-resource
+//     conflicts before each attempt.
+//  5. Final cleanup.
 package main
 
 import (
@@ -36,7 +39,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -406,7 +408,16 @@ func main() {
 	fmt.Printf("Streams: %d independent (max %d concurrent) + 1 shared-policy (%d packages)\n",
 		len(parallelDirs), *maxParallel, len(serialDirs))
 
-	var failed atomic.Bool
+	// failedDirs collects packages whose first pass (including transient retries)
+	// ended in failure. Protected by failedMu because goroutines write concurrently.
+	var failedMu sync.Mutex
+	var failedDirs []string
+	recordFailure := func(d string) {
+		failedMu.Lock()
+		failedDirs = append(failedDirs, d)
+		failedMu.Unlock()
+	}
+
 	var wg sync.WaitGroup
 
 	// Serial stream: shared-policy packages run one-at-a-time with cleanup on retry.
@@ -415,7 +426,7 @@ func main() {
 		defer wg.Done()
 		for _, d := range serialDirs {
 			if !runPkg(d, true, *coverage, *retries) {
-				failed.Store(true)
+				recordFailure(d)
 			}
 		}
 	}()
@@ -431,19 +442,42 @@ func main() {
 			defer wg.Done()
 			defer func() { <-sem }()
 			if !runPkg(d, false, *coverage, *retries) {
-				failed.Store(true)
+				recordFailure(d)
 			}
 		}()
 	}
 
 	wg.Wait()
 
+	// Post-run cleanup: remove any resources left behind by the first pass so
+	// that the sequential retry starts from a clean slate.
+	fmt.Println("\nRunning post-run cleanup...")
+	runCleanup()
+
+	// Sequential retry: re-run every failed package once, in order, without
+	// concurrency. This resolves stale-resource conflicts that concurrent
+	// cleanup could not catch mid-run.
+	overallOK := len(failedDirs) == 0
+	if len(failedDirs) > 0 {
+		sort.Strings(failedDirs)
+		fmt.Printf("\n--- Sequential retry: %d failed suite(s) ---\n", len(failedDirs))
+		for _, d := range failedDirs {
+			// retries=0: single attempt; cleanup already ran above.
+			if !runPkg(d, false, *coverage, 0) {
+				overallOK = false
+			}
+		}
+	}
+
+	fmt.Println("\nRunning final cleanup...")
+	runCleanup()
+
 	if *coverage {
 		computeCoverage()
 	}
 	runTparse(*nocolor)
 
-	if failed.Load() {
+	if !overallOK {
 		os.Exit(1)
 	}
 }
