@@ -128,7 +128,23 @@ func pkgTimeout(pkg string) string {
 	return "5m"
 }
 
+// runDeepCleanup calls cmd/acctest-cleanup, which removes all acctest_* sites,
+// socket LAN rules, and global IP ranges directly via the Cato API. It is a
+// no-op when the required environment variables are absent (e.g. mock runs).
+func runDeepCleanup() {
+	if os.Getenv("CATO_BASEURL") == "" || os.Getenv("CATO_TOKEN") == "" || os.Getenv("CATO_ACCOUNT_ID") == "" {
+		return
+	}
+	cmd := exec.Command("go", "run", "./cmd/acctest-cleanup")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		logf("deep cleanup warning: %v", err)
+	}
+}
+
 func runCleanup() {
+	runDeepCleanup()
 	cmd := exec.Command("go", "test",
 		"-tags", "acctest",
 		"-count=1",
