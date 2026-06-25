@@ -724,6 +724,30 @@ func (r *socketSiteResource) parseSockets(ctx context.Context, siteInfo *cato_go
 	return tfSocketSet
 }
 
+// isDhcpSettingsExplicit returns true when dhcp_settings was explicitly set in config or state
+// (i.e. the object is non-null), even if the value is ACCOUNT_DEFAULT.
+// Returns false when dhcp_settings is null (user never configured it).
+func (r *socketSiteResource) isDhcpSettingsExplicit(ctx context.Context, cfg *tf.SocketSite,
+	stateNativeRange types.Object, diags *diag.Diagnostics,
+) bool {
+	if cfg != nil {
+		var cfgNativeRange tf.NativeRange
+		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
+			return false
+		}
+		return utils.HasValue(cfgNativeRange.DhcpSettings) || cfgNativeRange.DhcpSettings.IsUnknown()
+	}
+	// cfg is nil → Read(); check state
+	if !utils.HasValue(stateNativeRange) {
+		return false
+	}
+	var tfStateNativeRange tf.NativeRange
+	if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
+		return false
+	}
+	return !tfStateNativeRange.DhcpSettings.IsNull()
+}
+
 // checkDhcpSettingsDefault checks DHCP settings config or state,
 // If config is provided,
 // return true if it is not defined or if dhcp_type is set to ACCOUNT_DEFAULT, false otherwise
@@ -776,6 +800,35 @@ func (r *socketSiteResource) checkDhcpSettingsDefault(ctx context.Context, cfg *
 }
 
 // parseNativeRange converts API native range data to the types.Object or tf.NativeRange
+// parseDhcpSettingsObj resolves the dhcp_settings object for a native range.
+// Three cases:
+//  1. User configured a specific type (not ACCOUNT_DEFAULT) → parse from API response.
+//  2. User explicitly set dhcp_type = ACCOUNT_DEFAULT → store the default sentinel object.
+//  3. User did not configure dhcp_settings at all → keep null to match the plan.
+func (r *socketSiteResource) parseDhcpSettingsObj(
+	ctx context.Context,
+	cfg *tf.SocketSite,
+	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
+	stateNativeRange types.Object,
+	diags *diag.Diagnostics,
+) types.Object {
+	isDhcpDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
+	if networkRange.DhcpSettings != nil && !isDhcpDefault {
+		return dhcp.ParseSettings(ctx, r.client,
+			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
+				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
+				DhcpType:              networkRange.DhcpSettings.DhcpType,
+				IPRange:               networkRange.DhcpSettings.IPRange,
+				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
+			},
+			diags)
+	}
+	if isDhcpDefault && r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags) {
+		return dhcp.SettingsDefault(ctx, diags)
+	}
+	return types.ObjectNull(tf.SiteNativeRangeDhcpResourceAttrTypes)
+}
+
 func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.SocketSite,
 	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
 	nativeInterface *nativeInterfaceDetails, stateNativeRange types.Object, diags *diag.Diagnostics,
@@ -787,19 +840,7 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *tf.Socke
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
 	}
 
-	// DHCP settings
-	isDhcpSettingsDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
-	dhcpSettingsObj := dhcp.SettingsDefault(ctx, diags)
-	if networkRange.DhcpSettings != nil && !isDhcpSettingsDefault {
-		dhcpSettingsObj = dhcp.ParseSettings(ctx, r.client,
-			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
-				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
-				DhcpType:              networkRange.DhcpSettings.DhcpType,
-				IPRange:               networkRange.DhcpSettings.IPRange,
-				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
-			},
-			diags)
-	}
+	dhcpSettingsObj := r.parseDhcpSettingsObj(ctx, cfg, networkRange, stateNativeRange, diags)
 	if diags.HasError() {
 		return types.ObjectNull(tf.SiteNativeRangeResourceAttrTypes)
 	}

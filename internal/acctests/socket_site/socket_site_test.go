@@ -740,6 +740,114 @@ var socketSiteDhcpTFs = []string{
 	}`,
 }
 
+// TestAccSocketSite_DhcpSettingsNull verifies that omitting dhcp_settings on native_range
+// keeps dhcp_settings null in state without "inconsistent result after apply" (ENG-184511).
+// It also checks that adding and removing an explicit ACCOUNT_DEFAULT round-trips cleanly.
+func TestAccSocketSite_DhcpSettingsNull(t *testing.T) {
+	acc.SkipByEnv(t)
+	t.Parallel()
+	mockSrv := accmock.NewMockServer(t, "TestAccSocketSite_DhcpSettingsNull")
+	defer mockSrv.Close()
+	mockSrv.Run()
+	cfg := newsocketSiteCfg(t)
+	res := "cato_socket_site.this"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				// Create WITHOUT dhcp_settings – must not produce "inconsistent result after apply"
+				Config: cfg.getTfConfigDhcpNull(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName),
+					resource.TestCheckResourceAttr(res, "native_range.%", "19"),
+					// dhcp_settings must be null: individual sub-fields must be absent
+					resource.TestCheckNoResourceAttr(res, "native_range.dhcp_settings.dhcp_type"),
+					resource.TestCheckNoResourceAttr(res, "native_range.dhcp_settings.dhcp_microsegmentation"),
+				),
+			},
+			{
+				// Apply the same config a second time – plan must be empty (idempotency check)
+				Config:             cfg.getTfConfigDhcpNull(0),
+				ExpectNonEmptyPlan: false,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(res, "native_range.dhcp_settings.dhcp_type"),
+				),
+			},
+			{
+				// Explicitly set ACCOUNT_DEFAULT – dhcp_settings must now appear in state
+				Config: cfg.getTfConfigDhcpNull(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.%", "5"),
+					resource.TestCheckResourceAttr(res, "native_range.dhcp_settings.dhcp_type", "ACCOUNT_DEFAULT"),
+				),
+			},
+			{
+				// Remove dhcp_settings again – must return to null without "inconsistent result"
+				Config: cfg.getTfConfigDhcpNull(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(res, "native_range.dhcp_settings.dhcp_type"),
+				),
+			},
+		},
+	})
+}
+
+// ------------------------------------------------------------------
+// DhcpSettingsNull cato_socket_site configurations
+// ------------------------------------------------------------------
+func (p socketSiteCfg) getTfConfigDhcpNull(index int) string {
+	data := map[string]any{
+		"Name": p.resName,
+	}
+	return p.prepareTfCfg(data, socketSiteDhcpNullTFs[index])
+}
+
+// socketSiteDhcpNullTFs exercises the null ↔ ACCOUNT_DEFAULT round-trip.
+var socketSiteDhcpNullTFs = []string{
+	// [0] No dhcp_settings block at all – dhcp_settings must be null in state
+	`resource "cato_socket_site" "this" {
+		name            = "{{.Name}}"
+		description     = "{{.Name}} dhcp null test"
+		site_type       = "BRANCH"
+		connection_type = "SOCKET_X1500"
+
+		native_range = {
+			native_network_range = "192.168.160.0/24"
+			local_ip             = "192.168.160.1"
+		}
+
+		site_location = {
+			country_code = "FR"
+			timezone     = "Europe/Paris"
+		}
+	}`,
+
+	// [1] Explicit ACCOUNT_DEFAULT – dhcp_settings must be non-null in state
+	`resource "cato_socket_site" "this" {
+		name            = "{{.Name}}"
+		description     = "{{.Name}} dhcp null test"
+		site_type       = "BRANCH"
+		connection_type = "SOCKET_X1500"
+
+		native_range = {
+			native_network_range = "192.168.160.0/24"
+			local_ip             = "192.168.160.1"
+			dhcp_settings = {
+				dhcp_type = "ACCOUNT_DEFAULT"
+			}
+		}
+
+		site_location = {
+			country_code = "FR"
+			timezone     = "Europe/Paris"
+		}
+	}`,
+}
+
 // ------------------------------------------------------------------
 // Interface cato_socket_site configurations
 // ------------------------------------------------------------------
