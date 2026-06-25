@@ -106,13 +106,16 @@ acctest-clean: ## Delete stale acctest resources
 	@ACCTEST_CLEANUP=true go test -tags acctest -count=1 --timeout=5m -run TestCleanupAccTestResources ./internal/acctests/acc
 acctest: acctest-clean ## Run acceptance tests (real API calls)
 	TF_ACC=1 DISABLE_POLICY_RULE_CLEANUP=true go test -tags acctest -count=1 -json --timeout=10m -parallel=1 -p=2 ./internal/acctests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
-acctest-flaky: ## Run acceptance tests - retry on error (real API calls) [ t=<test_dir> ] [ coverage=true ] (exports DISABLE_POLICY_RULE_CLEANUP like acctest)
+acctest-flaky: ## Run acceptance tests with retry and concurrency control [ t=<test_dir> ] [ coverage=true ] [ max_parallel=N ]
 	@TFACC_ENABLE_ACCOUNT_CRUD=$${TFACC_ENABLE_ACCOUNT_CRUD:-false} \
 	TFACC_ACCOUNT_CRUD_ALLOWED=$${TFACC_ACCOUNT_CRUD_ALLOWED:-false} \
 	TFACC_ENABLE_BGP_PEER_CRUD=$${TFACC_ENABLE_BGP_PEER_CRUD:-true} \
 	TFACC_ENABLE_RULES_INDEX_CRUD=$${TFACC_ENABLE_RULES_INDEX_CRUD:-true} \
-	enable_coverage=''; if [ "$(coverage)" = true ]; then enable_coverage='--coverage'; fi; \
-	test_data/flaky_acctest.sh $$enable_coverage $(t)
+	go run ./cmd/acctest \
+		$(if $(filter true,$(coverage)),--coverage) \
+		$(if $(nocolor),--nocolor) \
+		$(if $(max_parallel),--max-parallel $(max_parallel)) \
+		$(t)
 
 lint:  ## Run the linters configured in .golangci.yml locally
 	@go tool golangci-lint run --build-tags acctest  ./internal/... -v --timeout=10m
