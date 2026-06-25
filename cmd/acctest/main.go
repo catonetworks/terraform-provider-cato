@@ -52,13 +52,15 @@ var retryRe = regexp.MustCompile(
 	`internal server error|connection refused|rate limit|reorderPolicyBlockedByActiveSessions`,
 )
 
-// sharedPolicyPkgs share the IF/WF/WAN-Network policy revision and must run
-// sequentially to avoid draft-revision conflicts. cleanup() is called before
-// each retry in this stream.
-var sharedPolicyPkgs = map[string]bool{
+// serialPkgs runs sequentially with cleanup() before each retry.
+// Includes shared-policy packages (IF/WF/WAN-Network) and any others that are
+// too sensitive to run concurrently (e.g. bgp_peer whose Read is affected by
+// API state that concurrent runs can disturb).
+var serialPkgs = map[string]bool{
 	"if_rule": true, "if_rules_index": true, "if_section": true,
 	"wf_rule": true, "wf_rules_index": true, "wf_rules_index_with_rule_data": true, "wf_section": true,
 	"wnw_rule": true, "wnw_rules_index": true, "wan_network_section": true,
+	"bgp_peer": true,
 }
 
 // longTimeoutPkgs need more than the default 5-minute test timeout.
@@ -414,7 +416,7 @@ func main() {
 
 	var serialDirs, parallelDirs []string
 	for _, d := range testDirs {
-		if sharedPolicyPkgs[filepath.Base(d)] {
+		if serialPkgs[filepath.Base(d)] {
 			serialDirs = append(serialDirs, d)
 		} else {
 			parallelDirs = append(parallelDirs, d)

@@ -51,7 +51,22 @@ func TestAccBgpPeer(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "peer_asn", "65100"),
 					resource.TestCheckResourceAttr(res, "cato_asn", "65000"),
 					resource.TestCheckResourceAttr(res, "default_action", "ACCEPT"),
+					resource.TestCheckResourceAttr(res, "bfd_enabled", "false"),
+					// Verify bfd_settings is preserved in state even with bfd_enabled=false.
+					// This is the idempotency regression check: prior to the Read fix,
+					// the API returned nil for BfdSettings when BFD was disabled, causing
+					// the provider to null out bfd_settings and produce a perpetual diff.
+					resource.TestCheckResourceAttr(res, "bfd_settings.transmit_interval", "1000"),
+					resource.TestCheckResourceAttr(res, "bfd_settings.receive_interval", "1000"),
+					resource.TestCheckResourceAttr(res, "bfd_settings.multiplier", "5"),
 				),
+			},
+			// Explicit no-drift step: refresh state without changing config and confirm
+			// that bfd_settings is not nulled out by the Read implementation.
+			{
+				Config:             cfg.getTfConfig(0),
+				RefreshState:       true,
+				ExpectNonEmptyPlan: false,
 			},
 			{
 				ImportState:  true,
@@ -65,6 +80,9 @@ func TestAccBgpPeer(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "name", cfg.name+"-2"),
 					resource.TestCheckResourceAttr(res, "default_action", "DROP"),
 					resource.TestCheckResourceAttr(res, "metric", "51"),
+					resource.TestCheckResourceAttr(res, "bfd_settings.transmit_interval", "1000"),
+					resource.TestCheckResourceAttr(res, "bfd_settings.receive_interval", "1000"),
+					resource.TestCheckResourceAttr(res, "bfd_settings.multiplier", "5"),
 				),
 			},
 		},

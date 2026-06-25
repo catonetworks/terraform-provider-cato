@@ -8,6 +8,7 @@ formatter: gofmt
 packages:
   github.com/catonetworks/terraform-provider-cato/internal/provider:
     interfaces:
+      BgpPeerClient:
       InternetFirewallBulkPolicyClient:
       InternetFirewallPolicyClient:
       NetworkRangeClient:
