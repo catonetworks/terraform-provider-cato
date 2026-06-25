@@ -44,7 +44,6 @@ func TestAccWanFw_Simple(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.tracking.alert.frequency", "DAILY"),
 					resource.TestCheckResourceAttr(res, "rule.tracking.event.enabled", "true"),
 				),
-				ExpectNonEmptyPlan: true, // TODO: provider reads empty exceptions, but schema disallows configuring an empty set.
 			},
 			{
 				// Update the resource
@@ -62,7 +61,6 @@ func TestAccWanFw_Simple(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.tracking.alert.frequency", "DAILY"),
 					resource.TestCheckResourceAttr(res, "rule.tracking.event.enabled", "true"),
 				),
-				ExpectNonEmptyPlan: true, // TODO: provider reads empty exceptions, but schema disallows configuring an empty set.
 			},
 		},
 	})

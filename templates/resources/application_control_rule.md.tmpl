@@ -1,0 +1,24 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+{{ tffile "examples/resources/cato_application_control_rule/resource.tf" }}
+
+## Import
+
+Import uses the Cato **rule id** as the import `id` (written into `rule.id` in state).
+
+```shell
+terraform import cato_application_control_rule.example <rule_id>
+```
+
+{{ .SchemaMarkdown | trimspace }}

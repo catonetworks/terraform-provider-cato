@@ -109,6 +109,7 @@ tags
 bin/
 dist/
 pkg/
+terraform-provider-cato
 
 # Others
 modules-dev/
