@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.88 (2026-06-25)
+
+### Added
+- Added App Control resources: `cato_app_tenant_restriction_rule`, `cato_app_tenant_restriction_section`, `cato_application_control_policy`, `cato_application_control_rule`, and `cato_application_control_section`, including schema, hydration helpers, provider registration, examples, documentation, and acceptance tests.
+
+### Fixed
+- Fixed `cato_socket_site` DHCP settings null inconsistency after apply via a new plan modifier.
+
 ## 0.0.87 (2026-06-23)
 
 ### Added
