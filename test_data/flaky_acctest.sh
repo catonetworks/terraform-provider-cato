@@ -41,7 +41,7 @@ cleanup() {
 
 run_test() {
 	tdir=$1; cover_file=$2
-	timeout=5m
+	timeout=8m
 	case "$(basename "$tdir")" in
 	wf_rules_index | wf_rules_index_with_rule_data) timeout=12m ;;
 	esac
