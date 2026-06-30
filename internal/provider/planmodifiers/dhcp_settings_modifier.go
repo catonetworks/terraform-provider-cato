@@ -91,7 +91,14 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 			"'relay_group_name' or 'relay_group_id' must be defined in the config")
 		return dhcpSettingNull
 	}
-	if !cfg.RelayGroupName.IsNull() && !cfg.RelayGroupID.IsNull() {
+
+	// For Optional+Computed nested attributes, the Terraform framework propagates prior state
+	// values into req.ConfigValue for attributes the user did not explicitly write in config.
+	// We use "differs from prior state" as an indicator that the user explicitly set that field.
+	nameExplicit := relayFieldIsExplicit(cfg.RelayGroupName, stateRelayName(state))
+	idExplicit := relayFieldIsExplicit(cfg.RelayGroupID, stateRelayID(state))
+
+	if nameExplicit && idExplicit {
 		diags.AddError("DHCP configuration error in dhcp_settings",
 			fmt.Sprintf("only one of 'relay_group_name' or 'relay_group_id' can be specified in the config, "+
 				"[relay_group_id:%q, relay_group_name:%q]",
@@ -107,19 +114,54 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 		RelayGroupName:        types.StringUnknown(),
 	}
 
-	if !cfg.RelayGroupName.IsNull() {
-		plan.RelayGroupName = cfg.RelayGroupName
-		if state != nil && utils.HasValue(state.RelayGroupName) &&
-			state.RelayGroupName.ValueString() == cfg.RelayGroupName.ValueString() {
-			plan.RelayGroupID = state.RelayGroupID
-		}
+	// Prefer relay_group_name when it is set and relay_group_id was not explicitly changed
+	if !cfg.RelayGroupName.IsNull() && !idExplicit {
+		return m.planRelayByName(ctx, cfg.RelayGroupName, state, plan, diags)
 	}
-	if !cfg.RelayGroupID.IsNull() {
-		plan.RelayGroupID = cfg.RelayGroupID
-		if state != nil && utils.HasValue(state.RelayGroupID) &&
-			state.RelayGroupID.ValueString() == cfg.RelayGroupID.ValueString() {
-			plan.RelayGroupName = state.RelayGroupName
-		}
+	return m.planRelayByID(ctx, cfg.RelayGroupID, state, plan, diags)
+}
+
+// relayFieldIsExplicit returns true when a relay field value is non-null and differs from the
+// corresponding prior state value, indicating the user explicitly set it in config.
+func relayFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if cfgVal.IsNull() {
+		return false
+	}
+	return stateVal.IsNull() || cfgVal.ValueString() != stateVal.ValueString()
+}
+
+func stateRelayName(state *tf.DhcpSettings) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.RelayGroupName
+}
+
+func stateRelayID(state *tf.DhcpSettings) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.RelayGroupID
+}
+
+func (m dhcpSettingsModifier) planRelayByName(ctx context.Context, name types.String, state *tf.DhcpSettings,
+	plan tf.DhcpSettings, diags *diag.Diagnostics,
+) types.Object {
+	plan.RelayGroupName = name
+	if state != nil && utils.HasValue(state.RelayGroupName) &&
+		state.RelayGroupName.ValueString() == name.ValueString() {
+		plan.RelayGroupID = state.RelayGroupID
+	}
+	return m.makePlanObj(ctx, plan, diags)
+}
+
+func (m dhcpSettingsModifier) planRelayByID(ctx context.Context, id types.String, state *tf.DhcpSettings,
+	plan tf.DhcpSettings, diags *diag.Diagnostics,
+) types.Object {
+	plan.RelayGroupID = id
+	if state != nil && utils.HasValue(state.RelayGroupID) &&
+		state.RelayGroupID.ValueString() == id.ValueString() {
+		plan.RelayGroupName = state.RelayGroupName
 	}
 	return m.makePlanObj(ctx, plan, diags)
 }

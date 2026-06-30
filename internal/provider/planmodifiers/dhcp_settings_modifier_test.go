@@ -22,8 +22,10 @@ func makeDhcpSettingsObj(t *testing.T, s tf.DhcpSettings) types.Object {
 	return obj
 }
 
-// TestPlanDhcpRelay_PreservesStateIDForSameConfiguredName verifies that when the user keeps the
-// same relay_group_name, the plan modifier preserves the known relay_group_id from state.
+// TestPlanDhcpRelay_StateValuePropagation verifies that when the Terraform framework propagates
+// a prior state relay_group_id into req.ConfigValue (because the attribute is Optional+Computed),
+// the plan modifier does not raise a false "both fields set" error when the user only configured
+// relay_group_name.
 func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 	t.Parallel()
 
@@ -38,10 +40,12 @@ func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
 
+	// Simulate: framework propagated relay_group_id="4456" from state into cfg,
+	// even though the user only wrote relay_group_name in their config.
 	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
-		RelayGroupID:          types.StringNull(),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not set by user
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
@@ -70,8 +74,8 @@ func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 }
 
 // TestPlanDhcpRelay_ChangedNameStatePropagatedID verifies that when the user changes
-// relay_group_name to a new group, the plan uses the new name and marks relay_group_id as
-// unknown (to be resolved at apply time).
+// relay_group_name to a new group but the old relay_group_id is still propagated from state,
+// the plan uses the new name and marks relay_group_id as unknown (to be resolved at apply time).
 func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 	t.Parallel()
 
@@ -86,10 +90,11 @@ func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
 
+	// User changed the name to "NEW-DHCP"; framework still carries old relay_group_id from state.
 	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("NEW-DHCP"),
-		RelayGroupID:          types.StringNull(),
+		RelayGroupID:          types.StringValue("4456"), // old id, propagated from state
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
@@ -116,7 +121,7 @@ func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 }
 
 // TestPlanDhcpRelay_BothExplicitlyChangedErrors verifies that when both relay_group_name and
-// relay_group_id are configured, an error is produced.
+// relay_group_id differ from state (user appears to have changed both), an error is produced.
 func TestPlanDhcpRelay_BothExplicitlyChangedErrors(t *testing.T) {
 	t.Parallel()
 
