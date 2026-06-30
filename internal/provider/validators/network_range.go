@@ -8,6 +8,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
@@ -35,10 +36,20 @@ func (v NetworkRangeValidator) ValidateObject(ctx context.Context, req validator
 	if v.isUnknown(networkRange) {
 		return
 	}
-	v.ValidateNetworkRange(ctx, &networkRange, &resp.Diagnostics)
+	// Schema-level validation: no prior state is available, so all non-null values are treated as
+	// explicitly set by the user.
+	v.ValidateNetworkRange(ctx, &networkRange, nil, &resp.Diagnostics)
 }
 
-func (v NetworkRangeValidator) ValidateNetworkRange(ctx context.Context, networkRange *tf.NetworkRange, diags *diag.Diagnostics) {
+// ValidateNetworkRange validates the NetworkRange config.
+// priorState is the prior Terraform state used to detect state-propagated Optional+Computed
+// attribute values. Terraform Core propagates prior-state values into req.Config for
+// Optional+Computed attributes, so without a state-aware check the interface_id/index conflict
+// validator would fire even when the user only set one of the two fields.
+// Pass nil when no prior state is available (schema-level ValidateObject).
+func (v NetworkRangeValidator) ValidateNetworkRange(
+	ctx context.Context, networkRange *tf.NetworkRange, priorState *tf.NetworkRange, diags *diag.Diagnostics,
+) {
 	// Validate that local_ip is within network_network_range
 	if checkLocalIP(diags, networkRange.LocalIP, networkRange.Subnet) != nil {
 		return
@@ -49,8 +60,13 @@ func (v NetworkRangeValidator) ValidateNetworkRange(ctx context.Context, network
 		return
 	}
 
-	// Validate that interface_id and interface_index cannot be set simultaneously
-	if utils.HasValue(networkRange.InterfaceID) && utils.HasValue(networkRange.InterfaceIndex) {
+	// Validate that interface_id and interface_index cannot be set simultaneously.
+	// When priorState is provided, only values that differ from state are treated as
+	// user-explicitly-set (others are Terraform Core state propagation for Optional+Computed
+	// attributes and must not trigger a conflict error).
+	idExplicit := interfaceFieldIsExplicit(networkRange.InterfaceID, priorStateInterfaceID(priorState))
+	indexExplicit := interfaceFieldIsExplicit(networkRange.InterfaceIndex, priorStateInterfaceIndex(priorState))
+	if idExplicit && indexExplicit {
 		diags.AddError("Invalid network range Configuration",
 			fmt.Sprintf("interface_id '%s' and interface_index '%s' cannot be set simultaneously.",
 				networkRange.InterfaceID.ValueString(), networkRange.InterfaceIndex.ValueString()))
@@ -71,6 +87,31 @@ func (v NetworkRangeValidator) ValidateNetworkRange(ctx context.Context, network
 	if v.checkRangeTypeAttributes(diags, networkRange) != nil {
 		return
 	}
+}
+
+// interfaceFieldIsExplicit returns true when a cfg value is non-null AND differs from the
+// corresponding prior-state value, indicating the user explicitly set it in their configuration.
+// When priorState is nil (schema-level validation), any non-null value is treated as explicit.
+func interfaceFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if cfgVal.IsNull() {
+		return false
+	}
+	// stateVal is null → no prior state → treat cfgVal as explicit
+	return stateVal.IsNull() || cfgVal.ValueString() != stateVal.ValueString()
+}
+
+func priorStateInterfaceID(state *tf.NetworkRange) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.InterfaceID
+}
+
+func priorStateInterfaceIndex(state *tf.NetworkRange) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.InterfaceIndex
 }
 
 func (v NetworkRangeValidator) checkRangeTypeAttributes(diags *diag.Diagnostics, networkRange *tf.NetworkRange) error {

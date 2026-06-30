@@ -199,6 +199,113 @@ func TestNetworkRangeCreateRejectsConflictingInterfaceConfig(t *testing.T) {
 	}
 }
 
+// TestModifyPlanNoFalsePositiveWhenBothFieldsEqualState verifies that a plan cycle where
+// both interface_id and interface_index appear in req.Config with the same values as prior
+// state (the "Terraform Core state propagation" scenario) does not generate a conflict error.
+// This is the exact root cause of the false positive seen in logs.txt: the provider stored
+// bare "11" as interface_index in state, Terraform Core propagated it into req.Config, and
+// the old validator fired because both fields were non-null.
+func TestModifyPlanNoFalsePositiveWhenBothFieldsEqualState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	// Simulate prior state: both fields exist with concrete values.
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("11"), // bare number as stored by older provider versions
+	}
+
+	// Simulate cfg after Terraform Core propagates prior state for Optional+Computed attributes:
+	// both fields appear non-null in req.Config even though the user only wrote interface_id.
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("11"), // state-propagated; not set by user
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no conflict error for state-propagated interface_index, got: %v", resp.Diagnostics)
+	}
+}
+
+// TestModifyPlanAllowsInterfaceIDChangeWithPropagatedIndex verifies that when the user
+// changes interface_id to a new value while interface_index remains at its prior-state value
+// (propagated by Terraform Core), no conflict error is raised.
+func TestModifyPlanAllowsInterfaceIDChangeWithPropagatedIndex(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+	}
+
+	// User changes interface_id; interface_index is unchanged from state → propagated.
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("999999"), // user changed this
+		InterfaceIndex: types.StringValue("INT_11"), // same as state → state-propagated
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error when only interface_id explicitly changed, got: %v", resp.Diagnostics)
+	}
+}
+
+// TestModifyPlanDetectsExplicitInterfaceConflict verifies that when a user explicitly writes
+// both interface_id and interface_index with different values than the prior state, the
+// conflict error is still correctly raised.
+func TestModifyPlanDetectsExplicitInterfaceConflict(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+	}
+
+	// User explicitly changed BOTH fields to new values → genuine conflict.
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("999999"), // new value
+		InterfaceIndex: types.StringValue("INT_5"),  // new value
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected conflict error when both interface_id and interface_index are explicitly changed")
+	}
+}
+
 func TestNetworkRangeCreateReturnsDiagnosticsOnAPIError(t *testing.T) {
 	t.Parallel()
 
