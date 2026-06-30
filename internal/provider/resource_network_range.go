@@ -205,6 +205,8 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 		return
 	}
 
+	// Load state early so the validator can distinguish user-set values from values that
+	// Terraform Core propagates from prior state for Optional+Computed attributes.
 	if stateDefined {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
@@ -213,8 +215,9 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 	}
 
 	// Validate config - ensure there is exactly one interface_index or interface_id.
+	// Pass the prior state so the validator can skip state-propagated values.
 	nrValidator := validators.NetworkRangeValidator{}
-	nrValidator.ValidateNetworkRange(ctx, cfg, &resp.Diagnostics)
+	nrValidator.ValidateNetworkRange(ctx, cfg, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
