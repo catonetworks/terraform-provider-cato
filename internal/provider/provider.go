@@ -368,7 +368,7 @@ func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
 	}
 
 	retryClient := retryablehttp.NewClient()
-	retryClient.CheckRetry = retryablehttp.DefaultRetryPolicy
+	retryClient.CheckRetry = cato.BaseRetryPolicy
 	retryClient.RetryMax = retryConfig.retryMax
 	retryClient.RetryWaitMin = retryConfig.retryWaitMin
 	retryClient.RetryWaitMax = retryConfig.retryWaitMax
