@@ -270,6 +270,114 @@ func TestModifyPlanAllowsInterfaceIDChangeWithPropagatedIndex(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("expected no error when only interface_id explicitly changed, got: %v", resp.Diagnostics)
 	}
+
+	var got tf.NetworkRange
+	if diags := resp.Plan.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("failed to decode plan: %v", diags)
+	}
+	if got.InterfaceID.ValueString() != "999999" {
+		t.Fatalf("expected interface_id to stay changed, got %q", got.InterfaceID.ValueString())
+	}
+	if !got.InterfaceIndex.IsUnknown() {
+		t.Fatalf("expected propagated interface_index to become unknown, got %q", got.InterfaceIndex.ValueString())
+	}
+}
+
+// TestModifyPlanAllowsInterfaceIndexChangeWithPropagatedID verifies the symmetric case:
+// when the user changes interface_index and Terraform propagates the old interface_id from
+// state, the propagated ID does not override the actual interface_index change.
+func TestModifyPlanAllowsInterfaceIndexChangeWithPropagatedID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+	}
+
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"), // same as state -> state-propagated
+		InterfaceIndex: types.StringValue("INT_5"),  // user changed this
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error when only interface_index explicitly changed, got: %v", resp.Diagnostics)
+	}
+
+	var got tf.NetworkRange
+	if diags := resp.Plan.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("failed to decode plan: %v", diags)
+	}
+	if got.InterfaceIndex.ValueString() != "INT_5" {
+		t.Fatalf("expected interface_index to stay changed, got %q", got.InterfaceIndex.ValueString())
+	}
+	if !got.InterfaceID.IsUnknown() {
+		t.Fatalf("expected propagated interface_id to become unknown, got %q", got.InterfaceID.ValueString())
+	}
+}
+
+// TestModifyPlanAllowsRelayNameWithPropagatedRelayID verifies the customer scenario from
+// ENG-193800: config only has relay_group_name and dhcp_microsegmentation=false, while old
+// state contributes relay_group_id during planning.
+func TestModifyPlanAllowsRelayNameWithPropagatedRelayID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	})
+	cfgDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(false),
+	})
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+		RangeType:      types.StringValue("VLAN"),
+		Vlan:           types.Int64Value(812),
+		DhcpSettings:   stateDhcp,
+	}
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+		RangeType:      types.StringValue("VLAN"),
+		Vlan:           types.Int64Value(812),
+		DhcpSettings:   cfgDhcp,
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error for state-propagated relay_group_id, got: %v", resp.Diagnostics)
+	}
 }
 
 // TestModifyPlanDetectsExplicitInterfaceConflict verifies that when a user explicitly writes
@@ -534,6 +642,15 @@ func nonNullRawValue(t *testing.T) tftypes.Value {
 	t.Helper()
 
 	return tftypes.NewValue(tftypes.String, "non-null")
+}
+
+func makeNetworkRangeDhcpSettingsObj(t *testing.T, s tf.DhcpSettings) types.Object {
+	t.Helper()
+	obj, diags := types.ObjectValueFrom(context.Background(), tf.DhcpSettingsAttrTypes, s)
+	if diags.HasError() {
+		t.Fatalf("failed to create DHCP settings object: %v", diags)
+	}
+	return obj
 }
 
 type networkRangeModel struct {

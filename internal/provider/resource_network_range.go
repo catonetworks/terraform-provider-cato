@@ -267,26 +267,37 @@ func (r *networkRangeResource) planInterfaceIDIndex(cfg, plan, state *tf.Network
 		return
 	}
 
+	indexExplicit := networkRangeInterfaceFieldIsExplicit(cfg.InterfaceIndex, state.InterfaceIndex)
+	idExplicit := networkRangeInterfaceFieldIsExplicit(cfg.InterfaceID, state.InterfaceID)
+
 	// if interfaceIndex is configured and is different from the state, mark interfaceID as unknown
-	if !cfg.InterfaceIndex.IsNull() {
+	if indexExplicit {
 		plan.InterfaceIndex = cfg.InterfaceIndex
 		plan.InterfaceID = types.StringUnknown()
-		// if the configured interfaceIndex is the same as in the state, use known ID value (if available)
-		if stateDefined && utils.HasValue(state.InterfaceIndex) &&
-			state.InterfaceIndex.ValueString() == cfg.InterfaceIndex.ValueString() {
-			plan.InterfaceID = state.InterfaceID
-		}
+		return
 	}
 	// if interfaceID is configured and is different from the state, mark interfaceIndex as unknown
-	if !cfg.InterfaceID.IsNull() {
+	if idExplicit {
 		plan.InterfaceID = cfg.InterfaceID
 		plan.InterfaceIndex = types.StringUnknown()
-		// if the configured interfaceID is the same as in the state, use known Index value (if available)
-		if stateDefined && utils.HasValue(state.InterfaceID) &&
-			state.InterfaceID.ValueString() == cfg.InterfaceID.ValueString() {
-			plan.InterfaceIndex = state.InterfaceIndex
-		}
+		return
 	}
+
+	if utils.HasValue(cfg.InterfaceIndex) {
+		plan.InterfaceIndex = cfg.InterfaceIndex
+		plan.InterfaceID = state.InterfaceID
+	}
+	if utils.HasValue(cfg.InterfaceID) {
+		plan.InterfaceID = cfg.InterfaceID
+		plan.InterfaceIndex = state.InterfaceIndex
+	}
+}
+
+func networkRangeInterfaceFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if !utils.HasValue(cfgVal) {
+		return false
+	}
+	return !utils.HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
 }
 
 // defaultPlanValue returns the appropriate plan value: cfg -> state -> unknown
