@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
@@ -30,12 +31,41 @@ var (
 	_ resource.ResourceWithImportState = &bgpPeerResource{}
 )
 
+// BgpPeerClient is the subset of the Cato SDK used by bgpPeerResource.
+// Extracted as an interface so unit tests can inject a mock.
+type BgpPeerClient interface {
+	SiteAddBgpPeer(
+		ctx context.Context, input cato_models.AddBgpPeerInput, accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.SiteAddBgpPeer, error)
+	SiteBgpPeer(
+		ctx context.Context, input cato_models.BgpPeerRefInput, accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.Site, error)
+	SiteUpdateBgpPeer(
+		ctx context.Context, input cato_models.UpdateBgpPeerInput, accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.SiteUpdateBgpPeer, error)
+	SiteRemoveBgpPeer(
+		ctx context.Context, input cato_models.RemoveBgpPeerInput, accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.SiteRemoveBgpPeer, error)
+}
+
 func NewBgpPeerResource() resource.Resource {
 	return &bgpPeerResource{}
 }
 
 type bgpPeerResource struct {
-	client *catoClientData
+	client        *catoClientData
+	bgpPeerClient BgpPeerClient // injected in tests; nil falls back to client.catov2
+}
+
+func (r *bgpPeerResource) getBgpPeerClient() BgpPeerClient {
+	if r.bgpPeerClient != nil {
+		return r.bgpPeerClient
+	}
+	return r.client.catov2
 }
 
 type BgpPeer struct {
@@ -361,7 +391,7 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 	tflog.Debug(ctx, "Create.SiteAddBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	addBgpPeerPayload, err := r.client.catov2.SiteAddBgpPeer(ctx, input, r.client.AccountId)
+	addBgpPeerPayload, err := r.getBgpPeerClient().SiteAddBgpPeer(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addBgpPeerPayload),
 	})
@@ -399,7 +429,7 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 	tflog.Debug(ctx, "Read.SiteBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(bgpPeerRefInput),
 	})
-	result, err := r.client.catov2.SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
+	result, err := r.getBgpPeerClient().SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
 	tflog.Debug(ctx, "Read.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -420,6 +450,17 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	bgpPeer := result.GetSite().GetBgpPeer()
 	bgpPeerInput := ConvertToBgpPeer(*bgpPeer)
+
+	// The Cato API omits bfd_settings and tracking when they are not active
+	// (e.g. bfd_enabled=false). Preserve the prior state values so that a
+	// user-supplied block is not silently nulled out on refresh, which would
+	// cause a perpetual non-empty plan.
+	if bgpPeer.BfdSettingsBgpPeer == nil {
+		bgpPeerInput.BfdSettings = state.BfdSettings
+	}
+	if bgpPeer.TrackingBgpPeer == nil {
+		bgpPeerInput.Tracking = state.Tracking
+	}
 
 	diags = resp.State.Set(ctx, &bgpPeerInput)
 	resp.Diagnostics.Append(diags...)
@@ -533,7 +574,7 @@ func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest
 	tflog.Debug(ctx, "Update.SiteUpdateBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	SiteUpdateBgpPeerResponse, err := r.client.catov2.SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
+	SiteUpdateBgpPeerResponse, err := r.getBgpPeerClient().SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(SiteUpdateBgpPeerResponse),
 	})
@@ -565,7 +606,7 @@ func (r *bgpPeerResource) Delete(ctx context.Context, req resource.DeleteRequest
 	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeBgpPeerInput),
 	})
-	SiteRemoveBgpPeerResponse, err := r.client.catov2.SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
+	SiteRemoveBgpPeerResponse, err := r.getBgpPeerClient().SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(SiteRemoveBgpPeerResponse),
 	})
