@@ -22,12 +22,6 @@ var DHCPChecker dhcpChecker
 // Check validates the DHCP settings object.
 // Returns error and updates diags if the settings are invalid, otherwise returns nil.
 func (d dhcpChecker) Check(ctx context.Context, diags *diag.Diagnostics, dhcp types.Object) error {
-	return d.CheckWithPriorState(ctx, diags, dhcp, nil)
-}
-
-func (d dhcpChecker) CheckWithPriorState(
-	ctx context.Context, diags *diag.Diagnostics, dhcp types.Object, priorState *tf.DhcpSettings,
-) error {
 	var dhcpSettings *tf.DhcpSettings
 
 	if !utils.HasValue(dhcp) {
@@ -43,7 +37,7 @@ func (d dhcpChecker) CheckWithPriorState(
 	}
 
 	// validate dhcp-relay group setting
-	if relayErr := d.checkDHCPRelay(diags, *dhcpSettings, priorState); relayErr != nil {
+	if relayErr := d.checkDHCPRelay(diags, *dhcpSettings); relayErr != nil {
 		return relayErr
 	}
 
@@ -58,16 +52,14 @@ func (d dhcpChecker) CheckWithPriorState(
 // checkDHCPRelay validates the consistency of DHCP relay settings
 // if DHCP type is DHCP_RELAY, exactly one of relay_group_name or relay_group_id must be set,
 // otherwise, neither can be set.
-func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings tf.DhcpSettings, priorState *tf.DhcpSettings) error {
+func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings tf.DhcpSettings) error {
 	relayGroupNameSet := utils.HasValue(dhcpSettings.RelayGroupName)
 	relayGroupIDSet := utils.HasValue(dhcpSettings.RelayGroupID)
-	relayGroupNameExplicit := dhcpRelayFieldIsExplicit(dhcpSettings.RelayGroupName, priorStateRelayGroupName(priorState))
-	relayGroupIDExplicit := dhcpRelayFieldIsExplicit(dhcpSettings.RelayGroupID, priorStateRelayGroupID(priorState))
 	dhcpType := cato_models.DhcpType(dhcpSettings.DhcpType.ValueString())
 
 	// If DHCP type is not DHCP_RELAY, relay group name/id must not be configured
 	if dhcpType != cato_models.DhcpTypeDhcpRelay {
-		if relayGroupIDExplicit || relayGroupNameExplicit {
+		if relayGroupIDSet || relayGroupNameSet {
 			diags.AddError("Invalid DHCP Configuration",
 				fmt.Sprintf("relay_group_id or relay_group_name can only be configured when DHCP type is 'DHCP_RELAY' (have %q)", dhcpType))
 			return ErrConfig
@@ -81,33 +73,12 @@ func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings tf.Dhc
 			"either relay_group_id or relay_group_name must be configured when DHCP type is 'DHCP_RELAY'")
 		return ErrConfig
 	}
-	if relayGroupNameExplicit && relayGroupIDExplicit {
+	if relayGroupNameSet && relayGroupIDSet {
 		diags.AddError("Invalid DHCP Configuration",
 			"only one of relay_group_id or relay_group_name can be configured when DHCP type is 'DHCP_RELAY'")
 		return ErrConfig
 	}
 	return nil
-}
-
-func dhcpRelayFieldIsExplicit(cfgVal, stateVal types.String) bool {
-	if !utils.HasValue(cfgVal) {
-		return false
-	}
-	return !utils.HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
-}
-
-func priorStateRelayGroupName(state *tf.DhcpSettings) types.String {
-	if state == nil {
-		return types.StringNull()
-	}
-	return state.RelayGroupName
-}
-
-func priorStateRelayGroupID(state *tf.DhcpSettings) types.String {
-	if state == nil {
-		return types.StringNull()
-	}
-	return state.RelayGroupID
 }
 
 // checkDHCPRange validates the consistency of DHCP range settings
