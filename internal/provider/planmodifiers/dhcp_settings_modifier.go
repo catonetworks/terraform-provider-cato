@@ -61,10 +61,10 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 
 	dhcpType := cato_models.DhcpType(cfg.DhcpType.ValueString())
 
-	// microsegmentation is only relevant for DHCP_RANGE
-	if dhcpType != cato_models.DhcpTypeDhcpRange && utils.HasValue(cfg.DhcpMicrosegmentation) {
+	// microsegmentation=true is only valid for DHCP_RANGE; false is the zero value and is always allowed
+	if dhcpType != cato_models.DhcpTypeDhcpRange && utils.HasValue(cfg.DhcpMicrosegmentation) && cfg.DhcpMicrosegmentation.ValueBool() {
 		resp.Diagnostics.AddError("configuration error in dhcp_settings",
-			"'dhcp_microsegmentation' can only be set when 'dhcp_type' is 'DHCP_RANGE'")
+			"'dhcp_microsegmentation' can only be set to true when 'dhcp_type' is 'DHCP_RANGE'")
 		return
 	}
 
@@ -86,10 +86,9 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 }
 
 func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
-	// Ensure there is exactly one name or id in the config
 	if cfg.RelayGroupName.IsNull() && cfg.RelayGroupID.IsNull() {
-		diags.AddError("DHCP configuration error in dhcp_settings", "'relay_group_name' or 'relay_group_id' "+
-			"must be defined in the config ")
+		diags.AddError("DHCP configuration error in dhcp_settings",
+			"'relay_group_name' or 'relay_group_id' must be defined in the config")
 		return dhcpSettingNull
 	}
 	if !cfg.RelayGroupName.IsNull() && !cfg.RelayGroupID.IsNull() {
@@ -101,16 +100,15 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 	}
 
 	plan := tf.DhcpSettings{
-		DhcpType:              cfg.DhcpType,       // required
-		IPRange:               types.StringNull(), // only for DHCP_RANGE
-		DhcpMicrosegmentation: types.BoolNull(),   // only for DHCP_RANGE
+		DhcpType:              cfg.DhcpType,
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
 		RelayGroupID:          types.StringUnknown(),
 		RelayGroupName:        types.StringUnknown(),
 	}
-	// RelayGroup Name configured
+
 	if !cfg.RelayGroupName.IsNull() {
 		plan.RelayGroupName = cfg.RelayGroupName
-		// if the name is the same as state, use known ID value (if available)
 		if state != nil && utils.HasValue(state.RelayGroupName) &&
 			state.RelayGroupName.ValueString() == cfg.RelayGroupName.ValueString() {
 			plan.RelayGroupID = state.RelayGroupID
@@ -118,13 +116,11 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 	}
 	if !cfg.RelayGroupID.IsNull() {
 		plan.RelayGroupID = cfg.RelayGroupID
-		// if the id is the same as state, use known Name value (if available)
 		if state != nil && utils.HasValue(state.RelayGroupID) &&
 			state.RelayGroupID.ValueString() == cfg.RelayGroupID.ValueString() {
 			plan.RelayGroupName = state.RelayGroupName
 		}
 	}
-
 	return m.makePlanObj(ctx, plan, diags)
 }
 

@@ -199,6 +199,240 @@ func TestNetworkRangeCreateRejectsConflictingInterfaceConfig(t *testing.T) {
 	}
 }
 
+// TestModifyPlanNoFalsePositiveWhenBothFieldsEqualState verifies that a plan cycle where
+// the plan carries both interface_id and interface_index from prior state, but config only
+// contains interface_id, does not generate a conflict error.
+// This is the exact root cause of the false positive seen in logs.txt: the provider stored
+// bare "11" as interface_index in state, Terraform Core propagated it into req.Config, and
+// the old validator fired because both fields were non-null.
+func TestModifyPlanNoFalsePositiveWhenBothFieldsEqualState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	// Simulate prior state: both fields exist with concrete values.
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("11"), // bare number as stored by older provider versions
+	}
+
+	planModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("11"),
+	}
+	cfgModel := networkRangeModel{
+		InterfaceID: types.StringValue("148383"),
+	}
+
+	plan := newNetworkRangePlan(ctx, t, planModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no conflict error for state-propagated interface_index, got: %v", resp.Diagnostics)
+	}
+}
+
+// TestModifyPlanAllowsInterfaceIDChangeWithPropagatedIndex verifies that when the user
+// changes interface_id to a new value while the plan carries prior-state interface_index,
+// no conflict error is raised and interface_index becomes unknown.
+func TestModifyPlanAllowsInterfaceIDChangeWithPropagatedIndex(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+	}
+
+	planModel := networkRangeModel{
+		InterfaceID:    types.StringValue("999999"), // user changed this
+		InterfaceIndex: types.StringValue("INT_11"), // plan carries prior state
+	}
+	cfgModel := networkRangeModel{
+		InterfaceID: types.StringValue("999999"),
+	}
+
+	plan := newNetworkRangePlan(ctx, t, planModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error when only interface_id explicitly changed, got: %v", resp.Diagnostics)
+	}
+
+	var got tf.NetworkRange
+	if diags := resp.Plan.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("failed to decode plan: %v", diags)
+	}
+	if got.InterfaceID.ValueString() != "999999" {
+		t.Fatalf("expected interface_id to stay changed, got %q", got.InterfaceID.ValueString())
+	}
+	if !got.InterfaceIndex.IsUnknown() {
+		t.Fatalf("expected propagated interface_index to become unknown, got %q", got.InterfaceIndex.ValueString())
+	}
+}
+
+// TestModifyPlanAllowsInterfaceIndexChangeWithPropagatedID verifies the symmetric case:
+// when the user changes interface_index and Terraform propagates the old interface_id from
+// state, the propagated ID does not override the actual interface_index change.
+func TestModifyPlanAllowsInterfaceIndexChangeWithPropagatedID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+	}
+
+	planModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"), // plan carries prior state
+		InterfaceIndex: types.StringValue("INT_5"),  // user changed this
+	}
+	cfgModel := networkRangeModel{
+		InterfaceIndex: types.StringValue("INT_5"),
+	}
+
+	plan := newNetworkRangePlan(ctx, t, planModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error when only interface_index explicitly changed, got: %v", resp.Diagnostics)
+	}
+
+	var got tf.NetworkRange
+	if diags := resp.Plan.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("failed to decode plan: %v", diags)
+	}
+	if got.InterfaceIndex.ValueString() != "INT_5" {
+		t.Fatalf("expected interface_index to stay changed, got %q", got.InterfaceIndex.ValueString())
+	}
+	if !got.InterfaceID.IsUnknown() {
+		t.Fatalf("expected propagated interface_id to become unknown, got %q", got.InterfaceID.ValueString())
+	}
+}
+
+// TestModifyPlanAllowsRelayNameWithPropagatedRelayID verifies the customer scenario from
+// ENG-193800: config only has relay_group_name and dhcp_microsegmentation=false, while old
+// state contributes relay_group_id during planning.
+func TestModifyPlanAllowsRelayNameWithPropagatedRelayID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	})
+	planDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"), // plan carries prior state
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(false),
+	})
+	cfgDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringNull(),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(false),
+	})
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+		RangeType:      types.StringValue("VLAN"),
+		Vlan:           types.Int64Value(812),
+		DhcpSettings:   stateDhcp,
+	}
+	planModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+		RangeType:      types.StringValue("VLAN"),
+		Vlan:           types.Int64Value(812),
+		DhcpSettings:   planDhcp,
+	}
+	cfgModel := networkRangeModel{
+		InterfaceID:  types.StringValue("148383"),
+		RangeType:    types.StringValue("VLAN"),
+		Vlan:         types.Int64Value(812),
+		DhcpSettings: cfgDhcp,
+	}
+
+	plan := newNetworkRangePlan(ctx, t, planModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error for state-propagated relay_group_id, got: %v", resp.Diagnostics)
+	}
+}
+
+// TestModifyPlanDetectsExplicitInterfaceConflict verifies that when a user explicitly writes
+// both interface_id and interface_index with different values than the prior state, the
+// conflict error is still correctly raised.
+func TestModifyPlanDetectsExplicitInterfaceConflict(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+	}
+
+	// User explicitly changed BOTH fields to new values → genuine conflict.
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("999999"), // new value
+		InterfaceIndex: types.StringValue("INT_5"),  // new value
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected conflict error when both interface_id and interface_index are explicitly changed")
+	}
+}
+
 func TestNetworkRangeCreateReturnsDiagnosticsOnAPIError(t *testing.T) {
 	t.Parallel()
 
@@ -427,6 +661,15 @@ func nonNullRawValue(t *testing.T) tftypes.Value {
 	t.Helper()
 
 	return tftypes.NewValue(tftypes.String, "non-null")
+}
+
+func makeNetworkRangeDhcpSettingsObj(t *testing.T, s tf.DhcpSettings) types.Object {
+	t.Helper()
+	obj, diags := types.ObjectValueFrom(context.Background(), tf.DhcpSettingsAttrTypes, s)
+	if diags.HasError() {
+		t.Fatalf("failed to create DHCP settings object: %v", diags)
+	}
+	return obj
 }
 
 type networkRangeModel struct {
