@@ -55,8 +55,9 @@ func (v NetworkRangeValidator) ValidateNetworkRange(
 		return
 	}
 
-	// Validate DHCP settings
-	if DHCPChecker.Check(ctx, diags, networkRange.DhcpSettings) != nil {
+	// Validate DHCP settings. Pass prior state so Optional+Computed values propagated into
+	// config do not look like user-set relay_group_id/name values.
+	if DHCPChecker.CheckWithPriorState(ctx, diags, networkRange.DhcpSettings, priorStateDhcpSettings(ctx, priorState, diags)) != nil {
 		return
 	}
 
@@ -112,6 +113,18 @@ func priorStateInterfaceIndex(state *tf.NetworkRange) types.String {
 		return types.StringNull()
 	}
 	return state.InterfaceIndex
+}
+
+func priorStateDhcpSettings(ctx context.Context, state *tf.NetworkRange, diags *diag.Diagnostics) *tf.DhcpSettings {
+	if state == nil || !utils.HasValue(state.DhcpSettings) {
+		return nil
+	}
+
+	var dhcpSettings *tf.DhcpSettings
+	if utils.CheckErr(diags, state.DhcpSettings.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	return dhcpSettings
 }
 
 func (v NetworkRangeValidator) checkRangeTypeAttributes(diags *diag.Diagnostics, networkRange *tf.NetworkRange) error {

@@ -297,15 +297,12 @@ func TestModifyPlanAllowsInterfaceIndexChangeWithPropagatedID(t *testing.T) {
 		InterfaceIndex: types.StringValue("INT_11"),
 	}
 
-	planModel := networkRangeModel{
-		InterfaceID:    types.StringValue("148383"), // plan carries prior state
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"), // same as state -> state-propagated
 		InterfaceIndex: types.StringValue("INT_5"),  // user changed this
 	}
-	cfgModel := networkRangeModel{
-		InterfaceIndex: types.StringValue("INT_5"),
-	}
 
-	plan := newNetworkRangePlan(ctx, t, planModel)
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
 	resp := &resource.ModifyPlanResponse{Plan: plan}
 
 	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
@@ -346,17 +343,10 @@ func TestModifyPlanAllowsRelayNameWithPropagatedRelayID(t *testing.T) {
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
 	})
-	planDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
-		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
-		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
-		RelayGroupID:          types.StringValue("4456"), // plan carries prior state
-		IPRange:               types.StringNull(),
-		DhcpMicrosegmentation: types.BoolValue(false),
-	})
 	cfgDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
-		RelayGroupID:          types.StringNull(),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolValue(false),
 	})
@@ -368,21 +358,15 @@ func TestModifyPlanAllowsRelayNameWithPropagatedRelayID(t *testing.T) {
 		Vlan:           types.Int64Value(812),
 		DhcpSettings:   stateDhcp,
 	}
-	planModel := networkRangeModel{
+	cfgModel := networkRangeModel{
 		InterfaceID:    types.StringValue("148383"),
 		InterfaceIndex: types.StringValue("INT_11"),
 		RangeType:      types.StringValue("VLAN"),
 		Vlan:           types.Int64Value(812),
-		DhcpSettings:   planDhcp,
-	}
-	cfgModel := networkRangeModel{
-		InterfaceID:  types.StringValue("148383"),
-		RangeType:    types.StringValue("VLAN"),
-		Vlan:         types.Int64Value(812),
-		DhcpSettings: cfgDhcp,
+		DhcpSettings:   cfgDhcp,
 	}
 
-	plan := newNetworkRangePlan(ctx, t, planModel)
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
 	resp := &resource.ModifyPlanResponse{Plan: plan}
 
 	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
