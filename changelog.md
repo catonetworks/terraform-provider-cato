@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.89 (2026-07-01)
+
+### Fixed
+- Fixed old state handling in the DHCP settings plan modifier and network range resource to correctly process prior state during plan evaluation.
+
+### Changed
+- Updated retry policy to use the GraphQL-aware `cato.BaseRetryPolicy` in the provider configuration.
+
+### Tests
+- Added unit test coverage for the DHCP settings plan modifier and `cato_network_range` resource.
+- Updated private access policy acceptance tests for origins handling.
+- Increased timeout in the flaky acceptance test runner script.
+
 ## 0.0.88 (2026-06-25)
 
 ### Added
