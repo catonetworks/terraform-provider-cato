@@ -51,7 +51,7 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 						map[string]string{"name": cfg.applications[1].Name, "id": cfg.applications[1].ID},
 					),
 					resource.TestCheckResourceAttr(resRule, "connection_origins.#", "2"),
-					resource.TestCheckTypeSetElemAttr(resRule, "connection_origins.*", "REMOTE"),
+					resource.TestCheckTypeSetElemAttr(resRule, "connection_origins.*", "REMOTE_CLIENT"),
 					resource.TestCheckTypeSetElemAttr(resRule, "connection_origins.*", "SITE"),
 					resource.TestCheckResourceAttr(resRule, "countries.#", "2"),
 					resource.TestCheckTypeSetElemNestedAttrs(resRule, "countries.*",
@@ -141,7 +141,7 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 						map[string]string{"name": cfg.applications[1].Name, "id": cfg.applications[1].ID},
 					),
 					resource.TestCheckResourceAttr(resRule, "connection_origins.#", "2"),
-					resource.TestCheckTypeSetElemAttr(resRule, "connection_origins.*", "REMOTE"),
+					resource.TestCheckTypeSetElemAttr(resRule, "connection_origins.*", "REMOTE_CLIENT"),
 					resource.TestCheckTypeSetElemAttr(resRule, "connection_origins.*", "SITE"),
 					resource.TestCheckResourceAttr(resRule, "countries.#", "2"),
 					resource.TestCheckTypeSetElemNestedAttrs(resRule, "countries.*",
@@ -278,7 +278,7 @@ var privAccessPolicyTFs = []string{`
 	    { "name" = "{{ (index .Applications 0).Name }}" },
 	    { "id" = "{{ (index .Applications 1).ID }}" }
 	  ]
-	  connection_origins = ["REMOTE", "SITE"]
+	  connection_origins = ["REMOTE_CLIENT", "SITE"]
 	  countries = [
 	    { "name" = "United States" },
 	    { "id" = "CZ" }
@@ -363,7 +363,7 @@ var privAccessPolicyTFs = []string{`
 	  applications = [
 	    { "id" = "{{ (index .Applications 1).ID }}" }
 	  ]
-	  connection_origins = ["REMOTE", "SITE"]
+	  connection_origins = ["REMOTE_CLIENT", "SITE"]
 	  countries = [
 	    { "name" = "United States" },
 	    { "id" = "IT" }
