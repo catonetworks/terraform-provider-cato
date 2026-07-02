@@ -239,6 +239,38 @@ func TestModifyPlanNoFalsePositiveWhenBothFieldsEqualState(t *testing.T) {
 	}
 }
 
+// TestModifyPlanNoFalsePositiveWhenConfigCarriesBothFieldsEqualState reproduces the request shape
+// seen in ENG-193800 logs: Terraform passes both interface fields through req.Config even though
+// one came from prior state.
+func TestModifyPlanNoFalsePositiveWhenConfigCarriesBothFieldsEqualState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("11"),
+	}
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("11"),
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no conflict error for state-propagated interface fields, got: %v", resp.Diagnostics)
+	}
+}
+
 // TestModifyPlanAllowsInterfaceIDChangeWithPropagatedIndex verifies that when the user
 // changes interface_id to a new value while the plan carries prior-state interface_index,
 // no conflict error is raised and interface_index becomes unknown.
@@ -262,6 +294,49 @@ func TestModifyPlanAllowsInterfaceIDChangeWithPropagatedIndex(t *testing.T) {
 	}
 
 	plan := newNetworkRangePlan(ctx, t, planModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error when only interface_id explicitly changed, got: %v", resp.Diagnostics)
+	}
+
+	var got tf.NetworkRange
+	if diags := resp.Plan.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("failed to decode plan: %v", diags)
+	}
+	if got.InterfaceID.ValueString() != "999999" {
+		t.Fatalf("expected interface_id to stay changed, got %q", got.InterfaceID.ValueString())
+	}
+	if !got.InterfaceIndex.IsUnknown() {
+		t.Fatalf("expected propagated interface_index to become unknown, got %q", got.InterfaceIndex.ValueString())
+	}
+}
+
+// TestModifyPlanAllowsInterfaceIDChangeWhenConfigCarriesPropagatedIndex verifies the log-shaped
+// variant where req.Config includes the old interface_index along with a changed interface_id.
+func TestModifyPlanAllowsInterfaceIDChangeWhenConfigCarriesPropagatedIndex(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("11"),
+	}
+
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("999999"),
+		InterfaceIndex: types.StringValue("11"), // propagated from state
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
 	resp := &resource.ModifyPlanResponse{Plan: plan}
 
 	r.ModifyPlan(ctx, resource.ModifyPlanRequest{

@@ -8,6 +8,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
@@ -39,6 +40,21 @@ func (v NetworkRangeValidator) ValidateObject(ctx context.Context, req validator
 }
 
 func (v NetworkRangeValidator) ValidateNetworkRange(ctx context.Context, networkRange *tf.NetworkRange, diags *diag.Diagnostics) {
+	v.validateNetworkRange(ctx, networkRange, nil, diags)
+}
+
+// ValidateNetworkRangeWithPriorState validates ModifyPlan input. Terraform can populate Optional+Computed
+// attributes from prior state before resource ModifyPlan runs, so only values that differ from
+// prior state are treated as user-explicit for mutually-exclusive interface fields.
+func (v NetworkRangeValidator) ValidateNetworkRangeWithPriorState(
+	ctx context.Context, networkRange *tf.NetworkRange, priorState *tf.NetworkRange, diags *diag.Diagnostics,
+) {
+	v.validateNetworkRange(ctx, networkRange, priorState, diags)
+}
+
+func (v NetworkRangeValidator) validateNetworkRange(
+	ctx context.Context, networkRange *tf.NetworkRange, priorState *tf.NetworkRange, diags *diag.Diagnostics,
+) {
 	// Validate that local_ip is within network_network_range
 	if checkLocalIP(diags, networkRange.LocalIP, networkRange.Subnet) != nil {
 		return
@@ -50,7 +66,9 @@ func (v NetworkRangeValidator) ValidateNetworkRange(ctx context.Context, network
 	}
 
 	// Validate that interface_id and interface_index cannot be set simultaneously
-	if utils.HasValue(networkRange.InterfaceID) && utils.HasValue(networkRange.InterfaceIndex) {
+	idExplicit := networkRangeInterfaceFieldIsExplicit(networkRange.InterfaceID, priorStateInterfaceID(priorState))
+	indexExplicit := networkRangeInterfaceFieldIsExplicit(networkRange.InterfaceIndex, priorStateInterfaceIndex(priorState))
+	if idExplicit && indexExplicit {
 		diags.AddError("Invalid network range Configuration",
 			fmt.Sprintf("interface_id '%s' and interface_index '%s' cannot be set simultaneously.",
 				networkRange.InterfaceID.ValueString(), networkRange.InterfaceIndex.ValueString()))
@@ -71,6 +89,27 @@ func (v NetworkRangeValidator) ValidateNetworkRange(ctx context.Context, network
 	if v.checkRangeTypeAttributes(diags, networkRange) != nil {
 		return
 	}
+}
+
+func networkRangeInterfaceFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if !utils.HasValue(cfgVal) {
+		return false
+	}
+	return !utils.HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
+}
+
+func priorStateInterfaceID(state *tf.NetworkRange) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.InterfaceID
+}
+
+func priorStateInterfaceIndex(state *tf.NetworkRange) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.InterfaceIndex
 }
 
 func (v NetworkRangeValidator) checkRangeTypeAttributes(diags *diag.Diagnostics, networkRange *tf.NetworkRange) error {
