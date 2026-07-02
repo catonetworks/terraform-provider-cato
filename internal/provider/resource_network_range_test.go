@@ -474,6 +474,59 @@ func TestModifyPlanAllowsRelayNameWithPropagatedRelayID(t *testing.T) {
 	}
 }
 
+// TestModifyPlanAllowsRelayNameWhenConfigCarriesPropagatedRelayID verifies the log-shaped
+// ENG-193800 failure where req.Config carries both relay_group_name and a state-propagated
+// relay_group_id before the DHCP plan modifier runs.
+func TestModifyPlanAllowsRelayNameWhenConfigCarriesPropagatedRelayID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	r := &networkRangeResource{client: &catoClientData{AccountId: "account-123"}}
+
+	stateDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	})
+	cfgDhcp := makeNetworkRangeDhcpSettingsObj(t, tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(false),
+	})
+
+	stateModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+		RangeType:      types.StringValue("VLAN"),
+		Vlan:           types.Int64Value(816),
+		DhcpSettings:   stateDhcp,
+	}
+	cfgModel := networkRangeModel{
+		InterfaceID:    types.StringValue("148383"),
+		InterfaceIndex: types.StringValue("INT_11"),
+		RangeType:      types.StringValue("VLAN"),
+		Vlan:           types.Int64Value(816),
+		DhcpSettings:   cfgDhcp,
+	}
+
+	plan := newNetworkRangePlan(ctx, t, cfgModel)
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   plan,
+		Config: newNetworkRangeConfig(ctx, t, cfgModel),
+		State:  newNetworkRangeState(ctx, t, stateModel),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no validator error for state-propagated relay_group_id, got: %v", resp.Diagnostics)
+	}
+}
+
 // TestModifyPlanDetectsExplicitInterfaceConflict verifies that when a user explicitly writes
 // both interface_id and interface_index with different values than the prior state, the
 // conflict error is still correctly raised.

@@ -22,6 +22,17 @@ var DHCPChecker dhcpChecker
 // Check validates the DHCP settings object.
 // Returns error and updates diags if the settings are invalid, otherwise returns nil.
 func (d dhcpChecker) Check(ctx context.Context, diags *diag.Diagnostics, dhcp types.Object) error {
+	return d.check(ctx, diags, dhcp, types.ObjectNull(tf.DhcpSettingsAttrTypes))
+}
+
+// CheckWithPriorState validates DHCP settings during ModifyPlan. Terraform can populate
+// Optional+Computed nested attributes from prior state into req.Config, so prior state is used
+// to distinguish user-explicit relay fields from propagated values.
+func (d dhcpChecker) CheckWithPriorState(ctx context.Context, diags *diag.Diagnostics, dhcp, priorState types.Object) error {
+	return d.check(ctx, diags, dhcp, priorState)
+}
+
+func (d dhcpChecker) check(ctx context.Context, diags *diag.Diagnostics, dhcp, priorState types.Object) error {
 	var dhcpSettings *tf.DhcpSettings
 
 	if !utils.HasValue(dhcp) {
@@ -36,8 +47,18 @@ func (d dhcpChecker) Check(ctx context.Context, diags *diag.Diagnostics, dhcp ty
 		return nil
 	}
 
+	var priorDhcpSettings *tf.DhcpSettings
+	if utils.HasValue(priorState) {
+		if utils.CheckErr(diags, priorState.As(ctx, &priorDhcpSettings, basetypes.ObjectAsOptions{})) {
+			return ErrConfig
+		}
+		if d.isUnknown(priorDhcpSettings) {
+			priorDhcpSettings = nil
+		}
+	}
+
 	// validate dhcp-relay group setting
-	if relayErr := d.checkDHCPRelay(diags, *dhcpSettings); relayErr != nil {
+	if relayErr := d.checkDHCPRelay(diags, *dhcpSettings, priorDhcpSettings); relayErr != nil {
 		return relayErr
 	}
 
@@ -52,14 +73,16 @@ func (d dhcpChecker) Check(ctx context.Context, diags *diag.Diagnostics, dhcp ty
 // checkDHCPRelay validates the consistency of DHCP relay settings
 // if DHCP type is DHCP_RELAY, exactly one of relay_group_name or relay_group_id must be set,
 // otherwise, neither can be set.
-func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings tf.DhcpSettings) error {
+func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings tf.DhcpSettings, priorState *tf.DhcpSettings) error {
 	relayGroupNameSet := utils.HasValue(dhcpSettings.RelayGroupName)
 	relayGroupIDSet := utils.HasValue(dhcpSettings.RelayGroupID)
+	relayGroupNameExplicit := dhcpRelayFieldIsExplicit(dhcpSettings.RelayGroupName, priorStateRelayGroupName(priorState))
+	relayGroupIDExplicit := dhcpRelayFieldIsExplicit(dhcpSettings.RelayGroupID, priorStateRelayGroupID(priorState))
 	dhcpType := cato_models.DhcpType(dhcpSettings.DhcpType.ValueString())
 
 	// If DHCP type is not DHCP_RELAY, relay group name/id must not be configured
 	if dhcpType != cato_models.DhcpTypeDhcpRelay {
-		if relayGroupIDSet || relayGroupNameSet {
+		if relayGroupIDExplicit || relayGroupNameExplicit {
 			diags.AddError("Invalid DHCP Configuration",
 				fmt.Sprintf("relay_group_id or relay_group_name can only be configured when DHCP type is 'DHCP_RELAY' (have %q)", dhcpType))
 			return ErrConfig
@@ -73,12 +96,33 @@ func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings tf.Dhc
 			"either relay_group_id or relay_group_name must be configured when DHCP type is 'DHCP_RELAY'")
 		return ErrConfig
 	}
-	if relayGroupNameSet && relayGroupIDSet {
+	if relayGroupNameExplicit && relayGroupIDExplicit {
 		diags.AddError("Invalid DHCP Configuration",
 			"only one of relay_group_id or relay_group_name can be configured when DHCP type is 'DHCP_RELAY'")
 		return ErrConfig
 	}
 	return nil
+}
+
+func dhcpRelayFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if !utils.HasValue(cfgVal) {
+		return false
+	}
+	return !utils.HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
+}
+
+func priorStateRelayGroupName(state *tf.DhcpSettings) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.RelayGroupName
+}
+
+func priorStateRelayGroupID(state *tf.DhcpSettings) types.String {
+	if state == nil {
+		return types.StringNull()
+	}
+	return state.RelayGroupID
 }
 
 // checkDHCPRange validates the consistency of DHCP range settings

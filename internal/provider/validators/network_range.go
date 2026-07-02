@@ -61,7 +61,7 @@ func (v NetworkRangeValidator) validateNetworkRange(
 	}
 
 	// Validate DHCP settings
-	if DHCPChecker.Check(ctx, diags, networkRange.DhcpSettings) != nil {
+	if DHCPChecker.CheckWithPriorState(ctx, diags, networkRange.DhcpSettings, priorStateDhcpSettings(priorState)) != nil {
 		return
 	}
 
@@ -110,6 +110,13 @@ func priorStateInterfaceIndex(state *tf.NetworkRange) types.String {
 		return types.StringNull()
 	}
 	return state.InterfaceIndex
+}
+
+func priorStateDhcpSettings(state *tf.NetworkRange) types.Object {
+	if state == nil {
+		return types.ObjectNull(tf.DhcpSettingsAttrTypes)
+	}
+	return state.DhcpSettings
 }
 
 func (v NetworkRangeValidator) checkRangeTypeAttributes(diags *diag.Diagnostics, networkRange *tf.NetworkRange) error {
