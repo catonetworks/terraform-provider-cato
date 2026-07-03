@@ -105,6 +105,7 @@ func TestAccountSnapshotCacheCoalescesConcurrentRequests(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 
+	//nolint:unparam // Cache fetch functions must match the production signature.
 	fetch := func(context.Context) (*cato.AccountSnapshot, error) {
 		calls.Add(1)
 		close(started)
@@ -152,6 +153,7 @@ func TestAccountSnapshotCacheSerializesDifferentFetches(t *testing.T) {
 	var maxActive atomic.Int64
 	release := make(chan struct{})
 
+	//nolint:unparam // Cache fetch functions must match the production signature.
 	fetch := func(context.Context) (*cato.AccountSnapshot, error) {
 		cur := active.Add(1)
 		for {
@@ -171,7 +173,7 @@ func TestAccountSnapshotCacheSerializesDifferentFetches(t *testing.T) {
 	for i := range requests {
 		go func(i int) {
 			defer wg.Done()
-			_, err := cache.get(ctx, accountSnapshotCacheKey("account", []string{string(rune('a' + i))}, nil), false, fetch)
+			_, err := cache.get(ctx, accountSnapshotCacheKey("account", []string{siteIDForTest(i)}, nil), false, fetch)
 			if err != nil {
 				t.Errorf("unexpected fetch error: %v", err)
 			}
@@ -186,6 +188,11 @@ func TestAccountSnapshotCacheSerializesDifferentFetches(t *testing.T) {
 	if got := maxActive.Load(); got != 1 {
 		t.Fatalf("expected only one active fetch at a time, got %d", got)
 	}
+}
+
+func siteIDForTest(i int) string {
+	siteIDs := []string{"site-a", "site-b", "site-c", "site-d"}
+	return siteIDs[i]
 }
 
 func TestAccountSnapshotCacheKeySortsIDs(t *testing.T) {
