@@ -470,14 +470,14 @@ func precedenceFromNaturalOrder(naturalOrder *int64) types.String {
 }
 
 func wanRoleFromInterfaceID(interfaceID string) string {
-	switch strings.ToUpper(interfaceID) {
-	case "WAN1", "INT_1":
+	switch strings.ToUpper(strings.TrimSpace(interfaceID)) {
+	case "1", "WAN1", "INT_1":
 		return "wan_1"
-	case "WAN2", "INT_2":
+	case "2", "WAN2", "INT_2":
 		return "wan_2"
-	case "WAN3", "INT_3":
+	case "3", "WAN3", "INT_3":
 		return "wan_3"
-	case "WAN4", "INT_4":
+	case "4", "WAN4", "INT_4":
 		return "wan_4"
 	default:
 		return ""
@@ -542,8 +542,6 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(
 	state.DownstreamBandwidth = types.Int64Value(*foundInterface.DownstreamBandwidth)
 	if derivedRole := wanRoleFromInterfaceID(foundInterface.ID); derivedRole != "" {
 		state.Role = types.StringValue(derivedRole)
-	} else {
-		state.Role = types.StringNull()
 	}
 
 	// Map precedence from naturalOrder in devices.interfaces
@@ -556,7 +554,7 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(
 				if deviceIface.ID != nil {
 					deviceIfaceID = *deviceIface.ID
 				}
-				if wanInterfaceIDsMatch(state.InterfaceID.ValueString(), foundInterface.ID, deviceIfaceID) {
+				if wanInterfaceIDsMatch(foundInterface.ID, deviceIfaceID, "") {
 					mappedPrecedence := precedenceFromNaturalOrder(deviceIface.NaturalOrder)
 					if !mappedPrecedence.IsNull() && !mappedPrecedence.IsUnknown() {
 						state.Precedence = mappedPrecedence
