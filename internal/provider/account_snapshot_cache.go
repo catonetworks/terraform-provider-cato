@@ -128,21 +128,9 @@ func (d *catoClientData) accountSnapshot(
 		return d.catov2.AccountSnapshot(ctx, siteIDs, userIDs, &d.AccountId)
 	}
 
-	if forceRefresh && d.accountSnapshotCache != nil {
-		d.accountSnapshotCache.invalidate(key)
-	}
-
+	// forceRefresh in get already bypasses and overwrites the cached value, so no
+	// separate invalidation is required here.
 	return d.accountSnapshotCache.get(ctx, key, forceRefresh, fetch)
-}
-
-func (c *accountSnapshotCache) invalidate(key string) {
-	if c == nil {
-		return
-	}
-
-	c.mu.Lock()
-	delete(c.values, key)
-	c.mu.Unlock()
 }
 
 func (c *accountSnapshotCache) fetchWithLimit(
