@@ -88,6 +88,13 @@ func TestWanInterfaceIDsMatch(t *testing.T) {
 			device:    "2",
 			shouldHit: false,
 		},
+		{
+			name:      "selected numeric interface does not match different device",
+			resource:  "3",
+			snapshot:  "1",
+			device:    "",
+			shouldHit: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -97,6 +104,52 @@ func TestWanInterfaceIDsMatch(t *testing.T) {
 			got := wanInterfaceIDsMatch(tt.resource, tt.snapshot, tt.device)
 			if got != tt.shouldHit {
 				t.Fatalf("wanInterfaceIDsMatch(%q, %q, %q) = %v, want %v", tt.resource, tt.snapshot, tt.device, got, tt.shouldHit)
+			}
+		})
+	}
+}
+
+func TestWanRoleFromInterfaceID(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		interfaceID string
+		expected    string
+	}{
+		{
+			name:        "bare numeric wan 1",
+			interfaceID: "1",
+			expected:    "wan_1",
+		},
+		{
+			name:        "bare numeric wan 2",
+			interfaceID: "2",
+			expected:    "wan_2",
+		},
+		{
+			name:        "INT format",
+			interfaceID: "INT_3",
+			expected:    "wan_3",
+		},
+		{
+			name:        "WAN format",
+			interfaceID: "WAN4",
+			expected:    "wan_4",
+		},
+		{
+			name:        "unknown",
+			interfaceID: "LAN1",
+			expected:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := wanRoleFromInterfaceID(tt.interfaceID); got != tt.expected {
+				t.Fatalf("wanRoleFromInterfaceID(%q) = %q, want %q", tt.interfaceID, got, tt.expected)
 			}
 		})
 	}

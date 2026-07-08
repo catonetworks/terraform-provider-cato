@@ -55,10 +55,11 @@ type catoProviderModel struct {
 
 // added by JF to support use of two different clients (long story....)
 type catoClientData struct {
-	BaseURL   string
-	Token     string
-	AccountId string //nolint:revive // Shared client field used across provider resources.
-	catov2    *cato.Client
+	BaseURL              string
+	Token                string
+	AccountId            string //nolint:revive // Shared client field used across provider resources.
+	catov2               *cato.Client
+	accountSnapshotCache *accountSnapshotCache
 }
 
 func (p *catoClientData) V2() *cato.Client  { return p.catov2 }
@@ -310,10 +311,11 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	}
 
 	dataSourceData := &catoClientData{
-		BaseURL:   baseurl,
-		Token:     token,
-		AccountId: accountID,
-		catov2:    catoClient,
+		BaseURL:              baseurl,
+		Token:                token,
+		AccountId:            accountID,
+		catov2:               catoClient,
+		accountSnapshotCache: newAccountSnapshotCache(),
 	}
 
 	resp.DataSourceData = dataSourceData

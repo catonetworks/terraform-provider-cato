@@ -22,8 +22,9 @@ func makeDhcpSettingsObj(t *testing.T, s tf.DhcpSettings) types.Object {
 	return obj
 }
 
-// TestPlanDhcpRelay_PreservesStateIDForSameConfiguredName verifies that when the user keeps the
-// same relay_group_name, the plan modifier preserves the known relay_group_id from state.
+// TestPlanDhcpRelay_StateValuePropagation verifies that when Terraform propagates a prior-state
+// relay_group_id into the nested plan modifier config, the user-configured relay_group_name is
+// still accepted and the known ID is preserved.
 func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 	t.Parallel()
 
@@ -41,7 +42,7 @@ func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
-		RelayGroupID:          types.StringNull(),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
@@ -70,8 +71,8 @@ func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 }
 
 // TestPlanDhcpRelay_ChangedNameStatePropagatedID verifies that when the user changes
-// relay_group_name to a new group, the plan uses the new name and marks relay_group_id as
-// unknown (to be resolved at apply time).
+// relay_group_name and Terraform propagates the old relay_group_id from state, the plan uses
+// the new name and marks relay_group_id as unknown (to be resolved at apply time).
 func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 	t.Parallel()
 
@@ -89,7 +90,7 @@ func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("NEW-DHCP"),
-		RelayGroupID:          types.StringNull(),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
@@ -112,6 +113,52 @@ func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 	if !planSettings.RelayGroupID.IsUnknown() {
 		t.Errorf("expected relay_group_id to be unknown (new name → id not yet resolved), got %q",
 			planSettings.RelayGroupID.ValueString())
+	}
+}
+
+// TestPlanDhcpRelay_ChangedIDStatePropagatedName verifies the symmetric state propagation case:
+// when the user changes relay_group_id and Terraform propagates the old relay_group_name from
+// state, the plan uses the new ID and marks relay_group_name as unknown.
+func TestPlanDhcpRelay_ChangedIDStatePropagatedName(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	state := &tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	cfg := &tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"), // propagated from state
+		RelayGroupID:          types.StringValue("9999"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	result := m.planDhcpRelay(ctx, state, cfg, &d)
+
+	if d.HasError() {
+		t.Fatalf("expected no errors, got: %v", d)
+	}
+
+	var planSettings tf.DhcpSettings
+	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
+		t.Fatalf("failed to decode plan result: %v", dd)
+	}
+
+	if planSettings.RelayGroupID.ValueString() != "9999" {
+		t.Errorf("expected relay_group_id=%q, got %q", "9999", planSettings.RelayGroupID.ValueString())
+	}
+	if !planSettings.RelayGroupName.IsUnknown() {
+		t.Errorf("expected relay_group_name to be unknown (new id -> name not yet resolved), got %q",
+			planSettings.RelayGroupName.ValueString())
 	}
 }
 
@@ -272,6 +319,46 @@ func TestPlanModifyObject_DhcpRelayWithMicrosegmentationFalse(t *testing.T) {
 
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("expected no error for dhcp_microsegmentation=false with DHCP_RELAY, got: %v",
+			resp.Diagnostics)
+	}
+}
+
+// TestPlanModifyObject_DhcpRelayWithPropagatedIDAndMicrosegmentationFalse covers the ENG-193800
+// follow-up: Terraform can pass a state-propagated relay_group_id into the nested object plan
+// modifier even when the user only configured relay_group_name.
+func TestPlanModifyObject_DhcpRelayWithPropagatedIDAndMicrosegmentationFalse(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	stateSettings := tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+	cfgSettings := tf.DhcpSettings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(false),
+	}
+
+	req := planmodifier.ObjectRequest{
+		ConfigValue: makeDhcpSettingsObj(t, cfgSettings),
+		StateValue:  makeDhcpSettingsObj(t, stateSettings),
+	}
+	resp := &planmodifier.ObjectResponse{
+		PlanValue: req.ConfigValue,
+	}
+
+	m.PlanModifyObject(ctx, req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error for propagated relay_group_id with dhcp_microsegmentation=false, got: %v",
 			resp.Diagnostics)
 	}
 }

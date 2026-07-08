@@ -173,7 +173,7 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	plan.ID = types.StringValue(siteID.ValueString() + ":" + intID.ValueString())
 
 	// Hydrate the state from the API to get the latest values including precedence
-	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString())
+	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString(), true)
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating WAN interface state after create",
@@ -217,7 +217,7 @@ func (r *wanInterfaceResource) Read(ctx context.Context, req resource.ReadReques
 	interfaceID := parts[1]
 
 	// Hydrate the state from the API
-	hydratedState, interfaceExists, err := r.hydrateWanInterfaceState(ctx, state, siteID, interfaceID)
+	hydratedState, interfaceExists, err := r.hydrateWanInterfaceState(ctx, state, siteID, interfaceID, false)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating WAN interface state during read",
@@ -283,7 +283,7 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	plan.ID = types.StringValue(siteID.ValueString() + ":" + intID.ValueString())
 
 	// Hydrate the state from the API to get the latest values including precedence
-	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString())
+	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString(), true)
 	if hydrateErr != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating WAN interface state after update",
@@ -329,7 +329,7 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
 		// check if there is only one WAN interface & rewrite the input with default one
-		accountSnapshotSite, err := r.client.catov2.AccountSnapshot(ctx, []string{state.SiteID.ValueString()}, nil, &r.client.AccountId)
+		accountSnapshotSite, err := r.client.accountSnapshot(ctx, []string{state.SiteID.ValueString()}, nil, true)
 		tflog.Debug(ctx, "Delete.AccountSnapshot.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(accountSnapshotSite),
 		})
@@ -470,14 +470,14 @@ func precedenceFromNaturalOrder(naturalOrder *int64) types.String {
 }
 
 func wanRoleFromInterfaceID(interfaceID string) string {
-	switch strings.ToUpper(interfaceID) {
-	case "WAN1", "INT_1":
+	switch strings.ToUpper(strings.TrimSpace(interfaceID)) {
+	case "1", "WAN1", "INT_1":
 		return "wan_1"
-	case "WAN2", "INT_2":
+	case "2", "WAN2", "INT_2":
 		return "wan_2"
-	case "WAN3", "INT_3":
+	case "3", "WAN3", "INT_3":
 		return "wan_3"
-	case "WAN4", "INT_4":
+	case "4", "WAN4", "INT_4":
 		return "wan_4"
 	default:
 		return ""
@@ -488,9 +488,15 @@ func wanRoleFromInterfaceID(interfaceID string) string {
 // and populates the state object with the latest values, including precedence mapping
 //
 //nolint:gocyclo
-func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, state WanInterface, siteID string, interfaceID string) (WanInterface, bool, error) {
+func (r *wanInterfaceResource) hydrateWanInterfaceState(
+	ctx context.Context,
+	state WanInterface,
+	siteID string,
+	interfaceID string,
+	forceRefresh bool,
+) (WanInterface, bool, error) {
 	// Get accountSnapshot data to check if site exists and has interfaces
-	siteAccountSnapshotData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
+	siteAccountSnapshotData, err := r.client.accountSnapshot(ctx, []string{siteID}, nil, forceRefresh)
 	tflog.Debug(ctx, "hydrateWanInterfaceState.AccountSnapshot.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteAccountSnapshotData),
 	})
@@ -536,8 +542,6 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, sta
 	state.DownstreamBandwidth = types.Int64Value(*foundInterface.DownstreamBandwidth)
 	if derivedRole := wanRoleFromInterfaceID(foundInterface.ID); derivedRole != "" {
 		state.Role = types.StringValue(derivedRole)
-	} else {
-		state.Role = types.StringNull()
 	}
 
 	// Map precedence from naturalOrder in devices.interfaces
@@ -550,7 +554,7 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(ctx context.Context, sta
 				if deviceIface.ID != nil {
 					deviceIfaceID = *deviceIface.ID
 				}
-				if wanInterfaceIDsMatch(state.InterfaceID.ValueString(), foundInterface.ID, deviceIfaceID) {
+				if wanInterfaceIDsMatch(foundInterface.ID, deviceIfaceID, "") {
 					mappedPrecedence := precedenceFromNaturalOrder(deviceIface.NaturalOrder)
 					if !mappedPrecedence.IsNull() && !mappedPrecedence.IsUnknown() {
 						state.Precedence = mappedPrecedence

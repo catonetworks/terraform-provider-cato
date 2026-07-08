@@ -91,7 +91,18 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 			"'relay_group_name' or 'relay_group_id' must be defined in the config")
 		return dhcpSettingNull
 	}
-	if !cfg.RelayGroupName.IsNull() && !cfg.RelayGroupID.IsNull() {
+
+	stateRelayGroupName := types.StringNull()
+	stateRelayGroupID := types.StringNull()
+	if state != nil {
+		stateRelayGroupName = state.RelayGroupName
+		stateRelayGroupID = state.RelayGroupID
+	}
+
+	nameExplicit := relayFieldIsExplicit(cfg.RelayGroupName, stateRelayGroupName)
+	idExplicit := relayFieldIsExplicit(cfg.RelayGroupID, stateRelayGroupID)
+
+	if nameExplicit && idExplicit {
 		diags.AddError("DHCP configuration error in dhcp_settings",
 			fmt.Sprintf("only one of 'relay_group_name' or 'relay_group_id' can be specified in the config, "+
 				"[relay_group_id:%q, relay_group_name:%q]",
@@ -107,13 +118,15 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 		RelayGroupName:        types.StringUnknown(),
 	}
 
-	if !cfg.RelayGroupName.IsNull() {
+	if !cfg.RelayGroupName.IsNull() && !idExplicit {
 		plan.RelayGroupName = cfg.RelayGroupName
 		if state != nil && utils.HasValue(state.RelayGroupName) &&
 			state.RelayGroupName.ValueString() == cfg.RelayGroupName.ValueString() {
 			plan.RelayGroupID = state.RelayGroupID
 		}
+		return m.makePlanObj(ctx, plan, diags)
 	}
+
 	if !cfg.RelayGroupID.IsNull() {
 		plan.RelayGroupID = cfg.RelayGroupID
 		if state != nil && utils.HasValue(state.RelayGroupID) &&
@@ -122,6 +135,13 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 		}
 	}
 	return m.makePlanObj(ctx, plan, diags)
+}
+
+func relayFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if !utils.HasValue(cfgVal) {
+		return false
+	}
+	return !utils.HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
 }
 
 func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *tf.DhcpSettings, diags *diag.Diagnostics) types.Object {

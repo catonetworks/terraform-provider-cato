@@ -214,7 +214,7 @@ func (r *networkRangeResource) ModifyPlan(ctx context.Context, req resource.Modi
 
 	// Validate config - ensure there is exactly one interface_index or interface_id.
 	nrValidator := validators.NetworkRangeValidator{}
-	nrValidator.ValidateNetworkRange(ctx, cfg, &resp.Diagnostics)
+	nrValidator.ValidateNetworkRangeWithPriorState(ctx, cfg, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
