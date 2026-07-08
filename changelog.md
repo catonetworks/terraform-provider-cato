@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.90 (2026-07-08)
+
+### Fixed
+- Fixed false-positive `cato_socket_site` DHCP plan modifier errors by allowing `dhcp_microsegmentation=false` for non-`DHCP_RANGE` types and by only treating relay group fields as user-set when they differ from prior state.
+- Fixed false-positive `interface_id`/`interface_index` "cannot be set simultaneously" errors in `cato_network_range` caused by Terraform propagating prior-state values for Optional+Computed attributes.
+- Stabilized WAN interface hydration.
+
+### Changed
+- Added account snapshot caching in the provider to reduce redundant API calls.
+
+### Tests
+- Added unit test coverage for the DHCP relay and network-range explicit-field helpers, the account snapshot cache, and WAN interface hydration.
+
 ## 0.0.89 (2026-07-01)
 
 ### Fixed
