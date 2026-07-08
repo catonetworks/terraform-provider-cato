@@ -1,6 +1,6 @@
 ---
 name: send-release-info
-description: Use when the user asks to send/announce release info or release notes for the terraform-provider-cato to Slack. It posts a release announcement to #rn-kb-opensource-api-announcements using the standard release format and then posts a link to that announcement in #tf-internal.
+description: Use when the user asks to send/announce release info or release notes for the terraform-provider-cato to Slack. It posts a release announcement to #rn-kb-opensource-api-announcements using the standard release format and then posts a link to that announcement in #management-integrations.
 ---
 
 # Terraform Provider Cato Send Release Info Skill
@@ -17,7 +17,7 @@ Before using this skill:
 Announce a released version of the terraform provider on Slack. This skill:
 
 1. Posts a release announcement to `#rn-kb-opensource-api-announcements`.
-2. Posts a link to that announcement in `#tf-internal`.
+2. Posts a link to that announcement in `#management-integrations`.
 
 This skill only communicates a release that already exists. It does not bump
 versions, edit the changelog, tag, or publish — use `prepare-release` and
@@ -26,9 +26,7 @@ versions, edit the changelog, tag, or publish — use `prepare-release` and
 ## Slack Targets
 
 - Announcement channel `#rn-kb-opensource-api-announcements` — channel ID `C08QPHRURP1`.
-- Internal notification channel `#tf-internal` — resolve the channel ID at runtime
-  with `slack_search_channels` (search `public_channel,private_channel`). If it
-  cannot be resolved, ask the user for the channel ID before posting.
+- Internal notification channel `#management-integrations` — channel ID `C0A7P8V7WFR`.
 
 ## Required Grounding
 
@@ -82,10 +80,9 @@ Follow this order:
    `#rn-kb-opensource-api-announcements` (`C08QPHRURP1`) and get confirmation.
 3. On approval, send it to `#rn-kb-opensource-api-announcements` with
    `slack_send_message` and capture the returned message permalink.
-4. Resolve the `#tf-internal` channel ID (see Slack Targets).
-5. Post to `#tf-internal` a short message linking to the announcement, e.g.
+4. Post to `#management-integrations` (`C0A7P8V7WFR`) a short message linking to the announcement, e.g.
    `Terraform Provider Cato vX.Y.Z released — announcement: <permalink>`.
-6. Report both message links back to the user.
+5. Report both message links back to the user.
 
 ## Constraints
 
@@ -95,13 +92,12 @@ Always:
 - Get user approval of the announcement text before posting to the public
   announcement channel.
 - Capture and reuse the real permalink of the posted announcement for the
-  `#tf-internal` message.
+  `#management-integrations` message.
 
 Never:
 
-- Post to `#tf-internal` before the announcement has been posted (the internal
+- Post to `#management-integrations` before the announcement has been posted (the internal
   message must link to the real announcement).
-- Invent a channel ID for `#tf-internal`; resolve it or ask the user.
 - Edit repository files, tags, or releases as part of this skill.
 
 ## Examples
