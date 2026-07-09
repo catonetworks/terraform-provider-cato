@@ -27,7 +27,7 @@ func acEmptyApplicationContextInput() *cato_models.ApplicationControlContextInpu
 }
 
 // acEmptyApplicationCriteriaInput returns a non-nil criteria object required by
-// Application Control GraphQL for application-type rules.
+// Application Control GraphQL for rule types that support application criteria.
 func acEmptyApplicationCriteriaInput() *cato_models.ApplicationControlCriteriaInput {
 	anyV := cato_models.ApplicationControlAttributeValueAny
 	return &cato_models.ApplicationControlCriteriaInput{
@@ -217,8 +217,10 @@ func hydrateACDataRuleAdd(
 		Action:                     cato_models.ApplicationControlAction(p.Action.ValueString()),
 		Severity:                   cato_models.ApplicationControlSeverity(p.Severity.ValueString()),
 		ApplicationActivitySatisfy: cato_models.ApplicationControlSatisfyAll,
+		ApplicationCriteriaSatisfy: cato_models.ApplicationControlSatisfyAll,
 		FileAttributeSatisfy:       cato_models.ApplicationControlSatisfyAll,
 		ApplicationContext:         acEmptyApplicationContextInput(),
+		ApplicationCriteria:        acEmptyApplicationCriteriaInput(),
 		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
 	satisfy := p.ApplicationActivitySatisfy
@@ -306,7 +308,9 @@ func hydrateACFileRuleAdd(
 		Action:                     cato_models.ApplicationControlAction(p.Action.ValueString()),
 		Severity:                   cato_models.ApplicationControlSeverity(p.Severity.ValueString()),
 		ApplicationActivitySatisfy: cato_models.ApplicationControlSatisfyAll,
+		ApplicationCriteriaSatisfy: cato_models.ApplicationControlSatisfyAll,
 		FileAttributeSatisfy:       cato_models.ApplicationControlSatisfyAll,
+		ApplicationCriteria:        acEmptyApplicationCriteriaInput(),
 		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}
 	satisfy := p.ApplicationActivitySatisfy
