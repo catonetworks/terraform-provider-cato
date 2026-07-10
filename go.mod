@@ -1,10 +1,10 @@
 module github.com/catonetworks/terraform-provider-cato
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v0.3.1
+	github.com/catonetworks/cato-go-sdk v0.3.2-0.20260709112545-78fbc6db15ec
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
