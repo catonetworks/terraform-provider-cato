@@ -112,6 +112,9 @@ func TestHydrateApplicationControlAddRuleInputDefaultsFileCriteria(t *testing.T)
 	if fileRule.ApplicationCriteria == nil {
 		t.Fatal("expected non-nil file rule application criteria")
 	}
+	if fileRule.ApplicationContext == nil {
+		t.Fatal("expected non-nil file rule application context")
+	}
 	if fileRule.ApplicationCriteriaSatisfy != cato_models.ApplicationControlSatisfyAll {
 		t.Fatalf("expected file rule application criteria satisfy ALL, got %q", fileRule.ApplicationCriteriaSatisfy)
 	}
@@ -147,6 +150,9 @@ func TestHydrateApplicationControlAddRuleInputDefaultsDataCriteria(t *testing.T)
 	}
 	if dataRule.ApplicationCriteria == nil {
 		t.Fatal("expected non-nil data rule application criteria")
+	}
+	if dataRule.ApplicationContext == nil {
+		t.Fatal("expected non-nil data rule application context")
 	}
 	if dataRule.ApplicationCriteriaSatisfy != cato_models.ApplicationControlSatisfyAll {
 		t.Fatalf("expected data rule application criteria satisfy ALL, got %q", dataRule.ApplicationCriteriaSatisfy)
