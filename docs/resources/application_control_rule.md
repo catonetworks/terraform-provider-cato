@@ -112,9 +112,8 @@ resource "cato_application_control_rule" "application" {
 }
 
 # Application Control rule — rule_type FILE.
-# Monitors file transfers based on activity and file attributes.
+# Allows file transfers based on activity and file attributes.
 # FILE rules require at least one application_activity entry.
-# action = MONITOR is required when using CONTENT_SIZE attribute.
 resource "cato_application_control_rule" "file" {
   at = {
     position = "AFTER_RULE"
@@ -122,13 +121,13 @@ resource "cato_application_control_rule" "file" {
   }
 
   rule = {
-    name        = "TF — Monitor large file uploads"
-    description = "Flag uploads over 100 MB during working hours"
+    name        = "TF — Allow large file uploads"
+    description = "Allow uploads over 100 MB during working hours"
     enabled     = true
     rule_type   = "FILE"
 
     file_rule = {
-      action   = "MONITOR" # ALLOW | BLOCK | MONITOR — BLOCK requires CONTENT_TYPE attribute
+      action   = "ALLOW" # ALLOW | BLOCK
       severity = "MEDIUM"
 
       schedule = {

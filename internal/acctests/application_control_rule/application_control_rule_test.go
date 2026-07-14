@@ -97,7 +97,7 @@ func TestAccApplicationControlRule_ApplicationWithSection(t *testing.T) {
 }
 
 // TestAccApplicationControlRule_File tests a FILE-type rule with application_activity
-// and CONTENT_SIZE file_attribute. FILE rules require action=MONITOR with CONTENT_SIZE.
+// and CONTENT_SIZE file_attribute.
 func TestAccApplicationControlRule_File(t *testing.T) {
 	acc.SkipByEnv(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccApplicationControlRule_File")
@@ -120,7 +120,7 @@ func TestAccApplicationControlRule_File(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName+"-file"),
 					resource.TestCheckResourceAttr(res, "rule.enabled", "true"),
 					resource.TestCheckResourceAttr(res, "rule.rule_type", "FILE"),
-					resource.TestCheckResourceAttr(res, "rule.file_rule.action", "MONITOR"),
+					resource.TestCheckResourceAttr(res, "rule.file_rule.action", "ALLOW"),
 					resource.TestCheckResourceAttr(res, "rule.file_rule.severity", "MEDIUM"),
 					resource.TestCheckResourceAttr(res, "rule.file_rule.application_activity.#", "1"),
 					resource.TestCheckResourceAttr(res, "rule.file_rule.application_activity.0.activity.id", "content_transfer_action_upload"),
@@ -132,7 +132,7 @@ func TestAccApplicationControlRule_File(t *testing.T) {
 				),
 			},
 			{
-				// Update: change threshold
+				// Update: change threshold and tracking.
 				Config: cfg.getFileConfig(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
@@ -269,7 +269,7 @@ var fileRuleTFs = []string{
     enabled   = true
     rule_type = "FILE"
     file_rule = {
-      action   = "MONITOR"
+      action   = "ALLOW"
       severity = "MEDIUM"
       application = {}
       source      = {}
@@ -299,7 +299,7 @@ var fileRuleTFs = []string{
     enabled   = true
     rule_type = "FILE"
     file_rule = {
-      action   = "MONITOR"
+      action   = "ALLOW"
       severity = "MEDIUM"
       application = {}
       source      = {}
