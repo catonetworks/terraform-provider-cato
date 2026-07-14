@@ -310,6 +310,7 @@ func hydrateACFileRuleAdd(
 		ApplicationActivitySatisfy: cato_models.ApplicationControlSatisfyAll,
 		ApplicationCriteriaSatisfy: cato_models.ApplicationControlSatisfyAll,
 		FileAttributeSatisfy:       cato_models.ApplicationControlSatisfyAll,
+		ApplicationContext:         acEmptyApplicationContextInput(),
 		ApplicationCriteria:        acEmptyApplicationCriteriaInput(),
 		ApplicationActivity:        []*cato_models.ApplicationControlActivityInput{},
 	}

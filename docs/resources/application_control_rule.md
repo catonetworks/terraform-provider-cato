@@ -13,7 +13,7 @@ Manages a rule in the Cato Application Control (App & Data Inline Protection) po
 
 ```terraform
 # Application Control rule — rule_type APPLICATION (most common).
-# Monitors or blocks access to specific cloud applications.
+# Allows or blocks access to specific cloud applications.
 #
 # NOTE: For APPLICATION and DATA rules the `application` block must have exactly
 # one non-empty matcher (e.g. application, app_category, custom_app …).
@@ -32,7 +32,7 @@ resource "cato_application_control_rule" "application" {
     rule_type   = "APPLICATION"
 
     application_rule = {
-      action   = "MONITOR" # ALLOW | BLOCK | MONITOR
+      action   = "BLOCK" # ALLOW | BLOCK
       severity = "MEDIUM"  # LOW | MEDIUM | HIGH
 
       # schedule: ALWAYS | WORKING_HOURS | CUSTOM_TIMEFRAME | CUSTOM_RECURRING
@@ -112,9 +112,8 @@ resource "cato_application_control_rule" "application" {
 }
 
 # Application Control rule — rule_type FILE.
-# Monitors file transfers based on activity and file attributes.
+# Allows file transfers based on activity and file attributes.
 # FILE rules require at least one application_activity entry.
-# action = MONITOR is required when using CONTENT_SIZE attribute.
 resource "cato_application_control_rule" "file" {
   at = {
     position = "AFTER_RULE"
@@ -122,13 +121,13 @@ resource "cato_application_control_rule" "file" {
   }
 
   rule = {
-    name        = "TF — Monitor large file uploads"
-    description = "Flag uploads over 100 MB during working hours"
+    name        = "TF — Allow large file uploads"
+    description = "Allow uploads over 100 MB during working hours"
     enabled     = true
     rule_type   = "FILE"
 
     file_rule = {
-      action   = "MONITOR" # ALLOW | BLOCK | MONITOR — BLOCK requires CONTENT_TYPE attribute
+      action   = "ALLOW" # ALLOW | BLOCK
       severity = "MEDIUM"
 
       schedule = {
