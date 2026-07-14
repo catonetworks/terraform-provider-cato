@@ -13,7 +13,7 @@ Manages a rule in the Cato Application Control (App & Data Inline Protection) po
 
 ```terraform
 # Application Control rule — rule_type APPLICATION (most common).
-# Monitors or blocks access to specific cloud applications.
+# Allows or blocks access to specific cloud applications.
 #
 # NOTE: For APPLICATION and DATA rules the `application` block must have exactly
 # one non-empty matcher (e.g. application, app_category, custom_app …).
@@ -32,7 +32,7 @@ resource "cato_application_control_rule" "application" {
     rule_type   = "APPLICATION"
 
     application_rule = {
-      action   = "MONITOR" # ALLOW | BLOCK | MONITOR
+      action   = "BLOCK" # ALLOW | BLOCK
       severity = "MEDIUM"  # LOW | MEDIUM | HIGH
 
       # schedule: ALWAYS | WORKING_HOURS | CUSTOM_TIMEFRAME | CUSTOM_RECURRING

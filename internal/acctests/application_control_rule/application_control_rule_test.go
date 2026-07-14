@@ -38,7 +38,7 @@ func TestAccApplicationControlRule_Application(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName),
 					resource.TestCheckResourceAttr(res, "rule.enabled", "true"),
 					resource.TestCheckResourceAttr(res, "rule.rule_type", "APPLICATION"),
-					resource.TestCheckResourceAttr(res, "rule.application_rule.action", "MONITOR"),
+					resource.TestCheckResourceAttr(res, "rule.application_rule.action", "ALLOW"),
 					resource.TestCheckResourceAttr(res, "rule.application_rule.severity", "LOW"),
 					resource.TestCheckResourceAttr(res, "rule.application_rule.tracking.event.enabled", "false"),
 				),
@@ -89,7 +89,7 @@ func TestAccApplicationControlRule_ApplicationWithSection(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_SECTION"),
 					resource.TestCheckResourceAttrSet(res, "rule.id"),
 					resource.TestCheckResourceAttr(res, "rule.rule_type", "APPLICATION"),
-					resource.TestCheckResourceAttr(res, "rule.application_rule.action", "MONITOR"),
+					resource.TestCheckResourceAttr(res, "rule.application_rule.action", "ALLOW"),
 				),
 			},
 		},
@@ -193,7 +193,7 @@ var applicationRuleTFs = []string{
     enabled   = true
     rule_type = "APPLICATION"
     application_rule = {
-      action   = "MONITOR"
+      action   = "ALLOW"
       severity = "LOW"
       application = { application = [{ id = "slack" }] }
       source      = {}
@@ -246,7 +246,7 @@ resource "cato_application_control_rule" "in_section" {
     enabled   = true
     rule_type = "APPLICATION"
     application_rule = {
-      action   = "MONITOR"
+      action   = "ALLOW"
       severity = "LOW"
       application = { application = [{ id = "slack" }] }
       source      = {}
