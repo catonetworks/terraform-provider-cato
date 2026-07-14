@@ -249,9 +249,17 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	// Match current license by ID from API response
-	license := &cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses{}
-	curSiteLicenseID, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteID(ctx, state.SiteID.ValueString(), licensingInfoResponse)
+	// A site can use multiple pooled licenses. For configured resources, read
+	// only the allocation represented by this resource's license_id.
+	license, curSiteLicenseID, allocatedBw, siteIsAssigned, remoteAssignmentExists := getLicenseAssignmentForState(
+		ctx,
+		state,
+		licensingInfoResponse,
+	)
+	if !remoteAssignmentExists {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	if allocatedBw != nil {
 		state.BW = types.Int64Value(*allocatedBw)
 	}
@@ -265,12 +273,6 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 					"please unassign the trial license and try to reapply.",
 			)
 			return
-		}
-		licenses := licensingInfoResponse.GetLicensing().GetLicensingInfo().GetLicenses()
-		for _, curLicense := range licenses {
-			if curLicense.ID != nil && *curLicense.ID == curSiteLicenseID.ValueString() {
-				license = curLicense
-			}
 		}
 		// Check for valid license and hydrate state
 		licenseInfo, diagstmp := hydrateLicenseState(ctx, state.ID.ValueString(), license)
@@ -432,6 +434,54 @@ func getLicenseByID(
 		}
 	}
 	return license, licenseExists
+}
+
+func getSiteAssignmentForLicense(
+	siteID string,
+	license *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses,
+) (allocatedBw *int64, isAssigned bool) {
+	switch license.Sku {
+	case licenseSkuCatoPB, licenseSkuCatoPBSSE:
+		for _, site := range license.PooledBandwidthLicense.Sites {
+			if site.SitePooledBandwidthLicenseSite.ID == siteID {
+				return &site.AllocatedBandwidth, true
+			}
+		}
+	case licenseSkuCatoSite, licenseSkuCatoSSESite:
+		if license.SiteLicense.Site != nil && license.SiteLicense.Site.ID == siteID {
+			return nil, true
+		}
+	}
+	return nil, false
+}
+
+func getLicenseAssignmentForState(
+	ctx context.Context,
+	state LicenseResource,
+	licensingInfoResponse *cato_go_sdk.Licensing,
+) (
+	license *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses,
+	licenseID types.String,
+	allocatedBw *int64,
+	isAssigned bool,
+	exists bool,
+) {
+	configuredLicenseID := state.LicenseID
+	if !configuredLicenseID.IsNull() && !configuredLicenseID.IsUnknown() && configuredLicenseID.ValueString() != "" {
+		license, licenseExists := getLicenseByID(ctx, configuredLicenseID.ValueString(), licensingInfoResponse)
+		if !licenseExists {
+			return license, configuredLicenseID, nil, false, false
+		}
+		allocatedBw, isAssigned := getSiteAssignmentForLicense(state.SiteID.ValueString(), license)
+		return license, configuredLicenseID, allocatedBw, isAssigned, isAssigned
+	}
+
+	licenseID, allocatedBw, isAssigned = getCurrentAssignedLicenseBySiteID(ctx, state.SiteID.ValueString(), licensingInfoResponse)
+	license = &cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses{}
+	if isAssigned && !licenseID.IsNull() {
+		license, _ = getLicenseByID(ctx, licenseID.ValueString(), licensingInfoResponse)
+	}
+	return license, licenseID, allocatedBw, isAssigned, true
 }
 
 func getCurrentAssignedLicenseBySiteID(
