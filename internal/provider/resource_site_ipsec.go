@@ -170,6 +170,7 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										"psk": schema.StringAttribute{
 											Description: "psk",
 											Required:    true,
+											Sensitive:   true,
 										},
 										"last_mile_bw": schema.SingleNestedAttribute{
 											Description: "lastmilebw",
@@ -249,6 +250,7 @@ func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										"psk": schema.StringAttribute{
 											Description: "psk",
 											Required:    true,
+											Sensitive:   true,
 										},
 										"last_mile_bw": schema.SingleNestedAttribute{
 											Description: "lastmilebw",
@@ -539,9 +541,7 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(tunnelInputs.add),
-	})
+	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request")
 	tunnelData, errIPSec := r.client.catov2.SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(tunnelData),
@@ -633,6 +633,19 @@ func (r *siteIpsecResource) Read(ctx context.Context, req resource.ReadRequest, 
 func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SiteIpsecIkeV2
 	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var state SiteIpsecIkeV2
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	tunnelInput, diags := hydrateUpdateIpsecIkeV2SiteTunnels(ctx, plan, state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -747,18 +760,9 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	// Hydrate API input for tunnels
-	tunnelInputs, diags := hydrateAddIpsecIkeV2SiteTunnels(ctx, plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
 	if !plan.IPSec.IsNull() {
-		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.request", map[string]interface{}{
-			"request": utils.InterfaceToJSONString(tunnelInputs.update),
-		})
-		tunnelData, errIPSec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.update, r.client.AccountId)
+		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.request")
+		tunnelData, errIPSec := r.client.catov2.SiteUpdateIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInput, r.client.AccountId)
 		tflog.Debug(ctx, "Update.SiteUpdateIpsecIkeV2SiteTunnels.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(tunnelData),
 		})
