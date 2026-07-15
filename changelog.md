@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.91 (2026-07-15)
+
+### Fixed
+- Fixed `cato_ipsec_site` pre-shared key updates by preserving computed tunnel IDs for responder-only FQDN sites, marking pre-shared keys as sensitive, and excluding them from debug logs.
+- Fixed pooled license allocation updates so changes are scoped to the intended allocation.
+- Fixed `cato_application_control_rule` criteria defaults and file-rule context handling, including support for creating new file rules.
+
+### Changed
+- Updated the Cato Go SDK dependency to v0.3.2.
+
+### Tests
+- Added unit and acceptance coverage for IPsec site updates, pooled license allocation updates, and application control file rules.
+- Added regression test environment settings and retries for transient acceptance-test API failures.
+
 ## 0.0.90 (2026-07-08)
 
 ### Fixed
