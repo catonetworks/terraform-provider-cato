@@ -181,6 +181,121 @@ func hydrateAddIpsecIkeV2SiteTunnels(ctx context.Context, plan SiteIpsecIkeV2) (
 	return result, diags
 }
 
+// hydrateUpdateIpsecIkeV2SiteTunnels builds the update input and restores computed
+// tunnel IDs from prior state when Terraform marks nested computed values unknown.
+func hydrateUpdateIpsecIkeV2SiteTunnels(
+	ctx context.Context,
+	plan SiteIpsecIkeV2,
+	state SiteIpsecIkeV2,
+) (cato_models.UpdateIpsecIkeV2SiteTunnelsInput, diag.Diagnostics) {
+	result, diags := hydrateAddIpsecIkeV2SiteTunnels(ctx, plan)
+	if diags.HasError() {
+		return result.update, diags
+	}
+
+	stateIPSec := AddIpsecIkeV2SiteTunnelsInput{}
+	diags = append(diags, state.IPSec.As(ctx, &stateIPSec, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return result.update, diags
+	}
+
+	diags = append(diags, restoreIpsecTunnelIDs(ctx, result.update.Primary, stateIPSec.Primary, "primary")...)
+	diags = append(diags, restoreIpsecTunnelIDs(ctx, result.update.Secondary, stateIPSec.Secondary, "secondary")...)
+
+	return result.update, diags
+}
+
+func restoreIpsecTunnelIDs(
+	ctx context.Context,
+	update *cato_models.UpdateIpsecIkeV2TunnelsInput,
+	stateGroup basetypes.ObjectValue,
+	groupName string,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if update == nil || len(update.Tunnels) == 0 {
+		return diags
+	}
+
+	stateTunnelIDs, stateDiags := ipsecTunnelIDsFromState(ctx, stateGroup)
+	diags = append(diags, stateDiags...)
+	if diags.HasError() {
+		return diags
+	}
+
+	for index, tunnel := range update.Tunnels {
+		if tunnel.TunnelID != "" {
+			continue
+		}
+
+		if index < len(stateTunnelIDs) && stateTunnelIDs[index] != "" {
+			tunnel.TunnelID = stateTunnelIDs[index]
+			continue
+		}
+
+		if derivedID, ok := positionalIpsecTunnelID(groupName, index); ok {
+			tunnel.TunnelID = derivedID
+			continue
+		}
+
+		diags = append(diags, diag.NewErrorDiagnostic(
+			"Missing IPSec tunnel ID",
+			"The provider could not determine a valid tunnel ID for the "+
+				groupName+" tunnel. IPSec supports at most three tunnels per group.",
+		))
+	}
+
+	return diags
+}
+
+func ipsecTunnelIDsFromState(
+	ctx context.Context,
+	stateGroup basetypes.ObjectValue,
+) ([]cato_models.IPSecV2InterfaceID, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if stateGroup.IsNull() || stateGroup.IsUnknown() {
+		return nil, diags
+	}
+
+	group := AddIpsecIkeV2TunnelsInput{}
+	diags = append(diags, stateGroup.As(ctx, &group, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() || group.Tunnels.IsNull() || group.Tunnels.IsUnknown() {
+		return nil, diags
+	}
+
+	stateTunnels := make([]basetypes.ObjectValue, 0, len(group.Tunnels.Elements()))
+	diags = append(diags, group.Tunnels.ElementsAs(ctx, &stateTunnels, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	tunnelIDs := make([]cato_models.IPSecV2InterfaceID, len(stateTunnels))
+	for index, stateTunnelValue := range stateTunnels {
+		stateTunnel := AddIpsecIkeV2TunnelInput{}
+		diags = append(diags, stateTunnelValue.As(ctx, &stateTunnel, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		if !stateTunnel.TunnelID.IsNull() && !stateTunnel.TunnelID.IsUnknown() {
+			tunnelIDs[index] = cato_models.IPSecV2InterfaceID(stateTunnel.TunnelID.ValueString())
+		}
+	}
+
+	return tunnelIDs, diags
+}
+
+func positionalIpsecTunnelID(groupName string, index int) (cato_models.IPSecV2InterfaceID, bool) {
+	tunnelIDs := map[string][]cato_models.IPSecV2InterfaceID{
+		"primary":   {"PRIMARY1", "PRIMARY2", "PRIMARY3"},
+		"secondary": {"SECONDARY1", "SECONDARY2", "SECONDARY3"},
+	}
+
+	groupIDs, ok := tunnelIDs[groupName]
+	if !ok || index < 0 || index >= len(groupIDs) {
+		return "", false
+	}
+	return groupIDs[index], true
+}
+
 // hydrateUpdateIpsecIkeV2SiteGeneralDetails takes the plan and returns UpdateIpsecIkeV2SiteGeneralDetailsInput
 //
 //nolint:gocyclo,funlen

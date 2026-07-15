@@ -136,7 +136,7 @@ Optional:
 
 Required:
 
-- `psk` (String) psk
+- `psk` (String, Sensitive) psk
 
 Optional:
 
@@ -202,7 +202,7 @@ Optional:
 
 Required:
 
-- `psk` (String) psk
+- `psk` (String, Sensitive) psk
 
 Optional:
 
