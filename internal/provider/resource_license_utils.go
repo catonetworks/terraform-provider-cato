@@ -84,12 +84,6 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	// Check if the site has a license currently
 	curSiteLicenseID, allocatedBw, siteIsAssigned := getCurrentAssignedLicenseBySiteID(ctx, plan.SiteID.ValueString(), licensingInfoResponse)
 
-	if siteIsAssigned && curSiteLicenseID.IsNull() {
-		message := "License ID not found: This could be due to the license or the account being set as trial where the license does not have an ID, or if there is a China license on the account.  If a trial license is assigned, please unassign the trial license and try to reapply."
-		diags = append(diags, diag.NewErrorDiagnostic("LICENSE API ERROR", message))
-		return nil, fmt.Errorf("LICENSE API ERROR: %s", message)
-	}
-
 	// Get current license objeect by ID
 	license, licenseExists := getLicenseByID(ctx, plan.LicenseID.ValueString(), licensingInfoResponse)
 
@@ -119,6 +113,24 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 			message := "Site License ID '" + plan.LicenseID.ValueString() + "' is not a valid site license. Must be 'CATO_PB', 'CATO_PB_SSE', 'CATO_SITE', or 'CATO_SSE_SITE' license type."
 			diags = append(diags, diag.NewErrorDiagnostic("INVALID LICENSE TYPE", message))
 			return nil, fmt.Errorf("INVALID LICENSE TYPE: %s", message)
+		}
+
+		// A site can have allocations from multiple pooled licenses. When the
+		// selected pool is already assigned, scope the update and comparison to
+		// that allocation instead of whichever site allocation was listed last.
+		if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
+			selectedAllocatedBw, selectedPoolIsAssigned := getSiteAssignmentForLicense(plan.SiteID.ValueString(), license)
+			if selectedPoolIsAssigned {
+				allocatedBw = selectedAllocatedBw
+				siteIsAssigned = true
+				curSiteLicenseID = plan.LicenseID
+			}
+		}
+
+		if siteIsAssigned && curSiteLicenseID.IsNull() {
+			message := "License ID not found: This could be due to the license or the account being set as trial where the license does not have an ID, or if there is a China license on the account.  If a trial license is assigned, please unassign the trial license and try to reapply."
+			diags = append(diags, diag.NewErrorDiagnostic("LICENSE API ERROR", message))
+			return nil, fmt.Errorf("LICENSE API ERROR: %s", message)
 		}
 
 		// check if assigned, use replace else use assign

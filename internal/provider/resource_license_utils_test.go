@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	cato "github.com/catonetworks/cato-go-sdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -189,6 +191,23 @@ func TestUpsertLicense_PooledBandwidthLicense(t *testing.T) {
 			siteID:   "10",
 			bw:       types.Int64Value(100),
 		},
+		"updates_only_the_selected_pool": {
+			licenses: []licenseFixture{
+				{ID: "lic-1", SKU: "CATO_PB", PooledSites: []siteAllocation{{SiteID: "10", BW: 50}}},
+				{ID: "lic-2", SKU: "CATO_PB", PooledSites: []siteAllocation{{SiteID: "10", BW: 75}}},
+			},
+			siteID:  "10",
+			bw:      types.Int64Value(100),
+			wantOps: []string{"updateSiteBwLicense"},
+		},
+		"same_selected_pool_bandwidth_is_noop": {
+			licenses: []licenseFixture{
+				{ID: "lic-1", SKU: "CATO_PB", PooledSites: []siteAllocation{{SiteID: "10", BW: 100}}},
+				{ID: "lic-2", SKU: "CATO_PB", PooledSites: []siteAllocation{{SiteID: "10", BW: 50}}},
+			},
+			siteID: "10",
+			bw:     types.Int64Value(100),
+		},
 	}
 
 	for name, tt := range tests {
@@ -208,11 +227,64 @@ func TestUpsertLicense_PooledBandwidthLicense(t *testing.T) {
 			assertMutations(t, fixture, tt.wantOps...)
 			if len(tt.wantOps) > 0 {
 				assertMutationInput(t, fixture.mutations()[0], "site.input", tt.siteID)
+				switch tt.wantOps[0] {
+				case "assignSiteBwLicense", "updateSiteBwLicense":
+					assertMutationInput(t, fixture.mutations()[0], "licenseId", "lic-1")
+				}
 			}
 			if !tt.bw.IsNull() && !tt.bw.IsUnknown() && len(tt.wantOps) > 0 {
 				assertMutationInput(t, fixture.mutations()[0], "bw", float64(tt.bw.ValueInt64()))
 			}
 		})
+	}
+}
+
+func TestLicenseRead_SelectsConfiguredPooledAllocation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fixture := newLicenseFixture(t,
+		licenseFixture{ID: "lic-1", SKU: "CATO_PB", PooledSites: []siteAllocation{{SiteID: "10", BW: 50}}},
+		licenseFixture{ID: "lic-2", SKU: "CATO_PB", PooledSites: []siteAllocation{{SiteID: "10", BW: 75}}},
+	)
+	defer fixture.Close()
+
+	client, err := cato.New(fixture.server.URL, "test-token", "3381", nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create cato client: %v", err)
+	}
+	r := &licenseResource{client: &catoClientData{AccountId: "3381", catov2: client}}
+	schemaResp := &resource.SchemaResponse{}
+	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
+	state := tfsdk.State{Schema: schemaResp.Schema}
+	diags := state.Set(ctx, LicenseResource{
+		ID:          types.StringValue("10"),
+		SiteID:      types.StringValue("10"),
+		LicenseID:   types.StringValue("lic-1"),
+		BW:          types.Int64Value(100),
+		LicenseInfo: types.ObjectNull(LicenseInfoResourceAttrTypes),
+	})
+	if diags.HasError() {
+		t.Fatalf("failed to create license state: %+v", diags)
+	}
+
+	req := resource.ReadRequest{State: state}
+	resp := &resource.ReadResponse{State: state}
+	r.Read(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
+
+	var got LicenseResource
+	diags = resp.State.Get(ctx, &got)
+	if diags.HasError() {
+		t.Fatalf("failed to read license state: %+v", diags)
+	}
+	if got.LicenseID.ValueString() != "lic-1" {
+		t.Fatalf("expected license ID lic-1, got %q", got.LicenseID.ValueString())
+	}
+	if got.BW.ValueInt64() != 50 {
+		t.Fatalf("expected bandwidth 50, got %d", got.BW.ValueInt64())
 	}
 }
 
