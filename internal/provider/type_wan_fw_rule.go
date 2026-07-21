@@ -7,8 +7,9 @@ import (
 )
 
 type WanFirewallRule struct {
-	Rule types.Object `tfsdk:"rule" json:"rule,omitempty"` // PolicyPolicyWanFirewallPolicyRulesRule
-	At   types.Object `tfsdk:"at" json:"at,omitempty"`     // *PolicyRulePositionInput
+	Rule        types.Object `tfsdk:"rule" json:"rule,omitempty"` // PolicyPolicyWanFirewallPolicyRulesRule
+	At          types.Object `tfsdk:"at" json:"at,omitempty"`     // *PolicyRulePositionInput
+	SubPolicyID types.String `tfsdk:"sub_policy_id" json:"sub_policy_id,omitempty"`
 }
 
 // type PolicyRulePositionInput struct {

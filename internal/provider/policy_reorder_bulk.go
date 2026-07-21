@@ -49,6 +49,11 @@ func sectionIDSet(sections []BulkPolicySectionRef) map[string]struct{} {
 func indexRulesBySectionID(sectionIDs map[string]struct{}, rules []BulkPolicyRuleRow) (map[string][]BulkPolicyRuleRow, error) {
 	rulesBySectionID := make(map[string][]BulkPolicyRuleRow)
 	for _, rw := range rules {
+		// Sub-policy child and cleanup rules are returned by the global rules
+		// index with no section. They are not part of a main-policy reorder.
+		if rw.SectionID == "" {
+			continue
+		}
 		if _, ok := sectionIDs[rw.SectionID]; !ok {
 			return nil, fmt.Errorf("rule %q references unknown section id %q", rw.RuleName, rw.SectionID)
 		}

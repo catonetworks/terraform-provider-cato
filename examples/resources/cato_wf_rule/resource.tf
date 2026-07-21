@@ -1,5 +1,10 @@
 // wan firewall allowing all & logs
 resource "cato_wf_rule" "allow_all_and_log" {
+  // Optional: place this rule inside a sub-policy instead of the main policy.
+  // When set, the rule is anchored before the sub-policy cleanup rule. This is
+  // immutable; changing it forces replacement.
+  # sub_policy_id = cato_wf_sub_policy.example.id
+  # depends_on    = [cato_wf_sub_policy.example]
   at = {
     position = "LAST_IN_POLICY"
   }

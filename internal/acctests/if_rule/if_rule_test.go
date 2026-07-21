@@ -34,7 +34,7 @@ func TestAccInternetFw_Simple(t *testing.T) {
 				Config: cfg.getTfConfigSimple(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "2"),
+					resource.TestCheckResourceAttr(res, "%", "3"),
 					resource.TestCheckResourceAttr(res, "at.%", "2"),
 					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
 					resource.TestCheckResourceAttr(res, "rule.action", "ALLOW"),
@@ -63,7 +63,7 @@ func TestAccInternetFw_Simple(t *testing.T) {
 				Config: cfg.getTfConfigSimple(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "2"),
+					resource.TestCheckResourceAttr(res, "%", "3"),
 					resource.TestCheckResourceAttr(res, "at.%", "2"),
 					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
 					resource.TestCheckResourceAttr(res, "rule.action", "BLOCK"),
@@ -247,7 +247,7 @@ func TestAccInternetFw_UserID(t *testing.T) {
 				Config: cfg.getTfConfigUserID(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "2"),
+					resource.TestCheckResourceAttr(res, "%", "3"),
 					resource.TestCheckResourceAttr(res, "at.%", "2"),
 					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
 					resource.TestCheckResourceAttr(res, "rule.action", "ALLOW"),
@@ -286,7 +286,7 @@ func TestAccInternetFw_UserID(t *testing.T) {
 				Config: cfg.getTfConfigUserID(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "2"),
+					resource.TestCheckResourceAttr(res, "%", "3"),
 					resource.TestCheckResourceAttr(res, "at.%", "2"),
 					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
 					resource.TestCheckResourceAttr(res, "rule.action", "BLOCK"),
@@ -341,7 +341,7 @@ func TestAccInternetFw_Full(t *testing.T) {
 				Config: cfg.getTfConfigFull(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "2"),
+					resource.TestCheckResourceAttr(res, "%", "3"),
 					resource.TestCheckResourceAttr(res, "at.%", "2"),
 					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
 					resource.TestCheckResourceAttr(res, "rule.%", "17"),
