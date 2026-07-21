@@ -13,7 +13,7 @@ locals {
         "applications": [
           { "name": "private-app-1" }
         ],
-        "connection_origins": [ "REMOTE", "SITE" ],
+        "connection_origins": [ "REMOTE_CLIENT", "SITE" ],
         "countries": [
           { "name": "United States" }
         ],
