@@ -6,12 +6,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/require"
 )
 
-func TestIfwRulesIndexEnabledIsComputedOnly(t *testing.T) {
+func TestIfwRulesIndexEnabledIsSettableAndNewValuesRemainUnknown(t *testing.T) {
 	t.Parallel()
 
 	var resp resource.SchemaResponse
@@ -28,8 +29,19 @@ func TestIfwRulesIndexEnabledIsComputedOnly(t *testing.T) {
 	enabled, ok := ruleData.NestedObject.Attributes["enabled"].(schema.BoolAttribute)
 	require.True(t, ok)
 	require.True(t, enabled.Computed)
-	require.False(t, enabled.Optional)
+	require.True(t, enabled.Optional)
 	require.False(t, enabled.Required)
+	require.Len(t, enabled.PlanModifiers, 1)
+
+	req := planmodifier.BoolRequest{
+		ConfigValue: types.BoolNull(),
+		PlanValue:   types.BoolUnknown(),
+		StateValue:  types.BoolNull(),
+	}
+	modifierResp := planmodifier.BoolResponse{PlanValue: req.PlanValue}
+	enabled.PlanModifiers[0].PlanModifyBool(context.Background(), req, &modifierResp)
+
+	require.True(t, modifierResp.PlanValue.IsUnknown())
 }
 
 func TestBuildIfwRuleIndexStateDataUsesAPIComputedFields(t *testing.T) {
