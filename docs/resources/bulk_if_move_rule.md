@@ -120,11 +120,14 @@ output "rule_data" {
 Optional:
 
 - `description` (String) IFW rule description
-- `enabled` (Boolean) IFW rule enabled
 - `id` (String) IFW rule id
 - `index_in_section` (Number) Index value remapped per section
 - `rule_name` (String) IFW rule name housing rule
 - `section_name` (String) IFW section name housing rule
+
+Read-Only:
+
+- `enabled` (Boolean) IFW rule enabled
 
 
 <a id="nestedatt--section_data"></a>
