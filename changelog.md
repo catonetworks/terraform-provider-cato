@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.92 (2026-07-22)
+
+### Added
+- Added `cato_if_sub_policy` and `cato_wf_sub_policy` resources, including rule integration, provider registration, examples, documentation, and acceptance coverage.
+
+### Fixed
+- Fixed bulk internet firewall rule state handling so omitted nested `enabled` values remain configurable and do not cause null-to-true inconsistencies after apply.
+
+### Changed
+- Corrected private access rule `connection_origins` examples to use `REMOTE_CLIENT`.
+- Updated `golang.org/x/text` and aligned Go module dependencies to resolve GO-2026-5970.
+
+### Tests
+- Added unit coverage for firewall sub-policy resources, rule integration, policy reordering, and bulk internet firewall computed state.
+
 ## 0.0.91 (2026-07-15)
 
 ### Fixed
