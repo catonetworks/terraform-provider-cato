@@ -4,6 +4,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -55,6 +56,13 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 	resp.Schema = schema.Schema{
 		Description: "The `cato_wf_rule` resource contains the configuration parameters necessary to add rule to the WAN Firewall. (check https://support.catonetworks.com/hc/en-us/articles/4413265660305-What-is-the-Cato-WAN-Firewall for more details). Documentation for the underlying API used in this resource can be found at [mutation.policy.wanFirewall.addRule()](https://api.catonetworks.com/documentation/#mutation-policy.wanFirewall.addRule).",
 		Attributes: map[string]schema.Attribute{
+			"sub_policy_id": schema.StringAttribute{
+				Description: "Optional ID of a cato_wf_sub_policy that should own this rule. When set, the rule is created inside the sub-policy (positioned before the sub-policy cleanup rule). Immutable: changing it forces replacement.",
+				Optional:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"at": schema.SingleNestedAttribute{
 				Description: "Position of the rule in the policy",
 				Required:    true,
@@ -3281,7 +3289,20 @@ func (r *wanFwRuleResource) Configure(_ context.Context, req resource.ConfigureR
 }
 
 func (r *wanFwRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Retrieve import ID and save to id attribute
+	// Accept either "<rule-id>" (main-policy rule) or "<sub-policy-id>/<rule-id>"
+	// (sub-policy rule).
+	if subID, ruleID, ok := strings.Cut(req.ID, "/"); ok {
+		if subID == "" || ruleID == "" {
+			resp.Diagnostics.AddError(
+				"Invalid import ID",
+				"expected \"<rule-id>\" or \"<sub-policy-id>/<rule-id>\"",
+			)
+			return
+		}
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("sub_policy_id"), subID)...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("rule").AtName("id"), ruleID)...)
+		return
+	}
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
@@ -3298,6 +3319,30 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// When the rule is owned by a sub-policy, anchor its position before the
+	// sub-policy cleanup rule so the API places it inside the sub-policy.
+	if !plan.SubPolicyID.IsNull() && !plan.SubPolicyID.IsUnknown() {
+		subID := plan.SubPolicyID.ValueString()
+		anchorBody, err := r.client.catov2.PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
+			return
+		}
+		cleanupID := wanSubPolicyCleanupRuleID(anchorBody, subID)
+		if cleanupID == "" {
+			resp.Diagnostics.AddError(
+				"Sub-policy not found",
+				fmt.Sprintf("could not locate cleanup rule for sub_policy_id %q; verify the sub-policy exists", subID),
+			)
+			return
+		}
+		beforeRule := cato_models.PolicyRulePositionEnumBeforeRule
+		input.create.At = &cato_models.PolicyRulePositionInput{
+			Position: &beforeRule,
+			Ref:      &cleanupID,
+		}
 	}
 
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_input.create", map[string]interface{}{
@@ -3462,10 +3507,14 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	ruleList := body.GetPolicy().WanFirewall.Policy.GetRules()
 	ruleExist := false
 	currentRule := &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule{}
+	currentSubPolicyID := types.StringNull()
 	for _, ruleListItem := range ruleList {
 		if ruleListItem.GetRule().ID == ruleID {
 			ruleExist = true
 			currentRule = ruleListItem.GetRule()
+			if sp := ruleListItem.GetSubPolicy(); sp != nil && sp.GetID() != "" {
+				currentSubPolicyID = types.StringValue(sp.GetID())
+			}
 
 			// Need to refresh STATE
 			resp.State.SetAttribute(
@@ -3494,6 +3543,10 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 	resp.Diagnostics.Append(diags...)
+
+	// Reflect the sub-policy that currently owns the rule so config drift forces
+	// replacement (sub_policy_id is immutable).
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("sub_policy_id"), currentSubPolicyID)...)
 
 	// Check if position is set in state, if not default to LAST_IN_POLICY
 	// Hard coding LAST_IN_POLICY position as the API does not return any value and

@@ -50,6 +50,24 @@ func TestBuildPolicyReorderInput_includesEmptySection(t *testing.T) {
 	require.Len(t, in.Sections[1].Rules, 1)
 }
 
+func TestBuildPolicyReorderInput_ignoresSectionlessSubPolicyRules(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "main", RuleName: "Main", Index: 1},
+		{SectionID: "", SectionName: "", RuleID: "child", RuleName: "Sub-policy child", Index: 1},
+		{SectionID: "", SectionName: "", RuleID: "cleanup", RuleName: "Sub-policy cleanup", Index: 2},
+	}
+	planned := []BulkPlannedRuleIndex{{SectionName: "Sec", RuleName: "Main", IndexInSection: 1}}
+
+	in, err := buildPolicyReorderInput(sections, rules, planned)
+
+	require.NoError(t, err)
+	require.Len(t, in.Sections, 1)
+	require.Len(t, in.Sections[0].Rules, 1)
+	require.Equal(t, "main", in.Sections[0].Rules[0].Ref.Input)
+}
+
 func TestBuildPolicyReorderInput_plannedUnknownRule(t *testing.T) {
 	t.Parallel()
 	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}

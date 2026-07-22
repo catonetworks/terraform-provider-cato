@@ -15,6 +15,11 @@ The `cato_if_rule` resource contains the configuration parameters necessary to a
 ```terraform
 // internet firewall allowing all & logs
 resource "cato_if_rule" "allow_all_and_log" {
+  // Optional: place this rule inside a sub-policy instead of the main policy.
+  // When set, the rule is anchored before the sub-policy cleanup rule. This is
+  // immutable; changing it forces replacement.
+  # sub_policy_id = cato_if_sub_policy.example.id
+  # depends_on    = [cato_if_sub_policy.example]
   at = {
     position = "LAST_IN_POLICY"
   }
@@ -265,6 +270,10 @@ resource "cato_tls_rule" "kitchen_sink" {
 
 - `at` (Attributes) Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionInput) (see [below for nested schema](#nestedatt--at))
 - `rule` (Attributes) Parameters for the rule you are adding (https://api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput) (see [below for nested schema](#nestedatt--rule))
+
+### Optional
+
+- `sub_policy_id` (String) Optional ID of a cato_if_sub_policy that should own this rule. When set, the rule is created inside the sub-policy (positioned before the sub-policy cleanup rule). Immutable: changing it forces replacement.
 
 <a id="nestedatt--at"></a>
 ### Nested Schema for `at`
