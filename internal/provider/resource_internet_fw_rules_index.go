@@ -85,11 +85,10 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 						},
 						"enabled": schema.BoolAttribute{
 							Description: "IFW rule enabled",
-							Required:    false,
 							Optional:    true,
 							Computed:    true,
 							PlanModifiers: []planmodifier.Bool{
-								boolplanmodifier.UseStateForUnknown(), // Avoid drift
+								boolplanmodifier.UseNonNullStateForUnknown(),
 							},
 						},
 					},
