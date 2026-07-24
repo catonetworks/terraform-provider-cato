@@ -12,6 +12,8 @@ The Cato Open Source Software provider is used to interact with resources suppor
 
 The current API that the Cato provider is calling requires sequential execution. You can either use `depends_on` or specify the `parallelism` flag. Cato recommends the latter and setting the value to `1`. Example call: `terraform apply -parallelism=1`.
 
+At startup, the provider performs a best-effort check for a newer stable version and emits a non-blocking warning when one is available. The check has a two-second default timeout and can be configured with `version_check_timeout_seconds` or `CATO_VERSION_CHECK_TIMEOUT_SECONDS` (for example, `CATO_VERSION_CHECK_TIMEOUT_SECONDS=5 terraform plan`).
+
 Use the navigation to the left to read about the available resources.
 
 ## Example Usage
