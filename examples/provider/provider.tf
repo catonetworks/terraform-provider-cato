@@ -14,6 +14,8 @@ provider "cato" {
   retry_max              = 5
   retry_wait_min_seconds = 1
   retry_wait_max_seconds = 30
+  # Optional: maximum time for the advisory Registry version check.
+  # version_check_timeout_seconds = 2
 }
 
 resource "cato_socket_site" "site1" {
