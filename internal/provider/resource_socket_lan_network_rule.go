@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
@@ -75,926 +76,291 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 					},
 				},
 			},
-			"rule": schema.SingleNestedAttribute{
-				Description: "Parameters for the Socket LAN network rule",
+			"rule": r.lanRuleSchema(),
+		},
+	}
+}
+
+func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Parameters for the Socket LAN network rule",
+		Required:    true,
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description:   "ID of the rule",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"name": schema.StringAttribute{
+				Description: "Name of the rule",
+				Required:    true,
+			},
+			"description": schema.StringAttribute{
+				Description:   "Description of the rule",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"enabled": schema.BoolAttribute{
+				Description: "Enable or disable the rule",
+				Required:    true,
+			},
+			"direction": schema.StringAttribute{
+				Description: "Direction of the traffic (TO, BOTH)",
+				Required:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("TO", "BOTH")},
+			},
+			"transport": schema.StringAttribute{
+				Description: "Transport type (LAN, WAN)",
+				Required:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("LAN", "WAN")},
+			},
+
+			"site": schema.SingleNestedAttribute{
+				Description: "Site scope for the rule",
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
-					"id": schema.StringAttribute{
-						Description: "ID of the rule",
-						Computed:    true,
-						Optional:    false,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"name": schema.StringAttribute{
-						Description: "Name of the rule",
-						Required:    true,
-					},
-					"description": schema.StringAttribute{
-						Description: "Description of the rule",
-						Required:    false,
+					"site": schema.SetNestedAttribute{
+						Description: "List of sites",
 						Optional:    true,
 						Computed:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
+						NestedObject: schema.NestedAttributeObject{
+							Attributes:    parse.SchemaNameID("Site"),
+							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 						},
+						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 					},
-					"enabled": schema.BoolAttribute{
-						Description: "Enable or disable the rule",
-						Required:    true,
-						Optional:    false,
-					},
-					"direction": schema.StringAttribute{
-						Description: "Direction of the traffic (TO, BOTH)",
-						Required:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("TO", "BOTH"),
+					"group": schema.SetNestedAttribute{
+						Description: "List of groups",
+						Optional:    true,
+						Computed:    true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes:    parse.SchemaNameID("Group"),
+							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
 						},
+						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 					},
-					"transport": schema.StringAttribute{
-						Description: "Transport type (LAN, WAN)",
-						Required:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("LAN", "WAN"),
+				},
+			},
+			"source":      r.lanRuleSourceDestinationSchema("Source traffic matching criteria"),
+			"destination": r.lanRuleSourceDestinationSchema("Destination traffic matching criteria"),
+			"service": schema.SingleNestedAttribute{
+				Description: "Destination service traffic matching criteria. Logical 'OR' is applied within " +
+					"the criteria set. Logical 'AND' is applied between criteria sets.",
+				Required: false,
+				Optional: true,
+				Attributes: map[string]schema.Attribute{
+					"simple": schema.SetNestedAttribute{
+						Description: "Simple Service to which this Socket LAN rule applies",
+						Required:    false,
+						Optional:    true,
+						Validators: []validator.Set{
+							setvalidator.SizeAtLeast(1),
 						},
-					},
-					"site": schema.SingleNestedAttribute{
-						Description: "Site scope for the rule",
-						Required:    true,
-						Attributes: map[string]schema.Attribute{
-							"site": schema.SetNestedAttribute{
-								Description: "Sites defined in your account",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"name": schema.StringAttribute{
+									Description: "Simple Service Name (e.g., HTTP, FTP, SSH)",
+									Required:    true,
+									Optional:    false,
 								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Site Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Site ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
+							},
+						},
+					},
+					"custom": schema.ListNestedAttribute{
+						Description: "Custom Service defined by a combination of L4 ports and an IP Protocol",
+						Required:    false,
+						Optional:    true,
+						Validators: []validator.List{
+							listvalidator.SizeAtLeast(1),
+						},
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"port": schema.ListAttribute{
+									ElementType: types.StringType,
+									Description: "List of TCP/UDP port",
+									Optional:    true,
+									Required:    false,
+									Validators: []validator.List{
+										listvalidator.ConflictsWith(path.Expressions{
+											path.MatchRelative().AtParent().AtName("port_range"),
+										}...),
 									},
 								},
-							},
-							"group": schema.SetNestedAttribute{
-								Description: "Groups defined for your account",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Group Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Group ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
+								"port_range": schema.SingleNestedAttribute{
+									Description: "TCP/UDP port ranges",
+									Optional:    true,
+									Validators: []validator.Object{
+										objectvalidator.ConflictsWith(path.Expressions{
+											path.MatchRelative().AtParent().AtName("port"),
+										}...),
 									},
-								},
-							},
-						},
-					},
-					"source": schema.SingleNestedAttribute{
-						Description: "Source traffic matching criteria",
-						Required:    true,
-						PlanModifiers: []planmodifier.Object{
-							objectplanmodifier.UseStateForUnknown(),
-							planmodifiers.SourceDestObjectModifier(),
-						},
-						Attributes: map[string]schema.Attribute{
-							"vlan": schema.ListAttribute{
-								ElementType: types.Int64Type,
-								Description: "VLAN IDs",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-							},
-							"ip": schema.ListAttribute{
-								ElementType: types.StringType,
-								Description: "IP addresses",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-							},
-							"subnet": schema.ListAttribute{
-								ElementType: types.StringType,
-								Description: "Subnets in CIDR notation",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-							},
-							"ip_range": schema.ListNestedAttribute{
-								Description: "IP ranges",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"from": schema.StringAttribute{
-											Description: "Start IP",
+											Description: "From port number",
 											Required:    true,
 										},
 										"to": schema.StringAttribute{
-											Description: "End IP",
+											Description: "To port number",
 											Required:    true,
 										},
 									},
 								},
-							},
-							"host": schema.SetNestedAttribute{
-								Description: "Hosts and servers defined for your account",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Host Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Host ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"group": schema.SetNestedAttribute{
-								Description: "",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Group Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Group ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"system_group": schema.SetNestedAttribute{
-								Description: "",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "System Group Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "System Group ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"network_interface": schema.SetNestedAttribute{
-								Description: "Network range defined for a site",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Network Interface Name",
-											Required:    false,
-											Optional:    true,
-											// Validators: []validator.String{
-											// 	stringvalidator.ConflictsWith(path.Expressions{
-											// 		path.MatchRelative().AtParent().AtName("id"),
-											// 	}...),
-											// },
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Network Interface ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-										},
-									},
-								},
-							},
-							"global_ip_range": schema.SetNestedAttribute{
-								Description: "Global IP range matching criteria for the exception.",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Global IP Range Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Global IP Range ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"floating_subnet": schema.SetNestedAttribute{
-								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic " +
-									"exactly matched to the route advertised by BGP. They are not associated with a " +
-									"specific site. This is useful in scenarios such as active-standby high " +
-									"availability routed via BGP.",
-								Required: false,
-								Optional: true,
-								Computed: true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Floating Subnet Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Floating Subnet ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"site_network_subnet": schema.SetNestedAttribute{
-								Description: "GlobalRange + InterfaceSubnet",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Site Natwork Subnet Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Site Natwork Subnet ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-						},
-					},
-					"destination": schema.SingleNestedAttribute{
-						Description: "Destination traffic matching criteria",
-						Required:    true,
-						PlanModifiers: []planmodifier.Object{
-							objectplanmodifier.UseStateForUnknown(),
-							planmodifiers.SourceDestObjectModifier(),
-						},
-						Attributes: map[string]schema.Attribute{
-							"vlan": schema.ListAttribute{
-								ElementType: types.Int64Type,
-								Description: "VLAN IDs",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-							},
-							"ip": schema.ListAttribute{
-								ElementType: types.StringType,
-								Description: "IP addresses",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-							},
-							"subnet": schema.ListAttribute{
-								ElementType: types.StringType,
-								Description: "Subnets in CIDR notation",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-							},
-							"ip_range": schema.ListNestedAttribute{
-								Description: "IP ranges",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.List{
-									listplanmodifier.UseStateForUnknown(),
-								},
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"from": schema.StringAttribute{
-											Description: "Start IP",
-											Required:    true,
-										},
-										"to": schema.StringAttribute{
-											Description: "End IP",
-											Required:    true,
-										},
-									},
-								},
-							},
-							"host": schema.SetNestedAttribute{
-								Description: "Hosts and servers defined for your account",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Host Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Host ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"group": schema.SetNestedAttribute{
-								Description: "",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Group Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Group ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"system_group": schema.SetNestedAttribute{
-								Description: "",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "System Group Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "System Group ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"network_interface": schema.SetNestedAttribute{
-								Description: "Network range defined for a site",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Network Interface Name",
-											Required:    false,
-											Optional:    true,
-											// Validators: []validator.String{
-											// 	stringvalidator.ConflictsWith(path.Expressions{
-											// 		path.MatchRelative().AtParent().AtName("id"),
-											// 	}...),
-											// },
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Network Interface ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-										},
-									},
-								},
-							},
-							"global_ip_range": schema.SetNestedAttribute{
-								Description: "Global IP range matching criteria for the exception.",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Global IP Range Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Global IP Range ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"floating_subnet": schema.SetNestedAttribute{
-								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic " +
-									"exactly matched to the route advertised by BGP. They are not associated with a " +
-									"specific site. This is useful in scenarios such as active-standby high " +
-									"availability routed via BGP.",
-								Required: false,
-								Optional: true,
-								Computed: true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Floating Subnet Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Floating Subnet ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-							"site_network_subnet": schema.SetNestedAttribute{
-								Description: "GlobalRange + InterfaceSubnet",
-								Required:    false,
-								Optional:    true,
-								Computed:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Site Natwork Subnet Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Site Natwork Subnet ID",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
-										},
-									},
-								},
-							},
-						},
-					},
-					"service": schema.SingleNestedAttribute{
-						Description: "Destination service traffic matching criteria. Logical 'OR' is applied within " +
-							"the criteria set. Logical 'AND' is applied between criteria sets.",
-						Required: false,
-						Optional: true,
-						Attributes: map[string]schema.Attribute{
-							"simple": schema.SetNestedAttribute{
-								Description: "Simple Service to which this Socket LAN rule applies",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Simple Service Name (e.g., HTTP, FTP, SSH)",
-											Required:    true,
-											Optional:    false,
-										},
-									},
-								},
-							},
-							"custom": schema.ListNestedAttribute{
-								Description: "Custom Service defined by a combination of L4 ports and an IP Protocol",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.List{
-									listvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"port": schema.ListAttribute{
-											ElementType: types.StringType,
-											Description: "List of TCP/UDP port",
-											Optional:    true,
-											Required:    false,
-											Validators: []validator.List{
-												listvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("port_range"),
-												}...),
-											},
-										},
-										"port_range": schema.SingleNestedAttribute{
-											Description: "TCP/UDP port ranges",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.Object{
-												objectvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("port"),
-												}...),
-											},
-											Attributes: map[string]schema.Attribute{
-												"from": schema.StringAttribute{
-													Description: "",
-													Required:    true,
-													Optional:    false,
-												},
-												"to": schema.StringAttribute{
-													Description: "",
-													Required:    true,
-													Optional:    false,
-												},
-											},
-										},
-										"protocol": schema.StringAttribute{
-											Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
-											Required:    false,
-											Optional:    true,
-										},
-									},
-								},
-							},
-						},
-					},
-					"nat": schema.SingleNestedAttribute{
-						Description: "NAT settings",
-						Required:    false,
-						Optional:    true,
-						Computed:    true,
-						Attributes: map[string]schema.Attribute{
-							"enabled": schema.BoolAttribute{
-								Description: "Enable or disable NAT",
-								Optional:    true,
-								Computed:    true,
-								Default:     booldefault.StaticBool(false),
-							},
-							"nat_type": schema.StringAttribute{
-								Description: "NAT type (DYNAMIC_PAT)",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.String{
-									stringvalidator.OneOf("DYNAMIC_PAT"),
+								"protocol": schema.StringAttribute{
+									Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
+									Optional:    true,
 								},
 							},
 						},
 					},
 				},
+			},
+			"nat": schema.SingleNestedAttribute{
+				Description: "NAT settings",
+				Optional:    true,
+				Computed:    true,
+				Attributes: map[string]schema.Attribute{
+					"enabled": schema.BoolAttribute{
+						Description: "Enable or disable NAT",
+						Optional:    true,
+						Computed:    true,
+						Default:     booldefault.StaticBool(false),
+					},
+					"nat_type": schema.StringAttribute{
+						Description: "NAT type (DYNAMIC_PAT)",
+						Optional:    true,
+						Validators:  []validator.String{stringvalidator.OneOf("DYNAMIC_PAT")},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(description string) schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: description,
+		Required:    true,
+		PlanModifiers: []planmodifier.Object{
+			objectplanmodifier.UseStateForUnknown(),
+			planmodifiers.SourceDestObjectModifier(),
+		},
+		Attributes: map[string]schema.Attribute{
+			"vlan": schema.ListAttribute{
+				ElementType:   types.Int64Type,
+				Description:   "VLAN IDs",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				Validators:    []validator.List{listvalidator.SizeAtLeast(1)},
+			},
+			"ip": schema.ListAttribute{
+				ElementType:   types.StringType,
+				Description:   "IP addresses",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				Validators:    []validator.List{listvalidator.SizeAtLeast(1)},
+			},
+			"subnet": schema.ListAttribute{
+				ElementType:   types.StringType,
+				Description:   "Subnets in CIDR notation",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				Validators:    []validator.List{listvalidator.SizeAtLeast(1)},
+			},
+			"ip_range": schema.ListNestedAttribute{
+				Description:   "IP ranges",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				Validators:    []validator.List{listvalidator.SizeAtLeast(1)},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"from": schema.StringAttribute{
+							Description: "Start IP",
+							Required:    true,
+						},
+						"to": schema.StringAttribute{
+							Description: "End IP",
+							Required:    true,
+						},
+					},
+				},
+			},
+			"host": schema.SetNestedAttribute{
+				Description: "List of hosts",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Host"),
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"group": schema.SetNestedAttribute{
+				Description: "List of groups",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Group"),
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"system_group": schema.SetNestedAttribute{
+				Description: "List of system groups",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("System group"),
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"network_interface": schema.SetNestedAttribute{
+				Description: "List of network interfaces",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Network interface"),
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"global_ip_range": schema.SetNestedAttribute{
+				Description: "List of global IP ranges",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Global IP range"),
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"floating_subnet": schema.SetNestedAttribute{
+				Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic " +
+					"exactly matched to the route advertised by BGP. They are not associated with a " +
+					"specific site. This is useful in scenarios such as active-standby high " +
+					"availability routed via BGP.",
+				Optional: true,
+				Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Floating subnet"),
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"site_network_subnet": schema.SetNestedAttribute{
+				Description: "GlobalRange + InterfaceSubnet",
+				Optional:    true,
+				Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes:    parse.SchemaNameID("Site Natwork Subnet"),
+					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}

@@ -17,6 +17,11 @@ type PolicyRulePositionInput struct {
 	Ref      types.String `tfsdk:"ref" json:"ref,omitempty"`
 }
 
+var PolicyRulePositionInputTypes = map[string]attr.Type{
+	"position": types.StringType,
+	"ref":      types.StringType,
+}
+
 type PolicyPolicyInternetFirewallPolicyRulesRule struct {
 	ID          types.String `tfsdk:"id" json:"id,omitempty"`
 	Name        types.String `tfsdk:"name" json:"name,omitempty"`
