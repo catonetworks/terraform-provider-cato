@@ -48,7 +48,6 @@ func (r *socketLanNetworkRuleResource) Metadata(_ context.Context, req resource.
 	resp.TypeName = req.ProviderTypeName + "_socket_lan_network_rule"
 }
 
-//nolint:funlen
 func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_socket_lan_network_rule` resource contains the configuration parameters necessary " +
@@ -81,6 +80,7 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 	}
 }
 
+//nolint:funlen
 func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		Description: "Parameters for the Socket LAN network rule",
@@ -237,6 +237,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 	}
 }
 
+//nolint:funlen
 func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(description string) schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		Description: description,

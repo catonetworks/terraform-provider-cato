@@ -460,5 +460,6 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewSocketLanNetworkRuleResource,
 		NewSocketLanFirewallRuleResource,
 		NewGlobalIPRangesResource,
+		NewLfSubPolicyResource,
 	}
 }
