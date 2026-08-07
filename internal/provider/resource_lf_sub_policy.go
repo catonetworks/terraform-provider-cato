@@ -30,6 +30,7 @@ var (
 	ErrLanRuleNotFound = errors.New("lan rule not found")
 )
 
+// NewLfSubPolicyResource creates a LAN Firewall sub-policy resource instance.
 func NewLfSubPolicyResource() resource.Resource {
 	return &lfSubPolicyResource{}
 }
@@ -43,10 +44,12 @@ type fromtoer interface {
 	GetTo() string
 }
 
+// Metadata sets the Terraform resource type name for LAN Firewall sub-policies.
 func (r *lfSubPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_lf_sub_policy"
 }
 
+// Schema defines the Terraform schema for a LAN Firewall sub-policy.
 func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_lf_sub_policy` resource manages a LAN Firewall sub-policy " +
@@ -92,6 +95,7 @@ func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest
 	}
 }
 
+// policyScopeSchema derives the sub-policy scope schema from the LAN rule schema.
 func (r *lfSubPolicyResource) policyScopeSchema() schema.SingleNestedAttribute {
 	scopeAttr := (&socketLanNetworkRuleResource{}).lanRuleSchema()
 	scopeAttr.Description = "Policy scope attributes"
@@ -111,6 +115,7 @@ func (r *lfSubPolicyResource) policyScopeSchema() schema.SingleNestedAttribute {
 	return scopeAttr
 }
 
+// Configure stores the configured Cato API client for resource operations.
 func (r *lfSubPolicyResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -118,10 +123,12 @@ func (r *lfSubPolicyResource) Configure(_ context.Context, req resource.Configur
 	r.client = req.ProviderData.(*catoClientData)
 }
 
+// ImportState imports a LAN Firewall sub-policy by its ID.
 func (r *lfSubPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// Create adds a LAN Firewall sub-policy and hydrates its Terraform state from the API.
 func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan LanFirewallSubPolicy
 	diags := req.Plan.Get(ctx, &plan)
@@ -164,6 +171,7 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	resp.Diagnostics.Append(diags...)
 }
 
+// Update modifies the scope rule of a LAN Firewall sub-policy and refreshes its state.
 func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan LanFirewallSubPolicy
 	diags := req.Plan.Get(ctx, &plan)
@@ -213,6 +221,7 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	resp.Diagnostics.Append(diags...)
 }
 
+// Delete removes a LAN Firewall sub-policy through the Cato API.
 func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state LanFirewallSubPolicy
 	diags := req.State.Get(ctx, &state)
@@ -236,6 +245,7 @@ func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 }
 
+// Read refreshes a LAN Firewall sub-policy from the Cato API and removes missing resources from state.
 func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state LanFirewallSubPolicy
 	diags := req.State.Get(ctx, &state)
@@ -260,6 +270,7 @@ func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 }
 
+// prepareAt converts the Terraform rule position into an API position input.
 func (r *lfSubPolicyResource) prepareAt(ctx context.Context, at types.Object, diags *diag.Diagnostics,
 ) *cato_models.PolicyRulePositionInput {
 	if !utils.HasValue(at) {
@@ -276,6 +287,7 @@ func (r *lfSubPolicyResource) prepareAt(ctx context.Context, at types.Object, di
 	}
 }
 
+// preparePolicy builds the API input containing the sub-policy name and description.
 func (r *lfSubPolicyResource) preparePolicy(name, desc types.String) *cato_models.SocketLanAddSubPolicyDataInput {
 	return &cato_models.SocketLanAddSubPolicyDataInput{
 		Description: desc.ValueString(),
@@ -283,6 +295,7 @@ func (r *lfSubPolicyResource) preparePolicy(name, desc types.String) *cato_model
 	}
 }
 
+// prepareScope converts the Terraform scope rule into an API add-rule input.
 func (r *lfSubPolicyResource) prepareScope(ctx context.Context, scope types.Object, name, desc types.String, diags *diag.Diagnostics,
 ) *cato_models.SocketLanAddRuleDataInput {
 	if !utils.HasValue(scope) {
@@ -307,6 +320,7 @@ func (r *lfSubPolicyResource) prepareScope(ctx context.Context, scope types.Obje
 	}
 }
 
+// prepareSite converts Terraform site and group references into an API site input.
 func (r *lfSubPolicyResource) prepareSite(ctx context.Context, site types.Object, diags *diag.Diagnostics) *cato_models.SocketLanSiteInput {
 	if !utils.HasValue(site) {
 		return nil
@@ -320,6 +334,8 @@ func (r *lfSubPolicyResource) prepareSite(ctx context.Context, site types.Object
 		Site:  parse.PrepareIDRefSet[cato_models.SiteRefInput](ctx, tfSite.Site, diags),
 	}
 }
+
+// prepareSiteUpdate converts Terraform site and group references into an API site update input.
 func (r *lfSubPolicyResource) prepareSiteUpdate(ctx context.Context, site types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanSiteUpdateInput {
 	if !utils.HasValue(site) {
@@ -331,6 +347,8 @@ func (r *lfSubPolicyResource) prepareSiteUpdate(ctx context.Context, site types.
 		Site:  upd.Site,
 	}
 }
+
+// prepareSource converts Terraform source selectors into an API source input.
 func (r *lfSubPolicyResource) prepareSource(ctx context.Context, src types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanSourceInput {
 	if !utils.HasValue(src) {
@@ -355,6 +373,7 @@ func (r *lfSubPolicyResource) prepareSource(ctx context.Context, src types.Objec
 	}
 }
 
+// prepareSourceUpdate converts Terraform source selectors into an API source update input.
 func (r *lfSubPolicyResource) prepareSourceUpdate(ctx context.Context, src types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanSourceUpdateInput {
 	if !utils.HasValue(src) {
@@ -376,6 +395,7 @@ func (r *lfSubPolicyResource) prepareSourceUpdate(ctx context.Context, src types
 	}
 }
 
+// prepareDestination converts Terraform destination selectors into an API destination input.
 func (r *lfSubPolicyResource) prepareDestination(ctx context.Context, dest types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanDestinationInput {
 	if !utils.HasValue(dest) {
@@ -399,6 +419,8 @@ func (r *lfSubPolicyResource) prepareDestination(ctx context.Context, dest types
 		Vlan:              parse.PrepareInt64List[scalars.Vlan](ctx, tfDestination.Vlan, diags),
 	}
 }
+
+// prepareDestinationUpdate converts Terraform destination selectors into an API destination update input.
 func (r *lfSubPolicyResource) prepareDestinationUpdate(ctx context.Context, dest types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanDestinationUpdateInput {
 	if !utils.HasValue(dest) {
@@ -420,6 +442,7 @@ func (r *lfSubPolicyResource) prepareDestinationUpdate(ctx context.Context, dest
 	}
 }
 
+// prepareIPRange converts Terraform IP ranges into API address range inputs.
 func (r *lfSubPolicyResource) prepareIPRange(ctx context.Context, ipRange types.List, diags *diag.Diagnostics,
 ) []*cato_models.IPAddressRangeInput {
 	if !utils.HasValue(ipRange) {
@@ -440,6 +463,7 @@ func (r *lfSubPolicyResource) prepareIPRange(ctx context.Context, ipRange types.
 	return out
 }
 
+// prepareNat converts Terraform NAT settings into an API input with disabled dynamic PAT defaults.
 func (r *lfSubPolicyResource) prepareNat(ctx context.Context, nat types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanNatSettingsInput {
 	if !utils.HasValue(nat) {
@@ -458,6 +482,7 @@ func (r *lfSubPolicyResource) prepareNat(ctx context.Context, nat types.Object, 
 	}
 }
 
+// prepareNatUpdate converts Terraform NAT settings into an API update input.
 func (r *lfSubPolicyResource) prepareNatUpdate(ctx context.Context, nat types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanNatSettingsUpdateInput {
 	upd := r.prepareNat(ctx, nat, diags)
@@ -467,6 +492,7 @@ func (r *lfSubPolicyResource) prepareNatUpdate(ctx context.Context, nat types.Ob
 	}
 }
 
+// prepareService converts Terraform custom and simple services into an API service input.
 func (r *lfSubPolicyResource) prepareService(ctx context.Context, svc types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanServiceInput {
 	if !utils.HasValue(svc) {
@@ -482,6 +508,7 @@ func (r *lfSubPolicyResource) prepareService(ctx context.Context, svc types.Obje
 	}
 }
 
+// prepareServiceUpdate converts Terraform services into an API service update input.
 func (r *lfSubPolicyResource) prepareServiceUpdate(ctx context.Context, svc types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketLanServiceUpdateInput {
 	upd := r.prepareService(ctx, svc, diags)
@@ -491,6 +518,7 @@ func (r *lfSubPolicyResource) prepareServiceUpdate(ctx context.Context, svc type
 	}
 }
 
+// prepareSimpleService converts Terraform simple service names into API inputs.
 func (r *lfSubPolicyResource) prepareSimpleService(ctx context.Context, svc types.Set, diags *diag.Diagnostics,
 ) []*cato_models.SimpleServiceInput {
 	if !utils.HasValue(svc) {
@@ -510,6 +538,7 @@ func (r *lfSubPolicyResource) prepareSimpleService(ctx context.Context, svc type
 	return out
 }
 
+// prepareCustomService converts Terraform custom service definitions into API inputs.
 func (r *lfSubPolicyResource) prepareCustomService(ctx context.Context, svc types.List, diags *diag.Diagnostics,
 ) []*cato_models.CustomServiceInput {
 	if !utils.HasValue(svc) {
@@ -531,6 +560,7 @@ func (r *lfSubPolicyResource) prepareCustomService(ctx context.Context, svc type
 	return out
 }
 
+// preparePortRange converts a Terraform port range into an API port range input.
 func (r *lfSubPolicyResource) preparePortRange(ctx context.Context, portRange types.Object, diags *diag.Diagnostics,
 ) *cato_models.PortRangeInput {
 	if !utils.HasValue(portRange) {
@@ -699,6 +729,7 @@ func FromToList[T fromtoer](ctx context.Context, fts []T, diags *diag.Diagnostic
 	return fromToList
 }
 
+// parseNat converts API NAT settings into a Terraform object.
 func (r *lfSubPolicyResource) parseNat(ctx context.Context,
 	nat cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Nat, diags *diag.Diagnostics,
 ) types.Object {
@@ -715,6 +746,7 @@ func (r *lfSubPolicyResource) parseNat(ctx context.Context,
 	return natObj
 }
 
+// parseService converts API custom and simple services into a Terraform object.
 func (r *lfSubPolicyResource) parseService(ctx context.Context,
 	svc cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service, diags *diag.Diagnostics,
 ) types.Object {
@@ -734,6 +766,7 @@ func (r *lfSubPolicyResource) parseService(ctx context.Context,
 	return svcObj
 }
 
+// parseSimpleService converts API simple services into a Terraform set.
 func (r *lfSubPolicyResource) parseSimpleService(ctx context.Context,
 	svcs []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service_Simple, diags *diag.Diagnostics,
 ) types.Set {
@@ -756,6 +789,7 @@ func (r *lfSubPolicyResource) parseSimpleService(ctx context.Context,
 	return serviceList
 }
 
+// parseCustomService converts API custom services into a Terraform list.
 func (r *lfSubPolicyResource) parseCustomService(ctx context.Context,
 	svcs []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service_Custom, diags *diag.Diagnostics,
 ) types.List {
@@ -787,6 +821,7 @@ func (r *lfSubPolicyResource) parseCustomService(ctx context.Context,
 	return serviceList
 }
 
+// parseSite converts API site and group references into a Terraform object.
 func (r *lfSubPolicyResource) parseSite(ctx context.Context,
 	site cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Site, diags *diag.Diagnostics,
 ) types.Object {
