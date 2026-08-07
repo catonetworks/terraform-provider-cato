@@ -255,6 +255,24 @@ func Int64SetFunc[T any](ctx context.Context, ints []T, convert func(x T) int64,
 	return intSet
 }
 
+func PrepareInt64List[T ~int64](ctx context.Context, tfList types.List, diags *diag.Diagnostics) (sdkList []T) {
+	if !utils.HasValue(tfList) {
+		return nil
+	}
+	var tfInts []types.Int64
+	if utils.CheckErr(diags, tfList.ElementsAs(ctx, &tfInts, false)) {
+		return nil
+	}
+
+	sdkList = make([]T, 0, len(tfInts))
+	for _, s := range tfInts {
+		if utils.HasValue(s) {
+			sdkList = append(sdkList, T(s.ValueInt64()))
+		}
+	}
+	return sdkList
+}
+
 // KnownStringPointer returns a pointer to the known string value, nil for a null or unknown value.
 func KnownStringPointer(s types.String) *string {
 	if s.IsUnknown() {

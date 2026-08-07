@@ -216,9 +216,10 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 				},
 			},
 			"nat": schema.SingleNestedAttribute{
-				Description: "NAT settings",
-				Optional:    true,
-				Computed:    true,
+				Description:   "NAT settings",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
 				Attributes: map[string]schema.Attribute{
 					"enabled": schema.BoolAttribute{
 						Description: "Enable or disable NAT",

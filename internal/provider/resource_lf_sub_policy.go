@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -14,9 +16,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -44,8 +47,7 @@ func (r *lfSubPolicyResource) Metadata(_ context.Context, req resource.MetadataR
 	resp.TypeName = req.ProviderTypeName + "_lf_sub_policy"
 }
 
-func (r *lfSubPolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-
+func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_lf_sub_policy` resource manages a LAN Firewall sub-policy " +
 			"(a nested policy scoped by a SUB_POLICY_SCOPE rule).",
@@ -121,6 +123,117 @@ func (r *lfSubPolicyResource) ImportState(ctx context.Context, req resource.Impo
 }
 
 func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan LanFirewallSubPolicy
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	input := cato_models.SocketLanAddSubPolicyInput{
+		At:     r.prepareAt(ctx, plan.At, &resp.Diagnostics),
+		Policy: r.preparePolicy(plan.Name, plan.Description),
+		Scope:  r.prepareScope(ctx, plan.Scope, plan.Name, plan.Description, &resp.Diagnostics),
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	result, err := r.client.catov2.PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
+	subpol := result.GetPolicy().GetSocketLan().GetAddSubPolicy()
+	if utils.CheckAPIErrors(err, subpol.GetErrors(),
+		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
+		return
+	}
+
+	policyID := subpol.GetPolicy().GetID()
+	if policyID == "" {
+		resp.Diagnostics.AddError("Cato API PolicySocketLanAddSubPolicy error", "policy ID is empty")
+		return
+	}
+
+	// Set the ID from the response
+	plan.ID = types.StringValue(policyID)
+
+	// Hydrate state from API
+	hydratedState, _ := r.hydrateLfSubPolicy(ctx, policyID, &plan, &resp.Diagnostics)
+	if diags.HasError() {
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+}
+
+func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan LanFirewallSubPolicy
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var tfScope LanFirewallSubPolicyScope
+	if utils.CheckErr(&resp.Diagnostics, plan.Scope.As(ctx, &tfScope, basetypes.ObjectAsOptions{})) {
+		return
+	}
+
+	input := cato_models.SocketLanUpdateRuleInput{
+		ID: plan.ScopeRuleID.ValueString(),
+		Rule: &cato_models.SocketLanUpdateRuleDataInput{
+			Description: plan.Description.ValueStringPointer(),
+			Destination: r.prepareDestinationUpdate(ctx, tfScope.Destination, &resp.Diagnostics),
+			Direction:   (*cato_models.SocketLanDirection)(tfScope.Direction.ValueStringPointer()),
+			Enabled:     tfScope.Enabled.ValueBoolPointer(),
+			Name:        plan.Name.ValueStringPointer(),
+			Nat:         r.prepareNatUpdate(ctx, tfScope.NAT, &resp.Diagnostics),
+			Service:     r.prepareServiceUpdate(ctx, tfScope.Service, &resp.Diagnostics),
+			Site:        r.prepareSiteUpdate(ctx, tfScope.Site, &resp.Diagnostics),
+			Source:      r.prepareSourceUpdate(ctx, tfScope.Source, &resp.Diagnostics),
+			Transport:   ptr(cato_models.SocketLanTransportTypeLan),
+		},
+	}
+
+	result, err := r.client.catov2.PolicySocketLanUpdateRule(ctx, nil, input, r.client.AccountId)
+	subpol := result.GetPolicy().GetSocketLan().GetUpdateRule()
+	if utils.CheckAPIErrors(err, subpol.GetErrors(),
+		fmt.Sprintf("failed to update LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
+		return
+	}
+
+	// Hydrate state from API
+	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, plan.ID.ValueString(), &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		if notFound {
+			resp.State.RemoveResource(ctx)
+		}
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+}
+
+func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state LanFirewallSubPolicy
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	input := cato_models.SocketLanRemoveSubPolicyInput{
+		Ref: &cato_models.SocketLanPolicyRefInput{
+			By:    cato_models.ObjectRefByID,
+			Input: state.ID.ValueString(),
+		},
+	}
+
+	// Call Cato API to delete the subpolicy
+	_, err := r.client.catov2.PolicySocketLanRemoveSubPolicy(ctx, nil, input, r.client.AccountId)
+	errMsg := fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(errMsg, err.Error())
+		return
+	}
 }
 
 func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -132,15 +245,11 @@ func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	// Hydrate state from API
-	hydratedState, diags, hydrateErr := r.hydrateLfSubPolicy(ctx, state.ID.ValueString(), &state)
-	if hydrateErr != nil {
-		if errors.Is(hydrateErr, ErrLanRuleNotFound) {
-			tflog.Warn(ctx, fmt.Sprintf("Lan policy rule %s not found, resource removed", state.ID.ValueString()))
+	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, state.ID.ValueString(), &state, &resp.Diagnostics)
+	if diags.HasError() {
+		if notFound {
 			resp.State.RemoveResource(ctx)
-			return
 		}
-		resp.Diagnostics.AddError("Error hydrating lan sub-policy state", hydrateErr.Error())
-		resp.Diagnostics.Append(diags...)
 		return
 	}
 
@@ -151,22 +260,302 @@ func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 }
 
-func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *lfSubPolicyResource) prepareAt(ctx context.Context, at types.Object, diags *diag.Diagnostics,
+) *cato_models.PolicyRulePositionInput {
+	if !utils.HasValue(at) {
+		return nil
+	}
+	var tfPosition PolicyRulePositionInput
+	if utils.CheckErr(diags, at.As(ctx, &tfPosition, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+
+	return &cato_models.PolicyRulePositionInput{
+		Position: (*cato_models.PolicyRulePositionEnum)(tfPosition.Position.ValueStringPointer()),
+		Ref:      tfPosition.Ref.ValueStringPointer(),
+	}
 }
 
-func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *lfSubPolicyResource) preparePolicy(name, desc types.String) *cato_models.SocketLanAddSubPolicyDataInput {
+	return &cato_models.SocketLanAddSubPolicyDataInput{
+		Description: desc.ValueString(),
+		Name:        name.ValueString(),
+	}
+}
+
+func (r *lfSubPolicyResource) prepareScope(ctx context.Context, scope types.Object, name, desc types.String, diags *diag.Diagnostics,
+) *cato_models.SocketLanAddRuleDataInput {
+	if !utils.HasValue(scope) {
+		return nil
+	}
+	var tfScope LanFirewallSubPolicyScope
+	if utils.CheckErr(diags, scope.As(ctx, &tfScope, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+
+	return &cato_models.SocketLanAddRuleDataInput{
+		Description: desc.ValueString(),
+		Destination: r.prepareDestination(ctx, tfScope.Destination, diags),
+		Direction:   cato_models.SocketLanDirection(tfScope.Direction.ValueString()),
+		Enabled:     tfScope.Enabled.ValueBool(),
+		Name:        name.ValueString(),
+		Nat:         r.prepareNat(ctx, tfScope.NAT, diags),
+		Service:     r.prepareService(ctx, tfScope.Service, diags),
+		Site:        r.prepareSite(ctx, tfScope.Site, diags),
+		Source:      r.prepareSource(ctx, tfScope.Source, diags),
+		Transport:   cato_models.SocketLanTransportTypeLan,
+	}
+}
+
+func (r *lfSubPolicyResource) prepareSite(ctx context.Context, site types.Object, diags *diag.Diagnostics) *cato_models.SocketLanSiteInput {
+	if !utils.HasValue(site) {
+		return nil
+	}
+	var tfSite SocketLanSite
+	if utils.CheckErr(diags, site.As(ctx, &tfSite, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	return &cato_models.SocketLanSiteInput{
+		Group: parse.PrepareIDRefSet[cato_models.GroupRefInput](ctx, tfSite.Group, diags),
+		Site:  parse.PrepareIDRefSet[cato_models.SiteRefInput](ctx, tfSite.Site, diags),
+	}
+}
+func (r *lfSubPolicyResource) prepareSiteUpdate(ctx context.Context, site types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanSiteUpdateInput {
+	if !utils.HasValue(site) {
+		return nil
+	}
+	upd := r.prepareSite(ctx, site, diags)
+	return &cato_models.SocketLanSiteUpdateInput{
+		Group: upd.Group,
+		Site:  upd.Site,
+	}
+}
+func (r *lfSubPolicyResource) prepareSource(ctx context.Context, src types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanSourceInput {
+	if !utils.HasValue(src) {
+		return nil
+	}
+	var tfSource SocketLanSource
+	if utils.CheckErr(diags, src.As(ctx, &tfSource, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	return &cato_models.SocketLanSourceInput{
+		FloatingSubnet:    parse.PrepareIDRefSet[cato_models.FloatingSubnetRefInput](ctx, tfSource.FloatingSubnet, diags),
+		GlobalIPRange:     parse.PrepareIDRefSet[cato_models.GlobalIPRangeRefInput](ctx, tfSource.GlobalIPRange, diags),
+		Group:             parse.PrepareIDRefSet[cato_models.GroupRefInput](ctx, tfSource.Group, diags),
+		Host:              parse.PrepareIDRefSet[cato_models.HostRefInput](ctx, tfSource.Host, diags),
+		IP:                parse.PrepareStringList[string](ctx, tfSource.IP, diags),
+		IPRange:           r.prepareIPRange(ctx, tfSource.IPRange, diags),
+		NetworkInterface:  parse.PrepareIDRefSet[cato_models.NetworkInterfaceRefInput](ctx, tfSource.NetworkInterface, diags),
+		SiteNetworkSubnet: parse.PrepareIDRefSet[cato_models.SiteNetworkSubnetRefInput](ctx, tfSource.SiteNetworkSubnet, diags),
+		Subnet:            parse.PrepareStringList[string](ctx, tfSource.Subnet, diags),
+		SystemGroup:       parse.PrepareIDRefSet[cato_models.SystemGroupRefInput](ctx, tfSource.SystemGroup, diags),
+		Vlan:              parse.PrepareInt64List[scalars.Vlan](ctx, tfSource.Vlan, diags),
+	}
+}
+
+func (r *lfSubPolicyResource) prepareSourceUpdate(ctx context.Context, src types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanSourceUpdateInput {
+	if !utils.HasValue(src) {
+		return nil
+	}
+	upd := r.prepareSource(ctx, src, diags)
+	return &cato_models.SocketLanSourceUpdateInput{
+		FloatingSubnet:    upd.FloatingSubnet,
+		GlobalIPRange:     upd.GlobalIPRange,
+		Group:             upd.Group,
+		Host:              upd.Host,
+		IP:                upd.IP,
+		IPRange:           upd.IPRange,
+		NetworkInterface:  upd.NetworkInterface,
+		SiteNetworkSubnet: upd.SiteNetworkSubnet,
+		Subnet:            upd.Subnet,
+		SystemGroup:       upd.SystemGroup,
+		Vlan:              upd.Vlan,
+	}
+}
+
+func (r *lfSubPolicyResource) prepareDestination(ctx context.Context, dest types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanDestinationInput {
+	if !utils.HasValue(dest) {
+		return nil
+	}
+	var tfDestination SocketLanDestination
+	if utils.CheckErr(diags, dest.As(ctx, &tfDestination, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	return &cato_models.SocketLanDestinationInput{
+		FloatingSubnet:    parse.PrepareIDRefSet[cato_models.FloatingSubnetRefInput](ctx, tfDestination.FloatingSubnet, diags),
+		GlobalIPRange:     parse.PrepareIDRefSet[cato_models.GlobalIPRangeRefInput](ctx, tfDestination.GlobalIPRange, diags),
+		Group:             parse.PrepareIDRefSet[cato_models.GroupRefInput](ctx, tfDestination.Group, diags),
+		Host:              parse.PrepareIDRefSet[cato_models.HostRefInput](ctx, tfDestination.Host, diags),
+		IP:                parse.PrepareStringList[string](ctx, tfDestination.IP, diags),
+		IPRange:           r.prepareIPRange(ctx, tfDestination.IPRange, diags),
+		NetworkInterface:  parse.PrepareIDRefSet[cato_models.NetworkInterfaceRefInput](ctx, tfDestination.NetworkInterface, diags),
+		SiteNetworkSubnet: parse.PrepareIDRefSet[cato_models.SiteNetworkSubnetRefInput](ctx, tfDestination.SiteNetworkSubnet, diags),
+		Subnet:            parse.PrepareStringList[string](ctx, tfDestination.Subnet, diags),
+		SystemGroup:       parse.PrepareIDRefSet[cato_models.SystemGroupRefInput](ctx, tfDestination.SystemGroup, diags),
+		Vlan:              parse.PrepareInt64List[scalars.Vlan](ctx, tfDestination.Vlan, diags),
+	}
+}
+func (r *lfSubPolicyResource) prepareDestinationUpdate(ctx context.Context, dest types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanDestinationUpdateInput {
+	if !utils.HasValue(dest) {
+		return nil
+	}
+	upd := r.prepareDestination(ctx, dest, diags)
+	return &cato_models.SocketLanDestinationUpdateInput{
+		FloatingSubnet:    upd.FloatingSubnet,
+		GlobalIPRange:     upd.GlobalIPRange,
+		Group:             upd.Group,
+		Host:              upd.Host,
+		IP:                upd.IP,
+		IPRange:           upd.IPRange,
+		NetworkInterface:  upd.NetworkInterface,
+		SiteNetworkSubnet: upd.SiteNetworkSubnet,
+		Subnet:            upd.Subnet,
+		SystemGroup:       upd.SystemGroup,
+		Vlan:              upd.Vlan,
+	}
+}
+
+func (r *lfSubPolicyResource) prepareIPRange(ctx context.Context, ipRange types.List, diags *diag.Diagnostics,
+) []*cato_models.IPAddressRangeInput {
+	if !utils.HasValue(ipRange) {
+		return nil
+	}
+	var tfFromTo []FromTo
+	if utils.CheckErr(diags, ipRange.ElementsAs(ctx, &tfFromTo, false)) {
+		return nil
+	}
+
+	out := make([]*cato_models.IPAddressRangeInput, 0, len(tfFromTo))
+	for _, o := range tfFromTo {
+		out = append(out, &cato_models.IPAddressRangeInput{
+			From: o.From.ValueString(),
+			To:   o.To.ValueString(),
+		})
+	}
+	return out
+}
+
+func (r *lfSubPolicyResource) prepareNat(ctx context.Context, nat types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanNatSettingsInput {
+	if !utils.HasValue(nat) {
+		return &cato_models.SocketLanNatSettingsInput{
+			Enabled: false,
+			NatType: cato_models.SocketLanNatTypeDynamicPat,
+		}
+	}
+	var tfNat PolicyNatSettings
+	if utils.CheckErr(diags, nat.As(ctx, &tfNat, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	return &cato_models.SocketLanNatSettingsInput{
+		Enabled: tfNat.Enabled.ValueBool(),
+		NatType: cato_models.SocketLanNatType(tfNat.NatType.ValueString()),
+	}
+}
+
+func (r *lfSubPolicyResource) prepareNatUpdate(ctx context.Context, nat types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanNatSettingsUpdateInput {
+	upd := r.prepareNat(ctx, nat, diags)
+	return &cato_models.SocketLanNatSettingsUpdateInput{
+		Enabled: &upd.Enabled,
+		NatType: &upd.NatType,
+	}
+}
+
+func (r *lfSubPolicyResource) prepareService(ctx context.Context, svc types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanServiceInput {
+	if !utils.HasValue(svc) {
+		return &cato_models.SocketLanServiceInput{}
+	}
+	var tfService PolicyService
+	if utils.CheckErr(diags, svc.As(ctx, &tfService, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	return &cato_models.SocketLanServiceInput{
+		Custom: r.prepareCustomService(ctx, tfService.Custom, diags),
+		Simple: r.prepareSimpleService(ctx, tfService.Simple, diags),
+	}
+}
+
+func (r *lfSubPolicyResource) prepareServiceUpdate(ctx context.Context, svc types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketLanServiceUpdateInput {
+	upd := r.prepareService(ctx, svc, diags)
+	return &cato_models.SocketLanServiceUpdateInput{
+		Custom: upd.Custom,
+		Simple: upd.Simple,
+	}
+}
+
+func (r *lfSubPolicyResource) prepareSimpleService(ctx context.Context, svc types.Set, diags *diag.Diagnostics,
+) []*cato_models.SimpleServiceInput {
+	if !utils.HasValue(svc) {
+		return nil
+	}
+	var tfSimpleServices []SimpleService
+	if utils.CheckErr(diags, svc.ElementsAs(ctx, &tfSimpleServices, false)) {
+		return nil
+	}
+	out := make([]*cato_models.SimpleServiceInput, 0, len(tfSimpleServices))
+	for _, s := range tfSimpleServices {
+		svcInput := cato_models.SimpleServiceInput{
+			Name: cato_models.SimpleServiceType(s.Name.ValueString()),
+		}
+		out = append(out, &svcInput)
+	}
+	return out
+}
+
+func (r *lfSubPolicyResource) prepareCustomService(ctx context.Context, svc types.List, diags *diag.Diagnostics,
+) []*cato_models.CustomServiceInput {
+	if !utils.HasValue(svc) {
+		return nil
+	}
+	var tfCustServices []PolicyCustomService
+	if utils.CheckErr(diags, svc.ElementsAs(ctx, &tfCustServices, false)) {
+		return nil
+	}
+	out := make([]*cato_models.CustomServiceInput, 0, len(tfCustServices))
+	for _, s := range tfCustServices {
+		svcInput := cato_models.CustomServiceInput{
+			Port:      parse.PrepareStringList[scalars.Port](ctx, s.Port, diags),
+			PortRange: r.preparePortRange(ctx, s.PortRange, diags),
+			Protocol:  cato_models.IPProtocol(s.Protocol.ValueString()),
+		}
+		out = append(out, &svcInput)
+	}
+	return out
+}
+
+func (r *lfSubPolicyResource) preparePortRange(ctx context.Context, portRange types.Object, diags *diag.Diagnostics,
+) *cato_models.PortRangeInput {
+	if !utils.HasValue(portRange) {
+		return nil
+	}
+	var tfFromTo FromTo
+	if utils.CheckErr(diags, portRange.As(ctx, &tfFromTo, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+
+	return &cato_models.PortRangeInput{
+		From: scalars.Port(tfFromTo.From.ValueString()),
+		To:   scalars.Port(tfFromTo.To.ValueString()),
+	}
 }
 
 // hydrateLfSubPolicy fetches the current state of a lan firewall sub-policy from the API
 func (r *lfSubPolicyResource) hydrateLfSubPolicy(ctx context.Context, subPolicyID string,
-	cfgOrState *LanFirewallSubPolicy,
-) (*LanFirewallSubPolicy, diag.Diagnostics, error) {
-	var diags diag.Diagnostics
-
+	planOrState *LanFirewallSubPolicy, diags *diag.Diagnostics,
+) (newState *LanFirewallSubPolicy, notFound bool) {
 	// Call Cato API to get the policy
 	result, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	if err != nil {
-		return nil, nil, err
+		diags.AddError("failed to hydrate sub-policy", err.Error())
+		return nil, false
 	}
 
 	var state *LanFirewallSubPolicy
@@ -174,7 +563,7 @@ func (r *lfSubPolicyResource) hydrateLfSubPolicy(ctx context.Context, subPolicyI
 	// Map API response to LanFirewallSubPolicy
 	policy := result.GetPolicy().GetSocketLan().GetPolicy()
 	for _, polRule := range policy.Rules {
-		if polRule.GetSubPolicy().ID != subPolicyID {
+		if polRule.GetSubPolicy().GetID() != subPolicyID {
 			continue
 		}
 		apiRule := polRule.Rule
@@ -182,21 +571,22 @@ func (r *lfSubPolicyResource) hydrateLfSubPolicy(ctx context.Context, subPolicyI
 			ID:          types.StringValue(subPolicyID),
 			Name:        types.StringValue(apiRule.Name),
 			Description: types.StringValue(apiRule.Description),
-			At:          cfgOrState.At,
+			At:          planOrState.At,
 			ScopeRuleID: types.StringValue(apiRule.ID),
-			Scope:       r.parseRuleScope(ctx, apiRule, &diags),
+			Scope:       r.parseRuleScope(ctx, apiRule, diags),
 		}
 		break
 	}
 
 	if state == nil {
-		return nil, diags, ErrLanRuleNotFound
+		diags.AddError("sub-policy "+subPolicyID+" not dound", "API did not return the expected sub-policy")
+		return nil, true
 	}
 	if diags.HasError() {
-		return nil, diags, ErrAPIResponseParse
+		return nil, false
 	}
 
-	return state, nil, nil
+	return state, false
 }
 
 // parseRuleScope pares the rule scope from the API response and returns terraform LanFirewallSubPolicyScope object
@@ -328,6 +718,9 @@ func (r *lfSubPolicyResource) parseNat(ctx context.Context,
 func (r *lfSubPolicyResource) parseService(ctx context.Context,
 	svc cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service, diags *diag.Diagnostics,
 ) types.Object {
+	if len(svc.Custom) == 0 && len(svc.Simple) == 0 {
+		return types.ObjectNull(PolicyServiceTypes)
+	}
 	tfSvc := PolicyService{
 		Custom: r.parseCustomService(ctx, svc.Custom, diags),
 		Simple: r.parseSimpleService(ctx, svc.Simple, diags),
