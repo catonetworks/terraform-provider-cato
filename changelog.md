@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.93 (2026-08-10)
+
+### Changed
+- Updated the Cato Go SDK and related Go module dependencies, including vulnerability-related updates.
+
 ## 0.0.92 (2026-07-22)
 
 ### Added
