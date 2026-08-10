@@ -29,6 +29,7 @@ type BulkPolicyRuleRow struct {
 	RuleID      string
 	RuleName    string
 	Index       int64
+	IsSystem    bool
 }
 
 // BulkPlannedRuleIndex is one rule placement from Terraform rule_data.
@@ -36,6 +37,18 @@ type BulkPlannedRuleIndex struct {
 	SectionName    string
 	RuleName       string
 	IndexInSection int64
+}
+
+func policyElementHasProperty(
+	properties []cato_models.PolicyElementPropertiesEnum,
+	target cato_models.PolicyElementPropertiesEnum,
+) bool {
+	for _, property := range properties {
+		if property == target {
+			return true
+		}
+	}
+	return false
 }
 
 func sectionIDSet(sections []BulkPolicySectionRef) map[string]struct{} {
@@ -96,6 +109,68 @@ func ruleNameToIDGlobal(rules []BulkPolicyRuleRow) map[string]string {
 	return out
 }
 
+func validateSystemRulesOmitted(rules []BulkPolicyRuleRow, planned []BulkPlannedRuleIndex) error {
+	systemRulesByName := make(map[string]BulkPolicyRuleRow)
+	for _, rule := range rules {
+		if rule.IsSystem {
+			systemRulesByName[rule.RuleName] = rule
+		}
+	}
+
+	for _, placement := range planned {
+		systemRule, ok := systemRulesByName[placement.RuleName]
+		if !ok {
+			continue
+		}
+		return fmt.Errorf(
+			"system rule %q in section %q cannot be managed by rule_data; "+
+				"omit system rules to pin them automatically",
+			placement.RuleName,
+			systemRule.SectionName,
+		)
+	}
+
+	return nil
+}
+
+func mergePinnedSystemRules(
+	sectionName string,
+	apiRules []BulkPolicyRuleRow,
+	movableIDs []string,
+) ([]string, error) {
+	systemRulesByPosition := make(map[int]BulkPolicyRuleRow)
+	for position, rule := range apiRules {
+		if rule.IsSystem {
+			systemRulesByPosition[position] = rule
+		}
+	}
+
+	finalIDs := make([]string, len(movableIDs)+len(systemRulesByPosition))
+	for position, systemRule := range systemRulesByPosition {
+		if position >= len(finalIDs) {
+			return nil, fmt.Errorf(
+				"system rule %q cannot remain at position %d in section %q with only %d rules",
+				systemRule.RuleName,
+				position,
+				sectionName,
+				len(finalIDs),
+			)
+		}
+	}
+
+	nextMovable := 0
+	for position := range finalIDs {
+		if systemRule, pinned := systemRulesByPosition[position]; pinned {
+			finalIDs[position] = systemRule.RuleID
+			continue
+		}
+		finalIDs[position] = movableIDs[nextMovable]
+		nextMovable++
+	}
+
+	return finalIDs, nil
+}
+
 func buildSectionReorderInput(
 	sec BulkPolicySectionRef,
 	apiRules []BulkPolicyRuleRow,
@@ -129,6 +204,9 @@ func buildSectionReorderInput(
 
 	tailIDs := make([]string, 0, len(apiRules))
 	for _, r := range apiRules {
+		if r.IsSystem {
+			continue
+		}
 		if _, ok := plannedNames[r.RuleName]; ok {
 			continue
 		}
@@ -138,7 +216,11 @@ func buildSectionReorderInput(
 		tailIDs = append(tailIDs, r.RuleID)
 	}
 
-	finalIDs := append(append([]string{}, orderedPlannedIDs...), tailIDs...)
+	movableIDs := append(append([]string{}, orderedPlannedIDs...), tailIDs...)
+	finalIDs, err := mergePinnedSystemRules(sec.Name, apiRules, movableIDs)
+	if err != nil {
+		return nil, err
+	}
 
 	ruleInputs := make([]*cato_models.PolicyReorderRuleInput, 0, len(finalIDs))
 	for _, rid := range finalIDs {
@@ -163,8 +245,9 @@ func buildSectionReorderInput(
 }
 
 // buildPolicyReorderInput builds a full PolicyReorderInput from the current API
-// snapshot plus Terraform planned indices. Planned rules are stacked first in
-// index_in_section order; remaining rules in the section keep their relative API order.
+// snapshot plus Terraform planned indices. System rules retain their current section and
+// absolute position. Movable planned rules are stacked in index_in_section order, then
+// remaining movable rules in the section keep their relative API order.
 // Every section from the index must appear in the output (WAN and IF return
 // reorderPolicyMissingSections if any section is omitted), including sections whose
 // final rule list is empty after moves.
@@ -173,6 +256,10 @@ func buildPolicyReorderInput(
 	rules []BulkPolicyRuleRow,
 	planned []BulkPlannedRuleIndex,
 ) (cato_models.PolicyReorderInput, error) {
+	if err := validateSystemRulesOmitted(rules, planned); err != nil {
+		return cato_models.PolicyReorderInput{}, err
+	}
+
 	sectionIDs := sectionIDSet(sections)
 	rulesBySectionID, err := indexRulesBySectionID(sectionIDs, rules)
 	if err != nil {
