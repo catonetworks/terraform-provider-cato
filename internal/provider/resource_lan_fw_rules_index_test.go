@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
@@ -11,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestHydrateLanFw(t *testing.T) {
+func TestHydrateLanFw(_ *testing.T) {
 	var ctx = context.Background()
 	var diags diag.Diagnostics
 	res := lanRulesIndexResource{
@@ -34,6 +35,21 @@ func (m *lanPolicyMockClient) PolicySocketLanPolicy(_ context.Context, _ string,
 	_ *cato_models.SocketLanPolicyInput, _ ...clientv2.RequestInterceptor,
 ) (*cato_go_sdk.PolicySocketLanPolicy, error) {
 	return m.policy, nil
+}
+
+func (m *lanPolicyMockClient) PolicySocketLanMoveSection(_ context.Context, _ cato_models.PolicyMoveSectionInput,
+	_ string, _ ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketLanMoveSection, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *lanPolicyMockClient) PolicySocketLanMoveRule(_ context.Context, _ cato_models.PolicyMoveRuleInput,
+	_ string, _ ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketLanMoveRule, error) {
+	return nil, errors.New("not implemented")
+}
+func (m *lanPolicyMockClient) PolicySocketLanFirewallMoveRule(_ context.Context, _ string,
+	_ *cato_models.SocketLanPolicyMutationInput, _ cato_models.PolicyMoveSubRuleInput, _ ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.PolicySocketLanFirewallMoveRule, error) {
+	return nil, errors.New("not implemented")
 }
 
 type lanPolicyPlanItem struct {
@@ -116,7 +132,7 @@ func (m *lanPolicyMockClient) createPlan(p lanPolicyPlanItem) *LanFwRulesIndex {
 
 	ruleObjects := make(map[string]types.Object, len(p.ruleData))
 	for ruleName, rule := range p.ruleData {
-		ruleObject, diags := types.ObjectValueFrom(ctx, LanFwRuleDataTypes, LanFwRuleData{
+		ruleObject, diags := types.ObjectValueFrom(ctx, LanNetworkRuleTypes, LanNetworkRule{
 			ID:             types.StringValue(rule.id),
 			RuleType:       types.StringValue(rule.ruleType),
 			SectionName:    types.StringValue(rule.sectionName),
@@ -129,7 +145,7 @@ func (m *lanPolicyMockClient) createPlan(p lanPolicyPlanItem) *LanFwRulesIndex {
 	}
 	ruleData, ruleDiags := types.MapValueFrom(
 		ctx,
-		types.ObjectType{AttrTypes: LanFwRuleDataTypes},
+		types.ObjectType{AttrTypes: LanNetworkRuleTypes},
 		ruleObjects,
 	)
 	if ruleDiags.HasError() {
@@ -137,8 +153,8 @@ func (m *lanPolicyMockClient) createPlan(p lanPolicyPlanItem) *LanFwRulesIndex {
 	}
 
 	return &LanFwRulesIndex{
-		SectionData: sectionData,
-		RuleData:    ruleData,
+		SectionData:  sectionData,
+		NetworkRules: ruleData,
 	}
 }
 

@@ -1354,14 +1354,17 @@ func (r *socketLanFirewallRuleResource) Read(ctx context.Context, req resource.R
 	resp.Diagnostics.Append(diagstmp...)
 
 	// Hard code position to avoid drift
-	curAtObj, diagstmp := types.ObjectValue(
-		PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_RULE"),
-			"ref":      types.StringNull(),
-		},
-	)
-	resp.Diagnostics.Append(diagstmp...)
+	curAtObj := state.At
+	if !utils.HasValue(state.At) {
+		curAtObj, diagstmp = types.ObjectValue(
+			PositionAttrTypes,
+			map[string]attr.Value{
+				"position": types.StringValue("LAST_IN_RULE"),
+				"ref":      types.StringNull(),
+			},
+		)
+		resp.Diagnostics.Append(diagstmp...)
+	}
 
 	state.Rule = ruleObj
 	state.At = curAtObj

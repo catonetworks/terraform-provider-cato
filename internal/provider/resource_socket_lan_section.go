@@ -7,6 +7,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -243,15 +244,19 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	// Hard coding LAST_IN_POLICY position as the API does not return any value
-	curAtObj, diagstmp := types.ObjectValue(
-		PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		},
-	)
+	curAtObj := state.At
+	if !utils.HasValue(state.At) {
+		var diagstmp diag.Diagnostics
+		curAtObj, diagstmp = types.ObjectValue(
+			PositionAttrTypes,
+			map[string]attr.Value{
+				"position": types.StringValue("LAST_IN_POLICY"),
+				"ref":      types.StringNull(),
+			},
+		)
+		resp.Diagnostics.Append(diagstmp...)
+	}
 	state.At = curAtObj
-	resp.Diagnostics.Append(diagstmp...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
