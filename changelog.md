@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.94 (2026-08-11)
+
+### Fixed
+- Fixed bulk firewall rule reordering to preserve immutable system rules at their API positions and reject explicit system-rule data before backend validation.
+- Fixed internet and WAN firewall sections under sub-policies to preserve their positions during state hydration and updates.
+- Fixed IPsec site updates to skip unchanged network ranges and omit unsupported static range translation data.
+
+### Tests
+- Added unit and acceptance coverage for system-rule reordering, firewall sections under sub-policies, and unchanged IPsec network ranges.
+
 ## 0.0.93 (2026-08-10)
 
 ### Changed
