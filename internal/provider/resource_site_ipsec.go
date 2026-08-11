@@ -656,7 +656,7 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		SiteLocation: &cato_models.UpdateSiteLocationInput{},
 	}
 
-	inputUpdateNetworkRange := cato_models.UpdateNetworkRangeInput{}
+	inputUpdateNetworkRange, updateNetworkRange := prepareIpsecNetworkRangeUpdate(plan, state)
 
 	// setting input site location
 	if !plan.SiteLocation.IsNull() {
@@ -671,8 +671,6 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		inputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
 	}
 
-	inputUpdateNetworkRange.Subnet = plan.NativeNetworkRange.ValueStringPointer()
-	inputUpdateNetworkRange.TranslatedSubnet = plan.NativeNetworkRange.ValueStringPointer()
 	inputSiteGeneral.Name = plan.Name.ValueStringPointer()
 	inputSiteGeneral.SiteType = (*cato_models.SiteType)(plan.SiteType.ValueStringPointer())
 	inputSiteGeneral.Description = plan.Description.ValueStringPointer()
@@ -697,17 +695,24 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.request", map[string]interface{}{
-		"request": utils.InterfaceToJSONString(inputUpdateNetworkRange),
-	})
-	// TODO, look at why response object does not resolve
-	_, err = r.client.catov2.SiteUpdateNetworkRange(ctx, plan.NativeNetworkRangeID.ValueString(), inputUpdateNetworkRange, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API SiteUpdateNetworkRange error",
-			err.Error(),
+	if updateNetworkRange {
+		tflog.Debug(ctx, "Update.SiteUpdateNetworkRange.request", map[string]interface{}{
+			"request": utils.InterfaceToJSONString(inputUpdateNetworkRange),
+		})
+		// TODO, look at why response object does not resolve
+		_, err = r.client.catov2.SiteUpdateNetworkRange(
+			ctx,
+			plan.NativeNetworkRangeID.ValueString(),
+			*inputUpdateNetworkRange,
+			r.client.AccountId,
 		)
-		return
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Catov2 API SiteUpdateNetworkRange error",
+				err.Error(),
+			)
+			return
+		}
 	}
 
 	// Hydrate API input for IPSec general details
@@ -798,6 +803,16 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+}
+
+func prepareIpsecNetworkRangeUpdate(plan, state SiteIpsecIkeV2) (*cato_models.UpdateNetworkRangeInput, bool) {
+	if plan.NativeNetworkRange.Equal(state.NativeNetworkRange) {
+		return nil, false
+	}
+
+	return &cato_models.UpdateNetworkRangeInput{
+		Subnet: plan.NativeNetworkRange.ValueStringPointer(),
+	}, true
 }
 
 func (r *siteIpsecResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
