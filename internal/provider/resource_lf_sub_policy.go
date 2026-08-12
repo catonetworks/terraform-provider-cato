@@ -161,6 +161,12 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	// Set the ID from the response
 	plan.ID = types.StringValue(policyID)
 
+	// publish the changes
+	r.publish(ctx, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Hydrate state from API
 	hydratedState, _ := r.hydrateLfSubPolicy(ctx, policyID, &plan, &resp.Diagnostics)
 	if diags.HasError() {
@@ -208,6 +214,12 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
+	// publish the changes
+	r.publish(ctx, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Hydrate state from API
 	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, plan.ID.ValueString(), &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -241,6 +253,12 @@ func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	errMsg := fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(errMsg, err.Error())
+		return
+	}
+
+	// publish the changes
+	r.publish(ctx, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 }
@@ -836,4 +854,27 @@ func (r *lfSubPolicyResource) parseSite(ctx context.Context,
 	}
 
 	return siteObj
+}
+
+// publish calls the API to publish the draft policy revision
+func (r *lfSubPolicyResource) publish(ctx context.Context, diags *diag.Diagnostics) {
+	const summary = "failed to publish LAN firewall policy"
+	const notFound = "PolicyRevisionNotFound"
+	result, err := r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
+	if err != nil {
+		diags.AddError(summary, err.Error())
+		return
+	}
+	apiErrors := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision().GetErrors()
+	if len(apiErrors) > 0 {
+		for _, e := range apiErrors {
+			if code := e.GetErrorCode(); code != nil && *code == notFound {
+				continue
+			}
+			if msg := e.GetErrorMessage(); msg != nil {
+				diags.AddError(summary, *msg)
+			}
+		}
+		return
+	}
 }

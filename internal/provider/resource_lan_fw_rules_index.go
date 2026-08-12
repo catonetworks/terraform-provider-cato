@@ -48,6 +48,10 @@ type LanFwRuleClient interface {
 		socketLanPolicyMutationInput *cato_models.SocketLanPolicyMutationInput,
 		policyMoveSubRuleInput cato_models.PolicyMoveSubRuleInput, interceptors ...clientv2.RequestInterceptor) (
 		*cato_go_sdk.PolicySocketLanFirewallMoveRule, error)
+	PolicySocketLanPublishPolicyRevision(ctx context.Context,
+		socketLanPolicyMutationInput *cato_models.SocketLanPolicyMutationInput,
+		policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput, accountID string,
+		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketLanPublishPolicyRevision, error)
 }
 
 func (r *lanRulesIndexResource) getClient() LanFwRuleClient { return r.catov2Client }
@@ -58,7 +62,16 @@ func (r *lanRulesIndexResource) Metadata(_ context.Context, req resource.Metadat
 
 func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Retrieves index values for LAN Firewall Rules.",
+		Description: "Manages ordering of LAN firewall policy items.\n\n" +
+			"**LAN Firewall Policy**\n" +
+			"- Section\n" +
+			"  - Network rule\n" +
+			"    - Firewall rule\n" +
+			"  - Sub-policy\n" +
+			"    - Section\n" +
+			"      - Network rule\n" +
+			"        - Firewall rule",
+
 		Attributes: map[string]schema.Attribute{
 			"section_data": schema.MapNestedAttribute{
 				Description: "Map of section indexes keyed by section name",
@@ -110,7 +123,7 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 				},
 			},
 			"firewall_rules": schema.MapNestedAttribute{
-				Description: "Map of firewall rule index for each network rulw, keyed by firewal rule name",
+				Description: "Map of firewall rule index for each network rule, keyed by firewall rule name",
 				Required:    false,
 				Optional:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -1257,7 +1270,7 @@ func (r *lanRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 func (r *lanRulesIndexResource) publish(ctx context.Context, diags *diag.Diagnostics) {
 	const summary = "failed to publish LAN firewall policy"
 	const notFound = "PolicyRevisionNotFound"
-	result, err := r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
+	result, err := r.getClient().PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
 	if err != nil {
 		diags.AddError(summary, err.Error())
 		return
