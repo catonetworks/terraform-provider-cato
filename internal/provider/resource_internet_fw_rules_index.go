@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -344,6 +345,55 @@ func (r *ifwRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
+type ifwSectionMove struct {
+	section   IfwRulesSectionDataIndex
+	input     cato_models.PolicyMoveSectionInput
+	protected bool
+}
+
+func buildIfwSectionMoves(
+	sections []IfwRulesSectionDataIndex,
+	sectionIDs map[string]string,
+	protectedSectionIDs map[string]struct{},
+	startAfterID string,
+) []ifwSectionMove {
+	moves := make([]ifwSectionMove, 0, len(sections))
+	currentSectionID := ""
+
+	for _, section := range sections {
+		sectionID := sectionIDs[section.SectionName]
+		input := cato_models.PolicyMoveSectionInput{ID: sectionID}
+
+		if currentSectionID == "" {
+			if startAfterID != "" {
+				ref := startAfterID
+				input.To = &cato_models.PolicySectionPositionInput{
+					Ref:      &ref,
+					Position: "AFTER_SECTION",
+				}
+			} else {
+				input.To = &cato_models.PolicySectionPositionInput{Position: "LAST_IN_POLICY"}
+			}
+		} else {
+			ref := currentSectionID
+			input.To = &cato_models.PolicySectionPositionInput{
+				Ref:      &ref,
+				Position: "AFTER_SECTION",
+			}
+		}
+
+		_, protected := protectedSectionIDs[sectionID]
+		moves = append(moves, ifwSectionMove{
+			section:   section,
+			input:     input,
+			protected: protected,
+		})
+		currentSectionID = sectionID
+	}
+
+	return moves
+}
+
 //nolint:gocyclo,funlen,gocritic
 func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	ctx context.Context,
@@ -427,6 +477,39 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		}
 	}
 
+	var ruleIndexAPIData *cato_go_sdk.IfwRulesIndexPolicy
+	rules := make([]BulkPolicyRuleRow, 0)
+	protectedSectionIDs := make(map[string]struct{})
+	if len(plan.SectionData.Elements()) > 0 || len(plan.RuleData.Elements()) > 0 {
+		ruleIndexAPIData, err = r.ifwBulkPolicy().PolicyInternetFirewallRulesIndex(ctx, r.client.AccountId)
+		if err != nil {
+			diags = append(diags, diag.NewErrorDiagnostic(
+				"Catov2 API PolicyInternetFirewallRulesIndex error",
+				err.Error(),
+			))
+			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+		}
+
+		rules = make([]BulkPolicyRuleRow, 0, len(ruleIndexAPIData.Policy.InternetFirewall.Policy.Rules))
+		for _, item := range ruleIndexAPIData.Policy.InternetFirewall.Policy.Rules {
+			isSystem := policyElementHasProperty(
+				item.Properties,
+				cato_models.PolicyElementPropertiesEnumSystem,
+			)
+			rules = append(rules, BulkPolicyRuleRow{
+				SectionID:   item.Rule.Section.ID,
+				SectionName: item.Rule.Section.Name,
+				RuleID:      item.Rule.ID,
+				RuleName:    item.Rule.Name,
+				Index:       item.Rule.Index,
+				IsSystem:    isSystem,
+			})
+			if isSystem {
+				protectedSectionIDs[item.Rule.Section.ID] = struct{}{}
+			}
+		}
+	}
+
 	sectionListFromPlan := make([]IfwRulesSectionDataIndex, 0)
 
 	// Convert map to slice for processing
@@ -452,39 +535,45 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		"sections": utils.InterfaceToJSONString(sectionListFromPlan),
 	})
 
-	currentSectionID := ""
-
 	sectionObjectMap := make(map[string]attr.Value)
 
 	// create the sections from the list provided following the section ID provided in firstSectionID
-	for _, workingSectionName := range sectionListFromPlan {
-		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
-			ID: sectionIDList[workingSectionName.SectionName],
+	sectionMoves := buildIfwSectionMoves(
+		sectionListFromPlan,
+		sectionIDList,
+		protectedSectionIDs,
+		plan.SectionToStartAfterID.ValueString(),
+	)
+	for _, move := range sectionMoves {
+		workingSectionName := move.section
+		policyMoveSectionInputInt := move.input
+
+		sectionIndexStateData, diagsSection := types.ObjectValue(
+			IfwSectionIndexResourceAttrTypes,
+			map[string]attr.Value{
+				"id":            types.StringValue(sectionIDList[workingSectionName.SectionName]),
+				"section_name":  types.StringValue(workingSectionName.SectionName),
+				"section_index": types.Int64Value(workingSectionName.SectionIndex),
+			},
+		)
+		diags = append(diags, diagsSection...)
+		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
+
+		if move.protected {
+			diags = append(diags, diag.NewWarningDiagnostic(
+				"Internet firewall section move skipped",
+				fmt.Sprintf(
+					"Section %q contains a system rule and cannot be moved; its current policy position was preserved.",
+					workingSectionName.SectionName,
+				),
+			))
+			continue
 		}
 
-		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionID to the SectionToStartAfterID otherwise set to id of first section for next in list
-		if currentSectionID == "" {
-			if plan.SectionToStartAfterID.ValueString() != "" {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterID.ValueStringPointer(),
-					Position: "AFTER_SECTION",
-				}
-			} else {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Position: "LAST_IN_POLICY",
-				}
-			}
-		} else {
-			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionID,
-				Position: "AFTER_SECTION",
-			}
-		}
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
 			"sectionToStartAfterId":          plan.SectionToStartAfterID.ValueString(),
 			"moveFrom":                       workingSectionName.SectionName,
-			"toAfter":                        currentSectionID,
+			"toAfter":                        policyMoveSectionInputInt.To.Ref,
 			"sectionIDList":                  sectionIDList,
 			"workingSectionName.SectionName": workingSectionName.SectionName,
 			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
@@ -507,20 +596,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		tflog.Warn(ctx, "Write.PolicyInternetFirewallMoveSection.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 		})
-
-		sectionIndexStateData, diagsSection := types.ObjectValue(
-			IfwSectionIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":            types.StringValue(sectionIDList[workingSectionName.SectionName]),
-				"section_name":  types.StringValue(workingSectionName.SectionName),
-				"section_index": types.Int64Value(workingSectionName.SectionIndex),
-			},
-		)
-		diags = append(diags, diagsSection...)
-
-		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
-
-		currentSectionID = sectionIDList[workingSectionName.SectionName]
 	}
 
 	// now that the sections are ordered properly, move the rules to the correct locations
@@ -560,20 +635,12 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			return ruleListFromPlan[i].IndexInSection < ruleListFromPlan[j].IndexInSection
 		})
 
-		ruleNameIDData, err := r.ifwBulkPolicy().PolicyInternetFirewallRulesIndex(ctx, r.client.AccountId)
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API PolicyInternetFirewallRulesIndex error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
 		ruleNameIDMap := make(map[string]string)
 		ruleNameDescriptionMap := make(map[string]string)
 		ruleNameEnabledMap := make(map[string]bool)
 
 		// create map of IFW rule names from the API to their IDs for easy lookup
-		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.InternetFirewall.Policy.Rules {
+		for _, ruleNameIDDataItem := range ruleIndexAPIData.Policy.InternetFirewall.Policy.Rules {
 			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
 			ruleNameDescriptionMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Description
 			ruleNameEnabledMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Enabled
@@ -598,21 +665,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			sections = append(sections, BulkPolicySectionRef{
 				ID:   item.Section.ID,
 				Name: item.Section.Name,
-			})
-		}
-
-		rules := make([]BulkPolicyRuleRow, 0, len(ruleNameIDData.Policy.InternetFirewall.Policy.Rules))
-		for _, item := range ruleNameIDData.Policy.InternetFirewall.Policy.Rules {
-			rules = append(rules, BulkPolicyRuleRow{
-				SectionID:   item.Rule.Section.ID,
-				SectionName: item.Rule.Section.Name,
-				RuleID:      item.Rule.ID,
-				RuleName:    item.Rule.Name,
-				Index:       item.Rule.Index,
-				IsSystem: policyElementHasProperty(
-					item.Properties,
-					cato_models.PolicyElementPropertiesEnumSystem,
-				),
 			})
 		}
 
