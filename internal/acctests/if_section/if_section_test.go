@@ -65,6 +65,37 @@ func TestAccInternetFwSection(t *testing.T) {
 	})
 }
 
+func TestAccInternetFwSectionUnderSubPolicy(t *testing.T) {
+	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
+	mockSrv := accmock.NewMockServer(t, "TestAccInternetFwSectionUnderSubPolicy")
+	defer mockSrv.Close()
+	mockSrv.Run()
+
+	name := acc.GetRandName("internet_fw_section_sub_policy")
+	section := "cato_if_section.this"
+	subPolicy := "cato_if_sub_policy.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				Config: internetFwSectionUnderSubPolicyConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(subPolicy, "id"),
+					resource.TestCheckResourceAttrSet(section, "id"),
+					resource.TestCheckResourceAttrSet(section, "section.id"),
+					resource.TestCheckResourceAttr(section, "section.name", name),
+					resource.TestCheckResourceAttr(section, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttrPair(section, "at.ref", subPolicy, "id"),
+				),
+			},
+		},
+	})
+}
+
 type internetFwSectionCfg struct {
 	resName string
 	t       *testing.T
@@ -116,4 +147,35 @@ var internetFwSectionTFs = []string{
 		}
 	}
 	`,
+}
+
+func internetFwSectionUnderSubPolicyConfig(name string) string {
+	return acc.ProviderCfg() + fmt.Sprintf(`
+resource "cato_if_sub_policy" "test" {
+  name        = %q
+  description = "IF section acceptance test"
+
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+
+  scope = {
+    enabled     = true
+    source      = { ip = ["10.203.0.1"] }
+    destination = {}
+    tracking    = { event = { enabled = false } }
+  }
+}
+
+resource "cato_if_section" "this" {
+  at = {
+    position = "LAST_IN_POLICY"
+    ref      = cato_if_sub_policy.test.id
+  }
+
+  section = {
+    name = %q
+  }
+}
+`, name+"-parent", name)
 }

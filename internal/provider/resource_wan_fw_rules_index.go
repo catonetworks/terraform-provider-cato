@@ -488,6 +488,10 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 				RuleID:      item.Rule.ID,
 				RuleName:    item.Rule.Name,
 				Index:       item.Rule.Index,
+				IsSystem: policyElementHasProperty(
+					item.Properties,
+					cato_models.PolicyElementPropertiesEnumSystem,
+				),
 			})
 		}
 

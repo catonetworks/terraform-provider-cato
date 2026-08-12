@@ -289,16 +289,9 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 		state.Section = curSectionObj
 	}
 
-	// Hard coding LAST_IN_POLICY position as the API does not return any value and
-	// hardcoding position supports the use case of bulk rule import/export
-	// getting around state changes for the position field
-	curAtObj, diagstmp := types.ObjectValue(
-		PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue(ifwLastInPolicyPosition),
-			"ref":      types.StringNull(),
-		},
-	)
+	// The API does not return section position. Preserve configuration state to
+	// avoid drift, defaulting imports without position state to LAST_IN_POLICY.
+	curAtObj, diagstmp := hydrateFirewallSectionPositionState(ctx, state.At)
 	state.At = curAtObj
 	resp.Diagnostics.Append(diagstmp...)
 
