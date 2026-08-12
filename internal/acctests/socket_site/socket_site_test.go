@@ -61,6 +61,10 @@ func TestAccSocketSite_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "site_location.country_code", "FR"),
 					resource.TestCheckResourceAttr(res, "site_location.timezone", "Europe/Paris"),
 					resource.TestCheckResourceAttr(res, "site_type", "BRANCH"),
+					resource.TestCheckResourceAttr(res, "sockets.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "sockets.*", map[string]string{
+						"is_primary": "true",
+					}),
 				),
 			},
 
@@ -99,6 +103,10 @@ func TestAccSocketSite_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "site_location.state_code", "US-CA"),
 					resource.TestCheckResourceAttr(res, "site_location.timezone", "America/Los_Angeles"),
 					resource.TestCheckResourceAttr(res, "site_type", "CLOUD_DC"),
+					resource.TestCheckResourceAttr(res, "sockets.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "sockets.*", map[string]string{
+						"is_primary": "true",
+					}),
 				),
 			},
 		},
