@@ -581,9 +581,10 @@ func (r *lanRulesIndexResource) parsePlanSections(plan *LanFwRulesIndex, section
 		name, id string
 		index    int64
 	}
-	if plan == nil {
+	if plan == nil || !utils.HasValue(plan.SectionData) {
 		return
 	}
+
 	checkIndexes := func(policyName string, items []sectItem) bool {
 		for i, item := range items {
 			if item.index != int64(i+1) {
@@ -597,10 +598,6 @@ func (r *lanRulesIndexResource) parsePlanSections(plan *LanFwRulesIndex, section
 			}
 		}
 		return false
-	}
-
-	if plan == nil || !utils.HasValue(plan.SectionData) {
-		return
 	}
 
 	tfSections := make(map[string]LanFwSectionData)
@@ -767,7 +764,7 @@ func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, ruleNam
 		ruleType cato_models.PolicyRuleTypeEnum
 		index    int64
 	}
-	if plan == nil {
+	if plan == nil || !utils.HasValue(plan.NetworkRules) {
 		return
 	}
 	checkIndexes := func(sectionName string, items []ruleItem) bool {
@@ -780,9 +777,6 @@ func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, ruleNam
 			}
 		}
 		return false
-	}
-	if plan == nil || !utils.HasValue(plan.NetworkRules) {
-		return
 	}
 
 	tfRuleData := make(map[string]LanNetworkRule)
@@ -836,7 +830,7 @@ func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, ruleName
 		name, id string
 		index    int64
 	}
-	if plan == nil {
+	if plan == nil || !utils.HasValue(plan.FirewallRules) {
 		return
 	}
 	checkIndexes := func(netRuleName string, items []ruleItem) bool {
@@ -849,9 +843,6 @@ func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, ruleName
 			}
 		}
 		return false
-	}
-	if plan == nil || !utils.HasValue(plan.FirewallRules) {
-		return
 	}
 
 	tfRuleData := make(map[string]LanFirewallRule)
