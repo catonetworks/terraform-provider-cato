@@ -166,10 +166,11 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	resp.State.Set(ctx, plan)
 
 	// Hydrate state from API
 	hydratedState, _ := r.hydrateLfSubPolicy(ctx, policyID, &plan, &resp.Diagnostics)
-	if diags.HasError() {
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -249,10 +250,9 @@ func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 
 	// Call Cato API to delete the subpolicy
-	_, err := r.client.catov2.PolicySocketLanRemoveSubPolicy(ctx, nil, input, r.client.AccountId)
-	errMsg := fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(errMsg, err.Error())
+	res, err := r.client.catov2.PolicySocketLanRemoveSubPolicy(ctx, nil, input, r.client.AccountId)
+	if utils.CheckAPIErrors(err, res.GetPolicy().GetSocketLan().GetRemoveSubPolicy().GetErrors(),
+		fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &resp.Diagnostics) {
 		return
 	}
 
@@ -274,10 +274,11 @@ func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 
 	// Hydrate state from API
 	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, state.ID.ValueString(), &state, &resp.Diagnostics)
-	if diags.HasError() {
-		if notFound {
-			resp.State.RemoveResource(ctx)
-		}
+	if notFound {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -614,6 +615,9 @@ func (r *lfSubPolicyResource) hydrateLfSubPolicy(ctx context.Context, subPolicyI
 		if polRule.GetSubPolicy().GetID() != subPolicyID {
 			continue
 		}
+		if rType := polRule.GetRuleType(); rType == nil || *rType != cato_models.PolicyRuleTypeEnumSubPolicyScope {
+			continue
+		}
 		apiRule := polRule.Rule
 		state = &LanFirewallSubPolicy{
 			ID:          types.StringValue(subPolicyID),
@@ -627,7 +631,6 @@ func (r *lfSubPolicyResource) hydrateLfSubPolicy(ctx context.Context, subPolicyI
 	}
 
 	if state == nil {
-		diags.AddError("sub-policy "+subPolicyID+" not dound", "API did not return the expected sub-policy")
 		return nil, true
 	}
 	if diags.HasError() {

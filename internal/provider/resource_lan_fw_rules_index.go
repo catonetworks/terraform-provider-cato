@@ -575,6 +575,9 @@ func (r *lanRulesIndexResource) parsePlanSections(plan *LanFwRulesIndex, section
 		name, id string
 		index    int64
 	}
+	if plan == nil {
+		return
+	}
 	checkIndexes := func(policyName string, items []sectItem) bool {
 		for i, item := range items {
 			if item.index != int64(i+1) {
@@ -758,6 +761,9 @@ func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, ruleNam
 		ruleType cato_models.PolicyRuleTypeEnum
 		index    int64
 	}
+	if plan == nil {
+		return
+	}
 	checkIndexes := func(sectionName string, items []ruleItem) bool {
 		for i, item := range items {
 			if item.index != int64(i+1) {
@@ -823,6 +829,9 @@ func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, ruleName
 	type ruleItem struct {
 		name, id string
 		index    int64
+	}
+	if plan == nil {
+		return
 	}
 	checkIndexes := func(netRuleName string, items []ruleItem) bool {
 		for i, item := range items {
@@ -1201,13 +1210,13 @@ func (r *lanRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-	// For this resource, we should preserve the state as-is since it represents
-	// the intended configuration/ordering rather than reading all data from API.
-	// The state is already properly set during Create/Update operations.
-	// Only refresh IDs if needed, but preserve planned values.
-
+	// Hydrate state from API
+	hydratedState, _ := r.hydrateLanFwRulesIndex(ctx, nil, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	// No changes needed - preserve existing state
-	if diags := resp.State.Set(ctx, &state); diags.HasError() {
+	if diags := resp.State.Set(ctx, &hydratedState); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
 }
@@ -1283,6 +1292,8 @@ func (r *lanRulesIndexResource) publish(ctx context.Context, diags *diag.Diagnos
 			}
 			if msg := e.GetErrorMessage(); msg != nil {
 				diags.AddError(summary, *msg)
+			} else {
+				diags.AddError(summary, "unknown error")
 			}
 		}
 		return
