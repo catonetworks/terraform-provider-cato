@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.95 (2026-08-13)
+
+### Changed
+- Updated socket site state hydration to use site general details and the dedicated socket configuration query instead of the account snapshot query.
+- Updated the Cato Go SDK dependency to v0.3.3.
+
+### Fixed
+- Fixed internet firewall rule index updates to skip section moves for sections containing immutable system rules while preserving their policy positions.
+
+### Tests
+- Added unit and acceptance coverage for socket configuration hydration and unit coverage for protected internet firewall section moves.
+
 ## 0.0.94 (2026-08-11)
 
 ### Fixed
