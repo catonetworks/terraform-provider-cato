@@ -280,13 +280,15 @@ func (r *lanRulesIndexResource) hydrateSections(ctx context.Context, plan *LanFw
 	if diags.HasError() { // current
 		return nil, sectionDataNull
 	}
-	r.parsePlanSections(plan, sectionNameMap, policySections, diags)
-	if diags.HasError() { // target
-		return nil, sectionDataNull
-	}
-	r.checkSections(policySections, diags)
-	if diags.HasError() { // should contain the same items
-		return nil, sectionDataNull
+	if plan != nil {
+		r.parsePlanSections(plan, sectionNameMap, policySections, diags)
+		if diags.HasError() { // target
+			return nil, sectionDataNull
+		}
+		r.checkSections(policySections, diags)
+		if diags.HasError() { // should contain the same items
+			return nil, sectionDataNull
+		}
 	}
 
 	// create TF SectionData:  map[policyName]{secID,secIndex,subPolicyName} -> types.Map
@@ -331,13 +333,15 @@ func (r *lanRulesIndexResource) hydrateNetRules(ctx context.Context, plan *LanFw
 	if diags.HasError() {
 		return nil, netRuleDataNull
 	}
-	r.parsePlanNetRules(plan, ruleNameMap, sectionRulesOrSubPols, diags) // target
-	if diags.HasError() {
-		return nil, netRuleDataNull
-	}
-	r.checkNetRules(sectionRulesOrSubPols, diags) // should contain the same items
-	if diags.HasError() {
-		return nil, netRuleDataNull
+	if plan != nil {
+		r.parsePlanNetRules(plan, ruleNameMap, sectionRulesOrSubPols, diags) // target
+		if diags.HasError() {
+			return nil, netRuleDataNull
+		}
+		r.checkNetRules(sectionRulesOrSubPols, diags) // should contain the same items
+		if diags.HasError() {
+			return nil, netRuleDataNull
+		}
 	}
 
 	// create TF NetworkRuleData:  map[rule/subPolicy name]{ruleID,sectName,sectIndex,ruleType} -> types.Map
@@ -384,13 +388,15 @@ func (r *lanRulesIndexResource) hydrateFirewallRules(ctx context.Context, plan *
 	if diags.HasError() {
 		return nil, firewallRuleDataNull
 	}
-	r.parsePlanFwRules(plan, ruleNameMap, ruleFirewallRules, diags) // target
-	if diags.HasError() {
-		return nil, firewallRuleDataNull
-	}
-	r.checkFwRules(ruleFirewallRules, diags) // should contain the same items
-	if diags.HasError() {
-		return nil, firewallRuleDataNull
+	if plan != nil {
+		r.parsePlanFwRules(plan, ruleNameMap, ruleFirewallRules, diags) // target
+		if diags.HasError() {
+			return nil, firewallRuleDataNull
+		}
+		r.checkFwRules(ruleFirewallRules, diags) // should contain the same items
+		if diags.HasError() {
+			return nil, firewallRuleDataNull
+		}
 	}
 
 	// create TF FirewallRuleData:  map[rule name]{fwRuleID,netRuleName,Index} -> types.Map
