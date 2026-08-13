@@ -169,7 +169,11 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	resp.State.Set(ctx, plan)
 
 	// Hydrate state from API
-	hydratedState, _ := r.hydrateLfSubPolicy(ctx, policyID, &plan, &resp.Diagnostics)
+	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, policyID, &plan, &resp.Diagnostics)
+	if notFound {
+		resp.Diagnostics.AddError("failed to create sub policy", "sub-policy not found in API response")
+		return
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -223,10 +227,12 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 
 	// Hydrate state from API
 	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, plan.ID.ValueString(), &plan, &resp.Diagnostics)
+	if notFound {
+		resp.State.RemoveResource(ctx)
+		resp.Diagnostics.AddError("failed to create sub policy", "sub-policy not found in API response")
+		return
+	}
 	if resp.Diagnostics.HasError() {
-		if notFound {
-			resp.State.RemoveResource(ctx)
-		}
 		return
 	}
 
@@ -876,6 +882,8 @@ func (r *lfSubPolicyResource) publish(ctx context.Context, diags *diag.Diagnosti
 			}
 			if msg := e.GetErrorMessage(); msg != nil {
 				diags.AddError(summary, *msg)
+			} else {
+				diags.AddError(summary, "publishing failed")
 			}
 		}
 		return
