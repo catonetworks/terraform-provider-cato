@@ -128,3 +128,92 @@ func (_c *SocketSiteClient_SiteAddSocketSite_Call) RunAndReturn(run func(ctx con
 	_c.Call.Return(run)
 	return _c
 }
+
+// SiteSocketConfiguration provides a mock function for the type SocketSiteClient
+func (_mock *SocketSiteClient) SiteSocketConfiguration(ctx context.Context, input cato_models.SiteSocketConfigurationInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteSocketConfiguration, error) {
+	var tmpRet mock.Arguments
+	if len(interceptors) > 0 {
+		tmpRet = _mock.Called(ctx, input, accountID, interceptors)
+	} else {
+		tmpRet = _mock.Called(ctx, input, accountID)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for SiteSocketConfiguration")
+	}
+
+	var r0 *cato_go_sdk.SiteSocketConfiguration
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.SiteSocketConfigurationInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteSocketConfiguration, error)); ok {
+		return returnFunc(ctx, input, accountID, interceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.SiteSocketConfigurationInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.SiteSocketConfiguration); ok {
+		r0 = returnFunc(ctx, input, accountID, interceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.SiteSocketConfiguration)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, cato_models.SiteSocketConfigurationInput, string, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, input, accountID, interceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// SocketSiteClient_SiteSocketConfiguration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SiteSocketConfiguration'
+type SocketSiteClient_SiteSocketConfiguration_Call struct {
+	*mock.Call
+}
+
+// SiteSocketConfiguration is a helper method to define mock.On call
+//   - ctx context.Context
+//   - input cato_models.SiteSocketConfigurationInput
+//   - accountID string
+//   - interceptors ...clientv2.RequestInterceptor
+func (_e *SocketSiteClient_Expecter) SiteSocketConfiguration(ctx interface{}, input interface{}, accountID interface{}, interceptors ...interface{}) *SocketSiteClient_SiteSocketConfiguration_Call {
+	return &SocketSiteClient_SiteSocketConfiguration_Call{Call: _e.mock.On("SiteSocketConfiguration",
+		append([]interface{}{ctx, input, accountID}, interceptors...)...)}
+}
+
+func (_c *SocketSiteClient_SiteSocketConfiguration_Call) Run(run func(ctx context.Context, input cato_models.SiteSocketConfigurationInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *SocketSiteClient_SiteSocketConfiguration_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 cato_models.SiteSocketConfigurationInput
+		if args[1] != nil {
+			arg1 = args[1].(cato_models.SiteSocketConfigurationInput)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 3 {
+			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
+	})
+	return _c
+}
+
+func (_c *SocketSiteClient_SiteSocketConfiguration_Call) Return(siteSocketConfiguration *cato_go_sdk.SiteSocketConfiguration, err error) *SocketSiteClient_SiteSocketConfiguration_Call {
+	_c.Call.Return(siteSocketConfiguration, err)
+	return _c
+}
+
+func (_c *SocketSiteClient_SiteSocketConfiguration_Call) RunAndReturn(run func(ctx context.Context, input cato_models.SiteSocketConfigurationInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteSocketConfiguration, error)) *SocketSiteClient_SiteSocketConfiguration_Call {
+	_c.Call.Return(run)
+	return _c
+}

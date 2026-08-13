@@ -2,12 +2,15 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
@@ -106,6 +109,150 @@ func TestSocketSiteGetSocketSiteClient(t *testing.T) {
 			t.Fatalf("expected provider SDK client, got %T", got)
 		}
 	})
+}
+
+func TestSocketSiteFetchSocketConfiguration(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	mockClient := mocks.NewSocketSiteClient(t)
+	configuration := socketConfigurationForTest(cato_models.SocketModelX1700, true)
+	apiResponse := &cato_go_sdk.SiteSocketConfiguration{
+		Site: cato_go_sdk.SiteSocketConfiguration_Site{SiteSocketConfiguration: configuration},
+	}
+	mockClient.EXPECT().SiteSocketConfiguration(
+		mock.Anything,
+		mock.MatchedBy(func(input cato_models.SiteSocketConfigurationInput) bool {
+			return input.Site != nil &&
+				input.Site.By == cato_models.ObjectRefByID &&
+				input.Site.Input == "site-123"
+		}),
+		"account-123",
+	).Return(apiResponse, nil).Once()
+	r := &socketSiteResource{
+		client:           &catoClientData{AccountId: "account-123"},
+		socketSiteClient: mockClient,
+	}
+	var diags diag.Diagnostics
+
+	got := r.fetchSocketConfiguration(ctx, "site-123", &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+	if got != configuration {
+		t.Fatal("expected returned socket configuration")
+	}
+}
+
+func TestSocketSiteFetchSocketConfigurationError(t *testing.T) {
+	t.Parallel()
+
+	mockClient := mocks.NewSocketSiteClient(t)
+	mockClient.EXPECT().SiteSocketConfiguration(mock.Anything, mock.Anything, "account-123").
+		Return(nil, errors.New("query failed")).Once()
+	r := &socketSiteResource{
+		client:           &catoClientData{AccountId: "account-123"},
+		socketSiteClient: mockClient,
+	}
+	var diags diag.Diagnostics
+
+	got := r.fetchSocketConfiguration(context.Background(), "site-123", &diags)
+
+	if got != nil {
+		t.Fatal("expected nil socket configuration")
+	}
+	if !diags.HasError() {
+		t.Fatal("expected query error diagnostic")
+	}
+}
+
+func TestConnectionTypeFromSocketConfiguration(t *testing.T) {
+	t.Parallel()
+
+	tests := map[cato_models.SocketModel]string{
+		cato_models.SocketModelAWS:      "SOCKET_AWS1500",
+		cato_models.SocketModelAzure:    "SOCKET_AZ1500",
+		cato_models.SocketModelEsx:      "SOCKET_ESX1500",
+		cato_models.SocketModelGCP:      "SOCKET_GCP1500",
+		cato_models.SocketModelX1500:    "SOCKET_X1500",
+		cato_models.SocketModelX1600:    "SOCKET_X1600",
+		cato_models.SocketModelX1600Lte: "SOCKET_X1600_LTE",
+		cato_models.SocketModelX1700:    "SOCKET_X1700",
+	}
+	for model, want := range tests {
+		t.Run(string(model), func(t *testing.T) {
+			t.Parallel()
+
+			got := connectionTypeFromSocketConfiguration(socketConfigurationForTest(model, true))
+			if got.ValueString() != want {
+				t.Fatalf("expected %q, got %q", want, got.ValueString())
+			}
+		})
+	}
+
+	if got := connectionTypeFromSocketConfiguration(nil); !got.IsNull() {
+		t.Fatalf("expected null for missing configuration, got %s", got)
+	}
+}
+
+func TestSocketSiteParseSockets(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	primarySerial, primaryPlatform := "primary-serial", "X1700"
+	secondarySerial, secondaryPlatform := "secondary-serial", "X1700"
+	configuration := socketConfigurationForTest(cato_models.SocketModelX1700, true)
+	configuration.PrimarySocketConfiguration.Serial = &primarySerial
+	configuration.PrimarySocketConfiguration.SocketInfo.Platform = &primaryPlatform
+	configuration.SecondarySocketConfiguration =
+		&cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_SecondarySocketConfiguration{
+			Serial: &secondarySerial,
+			SocketInfo: cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_SecondarySocketConfiguration_SocketInfo{
+				IsPrimary: false,
+				Platform:  &secondaryPlatform,
+			},
+		}
+	var diags diag.Diagnostics
+
+	got := (&socketSiteResource{}).parseSockets(ctx, configuration, &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+	var sockets []tf.Socket
+	diags = got.ElementsAs(ctx, &sockets, false)
+	if diags.HasError() {
+		t.Fatalf("decode sockets: %+v", diags)
+	}
+	if len(sockets) != 2 {
+		t.Fatalf("expected two sockets, got %d", len(sockets))
+	}
+	socketBySerial := map[string]tf.Socket{}
+	for _, socket := range sockets {
+		socketBySerial[socket.SerialNumber.ValueString()] = socket
+		if !socket.ID.IsNull() {
+			t.Fatalf("expected socket ID to be null, got %q", socket.ID.ValueString())
+		}
+	}
+	if !socketBySerial[primarySerial].IsPrimary.ValueBool() {
+		t.Fatal("expected primary socket to be marked primary")
+	}
+	if socketBySerial[secondarySerial].IsPrimary.ValueBool() {
+		t.Fatal("expected secondary socket not to be marked primary")
+	}
+}
+
+func socketConfigurationForTest(model cato_models.SocketModel, isPrimary bool,
+) *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration {
+	return &cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration{
+		PrimarySocketConfiguration: cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_PrimarySocketConfiguration{
+			SocketInfo: cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_PrimarySocketConfiguration_SocketInfo{
+				IsPrimary: isPrimary,
+				Model:     &model,
+			},
+		},
+	}
 }
 
 func TestSocketSiteNativeRangeValidatorDescription(t *testing.T) {
