@@ -10,6 +10,7 @@ import (
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -100,6 +101,7 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "Map of network rule or sub-policy index for each section, keyed by rule or sub-policy name",
 				Required:    false,
 				Optional:    true,
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
@@ -121,11 +123,13 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 						},
 					},
 				},
+				PlanModifiers: []planmodifier.Map{lanRulesIndexMod{}.New(LanNetworkRuleTypes)},
 			},
 			"firewall_rules": schema.MapNestedAttribute{
 				Description: "Map of firewall rule index for each network rule, keyed by firewall rule name",
 				Required:    false,
 				Optional:    true,
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
@@ -143,6 +147,7 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 						},
 					},
 				},
+				PlanModifiers: []planmodifier.Map{lanRulesIndexMod{}.New(LanFirewallRuleTypes)},
 			},
 		},
 	}
@@ -363,12 +368,15 @@ func (r *lanRulesIndexResource) hydrateNetRules(ctx context.Context, plan *LanFw
 		}
 	}
 
-	rd, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: LanNetworkRuleTypes}, rulesOrSubPols)
-	if objDiags.HasError() {
-		diags.Append(objDiags...)
-		return nil, netRuleDataNull
+	netRuleData = netRuleDataNull
+	if plan == nil || !plan.NetworkRules.IsNull() {
+		rd, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: LanNetworkRuleTypes}, rulesOrSubPols)
+		if objDiags.HasError() {
+			diags.Append(objDiags...)
+			return nil, netRuleDataNull
+		}
+		netRuleData = rd
 	}
-	netRuleData = rd
 	return sectionRulesOrSubPols, netRuleData
 }
 
@@ -416,12 +424,16 @@ func (r *lanRulesIndexResource) hydrateFirewallRules(ctx context.Context, plan *
 			tfFirewallRules[rule.name] = ruleObj
 		}
 	}
-	rd, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: LanFirewallRuleTypes}, tfFirewallRules)
-	if objDiags.HasError() {
-		diags.Append(objDiags...)
-		return nil, firewallRuleDataNull
+
+	firewallRuleData = firewallRuleDataNull
+	if plan == nil || !plan.FirewallRules.IsNull() {
+		rd, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: LanFirewallRuleTypes}, tfFirewallRules)
+		if objDiags.HasError() {
+			diags.Append(objDiags...)
+			return nil, firewallRuleDataNull
+		}
+		firewallRuleData = rd
 	}
-	firewallRuleData = rd
 
 	return ruleFirewallRules, firewallRuleData
 }
@@ -1295,4 +1307,39 @@ func (r *lanRulesIndexResource) publish(ctx context.Context, diags *diag.Diagnos
 		}
 		return
 	}
+}
+
+type lanRulesIndexMod struct {
+	mapItemType map[string]attr.Type
+}
+
+func (m lanRulesIndexMod) New(mapItemType map[string]attr.Type) lanRulesIndexMod {
+	return lanRulesIndexMod{mapItemType: mapItemType}
+}
+
+func (m lanRulesIndexMod) PlanModifyMap(ctx context.Context, req planmodifier.MapRequest, resp *planmodifier.MapResponse) {
+	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
+	if req.ConfigValue.IsUnknown() {
+		return
+	}
+	// if the config is null, set it to an empty map.
+	if req.ConfigValue.IsNull() {
+		tfRules := make(map[string]types.Object)
+		tfRuleMap, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: m.mapItemType}, tfRules)
+		if objDiags.HasError() {
+			resp.Diagnostics.Append(objDiags...)
+			return
+		}
+		resp.PlanValue = tfRuleMap
+	}
+}
+
+// Description returns a human-readable description of the plan modifier.
+func (m lanRulesIndexMod) Description(_ context.Context) string {
+	return "Set default map value to an empty map."
+}
+
+// MarkdownDescription returns a markdown description of the plan modifier.
+func (m lanRulesIndexMod) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
 }
