@@ -66,6 +66,8 @@ type socketSiteResource struct {
 type SocketSiteClient interface {
 	SiteAddSocketSite(ctx context.Context, addSocketSiteInput cato_models.AddSocketSiteInput, accountID string,
 		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddSocketSite, error)
+	SiteSocketConfiguration(ctx context.Context, input cato_models.SiteSocketConfigurationInput, accountID string,
+		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteSocketConfiguration, error)
 }
 
 type nativeInterfaceDetails struct {
@@ -563,30 +565,21 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *tf.SocketSite, state tf.SocketSite,
 	siteID string, diags *diag.Diagnostics,
 ) (newState tf.SocketSite, siteExists bool) {
-	// Fetch account snapshot for this site
-	siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
-	if err != nil {
-		diags.AddError(fmt.Sprintf("failed to fetch AccountSnapshot for site '%s'", siteID), err.Error())
-		return state, false
-	}
-	var siteSnapshot *cato_go_sdk.AccountSnapshot_AccountSnapshot_Sites
-	for _, site := range siteAccountSnapshotAPIData.GetAccountSnapshot().GetSites() {
-		if site.ID != nil && *site.ID == siteID {
-			siteSnapshot = site
-			break
-		}
-	}
-	if siteSnapshot == nil || siteSnapshot.InfoSiteSnapshot == nil {
-		diags.AddError(fmt.Sprintf("site with ID '%s' not found in account snapshot", siteID), "")
-		return state, false
-	}
-	siteInfo := siteSnapshot.InfoSiteSnapshot
-
-	// Fetch site general details for location data
+	// Fetch site general details for basic and location data.
 	siteDetails, err := r.client.catov2.SiteGeneralDetails(ctx,
 		cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}, r.client.AccountId)
 	if err != nil {
 		diags.AddError(fmt.Sprintf("failed to fetch SiteGeneralDetails for site '%s'", siteID), err.Error())
+		return state, false
+	}
+	if siteDetails == nil || siteDetails.GetSite().GetSiteGeneralDetails() == nil {
+		return state, false
+	}
+	siteGeneralDetails := siteDetails.GetSite().GetSiteGeneralDetails()
+
+	// Fetch socket-specific data without the expensive AccountSnapshot query.
+	siteSocketConfiguration := r.fetchSocketConfiguration(ctx, siteID, diags)
+	if diags.HasError() {
 		return state, true
 	}
 
@@ -604,13 +597,13 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *tf
 
 	newState = tf.SocketSite{
 		ID:             types.StringValue(siteID),
-		Name:           types.StringPointerValue(siteInfo.GetName()),
-		ConnectionType: r.fixConnectionType(siteInfo.GetConnType()),
-		SiteType:       types.StringPointerValue((*string)(siteInfo.GetType())),
-		Description:    types.StringPointerValue(siteInfo.GetDescription()),
+		Name:           types.StringValue(siteGeneralDetails.GetSite().GetName()),
+		ConnectionType: connectionTypeFromSocketConfiguration(siteSocketConfiguration),
+		SiteType:       types.StringPointerValue((*string)(siteGeneralDetails.GetSiteType())),
+		Description:    types.StringPointerValue(siteGeneralDetails.GetDescription()),
 		NativeRange:    r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
 		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
-		Sockets:        r.parseSockets(ctx, siteInfo, diags),
+		Sockets:        r.parseSockets(ctx, siteSocketConfiguration, diags),
 	}
 	if diags.HasError() {
 		return state, true
@@ -619,21 +612,53 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *tf
 	return newState, true
 }
 
-// fixConnectionType translates any VSOCKET_VGX_* connection types to their SOCKET_* equivalents
-// for backward compatibility with existing state/plan values
-func (r *socketSiteResource) fixConnectionType(connTypeFromAPI *cato_models.ProtoType) types.String {
-	if connTypeFromAPI == nil || *connTypeFromAPI == "" {
+func (r *socketSiteResource) fetchSocketConfiguration(ctx context.Context, siteID string,
+	diags *diag.Diagnostics,
+) *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration {
+	socketConfiguration, err := r.getSocketSiteClient().SiteSocketConfiguration(ctx,
+		cato_models.SiteSocketConfigurationInput{
+			Site: &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID},
+		},
+		r.client.AccountId,
+	)
+	if err != nil {
+		diags.AddError(fmt.Sprintf("failed to fetch SiteSocketConfiguration for site '%s'", siteID), err.Error())
+		return nil
+	}
+	if socketConfiguration == nil || socketConfiguration.GetSite().GetSiteSocketConfiguration() == nil {
+		diags.AddError(fmt.Sprintf("socket configuration for site '%s' was not returned", siteID), "")
+		return nil
+	}
+	return socketConfiguration.GetSite().GetSiteSocketConfiguration()
+}
+
+// connectionTypeFromSocketConfiguration translates the socket model into the resource's connection type.
+func connectionTypeFromSocketConfiguration(
+	socketConfiguration *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration,
+) types.String {
+	if socketConfiguration == nil {
 		return types.StringNull()
 	}
-	switch *connTypeFromAPI {
-	case cato_models.ProtoTypeVsocketVgxAWS:
-		return types.StringValue(string(cato_models.SiteConnectionTypeEnumSocketAWS1500))
-	case cato_models.ProtoTypeVsocketVgxAzure:
-		return types.StringValue(string(cato_models.SiteConnectionTypeEnumSocketAz1500))
-	case cato_models.ProtoTypeVsocketVgxEsx:
-		return types.StringValue(string(cato_models.SiteConnectionTypeEnumSocketEsx1500))
+	model := socketConfiguration.GetPrimarySocketConfiguration().GetSocketInfo().GetModel()
+	if model == nil {
+		return types.StringNull()
 	}
-	return types.StringValue(string(*connTypeFromAPI))
+
+	connectionTypes := map[cato_models.SocketModel]cato_models.SiteConnectionTypeEnum{
+		cato_models.SocketModelAWS:      cato_models.SiteConnectionTypeEnumSocketAWS1500,
+		cato_models.SocketModelAzure:    cato_models.SiteConnectionTypeEnumSocketAz1500,
+		cato_models.SocketModelEsx:      cato_models.SiteConnectionTypeEnumSocketEsx1500,
+		cato_models.SocketModelGCP:      cato_models.SiteConnectionTypeEnumSocketGCP1500,
+		cato_models.SocketModelX1500:    cato_models.SiteConnectionTypeEnumSocketX1500,
+		cato_models.SocketModelX1600:    cato_models.SiteConnectionTypeEnumSocketX1600,
+		cato_models.SocketModelX1600Lte: cato_models.SiteConnectionTypeEnumSocketX1600Lte,
+		cato_models.SocketModelX1700:    cato_models.SiteConnectionTypeEnumSocketX1700,
+	}
+	connectionType, ok := connectionTypes[*model]
+	if !ok {
+		return types.StringNull()
+	}
+	return types.StringValue(string(connectionType))
 }
 
 // parseSiteLocation converts API site location data to the types.Object or tf.SiteLocation
@@ -682,36 +707,28 @@ func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetai
 }
 
 // parseSockets converts API site socket data to the types.Set of tf.Socket
-func (r *socketSiteResource) parseSockets(ctx context.Context, siteInfo *cato_go_sdk.AccountSnapshot_AccountSnapshot_Sites_InfoSiteSnapshot,
+func (r *socketSiteResource) parseSockets(ctx context.Context,
+	socketConfiguration *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration,
 	diags *diag.Diagnostics,
 ) types.Set {
 	var objDiags diag.Diagnostics
 	setNull := types.SetNull(types.ObjectType{AttrTypes: tf.SocketTypes})
 
-	if siteInfo == nil || len(siteInfo.Sockets) == 0 {
+	if socketConfiguration == nil {
 		return setNull
 	}
 
-	socketObjects := make([]types.Object, 0, len(siteInfo.Sockets))
+	primary := socketConfiguration.GetPrimarySocketConfiguration()
+	socketObjects := make([]types.Object, 0, 2)
+	socketObjects = appendSocketConfiguration(ctx, socketObjects, primary.GetSerial(),
+		primary.GetSocketInfo().GetIsPrimary(), primary.GetSocketInfo().GetPlatform(), diags)
 
-	for _, soc := range siteInfo.Sockets {
-		if soc == nil {
-			continue
-		}
-
-		// ProtocolPorts item
-		tfSocket := tf.Socket{
-			ID:           types.StringPointerValue(soc.ID),
-			SerialNumber: types.StringPointerValue(soc.Serial),
-			IsPrimary:    types.BoolPointerValue(soc.IsPrimary),
-			Platform:     types.StringPointerValue((*string)(soc.PlatformSocketInfo)),
-		}
-		tfSocketObj, objDiags := types.ObjectValueFrom(ctx, tf.SocketTypes, tfSocket)
-		diags.Append(objDiags...)
-		if diags.HasError() {
-			return setNull
-		}
-		socketObjects = append(socketObjects, tfSocketObj)
+	if secondary := socketConfiguration.GetSecondarySocketConfiguration(); secondary != nil {
+		socketObjects = appendSocketConfiguration(ctx, socketObjects, secondary.GetSerial(),
+			secondary.GetSocketInfo().GetIsPrimary(), secondary.GetSocketInfo().GetPlatform(), diags)
+	}
+	if diags.HasError() {
+		return setNull
 	}
 
 	// convert slice to types.Set
@@ -722,6 +739,22 @@ func (r *socketSiteResource) parseSockets(ctx context.Context, siteInfo *cato_go
 	}
 
 	return tfSocketSet
+}
+
+func appendSocketConfiguration(ctx context.Context, sockets []types.Object, serial *string, isPrimary bool,
+	platform *string, diags *diag.Diagnostics,
+) []types.Object {
+	tfSocketObj, objDiags := types.ObjectValueFrom(ctx, tf.SocketTypes, tf.Socket{
+		ID:           types.StringNull(), // SiteSocketConfiguration does not expose the socket entity ID.
+		SerialNumber: types.StringPointerValue(serial),
+		IsPrimary:    types.BoolValue(isPrimary),
+		Platform:     types.StringPointerValue(platform),
+	})
+	diags.Append(objDiags...)
+	if diags.HasError() {
+		return sockets
+	}
+	return append(sockets, tfSocketObj)
 }
 
 // isDhcpSettingsExplicit returns true when dhcp_settings was explicitly set in config or state
