@@ -28,15 +28,13 @@ func TestAccSocketLanFirewallRule_Simple(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Create the resource
-				Config:             cfg.getTfConfigSimple(0),
-				Check:              socketLanFirewallRuleChecks(res, cfg, cfg.resName, "ALLOW", "true", "DAILY"),
-				ExpectNonEmptyPlan: true, // TODO: provider read drops at.ref from state.
+				Config: cfg.getTfConfigSimple(0),
+				Check:  socketLanFirewallRuleChecks(res, cfg, cfg.resName, "ALLOW", "true", "DAILY"),
 			},
 			{
 				// Update the resource
-				Config:             cfg.getTfConfigSimple(1),
-				Check:              socketLanFirewallRuleChecks(res, cfg, cfg.resName+"-2", "BLOCK", "false", "HOURLY"),
-				ExpectNonEmptyPlan: true, // TODO: provider read drops at.ref from state.
+				Config: cfg.getTfConfigSimple(1),
+				Check:  socketLanFirewallRuleChecks(res, cfg, cfg.resName+"-2", "BLOCK", "false", "HOURLY"),
 			},
 		},
 	})
