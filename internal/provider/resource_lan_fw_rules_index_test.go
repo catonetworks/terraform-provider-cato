@@ -498,6 +498,112 @@ func requireDiagnosticContains(t *testing.T, diags diag.Diagnostics, want string
 		"diagnostic details did not contain %q: %v", want, details)
 }
 
+func TestLanPolicyMutationStatusError(t *testing.T) {
+	t.Parallel()
+
+	success := cato_models.PolicyMutationStatusSuccess
+	failure := cato_models.PolicyMutationStatusFailure
+	missing := cato_models.PolicyMutationStatus("")
+	tests := []struct {
+		name    string
+		status  *cato_models.PolicyMutationStatus
+		wantErr string
+	}{
+		{name: "success", status: &success},
+		{name: "failure", status: &failure, wantErr: `API mutation returned status "FAILURE"`},
+		{name: "missing pointer", wantErr: "API mutation returned no status"},
+		{name: "missing value", status: &missing, wantErr: `API mutation returned status ""`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := lanPolicyMutationStatusError(tc.status)
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.EqualError(t, err, tc.wantErr)
+		})
+	}
+}
+
+func TestLanFwMoveMutationsRejectFailureStatusWithoutErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		call func(context.Context, *lanRulesIndexResource) error
+	}{
+		{
+			name: "section",
+			call: func(ctx context.Context, r *lanRulesIndexResource) error {
+				return r.moveSectionToPosition(ctx, "",
+					[]nameID{{name: "first", id: "first"}, {name: "second", id: "second"}},
+					"first", "first", 1)
+			},
+		},
+		{
+			name: "network rule",
+			call: func(ctx context.Context, r *lanRulesIndexResource) error {
+				return r.moveNetRuleToPosition(ctx, "section",
+					[]nameIDType{{name: "first", id: "first"}, {name: "second", id: "second"}},
+					"first", "first", 1)
+			},
+		},
+		{
+			name: "sub-policy",
+			call: func(ctx context.Context, r *lanRulesIndexResource) error {
+				return r.moveSubPolicyToPosition(ctx, "section",
+					[]nameIDType{{name: "first", id: "first"}, {name: "second", id: "second"}},
+					"first", "first", 1)
+			},
+		},
+		{
+			name: "firewall rule",
+			call: func(ctx context.Context, r *lanRulesIndexResource) error {
+				return r.moveFwRuleToPosition(ctx, "network-rule",
+					[]nameID{{name: "first", id: "first"}, {name: "second", id: "second"}},
+					"first", "first", 1)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := lanRulesIndexResource{
+				client: &catoClientData{AccountId: "testID"},
+				catov2Client: &lanPolicyMockClient{
+					mutationStatus: cato_models.PolicyMutationStatusFailure,
+				},
+			}
+
+			err := tc.call(context.Background(), &r)
+
+			require.ErrorContains(t, err, `API mutation returned status "FAILURE"`)
+		})
+	}
+}
+
+func TestLanFwPublishRejectsFailureStatusWithoutErrors(t *testing.T) {
+	t.Parallel()
+
+	r := lanRulesIndexResource{
+		client: &catoClientData{AccountId: "testID"},
+		catov2Client: &lanPolicyMockClient{
+			mutationStatus: cato_models.PolicyMutationStatusFailure,
+		},
+	}
+	var diags diag.Diagnostics
+
+	r.publish(context.Background(), &diags)
+
+	requireDiagnosticContains(t, diags, `API mutation returned status "FAILURE"`)
+}
+
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
 	mockClient := &lanPolicyMockClient{policy: mockLanPolicy["default"]}
@@ -613,6 +719,7 @@ type lanPolicyMockClient struct {
 	moveRuleCalls         []lanPolicyMoveRuleCall
 	firewallMoveRuleCalls []lanPolicyFirewallMoveRuleCall
 	publishCalls          int
+	mutationStatus        cato_models.PolicyMutationStatus
 }
 
 type lanPolicyMoveSectionCall struct {
@@ -632,6 +739,13 @@ type lanPolicyFirewallMoveRuleCall struct {
 
 var lPMockClient lanPolicyMockClient
 
+func (m *lanPolicyMockClient) responseMutationStatus() cato_models.PolicyMutationStatus {
+	if m.mutationStatus == "" {
+		return cato_models.PolicyMutationStatusSuccess
+	}
+	return m.mutationStatus
+}
+
 func (m *lanPolicyMockClient) PolicySocketLanPolicy(_ context.Context, _ string,
 	_ *cato_models.SocketLanPolicyInput, _ ...clientv2.RequestInterceptor,
 ) (*cato_go_sdk.PolicySocketLanPolicy, error) {
@@ -644,7 +758,11 @@ func (m *lanPolicyMockClient) PolicySocketLanMoveSection(_ context.Context, inpu
 	m.moveSectionCalls = append(m.moveSectionCalls, lanPolicyMoveSectionCall{input: input, accountID: accountID})
 	return &cato_go_sdk.PolicySocketLanMoveSection{
 		Policy: &cato_go_sdk.PolicySocketLanMoveSection_Policy{
-			SocketLan: &cato_go_sdk.PolicySocketLanMoveSection_Policy_SocketLan{},
+			SocketLan: &cato_go_sdk.PolicySocketLanMoveSection_Policy_SocketLan{
+				MoveSection: cato_go_sdk.PolicySocketLanMoveSection_Policy_SocketLan_MoveSection{
+					Status: m.responseMutationStatus(),
+				},
+			},
 		},
 	}, nil
 }
@@ -654,7 +772,11 @@ func (m *lanPolicyMockClient) PolicySocketLanMoveRule(_ context.Context, input c
 	m.moveRuleCalls = append(m.moveRuleCalls, lanPolicyMoveRuleCall{input: input, accountID: accountID})
 	return &cato_go_sdk.PolicySocketLanMoveRule{
 		Policy: &cato_go_sdk.PolicySocketLanMoveRule_Policy{
-			SocketLan: &cato_go_sdk.PolicySocketLanMoveRule_Policy_SocketLan{},
+			SocketLan: &cato_go_sdk.PolicySocketLanMoveRule_Policy_SocketLan{
+				MoveRule: cato_go_sdk.PolicySocketLanMoveRule_Policy_SocketLan_MoveRule{
+					Status: m.responseMutationStatus(),
+				},
+			},
 		},
 	}, nil
 }
@@ -667,7 +789,13 @@ func (m *lanPolicyMockClient) PolicySocketLanFirewallMoveRule(_ context.Context,
 	})
 	return &cato_go_sdk.PolicySocketLanFirewallMoveRule{
 		Policy: &cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy{
-			SocketLan: &cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy_SocketLan{},
+			SocketLan: &cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy_SocketLan{
+				Firewall: cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy_SocketLan_Firewall{
+					MoveRule: cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy_SocketLan_Firewall_MoveRule{
+						Status: m.responseMutationStatus(),
+					},
+				},
+			},
 		},
 	}, nil
 }
@@ -678,7 +806,11 @@ func (m *lanPolicyMockClient) PolicySocketLanPublishPolicyRevision(_ context.Con
 	m.publishCalls++
 	return &cato_go_sdk.PolicySocketLanPublishPolicyRevision{
 		Policy: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy{
-			SocketLan: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan{},
+			SocketLan: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan{
+				PublishPolicyRevision: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan_PublishPolicyRevision{
+					Status: m.responseMutationStatus(),
+				},
+			},
 		},
 	}, nil
 }

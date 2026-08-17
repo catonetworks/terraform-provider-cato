@@ -265,6 +265,16 @@ type nameIDType struct {
 	ruleType cato_models.PolicyRuleTypeEnum
 }
 
+func lanPolicyMutationStatusError(status *cato_models.PolicyMutationStatus) error {
+	if status == nil {
+		return fmt.Errorf("API mutation returned no status")
+	}
+	if *status != cato_models.PolicyMutationStatusSuccess {
+		return fmt.Errorf("API mutation returned status %q", *status)
+	}
+	return nil
+}
+
 type lanFwStateAliases struct {
 	sectionKeyByID        map[string]string
 	netRuleKeyByID        map[string]string
@@ -1416,12 +1426,16 @@ func (r *lanRulesIndexResource) moveSectionToPosition(ctx context.Context, paren
 	if err != nil {
 		return err
 	}
-	if errors := result.GetPolicy().GetSocketLan().GetMoveSection().GetErrors(); len(errors) > 0 {
+	move := result.GetPolicy().GetSocketLan().GetMoveSection()
+	if errors := move.GetErrors(); len(errors) > 0 {
 		msg := "unknown error"
 		if m := errors[0].GetErrorMessage(); m != nil {
 			msg = *m
 		}
 		return fmt.Errorf("failed to move LAN policy section '%s': %v", sectionName, msg)
+	}
+	if err := lanPolicyMutationStatusError(move.GetStatus()); err != nil {
+		return fmt.Errorf("failed to move LAN policy section '%s': %w", sectionName, err)
 	}
 	return nil
 }
@@ -1527,12 +1541,16 @@ func (r *lanRulesIndexResource) moveNetRuleToPosition(ctx context.Context, paren
 	if err != nil {
 		return err
 	}
-	if errors := result.GetPolicy().GetSocketLan().GetMoveRule().GetErrors(); len(errors) > 0 {
+	move := result.GetPolicy().GetSocketLan().GetMoveRule()
+	if errors := move.GetErrors(); len(errors) > 0 {
 		msg := "unknown error"
 		if m := errors[0].GetErrorMessage(); m != nil {
 			msg = *m
 		}
 		return fmt.Errorf("failed to move LAN policy rule '%s': %v", ruleName, msg)
+	}
+	if err := lanPolicyMutationStatusError(move.GetStatus()); err != nil {
+		return fmt.Errorf("failed to move LAN policy rule '%s': %w", ruleName, err)
 	}
 	return nil
 }
@@ -1585,12 +1603,16 @@ func (r *lanRulesIndexResource) moveSubPolicyToPosition(ctx context.Context, par
 	if err != nil {
 		return err
 	}
-	if errors := result.GetPolicy().GetSocketLan().GetMoveRule().GetErrors(); len(errors) > 0 {
+	move := result.GetPolicy().GetSocketLan().GetMoveRule()
+	if errors := move.GetErrors(); len(errors) > 0 {
 		msg := "unknown error"
 		if m := errors[0].GetErrorMessage(); m != nil {
 			msg = *m
 		}
 		return fmt.Errorf("failed to move LAN sub-policy '%s': %v", policyName, msg)
+	}
+	if err := lanPolicyMutationStatusError(move.GetStatus()); err != nil {
+		return fmt.Errorf("failed to move LAN sub-policy '%s': %w", policyName, err)
 	}
 	return nil
 }
@@ -1643,12 +1665,16 @@ func (r *lanRulesIndexResource) moveFwRuleToPosition(ctx context.Context, parent
 	if err != nil {
 		return err
 	}
-	if errors := result.GetPolicy().GetSocketLan().GetFirewall().GetMoveRule().GetErrors(); len(errors) > 0 {
+	move := result.GetPolicy().GetSocketLan().GetFirewall().GetMoveRule()
+	if errors := move.GetErrors(); len(errors) > 0 {
 		msg := "unknown error"
 		if m := errors[0].GetErrorMessage(); m != nil {
 			msg = *m
 		}
 		return fmt.Errorf("failed to move LAN firewall rule '%s': %v", fwRuleName, msg)
+	}
+	if err := lanPolicyMutationStatusError(move.GetStatus()); err != nil {
+		return fmt.Errorf("failed to move LAN firewall rule '%s': %w", fwRuleName, err)
 	}
 	return nil
 }
@@ -1740,18 +1766,26 @@ func (r *lanRulesIndexResource) publish(ctx context.Context, diags *diag.Diagnos
 		diags.AddError(summary, err.Error())
 		return
 	}
-	errors := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision().GetErrors()
+	publish := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
+	errors := publish.GetErrors()
 	if len(errors) > 0 {
+		hasAPIError := false
 		for _, e := range errors {
 			if code := e.GetErrorCode(); code != nil && *code == notFound {
 				continue
 			}
+			hasAPIError = true
 			if msg := e.GetErrorMessage(); msg != nil {
 				diags.AddError(summary, *msg)
 			} else {
 				diags.AddError(summary, "unknown error")
 			}
 		}
-		return
+		if hasAPIError {
+			return
+		}
+	}
+	if err := lanPolicyMutationStatusError(publish.GetStatus()); err != nil {
+		diags.AddError(summary, err.Error())
 	}
 }
