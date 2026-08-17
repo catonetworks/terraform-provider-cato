@@ -28,19 +28,36 @@ Before editing or advising:
 
 Follow this order:
 
-1. Identify the last release commit and the changes since that commit.
-2. Determine the next version number based on the changes since the last release following a semantic versioning approach. If the user specified a version number, give it priority and validate that it is greater than the last release version.
-3. Create a new local branch for the release (e.g., `release/vX.Y.Z`).
-3. Update the version number in the appropriate files: `GNUmakefile`, and `main.go`.
-4. Add a new entry to the changelog at the top of the file with the following suggestions:
+1. Identify the last release commit and inspect all changes since that commit.
+2. Classify every user-visible change according to `terraform-provider-versioning.md`. Explicitly
+   identify breaking changes, deprecations, features, enhancements, bug fixes, security changes,
+   and operational notes.
+3. Determine the next version number from that classification. If the user specified a version,
+   give it priority, validate that it is greater than the last release, and stop for confirmation
+   if it conflicts with the required Semantic Versioning boundary.
+4. Stop for human confirmation when classification or customer impact is uncertain.
+5. Create a new local branch for the release (e.g., `release/vX.Y.Z`).
+6. Update the version number in the appropriate files: `GNUmakefile`, and `main.go`.
+7. Add a new entry to `changelog.md` at the top of the file:
    - Use the new version number and the current date in the format `YYYY-MM-DD` for the changelog entry header.
    - Use the messages from the commits since the last release to populate the changelog entry. Translate implementation details into concise, customer-facing outcomes. Describe what users can now do, what behavior is fixed, or what errors/problems are less likely; do not describe internal state, Terraform planning mechanics, or backend/API implementation unless needed to explain user impact.
    - Refer to this product as the "Cato Terraform provider", never as a "Terraform module".
    - If there are multiple commits, group them into categories (e.g., "Added", "Changed", "Fixed") based on the customer-visible effect. If the commit messages do not clearly indicate the user impact, inspect the code and tests; ask the user when the impact still cannot be established.
    - Do not list dependency updates as standalone highlights. For a Cato Go SDK update, explain the customer-facing reason, such as alignment with the latest public API schema, and state the practical impact. Use wording like: "Updated the provider to the latest API schema. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches." Only claim bug fixes, performance improvements, or new capabilities when supported by repository evidence.
-5. Commit the changes with a message like `vX.Y.Z`.
-6. Push the release branch to the remote repository.
-7. If the github command line is available, use it to create a pull request from the release branch to the main branch with a title like `vX.Y.Z` and a description that includes the changelog entry for the new version.
+   - Use the applicable practitioner-focused sections from `terraform-provider-versioning.md`:
+     Breaking changes, Deprecations, Features, Enhancements, Bug fixes, Security, and Notes.
+   - Identify the affected provider component and describe customer impact for every entry.
+   - Omit internal refactoring, tests, and build-system maintenance unless they materially affect
+     provider users.
+   - For every breaking change, include migration guidance and a link to the major-version upgrade
+     guide.
+8. Verify that a major release includes a complete upgrade guide and states the maintenance status
+   and end-of-support date of the previous major version.
+9. Commit the changes with a message like `vX.Y.Z`.
+10. Push the release branch to the remote repository.
+11. If the github command line is available, use it to create a pull request from the release branch
+    to the main branch with a title like `vX.Y.Z` and a description that includes the changelog
+    entry, the breaking-change declaration, and the upgrade-guide link when required.
 
 ## Constraints
 
@@ -50,11 +67,13 @@ Always:
 - Make sure the changelog entry is well-formatted and includes all relevant changes since the last release.
 - Make sure every changelog item is understandable and actionable for customers: lead with the observable benefit or risk avoided, identify affected resources when relevant, and omit internal implementation details.
 - Ask the user for confirmation while grouping commits into changelog categories if the commit messages are not clear.
-
+- Explicitly state whether the release contains breaking changes.
+- Ask the user for confirmation when changelog classification or customer impact is unclear.
+- Do not prepare a major release without an upgrade guide.
 
 Never:
 
-- Modify commit changes to the main or master branch.
+- Do not modify commit changes to the main or master branch.
 - Never approve or merge the release pull request. Only create the pull request and leave it to the user to review, approve, and merge.
 
 

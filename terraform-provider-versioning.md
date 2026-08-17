@@ -58,11 +58,19 @@ include bug fixes, and a major release may include features and fixes.
 A change is breaking when a practitioner using documented behavior and valid configuration or
 state cannot upgrade safely without taking additional migration action.
 
+Terraform records a schema version for each resource instance in state. When a resource schema
+changes, the provider can implement a State Upgrader that transforms an earlier state
+representation into the current representation before planning. A state-shape change is
+backward-compatible when all supported prior states can be upgraded automatically and safely. It
+is breaking when a practitioner must perform manual state migration, re-import, or replacement.
+
 Examples include:
 
 - removing or renaming a provider argument, resource, data source, or attribute;
 - changing an attribute from optional to required without a backward-compatible default;
 - changing an attribute type or structure incompatibly;
+- changing a resource's state representation when existing valid state cannot be safely
+  transformed by a provider State Upgrader;
 - narrowing accepted values so previously documented valid configuration is rejected;
 - changing a default in a way that changes existing managed infrastructure;
 - changing resource identifiers or import syntax incompatibly;
@@ -185,16 +193,15 @@ and the
 
 The provider may perform a best-effort check for a newer stable version at startup. This mechanism
 is advisory:
-
 - It may emit a non-blocking diagnostic containing the installed version, latest stable version,
   release type, and a link to release notes.
 - A new major version may use more prominent wording, but it must not stop `plan` or `apply`.
 - It must not claim that every newer release is mandatory; relevance depends on the resources and
   functionality used.
-- Registry unavailability, timeouts, or malformed responses must never block provider operation.
+- Registry unavailability, timeouts, or malformed responses must remain silent and must never
+  block provider operation.
 - Prereleases must not be presented as the latest stable version.
-- Customers must not need an override environment variable merely to continue using a valid
-  pinned version.
+- Leaving the check disabled must not affect any provider functionality.
 
 The notification is not a substitute for version constraints, the dependency lock file, release
 notes, KB announcements, or direct communication about an API end-of-life event.
@@ -216,6 +223,20 @@ Each entry should identify the affected provider component and explain customer 
 refactoring, tests, and build-system maintenance should be omitted unless they materially affect
 provider users.
 
+Release notes are maintained in [`changelog.md`](changelog.md). Every release pull request must add
+an entry using the categories defined above. The release-preparation workflow must:
+
+1. Inspect all changes since the previous release.
+2. Require an explicit declaration of whether any change is breaking.
+3. Recommend the Semantic Versioning level from that classification.
+4. Generate the required changelog sections and describe customer impact.
+5. Require an upgrade-guide link for every major release.
+6. Stop for human review when classification or customer impact is uncertain.
+
+Release publication must not proceed when the changelog entry, breaking-change declaration, or
+required upgrade guide is missing. Automation may assist with classification and drafting, but
+human review of the release pull request is the enforcement boundary.
+
 ### Communication by release type
 
 - **Major:** preannounce, publish a dedicated upgrade guide, include complete breaking-change and
@@ -229,7 +250,7 @@ provider users.
 
 ### Current internal process
 
-- Post the release summary to `#rn-kb-opensource-api-announcements` and tag
+- Post the release summary to `#r n-kb-opensource-api-announcements` and tag
   a PM and a technical writer when KB/RN coordination is required.
 - Knowledge-transfer meetings take place on Thursday. A change known by Thursday of week X can
   have its release note reviewed in week X+1, with the release note and change published no
@@ -261,8 +282,7 @@ Before publishing:
 - State migration and import behavior are tested.
 - Representative existing configurations are tested across the upgrade boundary.
 - The announcement, KB/RN, and support readiness are complete.
-- The previous major's maintenance or end-of-support treatment is stated explicitly. This
-  versioning policy does not by itself create a backport or support SLA.
+- The previous major's maintenance status and end-of-support date are stated explicitly.
 
 ### Beta
 
@@ -282,6 +302,7 @@ Before publishing:
 ## References
 
 - [HashiCorp: Versioning and changelogs](https://developer.hashicorp.com/terraform/plugin/best-practices/versioning)
+- [HashiCorp: Resource state upgrades](https://developer.hashicorp.com/terraform/plugin/framework/resources/state-upgrade)
 - [HashiCorp: Provider requirements](https://developer.hashicorp.com/terraform/language/providers/requirements)
 - [HashiCorp: Dependency lock file](https://developer.hashicorp.com/terraform/language/files/dependency-lock)
 - [HashiCorp: Publishing providers](https://developer.hashicorp.com/terraform/registry/providers/publishing)
