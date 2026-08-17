@@ -300,15 +300,15 @@ Read-Only:
 Optional:
 
 - `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. (see [below for nested schema](#nestedatt--rule--destination--floating_subnet))
-- `global_ip_range` (Attributes Set) Global IP range matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
-- `group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--destination--group))
-- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--destination--host))
+- `global_ip_range` (Attributes Set) List of global IP ranges (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
+- `group` (Attributes Set) List of groups (see [below for nested schema](#nestedatt--rule--destination--group))
+- `host` (Attributes Set) List of hosts (see [below for nested schema](#nestedatt--rule--destination--host))
 - `ip` (List of String) IP addresses
 - `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--rule--destination--ip_range))
-- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--rule--destination--network_interface))
+- `network_interface` (Attributes Set) List of network interfaces (see [below for nested schema](#nestedatt--rule--destination--network_interface))
 - `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet (see [below for nested schema](#nestedatt--rule--destination--site_network_subnet))
 - `subnet` (List of String) Subnets in CIDR notation
-- `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--destination--system_group))
+- `system_group` (Attributes Set) List of system groups (see [below for nested schema](#nestedatt--rule--destination--system_group))
 - `vlan` (List of Number) VLAN IDs
 
 <a id="nestedatt--rule--destination--floating_subnet"></a>
@@ -316,8 +316,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Floating Subnet ID
-- `name` (String) Floating Subnet Name
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
 
 
 <a id="nestedatt--rule--destination--global_ip_range"></a>
@@ -325,8 +325,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Global IP Range ID
-- `name` (String) Global IP Range Name
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--destination--group"></a>
@@ -335,7 +335,7 @@ Optional:
 Optional:
 
 - `id` (String) Group ID
-- `name` (String) Group Name
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--destination--host"></a>
@@ -344,7 +344,7 @@ Optional:
 Optional:
 
 - `id` (String) Host ID
-- `name` (String) Host Name
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--destination--ip_range"></a>
@@ -361,8 +361,8 @@ Required:
 
 Optional:
 
-- `id` (String) Network Interface ID
-- `name` (String) Network Interface Name
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
 
 
 <a id="nestedatt--rule--destination--site_network_subnet"></a>
@@ -371,7 +371,7 @@ Optional:
 Optional:
 
 - `id` (String) Site Natwork Subnet ID
-- `name` (String) Site Natwork Subnet Name
+- `name` (String) Site Natwork Subnet name
 
 
 <a id="nestedatt--rule--destination--system_group"></a>
@@ -379,8 +379,8 @@ Optional:
 
 Optional:
 
-- `id` (String) System Group ID
-- `name` (String) System Group Name
+- `id` (String) System group ID
+- `name` (String) System group name
 
 
 
@@ -389,8 +389,8 @@ Optional:
 
 Optional:
 
-- `group` (Attributes Set) Groups defined for your account (see [below for nested schema](#nestedatt--rule--site--group))
-- `site` (Attributes Set) Sites defined in your account (see [below for nested schema](#nestedatt--rule--site--site))
+- `group` (Attributes Set) List of groups (see [below for nested schema](#nestedatt--rule--site--group))
+- `site` (Attributes Set) List of sites (see [below for nested schema](#nestedatt--rule--site--site))
 
 <a id="nestedatt--rule--site--group"></a>
 ### Nested Schema for `rule.site.group`
@@ -398,7 +398,7 @@ Optional:
 Optional:
 
 - `id` (String) Group ID
-- `name` (String) Group Name
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--site--site"></a>
@@ -407,7 +407,7 @@ Optional:
 Optional:
 
 - `id` (String) Site ID
-- `name` (String) Site Name
+- `name` (String) Site name
 
 
 
@@ -417,15 +417,15 @@ Optional:
 Optional:
 
 - `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. (see [below for nested schema](#nestedatt--rule--source--floating_subnet))
-- `global_ip_range` (Attributes Set) Global IP range matching criteria for the exception. (see [below for nested schema](#nestedatt--rule--source--global_ip_range))
-- `group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--source--group))
-- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--source--host))
+- `global_ip_range` (Attributes Set) List of global IP ranges (see [below for nested schema](#nestedatt--rule--source--global_ip_range))
+- `group` (Attributes Set) List of groups (see [below for nested schema](#nestedatt--rule--source--group))
+- `host` (Attributes Set) List of hosts (see [below for nested schema](#nestedatt--rule--source--host))
 - `ip` (List of String) IP addresses
 - `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--rule--source--ip_range))
-- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--rule--source--network_interface))
+- `network_interface` (Attributes Set) List of network interfaces (see [below for nested schema](#nestedatt--rule--source--network_interface))
 - `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet (see [below for nested schema](#nestedatt--rule--source--site_network_subnet))
 - `subnet` (List of String) Subnets in CIDR notation
-- `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--source--system_group))
+- `system_group` (Attributes Set) List of system groups (see [below for nested schema](#nestedatt--rule--source--system_group))
 - `vlan` (List of Number) VLAN IDs
 
 <a id="nestedatt--rule--source--floating_subnet"></a>
@@ -433,8 +433,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Floating Subnet ID
-- `name` (String) Floating Subnet Name
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
 
 
 <a id="nestedatt--rule--source--global_ip_range"></a>
@@ -442,8 +442,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Global IP Range ID
-- `name` (String) Global IP Range Name
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--source--group"></a>
@@ -452,7 +452,7 @@ Optional:
 Optional:
 
 - `id` (String) Group ID
-- `name` (String) Group Name
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--source--host"></a>
@@ -461,7 +461,7 @@ Optional:
 Optional:
 
 - `id` (String) Host ID
-- `name` (String) Host Name
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--source--ip_range"></a>
@@ -478,8 +478,8 @@ Required:
 
 Optional:
 
-- `id` (String) Network Interface ID
-- `name` (String) Network Interface Name
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
 
 
 <a id="nestedatt--rule--source--site_network_subnet"></a>
@@ -488,7 +488,7 @@ Optional:
 Optional:
 
 - `id` (String) Site Natwork Subnet ID
-- `name` (String) Site Natwork Subnet Name
+- `name` (String) Site Natwork Subnet name
 
 
 <a id="nestedatt--rule--source--system_group"></a>
@@ -496,8 +496,8 @@ Optional:
 
 Optional:
 
-- `id` (String) System Group ID
-- `name` (String) System Group Name
+- `id` (String) System group ID
+- `name` (String) System group name
 
 
 
@@ -532,8 +532,8 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From port number
+- `to` (String) To port number
 
 
 

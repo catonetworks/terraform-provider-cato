@@ -144,6 +144,10 @@ var SocketLanServiceAttrTypes = map[string]attr.Type{
 	"custom": types.ListType{ElemType: CustomServiceObjectType},
 }
 
+type SimpleService struct {
+	Name types.String `tfsdk:"name" json:"name,omitempty"`
+}
+
 var SimpleServiceObjectType = types.ObjectType{AttrTypes: SimpleServiceAttrTypes}
 var SimpleServiceAttrTypes = map[string]attr.Type{
 	"name": types.StringType,

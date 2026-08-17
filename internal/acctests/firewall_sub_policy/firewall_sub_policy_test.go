@@ -125,6 +125,64 @@ func TestAccWfSubPolicy(t *testing.T) {
 	})
 }
 
+// TestAccLfSubPolicy LAN firewall subpolicy
+func TestAccLfSubPolicy(t *testing.T) {
+	acc.SkipByEnv(t)
+	acc.CleanupFirewallAndWANPolicyRevisions(t)
+	defer acc.CleanupFirewallAndWANPolicyRevisions(t)
+
+	mockSrv := accmock.NewMockServer(t, "TestAccLfSubPolicy")
+	defer mockSrv.Close()
+	mockSrv.Run()
+
+	name := acc.GetRandName("lf_sub_policy")
+	subPolicy := "cato_lf_sub_policy.test"
+	var originalID string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				Config: lfSubPolicyConfig(name, "10.203.0.1"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(subPolicy, "id"),
+					resource.TestCheckResourceAttrSet(subPolicy, "scope_rule_id"),
+					resource.TestCheckResourceAttr(subPolicy, "name", name),
+					resource.TestCheckResourceAttr(subPolicy, "description", "LAN sub-policy acceptance test"),
+					resource.TestCheckResourceAttr(subPolicy, "scope.enabled", "true"),
+					resource.TestCheckResourceAttr(subPolicy, "scope.direction", "BOTH"),
+					resource.TestCheckResourceAttr(subPolicy, "scope.source.ip.0", "10.203.0.1"),
+					resource.TestCheckResourceAttrSet(subPolicy, "scope.id"),
+					resource.TestCheckResourceAttr(subPolicy, "scope.name", name),
+					resource.TestCheckResourceAttr(subPolicy, "scope.description", "LAN sub-policy acceptance test"),
+					captureResourceAttr(subPolicy, "id", &originalID),
+				),
+			},
+			{
+				ResourceName:            subPolicy,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"at"},
+			},
+			{
+				Config: lfSubPolicyConfig(name, "10.203.0.3"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(subPolicy, "scope.source.ip.0", "10.203.0.3"),
+					checkResourceAttrUnchanged(subPolicy, "id", &originalID),
+				),
+			},
+			{
+				Config: lfSubPolicyConfig(name+"-replacement", "10.203.0.3"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(subPolicy, "name", name+"-replacement"),
+					checkResourceAttrChanged(subPolicy, "id", &originalID),
+				),
+			},
+		},
+	})
+}
+
 func captureResourceAttr(resourceName, key string, target *string) resource.TestCheckFunc {
 	return func(state *terraform.State) error {
 		res, ok := state.RootModule().Resources[resourceName]
@@ -241,4 +299,25 @@ resource "cato_wf_rule" "child" {
   }
 }
 `, name, scopeIP, name+"-child")
+}
+
+func lfSubPolicyConfig(name, scopeIP string) string {
+	return acc.ProviderCfg() + fmt.Sprintf(`
+resource "cato_lf_sub_policy" "test" {
+  name        = %q
+  description = "LAN sub-policy acceptance test"
+
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+
+  scope = {
+    enabled     = true
+    direction   = "BOTH"
+    source      = { ip = [%q] }
+    destination = {}
+    site        = {}
+  }
+}
+`, name, scopeIP)
 }

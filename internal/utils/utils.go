@@ -15,6 +15,11 @@ type ObjectRefOutput struct {
 	Input string `json:"Input"`
 }
 
+type APIErrors interface {
+	GetErrorCode() *string
+	GetErrorMessage() *string
+}
+
 // TransformObjectRefInput is used to transform object {id = "1234"} or {name = "entites"}
 // with the following format { by = "ID" input = "1234"} or  { by = "NAME" input = "entities"}.
 // this is mandatory to cover difference between Create/Update & Read in the schema
@@ -110,3 +115,23 @@ type HasValuer interface {
 }
 
 func HasValue(v HasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }
+
+func CheckAPIErrors[T APIErrors](err error, errors []T, summary string, diags *diag.Diagnostics) bool {
+	if err != nil {
+		diags.AddError(summary, err.Error())
+		return true
+	}
+	if len(errors) > 0 {
+		for _, e := range errors {
+			if msg := e.GetErrorMessage(); msg != nil {
+				diags.AddError(summary, *msg)
+			} else if code := e.GetErrorCode(); code != nil {
+				diags.AddError(summary, *code)
+			} else {
+				diags.AddError(summary, "API mutation failed without error details")
+			}
+		}
+		return true
+	}
+	return false
+}

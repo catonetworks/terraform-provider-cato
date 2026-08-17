@@ -1,0 +1,96 @@
+{
+  "sections": {
+    "Section-1": {
+      "location": {
+        "index_in_policy": 1
+      }
+    },
+    "Section-1 [Sub-policy-1]": {
+      "location": {
+        "index_in_policy": 1,
+        "policy_name": "Sub-policy-1"
+      }
+    }
+  },
+  "network_rules": {
+    "Network-Rule-1": {
+      "input": {
+        "rule": {
+          "name": "Network-Rule-1",
+          "enabled": true,
+          "direction": "BOTH",
+          "transport": "LAN",
+          "site": {},
+          "source": {},
+          "destination": {}
+        }
+      },
+      "location": {
+        "index_in_section": 1,
+        "section_name": "Section-1"
+      }
+    },
+    "Network-Rule-1 [Sub-policy-1]": {
+      "input": {
+        "rule": {
+          "name": "Network-Rule-1 [Sub-policy-1]",
+          "enabled": true,
+          "direction": "BOTH",
+          "transport": "LAN",
+          "site": {},
+          "source": {},
+          "destination": {}
+        }
+      },
+      "location": {
+        "index_in_section": 1,
+        "section_name": "Section-1 [Sub-policy-1]"
+      }
+    }
+  },
+  "firewall_rules": {
+    "Firewall-Rule-1 [Network-Rule-1]": {
+      "input": {
+        "rule": {
+          "name": "Firewall-Rule-1 [Network-Rule-1]",
+          "enabled": true,
+          "direction": "TO",
+          "action": "ALLOW",
+          "site": {},
+          "source": {},
+          "destination": {},
+          "tracking": {
+            "event": {
+              "enabled": false
+            },
+            "alert": {
+              "enabled": false
+            }
+          }
+        }
+      },
+      "location": {
+        "index_in_rule": 1,
+        "network_rule_name": "Network-Rule-1"
+      }
+    }
+  },
+  "policies": {
+    "Sub-policy-1": {
+      "input": {
+        "description": "Example sub-policy",
+        "scope": {
+          "destination": {},
+          "direction": "TO",
+          "enabled": true,
+          "site": {},
+          "source": {}
+        }
+      },
+      "location": {
+        "index_in_section": 2,
+        "section_name": "Section-1"
+      }
+    }
+  }
+}

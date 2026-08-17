@@ -108,6 +108,7 @@ func TestHydrateApplicationControlAddRuleInputDefaultsFileCriteria(t *testing.T)
 	fileRule := got.Rule.FileRule
 	if fileRule == nil {
 		t.Fatal("expected file rule payload")
+		return
 	}
 	if fileRule.ApplicationCriteria == nil {
 		t.Fatal("expected non-nil file rule application criteria")
@@ -147,6 +148,7 @@ func TestHydrateApplicationControlAddRuleInputDefaultsDataCriteria(t *testing.T)
 	dataRule := got.Rule.DataRule
 	if dataRule == nil {
 		t.Fatal("expected data rule payload")
+		return
 	}
 	if dataRule.ApplicationCriteria == nil {
 		t.Fatal("expected non-nil data rule application criteria")
