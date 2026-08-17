@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -35,20 +36,28 @@ func NewLfSubPolicyResource() resource.Resource {
 }
 
 type lfSubPolicyResource struct {
-	client *catoClientData
+	client          *catoClientData
+	subPolicyClient SocketLanSubPolicyClient
 }
 
-type requiresReplaceForConfiguredPosition struct{}
-
-func (requiresReplaceForConfiguredPosition) Description(_ context.Context) string {
-	return "Replace when an already-configured sub-policy position changes."
+func (r *lfSubPolicyResource) getClient() SocketLanSubPolicyClient {
+	if r.subPolicyClient != nil {
+		return r.subPolicyClient
+	}
+	return r.client.catov2
 }
 
-func (m requiresReplaceForConfiguredPosition) MarkdownDescription(ctx context.Context) string {
+type configuredPositionModifier struct{}
+
+func (configuredPositionModifier) Description(_ context.Context) string {
+	return "Allow position updates, but reject removing an already-configured position."
+}
+
+func (m configuredPositionModifier) MarkdownDescription(ctx context.Context) string {
 	return m.Description(ctx)
 }
 
-func (requiresReplaceForConfiguredPosition) PlanModifyObject(
+func (configuredPositionModifier) PlanModifyObject(
 	_ context.Context,
 	req planmodifier.ObjectRequest,
 	resp *planmodifier.ObjectResponse,
@@ -56,12 +65,13 @@ func (requiresReplaceForConfiguredPosition) PlanModifyObject(
 	if req.StateValue.IsNull() || req.StateValue.IsUnknown() {
 		return
 	}
-	if req.PlanValue.IsUnknown() {
-		resp.RequiresReplace = true
+	if req.PlanValue.IsNull() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"LAN sub-policy position cannot be removed",
+			"The at attribute may be omitted after import, but cannot be removed after it has been configured.",
+		)
 		return
-	}
-	if !req.PlanValue.Equal(req.StateValue) {
-		resp.RequiresReplace = true
 	}
 }
 
@@ -104,7 +114,7 @@ func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"at": schema.SingleNestedAttribute{
 				Description:   "Position of the sub-policy scope within the LAN Firewall policy.",
 				Optional:      true,
-				PlanModifiers: []planmodifier.Object{requiresReplaceForConfiguredPosition{}},
+				PlanModifiers: []planmodifier.Object{configuredPositionModifier{}},
 				Attributes: map[string]schema.Attribute{
 					"position": schema.StringAttribute{
 						Description: "Position relative to a policy, a section or another rule.",
@@ -137,6 +147,21 @@ func (r *lfSubPolicyResource) policyScopeSchema() schema.SingleNestedAttribute {
 		Computed:      true,
 		PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 	}
+	service := scopeAttr.Attributes["service"].(schema.SingleNestedAttribute)
+	custom := service.Attributes["custom"].(schema.ListNestedAttribute)
+	custom.NestedObject.Attributes["protocol"] = schema.StringAttribute{
+		Description: "IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)",
+		Required:    true,
+	}
+	service.Attributes["custom"] = custom
+	scopeAttr.Attributes["service"] = service
+
+	nat := scopeAttr.Attributes["nat"].(schema.SingleNestedAttribute)
+	natType := nat.Attributes["nat_type"].(schema.StringAttribute)
+	natType.Computed = true
+	natType.Default = stringdefault.StaticString(string(cato_models.SocketLanNatTypeDynamicPat))
+	nat.Attributes["nat_type"] = natType
+	scopeAttr.Attributes["nat"] = nat
 
 	return scopeAttr
 }
@@ -147,6 +172,7 @@ func (r *lfSubPolicyResource) Configure(_ context.Context, req resource.Configur
 		return
 	}
 	r.client = req.ProviderData.(*catoClientData)
+	r.subPolicyClient = r.client.catov2
 }
 
 // ImportState imports a LAN Firewall sub-policy by its ID.
@@ -179,9 +205,13 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.client.catov2.PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
+	result, err := r.getClient().PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
 	subpol := result.GetPolicy().GetSocketLan().GetAddSubPolicy()
 	if utils.CheckAPIErrors(err, subpol.GetErrors(),
+		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
+		return
+	}
+	if checkPolicyMutationStatus(subpol.GetStatus(),
 		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
 		return
 	}
@@ -194,14 +224,16 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 
 	// Set the ID from the response
 	plan.ID = types.StringValue(policyID)
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// publish the changes
 	r.publish(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.State.Set(ctx, plan)
-
 	// Hydrate state from API
 	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, policyID, &plan, &resp.Diagnostics)
 	if notFound {
@@ -222,6 +254,16 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var state LanFirewallSubPolicy
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !preserveLfSubPolicyUpdateState(ctx, plan, state, resp) {
 		return
 	}
 
@@ -246,9 +288,20 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		},
 	}
 
-	result, err := r.client.catov2.PolicySocketLanUpdateRule(ctx, nil, input, r.client.AccountId)
+	if utils.HasValue(plan.At) && !plan.At.Equal(state.At) {
+		r.move(ctx, plan.ScopeRuleID.ValueString(), plan.At, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	result, err := r.getClient().PolicySocketLanUpdateRule(ctx, nil, input, r.client.AccountId)
 	subpol := result.GetPolicy().GetSocketLan().GetUpdateRule()
 	if utils.CheckAPIErrors(err, subpol.GetErrors(),
+		fmt.Sprintf("failed to update LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
+		return
+	}
+	if checkPolicyMutationStatus(subpol.GetStatus(),
 		fmt.Sprintf("failed to update LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
 		return
 	}
@@ -279,6 +332,24 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	resp.Diagnostics.Append(diags...)
 }
 
+func preserveLfSubPolicyUpdateState(
+	ctx context.Context,
+	plan LanFirewallSubPolicy,
+	state LanFirewallSubPolicy,
+	resp *resource.UpdateResponse,
+) bool {
+	if utils.HasValue(state.At) && !utils.HasValue(plan.At) {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("at"),
+			"LAN sub-policy position cannot be removed",
+			"The at attribute resolved to null or unknown after previously being configured.",
+		)
+		return false
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	return !resp.Diagnostics.HasError()
+}
+
 // Delete removes a LAN Firewall sub-policy through the Cato API.
 func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state LanFirewallSubPolicy
@@ -295,8 +366,13 @@ func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 
 	// Call Cato API to delete the subpolicy
-	res, err := r.client.catov2.PolicySocketLanRemoveSubPolicy(ctx, nil, input, r.client.AccountId)
-	if utils.CheckAPIErrors(err, res.GetPolicy().GetSocketLan().GetRemoveSubPolicy().GetErrors(),
+	res, err := r.getClient().PolicySocketLanRemoveSubPolicy(ctx, nil, input, r.client.AccountId)
+	remove := res.GetPolicy().GetSocketLan().GetRemoveSubPolicy()
+	if utils.CheckAPIErrors(err, remove.GetErrors(),
+		fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &resp.Diagnostics) {
+		return
+	}
+	if checkPolicyMutationStatus(remove.GetStatus(),
 		fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &resp.Diagnostics) {
 		return
 	}
@@ -349,6 +425,45 @@ func (r *lfSubPolicyResource) prepareAt(ctx context.Context, at types.Object, di
 		Position: (*cato_models.PolicyRulePositionEnum)(tfPosition.Position.ValueStringPointer()),
 		Ref:      tfPosition.Ref.ValueStringPointer(),
 	}
+}
+
+func (r *lfSubPolicyResource) move(
+	ctx context.Context,
+	scopeRuleID string,
+	at types.Object,
+	diags *diag.Diagnostics,
+) {
+	const summary = "failed to move LAN sub-policy"
+	input := cato_models.PolicyMoveRuleInput{
+		ID: scopeRuleID,
+		To: r.prepareAt(ctx, at, diags),
+	}
+	if diags.HasError() {
+		return
+	}
+
+	result, err := r.getClient().PolicySocketLanMoveRule(ctx, input, r.client.AccountId)
+	move := result.GetPolicy().GetSocketLan().GetMoveRule()
+	if utils.CheckAPIErrors(err, move.GetErrors(), summary, diags) {
+		return
+	}
+	checkPolicyMutationStatus(move.GetStatus(), summary, diags)
+}
+
+func checkPolicyMutationStatus(
+	status *cato_models.PolicyMutationStatus,
+	summary string,
+	diags *diag.Diagnostics,
+) bool {
+	if status != nil && *status == cato_models.PolicyMutationStatusSuccess {
+		return false
+	}
+	detail := "API mutation returned no status"
+	if status != nil {
+		detail = fmt.Sprintf("API mutation returned status %q", *status)
+	}
+	diags.AddError(summary, detail)
+	return true
 }
 
 // preparePolicy builds the API input containing the sub-policy name and description.
@@ -540,9 +655,13 @@ func (r *lfSubPolicyResource) prepareNat(ctx context.Context, nat types.Object, 
 	if utils.CheckErr(diags, nat.As(ctx, &tfNat, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
+	natType := tfNat.NatType.ValueString()
+	if natType == "" {
+		natType = string(cato_models.SocketLanNatTypeDynamicPat)
+	}
 	return &cato_models.SocketLanNatSettingsInput{
 		Enabled: tfNat.Enabled.ValueBool(),
-		NatType: cato_models.SocketLanNatType(tfNat.NatType.ValueString()),
+		NatType: cato_models.SocketLanNatType(natType),
 	}
 }
 
@@ -646,7 +765,7 @@ func (r *lfSubPolicyResource) hydrateLfSubPolicy(ctx context.Context, subPolicyI
 	planOrState *LanFirewallSubPolicy, diags *diag.Diagnostics,
 ) (newState *LanFirewallSubPolicy, notFound bool) {
 	// Call Cato API to get the policy
-	result, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	result, err := r.getClient().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	if err != nil {
 		diags.AddError("failed to hydrate sub-policy", err.Error())
 		return nil, false
@@ -836,6 +955,9 @@ func (r *lfSubPolicyResource) parseService(ctx context.Context,
 func (r *lfSubPolicyResource) parseSimpleService(ctx context.Context,
 	svcs []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service_Simple, diags *diag.Diagnostics,
 ) types.Set {
+	if len(svcs) == 0 {
+		return types.SetNull(SimpleServiceObjectType)
+	}
 	serviceSlice := make([]types.Object, 0, len(svcs))
 	for _, svc := range svcs {
 		tfSimpleService := SimpleService{
@@ -859,14 +981,21 @@ func (r *lfSubPolicyResource) parseSimpleService(ctx context.Context,
 func (r *lfSubPolicyResource) parseCustomService(ctx context.Context,
 	svcs []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service_Custom, diags *diag.Diagnostics,
 ) types.List {
+	if len(svcs) == 0 {
+		return types.ListNull(CustomServiceObjectType)
+	}
 	serviceSlice := make([]types.Object, 0, len(svcs))
 	for _, svc := range svcs {
-		tfPortRange := FromTo{
-			From: types.StringPointerValue((*string)(svc.PortRange.GetFrom())),
-			To:   types.StringPointerValue((*string)(svc.PortRange.GetTo())),
+		portRangeObj := types.ObjectNull(FromToAttrTypes)
+		if svc.PortRange != nil {
+			tfPortRange := FromTo{
+				From: types.StringPointerValue((*string)(svc.PortRange.GetFrom())),
+				To:   types.StringPointerValue((*string)(svc.PortRange.GetTo())),
+			}
+			var objDiags diag.Diagnostics
+			portRangeObj, objDiags = types.ObjectValueFrom(ctx, FromToAttrTypes, tfPortRange)
+			diags.Append(objDiags...)
 		}
-		portRangeObj, objDiags := types.ObjectValueFrom(ctx, FromToAttrTypes, tfPortRange)
-		diags.Append(objDiags...)
 
 		tfCustomService := PolicyCustomService{
 			PortRange: portRangeObj,
@@ -908,23 +1037,27 @@ func (r *lfSubPolicyResource) parseSite(ctx context.Context,
 func (r *lfSubPolicyResource) publish(ctx context.Context, diags *diag.Diagnostics) {
 	const summary = "failed to publish LAN firewall policy"
 	const notFound = "PolicyRevisionNotFound"
-	result, err := r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
+	result, err := r.getClient().PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
 	if err != nil {
 		diags.AddError(summary, err.Error())
 		return
 	}
-	apiErrors := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision().GetErrors()
+	publish := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
+	apiErrors := publish.GetErrors()
 	if len(apiErrors) > 0 {
-		for _, e := range apiErrors {
-			if code := e.GetErrorCode(); code != nil && *code == notFound {
-				continue
-			}
-			if msg := e.GetErrorMessage(); msg != nil {
-				diags.AddError(summary, *msg)
-			} else {
-				diags.AddError(summary, "publishing failed")
+		allNotFound := true
+		for _, apiError := range apiErrors {
+			if code := apiError.GetErrorCode(); code == nil || *code != notFound {
+				allNotFound = false
+				break
 			}
 		}
+		if allNotFound {
+			return
+		}
+	}
+	if utils.CheckAPIErrors(nil, apiErrors, summary, diags) {
 		return
 	}
+	checkPolicyMutationStatus(publish.GetStatus(), summary, diags)
 }

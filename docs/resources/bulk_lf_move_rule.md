@@ -230,12 +230,12 @@ resource "cato_bulk_lf_move_rule" "reorder" {
 
 ### Required
 
-- `section_data` (Attributes Map) Map of section indexes keyed by section name (see [below for nested schema](#nestedatt--section_data))
+- `section_data` (Attributes Map) Map of section indexes keyed by a caller-chosen stable key. For backward compatibility, the key is used as section_name when section_name is omitted. (see [below for nested schema](#nestedatt--section_data))
 
 ### Optional
 
-- `firewall_rules` (Attributes Map) Map of firewall rule index for each network rule, keyed by firewall rule name (see [below for nested schema](#nestedatt--firewall_rules))
-- `network_rules` (Attributes Map) Map of network rule or sub-policy index for each section, keyed by rule or sub-policy name (see [below for nested schema](#nestedatt--network_rules))
+- `firewall_rules` (Attributes Map) Map of firewall rule indexes keyed by a caller-chosen stable key. For backward compatibility, the key is used as firewall_rule_name when firewall_rule_name is omitted. (see [below for nested schema](#nestedatt--firewall_rules))
+- `network_rules` (Attributes Map) Map of network rule or sub-policy indexes keyed by a caller-chosen stable key. For backward compatibility, the key is used as rule_name when rule_name is omitted. (see [below for nested schema](#nestedatt--network_rules))
 
 <a id="nestedatt--section_data"></a>
 ### Nested Schema for `section_data`
@@ -246,6 +246,7 @@ Required:
 
 Optional:
 
+- `section_name` (String) LAN section name. Defaults to the map key for backward compatibility.
 - `sub_policy_name` (String) Sub-policy name. If not set, the main policy is used.
 
 Read-Only:
@@ -261,6 +262,11 @@ Required:
 - `index_in_rule` (Number) Index value remapped per network rule
 - `net_rule_name` (String) Parent LAN network rule name
 
+Optional:
+
+- `firewall_rule_name` (String) Firewall rule name. Defaults to the map key for backward compatibility.
+- `net_rule_key` (String) Map key of the parent network rule. Required when net_rule_name is ambiguous.
+
 Read-Only:
 
 - `id` (String) Firewall rule ID
@@ -273,6 +279,11 @@ Required:
 
 - `index_in_section` (Number) Index value remapped per section
 - `section_name` (String) LAN section name housing rule
+
+Optional:
+
+- `rule_name` (String) Network rule or sub-policy name. Defaults to the map key for backward compatibility.
+- `section_key` (String) Map key of the parent section. Required when section_name is ambiguous.
 
 Read-Only:
 

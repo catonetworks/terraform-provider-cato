@@ -16,6 +16,7 @@ type ObjectRefOutput struct {
 }
 
 type APIErrors interface {
+	GetErrorCode() *string
 	GetErrorMessage() *string
 }
 
@@ -124,6 +125,10 @@ func CheckAPIErrors[T APIErrors](err error, errors []T, summary string, diags *d
 		for _, e := range errors {
 			if msg := e.GetErrorMessage(); msg != nil {
 				diags.AddError(summary, *msg)
+			} else if code := e.GetErrorCode(); code != nil {
+				diags.AddError(summary, *code)
+			} else {
+				diags.AddError(summary, "API mutation failed without error details")
 			}
 		}
 		return true

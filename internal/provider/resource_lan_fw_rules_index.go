@@ -60,6 +60,7 @@ func (r *lanRulesIndexResource) Metadata(_ context.Context, req resource.Metadat
 	resp.TypeName = req.ProviderTypeName + "_bulk_lf_move_rule"
 }
 
+//nolint:funlen // Declarative nested schema remains clearer in one function.
 func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages ordering of LAN firewall policy items.\n\n" +
@@ -74,14 +75,20 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 
 		Attributes: map[string]schema.Attribute{
 			"section_data": schema.MapNestedAttribute{
-				Description: "Map of section indexes keyed by section name",
-				Required:    true,
+				Description: "Map of section indexes keyed by a caller-chosen stable key. " +
+					"For backward compatibility, the key is used as section_name when section_name is omitted.",
+				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
 							Description:   "Section id",
 							Computed:      true,
 							PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+						},
+						"section_name": schema.StringAttribute{
+							Description: "LAN section name. Defaults to the map key for backward compatibility.",
+							Optional:    true,
+							Computed:    true,
 						},
 						"section_index": schema.Int64Attribute{
 							Description: "Position of the section in the policy or sub-policy. Starts with 1.",
@@ -97,9 +104,10 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 				},
 			},
 			"network_rules": schema.MapNestedAttribute{
-				Description: "Map of network rule or sub-policy index for each section, keyed by rule or sub-policy name",
-				Required:    false,
-				Optional:    true,
+				Description: "Map of network rule or sub-policy indexes keyed by a caller-chosen stable key. " +
+					"For backward compatibility, the key is used as rule_name when rule_name is omitted.",
+				Required: false,
+				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
@@ -111,9 +119,18 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Description: "Rule type: POLICY_RULE, SUB_POLICY_SCOPE, SUB_RULE",
 							Computed:    true,
 						},
+						"rule_name": schema.StringAttribute{
+							Description: "Network rule or sub-policy name. Defaults to the map key for backward compatibility.",
+							Optional:    true,
+							Computed:    true,
+						},
 						"section_name": schema.StringAttribute{
 							Description: "LAN section name housing rule",
 							Required:    true,
+						},
+						"section_key": schema.StringAttribute{
+							Description: "Map key of the parent section. Required when section_name is ambiguous.",
+							Optional:    true,
 						},
 						"index_in_section": schema.Int64Attribute{
 							Description: "Index value remapped per section",
@@ -123,9 +140,10 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 				},
 			},
 			"firewall_rules": schema.MapNestedAttribute{
-				Description: "Map of firewall rule index for each network rule, keyed by firewall rule name",
-				Required:    false,
-				Optional:    true,
+				Description: "Map of firewall rule indexes keyed by a caller-chosen stable key. " +
+					"For backward compatibility, the key is used as firewall_rule_name when firewall_rule_name is omitted.",
+				Required: false,
+				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
@@ -133,9 +151,18 @@ func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Computed:      true,
 							PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 						},
+						"firewall_rule_name": schema.StringAttribute{
+							Description: "Firewall rule name. Defaults to the map key for backward compatibility.",
+							Optional:    true,
+							Computed:    true,
+						},
 						"net_rule_name": schema.StringAttribute{
 							Description: "Parent LAN network rule name",
 							Required:    true,
+						},
+						"net_rule_key": schema.StringAttribute{
+							Description: "Map key of the parent network rule. Required when net_rule_name is ambiguous.",
+							Optional:    true,
 						},
 						"index_in_rule": schema.Int64Attribute{
 							Description: "Index value remapped per network rule",
@@ -201,42 +228,70 @@ func (r *lanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 
 type lfIndexMap struct {
 	// Section order in given policy
-	// map[policyName]{
+	// map[policyID]{
 	//   current:[{sectionName:secA,id:100},{sectionName:secB,id:101},...],
 	//   target: [{sectionName:secB,id:101},{sectionName:secA,id:100},...]}
 	sections map[string]itemOrder
 
 	// Rule or subPolicy order in given section
-	// map[sectionName]{
+	// map[sectionID]{
 	//   current:[{name:ruleA,id:100,typ:rule},{name:subPolA,id:123,typ:subPolicy},...],
 	//   target: [{name:subPolA,id:123,typ:subPolicy},{name:ruleA,id:100,typ:rule},...],
 	rulesOrSubPols map[string]itemOrderType
 
 	// Firewall rule order in given network rule
-	// map[networkRuleName]{
+	// map[networkRuleID]{
 	//   current:[{name:FwRuleA,id:100},{name:FwRuleB,id:123},...],
 	//   target: [{name:FwRuleB,id:123},{name:FwRuleA,id:100},...],
 	firewallRules map[string]itemOrder
 }
 type itemOrder struct {
-	parentID string
-	current  []nameID
-	target   []nameID
+	parentID   string
+	parentName string
+	current    []nameID
+	target     []nameID
 }
 type nameID struct {
 	name, id string
 }
 type itemOrderType struct {
-	parentID string
-	current  []nameIDType
-	target   []nameIDType
+	parentID   string
+	parentName string
+	current    []nameIDType
+	target     []nameIDType
 }
 type nameIDType struct {
 	name, id string
 	ruleType cato_models.PolicyRuleTypeEnum
 }
 
+type lanFwStateAliases struct {
+	sectionKeyByID        map[string]string
+	netRuleKeyByID        map[string]string
+	firewallRuleKeyByID   map[string]string
+	netRuleParentKeyByID  map[string]string
+	firewallParentKeyByID map[string]string
+	manageNetworkRules    bool
+	manageFirewallRules   bool
+}
+
 func (r *lanRulesIndexResource) hydrateLanFwRulesIndex(ctx context.Context, plan *LanFwRulesIndex, diags *diag.Diagnostics,
+) (newState *LanFwRulesIndex, indexMap *lfIndexMap) {
+	return r.hydrateLanFwRulesIndexWithAliases(ctx, plan, nil, diags)
+}
+
+func (r *lanRulesIndexResource) hydrateLanFwRulesIndexForRead(ctx context.Context, state *LanFwRulesIndex,
+	diags *diag.Diagnostics,
+) (newState *LanFwRulesIndex, indexMap *lfIndexMap) {
+	aliases := extractLanFwStateAliases(ctx, state, diags)
+	if diags.HasError() {
+		return nil, nil
+	}
+	return r.hydrateLanFwRulesIndexWithAliases(ctx, nil, aliases, diags)
+}
+
+func (r *lanRulesIndexResource) hydrateLanFwRulesIndexWithAliases(ctx context.Context, plan *LanFwRulesIndex,
+	aliases *lanFwStateAliases, diags *diag.Diagnostics,
 ) (newState *LanFwRulesIndex, indexMap *lfIndexMap) {
 	// Call Cato API to get the policy
 	result, err := r.getClient().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
@@ -246,9 +301,13 @@ func (r *lanRulesIndexResource) hydrateLanFwRulesIndex(ctx context.Context, plan
 	}
 	policyBase := result.GetPolicy().GetSocketLan().GetPolicy()
 
-	policySections, sectionData := r.hydrateSections(ctx, plan, policyBase, diags)
-	sectionRulesOrSubPols, netRuleData := r.hydrateNetRules(ctx, plan, policyBase, diags)
-	ruleFirewallRules, firewallRuleData := r.hydrateFirewallRules(ctx, plan, policyBase, diags)
+	policySections, sectionData, sectionKeyToID := r.hydrateSections(ctx, plan, aliases, policyBase, diags)
+	sectionRulesOrSubPols, netRuleData, netRuleKeyToID := r.hydrateNetRules(
+		ctx, plan, aliases, policyBase, sectionKeyToID, diags,
+	)
+	ruleFirewallRules, firewallRuleData := r.hydrateFirewallRules(
+		ctx, plan, aliases, policyBase, netRuleKeyToID, diags,
+	)
 
 	newState = &LanFwRulesIndex{
 		SectionData:   sectionData,
@@ -264,11 +323,11 @@ func (r *lanRulesIndexResource) hydrateLanFwRulesIndex(ctx context.Context, plan
 }
 
 func (r *lanRulesIndexResource) hydrateSections(ctx context.Context, plan *LanFwRulesIndex,
-	policyBase *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy, diags *diag.Diagnostics,
-) (policySections map[string]itemOrder, sectionData types.Map) {
+	aliases *lanFwStateAliases, policyBase *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
+	diags *diag.Diagnostics,
+) (policySections map[string]itemOrder, sectionData types.Map, sectionKeyToID map[string]string) {
 	policySections = make(map[string]itemOrder)
-	sectionNameMap := r.makeSectionNameMap(policyBase) // map[sectionName]sectionID
-	policyIDMap := r.makePolicyIDMap(policyBase)       // map[policyID]policyName
+	policyIDMap := r.makePolicyIDMap(policyBase) // map[policyID]policyName
 	sectionDataNull := types.MapNull(types.ObjectType{AttrTypes: LanFwSectionDataTypes})
 
 	// Prepare section map
@@ -278,50 +337,63 @@ func (r *lanRulesIndexResource) hydrateSections(ctx context.Context, plan *LanFw
 	//   }
 	r.parseAPISections(policyBase, policyIDMap, policySections, diags)
 	if diags.HasError() { // current
-		return nil, sectionDataNull
+		return nil, sectionDataNull, nil
 	}
+	sectionKeyToID = make(map[string]string)
 	if plan != nil {
-		r.parsePlanSections(plan, sectionNameMap, policySections, diags)
+		r.parsePlanSections(plan, policyBase, policySections, sectionKeyToID, diags)
 		if diags.HasError() { // target
-			return nil, sectionDataNull
+			return nil, sectionDataNull, nil
 		}
 		r.checkSections(policySections, diags)
 		if diags.HasError() { // should contain the same items
-			return nil, sectionDataNull
+			return nil, sectionDataNull, nil
 		}
 	}
 
-	// create TF SectionData:  map[policyName]{secID,secIndex,subPolicyName} -> types.Map
+	sectionKeyByID := invertKeyToID(sectionKeyToID)
+	if aliases != nil {
+		sectionKeyByID = collisionSafeStateKeys(flattenSectionItems(policySections), aliases.sectionKeyByID)
+		sectionKeyToID = invertIDToKey(sectionKeyByID)
+	}
 	sections := make(map[string]types.Object)
-	for polName, sectionLists := range policySections {
+	for _, sectionLists := range policySections {
 		for i, section := range sectionLists.current {
+			key := stateMapKey(sectionKeyByID, section.id, section.name)
+			if _, exists := sections[key]; exists {
+				diags.AddError("cannot hydrate LAN firewall sections",
+					fmt.Sprintf("multiple sections would use map key %q; use distinct section_data map keys and set section_name explicitly", key))
+				return nil, sectionDataNull, nil
+			}
 			tfSection := LanFwSectionData{
 				ID:            types.StringValue(section.id),
+				SectionName:   types.StringValue(section.name),
 				SectionIndex:  types.Int64Value(int64(i + 1)), // 1-based
-				SubPolicyName: types.StringValue(polName),
+				SubPolicyName: types.StringValue(sectionLists.parentName),
 			}
 			sectionObj, objDiags := types.ObjectValueFrom(ctx, LanFwSectionDataTypes, tfSection)
 			diags.Append(objDiags...)
 			if diags.HasError() {
-				return nil, sectionDataNull
+				return nil, sectionDataNull, nil
 			}
-			sections[section.name] = sectionObj
+			sections[key] = sectionObj
 		}
 	}
 	sd, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: LanFwSectionDataTypes}, sections)
 	if objDiags.HasError() {
 		diags.Append(objDiags...)
-		return nil, sectionDataNull
+		return nil, sectionDataNull, nil
 	}
 	sectionData = sd
-	return policySections, sectionData
+	return policySections, sectionData, sectionKeyToID
 }
 
+//nolint:gocyclo // Hydration keeps plan, prior-state aliases, and API state synchronized in one pass.
 func (r *lanRulesIndexResource) hydrateNetRules(ctx context.Context, plan *LanFwRulesIndex,
-	policyBase *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy, diags *diag.Diagnostics,
-) (sectionRulesOrSubPols map[string]itemOrderType, netRuleData types.Map) {
+	aliases *lanFwStateAliases, policyBase *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
+	sectionKeyToID map[string]string, diags *diag.Diagnostics,
+) (sectionRulesOrSubPols map[string]itemOrderType, netRuleData types.Map, netRuleKeyToID map[string]string) {
 	sectionRulesOrSubPols = make(map[string]itemOrderType)
-	ruleNameMap := r.makeRuleNameMap(policyBase) // map[netRuleName]nameIDType
 	netRuleDataNull := types.MapNull(types.ObjectType{AttrTypes: LanNetworkRuleTypes})
 
 	// Prepare rule and subpolicy map
@@ -331,36 +403,65 @@ func (r *lanRulesIndexResource) hydrateNetRules(ctx context.Context, plan *LanFw
 	//   }
 	r.parseAPINetRules(policyBase, sectionRulesOrSubPols) // current
 	if diags.HasError() {
-		return nil, netRuleDataNull
+		return nil, netRuleDataNull, nil
 	}
 	manageNetworkRules := plan == nil || utils.HasValue(plan.NetworkRules)
+	if aliases != nil {
+		manageNetworkRules = aliases.manageNetworkRules
+	}
+	netRuleKeyToID = make(map[string]string)
+	netRuleParentKeyByID := make(map[string]string)
 	if plan != nil && manageNetworkRules {
-		r.parsePlanNetRules(plan, ruleNameMap, sectionRulesOrSubPols, diags) // target
+		r.parsePlanNetRules(
+			plan, sectionKeyToID, sectionRulesOrSubPols, netRuleKeyToID, netRuleParentKeyByID, diags,
+		) // target
 		if diags.HasError() {
-			return nil, netRuleDataNull
+			return nil, netRuleDataNull, nil
 		}
 		r.checkNetRules(sectionRulesOrSubPols, diags) // should contain the same items
 		if diags.HasError() {
-			return nil, netRuleDataNull
+			return nil, netRuleDataNull, nil
 		}
 	}
 
-	// create TF NetworkRuleData:  map[rule/subPolicy name]{ruleID,sectName,sectIndex,ruleType} -> types.Map
+	netRuleKeyByID := invertKeyToID(netRuleKeyToID)
+	if aliases != nil {
+		netRuleKeyByID = collisionSafeStateKeys(flattenNetworkRuleItems(sectionRulesOrSubPols), aliases.netRuleKeyByID)
+		netRuleKeyToID = invertIDToKey(netRuleKeyByID)
+		netRuleParentKeyByID = aliases.netRuleParentKeyByID
+	}
+	sectionKeyByID := invertKeyToID(sectionKeyToID)
 	rulesOrSubPols := make(map[string]types.Object)
-	for sectName, rList := range sectionRulesOrSubPols {
+	for _, rList := range sectionRulesOrSubPols {
 		for i, rule := range rList.current {
+			key := stateMapKey(netRuleKeyByID, rule.id, rule.name)
+			if _, exists := rulesOrSubPols[key]; exists {
+				diags.AddError("cannot hydrate LAN firewall network rules",
+					fmt.Sprintf("multiple network rules would use map key %q; use distinct network_rules map keys and set rule_name explicitly", key))
+				return nil, netRuleDataNull, nil
+			}
+			sectionKey := netRuleParentKeyByID[rule.id]
+			if aliases != nil {
+				if _, existed := aliases.netRuleKeyByID[rule.id]; !existed {
+					sectionKey = sectionKeyByID[rList.parentID]
+				} else if sectionKey != "" && sectionKeyToID[sectionKey] != rList.parentID {
+					sectionKey = sectionKeyByID[rList.parentID]
+				}
+			}
 			tfRuleData := LanNetworkRule{
 				ID:             types.StringValue(rule.id),
 				RuleType:       types.StringValue(string(rule.ruleType)),
-				SectionName:    types.StringValue(sectName),
+				RuleName:       types.StringValue(rule.name),
+				SectionName:    types.StringValue(rList.parentName),
+				SectionKey:     optionalStringValue(sectionKey),
 				IndexInSection: types.Int64Value(int64(i + 1)), // 1-based
 			}
 			ruleObj, objDiags := types.ObjectValueFrom(ctx, LanNetworkRuleTypes, tfRuleData)
 			diags.Append(objDiags...)
 			if diags.HasError() {
-				return nil, netRuleDataNull
+				return nil, netRuleDataNull, nil
 			}
-			rulesOrSubPols[rule.name] = ruleObj
+			rulesOrSubPols[key] = ruleObj
 		}
 	}
 
@@ -369,18 +470,19 @@ func (r *lanRulesIndexResource) hydrateNetRules(ctx context.Context, plan *LanFw
 		rd, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: LanNetworkRuleTypes}, rulesOrSubPols)
 		if objDiags.HasError() {
 			diags.Append(objDiags...)
-			return nil, netRuleDataNull
+			return nil, netRuleDataNull, nil
 		}
 		netRuleData = rd
 	}
-	return sectionRulesOrSubPols, netRuleData
+	return sectionRulesOrSubPols, netRuleData, netRuleKeyToID
 }
 
+//nolint:gocyclo // Hydration keeps plan, prior-state aliases, and API state synchronized in one pass.
 func (r *lanRulesIndexResource) hydrateFirewallRules(ctx context.Context, plan *LanFwRulesIndex,
-	policyBase *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy, diags *diag.Diagnostics,
+	aliases *lanFwStateAliases, policyBase *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
+	netRuleKeyToID map[string]string, diags *diag.Diagnostics,
 ) (ruleFirewallRules map[string]itemOrder, firewallRuleData types.Map) {
 	ruleFirewallRules = make(map[string]itemOrder)
-	ruleNameMap := r.makeFwRuleNameMap(policyBase) // map[fwRuleName]ruleID
 	firewallRuleDataNull := types.MapNull(types.ObjectType{AttrTypes: LanFirewallRuleTypes})
 
 	// Prepare firewall-rule map
@@ -393,8 +495,15 @@ func (r *lanRulesIndexResource) hydrateFirewallRules(ctx context.Context, plan *
 		return nil, firewallRuleDataNull
 	}
 	manageFirewallRules := plan == nil || utils.HasValue(plan.FirewallRules)
+	if aliases != nil {
+		manageFirewallRules = aliases.manageFirewallRules
+	}
+	firewallRuleKeyToID := make(map[string]string)
+	firewallParentKeyByID := make(map[string]string)
 	if plan != nil && manageFirewallRules {
-		r.parsePlanFwRules(plan, ruleNameMap, ruleFirewallRules, diags) // target
+		r.parsePlanFwRules(
+			plan, netRuleKeyToID, ruleFirewallRules, firewallRuleKeyToID, firewallParentKeyByID, diags,
+		) // target
 		if diags.HasError() {
 			return nil, firewallRuleDataNull
 		}
@@ -404,21 +513,43 @@ func (r *lanRulesIndexResource) hydrateFirewallRules(ctx context.Context, plan *
 		}
 	}
 
-	// create TF FirewallRuleData:  map[rule name]{fwRuleID,netRuleName,Index} -> types.Map
+	firewallRuleKeyByID := invertKeyToID(firewallRuleKeyToID)
+	if aliases != nil {
+		firewallRuleKeyByID = collisionSafeStateKeys(flattenFirewallRuleItems(ruleFirewallRules), aliases.firewallRuleKeyByID)
+		firewallParentKeyByID = aliases.firewallParentKeyByID
+	}
+	netRuleKeyByID := invertKeyToID(netRuleKeyToID)
 	tfFirewallRules := make(map[string]types.Object)
-	for netRuleName, rList := range ruleFirewallRules {
+	for _, rList := range ruleFirewallRules {
 		for i, rule := range rList.current {
+			key := stateMapKey(firewallRuleKeyByID, rule.id, rule.name)
+			if _, exists := tfFirewallRules[key]; exists {
+				diags.AddError("cannot hydrate LAN firewall rules",
+					fmt.Sprintf("multiple firewall rules would use map key %q; "+
+						"use distinct firewall_rules map keys and set firewall_rule_name explicitly", key))
+				return nil, firewallRuleDataNull
+			}
+			netRuleKey := firewallParentKeyByID[rule.id]
+			if aliases != nil {
+				if _, existed := aliases.firewallRuleKeyByID[rule.id]; !existed {
+					netRuleKey = netRuleKeyByID[rList.parentID]
+				} else if netRuleKey != "" && netRuleKeyToID[netRuleKey] != rList.parentID {
+					netRuleKey = netRuleKeyByID[rList.parentID]
+				}
+			}
 			tfRuleData := LanFirewallRule{
-				ID:          types.StringValue(rule.id),
-				NetRuleName: types.StringValue(netRuleName),
-				IndexInRule: types.Int64Value(int64(i + 1)), // 1-based
+				ID:               types.StringValue(rule.id),
+				FirewallRuleName: types.StringValue(rule.name),
+				NetRuleName:      types.StringValue(rList.parentName),
+				NetRuleKey:       optionalStringValue(netRuleKey),
+				IndexInRule:      types.Int64Value(int64(i + 1)), // 1-based
 			}
 			ruleObj, objDiags := types.ObjectValueFrom(ctx, LanFirewallRuleTypes, tfRuleData)
 			diags.Append(objDiags...)
 			if diags.HasError() {
 				return nil, firewallRuleDataNull
 			}
-			tfFirewallRules[rule.name] = ruleObj
+			tfFirewallRules[key] = ruleObj
 		}
 	}
 
@@ -435,6 +566,291 @@ func (r *lanRulesIndexResource) hydrateFirewallRules(ctx context.Context, plan *
 	return ruleFirewallRules, firewallRuleData
 }
 
+func extractLanFwStateAliases(ctx context.Context, state *LanFwRulesIndex,
+	diags *diag.Diagnostics,
+) *lanFwStateAliases {
+	aliases := &lanFwStateAliases{
+		sectionKeyByID:        make(map[string]string),
+		netRuleKeyByID:        make(map[string]string),
+		firewallRuleKeyByID:   make(map[string]string),
+		netRuleParentKeyByID:  make(map[string]string),
+		firewallParentKeyByID: make(map[string]string),
+		manageNetworkRules:    utils.HasValue(state.NetworkRules),
+		manageFirewallRules:   utils.HasValue(state.FirewallRules),
+	}
+
+	var sections map[string]LanFwSectionData
+	sectionDiags := state.SectionData.ElementsAs(ctx, &sections, false)
+	diags.Append(sectionDiags...)
+	if diags.HasError() {
+		return aliases
+	}
+	for key, section := range sections {
+		if hasConfiguredValue(section.ID) {
+			aliases.sectionKeyByID[section.ID.ValueString()] = key
+		}
+	}
+
+	if aliases.manageNetworkRules {
+		var networkRules map[string]LanNetworkRule
+		networkDiags := state.NetworkRules.ElementsAs(ctx, &networkRules, false)
+		diags.Append(networkDiags...)
+		if diags.HasError() {
+			return aliases
+		}
+		for key, rule := range networkRules {
+			if !hasConfiguredValue(rule.ID) {
+				continue
+			}
+			id := rule.ID.ValueString()
+			aliases.netRuleKeyByID[id] = key
+			if hasConfiguredValue(rule.SectionKey) {
+				aliases.netRuleParentKeyByID[id] = rule.SectionKey.ValueString()
+			}
+		}
+	}
+
+	if aliases.manageFirewallRules {
+		var firewallRules map[string]LanFirewallRule
+		firewallDiags := state.FirewallRules.ElementsAs(ctx, &firewallRules, false)
+		diags.Append(firewallDiags...)
+		if diags.HasError() {
+			return aliases
+		}
+		for key, rule := range firewallRules {
+			if !hasConfiguredValue(rule.ID) {
+				continue
+			}
+			id := rule.ID.ValueString()
+			aliases.firewallRuleKeyByID[id] = key
+			if hasConfiguredValue(rule.NetRuleKey) {
+				aliases.firewallParentKeyByID[id] = rule.NetRuleKey.ValueString()
+			}
+		}
+	}
+
+	return aliases
+}
+
+func flattenSectionItems(groups map[string]itemOrder) []nameID {
+	var items []nameID
+	for _, group := range groups {
+		items = append(items, group.current...)
+	}
+	return items
+}
+
+func flattenNetworkRuleItems(groups map[string]itemOrderType) []nameID {
+	var items []nameID
+	for _, group := range groups {
+		for _, item := range group.current {
+			items = append(items, nameID{name: item.name, id: item.id})
+		}
+	}
+	return items
+}
+
+func flattenFirewallRuleItems(groups map[string]itemOrder) []nameID {
+	return flattenSectionItems(groups)
+}
+
+func collisionSafeStateKeys(items []nameID, priorKeys map[string]string) map[string]string {
+	keys := make(map[string]string, len(items))
+	present := make(map[string]nameID, len(items))
+	for _, item := range items {
+		present[item.id] = item
+	}
+
+	ids := make([]string, 0, len(present))
+	for id := range present {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+
+	used := make(map[string]struct{}, len(items))
+	for _, id := range ids {
+		if key := priorKeys[id]; key != "" {
+			keys[id] = key
+			used[key] = struct{}{}
+		}
+	}
+
+	slices.SortFunc(items, func(a, b nameID) int {
+		if byName := cmp.Compare(a.name, b.name); byName != 0 {
+			return byName
+		}
+		return cmp.Compare(a.id, b.id)
+	})
+	for _, item := range items {
+		if keys[item.id] != "" {
+			continue
+		}
+		base := item.name
+		if base == "" {
+			base = item.id
+		}
+		candidate := base
+		if _, exists := used[candidate]; exists {
+			candidate = base + "__" + item.id
+			for suffix := 2; ; suffix++ {
+				if _, exists := used[candidate]; !exists {
+					break
+				}
+				candidate = fmt.Sprintf("%s__%s__%d", base, item.id, suffix)
+			}
+		}
+		keys[item.id] = candidate
+		used[candidate] = struct{}{}
+	}
+	return keys
+}
+
+func invertKeyToID(keyToID map[string]string) map[string]string {
+	idToKey := make(map[string]string, len(keyToID))
+	for key, id := range keyToID {
+		idToKey[id] = key
+	}
+	return idToKey
+}
+
+func invertIDToKey(idToKey map[string]string) map[string]string {
+	keyToID := make(map[string]string, len(idToKey))
+	for id, key := range idToKey {
+		keyToID[key] = id
+	}
+	return keyToID
+}
+
+func stateMapKey(keyByID map[string]string, id, fallbackName string) string {
+	if key := keyByID[id]; key != "" {
+		return key
+	}
+	return fallbackName
+}
+
+func optionalStringValue(value string) types.String {
+	if value == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(value)
+}
+
+func configuredName(value types.String, fallback string) string {
+	if hasConfiguredValue(value) {
+		return value.ValueString()
+	}
+	return fallback
+}
+
+func hasConfiguredValue(value types.String) bool {
+	return !value.IsNull() && !value.IsUnknown() && value.ValueString() != ""
+}
+
+func resolveNameID(name, preferredID string, items []nameID) (string, error) {
+	if preferredID != "" {
+		for _, item := range items {
+			if item.id == preferredID {
+				if item.name != name {
+					return "", fmt.Errorf("stored ID %q now has name %q", preferredID, item.name)
+				}
+				return item.id, nil
+			}
+		}
+	}
+	var matches []string
+	for _, item := range items {
+		if item.name == name {
+			matches = append(matches, item.id)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("name not found")
+	case 1:
+		return matches[0], nil
+	default:
+		return "", fmt.Errorf("name is ambiguous within its parent")
+	}
+}
+
+func resolveNameIDType(name, preferredID string, items []nameIDType) (nameIDType, error) {
+	if preferredID != "" {
+		for _, item := range items {
+			if item.id == preferredID {
+				if item.name != name {
+					return nameIDType{}, fmt.Errorf("stored ID %q now has name %q", preferredID, item.name)
+				}
+				return item, nil
+			}
+		}
+	}
+	var matches []nameIDType
+	for _, item := range items {
+		if item.name == name {
+			matches = append(matches, item)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return nameIDType{}, fmt.Errorf("name not found")
+	case 1:
+		return matches[0], nil
+	default:
+		return nameIDType{}, fmt.Errorf("name is ambiguous within its parent")
+	}
+}
+
+func resolveParentID[T itemOrder | itemOrderType](kind, parentName string, parentKey types.String,
+	keyToID map[string]string, parents map[string]T,
+) (string, error) {
+	keyField := "section_key"
+	if kind == "network rule" {
+		keyField = "net_rule_key"
+	}
+	if hasConfiguredValue(parentKey) {
+		key := parentKey.ValueString()
+		id, ok := keyToID[key]
+		if !ok {
+			return "", fmt.Errorf("%s %q does not match a configured parent map key", keyField, key)
+		}
+		parent, ok := parents[id]
+		if !ok {
+			return "", fmt.Errorf("%s %q resolves to missing %s ID %q", keyField, key, kind, id)
+		}
+		if name := parentDisplayName(parent); name != parentName {
+			return "", fmt.Errorf("%s %q identifies %s %q, not %q", keyField, key, kind, name, parentName)
+		}
+		return id, nil
+	}
+
+	var matches []string
+	for id, parent := range parents {
+		if parentDisplayName(parent) == parentName {
+			matches = append(matches, id)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("%s name %q not found", kind, parentName)
+	case 1:
+		return matches[0], nil
+	default:
+		return "", fmt.Errorf("%s name %q is ambiguous; set %s to the parent map key",
+			kind, parentName, keyField)
+	}
+}
+
+func parentDisplayName[T itemOrder | itemOrderType](parent T) string {
+	switch value := any(parent).(type) {
+	case itemOrder:
+		return value.parentName
+	case itemOrderType:
+		return value.parentName
+	default:
+		return ""
+	}
+}
+
 // makePolicyIDMap creates a map of policy IDs to policy names.
 func (r *lanRulesIndexResource) makePolicyIDMap(apiResult *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
 ) map[string]string {
@@ -442,52 +858,6 @@ func (r *lanRulesIndexResource) makePolicyIDMap(apiResult *cato_go_sdk.PolicySoc
 	for _, sp := range apiResult.SubPolicies {
 		pol := sp.GetPolicy()
 		out[pol.GetID()] = pol.GetName()
-	}
-	return out
-}
-
-// makeSectionNameMap creates a map of section names to section IDs
-func (r *lanRulesIndexResource) makeSectionNameMap(apiResult *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
-) map[string]string {
-	out := make(map[string]string)
-	for _, sp := range apiResult.Sections {
-		sect := sp.GetSection()
-		out[sect.GetName()] = sect.GetID()
-	}
-	return out
-}
-
-// makeRuleNameMap creates a map of net-rule or sub-policy names to net-rule IDs or sub-policy scope rule IDs
-func (r *lanRulesIndexResource) makeRuleNameMap(apiResult *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
-) map[string]nameIDType {
-	out := make(map[string]nameIDType)
-	for _, rul := range apiResult.Rules {
-		rule := rul.GetRule()
-		out[rule.GetName()] = nameIDType{
-			name:     rule.GetName(),
-			id:       rule.GetID(),
-			ruleType: r.ruleType(rul),
-		}
-	}
-	return out
-}
-
-// makeFwRuleNameMap creates a map of firewall rule names to IDs
-func (r *lanRulesIndexResource) makeFwRuleNameMap(apiResult *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
-) map[string]string {
-	out := make(map[string]string)
-	for _, rul := range apiResult.Rules {
-		rule := rul.GetRule()
-		for _, fr := range rule.GetFirewall() {
-			if fr == nil {
-				continue
-			}
-			fRule := fr.GetRule()
-			if fRule.GetName() == "" {
-				continue
-			}
-			out[fRule.GetName()] = fRule.GetID()
-		}
 	}
 	return out
 }
@@ -515,10 +885,11 @@ func (r *lanRulesIndexResource) parseAPISections(apiResult *cato_go_sdk.PolicySo
 		} else {
 			subPolicyID = new("")
 		}
-		iOrder := policySections[policyName]
+		iOrder := policySections[*subPolicyID]
 		iOrder.parentID = *subPolicyID
+		iOrder.parentName = policyName
 		iOrder.current = append(iOrder.current, nameID{name: section.GetName(), id: section.GetID()})
-		policySections[policyName] = iOrder
+		policySections[*subPolicyID] = iOrder
 	}
 }
 
@@ -532,15 +903,16 @@ func (r *lanRulesIndexResource) parseAPINetRules(apiResult *cato_go_sdk.PolicySo
 ) {
 	for _, rul := range apiResult.Rules {
 		rule := rul.GetRule()
-		sectionName := rule.GetSection().GetName()
-		iOrder := sectionRulesOrSubPols[sectionName]
-		iOrder.parentID = rule.GetSection().GetID()
+		sectionID := rule.GetSection().GetID()
+		iOrder := sectionRulesOrSubPols[sectionID]
+		iOrder.parentID = sectionID
+		iOrder.parentName = rule.GetSection().GetName()
 		iOrder.current = append(iOrder.current, nameIDType{
 			name:     rule.GetName(),
 			id:       rule.GetID(),
 			ruleType: r.ruleType(rul),
 		})
-		sectionRulesOrSubPols[sectionName] = iOrder
+		sectionRulesOrSubPols[sectionID] = iOrder
 	}
 }
 
@@ -557,16 +929,20 @@ func (r *lanRulesIndexResource) parseAPIFwRules(apiResult *cato_go_sdk.PolicySoc
 			continue
 		}
 		netRule := rul.GetRule()
-		netRuleName := netRule.GetName()
-		iOrder := ruleFwRules[netRuleName]
-		iOrder.parentID = netRule.GetID()
+		netRuleID := netRule.GetID()
+		iOrder := ruleFwRules[netRuleID]
+		iOrder.parentID = netRuleID
+		iOrder.parentName = netRule.GetName()
 		for _, firewall := range netRule.GetFirewall() {
+			if firewall == nil {
+				continue
+			}
 			iOrder.current = append(iOrder.current, nameID{
 				name: firewall.GetRule().GetName(),
 				id:   firewall.GetRule().GetID(),
 			})
 		}
-		ruleFwRules[netRuleName] = iOrder
+		ruleFwRules[netRuleID] = iOrder
 	}
 }
 
@@ -583,8 +959,9 @@ func (r *lanRulesIndexResource) ruleType(ru *cato_go_sdk.PolicySocketLanPolicy_P
 // On error, adds the error to *diags
 //
 // policyName -> {target: [{sectName,id},{sectName,id},...]}
-func (r *lanRulesIndexResource) parsePlanSections(plan *LanFwRulesIndex, sectionNameMap map[string]string,
-	policySections map[string]itemOrder, diags *diag.Diagnostics,
+func (r *lanRulesIndexResource) parsePlanSections(plan *LanFwRulesIndex,
+	apiResult *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy, policySections map[string]itemOrder,
+	sectionKeyToID map[string]string, diags *diag.Diagnostics,
 ) {
 	type sectItem struct {
 		name, id string
@@ -614,51 +991,65 @@ func (r *lanRulesIndexResource) parsePlanSections(plan *LanFwRulesIndex, section
 		return
 	}
 
-	// make a helper map:    map[policyName][]{section_name,id,index}
+	policyIDsByName := make(map[string][]string)
+	policyIDsByName[""] = []string{""}
+	for _, subPolicy := range apiResult.SubPolicies {
+		policy := subPolicy.GetPolicy()
+		policyIDsByName[policy.GetName()] = append(policyIDsByName[policy.GetName()], policy.GetID())
+	}
+
+	// make a helper map: map[policyID][]{section_name,id,index}
 	sectionIndexes := make(map[string][]sectItem)
-	for sectionName, section := range tfSections {
+	for sectionKey, section := range tfSections {
+		sectionName := configuredName(section.SectionName, sectionKey)
 		policyName := section.SubPolicyName.ValueString()
-		sectionIndex := section.SectionIndex.ValueInt64()
-		sectionID := sectionNameMap[sectionName]
-		if sectionID == "" {
-			diags.AddError("error parsing plan", "failed to find ID for section "+sectionName)
+		policyIDs := policyIDsByName[policyName]
+		if len(policyIDs) == 0 {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("cannot find sub-policy %q for section map key %q", policyName, sectionKey))
 			return
 		}
-		sectionIndexes[policyName] = append(sectionIndexes[policyName],
+		if len(policyIDs) > 1 {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("sub-policy name %q is ambiguous for section map key %q", policyName, sectionKey))
+			return
+		}
+		policyID := policyIDs[0]
+		sectionIndex := section.SectionIndex.ValueInt64()
+		sectionID, err := resolveNameID(sectionName, section.ID.ValueString(), policySections[policyID].current)
+		if err != nil {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("cannot resolve section map key %q (section_name %q) in sub-policy %q: %v",
+					sectionKey, sectionName, policyName, err))
+			return
+		}
+		sectionKeyToID[sectionKey] = sectionID
+		sectionIndexes[policyID] = append(sectionIndexes[policyID],
 			sectItem{name: sectionName, id: sectionID, index: sectionIndex})
 	}
 
 	// sort the sections in each policy by sectionIndex
 	// and update policySections[].target
-	for policyName, sectSlice := range sectionIndexes {
+	for policyID, sectSlice := range sectionIndexes {
 		slices.SortFunc(sectSlice, func(a, b sectItem) int { return cmp.Compare(a.index, b.index) })
+		policyName := policySections[policyID].parentName
 		if checkIndexes(policyName, sectSlice) {
 			return
 		}
-		item := policySections[policyName]
+		item := policySections[policyID]
 		item.target = make([]nameID, len(sectSlice))
 		for i, sect := range sectSlice {
 			item.target[i] = nameID{name: sect.name, id: sect.id}
 		}
-		policySections[policyName] = item
+		policySections[policyID] = item
 	}
 }
 
 // checkSections ensures the policySections contains the same sections in current and target lists
 func (r *lanRulesIndexResource) checkSections(policySections map[string]itemOrder, diags *diag.Diagnostics) {
 	const summary = "LAN firewall section validation failed"
-	mkMap := func(items []nameID, policy string, diags *diag.Diagnostics) map[string]struct{} {
-		m := make(map[string]struct{}, len(items))
-		for _, i := range items {
-			if _, ok := m[i.name]; ok {
-				diags.AddError(summary, fmt.Sprintf("duplicate section name %q in policy %s", i.name, policy))
-			}
-			m[i.name] = struct{}{}
-		}
-		return m
-	}
-
-	for policyName, sections := range policySections {
+	for _, sections := range policySections {
+		policyName := sections.parentName
 		if policyName == "" {
 			policyName = "<main>"
 		}
@@ -668,15 +1059,21 @@ func (r *lanRulesIndexResource) checkSections(policySections map[string]itemOrde
 			)
 		}
 
-		currentNames := mkMap(sections.current, policyName, diags)
-		mkMap(sections.target, policyName, diags)
-		if diags.HasError() {
-			return
+		currentIDs := make(map[string]struct{}, len(sections.current))
+		targetIDs := make(map[string]struct{}, len(sections.target))
+		for _, current := range sections.current {
+			currentIDs[current.id] = struct{}{}
 		}
-
 		for _, t := range sections.target {
-			if _, ok := currentNames[t.name]; !ok {
+			targetIDs[t.id] = struct{}{}
+			if _, ok := currentIDs[t.id]; !ok {
 				diags.AddError(summary, fmt.Sprintf("planned section '%s' not found in policy '%s'", t.name, policyName))
+			}
+		}
+		for _, current := range sections.current {
+			if _, ok := targetIDs[current.id]; !ok {
+				diags.AddError(summary, fmt.Sprintf("current section '%s' missing from plan for policy '%s'",
+					current.name, policyName))
 			}
 		}
 	}
@@ -684,7 +1081,8 @@ func (r *lanRulesIndexResource) checkSections(policySections map[string]itemOrde
 
 // checkNetRules ensures the sectionRules contains the same rules or sub-policies in current and target lists
 func (r *lanRulesIndexResource) checkNetRules(sectionRules map[string]itemOrderType, diags *diag.Diagnostics) {
-	for sectionName, rules := range sectionRules {
+	for _, rules := range sectionRules {
+		sectionName := rules.parentName
 		if len(rules.current) != len(rules.target) {
 			diags.AddError(
 				"LAN firewall rule validation failed",
@@ -693,28 +1091,28 @@ func (r *lanRulesIndexResource) checkNetRules(sectionRules map[string]itemOrderT
 			)
 		}
 
-		currentNames := make(map[string]int, len(rules.current))
+		currentIDs := make(map[string]nameIDType, len(rules.current))
 		for _, rule := range rules.current {
-			currentNames[rule.name]++
+			currentIDs[rule.id] = rule
 		}
-		targetNames := make(map[string]int, len(rules.target))
+		targetIDs := make(map[string]nameIDType, len(rules.target))
 		for _, rule := range rules.target {
-			targetNames[rule.name]++
+			targetIDs[rule.id] = rule
 		}
 
-		for name, count := range currentNames {
-			if targetNames[name] != count {
+		for id, rule := range currentIDs {
+			if _, ok := targetIDs[id]; !ok {
 				diags.AddError("LAN firewall rule validation failed",
-					fmt.Sprintf("section %q has current rule or sub-policy %q but target contains it %d times",
-						sectionName, name, targetNames[name]),
+					fmt.Sprintf("section %q has current rule or sub-policy %q missing from target",
+						sectionName, rule.name),
 				)
 			}
 		}
-		for name, count := range targetNames {
-			if currentNames[name] != count {
+		for id, rule := range targetIDs {
+			if _, ok := currentIDs[id]; !ok {
 				diags.AddError("LAN firewall rule validation failed",
-					fmt.Sprintf("section %q has target rule or sub-policy %q but current contains it %d times",
-						sectionName, name, currentNames[name]),
+					fmt.Sprintf("section %q has target rule or sub-policy %q not found in current policy",
+						sectionName, rule.name),
 				)
 			}
 		}
@@ -723,7 +1121,8 @@ func (r *lanRulesIndexResource) checkNetRules(sectionRules map[string]itemOrderT
 
 // checkFwRules ensures the ruleFwRules contains the same fwRules in current and target lists
 func (r *lanRulesIndexResource) checkFwRules(ruleFwRules map[string]itemOrder, diags *diag.Diagnostics) {
-	for netRuleName, fwRules := range ruleFwRules {
+	for _, fwRules := range ruleFwRules {
+		netRuleName := fwRules.parentName
 		if len(fwRules.current) != len(fwRules.target) {
 			diags.AddError(
 				"LAN firewall rules validation failed",
@@ -732,28 +1131,28 @@ func (r *lanRulesIndexResource) checkFwRules(ruleFwRules map[string]itemOrder, d
 			)
 		}
 
-		currentNames := make(map[string]int, len(fwRules.current))
+		currentIDs := make(map[string]nameID, len(fwRules.current))
 		for _, fwRule := range fwRules.current {
-			currentNames[fwRule.name]++
+			currentIDs[fwRule.id] = fwRule
 		}
-		targetNames := make(map[string]int, len(fwRules.target))
+		targetIDs := make(map[string]nameID, len(fwRules.target))
 		for _, fwRule := range fwRules.target {
-			targetNames[fwRule.name]++
+			targetIDs[fwRule.id] = fwRule
 		}
 
-		for name, count := range currentNames {
-			if targetNames[name] != count {
+		for id, rule := range currentIDs {
+			if _, ok := targetIDs[id]; !ok {
 				diags.AddError("LAN firewall rule validation failed",
-					fmt.Sprintf("network rule %q has current firewal rules %q but target contains it %d times",
-						netRuleName, name, targetNames[name]),
+					fmt.Sprintf("network rule %q has current firewall rule %q missing from target",
+						netRuleName, rule.name),
 				)
 			}
 		}
-		for name, count := range targetNames {
-			if currentNames[name] != count {
+		for id, rule := range targetIDs {
+			if _, ok := currentIDs[id]; !ok {
 				diags.AddError("LAN firewall rule validation failed",
-					fmt.Sprintf("network rule %q has target section %q but current contains it %d times",
-						netRuleName, name, currentNames[name]),
+					fmt.Sprintf("network rule %q has target firewall rule %q not found in current policy",
+						netRuleName, rule.name),
 				)
 			}
 		}
@@ -765,8 +1164,9 @@ func (r *lanRulesIndexResource) checkFwRules(ruleFwRules map[string]itemOrder, d
 // On error, adds the error to *diags
 //
 // sectionName -> {target: [{ruleName,id,RULE},{subPolName,id,SUB_POL},...]}
-func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, ruleNameMap map[string]nameIDType,
-	sectionRulesOrSubPols map[string]itemOrderType, diags *diag.Diagnostics,
+func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, sectionKeyToID map[string]string,
+	sectionRulesOrSubPols map[string]itemOrderType, netRuleKeyToID, netRuleParentKeyByID map[string]string,
+	diags *diag.Diagnostics,
 ) {
 	type ruleItem struct {
 		name, id string
@@ -793,16 +1193,38 @@ func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, ruleNam
 		return
 	}
 
-	// make a helper map:    map[section][]{rule_or_subpol_name,id,type,index}
+	// make a helper map: map[sectionID][]{rule_or_subpol_name,id,type,index}
 	ruleIndexes := make(map[string][]ruleItem)
-	for ruleOrSPolName, rule := range tfRuleData {
+	for ruleKey, rule := range tfRuleData {
+		ruleOrSPolName := configuredName(rule.RuleName, ruleKey)
 		sectionName := rule.SectionName.ValueString()
-		ruleInfo, ok := ruleNameMap[ruleOrSPolName]
-		if !ok {
-			diags.AddError("error parsing plan", fmt.Sprintf("cannot find details for rule '%s'", ruleOrSPolName))
+		sectionID, err := resolveParentID(
+			"section", sectionName, rule.SectionKey, sectionKeyToID, sectionRulesOrSubPols,
+		)
+		if err != nil {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("cannot resolve parent for network_rules map key %q: %v", ruleKey, err))
 			return
 		}
-		ruleIndexes[sectionName] = append(ruleIndexes[sectionName],
+		ruleInfo, err := resolveNameIDType(
+			ruleOrSPolName, rule.ID.ValueString(), sectionRulesOrSubPols[sectionID].current,
+		)
+		if err != nil {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("cannot resolve network_rules map key %q (rule_name %q) in section %q: %v",
+					ruleKey, ruleOrSPolName, sectionName, err))
+			return
+		}
+		if existingKey := invertKeyToID(netRuleKeyToID)[ruleInfo.id]; existingKey != "" {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("network_rules map keys %q and %q resolve to the same rule", existingKey, ruleKey))
+			return
+		}
+		netRuleKeyToID[ruleKey] = ruleInfo.id
+		if hasConfiguredValue(rule.SectionKey) {
+			netRuleParentKeyByID[ruleInfo.id] = rule.SectionKey.ValueString()
+		}
+		ruleIndexes[sectionID] = append(ruleIndexes[sectionID],
 			ruleItem{
 				name:     ruleOrSPolName,
 				id:       ruleInfo.id,
@@ -813,17 +1235,18 @@ func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, ruleNam
 
 	// sort the rules/sub-policies in each section by index
 	// and update policySections[].target
-	for sectionName, ruleSlice := range ruleIndexes {
+	for sectionID, ruleSlice := range ruleIndexes {
 		slices.SortFunc(ruleSlice, func(a, b ruleItem) int { return cmp.Compare(a.index, b.index) })
+		sectionName := sectionRulesOrSubPols[sectionID].parentName
 		if checkIndexes(sectionName, ruleSlice) {
 			return
 		}
-		item := sectionRulesOrSubPols[sectionName]
+		item := sectionRulesOrSubPols[sectionID]
 		item.target = make([]nameIDType, len(ruleSlice))
 		for i, rl := range ruleSlice {
 			item.target[i] = nameIDType{name: rl.name, id: rl.id, ruleType: rl.ruleType}
 		}
-		sectionRulesOrSubPols[sectionName] = item
+		sectionRulesOrSubPols[sectionID] = item
 	}
 }
 
@@ -832,8 +1255,9 @@ func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, ruleNam
 // On error, adds the error to *diags
 //
 // netRuleName -> {target: [{fwRuleName,id},{fwRuleName,id},...]}
-func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, ruleNameMap map[string]string,
-	ruleFwRules map[string]itemOrder, diags *diag.Diagnostics,
+func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, netRuleKeyToID map[string]string,
+	ruleFwRules map[string]itemOrder, firewallRuleKeyToID, firewallParentKeyByID map[string]string,
+	diags *diag.Diagnostics,
 ) {
 	type ruleItem struct {
 		name, id string
@@ -859,16 +1283,37 @@ func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, ruleName
 		return
 	}
 
-	// make a helper map:    map[netRule][]{rule_name,id,index}
+	// make a helper map: map[netRuleID][]{rule_name,id,index}
 	ruleIndexes := make(map[string][]ruleItem)
-	for fwRuleName, fwRule := range tfRuleData {
+	for fwRuleKey, fwRule := range tfRuleData {
+		fwRuleName := configuredName(fwRule.FirewallRuleName, fwRuleKey)
 		netRuleName := fwRule.NetRuleName.ValueString()
-		fwRuleID, ok := ruleNameMap[fwRuleName]
-		if !ok {
-			diags.AddError("error parsing plan", fmt.Sprintf("cannot find details for firewall rule '%s'", fwRuleName))
+		netRuleID, err := resolveParentID(
+			"network rule", netRuleName, fwRule.NetRuleKey, netRuleKeyToID, ruleFwRules,
+		)
+		if err != nil {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("cannot resolve parent for firewall_rules map key %q: %v", fwRuleKey, err))
 			return
 		}
-		ruleIndexes[netRuleName] = append(ruleIndexes[netRuleName],
+		fwRuleID, err := resolveNameID(fwRuleName, fwRule.ID.ValueString(), ruleFwRules[netRuleID].current)
+		if err != nil {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("cannot resolve firewall_rules map key %q (firewall_rule_name %q) in network rule %q: %v",
+					fwRuleKey, fwRuleName, netRuleName, err))
+			return
+		}
+		if existingKey := invertKeyToID(firewallRuleKeyToID)[fwRuleID]; existingKey != "" {
+			diags.AddError("error parsing plan",
+				fmt.Sprintf("firewall_rules map keys %q and %q resolve to the same firewall rule",
+					existingKey, fwRuleKey))
+			return
+		}
+		firewallRuleKeyToID[fwRuleKey] = fwRuleID
+		if hasConfiguredValue(fwRule.NetRuleKey) {
+			firewallParentKeyByID[fwRuleID] = fwRule.NetRuleKey.ValueString()
+		}
+		ruleIndexes[netRuleID] = append(ruleIndexes[netRuleID],
 			ruleItem{
 				name:  fwRuleName,
 				id:    fwRuleID,
@@ -878,17 +1323,18 @@ func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, ruleName
 
 	// sort the rules in each netRule by index
 	// and update ruleFwRules[].target
-	for netRuleName, fwRuleSlice := range ruleIndexes {
+	for netRuleID, fwRuleSlice := range ruleIndexes {
 		slices.SortFunc(fwRuleSlice, func(a, b ruleItem) int { return cmp.Compare(a.index, b.index) })
+		netRuleName := ruleFwRules[netRuleID].parentName
 		if checkIndexes(netRuleName, fwRuleSlice) {
 			return
 		}
-		item := ruleFwRules[netRuleName]
+		item := ruleFwRules[netRuleID]
 		item.target = make([]nameID, len(fwRuleSlice))
 		for i, rl := range fwRuleSlice {
 			item.target[i] = nameID{name: rl.name, id: rl.id}
 		}
-		ruleFwRules[netRuleName] = item
+		ruleFwRules[netRuleID] = item
 	}
 }
 
@@ -906,8 +1352,9 @@ func (r *lanRulesIndexResource) moveSections(ctx context.Context, sections map[s
 		return nil
 	}
 
-	for policyName, sectionLists := range sections {
+	for _, sectionLists := range sections {
 		if err := movePolicySections(sectionLists); err != nil {
+			policyName := sectionLists.parentName
 			if policyName == "" {
 				policyName = "<main>"
 			}
@@ -997,12 +1444,9 @@ func (r *lanRulesIndexResource) moveRulesOrSubPolicies(ctx context.Context, rule
 		return nil
 	}
 
-	for ruleOrSubPolName, ruleLists := range rulesOrSubPols {
+	for _, ruleLists := range rulesOrSubPols {
 		if err := moveSectionRules(ruleLists); err != nil {
-			if ruleOrSubPolName == "" {
-				ruleOrSubPolName = "<main>"
-			}
-			diags.AddError(fmt.Sprintf("failed to move section in LAN policy '%s'", ruleOrSubPolName), err.Error())
+			diags.AddError(fmt.Sprintf("failed to move rule in LAN section '%s'", ruleLists.parentName), err.Error())
 			return
 		}
 	}
@@ -1024,9 +1468,10 @@ func (r *lanRulesIndexResource) moveFirewallRules(ctx context.Context, fwRules m
 		return nil
 	}
 
-	for ruleName, ruleLists := range fwRules {
+	for _, ruleLists := range fwRules {
 		if err := moveFwRules(ruleLists); err != nil {
-			diags.AddError(fmt.Sprintf("failed to move firewall rule in LAN policy '%s'", ruleName), err.Error())
+			diags.AddError(fmt.Sprintf("failed to move firewall rule under network rule '%s'",
+				ruleLists.parentName), err.Error())
 			return
 		}
 	}
@@ -1217,7 +1662,7 @@ func (r *lanRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 	}
 
 	// Hydrate state from API
-	hydratedState, _ := r.hydrateLanFwRulesIndex(ctx, nil, &resp.Diagnostics)
+	hydratedState, _ := r.hydrateLanFwRulesIndexForRead(ctx, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

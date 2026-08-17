@@ -301,11 +301,14 @@ Optional:
 <a id="nestedatt--scope--service--custom"></a>
 ### Nested Schema for `scope.service.custom`
 
+Required:
+
+- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
+
 Optional:
 
 - `port` (List of String) List of TCP/UDP port
 - `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--scope--service--custom--port_range))
-- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
 
 <a id="nestedatt--scope--service--custom--port_range"></a>
 ### Nested Schema for `scope.service.custom.port_range`
