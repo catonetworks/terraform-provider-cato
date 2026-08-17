@@ -39,27 +39,18 @@ resource "cato_lf_sub_policy" "example" {
 
 ### Required
 
-- `at` (Attributes) Position of the sub-policy scope within the LAN Firewall policy. (see [below for nested schema](#nestedatt--at))
 - `description` (String) Sub-policy description. Changing this forces replacement.
 - `name` (String) Sub-policy name. Changing this forces replacement.
 - `scope` (Attributes) Policy scope attributes (see [below for nested schema](#nestedatt--scope))
+
+### Optional
+
+- `at` (Attributes) Position of the sub-policy scope within the LAN Firewall policy. (see [below for nested schema](#nestedatt--at))
 
 ### Read-Only
 
 - `id` (String) Sub-policy ID
 - `scope_rule_id` (String) ID of the underlying SUB_POLICY_SCOPE rule.
-
-<a id="nestedatt--at"></a>
-### Nested Schema for `at`
-
-Required:
-
-- `position` (String) Position relative to a policy, a section or another rule.
-
-Optional:
-
-- `ref` (String) Identifier of the object relative to which the position is defined.
-
 
 <a id="nestedatt--scope"></a>
 ### Nested Schema for `scope`
@@ -332,3 +323,17 @@ Required:
 Required:
 
 - `name` (String) Simple Service Name (e.g., HTTP, FTP, SSH)
+
+
+
+
+<a id="nestedatt--at"></a>
+### Nested Schema for `at`
+
+Required:
+
+- `position` (String) Position relative to a policy, a section or another rule.
+
+Optional:
+
+- `ref` (String) Identifier of the object relative to which the position is defined.

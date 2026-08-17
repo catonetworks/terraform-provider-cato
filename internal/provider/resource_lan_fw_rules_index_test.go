@@ -147,6 +147,59 @@ func TestHydrateLanFw(t *testing.T) {
 	}, indexMap)
 }
 
+func TestHydrateLanFwLeavesOmittedRuleMapsUnmanaged(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var diags diag.Diagnostics
+	plan := lPMockClient.createPlan(lanPolicyPlans["default"])
+	plan.NetworkRules = types.MapNull(types.ObjectType{AttrTypes: LanNetworkRuleTypes})
+	plan.FirewallRules = types.MapNull(types.ObjectType{AttrTypes: LanFirewallRuleTypes})
+	res := lanRulesIndexResource{
+		client:       &catoClientData{AccountId: "testID"},
+		catov2Client: &lanPolicyMockClient{policy: mockLanPolicy["default"]},
+	}
+
+	newState, indexMap := res.hydrateLanFwRulesIndex(ctx, plan, &diags)
+
+	require.False(t, diags.HasError(), "unexpected diagnostics: %+v", diags)
+	require.True(t, newState.NetworkRules.IsNull())
+	require.True(t, newState.FirewallRules.IsNull())
+	require.NotEmpty(t, indexMap.rulesOrSubPols)
+	require.NotEmpty(t, indexMap.firewallRules)
+	for _, order := range indexMap.rulesOrSubPols {
+		require.Empty(t, order.target)
+	}
+	for _, order := range indexMap.firewallRules {
+		require.Empty(t, order.target)
+	}
+}
+
+func TestReadLanFwPreservesUnmanagedRuleMaps(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stateModel := lPMockClient.createPlan(lanPolicyPlans["default"])
+	stateModel.NetworkRules = types.MapNull(types.ObjectType{AttrTypes: LanNetworkRuleTypes})
+	stateModel.FirewallRules = types.MapNull(types.ObjectType{AttrTypes: LanFirewallRuleTypes})
+	resourceSchema := getLanFwRulesIndexSchema(ctx, t)
+	requestState := tfsdk.State{Schema: resourceSchema}
+	require.False(t, requestState.Set(ctx, stateModel).HasError())
+	response := &resource.ReadResponse{State: tfsdk.State{Schema: resourceSchema}}
+	res := lanRulesIndexResource{
+		client:       &catoClientData{AccountId: "testID"},
+		catov2Client: &lanPolicyMockClient{policy: mockLanPolicy["default"]},
+	}
+
+	res.Read(ctx, resource.ReadRequest{State: requestState}, response)
+
+	require.False(t, response.Diagnostics.HasError(), "unexpected diagnostics: %+v", response.Diagnostics)
+	var state LanFwRulesIndex
+	require.False(t, response.State.Get(ctx, &state).HasError())
+	require.True(t, state.NetworkRules.IsNull())
+	require.True(t, state.FirewallRules.IsNull())
+}
+
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
 	mockClient := &lanPolicyMockClient{policy: mockLanPolicy["default"]}

@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -37,6 +36,33 @@ func NewLfSubPolicyResource() resource.Resource {
 
 type lfSubPolicyResource struct {
 	client *catoClientData
+}
+
+type requiresReplaceForConfiguredPosition struct{}
+
+func (requiresReplaceForConfiguredPosition) Description(_ context.Context) string {
+	return "Replace when an already-configured sub-policy position changes."
+}
+
+func (m requiresReplaceForConfiguredPosition) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (requiresReplaceForConfiguredPosition) PlanModifyObject(
+	_ context.Context,
+	req planmodifier.ObjectRequest,
+	resp *planmodifier.ObjectResponse,
+) {
+	if req.StateValue.IsNull() || req.StateValue.IsUnknown() {
+		return
+	}
+	if req.PlanValue.IsUnknown() {
+		resp.RequiresReplace = true
+		return
+	}
+	if !req.PlanValue.Equal(req.StateValue) {
+		resp.RequiresReplace = true
+	}
 }
 
 type fromtoer interface {
@@ -77,8 +103,8 @@ func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"at": schema.SingleNestedAttribute{
 				Description:   "Position of the sub-policy scope within the LAN Firewall policy.",
-				Required:      true,
-				PlanModifiers: []planmodifier.Object{objectplanmodifier.RequiresReplace()},
+				Optional:      true,
+				PlanModifiers: []planmodifier.Object{requiresReplaceForConfiguredPosition{}},
 				Attributes: map[string]schema.Attribute{
 					"position": schema.StringAttribute{
 						Description: "Position relative to a policy, a section or another rule.",
@@ -134,6 +160,14 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !utils.HasValue(plan.At) {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("at"),
+			"Missing LAN sub-policy position",
+			"The at attribute must be configured when creating a LAN sub-policy.",
+		)
 		return
 	}
 
@@ -225,11 +259,16 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
+	diags = resp.State.Set(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Hydrate state from API
 	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, plan.ID.ValueString(), &plan, &resp.Diagnostics)
 	if notFound {
-		resp.State.RemoveResource(ctx)
-		resp.Diagnostics.AddError("failed to create sub policy", "sub-policy not found in API response")
+		resp.Diagnostics.AddError("failed to update sub policy", "sub-policy not found in API response")
 		return
 	}
 	if resp.Diagnostics.HasError() {

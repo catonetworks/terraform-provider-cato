@@ -86,6 +86,7 @@ func assertTranslatedSubnetPointer(t *testing.T, got *string, wantNil bool, want
 
 	if got == nil {
 		t.Fatalf("expected translated subnet %q, got nil", wantValue)
+		return
 	}
 	if *got != wantValue {
 		t.Fatalf("expected translated subnet %q, got %q", wantValue, *got)
