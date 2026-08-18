@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.96 (2026-08-18)
+
+### Added
+- Added `cato_lf_sub_policy` and `cato_bulk_lf_move_rule` resources for managing LAN Firewall sub-policies and parent-scoped policy ordering.
+
+### Changed
+- Extended LAN Firewall section, network rule, and firewall rule handling to support sub-policy placement and ordering.
+
+### Fixed
+- Hardened LAN policy lifecycle and state hydration for omitted rule maps, imported sub-policy positions, transient reads, and mutation status errors.
+
+### Tests
+- Added unit and acceptance coverage for LAN Firewall sub-policy lifecycle, rule ordering, and network and firewall rule behavior.
+
 ## 0.0.95 (2026-08-13)
 
 ### Changed
