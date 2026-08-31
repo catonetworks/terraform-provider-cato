@@ -511,7 +511,9 @@ func preserveNullIDNameIDSet(apiSet types.Set, stateSet types.Set) types.Set {
 
 		if stateObj, ok := stateByName[apiName]; ok {
 			stateID := stateObj.Attributes()["id"].(types.String)
-			if stateID.IsNull() || stateID.IsUnknown() {
+			// Preserve null for name-only references, but never replace a known
+			// API ID with a plan-time unknown value.
+			if stateID.IsNull() {
 				apiAttrs["id"] = stateID
 				apiObj = types.ObjectValueMust(NameIDAttrTypes, apiAttrs)
 			}
