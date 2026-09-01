@@ -321,6 +321,39 @@ func TestHydrateIfwRuleStatePreservesNullIDForSourceUsersGroup(t *testing.T) {
 	}
 }
 
+func TestHydrateIfwRuleStateUsesAPIIDWhenPlannedSourceUsersGroupIDIsUnknown(t *testing.T) {
+	ctx := context.Background()
+
+	state := newMinimalInternetFwRuleModel("rule-123")
+	ruleAttrs := state.Rule.Attributes()
+	sourceAttrs := ruleAttrs["source"].(types.Object).Attributes()
+	sourceAttrs["users_group"] = types.SetValueMust(NameIDObjectType, []attr.Value{
+		types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{
+			"id":   types.StringUnknown(),
+			"name": types.StringValue("Corp Users"),
+		}),
+	})
+	ruleAttrs["source"] = types.ObjectValueMust(IfwSourceAttrTypes, sourceAttrs)
+	state.Rule = types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs)
+
+	currentRule := minimalAPIRule("test-ifw-rule", 10)
+	currentRule.Source.UsersGroup = []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Source_UsersGroup{
+		{
+			ID:   "ug-123",
+			Name: "Corp Users",
+		},
+	}
+
+	hydrated := hydrateIfwRuleState(ctx, state, &currentRule)
+	hydratedUsersGroup := hydrated.Source.Attributes()["users_group"].(types.Set)
+	hydratedUserGroupObj := hydratedUsersGroup.Elements()[0].(types.Object)
+	hydratedUserGroupID := hydratedUserGroupObj.Attributes()["id"].(types.String)
+
+	if hydratedUserGroupID.IsUnknown() || hydratedUserGroupID.ValueString() != "ug-123" {
+		t.Fatalf("expected hydrated users_group id ug-123 from API, got %+v", hydratedUserGroupID)
+	}
+}
+
 func TestInternetFwRuleDelete(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
