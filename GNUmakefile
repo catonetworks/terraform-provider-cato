@@ -3,7 +3,7 @@ HOSTNAME=registry.terraform.io
 NAMESPACE=catonetworks
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
-VERSION=0.0.96
+VERSION=0.0.97
 
 # Mac Intel Chip
 # OS_ARCH=darwin_amd64

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.97 (2026-09-01)
+
+### Fixed
+- Fixed internet firewall rule state hydration to preserve API IDs when planned group references contain unknown IDs.
+
+### Changed
+- Updated the Cato Go SDK dependency to v0.4.0.
+
+### Tests
+- Added unit coverage for preserving API IDs on unknown internet firewall group references.
+
 ## 0.0.96 (2026-08-18)
 
 ### Added
