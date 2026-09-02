@@ -2,11 +2,13 @@ package global_ip_ranges
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 	"text/template"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
@@ -39,12 +41,12 @@ func TestAccGlobalIPRanges(t *testing.T) {
 					resource.TestCheckTypeSetElemNestedAttrs(res, "ranges.*", map[string]string{
 						"name":        "acctest_ip_range_2",
 						"description": "acctest_ip_range_2 description",
-						"ip_range":    "255.255.2.0/24",
+						"ip_range":    "255.255.2.10",
 					}),
 					resource.TestCheckTypeSetElemNestedAttrs(res, "ranges.*", map[string]string{
 						"name":        "acctest_ip_range_3",
 						"description": "acctest_ip_range_3 description",
-						"ip_range":    "255.255.3.0/24",
+						"ip_range":    "255.255.3.10-255.255.3.20",
 					}),
 				),
 			},
@@ -67,17 +69,37 @@ func TestAccGlobalIPRanges(t *testing.T) {
 					resource.TestCheckTypeSetElemNestedAttrs(res, "ranges.*", map[string]string{
 						"name":        "acctest_ip_range_2",
 						"description": "acctest_ip_range_2 new description",
-						"ip_range":    "255.255.2.0/24",
+						"ip_range":    "255.255.2.10",
 					}),
 					resource.TestCheckTypeSetElemNestedAttrs(res, "ranges.*", map[string]string{
 						"name":        "acctest_ip_range_4",
 						"description": "acctest_ip_range_4 description",
-						"ip_range":    "255.255.4.0/24",
+						"ip_range":    "255.255.4.10-255.255.4.20",
 					}),
+					checkGlobalIPRangeAbsent(t, "acctest_ip_range_3"),
 				),
 			},
 		},
 	})
+}
+
+func checkGlobalIPRangeAbsent(t *testing.T, name string) resource.TestCheckFunc {
+	t.Helper()
+
+	return func(*terraform.State) error {
+		result, err := acc.GetClient(t).ObjectGlobalIPRangeList(context.Background(), acc.CatoAccountID, nil)
+		if err != nil {
+			return fmt.Errorf("failed to list global IP ranges: %w", err)
+		}
+
+		for _, item := range result.GetObject().GetGlobalIPRangeList().GetItems() {
+			if item.GetName() == name {
+				return fmt.Errorf("global IP range %q still exists", name)
+			}
+		}
+
+		return nil
+	}
 }
 
 type globalIPRangesCfg struct {
@@ -116,12 +138,12 @@ var globalIPRangesTFs = []string{`
 			{
 				name        = "acctest_ip_range_2"
 				description = "acctest_ip_range_2 description"
-				ip_range    =  "255.255.2.0/24"
+				ip_range    =  "255.255.2.10"
 			},
 			{
 				name        = "acctest_ip_range_3"
 				description = "acctest_ip_range_3 description"
-				ip_range    =  "255.255.3.0/24"
+				ip_range    =  "255.255.3.10-255.255.3.20"
 			}
 		]
 	}`,
@@ -136,12 +158,12 @@ var globalIPRangesTFs = []string{`
 			{
 				name        = "acctest_ip_range_2"
 				description = "acctest_ip_range_2 new description"
-				ip_range    =  "255.255.2.0/24"
+				ip_range    =  "255.255.2.10"
 			},
 			{
 				name        = "acctest_ip_range_4"
 				description = "acctest_ip_range_4 description"
-				ip_range    =  "255.255.4.0/24"
+				ip_range    =  "255.255.4.10-255.255.4.20"
 			}
 		]
 	}`,

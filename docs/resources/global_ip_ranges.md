@@ -29,14 +29,14 @@ resource "cato_global_ip_ranges" "this" {
 
 ### Required
 
-- `ranges` (Attributes Set) List of global IP ranges (see [below for nested schema](#nestedatt--ranges))
+- `ranges` (Attributes Set) List of global IP ranges. Values can be a single IP, an inclusive start-end range, or a CIDR block. (see [below for nested schema](#nestedatt--ranges))
 
 <a id="nestedatt--ranges"></a>
 ### Nested Schema for `ranges`
 
 Required:
 
-- `ip_range` (String) Global IP range
+- `ip_range` (String) Global IP range as a single IP, inclusive start-end range, or CIDR block.
 - `name` (String) Global IP range name
 
 Optional:

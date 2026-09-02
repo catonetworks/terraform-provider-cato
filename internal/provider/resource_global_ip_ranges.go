@@ -52,7 +52,7 @@ func (r *globalIPRangesResource) Schema(_ context.Context, _ resource.SchemaRequ
 
 		Attributes: map[string]schema.Attribute{
 			"ranges": schema.SetNestedAttribute{
-				Description: "List of global IP ranges",
+				Description: "List of global IP ranges. Values can be a single IP, an inclusive start-end range, or a CIDR block.",
 				Required:    true,
 				Validators:  []validator.Set{validators.GetGlobalIPRangeValidator()},
 				NestedObject: schema.NestedAttributeObject{
@@ -67,7 +67,7 @@ func (r *globalIPRangesResource) Schema(_ context.Context, _ resource.SchemaRequ
 							// PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"ip_range": schema.StringAttribute{
-							Description: "Global IP range",
+							Description: "Global IP range as a single IP, inclusive start-end range, or CIDR block.",
 							Required:    true,
 						},
 						"name": schema.StringAttribute{
@@ -298,6 +298,7 @@ func (r *globalIPRangesResource) hydrate(ctx context.Context, diags *diag.Diagno
 	slices.SortFunc(items, func(i, j *cato_go_sdk.ObjectGlobalIpRangeList_Object_GlobalIPRangeList_Items) int {
 		return cmp.Compare(i.GetID(), j.GetID())
 	})
+
 	globalIPRanges := make([]attr.Value, 0, len(items))
 	for _, item := range items {
 		tfRange := tf.GlobalIPRange{
