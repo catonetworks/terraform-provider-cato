@@ -1,9 +1,11 @@
 package validators
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -39,15 +41,16 @@ func (v GlobalIPRangeValidator) ValidateGlobalIPRange(tfRanges []tf.GlobalIPRang
 	uniqueRanges := make(map[string]struct{})
 
 	for _, ipRange := range tfRanges {
-		// check CIDR
-		cidr := ipRange.IPRange.ValueString()
-		if cidr == "" {
+		rangeValue := ipRange.IPRange.ValueString()
+		if rangeValue == "" {
 			diags.AddError("Invalid Configuration", "ip_range cannot be empty")
 			return
 		}
-		_, _, err := net.ParseCIDR(cidr)
-		if err != nil {
-			diags.AddError("Invalid Configuration", fmt.Sprintf("network_network_range '%s' is not a valid CIDR notation", cidr))
+		if !isValidIPRange(rangeValue) {
+			diags.AddError("Invalid Configuration", fmt.Sprintf(
+				"ip_range '%s' must be a valid IP address, CIDR block, or IP range in start-end format",
+				rangeValue,
+			))
 			return
 		}
 
@@ -64,12 +67,39 @@ func (v GlobalIPRangeValidator) ValidateGlobalIPRange(tfRanges []tf.GlobalIPRang
 		uniqueNames[rangeName] = struct{}{}
 
 		// check for duplicate ranges
-		if _, exists := uniqueRanges[cidr]; exists {
-			diags.AddError("Invalid Configuration", fmt.Sprintf("duplicate ip range '%s'", cidr))
+		if _, exists := uniqueRanges[rangeValue]; exists {
+			diags.AddError("Invalid Configuration", fmt.Sprintf("duplicate ip range '%s'", rangeValue))
 			return
 		}
-		uniqueRanges[cidr] = struct{}{}
+		uniqueRanges[rangeValue] = struct{}{}
 	}
+}
+
+func isValidIPRange(value string) bool {
+	if net.ParseIP(value) != nil {
+		return true
+	}
+	if _, _, err := net.ParseCIDR(value); err == nil {
+		return true
+	}
+
+	start, end, ok := strings.Cut(value, "-")
+	if !ok || strings.Contains(end, "-") {
+		return false
+	}
+
+	startIP := net.ParseIP(strings.TrimSpace(start))
+	endIP := net.ParseIP(strings.TrimSpace(end))
+	if startIP == nil || endIP == nil {
+		return false
+	}
+
+	// Do not compare IPv4 and IPv6 addresses as one ordered range.
+	if (startIP.To4() == nil) != (endIP.To4() == nil) {
+		return false
+	}
+
+	return bytes.Compare(startIP.To16(), endIP.To16()) <= 0
 }
 
 func (v GlobalIPRangeValidator) Description(_ context.Context) string {
