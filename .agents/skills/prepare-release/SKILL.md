@@ -34,7 +34,10 @@ Follow this order:
 3. Update the version number in the appropriate files: `GNUmakefile`, and `main.go`.
 4. Add a new entry to the changelog at the top of the file with the following suggestions:
    - Use the new version number and the current date in the format `YYYY-MM-DD` for the changelog entry header.
-   - Use the messages from the commits since the last release to populate the changelog entry. If there are multiple commits, group them into categories (e.g., "Added", "Changed", "Fixed") based on the content of the commit messages. If the commit messages do not clearly indicate the type of change, you can use your judgment to categorize them appropriately.
+   - Use the messages from the commits since the last release to populate the changelog entry. Translate implementation details into concise, customer-facing outcomes. Describe what users can now do, what behavior is fixed, or what errors/problems are less likely; do not describe internal state, Terraform planning mechanics, or backend/API implementation unless needed to explain user impact.
+   - Refer to this product as the "Cato Terraform provider", never as a "Terraform module".
+   - If there are multiple commits, group them into categories (e.g., "Added", "Changed", "Fixed") based on the customer-visible effect. If the commit messages do not clearly indicate the user impact, inspect the code and tests; ask the user when the impact still cannot be established.
+   - Do not list dependency updates as standalone highlights. For a Cato Go SDK update, explain the customer-facing reason, such as alignment with the latest public API schema, and state the practical impact. Use wording like: "Updated the provider to the latest API schema. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches." Only claim bug fixes, performance improvements, or new capabilities when supported by repository evidence.
 5. Commit the changes with a message like `vX.Y.Z`.
 6. Push the release branch to the remote repository.
 7. If the github command line is available, use it to create a pull request from the release branch to the main branch with a title like `vX.Y.Z` and a description that includes the changelog entry for the new version.
@@ -45,6 +48,7 @@ Always:
 
 - Make sure the version number is updated in both `GNUmakefile` and `main.go` files.
 - Make sure the changelog entry is well-formatted and includes all relevant changes since the last release.
+- Make sure every changelog item is understandable and actionable for customers: lead with the observable benefit or risk avoided, identify affected resources when relevant, and omit internal implementation details.
 - Ask the user for confirmation while grouping commits into changelog categories if the commit messages are not clear.
 
 

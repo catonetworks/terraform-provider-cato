@@ -41,6 +41,20 @@ from memory:
 3. Select the most notable 2–4 highlights from that entry (prefer `Added` and
    user-facing `Fixed`/`Changed` items; omit purely internal `Tests`/chore
    items unless nothing else is notable).
+4. Rewrite each selected item for customers:
+   - Say what users gain or what customer-visible problem is avoided.
+   - Name affected resources or workflows when relevant.
+   - Do not expose internal Terraform state, planning, API implementation, or
+     dependency details unless they explain the user impact.
+   - Refer to the product as the "Cato Terraform provider", never as a
+     "Terraform module".
+   - Do not use a Go SDK version as a highlight by itself. If the update keeps
+     the provider aligned with the latest public API schema, say so and explain
+     the practical impact. Example: `Updated the provider to the latest API
+     schema. This is typically a routine update; in rare cases, staying on an
+     older provider version could cause API call errors due to schema
+     mismatches.` Do not claim fixes, performance gains, or new capabilities
+     without evidence.
 
 ## Message Format
 
@@ -66,8 +80,8 @@ Links:
 
 Notes:
 - Prefix the version with `v` (e.g. `v0.0.90`).
-- Keep highlights concise; reuse the changelog wording, trimming trailing
-  implementation detail where helpful.
+- Keep highlights concise, customer-facing, and actionable; reuse changelog
+  wording only after trimming or rewriting implementation detail.
 - Keep the two standard links unchanged.
 
 ## Workflow
@@ -89,6 +103,7 @@ Follow this order:
 Always:
 
 - Base the version, date, and highlights on `changelog.md`, not assumptions.
+- Ensure the announcement explains customer impact rather than internal causes.
 - Get user approval of the announcement text before posting to the public
   announcement channel.
 - Capture and reuse the real permalink of the posted announcement for the
