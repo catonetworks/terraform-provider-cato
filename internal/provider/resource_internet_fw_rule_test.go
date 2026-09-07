@@ -823,7 +823,7 @@ func minimalTrackingObject() types.Object {
 
 func emptyInternetFirewallPolicyResponse() *cato_go_sdk.Policy {
 	return &cato_go_sdk.Policy{
-		Policy: &cato_go_sdk.Policy_Policy{
+		Policy: cato_go_sdk.Policy_Policy{
 			InternetFirewall: &cato_go_sdk.Policy_Policy_InternetFirewall{
 				Policy: cato_go_sdk.Policy_Policy_InternetFirewall_Policy{
 					Rules: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules{},
@@ -835,7 +835,7 @@ func emptyInternetFirewallPolicyResponse() *cato_go_sdk.Policy {
 
 func internetFirewallPolicyResponseWithRule(rule cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule) *cato_go_sdk.Policy {
 	return &cato_go_sdk.Policy{
-		Policy: &cato_go_sdk.Policy_Policy{
+		Policy: cato_go_sdk.Policy_Policy{
 			InternetFirewall: &cato_go_sdk.Policy_Policy_InternetFirewall{
 				Policy: cato_go_sdk.Policy_Policy_InternetFirewall_Policy{
 					Rules: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules{
@@ -862,7 +862,7 @@ func minimalAPIRule(name string, index int64) cato_go_sdk.Policy_Policy_Internet
 
 func successfulAddRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFirewallAddRule {
 	return &cato_go_sdk.PolicyInternetFirewallAddRule{
-		Policy: &cato_go_sdk.PolicyInternetFirewallAddRule_Policy{
+		Policy: cato_go_sdk.PolicyInternetFirewallAddRule_Policy{
 			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall{
 				AddRule: cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule{
 					Status: "SUCCESS",
@@ -879,7 +879,7 @@ func successfulAddRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFirewal
 
 func successfulMoveRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFirewallMoveRule {
 	return &cato_go_sdk.PolicyInternetFirewallMoveRule{
-		Policy: &cato_go_sdk.PolicyInternetFirewallMoveRule_Policy{
+		Policy: cato_go_sdk.PolicyInternetFirewallMoveRule_Policy{
 			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallMoveRule_Policy_InternetFirewall{
 				MoveRule: cato_go_sdk.PolicyInternetFirewallMoveRule_Policy_InternetFirewall_MoveRule{
 					Status: "SUCCESS",
@@ -896,7 +896,7 @@ func successfulMoveRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFirewa
 
 func successfulUpdateRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFirewallUpdateRule {
 	return &cato_go_sdk.PolicyInternetFirewallUpdateRule{
-		Policy: &cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy{
+		Policy: cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy{
 			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy_InternetFirewall{
 				UpdateRule: cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy_InternetFirewall_UpdateRule{
 					Status: "SUCCESS",
