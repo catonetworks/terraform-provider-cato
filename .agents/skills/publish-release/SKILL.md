@@ -34,11 +34,20 @@ Follow this order:
 4. If the version does not exist as a tag in the local repository, create a new tag with the release version from the release commit in the format `vX.Y.Z`.
 5. Push the release tag to the remote repository.
 
+Release notes associated with the published tag must use the matching changelog
+entry and remain customer-facing. Refer to the product as the "Cato Terraform
+provider", describe observable benefits or risks avoided, identify affected
+resources when relevant, and omit internal implementation details. Do not
+present a Cato Go SDK dependency update as a standalone benefit; explain it as
+alignment with the latest public API schema and include its practical customer
+impact when supported.
+
 ## Constraints
 
 Always:
 
 - Make sure the tag versions points to the release commit with the correct version in the commit message.
+- Make sure any release notes use the exact version and date from the changelog and contain only supported, customer-relevant claims.
 
 Never:
 
