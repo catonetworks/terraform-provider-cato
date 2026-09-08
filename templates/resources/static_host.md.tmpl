@@ -1,0 +1,24 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+{{ tffile "examples/resources/cato_static_host/resource.tf" }}
+
+## Import
+
+Import a static host using its site ID and host ID:
+
+```shell
+terraform import cato_static_host.example <site-id>/<host-id>
+```
+
+{{ .SchemaMarkdown | trimspace }}

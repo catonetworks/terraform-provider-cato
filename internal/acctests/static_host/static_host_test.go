@@ -4,11 +4,15 @@ package static_host
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"text/template"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
@@ -21,6 +25,7 @@ func TestAccStaticHost(t *testing.T) {
 	mockSrv.Run()
 	cfg := newStaticHostCfg(t)
 	res := "cato_static_host.this"
+	var siteID, hostID string
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
@@ -37,10 +42,49 @@ func TestAccStaticHost(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "mac_address", "00:00:00:00:00:50"),
 					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_host"),
 					resource.TestCheckResourceAttrSet(res, "site_id"),
+					captureStaticHostIDs(res, &siteID, &hostID),
 				),
 			},
 			{
-				// Update the resource
+				// Import requires both the parent site ID and static host ID.
+				ResourceName:      res,
+				ImportState:       true,
+				ImportStateIdFunc: staticHostImportID(res),
+				ImportStateVerify: true,
+			},
+			{
+				// Simulate a CMA edit, then ensure Read refreshes Terraform state.
+				PreConfig: func() {
+					if accmock.ACCMockActive {
+						return
+					}
+					_, err := acc.GetClient(t).SiteUpdateStaticHost(
+						context.Background(),
+						hostID,
+						cato_models.UpdateStaticHostInput{
+							Name:       ptr(cfg.resName + "_host_drifted"),
+							IP:         ptr("192.168.220.22"),
+							MacAddress: ptr("00:00:00:00:00:52"),
+						},
+						acc.CatoAccountID,
+					)
+					if err != nil {
+						t.Fatalf("failed to update static host outside Terraform: %v", err)
+					}
+				},
+				SkipFunc: func() (bool, error) {
+					return accmock.ACCMockActive, nil
+				},
+				RefreshState:       true,
+				ExpectNonEmptyPlan: true,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(res, "ip", "192.168.220.22"),
+					resource.TestCheckResourceAttr(res, "mac_address", "00:00:00:00:00:52"),
+					resource.TestCheckResourceAttr(res, "name", cfg.resName+"_host_drifted"),
+				),
+			},
+			{
+				// Update the resource through Terraform.
 				Config: cfg.getTfConfig(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
@@ -54,6 +98,39 @@ func TestAccStaticHost(t *testing.T) {
 			},
 		},
 	})
+}
+
+func captureStaticHostIDs(resourceName string, siteID, hostID *string) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+		resourceState, ok := state.RootModule().Resources[resourceName]
+		if !ok || resourceState.Primary == nil {
+			return fmt.Errorf("resource %q not found in Terraform state", resourceName)
+		}
+
+		*siteID = resourceState.Primary.Attributes["site_id"]
+		*hostID = resourceState.Primary.ID
+		if *siteID == "" || *hostID == "" {
+			return fmt.Errorf("resource %q has empty site_id or id", resourceName)
+		}
+
+		return nil
+	}
+}
+
+func staticHostImportID(resourceName string) resource.ImportStateIdFunc {
+	return func(state *terraform.State) (string, error) {
+		resourceState, ok := state.RootModule().Resources[resourceName]
+		if !ok || resourceState.Primary == nil {
+			return "", fmt.Errorf("resource %q not found in Terraform state", resourceName)
+		}
+
+		siteID, hostID := resourceState.Primary.Attributes["site_id"], resourceState.Primary.ID
+		if siteID == "" || hostID == "" {
+			return "", errors.New("static host site_id or id is empty")
+		}
+
+		return siteID + "/" + hostID, nil
+	}
 }
 
 type staticHostCfg struct {
@@ -103,6 +180,10 @@ var staticHostTFs = []string{
 		mac_address = "00:00:00:00:00:51"
 	}
 	`,
+}
+
+func ptr(value string) *string {
+	return &value
 }
 
 const siteResource = `
