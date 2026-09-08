@@ -116,7 +116,7 @@ as two weeks. If an upstream emergency makes these periods impossible, publish a
 release when migration is required, give as much notice as possible, and use direct support
 outreach in addition to normal release channels.
 
-Planned major releases should normally occur no more than once per year. This does not prevent an
+Planned major releases should normally occur rarely, no more than once per quarter. This does not prevent an
 emergency major release when preserving compatibility is impossible.
 
 ## Beta releases
