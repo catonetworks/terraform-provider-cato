@@ -318,7 +318,7 @@ func ifAddSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg stri
 		})
 	}
 	return &cato_go_sdk.PolicyInternetFirewallAddSubPolicy{
-		Policy: &cato_go_sdk.PolicyInternetFirewallAddSubPolicy_Policy{
+		Policy: cato_go_sdk.PolicyInternetFirewallAddSubPolicy_Policy{
 			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallAddSubPolicy_Policy_InternetFirewall{
 				AddSubPolicy: cato_go_sdk.PolicyInternetFirewallAddSubPolicy_Policy_InternetFirewall_AddSubPolicy{
 					Status: status, Errors: errs,
@@ -337,7 +337,7 @@ func ifRemoveSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg s
 		})
 	}
 	return &cato_go_sdk.PolicyInternetFirewallRemoveSubPolicy{
-		Policy: &cato_go_sdk.PolicyInternetFirewallRemoveSubPolicy_Policy{
+		Policy: cato_go_sdk.PolicyInternetFirewallRemoveSubPolicy_Policy{
 			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallRemoveSubPolicy_Policy_InternetFirewall{
 				RemoveSubPolicy: cato_go_sdk.PolicyInternetFirewallRemoveSubPolicy_Policy_InternetFirewall_RemoveSubPolicy{
 					Status: status, Errors: errs,
@@ -352,7 +352,7 @@ func ifSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *ca
 	scopeRule.ID = scopeID
 	scopeRule.Name = scopeName
 	return &cato_go_sdk.Policy{
-		Policy: &cato_go_sdk.Policy_Policy{
+		Policy: cato_go_sdk.Policy_Policy{
 			InternetFirewall: &cato_go_sdk.Policy_Policy_InternetFirewall{
 				Policy: cato_go_sdk.Policy_Policy_InternetFirewall_Policy{
 					SubPolicies: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_SubPolicies{

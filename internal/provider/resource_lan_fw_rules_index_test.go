@@ -757,7 +757,7 @@ func (m *lanPolicyMockClient) PolicySocketLanMoveSection(_ context.Context, inpu
 	accountID string, _ ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketLanMoveSection, error) {
 	m.moveSectionCalls = append(m.moveSectionCalls, lanPolicyMoveSectionCall{input: input, accountID: accountID})
 	return &cato_go_sdk.PolicySocketLanMoveSection{
-		Policy: &cato_go_sdk.PolicySocketLanMoveSection_Policy{
+		Policy: cato_go_sdk.PolicySocketLanMoveSection_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanMoveSection_Policy_SocketLan{
 				MoveSection: cato_go_sdk.PolicySocketLanMoveSection_Policy_SocketLan_MoveSection{
 					Status: m.responseMutationStatus(),
@@ -771,7 +771,7 @@ func (m *lanPolicyMockClient) PolicySocketLanMoveRule(_ context.Context, input c
 	accountID string, _ ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketLanMoveRule, error) {
 	m.moveRuleCalls = append(m.moveRuleCalls, lanPolicyMoveRuleCall{input: input, accountID: accountID})
 	return &cato_go_sdk.PolicySocketLanMoveRule{
-		Policy: &cato_go_sdk.PolicySocketLanMoveRule_Policy{
+		Policy: cato_go_sdk.PolicySocketLanMoveRule_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanMoveRule_Policy_SocketLan{
 				MoveRule: cato_go_sdk.PolicySocketLanMoveRule_Policy_SocketLan_MoveRule{
 					Status: m.responseMutationStatus(),
@@ -788,7 +788,7 @@ func (m *lanPolicyMockClient) PolicySocketLanFirewallMoveRule(_ context.Context,
 		input:     input,
 	})
 	return &cato_go_sdk.PolicySocketLanFirewallMoveRule{
-		Policy: &cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy{
+		Policy: cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy_SocketLan{
 				Firewall: cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy_SocketLan_Firewall{
 					MoveRule: cato_go_sdk.PolicySocketLanFirewallMoveRule_Policy_SocketLan_Firewall_MoveRule{
@@ -805,7 +805,7 @@ func (m *lanPolicyMockClient) PolicySocketLanPublishPolicyRevision(_ context.Con
 	_ ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketLanPublishPolicyRevision, error) {
 	m.publishCalls++
 	return &cato_go_sdk.PolicySocketLanPublishPolicyRevision{
-		Policy: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy{
+		Policy: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan{
 				PublishPolicyRevision: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan_PublishPolicyRevision{
 					Status: m.responseMutationStatus(),
@@ -1046,7 +1046,7 @@ func (m *lanPolicyMockClient) createPlan(p lanPolicyPlanItem) *LanFwRulesIndex {
 
 func duplicateLanPolicy() *cato_go_sdk.PolicySocketLanPolicy {
 	return &cato_go_sdk.PolicySocketLanPolicy{
-		Policy: &cato_go_sdk.PolicySocketLanPolicy_Policy{
+		Policy: cato_go_sdk.PolicySocketLanPolicy_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan{
 				Policy: cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy{
 					Enabled: true,
@@ -1149,7 +1149,7 @@ func duplicateLanRule(id, name, sectionID, sectionName, firewallID, firewallName
 // Note: the slices are in "random" order, so that we can test the reordering
 var mockLanPolicy = map[string]*cato_go_sdk.PolicySocketLanPolicy{
 	"default": {
-		Policy: &cato_go_sdk.PolicySocketLanPolicy_Policy{
+		Policy: cato_go_sdk.PolicySocketLanPolicy_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan{
 				Policy: cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy{
 					Enabled: true,

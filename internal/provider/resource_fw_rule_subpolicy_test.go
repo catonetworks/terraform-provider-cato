@@ -37,7 +37,7 @@ func ifwPolicyWithSubPolicy(subID, subName string) *cato_go_sdk.Policy {
 		},
 	}
 	return &cato_go_sdk.Policy{
-		Policy: &cato_go_sdk.Policy_Policy{
+		Policy: cato_go_sdk.Policy_Policy{
 			InternetFirewall: &cato_go_sdk.Policy_Policy_InternetFirewall{
 				Policy: cato_go_sdk.Policy_Policy_InternetFirewall_Policy{
 					SubPolicies: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_SubPolicies{
@@ -76,7 +76,7 @@ func TestWanSubPolicyCleanupRuleID(t *testing.T) {
 		},
 	}
 	body := &cato_go_sdk.Policy{
-		Policy: &cato_go_sdk.Policy_Policy{
+		Policy: cato_go_sdk.Policy_Policy{
 			WanFirewall: &cato_go_sdk.Policy_Policy_WanFirewall{
 				Policy: cato_go_sdk.Policy_Policy_WanFirewall_Policy{
 					SubPolicies: []*cato_go_sdk.Policy_Policy_WanFirewall_Policy_SubPolicies{

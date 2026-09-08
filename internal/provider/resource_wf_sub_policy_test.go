@@ -231,7 +231,7 @@ func newWfSubPolicyStateWithID(ctx context.Context, t *testing.T) tfsdk.State {
 
 func emptyWanFirewallPolicyResponse() *cato_go_sdk.Policy {
 	return &cato_go_sdk.Policy{
-		Policy: &cato_go_sdk.Policy_Policy{
+		Policy: cato_go_sdk.Policy_Policy{
 			WanFirewall: &cato_go_sdk.Policy_Policy_WanFirewall{
 				Policy: cato_go_sdk.Policy_Policy_WanFirewall_Policy{
 					Rules: []*cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules{},
@@ -248,7 +248,7 @@ func wanAddSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg str
 		errs = append(errs, &cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy_Errors{ErrorCode: &code, ErrorMessage: &errMsg})
 	}
 	return &cato_go_sdk.PolicyWanFirewallAddSubPolicy{
-		Policy: &cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy{
+		Policy: cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy{
 			WanFirewall: &cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall{
 				AddSubPolicy: cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy{Status: status, Errors: errs},
 			},
@@ -263,7 +263,7 @@ func wanRemoveSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg 
 		errs = append(errs, &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall_RemoveSubPolicy_Errors{ErrorCode: &code, ErrorMessage: &errMsg})
 	}
 	return &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy{
-		Policy: &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy{
+		Policy: cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy{
 			WanFirewall: &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall{
 				RemoveSubPolicy: cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall_RemoveSubPolicy{Status: status, Errors: errs},
 			},
@@ -278,7 +278,7 @@ func wanSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *c
 		Enabled: true,
 	}
 	return &cato_go_sdk.Policy{
-		Policy: &cato_go_sdk.Policy_Policy{
+		Policy: cato_go_sdk.Policy_Policy{
 			WanFirewall: &cato_go_sdk.Policy_Policy_WanFirewall{
 				Policy: cato_go_sdk.Policy_Policy_WanFirewall_Policy{
 					SubPolicies: []*cato_go_sdk.Policy_Policy_WanFirewall_Policy_SubPolicies{

@@ -367,7 +367,7 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanMoveRule(
 	c.moveInput = input
 	c.calls = append(c.calls, "move")
 	return &cato_go_sdk.PolicySocketLanMoveRule{
-		Policy: &cato_go_sdk.PolicySocketLanMoveRule_Policy{
+		Policy: cato_go_sdk.PolicySocketLanMoveRule_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanMoveRule_Policy_SocketLan{
 				MoveRule: cato_go_sdk.PolicySocketLanMoveRule_Policy_SocketLan_MoveRule{
 					Status: cato_models.PolicyMutationStatusSuccess,
@@ -394,7 +394,7 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanAddSubPolicy(
 ) (*cato_go_sdk.PolicySocketLanAddSubPolicy, error) {
 	c.calls = append(c.calls, "add")
 	return &cato_go_sdk.PolicySocketLanAddSubPolicy{
-		Policy: &cato_go_sdk.PolicySocketLanAddSubPolicy_Policy{
+		Policy: cato_go_sdk.PolicySocketLanAddSubPolicy_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanAddSubPolicy_Policy_SocketLan{
 				AddSubPolicy: cato_go_sdk.PolicySocketLanAddSubPolicy_Policy_SocketLan_AddSubPolicy{
 					Status: cato_models.PolicyMutationStatusSuccess,
@@ -416,7 +416,7 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanUpdateRule(
 ) (*cato_go_sdk.PolicySocketLanUpdateRule, error) {
 	c.calls = append(c.calls, "update")
 	return &cato_go_sdk.PolicySocketLanUpdateRule{
-		Policy: &cato_go_sdk.PolicySocketLanUpdateRule_Policy{
+		Policy: cato_go_sdk.PolicySocketLanUpdateRule_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanUpdateRule_Policy_SocketLan{
 				UpdateRule: cato_go_sdk.PolicySocketLanUpdateRule_Policy_SocketLan_UpdateRule{
 					Status: cato_models.PolicyMutationStatusSuccess,
@@ -450,7 +450,7 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanPublishPolicyRevision(
 	if c.publishNotFound {
 		code := "PolicyRevisionNotFound"
 		return &cato_go_sdk.PolicySocketLanPublishPolicyRevision{
-			Policy: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy{
+			Policy: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy{
 				SocketLan: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan{
 					PublishPolicyRevision: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan_PublishPolicyRevision{
 						Status: cato_models.PolicyMutationStatusFailure,
@@ -463,7 +463,7 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanPublishPolicyRevision(
 		}, nil
 	}
 	return &cato_go_sdk.PolicySocketLanPublishPolicyRevision{
-		Policy: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy{
+		Policy: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan{
 				PublishPolicyRevision: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan_PublishPolicyRevision{
 					Status: cato_models.PolicyMutationStatusSuccess,
