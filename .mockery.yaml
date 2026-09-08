@@ -13,5 +13,6 @@ packages:
       InternetFirewallSubPolicyClient:
       NetworkRangeClient:
       SocketSiteClient:
+      StaticHostClient:
       WanFirewallBulkPolicyClient:
       WanFirewallSubPolicyClient:
