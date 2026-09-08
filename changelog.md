@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.98 (2026-09-08)
+
+### Fixed
+- Fixed `cato_global_ip_ranges` validation to accept individual IPv4 and IPv6 addresses without CIDR prefixes.
+- Fixed `cato_static_host` state refresh to use site-scoped configuration and require site context during import, so Console Management Application drift is detected reliably.
+
+### Changed
+- Updated the Cato Go SDK dependency to v0.4.1.
+- Updated release documentation for customer-facing release notes and announcements.
+
+### Tests
+- Added unit and acceptance coverage for global IP range validation, static host drift detection, and static host import.
+
 ## 0.0.97 (2026-09-01)
 
 ### Fixed
