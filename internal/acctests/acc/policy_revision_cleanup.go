@@ -76,10 +76,19 @@ func discardInternetFirewallPolicyRevision(client *cato.Client, revisionID strin
 	if err != nil {
 		return fmt.Errorf("discard internet firewall revision %s: %w", revisionID, err)
 	}
-	if errs := resp.GetPolicy().GetInternetFirewall().GetDiscardPolicyRevision().GetErrors(); len(errs) > 0 {
-		return fmt.Errorf("discard internet firewall revision %s: %v", revisionID, errs)
+	if resp == nil {
+		return fmt.Errorf("discard internet firewall revision %s: missing response", revisionID)
 	}
-	return nil
+	payload := resp.GetPolicy().GetInternetFirewall().GetDiscardPolicyRevision()
+	payloadErrors := payload.GetErrors()
+	return validateCleanupMutation(
+		fmt.Sprintf("discard internet firewall revision %s", revisionID),
+		cleanupMutationResult{
+			status:            payload.GetStatus(),
+			payloadErrors:     payloadErrors,
+			payloadErrorCount: len(payloadErrors),
+		},
+	)
 }
 
 func discardWanFirewallPolicyRevision(client *cato.Client, revisionID string) error {
@@ -90,10 +99,19 @@ func discardWanFirewallPolicyRevision(client *cato.Client, revisionID string) er
 	if err != nil {
 		return fmt.Errorf("discard WAN firewall revision %s: %w", revisionID, err)
 	}
-	if errs := resp.GetPolicy().GetWanFirewall().GetDiscardPolicyRevision().GetErrors(); len(errs) > 0 {
-		return fmt.Errorf("discard WAN firewall revision %s: %v", revisionID, errs)
+	if resp == nil {
+		return fmt.Errorf("discard WAN firewall revision %s: missing response", revisionID)
 	}
-	return nil
+	payload := resp.GetPolicy().GetWanFirewall().GetDiscardPolicyRevision()
+	payloadErrors := payload.GetErrors()
+	return validateCleanupMutation(
+		fmt.Sprintf("discard WAN firewall revision %s", revisionID),
+		cleanupMutationResult{
+			status:            payload.GetStatus(),
+			payloadErrors:     payloadErrors,
+			payloadErrorCount: len(payloadErrors),
+		},
+	)
 }
 
 func discardWanNetworkPolicyRevision(client *cato.Client, revisionID string) error {
@@ -101,8 +119,17 @@ func discardWanNetworkPolicyRevision(client *cato.Client, revisionID string) err
 	if err != nil {
 		return fmt.Errorf("discard WAN network revision %s: %w", revisionID, err)
 	}
-	if errs := resp.GetPolicy().GetWanNetwork().GetDiscardPolicyRevision().GetErrors(); len(errs) > 0 {
-		return fmt.Errorf("discard WAN network revision %s: %v", revisionID, errs)
+	if resp == nil {
+		return fmt.Errorf("discard WAN network revision %s: missing response", revisionID)
 	}
-	return nil
+	payload := resp.GetPolicy().GetWanNetwork().GetDiscardPolicyRevision()
+	payloadErrors := payload.GetErrors()
+	return validateCleanupMutation(
+		fmt.Sprintf("discard WAN network revision %s", revisionID),
+		cleanupMutationResult{
+			status:            payload.GetStatus(),
+			payloadErrors:     payloadErrors,
+			payloadErrorCount: len(payloadErrors),
+		},
+	)
 }

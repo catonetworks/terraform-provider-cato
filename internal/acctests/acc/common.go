@@ -4,16 +4,12 @@ package acc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
 	"os"
 	"regexp"
 	"runtime"
 	"slices"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -47,6 +43,7 @@ const (
 
 	// entity lookup types
 	resUsers                   = "vpnUser"
+	resAccount                 = "account"
 	resDhcpRelayGroup          = "dhcpRelayGroup"
 	resLocation                = "location"
 	resHost                    = "host"
@@ -61,37 +58,9 @@ const (
 var (
 	CatoAccountID = os.Getenv(envCatoAccountID)
 	CatoToken     = os.Getenv(envCatoToken)
-	httpClient    = &http.Client{}
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-
-type entityResp struct {
-	Data   entityData  `json:"data"`
-	Errors []respError `json:"errors"`
-}
-
-type respError struct {
-	Msg  string   `json:"message"`
-	Path []string `json:"path"`
-}
-
-type entityData struct {
-	EntityLookup entityLookup `json:"entityLookup"`
-}
-
-type entityLookup struct {
-	Items []entityItem `json:"items"`
-}
-
-type entityItem struct {
-	Entity entityDetail `json:"entity"`
-}
-
-type entityDetail struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
 
 type Ref struct {
 	Name string `json:"name"`
@@ -152,7 +121,10 @@ func PrintAttributes(resource string) func(st *terraform.State) error {
 	}
 }
 
-var funcPrefixRE = regexp.MustCompile(`^.*\.`)
+var (
+	acctestRE    = regexp.MustCompile(`^acctest_`)
+	funcPrefixRE = regexp.MustCompile(`^.*\.`)
+)
 
 func SkipByEnv(t *testing.T) {
 	pc, _, _, ok := runtime.Caller(1)
@@ -354,6 +326,9 @@ func GetGlobalIPRanges(t *testing.T) []Ref {
 
 	items := result.GetObject().GetGlobalIPRangeList().GetItems()
 	for _, item := range items {
+		if item == nil || !acctestRE.MatchString(item.GetName()) {
+			continue
+		}
 		testIPRanges = append(testIPRanges, Ref{ID: item.GetID(), Name: item.GetName()})
 		rangesFound = append(rangesFound, item.GetName())
 	}
@@ -386,29 +361,8 @@ func DeleteGlobalIPRanges(t *testing.T) {
 	if accmock.ACCMockActive {
 		return
 	}
-	client := GetClient(t)
-
-	// try to fetch IP ranges
-	result, err := client.ObjectGlobalIPRangeList(ctx, CatoAccountID, nil)
-	if err != nil {
-		t.Fatalf("failed to load global IP ranges: %v", err)
-		return
-	}
-	ranges := result.GetObject().GetGlobalIPRangeList().GetItems()
-	// delete IP ranges
-	if len(ranges) == 0 {
-		return
-	}
-
-	// prepare input for deletion
-	input := make([]*cato_models.GlobalIPRangeRefInput, 0, len(ranges))
-	for _, r := range ranges {
-		input = append(input, &cato_models.GlobalIPRangeRefInput{By: cato_models.ObjectRefByID, Input: r.ID})
-	}
-	_, err = client.ObjectDeleteGlobalIPRangeBulk(ctx, CatoAccountID, input)
-	if err != nil {
-		t.Fatalf("failed to delete global IP ranges: %v", err)
-		return
+	if err := deleteAcctestGlobalIPRanges(t); err != nil {
+		t.Fatalf("failed to delete acctest global IP ranges: %v", err)
 	}
 }
 
@@ -418,48 +372,56 @@ func ProviderCfg() string {
 
 // getEntities is a generic function to call entityLookup API and return a []Ref (name and ID of the entities)
 func getEntities(t *testing.T, entityType string) (refs []Ref) {
-	var res entityResp
-	query := `{"query": "query entityLookup ($accountID:ID! $type:EntityType!) ` +
-		`{entityLookup (accountID:$accountID type:$type) {items {entity {id name}}}}",
-			"variables": {"accountID": "` + CatoAccountID + `","type": "` + entityType + `"},
-			"operationName": "entityLookup"}`
+	const (
+		pageLimit = int64(100)
+		maxPages  = 1000
+	)
 
-	// Create request
-	req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query)) //nolint:gosec
-	if err != nil {
-		panic(err)
+	entityTypeValue := cato_models.EntityType(entityType)
+	if !entityTypeValue.IsValid() {
+		t.Fatalf("invalid entity type %q", entityType)
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Api-Key", CatoToken)
-	resp, err := httpClient.Do(req) //nolint:gosec
-	if err != nil {
-		t.Fatalf("ERROR fetching %q: %v", entityType, err)
-	}
-	defer func() {
-		if errClose := resp.Body.Close(); errClose != nil {
-			t.Logf("ERROR closing response body: %v", errClose)
+
+	client := GetClient(t)
+	from := int64(0)
+	for page := 0; page < maxPages; page++ {
+		result, err := client.EntityLookup(
+			ctx, CatoAccountID, entityTypeValue, ptr(pageLimit), &from,
+			nil, nil, nil, nil, nil, nil,
+		)
+		if err != nil {
+			t.Fatalf("ERROR fetching %q: %v", entityType, err)
 		}
-	}()
+		if result == nil || result.GetEntityLookup() == nil {
+			t.Fatalf("ERROR fetching %q: missing response payload", entityType)
+		}
 
-	// Read response
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("ERROR reading %q: %v", entityType, err)
-	}
-	if err = json.Unmarshal(body, &res); err != nil {
-		t.Fatalf("ERROR unmarshalling response: %v", err)
-	}
-	if len(res.Errors) > 0 {
-		t.Fatalf("ERROR: cannot fetch %q: %v", entityType, res.Errors)
-	}
-	if len(res.Data.EntityLookup.Items) == 0 {
-		t.Fatalf("ERROR: failed to fetch %q: res.Data.EntityLookup.Items is empty", entityType)
-	}
-	for _, u := range res.Data.EntityLookup.Items {
-		refs = append(refs, Ref{ID: u.Entity.ID, Name: u.Entity.Name})
+		lookup := result.GetEntityLookup()
+		items := lookup.GetItems()
+		for _, item := range items {
+			if item == nil || item.GetEntity() == nil || item.GetEntity().GetName() == nil {
+				continue
+			}
+			refs = append(refs, Ref{ID: item.GetEntity().GetID(), Name: *item.GetEntity().GetName()})
+		}
+
+		from += int64(len(items))
+		if total := lookup.GetTotal(); total != nil {
+			if from >= *total {
+				return refs
+			}
+			if len(items) == 0 {
+				t.Fatalf("ERROR fetching %q: empty page before total %d", entityType, *total)
+			}
+			continue
+		}
+		if len(items) < int(pageLimit) {
+			return refs
+		}
 	}
 
-	return refs
+	t.Fatalf("ERROR fetching %q: exceeded %d pages", entityType, maxPages)
+	return nil
 }
 
 func getFromVars(t *testing.T, varName string) []Ref {
