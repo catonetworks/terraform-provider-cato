@@ -12,7 +12,7 @@ The Cato Open Source Software provider is used to interact with resources suppor
 
 The current API that the Cato provider is calling requires sequential execution. You can either use `depends_on` or specify the `parallelism` flag. Cato recommends the latter and setting the value to `1`. Example call: `terraform apply -parallelism=1`.
 
-At startup, the provider performs a best-effort check for a newer stable version and emits a non-blocking warning when one is available. The check has a two-second default timeout and can be configured with `version_check_timeout_seconds` or `CATO_VERSION_CHECK_TIMEOUT_SECONDS` (for example, `CATO_VERSION_CHECK_TIMEOUT_SECONDS=5 terraform plan`).
+At startup, the provider performs a best-effort check for a newer stable version and emits a non-blocking warning when one is available. The check has a two-second default timeout and can be configured with `version_check_timeout_seconds` or `CATO_VERSION_CHECK_TIMEOUT_SECONDS` (for example, `CATO_VERSION_CHECK_TIMEOUT_SECONDS=5 terraform plan`). To opt out, set `version_check_disabled = true` in provider configuration or set any non-empty `CATO_VERSION_CHECK_DISABLED` environment variable value.
 
 Use the navigation to the left to read about the available resources.
 
@@ -35,6 +35,8 @@ provider "cato" {
   retry_max              = 5
   retry_wait_min_seconds = 1
   retry_wait_max_seconds = 30
+  # Optional: disable the advisory Registry version check.
+  # version_check_disabled = true
   # Optional: maximum time for the advisory Registry version check.
   # version_check_timeout_seconds = 2
 }
@@ -82,4 +84,5 @@ resource "cato_static_host" "host" {
 - `retry_wait_max_seconds` (Number) Maximum backoff between retry attempts, in seconds. Defaults to 30. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.
 - `retry_wait_min_seconds` (Number) Minimum backoff between retry attempts, in seconds. Defaults to 1. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.
 - `token` (String, Sensitive) API Key for the Cato API. Can be provided using CATO_BASEURL environment variable.
+- `version_check_disabled` (Boolean) Disables the advisory Terraform Registry version check. Can be provided using CATO_VERSION_CHECK_DISABLED environment variable; any non-empty value disables the check.
 - `version_check_timeout_seconds` (Number) Maximum time for the advisory Terraform Registry version check, in seconds. Defaults to 2. Can be provided using CATO_VERSION_CHECK_TIMEOUT_SECONDS environment variable.

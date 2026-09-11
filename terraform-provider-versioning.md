@@ -201,7 +201,9 @@ is advisory:
 - Registry unavailability, timeouts, or malformed responses must remain silent and must never
   block provider operation.
 - Prereleases must not be presented as the latest stable version.
-- Leaving the check disabled must not affect any provider functionality.
+- It can be disabled with `version_check_disabled = true` or by setting any non-empty
+  `CATO_VERSION_CHECK_DISABLED` environment variable value.
+- Disabling the check must not affect any provider functionality.
 
 The notification is not a substitute for version constraints, the dependency lock file, release
 notes, KB announcements, or direct communication about an API end-of-life event.

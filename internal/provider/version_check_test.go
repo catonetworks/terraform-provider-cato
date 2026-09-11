@@ -4,11 +4,14 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	frameworkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -210,6 +213,129 @@ func TestCatoProviderWarnIfNewVersionAvailableIgnoresRegistryFailures(t *testing
 	require.Empty(t, resp.Diagnostics)
 }
 
+func TestCatoProviderConfigureSkipsVersionCheckWhenDisabledByConfig(t *testing.T) {
+	ctx := context.Background()
+	withProviderConfigureEnv(t, "")
+
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, err := w.Write([]byte(`{"versions": [{"version": "1.2.4"}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	p := catoProvider{
+		version:        "1.2.3",
+		versionChecker: registryVersionChecker{client: server.Client(), url: server.URL},
+	}
+	resp := &frameworkprovider.ConfigureResponse{}
+	config := newCatoProviderConfig(ctx, t, types.BoolValue(true))
+
+	p.Configure(ctx, frameworkprovider.ConfigureRequest{Config: config}, resp)
+
+	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
+	require.Empty(t, resp.Diagnostics)
+	require.Equal(t, int64(0), requests.Load())
+	require.False(t, p.hasCheckedVersion.Load())
+}
+
+func TestCatoProviderConfigureSkipsVersionCheckWhenDisabledByEnv(t *testing.T) {
+	ctx := context.Background()
+	withProviderConfigureEnv(t, "0")
+
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, err := w.Write([]byte(`{"versions": [{"version": "1.2.4"}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	p := catoProvider{
+		version:        "1.2.3",
+		versionChecker: registryVersionChecker{client: server.Client(), url: server.URL},
+	}
+	resp := &frameworkprovider.ConfigureResponse{}
+	config := newCatoProviderConfig(ctx, t, types.BoolNull())
+
+	p.Configure(ctx, frameworkprovider.ConfigureRequest{Config: config}, resp)
+
+	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
+	require.Empty(t, resp.Diagnostics)
+	require.Equal(t, int64(0), requests.Load())
+	require.False(t, p.hasCheckedVersion.Load())
+}
+
+func TestCatoProviderConfigureRequestsVersionCheckByDefault(t *testing.T) {
+	ctx := context.Background()
+	withProviderConfigureEnv(t, "")
+
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, err := w.Write([]byte(`{"versions": [{"version": "1.2.4"}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	p := catoProvider{
+		version:        "1.2.3",
+		versionChecker: registryVersionChecker{client: server.Client(), url: server.URL},
+	}
+	resp := &frameworkprovider.ConfigureResponse{}
+	config := newCatoProviderConfig(ctx, t, types.BoolNull())
+
+	p.Configure(ctx, frameworkprovider.ConfigureRequest{Config: config}, resp)
+
+	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
+	require.Equal(t, int64(1), requests.Load())
+	require.Len(t, resp.Diagnostics, 1)
+	require.Equal(t, "New Cato Terraform Provider Version Available", resp.Diagnostics[0].Summary())
+	require.True(t, p.hasCheckedVersion.Load())
+}
+
+func TestCatoProviderConfigureVersionCheckConfigOverridesEnv(t *testing.T) {
+	ctx := context.Background()
+	withProviderConfigureEnv(t, "true")
+
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, err := w.Write([]byte(`{"versions": [{"version": "1.2.4"}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	p := catoProvider{
+		version:        "1.2.3",
+		versionChecker: registryVersionChecker{client: server.Client(), url: server.URL},
+	}
+	resp := &frameworkprovider.ConfigureResponse{}
+	config := newCatoProviderConfig(ctx, t, types.BoolValue(false))
+
+	p.Configure(ctx, frameworkprovider.ConfigureRequest{Config: config}, resp)
+
+	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
+	require.Equal(t, int64(1), requests.Load())
+	require.Len(t, resp.Diagnostics, 1)
+	require.Equal(t, "New Cato Terraform Provider Version Available", resp.Diagnostics[0].Summary())
+	require.True(t, p.hasCheckedVersion.Load())
+}
+
+func TestCatoProviderSchemaExposesVersionCheckDisabled(t *testing.T) {
+	t.Parallel()
+
+	resp := &frameworkprovider.SchemaResponse{}
+	(&catoProvider{}).Schema(context.Background(), frameworkprovider.SchemaRequest{}, resp)
+
+	attribute, ok := resp.Schema.Attributes["version_check_disabled"].(schema.BoolAttribute)
+	require.True(t, ok)
+	require.True(t, attribute.Optional)
+	require.Contains(t, attribute.Description, "CATO_VERSION_CHECK_DISABLED")
+	require.Contains(t, attribute.Description, "any non-empty value")
+}
+
 func TestCatoProviderSchemaExposesVersionCheckTimeout(t *testing.T) {
 	t.Parallel()
 
@@ -226,4 +352,36 @@ func TestDefaultVersionCheckTimeout(t *testing.T) {
 	t.Parallel()
 
 	require.Equal(t, int64(2), defaultVersionCheckTimeoutSeconds)
+}
+
+func withProviderConfigureEnv(t *testing.T, versionCheckDisabled string) {
+	t.Helper()
+
+	t.Setenv("DISABLE_POLICY_RULE_CLEANUP", "true")
+	t.Setenv("CATO_RETRY_MAX", "")
+	t.Setenv("CATO_RETRY_WAIT_MIN_SECONDS", "")
+	t.Setenv("CATO_RETRY_WAIT_MAX_SECONDS", "")
+	t.Setenv("CATO_VERSION_CHECK_DISABLED", versionCheckDisabled)
+	t.Setenv("CATO_VERSION_CHECK_TIMEOUT_SECONDS", "")
+}
+
+func newCatoProviderConfig(ctx context.Context, t *testing.T, versionCheckDisabled types.Bool) tfsdk.Config {
+	t.Helper()
+
+	schemaResp := &frameworkprovider.SchemaResponse{}
+	(&catoProvider{}).Schema(ctx, frameworkprovider.SchemaRequest{}, schemaResp)
+
+	plan := tfsdk.Plan{Schema: schemaResp.Schema}
+	diags := plan.Set(ctx, catoProviderModel{
+		BaseURL:              types.StringValue("https://api.catonetworks.com/api/v1/graphql2"),
+		Token:                types.StringValue("token"),
+		AccountID:            types.StringValue("account-123"),
+		RetryMax:             types.Int64Value(defaultRetryMax),
+		RetryWaitMinSeconds:  types.Int64Value(defaultRetryWaitMinSeconds),
+		RetryWaitMaxSeconds:  types.Int64Value(defaultRetryWaitMaxSeconds),
+		VersionCheckDisabled: versionCheckDisabled,
+	})
+	require.False(t, diags.HasError(), "unexpected config diagnostics: %v", diags)
+
+	return tfsdk.Config(plan)
 }

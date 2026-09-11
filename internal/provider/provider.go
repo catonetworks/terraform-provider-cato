@@ -55,6 +55,7 @@ type catoProviderModel struct {
 	RetryMax                   types.Int64  `tfsdk:"retry_max"`
 	RetryWaitMinSeconds        types.Int64  `tfsdk:"retry_wait_min_seconds"`
 	RetryWaitMaxSeconds        types.Int64  `tfsdk:"retry_wait_max_seconds"`
+	VersionCheckDisabled       types.Bool   `tfsdk:"version_check_disabled"`
 	VersionCheckTimeoutSeconds types.Int64  `tfsdk:"version_check_timeout_seconds"`
 }
 
@@ -104,6 +105,11 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 			"retry_wait_max_seconds": schema.Int64Attribute{
 				Description: "Maximum backoff between retry attempts, in seconds. " +
 					"Defaults to 30. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.",
+				Optional: true,
+			},
+			"version_check_disabled": schema.BoolAttribute{
+				Description: "Disables the advisory Terraform Registry version check. " +
+					"Can be provided using CATO_VERSION_CHECK_DISABLED environment variable; any non-empty value disables the check.",
 				Optional: true,
 			},
 			"version_check_timeout_seconds": schema.Int64Attribute{
@@ -172,6 +178,14 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		)
 	}
 
+	if config.VersionCheckDisabled.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("version_check_disabled"),
+			"Unknown Version Check Disabled",
+			"The provider cannot determine whether to disable the version check from an unknown configuration value.",
+		)
+	}
+
 	if config.VersionCheckTimeoutSeconds.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("version_check_timeout_seconds"),
@@ -189,6 +203,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	retryMax, retryMaxErr := int64FromEnv("CATO_RETRY_MAX")
 	retryWaitMinSeconds, retryWaitMinErr := int64FromEnv("CATO_RETRY_WAIT_MIN_SECONDS")
 	retryWaitMaxSeconds, retryWaitMaxErr := int64FromEnv("CATO_RETRY_WAIT_MAX_SECONDS")
+	versionCheckDisabled := os.Getenv("CATO_VERSION_CHECK_DISABLED") != ""
 	versionCheckTimeoutSeconds, versionCheckTimeoutErr := int64FromEnv("CATO_VERSION_CHECK_TIMEOUT_SECONDS")
 
 	if !config.BaseURL.IsNull() {
@@ -212,6 +227,10 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	if !config.RetryWaitMaxSeconds.IsNull() {
 		value := config.RetryWaitMaxSeconds.ValueInt64()
 		retryWaitMaxSeconds = &value
+	}
+
+	if !config.VersionCheckDisabled.IsNull() {
+		versionCheckDisabled = config.VersionCheckDisabled.ValueBool()
 	}
 
 	if !config.VersionCheckTimeoutSeconds.IsNull() {
@@ -366,7 +385,9 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	resp.DataSourceData = dataSourceData
 	resp.ResourceData = dataSourceData
 
-	p.warnIfNewVersionAvailable(ctx, resp, time.Duration(*versionCheckTimeoutSeconds)*time.Second)
+	if !versionCheckDisabled {
+		p.warnIfNewVersionAvailable(ctx, resp, time.Duration(*versionCheckTimeoutSeconds)*time.Second)
+	}
 
 	// cleanup stale rules
 	p.cleanupDrafts(ctx, dataSourceData)
