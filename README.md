@@ -1,6 +1,8 @@
 Terraform `CATO` Provider
 =========================
 
+> Versioning: This provider follows the [Terraform Provider Versioning Policy](terraform-provider-versioning.md).
+
 - Website: https://www.terraform.io
 - [![Gitter chat](https://badges.gitter.im/hashicorp-terraform/Lobby.png)](https://gitter.im/hashicorp-terraform/Lobby)
 - Mailing list: [Google Groups](http://groups.google.com/group/terraform-tool)
