@@ -73,7 +73,7 @@ func (c registryVersionChecker) check(
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("create Terraform Registry version request: %w", err)
 	}
@@ -88,10 +88,12 @@ func (c registryVersionChecker) check(
 	if err != nil {
 		return nil, fmt.Errorf("request Terraform Registry provider versions: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Terraform Registry provider versions returned unexpected status %d", resp.StatusCode)
+		return nil, fmt.Errorf("terraform Registry provider versions returned unexpected status %d", resp.StatusCode)
 	}
 
 	var body registryVersionsResponse
@@ -121,7 +123,7 @@ func latestStableVersion(versions []registryProviderVersion) (*semver.Version, e
 	}
 
 	if latest == nil {
-		return nil, fmt.Errorf("Terraform Registry returned no valid stable provider versions")
+		return nil, fmt.Errorf("terraform Registry returned no valid stable provider versions")
 	}
 
 	return latest, nil

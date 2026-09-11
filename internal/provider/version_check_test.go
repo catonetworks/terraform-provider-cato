@@ -80,7 +80,7 @@ func TestRegistryVersionCheckerCheckReturnsErrorForUnexpectedResponse(t *testing
 func TestRegistryVersionCheckerCheckHonorsTimeout(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 	}))
 	defer server.Close()
