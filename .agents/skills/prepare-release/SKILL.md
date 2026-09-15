@@ -52,7 +52,8 @@ Follow this order:
    - For every breaking change, include migration guidance and a link to the major-version upgrade
      guide.
 8. Verify that a major release includes a complete upgrade guide and states the maintenance status
-   and end-of-support date of the previous major version.
+   of the previous major version. Include its end-of-support date when one has been decided;
+   otherwise state that the date has not yet been scheduled.
 9. Commit the changes with a message like `vX.Y.Z`.
 10. Push the release branch to the remote repository.
 11. If the github command line is available, use it to create a pull request from the release branch
