@@ -6,20 +6,22 @@ provider "cato" {
 
 # --------------------------------------------------------------------------------
 # README: Example CSV syntax for sections: sections.csv
-# section_index,section_name
-# 1,My First Section Here
-# 2,My Second Section Name
-# 3,My Third Section Name
+# section_index,section_name,sub_policy_name
+# 1,My First Section Here,
+# 2,My Second Section Name,
+# 3,My Third Section Name,
+# For sub-policy sections, set sub_policy_name to the WAN sub-policy name.
 
 # README: Example CSV syntax for sections: rules.csv
-# index_in_section,section_name,rule_name
-# 1,My First Section Here,My First Section 1 Rule
-# 2,My First Section Here,My Second Section 1 Rule
-# 1,My Second Section Name,My First Section 2 Rule
-# 2,My Second Section Name,My Second Section 2 Rule
-# 1,My Third Section Name,My First Section 3 Rule
-# 2,My Third Section Name,My Second Section 3 Rule
-# 3,My Third Section Name,My Third Section 3 Rule
+# index_in_section,section_name,rule_name,sub_policy_name
+# 1,My First Section Here,My First Section 1 Rule,
+# 2,My First Section Here,My Second Section 1 Rule,
+# 1,My Second Section Name,My First Section 2 Rule,
+# 2,My Second Section Name,My Second Section 2 Rule,
+# 1,My Third Section Name,My First Section 3 Rule,
+# 2,My Third Section Name,My Second Section 3 Rule,
+# 3,My Third Section Name,My Third Section 3 Rule,
+# For sub-policy rules, set sub_policy_name to the owning WAN sub-policy name.
 # --------------------------------------------------------------------------------
 
 locals {

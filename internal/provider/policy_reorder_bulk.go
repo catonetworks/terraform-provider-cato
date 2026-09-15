@@ -22,6 +22,53 @@ type BulkPolicySectionRef struct {
 	Name string
 }
 
+func orderBulkPolicySections(
+	sections []BulkPolicySectionRef,
+	planned []WanRulesSectionDataIndex,
+) ([]BulkPolicySectionRef, error) {
+	if len(planned) == 0 {
+		return sections, nil
+	}
+
+	plannedByName := make(map[string]WanRulesSectionDataIndex, len(planned))
+	for _, section := range planned {
+		if _, exists := plannedByName[section.SectionName]; exists {
+			return nil, fmt.Errorf("section %q appears more than once in the plan", section.SectionName)
+		}
+		plannedByName[section.SectionName] = section
+	}
+
+	currentByName := make(map[string]BulkPolicySectionRef, len(sections))
+	for _, section := range sections {
+		currentByName[section.Name] = section
+	}
+	if len(currentByName) != len(plannedByName) {
+		return nil, fmt.Errorf(
+			"planned %d sections but API returned %d sections; all sections in the sub-policy must be included",
+			len(plannedByName),
+			len(currentByName),
+		)
+	}
+	for name := range currentByName {
+		if _, exists := plannedByName[name]; !exists {
+			return nil, fmt.Errorf("API section %q is missing from the plan", name)
+		}
+	}
+
+	sort.Slice(planned, func(i, j int) bool {
+		return planned[i].SectionIndex < planned[j].SectionIndex
+	})
+	ordered := make([]BulkPolicySectionRef, 0, len(planned))
+	for _, plannedSection := range planned {
+		section, exists := currentByName[plannedSection.SectionName]
+		if !exists {
+			return nil, fmt.Errorf("planned section %q was not found in the API response", plannedSection.SectionName)
+		}
+		ordered = append(ordered, section)
+	}
+	return ordered, nil
+}
+
 // BulkPolicyRuleRow is one rule row from Policy*FirewallRulesIndex.
 type BulkPolicyRuleRow struct {
 	SectionID   string

@@ -12,6 +12,38 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
+func TestOrderBulkPolicySections(t *testing.T) {
+	t.Parallel()
+
+	sections := []BulkPolicySectionRef{
+		{ID: "s1", Name: "First"},
+		{ID: "s2", Name: "Second"},
+	}
+	planned := []WanRulesSectionDataIndex{
+		{SectionName: "Second", SectionIndex: 1},
+		{SectionName: "First", SectionIndex: 2},
+	}
+
+	ordered, err := orderBulkPolicySections(sections, planned)
+
+	require.NoError(t, err)
+	require.Equal(t, []BulkPolicySectionRef{
+		{ID: "s2", Name: "Second"},
+		{ID: "s1", Name: "First"},
+	}, ordered)
+}
+
+func TestOrderBulkPolicySectionsRequiresCompletePlan(t *testing.T) {
+	t.Parallel()
+
+	_, err := orderBulkPolicySections(
+		[]BulkPolicySectionRef{{ID: "s1", Name: "First"}, {ID: "s2", Name: "Second"}},
+		[]WanRulesSectionDataIndex{{SectionName: "First", SectionIndex: 1}},
+	)
+
+	require.ErrorContains(t, err, "all sections in the sub-policy must be included")
+}
+
 func TestBuildPolicyReorderInput_twoRulesSwapOrder(t *testing.T) {
 	t.Parallel()
 	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}

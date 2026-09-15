@@ -88,6 +88,7 @@ func TestBuildWanRuleIndexStateDataUsesAPIComputedFields(t *testing.T) {
 		map[string]string{"Rule B": "rule-id-b"},
 		map[string]string{"Rule B": "api description"},
 		map[string]bool{"Rule B": true},
+		"",
 	)
 	require.False(t, diags.HasError())
 

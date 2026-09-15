@@ -54,6 +54,12 @@ type InternetFirewallBulkPolicyClient interface {
 // WanFirewallBulkPolicyClient is the minimal Cato client surface used by
 // cato_bulk_wf_move_rule (mocked in unit tests via mockery).
 type WanFirewallBulkPolicyClient interface {
+	PolicyWanFirewall(
+		ctx context.Context,
+		wanFirewallPolicyInput *cato_models.WanFirewallPolicyInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.Policy, error)
 	PolicyWanFirewallSectionsIndex(
 		ctx context.Context,
 		accountID string,

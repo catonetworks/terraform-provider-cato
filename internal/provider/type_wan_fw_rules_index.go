@@ -9,9 +9,10 @@ type WanRulesIndex struct {
 }
 
 type WanRulesSectionDataIndex struct {
-	ID           string
-	SectionIndex int64
-	SectionName  string
+	ID            string
+	SectionIndex  int64
+	SectionName   string
+	SubPolicyName string
 }
 
 type WanRulesRuleDataIndex struct {
@@ -21,12 +22,14 @@ type WanRulesRuleDataIndex struct {
 	RuleName       string
 	Description    string
 	Enabled        bool
+	SubPolicyName  string
 }
 
 type WanRulesSectionItemIndex struct {
-	ID           types.String `tfsdk:"id"`
-	SectionIndex types.Int64  `tfsdk:"section_index"`
-	SectionName  types.String `tfsdk:"section_name"`
+	ID            types.String `tfsdk:"id"`
+	SectionIndex  types.Int64  `tfsdk:"section_index"`
+	SectionName   types.String `tfsdk:"section_name"`
+	SubPolicyName types.String `tfsdk:"sub_policy_name"`
 }
 
 type WanRulesRuleItemIndex struct {
@@ -36,4 +39,5 @@ type WanRulesRuleItemIndex struct {
 	RuleName       types.String `tfsdk:"rule_name"`
 	Description    types.String `tfsdk:"description"`
 	Enabled        types.Bool   `tfsdk:"enabled"`
+	SubPolicyName  types.String `tfsdk:"sub_policy_name"`
 }
