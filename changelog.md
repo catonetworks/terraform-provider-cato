@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0 (2026-09-15)
+
+### Breaking changes
+- None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration. See the [1.0 upgrade guide](docs/guides/guide_upgrade_to_1_0_0.md) for upgrade and rollback steps.
+
+### Features
+- Added an advisory startup notification when a newer stable Cato Terraform provider version is available. The notification does not block Terraform operations and can be disabled with `version_check_disabled` or `CATO_VERSION_CHECK_DISABLED`.
+
+### Notes
+- Established version 1.0 as the Cato Terraform provider's stable compatibility contract. The 0.x line remains supported alongside 1.x; its end-of-support date has not yet been scheduled.
+
 ## 0.0.98 (2026-09-08)
 
 ### Fixed
