@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
 	"testing"
 	"text/template"
 
@@ -58,10 +57,23 @@ func TestAccAdmin(t *testing.T) {
 				ResourceName: res,
 			},
 			{
-				// Update path is known to fail on read-back enum decode (backend/API mismatch).
-				// Keep this step to cover update mutation behavior while tracking the known issue.
-				Config:      cfg.getTfConfig(1),
-				ExpectError: regexp.MustCompile("unmarshal gql error: systemGroup is not a valid EntityType"),
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(res, "account_id", cfg.accountID),
+					resource.TestCheckResourceAttrSet(res, "admin_id"),
+					resource.TestCheckResourceAttr(res, "email", "terraform-test-admin"+cfg.accountID+"@test.com"),
+					resource.TestCheckResourceAttr(res, "first_name", "John 2"),
+					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "last_name", "Admin 2"),
+					resource.TestCheckResourceAttr(res, "managed_roles.#", "1"),
+					resource.TestCheckResourceAttr(res, "managed_roles.0.%", "2"),
+					resource.TestCheckResourceAttr(res, "managed_roles.0.id", "2"),
+					resource.TestCheckResourceAttr(res, "managed_roles.0.name", "Editor"),
+					resource.TestCheckResourceAttr(res, "mfa_enabled", "true"),
+					resource.TestCheckResourceAttr(res, "password_never_expires", "false"),
+					acc.PrintAttributes(res),
+				),
 			},
 		},
 	})
