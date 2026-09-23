@@ -372,20 +372,20 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 	ruleName := plan.Name.ValueString()
 	input := cato_models.PrivateAccessAddRuleInput{
 		Rule: &cato_models.PrivateAccessAddRuleDataInput{
-			Action:           r.prepareAction(plan.Action),
-			ActivePeriod:     r.prepareActivePeriod(ctx, plan.ActivePeriod, &resp.Diagnostics),
-			Applications:     r.prepareApplications(ctx, plan.Applications, &resp.Diagnostics),
-			ConnectionOrigin: r.prepareConnectionOrigins(ctx, plan.ConnectionOrigins, &resp.Diagnostics),
-			Country:          r.prepareCountries(ctx, plan.Countries, &resp.Diagnostics),
-			Description:      plan.Description.ValueString(),
-			Device:           r.prepareDevice(ctx, plan.Devices, &resp.Diagnostics),
-			Enabled:          plan.Enabled.ValueBool(),
-			Name:             ruleName,
-			Platform:         r.preparePlatforms(ctx, plan.Platforms, &resp.Diagnostics),
-			Schedule:         r.prepareSchedule(ctx, plan.Schedule, &resp.Diagnostics),
-			Source:           r.prepareSource(ctx, plan.Source, &resp.Diagnostics),
-			Tracking:         r.prepareTracking(ctx, plan.Tracking, &resp.Diagnostics),
-			UserAttributes:   r.prepareUserAttributes(ctx, plan.UserAttributes, &resp.Diagnostics),
+			Action:                r.prepareAction(plan.Action),
+			ActivePeriod:          r.prepareActivePeriod(ctx, plan.ActivePeriod, &resp.Diagnostics),
+			Applications:          r.prepareApplications(ctx, plan.Applications, &resp.Diagnostics),
+			ConnectionsOriginList: r.prepareConnectionOrigins(ctx, plan.ConnectionOrigins, &resp.Diagnostics),
+			Country:               r.prepareCountries(ctx, plan.Countries, &resp.Diagnostics),
+			Description:           plan.Description.ValueString(),
+			Device:                r.prepareDevice(ctx, plan.Devices, &resp.Diagnostics),
+			Enabled:               plan.Enabled.ValueBool(),
+			Name:                  ruleName,
+			Platform:              r.preparePlatforms(ctx, plan.Platforms, &resp.Diagnostics),
+			Schedule:              r.prepareSchedule(ctx, plan.Schedule, &resp.Diagnostics),
+			Source:                r.prepareSource(ctx, plan.Source, &resp.Diagnostics),
+			Tracking:              r.prepareTracking(ctx, plan.Tracking, &resp.Diagnostics),
+			UserAttributes:        r.prepareUserAttributes(ctx, plan.UserAttributes, &resp.Diagnostics),
 		},
 		At: &cato_models.PolicyRulePositionInput{
 			Position: ptr(cato_models.PolicyRulePositionEnumLastInPolicy),
@@ -489,20 +489,20 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 	input := cato_models.PrivateAccessUpdateRuleInput{
 		ID: id,
 		Rule: &cato_models.PrivateAccessUpdateRuleDataInput{
-			Action:           r.prepareActionUpdate(plan.Action),
-			ActivePeriod:     r.prepareActivePeriodUpdate(ctx, plan.ActivePeriod, &resp.Diagnostics),
-			Applications:     r.prepareApplicationsUpdate(ctx, plan.Applications, &resp.Diagnostics),
-			ConnectionOrigin: r.prepareConnectionOrigins(ctx, plan.ConnectionOrigins, &resp.Diagnostics),
-			Country:          r.prepareCountries(ctx, plan.Countries, &resp.Diagnostics),
-			Description:      parse.KnownStringPointer(plan.Description),
-			Device:           r.prepareDevice(ctx, plan.Devices, &resp.Diagnostics),
-			Enabled:          parse.KnownBoolPointer(plan.Enabled),
-			Name:             parse.KnownStringPointer(plan.Name),
-			Platform:         r.preparePlatforms(ctx, plan.Platforms, &resp.Diagnostics),
-			Schedule:         r.prepareScheduleUpdate(ctx, plan.Schedule, &resp.Diagnostics),
-			Source:           r.prepareSourceUpdate(ctx, plan.Source, &resp.Diagnostics),
-			Tracking:         r.prepareTrackingUpdate(ctx, plan.Tracking, &resp.Diagnostics),
-			UserAttributes:   r.prepareUserAttributesUpdate(ctx, plan.UserAttributes, &resp.Diagnostics),
+			Action:                r.prepareActionUpdate(plan.Action),
+			ActivePeriod:          r.prepareActivePeriodUpdate(ctx, plan.ActivePeriod, &resp.Diagnostics),
+			Applications:          r.prepareApplicationsUpdate(ctx, plan.Applications, &resp.Diagnostics),
+			ConnectionsOriginList: r.prepareConnectionOrigins(ctx, plan.ConnectionOrigins, &resp.Diagnostics),
+			Country:               r.prepareCountries(ctx, plan.Countries, &resp.Diagnostics),
+			Description:           parse.KnownStringPointer(plan.Description),
+			Device:                r.prepareDevice(ctx, plan.Devices, &resp.Diagnostics),
+			Enabled:               parse.KnownBoolPointer(plan.Enabled),
+			Name:                  parse.KnownStringPointer(plan.Name),
+			Platform:              r.preparePlatforms(ctx, plan.Platforms, &resp.Diagnostics),
+			Schedule:              r.prepareScheduleUpdate(ctx, plan.Schedule, &resp.Diagnostics),
+			Source:                r.prepareSourceUpdate(ctx, plan.Source, &resp.Diagnostics),
+			Tracking:              r.prepareTrackingUpdate(ctx, plan.Tracking, &resp.Diagnostics),
+			UserAttributes:        r.prepareUserAttributesUpdate(ctx, plan.UserAttributes, &resp.Diagnostics),
 		},
 	}
 
@@ -956,8 +956,8 @@ func (r *privAccessRuleResource) prepareConnectionOrigins(
 	ctx context.Context,
 	os types.Set,
 	diags *diag.Diagnostics,
-) []cato_models.PrivateAccessPolicyOriginEnum {
-	return parse.PrepareStrings[cato_models.PrivateAccessPolicyOriginEnum](ctx, os, diags)
+) []cato_models.ConnectionOriginsEnum {
+	return parse.PrepareStrings[cato_models.ConnectionOriginsEnum](ctx, os, diags)
 }
 
 func (r *privAccessRuleResource) prepareAction(action types.String) *cato_models.PrivateAccessPolicyActionInput {
@@ -1156,7 +1156,7 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 			Action:            types.StringValue(string(apiRule.Action.Action)),
 			ActivePeriod:      r.parsePolicyActivePeriod(ctx, apiRule.ActivePeriod, &diags),
 			Applications:      parse.IDRefSet(ctx, apiRule.Applications.Application, &diags),
-			ConnectionOrigins: parse.StringSet(ctx, apiRule.ConnectionOrigin, &diags),
+			ConnectionOrigins: parse.StringSet(ctx, apiRule.ConnectionsOriginList, &diags),
 			Countries:         parse.IDRefSet(ctx, apiRule.Country, &diags),
 			Description:       types.StringValue(apiRule.Description),
 			Devices:           parse.IDRefSet(ctx, apiRule.Device, &diags),

@@ -20,7 +20,7 @@ func (v PrivAccPolicyConnOriginValidator) ValidateSet(ctx context.Context, req v
 		return
 	}
 
-	origins := parse.PrepareStrings[cato_models.PrivateAccessPolicyOriginEnum](ctx, req.ConfigValue, &diags)
+	origins := parse.PrepareStrings[cato_models.ConnectionOriginsEnum](ctx, req.ConfigValue, &diags)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return
@@ -29,14 +29,14 @@ func (v PrivAccPolicyConnOriginValidator) ValidateSet(ctx context.Context, req v
 	for _, origin := range origins {
 		if !origin.IsValid() {
 			resp.Diagnostics.AddError("Field validation error", fmt.Sprintf("invalid connection origin (%s: %s)\n - valid options: %+v",
-				req.Path.String(), origin, cato_models.AllPrivateAccessPolicyOriginEnum))
+				req.Path.String(), origin, cato_models.AllConnectionOriginsEnum))
 			return
 		}
 	}
 }
 
 func (v PrivAccPolicyConnOriginValidator) Description(_ context.Context) string {
-	return fmt.Sprintf("PrivatAccessPolicy connection_origins must be one of: %v", cato_models.AllPrivateAccessPolicyOriginEnum)
+	return fmt.Sprintf("PrivatAccessPolicy connection_origins must be one of: %v", cato_models.AllConnectionOriginsEnum)
 }
 func (v PrivAccPolicyConnOriginValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
