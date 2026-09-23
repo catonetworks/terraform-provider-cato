@@ -135,6 +135,11 @@ func GetRandIP() string {
 	return fmt.Sprintf("10.%d.%d.%d", 2+r.Intn(252), 2+r.Intn(252), 2+r.Intn(252))
 }
 
+func GetRandNetworkPrefix() string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
+	return fmt.Sprintf("10.%d.%d", 2+r.Intn(252), 2+r.Intn(252))
+}
+
 func PrintAttributes(resource string) func(st *terraform.State) error {
 	return func(st *terraform.State) error {
 		attrs := st.Modules[0].Resources[resource].Primary.Attributes

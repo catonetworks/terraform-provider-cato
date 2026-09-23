@@ -42,6 +42,7 @@ func TestAccSocketLanFirewallRule_Simple(t *testing.T) {
 
 type socketLanFirewallRuleCfg struct {
 	resName            string
+	networkPrefix      string
 	hosts              []acc.Ref
 	globalIPRanges     []acc.Ref
 	siteRanges         []acc.Ref
@@ -57,8 +58,13 @@ type socketLanFirewallRuleCfg struct {
 }
 
 func newSocketLanFirewallRuleCfg(t *testing.T) socketLanFirewallRuleCfg {
+	networkPrefix := "192.168.246"
+	if !accmock.ACCMockActive {
+		networkPrefix = acc.GetRandNetworkPrefix()
+	}
 	return socketLanFirewallRuleCfg{
 		resName:            acc.GetRandName("socket_lan_firewall_rule"),
+		networkPrefix:      networkPrefix,
 		hosts:              acc.GetHosts(t),
 		globalIPRanges:     acc.GetGlobalIPRanges(t),
 		siteRanges:         acc.GetSiteRanges(t),
@@ -91,6 +97,7 @@ func (p socketLanFirewallRuleCfg) prepareTfCfg(data map[string]any, tmplText str
 func (p socketLanFirewallRuleCfg) getTfConfigSimple(index int) string {
 	data := map[string]any{
 		"Name":               p.resName,
+		"NetworkPrefix":      p.networkPrefix,
 		"Hosts":              p.hosts,
 		"GlobalIPRanges":     p.globalIPRanges,
 		"SiteRanges":         p.siteRanges,
@@ -483,11 +490,11 @@ const siteResource = `
 		connection_type = "SOCKET_X1500"
 
 		native_range = {
-			native_network_range = "192.168.246.0/24"
-			local_ip             = "192.168.246.1"
+			native_network_range = "{{ .NetworkPrefix }}.0/24"
+			local_ip             = "{{ .NetworkPrefix }}.1"
 			dhcp_settings = {
 				dhcp_type = "DHCP_RANGE"
-				ip_range  = "192.168.246.10-192.168.246.22"
+				ip_range  = "{{ .NetworkPrefix }}.10-{{ .NetworkPrefix }}.22"
 			}
 		}
 

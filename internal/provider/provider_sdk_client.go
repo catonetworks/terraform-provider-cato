@@ -8,6 +8,46 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
 
+const (
+	generatedGroupMembersLimit = 1000
+
+	providerInternetFirewallAddSubPolicyDocument = `mutation policyInternetFirewallAddSubPolicy (
+		$internetFirewallPolicyMutationInput: InternetFirewallPolicyMutationInput,
+		$internetFirewallAddSubPolicyInput: InternetFirewallAddSubPolicyInput!,
+		$accountId: ID!
+	) {
+		policy(accountId: $accountId) {
+			internetFirewall(input: $internetFirewallPolicyMutationInput) {
+				addSubPolicy(input: $internetFirewallAddSubPolicyInput) {
+					status
+					errors {
+						errorMessage
+						errorCode
+					}
+				}
+			}
+		}
+	}`
+
+	providerWanFirewallAddSubPolicyDocument = `mutation policyWanFirewallAddSubPolicy (
+		$wanFirewallAddSubPolicyInput: WanFirewallAddSubPolicyInput!,
+		$accountId: ID!,
+		$wanFirewallPolicyMutationInput: WanFirewallPolicyMutationInput
+	) {
+		policy(accountId: $accountId) {
+			wanFirewall(input: $wanFirewallPolicyMutationInput) {
+				addSubPolicy(input: $wanFirewallAddSubPolicyInput) {
+					status
+					errors {
+						errorMessage
+						errorCode
+					}
+				}
+			}
+		}
+	}`
+)
+
 // providerSDKClient localizes optional generated arguments added by SDK
 // regeneration. Existing provider call sites keep their reviewed request shape.
 type providerSDKClient struct {
@@ -18,13 +58,23 @@ func newProviderSDKClient(client *cato.Client) *providerSDKClient {
 	return &providerSDKClient{Client: client}
 }
 
+func generatedGroupMembersInput() cato_models.GroupMembersListInput {
+	return cato_models.GroupMembersListInput{
+		Paging: &cato_models.PagingInput{
+			From:  0,
+			Limit: generatedGroupMembersLimit,
+		},
+		Sort: &cato_models.GroupMembersListSortInput{},
+	}
+}
+
 func (c *providerSDKClient) GroupsCreateGroup(
 	ctx context.Context,
 	input cato_models.CreateGroupInput,
 	accountID string,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.GroupsCreateGroup, error) {
-	return c.Client.GroupsCreateGroup(ctx, input, accountID, cato_models.GroupMembersListInput{}, interceptors...)
+	return c.Client.GroupsCreateGroup(ctx, input, accountID, generatedGroupMembersInput(), interceptors...)
 }
 
 func (c *providerSDKClient) GroupsUpdateGroup(
@@ -33,7 +83,7 @@ func (c *providerSDKClient) GroupsUpdateGroup(
 	accountID string,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.GroupsUpdateGroup, error) {
-	return c.Client.GroupsUpdateGroup(ctx, input, accountID, cato_models.GroupMembersListInput{}, interceptors...)
+	return c.Client.GroupsUpdateGroup(ctx, input, accountID, generatedGroupMembersInput(), interceptors...)
 }
 
 func (c *providerSDKClient) GroupsDeleteGroup(
@@ -42,7 +92,36 @@ func (c *providerSDKClient) GroupsDeleteGroup(
 	accountID string,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.GroupsDeleteGroup, error) {
-	return c.Client.GroupsDeleteGroup(ctx, input, accountID, cato_models.GroupMembersListInput{}, interceptors...)
+	return c.Client.GroupsDeleteGroup(ctx, input, accountID, generatedGroupMembersInput(), interceptors...)
+}
+
+func (c *providerSDKClient) PolicyInternetFirewallAddSubPolicy(
+	ctx context.Context,
+	policyInput *cato_models.InternetFirewallPolicyMutationInput,
+	input cato_models.InternetFirewallAddSubPolicyInput,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato.PolicyInternetFirewallAddSubPolicy, error) {
+	var result cato.PolicyInternetFirewallAddSubPolicy
+	err := c.Client.Client.Post(
+		ctx,
+		"policyInternetFirewallAddSubPolicy",
+		providerInternetFirewallAddSubPolicyDocument,
+		&result,
+		map[string]any{
+			"internetFirewallPolicyMutationInput": policyInput,
+			"internetFirewallAddSubPolicyInput":   input,
+			"accountId":                           accountID,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (c *providerSDKClient) PolicyInternetFirewallAddRule(
@@ -158,7 +237,26 @@ func (c *providerSDKClient) PolicyWanFirewallAddSubPolicy(
 	accountID string,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyWanFirewallAddSubPolicy, error) {
-	return c.Client.PolicyWanFirewallAddSubPolicy(ctx, input, accountID, nil, interceptors...)
+	var result cato.PolicyWanFirewallAddSubPolicy
+	err := c.Client.Client.Post(
+		ctx,
+		"policyWanFirewallAddSubPolicy",
+		providerWanFirewallAddSubPolicyDocument,
+		&result,
+		map[string]any{
+			"wanFirewallAddSubPolicyInput":   input,
+			"accountId":                      accountID,
+			"wanFirewallPolicyMutationInput": nil,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (c *providerSDKClient) PolicyWanFirewallRemoveSubPolicy(
