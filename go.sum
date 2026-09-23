@@ -151,6 +151,8 @@ github.com/catenacyber/perfsprint v0.10.1 h1:u7Riei30bk46XsG8nknMhKLXG9BcXz3+3tl
 github.com/catenacyber/perfsprint v0.10.1/go.mod h1:DJTGsi/Zufpuus6XPGJyKOTMELe347o6akPvWG9Zcsc=
 github.com/catonetworks/cato-go-sdk v0.4.2-0.20260922142536-4dd048f18886 h1:C+a/r00KxvurjA9cQ04ywj+l3hcsDmB7Y118qfVZPNE=
 github.com/catonetworks/cato-go-sdk v0.4.2-0.20260922142536-4dd048f18886/go.mod h1:t5VOHgjUB/DhslAwC+2XAaIejAryxv5APlZ5tbXjZWg=
+github.com/catonetworks/cato-go-sdk v0.4.2 h1:tvaevfDMDlhqWqhmQ+hecFwFHMuK9QSNmmigXdZp5so=
+github.com/catonetworks/cato-go-sdk v0.4.2/go.mod h1:t5VOHgjUB/DhslAwC+2XAaIejAryxv5APlZ5tbXjZWg=
 github.com/ccojocar/zxcvbn-go v1.0.4 h1:FWnCIRMXPj43ukfX000kvBZvV6raSxakYr1nzyNrUcc=
 github.com/ccojocar/zxcvbn-go v1.0.4/go.mod h1:3GxGX+rHmueTUMvm5ium7irpyjmm7ikxYFOSJB21Das=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
