@@ -6,7 +6,8 @@
 - None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration.
 
 ### Bug fixes
-- Fixed `cato_private_access_rule` connection-origin management to use the current Cato API field, so creates, updates, and refreshes remain compatible while preserving the existing `connection_origins` configuration.
+- Fixed errors caused by unsupported `X1700C` SocketPlatform value. The X1700C sockets are now fully supported.
+- Updated `cato_private_access_rule` connection-origin management to use the current Cato API field, so creates, updates, and refreshes remain compatible while preserving the existing `connection_origins` configuration.
 
 ### Notes
 - Updated the provider to the latest API schema. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches.
