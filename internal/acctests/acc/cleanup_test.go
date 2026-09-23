@@ -56,7 +56,7 @@ func deleteSites(t *testing.T) error {
 
 func deletePrivateAccessRules(t *testing.T) error {
 	client := GetClient(t)
-	result, err := client.PolicyReadPrivateAccessPolicy(ctx, CatoAccountID)
+	result, err := client.PolicyReadPrivateAccessPolicy(ctx, CatoAccountID, nil)
 	if err != nil {
 		return err
 	}

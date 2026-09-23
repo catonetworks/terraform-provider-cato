@@ -317,7 +317,12 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 		}
 		// create the group
 		createGroupInput := cato_models.CreateGroupInput{Name: groupName, Description: ptr(groupName + " terraform tests")}
-		res, err := client.GroupsCreateGroup(ctx, createGroupInput, CatoAccountID)
+		res, err := client.GroupsCreateGroup(
+			ctx,
+			createGroupInput,
+			CatoAccountID,
+			cato_models.GroupMembersListInput{},
+		)
 		if err != nil {
 			t.Fatalf("ERROR creating test group: %v", err)
 		}
