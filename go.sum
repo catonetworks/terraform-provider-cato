@@ -153,6 +153,8 @@ github.com/catonetworks/cato-go-sdk v0.4.2-0.20260922142536-4dd048f18886 h1:C+a/
 github.com/catonetworks/cato-go-sdk v0.4.2-0.20260922142536-4dd048f18886/go.mod h1:t5VOHgjUB/DhslAwC+2XAaIejAryxv5APlZ5tbXjZWg=
 github.com/catonetworks/cato-go-sdk v0.4.2 h1:tvaevfDMDlhqWqhmQ+hecFwFHMuK9QSNmmigXdZp5so=
 github.com/catonetworks/cato-go-sdk v0.4.2/go.mod h1:t5VOHgjUB/DhslAwC+2XAaIejAryxv5APlZ5tbXjZWg=
+github.com/catonetworks/cato-go-sdk v0.4.3-0.20260923123925-f51452f0b5e3 h1:N12D8W9ICuSTyyN7SkSANLVYq7sSob0+UxT6/b1P5WY=
+github.com/catonetworks/cato-go-sdk v0.4.3-0.20260923123925-f51452f0b5e3/go.mod h1:t5VOHgjUB/DhslAwC+2XAaIejAryxv5APlZ5tbXjZWg=
 github.com/ccojocar/zxcvbn-go v1.0.4 h1:FWnCIRMXPj43ukfX000kvBZvV6raSxakYr1nzyNrUcc=
 github.com/ccojocar/zxcvbn-go v1.0.4/go.mod h1:3GxGX+rHmueTUMvm5ium7irpyjmm7ikxYFOSJB21Das=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

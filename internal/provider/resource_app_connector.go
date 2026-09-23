@@ -68,6 +68,22 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "The unique name of the ZTNA App Connector",
 				Required:    true,
 			},
+			"pooled_bandwidth_allocation": schema.SetNestedAttribute{
+				Description: "App connector location",
+				Optional:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"bandwidth": schema.Int64Attribute{
+							Description: "The bandwidth (in Mbps) to allocate from the pooled license.",
+							Required:    true,
+						},
+						"license_id": schema.StringAttribute{
+							Description: "The pooled bandwidth license to allocate from",
+							Required:    true,
+						},
+					},
+				},
+			},
 			"preferred_pop_location": r.schemaPreferredPopLocation(),
 			"private_apps": schema.SetNestedAttribute{
 				Description: "List of private applications",
