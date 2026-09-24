@@ -1,7 +1,12 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"strings"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato "github.com/catonetworks/cato-go-sdk"
@@ -46,6 +51,140 @@ const (
 			}
 		}
 	}`
+
+	providerInternetFirewallRemoveSubPolicyDocument = `mutation policyInternetFirewallRemoveSubPolicy (
+		$internetFirewallPolicyMutationInput: InternetFirewallPolicyMutationInput,
+		$internetFirewallRemoveSubPolicyInput: InternetFirewallRemoveSubPolicyInput!,
+		$accountId: ID!
+	) {
+		policy(accountId: $accountId) {
+			internetFirewall(input: $internetFirewallPolicyMutationInput) {
+				removeSubPolicy(input: $internetFirewallRemoveSubPolicyInput) {
+					status
+					errors {
+						errorMessage
+						errorCode
+					}
+				}
+			}
+		}
+	}`
+
+	providerWanFirewallRemoveSubPolicyDocument = `mutation policyWanFirewallRemoveSubPolicy (
+		$wanFirewallRemoveSubPolicyInput: WanFirewallRemoveSubPolicyInput!,
+		$accountId: ID!,
+		$wanFirewallPolicyMutationInput: WanFirewallPolicyMutationInput
+	) {
+		policy(accountId: $accountId) {
+			wanFirewall(input: $wanFirewallPolicyMutationInput) {
+				removeSubPolicy(input: $wanFirewallRemoveSubPolicyInput) {
+					status
+					errors {
+						errorMessage
+						errorCode
+					}
+				}
+			}
+		}
+	}`
+
+	providerSocketLanAddRuleDocument = `mutation policySocketLanAddRule (
+		$socketLanAddRuleInput: SocketLanAddRuleInput!,
+		$accountId: ID!,
+		$socketLanPolicyMutationInput: SocketLanPolicyMutationInput
+	) {
+		policy(accountId: $accountId) {
+			socketLan(input: $socketLanPolicyMutationInput) {
+				addRule(input: $socketLanAddRuleInput) {
+					status
+					errors {
+						errorMessage
+						errorCode
+					}
+				}
+			}
+		}
+	}`
+
+	providerSocketLanFirewallAddRuleDocument = `mutation policySocketLanFirewallAddRule (
+		$accountId: ID!,
+		$socketLanPolicyMutationInput: SocketLanPolicyMutationInput,
+		$socketLanFirewallAddRuleInput: SocketLanFirewallAddRuleInput!
+	) {
+		policy(accountId: $accountId) {
+			socketLan(input: $socketLanPolicyMutationInput) {
+				firewall {
+					addRule(input: $socketLanFirewallAddRuleInput) {
+						status
+						errors {
+							errorMessage
+							errorCode
+						}
+					}
+				}
+			}
+		}
+	}`
+
+	providerSocketLanFirewallMoveRuleDocument = `mutation policySocketLanFirewallMoveRule (
+		$accountId: ID!,
+		$socketLanPolicyMutationInput: SocketLanPolicyMutationInput,
+		$policyMoveSubRuleInput: PolicyMoveSubRuleInput!
+	) {
+		policy(accountId: $accountId) {
+			socketLan(input: $socketLanPolicyMutationInput) {
+				firewall {
+					moveRule(input: $policyMoveSubRuleInput) {
+						status
+						errors {
+							errorMessage
+							errorCode
+						}
+					}
+				}
+			}
+		}
+	}`
+
+	providerSocketLanFirewallRemoveRuleDocument = `mutation policySocketLanFirewallRemoveRule (
+		$accountId: ID!,
+		$socketLanPolicyMutationInput: SocketLanPolicyMutationInput,
+		$socketLanFirewallRemoveRuleInput: SocketLanFirewallRemoveRuleInput!
+	) {
+		policy(accountId: $accountId) {
+			socketLan(input: $socketLanPolicyMutationInput) {
+				firewall {
+					removeRule(input: $socketLanFirewallRemoveRuleInput) {
+						status
+						errors {
+							errorMessage
+							errorCode
+						}
+					}
+				}
+			}
+		}
+	}`
+
+	providerSocketLanFirewallUpdateRuleDocument = `mutation policySocketLanFirewallUpdateRule (
+		$accountId: ID!,
+		$socketLanPolicyMutationInput: SocketLanPolicyMutationInput,
+		$socketLanFirewallUpdateRuleInput: SocketLanFirewallUpdateRuleInput!
+	) {
+		policy(accountId: $accountId) {
+			socketLan(input: $socketLanPolicyMutationInput) {
+				firewall {
+					updateRule(input: $socketLanFirewallUpdateRuleInput) {
+						status
+						errors {
+							errorMessage
+							errorCode
+						}
+					}
+				}
+			}
+		}
+	}`
 )
 
 // providerSDKClient localizes optional generated arguments added by SDK
@@ -66,6 +205,52 @@ func generatedGroupMembersInput() cato_models.GroupMembersListInput {
 		},
 		Sort: &cato_models.GroupMembersListSortInput{},
 	}
+}
+
+func stripSocketLanPolicyAccess(
+	ctx context.Context,
+	req *http.Request,
+	info *clientv2.GQLRequestInfo,
+	res any,
+	next clientv2.RequestInterceptorFunc,
+) error {
+	if info != nil && info.Request != nil {
+		lines := strings.Split(info.Request.Query, "\n")
+		filtered := make([]string, 0, len(lines))
+		skipDepth := 0
+		for _, line := range lines {
+			if skipDepth > 0 {
+				skipDepth += strings.Count(line, "{") - strings.Count(line, "}")
+				continue
+			}
+			if strings.TrimSpace(line) == "access {" {
+				skipDepth = 1
+				continue
+			}
+			filtered = append(filtered, line)
+		}
+		info.Request.Query = strings.Join(filtered, "\n")
+		body, err := json.Marshal(info.Request)
+		if err != nil {
+			return err
+		}
+		req.Body = io.NopCloser(bytes.NewReader(body))
+		req.ContentLength = int64(len(body))
+	}
+	return next(ctx, req, info, res)
+}
+
+func (c *providerSDKClient) PolicySocketLanPolicy(
+	ctx context.Context,
+	accountID string,
+	input *cato_models.SocketLanPolicyInput,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato.PolicySocketLanPolicy, error) {
+	interceptors = append(
+		[]clientv2.RequestInterceptor{stripSocketLanPolicyAccess},
+		interceptors...,
+	)
+	return c.Client.PolicySocketLanPolicy(ctx, accountID, input, interceptors...)
 }
 
 func (c *providerSDKClient) GroupsCreateGroup(
@@ -124,6 +309,35 @@ func (c *providerSDKClient) PolicyInternetFirewallAddSubPolicy(
 	return &result, nil
 }
 
+func (c *providerSDKClient) PolicyInternetFirewallRemoveSubPolicy(
+	ctx context.Context,
+	policyInput *cato_models.InternetFirewallPolicyMutationInput,
+	input cato_models.InternetFirewallRemoveSubPolicyInput,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato.PolicyInternetFirewallRemoveSubPolicy, error) {
+	var result cato.PolicyInternetFirewallRemoveSubPolicy
+	err := c.Client.Client.Post(
+		ctx,
+		"policyInternetFirewallRemoveSubPolicy",
+		providerInternetFirewallRemoveSubPolicyDocument,
+		&result,
+		map[string]any{
+			"internetFirewallPolicyMutationInput":  policyInput,
+			"internetFirewallRemoveSubPolicyInput": input,
+			"accountId":                            accountID,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (c *providerSDKClient) PolicyInternetFirewallAddRule(
 	ctx context.Context,
 	input cato_models.InternetFirewallAddRuleInput,
@@ -166,7 +380,142 @@ func (c *providerSDKClient) PolicySocketLanAddRule(
 	accountID string,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySocketLanAddRule, error) {
-	return c.Client.PolicySocketLanAddRule(ctx, input, accountID, nil, interceptors...)
+	var result cato.PolicySocketLanAddRule
+	err := c.Client.Client.Post(
+		ctx,
+		"policySocketLanAddRule",
+		providerSocketLanAddRuleDocument,
+		&result,
+		map[string]any{
+			"socketLanAddRuleInput":        input,
+			"accountId":                    accountID,
+			"socketLanPolicyMutationInput": nil,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *providerSDKClient) PolicySocketLanFirewallAddRule(
+	ctx context.Context,
+	accountID string,
+	policyInput *cato_models.SocketLanPolicyMutationInput,
+	input cato_models.SocketLanFirewallAddRuleInput,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato.PolicySocketLanFirewallAddRule, error) {
+	var result cato.PolicySocketLanFirewallAddRule
+	err := c.Client.Client.Post(
+		ctx,
+		"policySocketLanFirewallAddRule",
+		providerSocketLanFirewallAddRuleDocument,
+		&result,
+		map[string]any{
+			"accountId":                     accountID,
+			"socketLanPolicyMutationInput":  policyInput,
+			"socketLanFirewallAddRuleInput": input,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *providerSDKClient) PolicySocketLanFirewallMoveRule(
+	ctx context.Context,
+	accountID string,
+	policyInput *cato_models.SocketLanPolicyMutationInput,
+	input cato_models.PolicyMoveSubRuleInput,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato.PolicySocketLanFirewallMoveRule, error) {
+	var result cato.PolicySocketLanFirewallMoveRule
+	err := c.Client.Client.Post(
+		ctx,
+		"policySocketLanFirewallMoveRule",
+		providerSocketLanFirewallMoveRuleDocument,
+		&result,
+		map[string]any{
+			"accountId":                    accountID,
+			"socketLanPolicyMutationInput": policyInput,
+			"policyMoveSubRuleInput":       input,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *providerSDKClient) PolicySocketLanFirewallRemoveRule(
+	ctx context.Context,
+	accountID string,
+	policyInput *cato_models.SocketLanPolicyMutationInput,
+	input cato_models.SocketLanFirewallRemoveRuleInput,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato.PolicySocketLanFirewallRemoveRule, error) {
+	var result cato.PolicySocketLanFirewallRemoveRule
+	err := c.Client.Client.Post(
+		ctx,
+		"policySocketLanFirewallRemoveRule",
+		providerSocketLanFirewallRemoveRuleDocument,
+		&result,
+		map[string]any{
+			"accountId":                        accountID,
+			"socketLanPolicyMutationInput":     policyInput,
+			"socketLanFirewallRemoveRuleInput": input,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *providerSDKClient) PolicySocketLanFirewallUpdateRule(
+	ctx context.Context,
+	accountID string,
+	policyInput *cato_models.SocketLanPolicyMutationInput,
+	input cato_models.SocketLanFirewallUpdateRuleInput,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato.PolicySocketLanFirewallUpdateRule, error) {
+	var result cato.PolicySocketLanFirewallUpdateRule
+	err := c.Client.Client.Post(
+		ctx,
+		"policySocketLanFirewallUpdateRule",
+		providerSocketLanFirewallUpdateRuleDocument,
+		&result,
+		map[string]any{
+			"accountId":                        accountID,
+			"socketLanPolicyMutationInput":     policyInput,
+			"socketLanFirewallUpdateRuleInput": input,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (c *providerSDKClient) PolicySocketLanAddSection(
@@ -265,7 +614,26 @@ func (c *providerSDKClient) PolicyWanFirewallRemoveSubPolicy(
 	accountID string,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyWanFirewallRemoveSubPolicy, error) {
-	return c.Client.PolicyWanFirewallRemoveSubPolicy(ctx, input, accountID, nil, interceptors...)
+	var result cato.PolicyWanFirewallRemoveSubPolicy
+	err := c.Client.Client.Post(
+		ctx,
+		"policyWanFirewallRemoveSubPolicy",
+		providerWanFirewallRemoveSubPolicyDocument,
+		&result,
+		map[string]any{
+			"wanFirewallRemoveSubPolicyInput": input,
+			"accountId":                       accountID,
+			"wanFirewallPolicyMutationInput":  nil,
+		},
+		interceptors...,
+	)
+	if err != nil {
+		if c.Client.Client.ParseDataWhenErrors {
+			return &result, err
+		}
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (c *providerSDKClient) PolicyWanFirewallRemoveRule(
