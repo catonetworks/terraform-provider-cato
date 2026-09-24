@@ -158,7 +158,7 @@ func listFirewallRevisions(ctx context.Context, client *cato.Client, accountID s
 		})
 	}
 
-	wanNetwork, err := client.WanNetworkPolicy(ctx, accountID)
+	wanNetwork, err := client.WanNetworkPolicy(ctx, accountID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,14 @@ func discardRevision(ctx context.Context, client *cato.Client, accountID string,
 			return fmt.Errorf("%s revision %s: %s", rev.policy, rev.id, formatInternetFirewallErrors(errors))
 		}
 	case "wan_firewall":
-		resp, err := client.PolicyWanFirewallDiscardPolicyRevision(ctx, input, accountID)
+		resp, err := client.PolicyWanFirewallDiscardPolicyRevision(
+			ctx,
+			input,
+			accountID,
+			&cato_models.WanFirewallPolicyMutationInput{
+				Revision: &cato_models.PolicyMutationRevisionInput{ID: &rev.id},
+			},
+		)
 		if err != nil {
 			return fmt.Errorf("%s revision %s: %w", rev.policy, rev.id, err)
 		}
@@ -206,7 +213,14 @@ func discardRevision(ctx context.Context, client *cato.Client, accountID string,
 			return fmt.Errorf("%s revision %s: %s", rev.policy, rev.id, formatWanFirewallErrors(errors))
 		}
 	case "wan_network":
-		resp, err := client.PolicyWanNetworkDiscardPolicyRevision(ctx, accountID)
+		resp, err := client.PolicyWanNetworkDiscardPolicyRevision(
+			ctx,
+			accountID,
+			input,
+			&cato_models.WanNetworkPolicyMutationInput{
+				Revision: &cato_models.PolicyMutationRevisionInput{ID: &rev.id},
+			},
+		)
 		if err != nil {
 			return fmt.Errorf("%s revision %s: %w", rev.policy, rev.id, err)
 		}

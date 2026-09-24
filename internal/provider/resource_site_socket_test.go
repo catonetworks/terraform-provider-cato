@@ -104,8 +104,9 @@ func TestSocketSiteGetSocketSiteClient(t *testing.T) {
 		t.Parallel()
 
 		sdkClient := &cato_go_sdk.Client{}
-		r := &socketSiteResource{client: &catoClientData{catov2: sdkClient}}
-		if got := r.getSocketSiteClient(); got != sdkClient {
+		providerClient := newProviderSDKClient(sdkClient)
+		r := &socketSiteResource{client: &catoClientData{catov2: providerClient}}
+		if got := r.getSocketSiteClient(); got != providerClient {
 			t.Fatalf("expected provider SDK client, got %T", got)
 		}
 	})

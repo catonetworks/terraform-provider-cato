@@ -135,6 +135,11 @@ func GetRandIP() string {
 	return fmt.Sprintf("10.%d.%d.%d", 2+r.Intn(252), 2+r.Intn(252), 2+r.Intn(252))
 }
 
+func GetRandNetworkPrefix() string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
+	return fmt.Sprintf("10.%d.%d", 2+r.Intn(252), 2+r.Intn(252))
+}
+
 func PrintAttributes(resource string) func(st *terraform.State) error {
 	return func(st *terraform.State) error {
 		attrs := st.Modules[0].Resources[resource].Primary.Attributes
@@ -317,7 +322,12 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 		}
 		// create the group
 		createGroupInput := cato_models.CreateGroupInput{Name: groupName, Description: ptr(groupName + " terraform tests")}
-		res, err := client.GroupsCreateGroup(ctx, createGroupInput, CatoAccountID)
+		res, err := client.GroupsCreateGroup(
+			ctx,
+			createGroupInput,
+			CatoAccountID,
+			cato_models.GroupMembersListInput{},
+		)
 		if err != nil {
 			t.Fatalf("ERROR creating test group: %v", err)
 		}
