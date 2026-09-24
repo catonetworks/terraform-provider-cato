@@ -43,6 +43,16 @@ func TestAccAppConnector(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "location.country_code", "Cz"),
 					resource.TestCheckResourceAttr(res, "location.timezone", "America/New_York"),
 
+					resource.TestCheckResourceAttr(res, "pooled_bandwidth_allocation.#", "2"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "pooled_bandwidth_allocation.*", map[string]string{
+						"license_id": "L100",
+						"bandwidth":  "100",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "pooled_bandwidth_allocation.*", map[string]string{
+						"license_id": "L200",
+						"bandwidth":  "200",
+					}),
+
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.%", "4"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.automatic", "false"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.preferred_only", "true"),
@@ -81,6 +91,16 @@ func TestAccAppConnector(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "location.state_code", "US-CA"),
 					resource.TestCheckResourceAttr(res, "location.timezone", "America/Los_Angeles"),
 
+					resource.TestCheckResourceAttr(res, "pooled_bandwidth_allocation.#", "2"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "pooled_bandwidth_allocation.*", map[string]string{
+						"license_id": "L100",
+						"bandwidth":  "150",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "pooled_bandwidth_allocation.*", map[string]string{
+						"license_id": "L300",
+						"bandwidth":  "300",
+					}),
+
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.%", "4"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.automatic", "true"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.preferred_only", "false"),
@@ -107,6 +127,8 @@ func TestAccAppConnector(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "location.country_code", "GB"),
 					resource.TestCheckNoResourceAttr(res, "location.state_code"), // Not set
 					resource.TestCheckResourceAttr(res, "location.timezone", "Europe/London"),
+
+					resource.TestCheckNoResourceAttr(res, "pooled_bandwidth_allocation.#"),
 
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.%", "4"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.automatic", "false"),
@@ -168,6 +190,10 @@ var appConnectorTFs = []string{`
 			country_code = "Cz"
 			timezone     = "America/New_York"
 		}
+		pooled_bandwidth_allocation = [
+			{ license_id = "L100", bandwidth = 100 },
+			{ license_id = "L200", bandwidth = 200 },
+		]
 		preferred_pop_location = {
 			automatic      = false
 			preferred_only = true
@@ -188,6 +214,10 @@ var appConnectorTFs = []string{`
 			state_code   = "US-CA"
 			timezone     = "America/Los_Angeles"
 		}
+		pooled_bandwidth_allocation = [
+			{ license_id = "L100", bandwidth = 150 },
+			{ license_id = "L300", bandwidth = 300 },
+		]
 		preferred_pop_location = {
 			automatic      = true
 			preferred_only = false
