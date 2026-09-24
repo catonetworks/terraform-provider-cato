@@ -135,3 +135,14 @@ func CheckAPIErrors[T APIErrors](err error, errors []T, summary string, diags *d
 	}
 	return false
 }
+
+// StringPointerValue handles empty string API values, returns StringNull or StringValue(""), based on the plan
+func StringPointerValue(s *string, plan types.String) types.String {
+	if (s == nil) || (*s == "") {
+		if plan.IsNull() {
+			return types.StringNull()
+		}
+		return types.StringValue("")
+	}
+	return types.StringPointerValue(s)
+}

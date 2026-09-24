@@ -600,7 +600,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *tf
 		Name:           types.StringValue(siteGeneralDetails.GetSite().GetName()),
 		ConnectionType: connectionTypeFromSocketConfiguration(siteSocketConfiguration),
 		SiteType:       types.StringPointerValue((*string)(siteGeneralDetails.GetSiteType())),
-		Description:    types.StringPointerValue(siteGeneralDetails.GetDescription()),
+		Description:    utils.StringPointerValue(siteGeneralDetails.GetDescription(), state.Description),
 		NativeRange:    r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
 		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
 		Sockets:        r.parseSockets(ctx, siteSocketConfiguration, diags),
