@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"testing"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
 
@@ -67,9 +68,51 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 		return nil
 	}
 
-	firewallRuleIDs := make(map[string]struct{})
-	networkRuleIDs := make(map[string]struct{})
-	hasChanges := false
+	firewallRuleIDs, networkRuleIDs := socketLanRuleIDs(policy)
+	if err := deleteSocketLanFirewallRules(client, firewallRuleIDs); err != nil {
+		return err
+	}
+	if err := deleteSocketLanNetworkRules(client, networkRuleIDs); err != nil {
+		return err
+	}
+
+	subPoliciesChanged, err := deleteSocketLanSubPolicies(client, policy)
+	if err != nil {
+		return err
+	}
+	sectionsChanged, err := deleteSocketLanSections(client, policy)
+	if err != nil {
+		return err
+	}
+
+	if len(firewallRuleIDs) == 0 && len(networkRuleIDs) == 0 && !subPoliciesChanged && !sectionsChanged {
+		return nil
+	}
+
+	publishResult, err := client.PolicySocketLanPublishPolicyRevision(
+		ctx,
+		nil,
+		&cato_models.PolicyPublishRevisionInput{},
+		CatoAccountID,
+	)
+	if err != nil {
+		return fmt.Errorf("publishing socket LAN policy revision: %w", err)
+	}
+	publish := publishResult.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
+	if err := checkSocketLanMutation(
+		"publishing socket LAN policy revision",
+		publish.GetStatus(),
+		len(publish.GetErrors()),
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func socketLanRuleIDs(policy *cato.PolicySocketLanPolicy_Policy_SocketLan_Policy) (firewallRuleIDs, networkRuleIDs map[string]struct{}) {
+	firewallRuleIDs = make(map[string]struct{})
+	networkRuleIDs = make(map[string]struct{})
 	for _, ruleWrapper := range policy.GetRules() {
 		if ruleWrapper == nil {
 			continue
@@ -97,7 +140,11 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 		}
 	}
 
-	for ruleID := range firewallRuleIDs {
+	return firewallRuleIDs, networkRuleIDs
+}
+
+func deleteSocketLanFirewallRules(client *cato.Client, ruleIDs map[string]struct{}) error {
+	for ruleID := range ruleIDs {
 		input := cato_models.SocketLanFirewallRemoveRuleInput{ID: ruleID}
 		result, err := client.PolicySocketLanFirewallRemoveRule(ctx, CatoAccountID, nil, input)
 		if err != nil {
@@ -113,7 +160,11 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 		}
 	}
 
-	for ruleID := range networkRuleIDs {
+	return nil
+}
+
+func deleteSocketLanNetworkRules(client *cato.Client, ruleIDs map[string]struct{}) error {
+	for ruleID := range ruleIDs {
 		input := cato_models.SocketLanRemoveRuleInput{ID: ruleID}
 		result, err := client.PolicySocketLanRemoveRule(ctx, nil, input, CatoAccountID)
 		if err != nil {
@@ -129,6 +180,11 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 		}
 	}
 
+	return nil
+}
+
+func deleteSocketLanSubPolicies(client *cato.Client, policy *cato.PolicySocketLanPolicy_Policy_SocketLan_Policy) (bool, error) {
+	hasChanges := false
 	for _, subPolicy := range policy.GetSubPolicies() {
 		if subPolicy == nil || !acctestRE.MatchString(subPolicy.GetPolicy().GetName()) {
 			continue
@@ -142,7 +198,7 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 		}
 		result, err := client.PolicySocketLanRemoveSubPolicy(ctx, nil, input, CatoAccountID)
 		if err != nil {
-			return fmt.Errorf("deleting socket LAN sub-policy %s: %w", subPolicy.GetPolicy().GetID(), err)
+			return false, fmt.Errorf("deleting socket LAN sub-policy %s: %w", subPolicy.GetPolicy().GetID(), err)
 		}
 		remove := result.GetPolicy().GetSocketLan().GetRemoveSubPolicy()
 		if err := checkSocketLanMutation(
@@ -150,11 +206,16 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 			remove.GetStatus(),
 			len(remove.GetErrors()),
 		); err != nil {
-			return fmt.Errorf("%s %s: %w", "deleting socket LAN sub-policy", subPolicy.GetPolicy().GetID(), err)
+			return false, fmt.Errorf("%s %s: %w", "deleting socket LAN sub-policy", subPolicy.GetPolicy().GetID(), err)
 		}
 		hasChanges = true
 	}
 
+	return hasChanges, nil
+}
+
+func deleteSocketLanSections(client *cato.Client, policy *cato.PolicySocketLanPolicy_Policy_SocketLan_Policy) (bool, error) {
+	hasChanges := false
 	for _, section := range policy.GetSections() {
 		if section == nil || !acctestRE.MatchString(section.Section.GetName()) {
 			continue
@@ -163,7 +224,7 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 		input := cato_models.PolicyRemoveSectionInput{ID: section.Section.GetID()}
 		result, err := client.PolicySocketLanRemoveSection(ctx, nil, input, CatoAccountID)
 		if err != nil {
-			return fmt.Errorf("deleting socket LAN section %s: %w", section.Section.GetID(), err)
+			return false, fmt.Errorf("deleting socket LAN section %s: %w", section.Section.GetID(), err)
 		}
 		remove := result.GetPolicy().GetSocketLan().GetRemoveSection()
 		if err := checkSocketLanMutation(
@@ -171,34 +232,12 @@ func deleteSocketLanPolicyResources(t *testing.T) error {
 			remove.GetStatus(),
 			len(remove.GetErrors()),
 		); err != nil {
-			return fmt.Errorf("%s %s: %w", "deleting socket LAN section", section.Section.GetID(), err)
+			return false, fmt.Errorf("%s %s: %w", "deleting socket LAN section", section.Section.GetID(), err)
 		}
 		hasChanges = true
 	}
 
-	if len(firewallRuleIDs) == 0 && len(networkRuleIDs) == 0 && !hasChanges {
-		return nil
-	}
-
-	publishResult, err := client.PolicySocketLanPublishPolicyRevision(
-		ctx,
-		nil,
-		&cato_models.PolicyPublishRevisionInput{},
-		CatoAccountID,
-	)
-	if err != nil {
-		return fmt.Errorf("publishing socket LAN policy revision: %w", err)
-	}
-	publish := publishResult.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
-	if err := checkSocketLanMutation(
-		"publishing socket LAN policy revision",
-		publish.GetStatus(),
-		len(publish.GetErrors()),
-	); err != nil {
-		return err
-	}
-
-	return nil
+	return hasChanges, nil
 }
 
 func checkSocketLanMutation(operation string, status *cato_models.PolicyMutationStatus, errorCount int) error {
