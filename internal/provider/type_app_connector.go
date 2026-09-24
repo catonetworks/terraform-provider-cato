@@ -8,17 +8,18 @@ import (
 )
 
 type AppConnectorModel struct {
-	Description          types.String `tfsdk:"description"`
-	GroupName            types.String `tfsdk:"group_name"`
-	ID                   types.String `tfsdk:"id"`
-	Location             types.Object `tfsdk:"location"` // AppConnectorLocation
-	Name                 types.String `tfsdk:"name"`
-	PreferredPopLocation types.Object `tfsdk:"preferred_pop_location"` // PreferredPopLocationModel
-	PrivateAppRef        types.Set    `tfsdk:"private_apps"`           // []IDNameRefModel
-	SerialNumber         types.String `tfsdk:"serial_number"`
-	SocketID             types.String `tfsdk:"socket_id"`
-	SocketModel          types.String `tfsdk:"socket_model"`
-	Type                 types.String `tfsdk:"type"`
+	Description               types.String `tfsdk:"description"`
+	GroupName                 types.String `tfsdk:"group_name"`
+	ID                        types.String `tfsdk:"id"`
+	Location                  types.Object `tfsdk:"location"` // AppConnectorLocation
+	Name                      types.String `tfsdk:"name"`
+	PooledBandwidthAllocation types.Set    `tfsdk:"pooled_bandwidth_allocation"` // []BandwidthAllocation
+	PreferredPopLocation      types.Object `tfsdk:"preferred_pop_location"`      // PreferredPopLocationModel
+	PrivateAppRef             types.Set    `tfsdk:"private_apps"`                // []IDNameRefModel
+	SerialNumber              types.String `tfsdk:"serial_number"`
+	SocketID                  types.String `tfsdk:"socket_id"`
+	SocketModel               types.String `tfsdk:"socket_model"`
+	Type                      types.String `tfsdk:"type"`
 }
 
 type AppConnectorLocation struct {
@@ -44,6 +45,16 @@ type PostalAddressModel struct {
 	State            types.String `tfsdk:"state"`
 	Street           types.String `tfsdk:"street"`
 	ZipCode          types.String `tfsdk:"zip_code"`
+}
+
+type BandwidthAllocation struct {
+	Bandwidth types.Int64  `tfsdk:"bandwidth"`
+	LicenseID types.String `tfsdk:"license_id"`
+}
+
+var BandwidthAllocationTypes = map[string]attr.Type{
+	"bandwidth":  types.Int64Type,
+	"license_id": types.StringType,
 }
 
 type PreferredPopLocationModel struct {

@@ -28,7 +28,7 @@ GraphQL:
                     {
                       "preferredOnly": false,
                       "automatic": false,
-                      "primary": { "id": "59", "name": "Atlanta" },
+                      "primary": { "id": "12", "name": "Ashburn" },
                       "secondary": { "id": "13", "name": "Amsterdam" },
                     },
                   "privateAppRef": [],
