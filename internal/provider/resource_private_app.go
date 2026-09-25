@@ -96,6 +96,7 @@ func (r *privateAppResource) schemaPrivateAppProbing() schema.SingleNestedAttrib
 	return schema.SingleNestedAttribute{
 		Description: "Private app probing settings",
 		Optional:    true,
+		Computed:    true,
 		Attributes: map[string]schema.Attribute{
 			"fault_threshold_down": schema.Int64Attribute{
 				Description: "Fault threshold",
