@@ -29,9 +29,9 @@ GraphQL:
                   "privateAppProbing":
                     {
                       "id": "997",
-                      "type": "ICMP_PING",
+                      "type": "icmp_ping",
                       "interval": 5,
-                      "faultThresholdDown": 10,
+                      "faultThresholdDown": 5,
                     },
                   "protocolPorts":
                     [

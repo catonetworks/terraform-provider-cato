@@ -33,6 +33,41 @@ func TestPrivateAppProbingSchemaAcceptsAPIDefault(t *testing.T) {
 	if !probing.Computed {
 		t.Fatal("expected private_app_probing to accept API defaults")
 	}
+	if len(probing.PlanModifiers) == 0 {
+		t.Fatal("expected private_app_probing to preserve API defaults during planning")
+	}
+}
+
+func TestPrivateAppComputedAttributesPreserveStateWhenUnknown(t *testing.T) {
+	t.Parallel()
+
+	r := &privateAppResource{}
+	resp := &resource.SchemaResponse{}
+	r.Schema(context.Background(), resource.SchemaRequest{}, resp)
+
+	for _, attrName := range []string{"creation_time", "id"} {
+		attr, ok := resp.Schema.Attributes[attrName].(schema.StringAttribute)
+		if !ok {
+			t.Fatalf("expected %s to be schema.StringAttribute", attrName)
+		}
+		if len(attr.PlanModifiers) == 0 {
+			t.Fatalf("expected %s to preserve state during planning", attrName)
+		}
+	}
+
+	attr, ok := resp.Schema.Attributes["published_app_domain"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("expected published_app_domain to be schema.SingleNestedAttribute")
+	}
+	for _, attrName := range []string{"creation_time", "id"} {
+		computedAttr, ok := attr.Attributes[attrName].(schema.StringAttribute)
+		if !ok {
+			t.Fatalf("expected published_app_domain.%s to be schema.StringAttribute", attrName)
+		}
+		if len(computedAttr.PlanModifiers) == 0 {
+			t.Fatalf("expected published_app_domain.%s to preserve state during planning", attrName)
+		}
+	}
 }
 
 func TestPreparePrivateAppProbingSkipsUnconfiguredValue(t *testing.T) {
