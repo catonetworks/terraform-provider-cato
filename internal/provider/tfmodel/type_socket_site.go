@@ -12,6 +12,7 @@ type SocketSite struct {
 	ConnectionType types.String `tfsdk:"connection_type"`
 	SiteType       types.String `tfsdk:"site_type"`
 	Description    types.String `tfsdk:"description"`
+	IsCloudRouter  types.Bool   `tfsdk:"is_cloud_router"`
 	NativeRange    types.Object `tfsdk:"native_range"`
 	SiteLocation   types.Object `tfsdk:"site_location"`
 	Sockets        types.Set    `tfsdk:"sockets"` // []Socket
