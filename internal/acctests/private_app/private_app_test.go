@@ -41,10 +41,10 @@ func TestAccPrivateApp(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "name", cfg.resName),
 					// The API supplies probing defaults when this block is omitted.
 					resource.TestCheckResourceAttr(res, "private_app_probing.%", "4"),
-					resource.TestCheckResourceAttrSet(res, "private_app_probing.fault_threshold_down"),
+					resource.TestCheckResourceAttr(res, "private_app_probing.fault_threshold_down", "5"),
 					resource.TestCheckResourceAttrSet(res, "private_app_probing.id"),
-					resource.TestCheckResourceAttrSet(res, "private_app_probing.interval"),
-					resource.TestCheckResourceAttrSet(res, "private_app_probing.type"),
+					resource.TestCheckResourceAttr(res, "private_app_probing.interval", "5"),
+					resource.TestCheckResourceAttr(res, "private_app_probing.type", "icmp_ping"),
 					resource.TestCheckResourceAttr(res, "probing_enabled", "true"),
 
 					resource.TestCheckResourceAttr(res, "protocol_ports.#", "3"),
