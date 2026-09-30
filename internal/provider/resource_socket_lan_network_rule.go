@@ -421,6 +421,11 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 		}
 		return
 	}
+	ruleID := policyChange.GetPolicy().GetSocketLan().GetAddRule().GetRule().GetRule().GetID()
+	if ruleID == "" {
+		resp.Diagnostics.AddError("Rule ID missing", "The API did not return the ID for the created LAN network rule.")
+		return
+	}
 
 	// Publish the changes
 	tflog.Info(ctx, "Create.publishing-rule")
@@ -446,9 +451,8 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 
 	// Find the created rule
 	var currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule
-	ruleName := apiInput.create.Rule.Name
 	for _, ruleWrapper := range queryResult.Policy.SocketLan.Policy.Rules {
-		if ruleWrapper.Rule.Name == ruleName {
+		if ruleWrapper.Rule.ID == ruleID {
 			currentRule = &ruleWrapper.Rule
 			break
 		}
@@ -457,7 +461,7 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 	if currentRule == nil {
 		resp.Diagnostics.AddError(
 			"Rule not found",
-			fmt.Sprintf("Could not find created rule with name %s", ruleName),
+			fmt.Sprintf("Could not find created rule with ID %s", ruleID),
 		)
 		return
 	}

@@ -96,6 +96,11 @@ const (
 		policy(accountId: $accountId) {
 			socketLan(input: $socketLanPolicyMutationInput) {
 				addRule(input: $socketLanAddRuleInput) {
+					rule {
+						rule {
+							id
+						}
+					}
 					status
 					errors {
 						errorMessage
@@ -115,6 +120,11 @@ const (
 			socketLan(input: $socketLanPolicyMutationInput) {
 				firewall {
 					addRule(input: $socketLanFirewallAddRuleInput) {
+						rule {
+							rule {
+								id
+							}
+						}
 						status
 						errors {
 							errorMessage

@@ -1232,6 +1232,11 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 		}
 		return
 	}
+	ruleID := policyChange.GetPolicy().GetSocketLan().GetFirewall().GetAddRule().GetRule().GetRule().GetID()
+	if ruleID == "" {
+		resp.Diagnostics.AddError("Rule ID missing", "The API did not return the ID for the created LAN firewall rule.")
+		return
+	}
 
 	// Publish the changes
 	tflog.Info(ctx, "Create.publishing-rule")
@@ -1257,10 +1262,9 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 
 	// Find the created firewall rule
 	var currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule
-	ruleName := apiInput.create.Rule.Name
 	for _, ruleWrapper := range queryResult.Policy.SocketLan.Policy.Rules {
 		for _, fwWrapper := range ruleWrapper.Rule.Firewall {
-			if fwWrapper.Rule.Name == ruleName {
+			if fwWrapper.Rule.ID == ruleID {
 				currentRule = &fwWrapper.Rule
 				break
 			}
@@ -1273,7 +1277,7 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 	if currentRule == nil {
 		resp.Diagnostics.AddError(
 			"Rule not found",
-			fmt.Sprintf("Could not find created firewall rule with name %s", ruleName),
+			fmt.Sprintf("Could not find created firewall rule with ID %s", ruleID),
 		)
 		return
 	}
