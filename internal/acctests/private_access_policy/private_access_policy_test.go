@@ -4,9 +4,11 @@ package private_access_policy
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -205,8 +207,61 @@ func TestAccPrivAccessPolicy(t *testing.T) {
 				),
 			},
 		},
-		CheckDestroy: func(*terraform.State) error { acc.PublishPrivateAccessPolicy(t); return nil },
+		CheckDestroy: checkPrivateAccessRuleDestroyed(t, resRule),
 	})
+}
+
+func checkPrivateAccessRuleDestroyed(t *testing.T, resourceName string) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+		rs, ok := state.RootModule().Resources[resourceName]
+		if !ok || rs.Primary == nil || rs.Primary.ID == "" {
+			return fmt.Errorf("missing pre-destroy rule ID for %s", resourceName)
+		}
+
+		// Select the published revision explicitly; a draft may already omit the rule.
+		const query = `query publishedPrivateAccessRuleIDs($accountID: ID!) {
+			policy(accountId: $accountID) {
+				privateAccess {
+					policy(input: {revision: {type: PUBLIC}}) {
+						rules { rule { id } }
+					}
+				}
+			}
+		}`
+		var result struct {
+			Policy *struct {
+				PrivateAccess *struct {
+					Policy *struct {
+						Rules []struct {
+							Rule struct {
+								ID string `json:"id"`
+							} `json:"rule"`
+						} `json:"rules"`
+					} `json:"policy"`
+				} `json:"privateAccess"`
+			} `json:"policy"`
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		client := acc.GetClient(t)
+		if err := client.Client.Post(ctx, "publishedPrivateAccessRuleIDs", query, &result,
+			map[string]any{"accountID": acc.CatoAccountID}); err != nil {
+			return fmt.Errorf("read published private access policy: %w", err)
+		}
+		if result.Policy == nil || result.Policy.PrivateAccess == nil || result.Policy.PrivateAccess.Policy == nil ||
+			result.Policy.PrivateAccess.Policy.Rules == nil {
+			return fmt.Errorf("published private access policy response is missing policy or rules")
+		}
+		for _, entry := range result.Policy.PrivateAccess.Policy.Rules {
+			if entry.Rule.ID == "" {
+				return fmt.Errorf("published private access policy response contains a rule without an ID")
+			}
+			if entry.Rule.ID == rs.Primary.ID {
+				return fmt.Errorf("private access rule %s still exists in the published policy", rs.Primary.ID)
+			}
+		}
+		return nil
+	}
 }
 
 type privAccessPolicyCfg struct {

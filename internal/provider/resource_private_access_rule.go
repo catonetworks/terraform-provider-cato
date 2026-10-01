@@ -556,7 +556,7 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
-	errMsg := fmt.Sprintf("failed to delete private access rule '%s'", state.Name.ValueString())
+	errMsg := fmt.Sprintf("Catov2 API PolicyPrivateAccessDeleteRule failed for '%s'", state.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(errMsg, err.Error())
 		return
@@ -565,13 +565,37 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
 		apiErrors := res.GetErrors()
 		if len(apiErrors) == 0 {
-			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*res.GetStatus()))
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("returned status: %s", string(*res.GetStatus())))
 			return
 		}
 		for _, e := range apiErrors {
 			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
 		}
 		return
+	}
+
+	// Publish the draft revision so the deletion takes effect and the policy stops
+	// referencing the app.
+	// Mirrors resource_wan_fw_rule.go Delete() and the bulk publish() helper.
+	pubResult, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Delete/PolicyPrivateAccessPublishRevision",
+		map[string]interface{}{"response": utils.InterfaceToJSONString(pubResult)})
+	errMsg = fmt.Sprintf("Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for '%s'", state.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(errMsg, err.Error())
+		return
+	}
+	pubRes := pubResult.GetPolicy().GetPrivateAccess().GetPublishPolicyRevision()
+	if *pubRes.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+		apiErrors := pubRes.GetErrors()
+		if len(apiErrors) == 0 {
+			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*pubRes.GetStatus()))
+			return
+		}
+		for _, e := range apiErrors {
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
+			return
+		}
 	}
 }
 
