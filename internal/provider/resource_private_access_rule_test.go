@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,73 +19,46 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 )
 
-func TestPrivateAccessRuleDeleteAPIError(t *testing.T) {
+func TestPrivateAccessRuleDelete(t *testing.T) {
 	ctx := context.Background()
-	operations := make(chan string, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			OperationName string `json:"operationName"`
-			Variables     struct {
-				AccountID string `json:"accountID"`
-				Input     struct {
-					ID string `json:"id"`
-				} `json:"input"`
-			} `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			t.Errorf("decode GraphQL request: %v", err)
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-		if body.Variables.AccountID != "account-123" {
-			t.Errorf("unexpected account ID: %q", body.Variables.AccountID)
-		}
-		select {
-		case operations <- body.OperationName:
-		default:
-			t.Error("unexpected extra API call")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		switch body.OperationName {
+	operations := make(chan string, 2)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
 		case "policyPrivateAccessDeleteRule":
-			if body.Variables.Input.ID != "rule-123" {
-				t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
-			}
-			_, _ = w.Write([]byte(`{"errors":[{"message":"delete request denied"}]}`))
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+		case "policyPrivateAccessPublishRevision":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
 		default:
-			t.Errorf("unexpected GraphQL operation: %s", body.OperationName)
+			t.Errorf("unexpected GraphQL operation: %s", operation)
 			http.Error(w, "unexpected operation", http.StatusBadRequest)
 		}
-	}))
-	t.Cleanup(server.Close)
-
-	httpClient := server.Client()
-	httpClient.Timeout = 5 * time.Second
-	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
-	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: client}}
-	var schemaResp resource.SchemaResponse
-	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
-	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}
-	diags := state.Set(ctx, PrivateAccessRuleModel{
-		ID:                types.StringValue("rule-123"),
-		Name:              types.StringValue("test rule"),
-		Action:            types.StringValue("ALLOW"),
-		Enabled:           types.BoolValue(true),
-		Description:       types.StringNull(),
-		ActivePeriod:      types.ObjectNull(PolicyRuleActivePeriodTypes),
-		Applications:      types.SetNull(refType),
-		ConnectionOrigins: types.SetNull(types.StringType),
-		Countries:         types.SetNull(refType),
-		Devices:           types.SetNull(refType),
-		Platforms:         types.SetNull(types.StringType),
-		Schedule:          types.ObjectNull(PolicyScheduleTypes),
-		Source:            types.ObjectNull(SourceTypes),
-		Tracking:          types.ObjectNull(PolicyRuleTrackingTypes),
-		UserAttributes:    types.ObjectNull(UserAttributesTypes),
 	})
-	require.False(t, diags.HasError(), "seed state diagnostics: %v", diags)
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Empty(t, resp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+}
+
+func TestPrivateAccessRuleDeleteGraphQLError(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 1)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"errors":[{"message":"delete request denied"}]}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
 
 	var resp resource.DeleteResponse
 	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
@@ -100,70 +74,17 @@ func TestPrivateAccessRuleDeleteAPIError(t *testing.T) {
 func TestPrivateAccessRuleDeleteFailureWithoutErrorDetails(t *testing.T) {
 	ctx := context.Background()
 	operations := make(chan string, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			OperationName string `json:"operationName"`
-			Variables     struct {
-				AccountID string `json:"accountID"`
-				Input     struct {
-					ID string `json:"id"`
-				} `json:"input"`
-			} `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			t.Errorf("decode GraphQL request: %v", err)
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-		if body.Variables.AccountID != "account-123" {
-			t.Errorf("unexpected account ID: %q", body.Variables.AccountID)
-		}
-		select {
-		case operations <- body.OperationName:
-		default:
-			t.Error("unexpected extra API call")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		switch body.OperationName {
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
 		case "policyPrivateAccessDeleteRule":
-			if body.Variables.Input.ID != "rule-123" {
-				t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
-			}
 			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[]}}}}}`))
 		default:
-			t.Errorf("unexpected GraphQL operation: %s", body.OperationName)
+			t.Errorf("unexpected GraphQL operation: %s", operation)
 			http.Error(w, "unexpected operation", http.StatusBadRequest)
 		}
-	}))
-	t.Cleanup(server.Close)
-
-	httpClient := server.Client()
-	httpClient.Timeout = 5 * time.Second
-	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
-	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: client}}
-	var schemaResp resource.SchemaResponse
-	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
-	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}
-	diags := state.Set(ctx, PrivateAccessRuleModel{
-		ID:                types.StringValue("rule-123"),
-		Name:              types.StringValue("test rule"),
-		Action:            types.StringValue("ALLOW"),
-		Enabled:           types.BoolValue(true),
-		Description:       types.StringNull(),
-		ActivePeriod:      types.ObjectNull(PolicyRuleActivePeriodTypes),
-		Applications:      types.SetNull(refType),
-		ConnectionOrigins: types.SetNull(types.StringType),
-		Countries:         types.SetNull(refType),
-		Devices:           types.SetNull(refType),
-		Platforms:         types.SetNull(types.StringType),
-		Schedule:          types.ObjectNull(PolicyScheduleTypes),
-		Source:            types.ObjectNull(SourceTypes),
-		Tracking:          types.ObjectNull(PolicyRuleTrackingTypes),
-		UserAttributes:    types.ObjectNull(UserAttributesTypes),
 	})
-	require.False(t, diags.HasError(), "seed state diagnostics: %v", diags)
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
 
 	var resp resource.DeleteResponse
 	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
@@ -176,156 +97,48 @@ func TestPrivateAccessRuleDeleteFailureWithoutErrorDetails(t *testing.T) {
 	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
 }
 
-func TestPrivateAccessRuleDeleteMutationErrors(t *testing.T) {
+func TestPrivateAccessRuleDeleteRuleNotFoundWithOtherError(t *testing.T) {
 	ctx := context.Background()
 	operations := make(chan string, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			OperationName string `json:"operationName"`
-			Variables     struct {
-				AccountID string `json:"accountID"`
-				Input     struct {
-					ID string `json:"id"`
-				} `json:"input"`
-			} `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			t.Errorf("decode GraphQL request: %v", err)
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-		if body.Variables.AccountID != "account-123" {
-			t.Errorf("unexpected account ID: %q", body.Variables.AccountID)
-		}
-		select {
-		case operations <- body.OperationName:
-		default:
-			t.Error("unexpected extra API call")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		switch body.OperationName {
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
 		case "policyPrivateAccessDeleteRule":
-			if body.Variables.Input.ID != "rule-123" {
-				t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
-			}
 			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"RuleNotFound","errorMessage":"rule does not exist"},{"errorCode":"PolicyLocked","errorMessage":"policy is locked"}]}}}}}`))
 		default:
-			t.Errorf("unexpected GraphQL operation: %s", body.OperationName)
+			t.Errorf("unexpected GraphQL operation: %s", operation)
 			http.Error(w, "unexpected operation", http.StatusBadRequest)
 		}
-	}))
-	t.Cleanup(server.Close)
-
-	httpClient := server.Client()
-	httpClient.Timeout = 5 * time.Second
-	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
-	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: client}}
-	var schemaResp resource.SchemaResponse
-	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
-	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}
-	diags := state.Set(ctx, PrivateAccessRuleModel{
-		ID:                types.StringValue("rule-123"),
-		Name:              types.StringValue("test rule"),
-		Action:            types.StringValue("ALLOW"),
-		Enabled:           types.BoolValue(true),
-		Description:       types.StringNull(),
-		ActivePeriod:      types.ObjectNull(PolicyRuleActivePeriodTypes),
-		Applications:      types.SetNull(refType),
-		ConnectionOrigins: types.SetNull(types.StringType),
-		Countries:         types.SetNull(refType),
-		Devices:           types.SetNull(refType),
-		Platforms:         types.SetNull(types.StringType),
-		Schedule:          types.ObjectNull(PolicyScheduleTypes),
-		Source:            types.ObjectNull(SourceTypes),
-		Tracking:          types.ObjectNull(PolicyRuleTrackingTypes),
-		UserAttributes:    types.ObjectNull(UserAttributesTypes),
 	})
-	require.False(t, diags.HasError(), "seed state diagnostics: %v", diags)
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
 
 	var resp resource.DeleteResponse
 	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
 
-	require.Len(t, resp.Diagnostics, 2)
+	require.Len(t, resp.Diagnostics, 1)
 	require.True(t, resp.Diagnostics.HasError())
 	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", resp.Diagnostics[0].Summary())
-	require.Equal(t, "ERROR: rule does not exist [RuleNotFound]", resp.Diagnostics[0].Detail())
-	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", resp.Diagnostics[1].Summary())
-	require.Equal(t, "ERROR: policy is locked [PolicyLocked]", resp.Diagnostics[1].Detail())
+	require.Equal(t, "ERROR: policy is locked [PolicyLocked]", resp.Diagnostics[0].Detail())
 	require.Len(t, operations, 1)
 	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
 }
 
-func TestPrivateAccessRuleDeletePublishAPIError(t *testing.T) {
+func TestPrivateAccessRuleDeletePublishGraphQLError(t *testing.T) {
 	ctx := context.Background()
 	operations := make(chan string, 2)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			OperationName string `json:"operationName"`
-			Variables     struct {
-				AccountID string `json:"accountID"`
-				Input     struct {
-					ID string `json:"id"`
-				} `json:"input"`
-			} `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			t.Errorf("decode GraphQL request: %v", err)
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-		if body.Variables.AccountID != "account-123" {
-			t.Errorf("unexpected account ID: %q", body.Variables.AccountID)
-		}
-		select {
-		case operations <- body.OperationName:
-		default:
-			t.Error("unexpected extra API call")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		switch body.OperationName {
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
 		case "policyPrivateAccessDeleteRule":
-			if body.Variables.Input.ID != "rule-123" {
-				t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
-			}
 			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
 		case "policyPrivateAccessPublishRevision":
 			_, _ = w.Write([]byte(`{"errors":[{"message":"publish request denied"}]}`))
 		default:
-			t.Errorf("unexpected GraphQL operation: %s", body.OperationName)
+			t.Errorf("unexpected GraphQL operation: %s", operation)
 			http.Error(w, "unexpected operation", http.StatusBadRequest)
 		}
-	}))
-	t.Cleanup(server.Close)
-
-	httpClient := server.Client()
-	httpClient.Timeout = 5 * time.Second
-	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
-	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: client}}
-	var schemaResp resource.SchemaResponse
-	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
-	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}
-	diags := state.Set(ctx, PrivateAccessRuleModel{
-		ID:                types.StringValue("rule-123"),
-		Name:              types.StringValue("test rule"),
-		Action:            types.StringValue("ALLOW"),
-		Enabled:           types.BoolValue(true),
-		Description:       types.StringNull(),
-		ActivePeriod:      types.ObjectNull(PolicyRuleActivePeriodTypes),
-		Applications:      types.SetNull(refType),
-		ConnectionOrigins: types.SetNull(types.StringType),
-		Countries:         types.SetNull(refType),
-		Devices:           types.SetNull(refType),
-		Platforms:         types.SetNull(types.StringType),
-		Schedule:          types.ObjectNull(PolicyScheduleTypes),
-		Source:            types.ObjectNull(SourceTypes),
-		Tracking:          types.ObjectNull(PolicyRuleTrackingTypes),
-		UserAttributes:    types.ObjectNull(UserAttributesTypes),
 	})
-	require.False(t, diags.HasError(), "seed state diagnostics: %v", diags)
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
 
 	var resp resource.DeleteResponse
 	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
@@ -342,72 +155,19 @@ func TestPrivateAccessRuleDeletePublishAPIError(t *testing.T) {
 func TestPrivateAccessRuleDeletePublishFailureWithoutErrorDetails(t *testing.T) {
 	ctx := context.Background()
 	operations := make(chan string, 2)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			OperationName string `json:"operationName"`
-			Variables     struct {
-				AccountID string `json:"accountID"`
-				Input     struct {
-					ID string `json:"id"`
-				} `json:"input"`
-			} `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			t.Errorf("decode GraphQL request: %v", err)
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-		if body.Variables.AccountID != "account-123" {
-			t.Errorf("unexpected account ID: %q", body.Variables.AccountID)
-		}
-		select {
-		case operations <- body.OperationName:
-		default:
-			t.Error("unexpected extra API call")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		switch body.OperationName {
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
 		case "policyPrivateAccessDeleteRule":
-			if body.Variables.Input.ID != "rule-123" {
-				t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
-			}
 			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
 		case "policyPrivateAccessPublishRevision":
 			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"FAILURE","errors":[]}}}}}`))
 		default:
-			t.Errorf("unexpected GraphQL operation: %s", body.OperationName)
+			t.Errorf("unexpected GraphQL operation: %s", operation)
 			http.Error(w, "unexpected operation", http.StatusBadRequest)
 		}
-	}))
-	t.Cleanup(server.Close)
-
-	httpClient := server.Client()
-	httpClient.Timeout = 5 * time.Second
-	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
-	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: client}}
-	var schemaResp resource.SchemaResponse
-	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
-	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}
-	diags := state.Set(ctx, PrivateAccessRuleModel{
-		ID:                types.StringValue("rule-123"),
-		Name:              types.StringValue("test rule"),
-		Action:            types.StringValue("ALLOW"),
-		Enabled:           types.BoolValue(true),
-		Description:       types.StringNull(),
-		ActivePeriod:      types.ObjectNull(PolicyRuleActivePeriodTypes),
-		Applications:      types.SetNull(refType),
-		ConnectionOrigins: types.SetNull(types.StringType),
-		Countries:         types.SetNull(refType),
-		Devices:           types.SetNull(refType),
-		Platforms:         types.SetNull(types.StringType),
-		Schedule:          types.ObjectNull(PolicyScheduleTypes),
-		Source:            types.ObjectNull(SourceTypes),
-		Tracking:          types.ObjectNull(PolicyRuleTrackingTypes),
-		UserAttributes:    types.ObjectNull(UserAttributesTypes),
 	})
-	require.False(t, diags.HasError(), "seed state diagnostics: %v", diags)
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
 
 	var resp resource.DeleteResponse
 	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
@@ -421,75 +181,22 @@ func TestPrivateAccessRuleDeletePublishFailureWithoutErrorDetails(t *testing.T) 
 	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
 }
 
-func TestPrivateAccessRuleDeletePublishMutationError(t *testing.T) {
+func TestPrivateAccessRuleDeletePublishRevisionNotFoundWithOtherError(t *testing.T) {
 	ctx := context.Background()
 	operations := make(chan string, 2)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			OperationName string `json:"operationName"`
-			Variables     struct {
-				AccountID string `json:"accountID"`
-				Input     struct {
-					ID string `json:"id"`
-				} `json:"input"`
-			} `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			t.Errorf("decode GraphQL request: %v", err)
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-		if body.Variables.AccountID != "account-123" {
-			t.Errorf("unexpected account ID: %q", body.Variables.AccountID)
-		}
-		select {
-		case operations <- body.OperationName:
-		default:
-			t.Error("unexpected extra API call")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		switch body.OperationName {
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
 		case "policyPrivateAccessDeleteRule":
-			if body.Variables.Input.ID != "rule-123" {
-				t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
-			}
 			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
 		case "policyPrivateAccessPublishRevision":
-			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"FAILURE","errors":[{"errorCode":"PolicyValidationError","errorMessage":"policy validation failed"}]}}}}}`))
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"FAILURE","errors":[{"errorCode":"PolicyRevisionNotFound","errorMessage":"no draft revision exists"},{"errorCode":"PolicyValidationError","errorMessage":"policy validation failed"}]}}}}}`))
 		default:
-			t.Errorf("unexpected GraphQL operation: %s", body.OperationName)
+			t.Errorf("unexpected GraphQL operation: %s", operation)
 			http.Error(w, "unexpected operation", http.StatusBadRequest)
 		}
-	}))
-	t.Cleanup(server.Close)
-
-	httpClient := server.Client()
-	httpClient.Timeout = 5 * time.Second
-	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
-	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: client}}
-	var schemaResp resource.SchemaResponse
-	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
-	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}
-	diags := state.Set(ctx, PrivateAccessRuleModel{
-		ID:                types.StringValue("rule-123"),
-		Name:              types.StringValue("test rule"),
-		Action:            types.StringValue("ALLOW"),
-		Enabled:           types.BoolValue(true),
-		Description:       types.StringNull(),
-		ActivePeriod:      types.ObjectNull(PolicyRuleActivePeriodTypes),
-		Applications:      types.SetNull(refType),
-		ConnectionOrigins: types.SetNull(types.StringType),
-		Countries:         types.SetNull(refType),
-		Devices:           types.SetNull(refType),
-		Platforms:         types.SetNull(types.StringType),
-		Schedule:          types.ObjectNull(PolicyScheduleTypes),
-		Source:            types.ObjectNull(SourceTypes),
-		Tracking:          types.ObjectNull(PolicyRuleTrackingTypes),
-		UserAttributes:    types.ObjectNull(UserAttributesTypes),
 	})
-	require.False(t, diags.HasError(), "seed state diagnostics: %v", diags)
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
 
 	var resp resource.DeleteResponse
 	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
@@ -503,9 +210,444 @@ func TestPrivateAccessRuleDeletePublishMutationError(t *testing.T) {
 	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
 }
 
-func TestPrivateAccessRuleDeletePublishesRevision(t *testing.T) {
+func TestPrivateAccessRuleDeleteRetriesAfterDeleteGraphQLError(t *testing.T) {
 	ctx := context.Background()
 	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"errors":[{"message":"transient delete failure"}]}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			publishCalls.Add(1)
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// The failed removal must retain state without attempting to publish.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Contains(t, firstResp.Diagnostics[0].Detail(), "transient delete failure")
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 1)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.EqualValues(t, 1, deleteCalls.Load())
+	require.Zero(t, publishCalls.Load())
+
+	// Terraform retries Delete with the retained state after the failure clears.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 1, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterDeleteServerError(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte("delete service unavailable"))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			publishCalls.Add(1)
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// The failed removal must retain state without attempting to publish.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Contains(t, firstResp.Diagnostics[0].Detail(), "503")
+	require.Contains(t, firstResp.Diagnostics[0].Detail(), "delete service unavailable")
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 1)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.EqualValues(t, 1, deleteCalls.Load())
+	require.Zero(t, publishCalls.Load())
+
+	// Terraform retries Delete with the retained state after the failure clears.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 1, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterDeleteFailureWithoutErrorDetails(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[]}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			publishCalls.Add(1)
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// The failed removal must retain state without attempting to publish.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Equal(t, "returned status: FAILURE", firstResp.Diagnostics[0].Detail())
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 1)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.EqualValues(t, 1, deleteCalls.Load())
+	require.Zero(t, publishCalls.Load())
+
+	// Terraform retries Delete with the retained state after the failure clears.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 1, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterDeleteMutationError(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"PolicyLocked","errorMessage":"policy is locked"}]}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			publishCalls.Add(1)
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// The failed removal must retain state without attempting to publish.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Equal(t, "ERROR: policy is locked [PolicyLocked]", firstResp.Diagnostics[0].Detail())
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 1)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.EqualValues(t, 1, deleteCalls.Load())
+	require.Zero(t, publishCalls.Load())
+
+	// Terraform retries Delete with the retained state after the failure clears.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 1, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterPublishGraphQLError(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"RuleNotFound","errorMessage":"rule does not exist"}]}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			if publishCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"errors":[{"message":"transient publish failure"}]}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+			}
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// Terraform retains state after the first publish fails.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Contains(t, firstResp.Diagnostics[0].Detail(), "transient publish failure")
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+
+	// A second Delete must publish even though the rule is already absent from the draft.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 2, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterPublishServerError(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"RuleNotFound","errorMessage":"rule does not exist"}]}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			if publishCalls.Add(1) == 1 {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte("publish service unavailable"))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+			}
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// Terraform retains state after the first publish fails.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Contains(t, firstResp.Diagnostics[0].Detail(), "503")
+	require.Contains(t, firstResp.Diagnostics[0].Detail(), "publish service unavailable")
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+
+	// A second Delete must publish even though the rule is already absent from the draft.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 2, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterPublishFailureWithoutErrorDetails(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"RuleNotFound","errorMessage":"rule does not exist"}]}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			if publishCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"FAILURE","errors":[]}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+			}
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// Terraform retains state after the first publish fails.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Equal(t, "returned status: FAILURE", firstResp.Diagnostics[0].Detail())
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+
+	// A second Delete must publish even though the rule is already absent from the draft.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 2, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterPublishMutationError(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"RuleNotFound","errorMessage":"rule does not exist"}]}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			if publishCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"FAILURE","errors":[{"errorCode":"PolicyLocked","errorMessage":"policy is locked"}]}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+			}
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// Terraform retains state after the first publish fails.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Equal(t, "ERROR: policy is locked [PolicyLocked]", firstResp.Diagnostics[0].Detail())
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+
+	// A second Delete must publish even though the rule is already absent from the draft.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 2, publishCalls.Load())
+}
+
+func TestPrivateAccessRuleDeleteAlreadyPublished(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"RuleNotFound","errorMessage":"rule does not exist"}]}}}}}`))
+		case "policyPrivateAccessPublishRevision":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"FAILURE","errors":[{"errorCode":"PolicyRevisionNotFound","errorMessage":"no draft revision exists"}]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Empty(t, resp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+}
+
+func newPrivateAccessRuleTestResource(
+	t *testing.T,
+	operations chan<- string,
+	respond func(http.ResponseWriter, string),
+) *privAccessRuleResource {
+	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var body struct {
 			OperationName string `json:"operationName"`
@@ -524,24 +666,16 @@ func TestPrivateAccessRuleDeletePublishesRevision(t *testing.T) {
 		if body.Variables.AccountID != "account-123" {
 			t.Errorf("unexpected account ID: %q", body.Variables.AccountID)
 		}
+		if body.OperationName == "policyPrivateAccessDeleteRule" && body.Variables.Input.ID != "rule-123" {
+			t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
+		}
 		select {
 		case operations <- body.OperationName:
 		default:
 			t.Error("unexpected extra API call")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		switch body.OperationName {
-		case "policyPrivateAccessDeleteRule":
-			if body.Variables.Input.ID != "rule-123" {
-				t.Errorf("unexpected rule ID: %q", body.Variables.Input.ID)
-			}
-			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
-		case "policyPrivateAccessPublishRevision":
-			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
-		default:
-			t.Errorf("unexpected GraphQL operation: %s", body.OperationName)
-			http.Error(w, "unexpected operation", http.StatusBadRequest)
-		}
+		respond(w, body.OperationName)
 	}))
 	t.Cleanup(server.Close)
 
@@ -550,6 +684,11 @@ func TestPrivateAccessRuleDeletePublishesRevision(t *testing.T) {
 	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
 	require.NoError(t, err)
 	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: client}}
+	return r
+}
+
+func newPrivateAccessRuleTestState(ctx context.Context, t *testing.T, r *privAccessRuleResource) tfsdk.State {
+	t.Helper()
 	var schemaResp resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
 	state := tfsdk.State{Schema: schemaResp.Schema}
@@ -572,14 +711,7 @@ func TestPrivateAccessRuleDeletePublishesRevision(t *testing.T) {
 		UserAttributes:    types.ObjectNull(UserAttributesTypes),
 	})
 	require.False(t, diags.HasError(), "seed state diagnostics: %v", diags)
-
-	var resp resource.DeleteResponse
-	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
-
-	require.Empty(t, resp.Diagnostics)
-	require.Len(t, operations, 2)
-	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
-	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	return state
 }
 
 func TestMove(t *testing.T) {

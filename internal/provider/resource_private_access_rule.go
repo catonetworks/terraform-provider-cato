@@ -552,7 +552,7 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 	input := cato_models.PrivateAccessRemoveRuleInput{ID: state.ID.ValueString()}
 
-	// Call Cato API to delete a connector
+	// Call Cato API to delete the private access rule.
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
@@ -569,13 +569,19 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 			return
 		}
 		for _, e := range apiErrors {
+			// A previous Delete may have removed the rule but failed to publish.
+			if *e.GetErrorCode() == "RuleNotFound" {
+				continue
+			}
 			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
 		}
-		return
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
-	// Publish the draft revision so the deletion takes effect and the policy stops
-	// referencing the app.
+	// Publish the draft revision so the deletion takes effect and the rule no longer
+	// appears in the active policy.
 	// Mirrors resource_wan_fw_rule.go Delete() and the bulk publish() helper.
 	pubResult, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Delete/PolicyPrivateAccessPublishRevision",
@@ -593,8 +599,14 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 			return
 		}
 		for _, e := range apiErrors {
+			// The deletion may already be published, leaving no draft to publish.
+			// Publishing may have succeeded in a previous try, even if Terraform did not
+			// receive the response. On retry, no remaining draft means there is nothing
+			// left to publish.
+			if *e.GetErrorCode() == "PolicyRevisionNotFound" {
+				continue
+			}
 			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
-			return
 		}
 	}
 }
