@@ -550,7 +550,7 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-		_, err := r.client.catov2.SiteRemoveSite(ctx, state.ID.ValueString(), r.client.AccountId)
+		err := removeSocketSiteWithRetry(ctx, r.client.catov2, state.ID.ValueString(), r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API SiteRemoveSite error",
@@ -559,6 +559,34 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 			return
 		}
 	}
+}
+
+func removeSocketSiteWithRetry(ctx context.Context, client *providerSDKClient, siteID, accountID string) error {
+	const (
+		maxAttempts = 12
+		retryWait   = 5 * time.Second
+	)
+
+	var err error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		_, err = client.SiteRemoveSite(ctx, siteID, accountID)
+		if err == nil {
+			return nil
+		}
+		if !strings.Contains(err.Error(), "currently in use") || attempt == maxAttempts-1 {
+			return err
+		}
+
+		timer := time.NewTimer(retryWait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	return err
 }
 
 // hydrateSocketSiteState populates the tf.SocketSite state with data from API responses

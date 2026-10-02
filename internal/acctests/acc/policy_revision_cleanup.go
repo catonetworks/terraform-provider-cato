@@ -53,7 +53,7 @@ func cleanupFirewallAndWANPolicyRevisions(client *cato.Client) error {
 		}
 	}
 
-	wanNetwork, err := client.WanNetworkPolicy(ctx, CatoAccountID)
+	wanNetwork, err := client.WanNetworkPolicy(ctx, CatoAccountID, nil)
 	if err != nil {
 		cleanupErr = errors.Join(cleanupErr, fmt.Errorf("list WAN network revision: %w", err))
 	} else if rev := wanNetwork.GetPolicy().GetWanNetwork().GetPolicy().GetRevision(); rev != nil && rev.GetID() != "" {
@@ -86,6 +86,9 @@ func discardWanFirewallPolicyRevision(client *cato.Client, revisionID string) er
 	resp, err := client.PolicyWanFirewallDiscardPolicyRevision(ctx,
 		&cato_models.PolicyDiscardRevisionInput{ID: &revisionID},
 		CatoAccountID,
+		&cato_models.WanFirewallPolicyMutationInput{
+			Revision: &cato_models.PolicyMutationRevisionInput{ID: &revisionID},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("discard WAN firewall revision %s: %w", revisionID, err)
@@ -97,7 +100,14 @@ func discardWanFirewallPolicyRevision(client *cato.Client, revisionID string) er
 }
 
 func discardWanNetworkPolicyRevision(client *cato.Client, revisionID string) error {
-	resp, err := client.PolicyWanNetworkDiscardPolicyRevision(ctx, CatoAccountID)
+	resp, err := client.PolicyWanNetworkDiscardPolicyRevision(
+		ctx,
+		CatoAccountID,
+		&cato_models.PolicyDiscardRevisionInput{ID: &revisionID},
+		&cato_models.WanNetworkPolicyMutationInput{
+			Revision: &cato_models.PolicyMutationRevisionInput{ID: &revisionID},
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("discard WAN network revision %s: %w", revisionID, err)
 	}
