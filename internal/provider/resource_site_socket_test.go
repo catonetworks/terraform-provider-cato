@@ -9,6 +9,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/mock"
 
@@ -112,6 +113,27 @@ func TestSocketSiteGetSocketSiteClient(t *testing.T) {
 	})
 }
 
+func TestSocketSiteSchemaIncludesCloudRouter(t *testing.T) {
+	t.Parallel()
+
+	resp := &resource.SchemaResponse{}
+	(&socketSiteResource{}).Schema(context.Background(), resource.SchemaRequest{}, resp)
+
+	attr, ok := resp.Schema.Attributes["is_cloud_router"].(schema.BoolAttribute)
+	if !ok {
+		t.Fatalf("expected is_cloud_router bool attribute, got %T", resp.Schema.Attributes["is_cloud_router"])
+	}
+	if !attr.Optional {
+		t.Fatal("expected is_cloud_router to be optional")
+	}
+	if len(attr.PlanModifiers) != 1 {
+		t.Fatalf("expected one plan modifier, got %d", len(attr.PlanModifiers))
+	}
+	if attr.Description == "" {
+		t.Fatal("expected is_cloud_router description")
+	}
+}
+
 func TestSocketSiteFetchSocketConfiguration(t *testing.T) {
 	t.Parallel()
 
@@ -165,6 +187,131 @@ func TestSocketSiteFetchSocketConfigurationError(t *testing.T) {
 	}
 	if !diags.HasError() {
 		t.Fatal("expected query error diagnostic")
+	}
+}
+
+func TestSocketSiteValidateCloudRouterInput(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		plan      *tf.SocketSite
+		wantError bool
+	}{
+		"omitted": {
+			plan: &tf.SocketSite{
+				ConnectionType: types.StringValue("SOCKET_AWS1500"),
+				IsCloudRouter:  types.BoolNull(),
+			},
+		},
+		"gcp_socket": {
+			plan: &tf.SocketSite{
+				ConnectionType: types.StringValue("SOCKET_GCP1500"),
+				IsCloudRouter:  types.BoolValue(true),
+			},
+		},
+		"non_gcp_socket": {
+			plan: &tf.SocketSite{
+				ConnectionType: types.StringValue("SOCKET_AWS1500"),
+				IsCloudRouter:  types.BoolValue(true),
+			},
+			wantError: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			var diags diag.Diagnostics
+			(&socketSiteResource{}).validateCloudRouterInput(tt.plan, &diags)
+
+			if gotError := diags.HasError(); gotError != tt.wantError {
+				t.Fatalf("expected error=%t, got %t: %+v", tt.wantError, gotError, diags)
+			}
+		})
+	}
+}
+
+func TestSocketSiteUpdateCloudRouter(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		value bool
+	}{
+		"enabled":  {value: true},
+		"disabled": {value: false},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockClient := mocks.NewSocketSiteClient(t)
+			mockClient.EXPECT().SiteUpdateHa(
+				mock.Anything,
+				"account-123",
+				"site-123",
+				mock.MatchedBy(func(input cato_models.UpdateHaInput) bool {
+					return input.IsCloudRouter != nil && *input.IsCloudRouter == tt.value
+				}),
+			).Return(&cato_go_sdk.SiteUpdateHa{}, nil).Once()
+			r := &socketSiteResource{
+				client:           &catoClientData{AccountId: "account-123"},
+				socketSiteClient: mockClient,
+			}
+			plan := &tf.SocketSite{IsCloudRouter: types.BoolValue(tt.value)}
+			var diags diag.Diagnostics
+
+			r.updateCloudRouter(context.Background(), plan, "site-123", &diags)
+
+			if diags.HasError() {
+				t.Fatalf("unexpected diagnostics: %+v", diags)
+			}
+		})
+	}
+}
+
+func TestSocketSiteUpdateCloudRouterOmitted(t *testing.T) {
+	t.Parallel()
+
+	mockClient := mocks.NewSocketSiteClient(t)
+	r := &socketSiteResource{
+		client:           &catoClientData{AccountId: "account-123"},
+		socketSiteClient: mockClient,
+	}
+	plan := &tf.SocketSite{IsCloudRouter: types.BoolNull()}
+	var diags diag.Diagnostics
+
+	r.updateCloudRouter(context.Background(), plan, "site-123", &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+}
+
+func TestSocketSiteUpdateCloudRouterError(t *testing.T) {
+	t.Parallel()
+
+	mockClient := mocks.NewSocketSiteClient(t)
+	mockClient.EXPECT().SiteUpdateHa(
+		mock.Anything,
+		"account-123",
+		"site-123",
+		mock.MatchedBy(func(input cato_models.UpdateHaInput) bool {
+			return input.IsCloudRouter != nil && *input.IsCloudRouter
+		}),
+	).Return(nil, errors.New("update ha failed")).Once()
+	r := &socketSiteResource{
+		client:           &catoClientData{AccountId: "account-123"},
+		socketSiteClient: mockClient,
+	}
+	plan := &tf.SocketSite{IsCloudRouter: types.BoolValue(true)}
+	var diags diag.Diagnostics
+
+	r.updateCloudRouter(context.Background(), plan, "site-123", &diags)
+
+	if !diags.HasError() {
+		t.Fatal("expected diagnostics")
 	}
 }
 

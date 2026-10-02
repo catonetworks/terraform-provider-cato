@@ -68,6 +68,8 @@ type SocketSiteClient interface {
 		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddSocketSite, error)
 	SiteSocketConfiguration(ctx context.Context, input cato_models.SiteSocketConfigurationInput, accountID string,
 		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteSocketConfiguration, error)
+	SiteUpdateHa(ctx context.Context, accountID string, siteID string, updateHaInput cato_models.UpdateHaInput,
+		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateHa, error)
 }
 
 type nativeInterfaceDetails struct {
@@ -127,6 +129,12 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"description": schema.StringAttribute{
 				Description: "Site description",
 				Optional:    true,
+			},
+			"is_cloud_router": schema.BoolAttribute{
+				Description: "Enables Cloud Router mode for supported GCP vSocket HA sites. This value is write-only in " +
+					"the Cato API and cannot be read back during refresh or import. Changing it requires replacing the site.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			"native_range":  r.schemaNativeRange(),
 			"site_location": r.schemaSiteLocation(),
@@ -351,9 +359,18 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.validateCloudRouterInput(&plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Create a socket site - API call
 	siteID := r.createBasicSocketSite(ctx, &plan, &diags)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+	r.updateCloudRouter(ctx, &plan, siteID, &diags)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -629,6 +646,7 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *tf
 		ConnectionType: connectionTypeFromSocketConfiguration(siteSocketConfiguration),
 		SiteType:       types.StringPointerValue((*string)(siteGeneralDetails.GetSiteType())),
 		Description:    utils.StringPointerValue(siteGeneralDetails.GetDescription(), state.Description),
+		IsCloudRouter:  state.IsCloudRouter,
 		NativeRange:    r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
 		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
 		Sockets:        r.parseSockets(ctx, siteSocketConfiguration, diags),
@@ -1140,6 +1158,34 @@ func (r *socketSiteResource) createBasicSocketSite(ctx context.Context, plan *tf
 		return ""
 	}
 	return siteID
+}
+
+func (r *socketSiteResource) validateCloudRouterInput(plan *tf.SocketSite, diags *diag.Diagnostics) {
+	if !utils.HasValue(plan.IsCloudRouter) {
+		return
+	}
+
+	if plan.ConnectionType.ValueString() != string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
+		diags.AddAttributeError(
+			path.Root("is_cloud_router"),
+			"Unsupported Cloud Router configuration",
+			"`is_cloud_router` is supported only for GCP vSocket HA sites.",
+		)
+	}
+}
+
+func (r *socketSiteResource) updateCloudRouter(ctx context.Context, plan *tf.SocketSite, siteID string, diags *diag.Diagnostics) {
+	if !utils.HasValue(plan.IsCloudRouter) {
+		return
+	}
+
+	input := cato_models.UpdateHaInput{
+		IsCloudRouter: plan.IsCloudRouter.ValueBoolPointer(),
+	}
+	_, err := r.getSocketSiteClient().SiteUpdateHa(ctx, r.client.AccountId, siteID, input)
+	if err != nil {
+		diags.AddError("Catov2 API SiteUpdateHa error", err.Error())
+	}
 }
 
 // updateBasicSocketSite updates a socket site
