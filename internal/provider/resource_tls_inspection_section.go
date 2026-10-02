@@ -17,7 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -31,7 +32,7 @@ func NewTLSInspectionSectionResource() resource.Resource {
 }
 
 type tlsInspectionSectionResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *tlsInspectionSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -103,7 +104,7 @@ func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *tlsInspectionSectionResource) ImportState(
@@ -148,7 +149,7 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 	tflog.Debug(ctx, "Create.PolicyTLSInspectAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.catov2.PolicyTLSInspectAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.client.Catov2.PolicyTLSInspectAddSection(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicyTLSInspectAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -166,7 +167,7 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 
 	// publishing new section
 	tflog.Info(ctx, "publishing new section")
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",
@@ -198,7 +199,7 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	body, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.Tlsinspectpolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -310,7 +311,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 	tflog.Debug(ctx, "Update.PolicyTLSInspectMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.catov2.PolicyTLSInspectMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	moveSection, err := r.client.Catov2.PolicyTLSInspectMoveSection(ctx, inputMoveSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyTLSInspectMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
@@ -336,7 +337,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 	tflog.Debug(ctx, "Update.PolicyTLSInspectUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.catov2.PolicyTLSInspectUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	updateSection, err := r.client.Catov2.PolicyTLSInspectUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyTLSInspectUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
@@ -361,7 +362,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 
 	// publishing updated section
 	tflog.Info(ctx, "publishing updated section")
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",
@@ -400,7 +401,7 @@ func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.
 	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeSection),
 	})
-	policyTLSInspectRemoveSectionResponse, err := r.client.catov2.PolicyTLSInspectRemoveSection(ctx, removeSection, r.client.AccountId)
+	policyTLSInspectRemoveSectionResponse, err := r.client.Catov2.PolicyTLSInspectRemoveSection(ctx, removeSection, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyTLSInspectRemoveSectionResponse),
 	})
@@ -412,7 +413,7 @@ func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.
 		return
 	}
 
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyTLSInspectPublishPolicyRevision error",

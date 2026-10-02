@@ -18,7 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ func NewWanRulesIndexResource() resource.Resource {
 }
 
 type wanRulesIndexResource struct {
-	client  *catoClientData
+	client  *client.CatoClientData
 	wanBulk WanFirewallBulkPolicyClient // optional override for tests
 }
 
@@ -147,7 +148,7 @@ func (r *wanRulesIndexResource) Configure(_ context.Context, req resource.Config
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *wanRulesIndexResource) wanBulkPolicy() WanFirewallBulkPolicyClient {
@@ -157,7 +158,7 @@ func (r *wanRulesIndexResource) wanBulkPolicy() WanFirewallBulkPolicyClient {
 	if r.client == nil {
 		return nil
 	}
-	return r.client.catov2
+	return r.client.Catov2
 }
 
 // func (r *wanRulesIndexResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -519,7 +520,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 		var reorderOut *cato_go_sdk.PolicyWanFirewallReorderPolicy
 		reorderErr := withAcctestPolicyRevisionCleanupRetryOnce(ctx, "PolicyWanFirewallReorderPolicy", func() error {
-			return discardFirewallAndWANPolicyRevisions(ctx, r.client.catov2, r.client.AccountId)
+			return discardFirewallAndWANPolicyRevisions(ctx, r.client.Catov2, r.client.AccountId)
 		}, func() error {
 			var callErr error
 			reorderOut, callErr = r.wanBulkPolicy().PolicyWanFirewallReorderPolicy(

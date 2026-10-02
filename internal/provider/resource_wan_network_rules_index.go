@@ -18,7 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ func NewWanNetworkRulesIndexResource() resource.Resource {
 }
 
 type wanNetworkRulesIndexResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *wanNetworkRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -146,7 +147,7 @@ func (r *wanNetworkRulesIndexResource) Configure(_ context.Context, req resource
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 // func (r *wanNetworkRulesIndexResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -248,7 +249,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 	ruleObjectMap := make(map[string]attr.Value)
 
 	if plan.SectionToStartAfterID.ValueString() != "" {
-		result, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+		result, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.WanNetworkPolicy.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -278,7 +279,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 
 	// maps section_name -> section_id
 	sectionIDList := make(map[string]string)
-	sectionIndexAPIData, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	sectionIndexAPIData, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.WanNetworkPolicyInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
@@ -359,7 +360,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 			"sectionIdList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveAPIData, err := r.client.catov2.PolicyWanNetworkMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveAPIData, err := r.client.Catov2.PolicyWanNetworkMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
 		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
 			sectionMoveAPIData.GetPolicy().WanNetwork != nil &&
@@ -440,7 +441,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIDData, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+		ruleNameIDData, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.WanNetworkPolicy.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(ruleNameIDData),
 		})
@@ -523,7 +524,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 					ID: ruleNameIDMap[mapRuleIndexToRuleName[int64(x)]],
 					To: toPosition,
 				}
-				ruleMoveAPIData, err := r.client.catov2.PolicyWanNetworkMoveRule(ctx, moveRuleConfig, r.client.AccountId)
+				ruleMoveAPIData, err := r.client.Catov2.PolicyWanNetworkMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyWanNetworkMoveRule.response", map[string]interface{}{
 					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIDMap),
 					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
@@ -559,7 +560,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 		}
 	}
 
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",

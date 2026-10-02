@@ -17,6 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 )
 
 func TestBulkLfMoveRuleExampleData(t *testing.T) {
@@ -41,7 +43,7 @@ func TestHydrateLanFw(t *testing.T) {
 	var ctx = context.Background()
 	var diags diag.Diagnostics
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{},
 	}
 	plan := lPMockClient.createPlan(lanPolicyPlans["default"])
@@ -189,7 +191,7 @@ func TestHydrateLanFwLeavesOmittedRuleMapsUnmanaged(t *testing.T) {
 	plan.NetworkRules = types.MapNull(types.ObjectType{AttrTypes: LanNetworkRuleTypes})
 	plan.FirewallRules = types.MapNull(types.ObjectType{AttrTypes: LanFirewallRuleTypes})
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{policy: mockLanPolicy["default"]},
 	}
 
@@ -220,7 +222,7 @@ func TestReadLanFwPreservesUnmanagedRuleMaps(t *testing.T) {
 	require.False(t, requestState.Set(ctx, stateModel).HasError())
 	response := &resource.ReadResponse{State: tfsdk.State{Schema: resourceSchema}}
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{policy: mockLanPolicy["default"]},
 	}
 
@@ -240,7 +242,7 @@ func TestHydrateLanFwDuplicateNamesWithAliases(t *testing.T) {
 	var diags diag.Diagnostics
 	plan := lPMockClient.createPlan(duplicateLanPolicyPlan(true, true))
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{policy: duplicateLanPolicy()},
 	}
 
@@ -282,7 +284,7 @@ func TestReadLanFwPreservesAliasKeys(t *testing.T) {
 	var hydrateDiags diag.Diagnostics
 	plan := lPMockClient.createPlan(duplicateLanPolicyPlan(true, true))
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{policy: duplicateLanPolicy()},
 	}
 	initialState, _ := res.hydrateLanFwRulesIndex(ctx, plan, &hydrateDiags)
@@ -310,7 +312,7 @@ func TestReadLanFwUpdatesParentKeyWhenNetworkRuleMoves(t *testing.T) {
 	var hydrateDiags diag.Diagnostics
 	mockClient := &lanPolicyMockClient{policy: duplicateLanPolicy()}
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: mockClient,
 	}
 	initialState, _ := res.hydrateLanFwRulesIndex(
@@ -335,7 +337,7 @@ func TestReadLanFwUpdatesParentKeyWhenFirewallRuleMoves(t *testing.T) {
 	var hydrateDiags diag.Diagnostics
 	mockClient := &lanPolicyMockClient{policy: duplicateLanPolicy()}
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: mockClient,
 	}
 	initialState, _ := res.hydrateLanFwRulesIndex(
@@ -360,7 +362,7 @@ func TestReadLanFwIgnoresStaleAliasesAndHydratesAPIDrift(t *testing.T) {
 	var hydrateDiags diag.Diagnostics
 	mockClient := &lanPolicyMockClient{policy: duplicateLanPolicy()}
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: mockClient,
 	}
 	initialState, _ := res.hydrateLanFwRulesIndex(
@@ -390,7 +392,7 @@ func TestReadLanFwAssignsCollisionSafeKeysToDiscoveredDuplicates(t *testing.T) {
 	var hydrateDiags diag.Diagnostics
 	mockClient := &lanPolicyMockClient{policy: singleLanPolicy()}
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: mockClient,
 	}
 	initialState, _ := res.hydrateLanFwRulesIndex(
@@ -448,7 +450,7 @@ func TestHydrateLanFwAmbiguousSectionNameRequiresKey(t *testing.T) {
 	var diags diag.Diagnostics
 	plan := lPMockClient.createPlan(duplicateLanPolicyPlan(false, true))
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{policy: duplicateLanPolicy()},
 	}
 
@@ -465,7 +467,7 @@ func TestHydrateLanFwAmbiguousNetworkRuleNameRequiresKey(t *testing.T) {
 	var diags diag.Diagnostics
 	plan := lPMockClient.createPlan(duplicateLanPolicyPlan(true, false))
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{policy: duplicateLanPolicy()},
 	}
 
@@ -575,7 +577,7 @@ func TestLanFwMoveMutationsRejectFailureStatusWithoutErrors(t *testing.T) {
 			t.Parallel()
 
 			r := lanRulesIndexResource{
-				client: &catoClientData{AccountId: "testID"},
+				client: &client.CatoClientData{AccountId: "testID"},
 				catov2Client: &lanPolicyMockClient{
 					mutationStatus: cato_models.PolicyMutationStatusFailure,
 				},
@@ -592,7 +594,7 @@ func TestLanFwPublishRejectsFailureStatusWithoutErrors(t *testing.T) {
 	t.Parallel()
 
 	r := lanRulesIndexResource{
-		client: &catoClientData{AccountId: "testID"},
+		client: &client.CatoClientData{AccountId: "testID"},
 		catov2Client: &lanPolicyMockClient{
 			mutationStatus: cato_models.PolicyMutationStatusFailure,
 		},
@@ -608,7 +610,7 @@ func TestCreate(t *testing.T) {
 	ctx := context.Background()
 	mockClient := &lanPolicyMockClient{policy: mockLanPolicy["default"]}
 	res := lanRulesIndexResource{
-		client:       &catoClientData{AccountId: "testID"},
+		client:       &client.CatoClientData{AccountId: "testID"},
 		catov2Client: mockClient,
 	}
 

@@ -24,8 +24,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -39,7 +40,7 @@ func NewWanNetworkRuleResource() resource.Resource {
 }
 
 type wanNetworkRuleResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *wanNetworkRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -2531,7 +2532,7 @@ func (r *wanNetworkRuleResource) Configure(_ context.Context, req resource.Confi
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *wanNetworkRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -2557,7 +2558,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
 
-	createRuleResponse, err := r.client.catov2.PolicyWanNetworkAddRule(ctx, input.create, r.client.AccountId)
+	createRuleResponse, err := r.client.Catov2.PolicyWanNetworkAddRule(ctx, input.create, r.client.AccountId)
 
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_createRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
@@ -2584,7 +2585,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 
 	// Publish policy revision (align with WAN FW behavior)
 	tflog.Info(ctx, "publishing new rule")
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -2594,7 +2595,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API WanNetworkPolicy error",
@@ -2666,7 +2667,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	// Query WAN Network policy
-	body, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API WanNetworkPolicy error",
@@ -2825,7 +2826,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 		"OUTPUT": utils.InterfaceToJSONString(updateInput),
 	})
 
-	updateRuleResponse, err := r.client.catov2.PolicyWanNetworkUpdateRule(ctx, updateInput, r.client.AccountId)
+	updateRuleResponse, err := r.client.Catov2.PolicyWanNetworkUpdateRule(ctx, updateInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkUpdateRule error",
@@ -2850,7 +2851,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 
 	// Publish policy revision after update
 	tflog.Info(ctx, "publishing updated rule")
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -2860,7 +2861,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API WanNetworkPolicy error",
@@ -2935,7 +2936,7 @@ func (r *wanNetworkRuleResource) Delete(ctx context.Context, req resource.Delete
 		ID: ruleID,
 	}
 
-	deleteRuleResponse, err := r.client.catov2.PolicyWanNetworkRemoveRule(ctx, removeInput, r.client.AccountId)
+	deleteRuleResponse, err := r.client.Catov2.PolicyWanNetworkRemoveRule(ctx, removeInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkRemoveRule error",
@@ -2956,7 +2957,7 @@ func (r *wanNetworkRuleResource) Delete(ctx context.Context, req resource.Delete
 
 	// Publish policy revision after update
 	tflog.Info(ctx, "publishing updated rule")
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",

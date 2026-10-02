@@ -10,8 +10,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 func GetGlobalIPRangeValidator() GlobalIPRangeValidator {
@@ -29,7 +30,7 @@ func (v GlobalIPRangeValidator) ValidateSet(ctx context.Context, req validator.S
 	}
 
 	// get ip ranges as a slice
-	if utils.CheckErr(&resp.Diagnostics, req.ConfigValue.ElementsAs(ctx, &ipRanges, false)) {
+	if apperr.CheckErr(&resp.Diagnostics, req.ConfigValue.ElementsAs(ctx, &ipRanges, false)) {
 		return
 	}
 

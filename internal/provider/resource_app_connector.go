@@ -17,9 +17,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/pops"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -40,7 +43,7 @@ func NewAppConnectorResource() resource.Resource {
 }
 
 type appConnectorResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *appConnectorResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -73,7 +76,7 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "List of private applications",
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes: parse.SchemaNameID("Private app"),
+					Attributes: idname.SchemaNameID("Private app"),
 				},
 			},
 			"serial_number": schema.StringAttribute{
@@ -142,14 +145,14 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 			"primary": schema.SingleNestedAttribute{
 				Description:   "Physical location of the pripary Pop",
 				Optional:      true,
-				Attributes:    parse.SchemaNameID("Primary location"),
-				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				Attributes:    idname.SchemaNameID("Primary location"),
+				PlanModifiers: []planmodifier.Object{idname.Modifier()},
 			},
 			"secondary": schema.SingleNestedAttribute{
 				Description:   "Physical location of the secondary Pop",
 				Optional:      true,
-				Attributes:    parse.SchemaNameID("Secondary location"),
-				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				Attributes:    idname.SchemaNameID("Secondary location"),
+				PlanModifiers: []planmodifier.Object{idname.Modifier()},
 			},
 		},
 	}
@@ -160,7 +163,7 @@ func (r *appConnectorResource) Configure(_ context.Context, req resource.Configu
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *appConnectorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -188,7 +191,7 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Call Cato API to create a new connector
 	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.AppConnectorCreateConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorCreateConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppConnectorCreateConnector error", err.Error())
@@ -272,7 +275,7 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.AppConnectorUpdateConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorUpdateConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -314,7 +317,7 @@ func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRe
 	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	result, err := r.client.catov2.AppConnectorDeleteConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorDeleteConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -356,7 +359,7 @@ func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types
 		return nil
 	}
 
-	var tfLocation PreferredPopLocationModel
+	var tfLocation pops.PreferredPopLocationModel
 	diags.Append(loc.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
 		return nil
@@ -399,15 +402,15 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appCon
 	var objDiags diag.Diagnostics
 
 	if loc == nil {
-		return types.ObjectNull(PreferredPopLocationModelTypes)
+		return types.ObjectNull(pops.PreferredPopLocationModelTypes)
 	}
 
 	// Prepare PreferredPopLocationModel object
-	tfLocation := PreferredPopLocationModel{
+	tfLocation := pops.PreferredPopLocationModel{
 		PreferredOnly: types.BoolValue(loc.PreferredOnly),
 		Automatic:     types.BoolValue(loc.Automatic),
-		Primary:       types.ObjectNull(parse.IDNameRefModelTypes),
-		Secondary:     types.ObjectNull(parse.IDNameRefModelTypes),
+		Primary:       types.ObjectNull(idname.RefModelTypes),
+		Secondary:     types.ObjectNull(idname.RefModelTypes),
 	}
 	if loc.Primary != nil {
 		tfLocation.Primary = parse.IDRef(ctx, *loc.Primary, diags)
@@ -416,10 +419,10 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appCon
 		tfLocation.Secondary = parse.IDRef(ctx, *loc.Secondary, diags)
 	}
 
-	locObj, objDiags := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
+	locObj, objDiags := types.ObjectValueFrom(ctx, pops.PreferredPopLocationModelTypes, tfLocation)
 	diags.Append(objDiags...)
 	if diags.HasError() {
-		return types.ObjectNull(PreferredPopLocationModelTypes)
+		return types.ObjectNull(pops.PreferredPopLocationModelTypes)
 	}
 
 	return locObj
@@ -440,7 +443,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 
 	// Call Cato API to get a connector
 	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.AppConnectorReadConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorReadConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, diags, err

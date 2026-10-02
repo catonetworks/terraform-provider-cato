@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
@@ -41,9 +42,9 @@ func TestIfSubPolicyConfigure(t *testing.T) {
 	if r.client != nil {
 		t.Fatal("expected nil client when provider data nil")
 	}
-	client := &catoClientData{AccountId: "123"}
-	r.Configure(context.Background(), resource.ConfigureRequest{ProviderData: client}, resp)
-	if r.client != client {
+	catoClient := &client.CatoClientData{AccountId: "123"}
+	r.Configure(context.Background(), resource.ConfigureRequest{ProviderData: catoClient}, resp)
+	if r.client != catoClient {
 		t.Fatal("expected client to be set")
 	}
 }
@@ -72,7 +73,7 @@ func TestIfSubPolicyCreateAddError(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewallAddSubPolicy(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(nil, assertErr("add failed")).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
 	if !resp.Diagnostics.HasError() {
@@ -88,7 +89,7 @@ func TestIfSubPolicyCreateAddStatusFailure(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewallAddSubPolicy(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(ifAddSubPolicyResponse(cato_models.PolicyMutationStatusFailure, "boom"), nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
 	if !resp.Diagnostics.HasError() {
@@ -108,7 +109,7 @@ func TestIfSubPolicyCreateSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(ifSubPolicyResponse("sub-1", "test-sub", "a sub", "scope-1", "scope"), nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
 	if resp.Diagnostics.HasError() {
@@ -137,7 +138,7 @@ func TestIfSubPolicyCreateNotFoundAfterPublish(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(emptyInternetFirewallPolicyResponse(), nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
 	if !resp.Diagnostics.HasError() {
@@ -151,7 +152,7 @@ func TestIfSubPolicyReadSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(ifSubPolicyResponse("sub-1", "renamed", "desc", "scope-1", "scope-name"), nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	state := newIfSubPolicyStateWithID(ctx, t)
 	resp := &resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, resp)
@@ -171,7 +172,7 @@ func TestIfSubPolicyReadRemovesMissing(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(emptyInternetFirewallPolicyResponse(), nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	state := newIfSubPolicyStateWithID(ctx, t)
 	resp := &resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, resp)
@@ -193,7 +194,7 @@ func TestIfSubPolicyUpdateScopeSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name"), nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
 	req := resource.UpdateRequest{
 		Plan:  newIfSubPolicyPlanWithID(ctx, t, "sub-1", "scope-1"),
@@ -211,7 +212,7 @@ func TestIfSubPolicyUpdateScopeError(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewallUpdateRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(nil, assertErr("update failed")).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
 	req := resource.UpdateRequest{
 		Plan:  newIfSubPolicyPlanWithID(ctx, t, "sub-1", "scope-1"),
@@ -231,7 +232,7 @@ func TestIfSubPolicyDeleteSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(nil, nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.DeleteResponse{}
 	r.Delete(ctx, resource.DeleteRequest{State: newIfSubPolicyStateWithID(ctx, t)}, resp)
 	if resp.Diagnostics.HasError() {
@@ -245,7 +246,7 @@ func TestIfSubPolicyDeleteStatusFailure(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewallRemoveSubPolicy(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(ifRemoveSubPolicyResponse(cato_models.PolicyMutationStatusFailure, "cannot"), nil).Once()
 
-	r := &ifSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &ifSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.DeleteResponse{}
 	r.Delete(ctx, resource.DeleteRequest{State: newIfSubPolicyStateWithID(ctx, t)}, resp)
 	if !resp.Diagnostics.HasError() {

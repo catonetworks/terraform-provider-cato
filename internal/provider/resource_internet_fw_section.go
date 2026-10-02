@@ -17,7 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -31,7 +32,7 @@ func NewInternetFwSectionResource() resource.Resource {
 }
 
 type internetFwSectionResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *internetFwSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -102,7 +103,7 @@ func (r *internetFwSectionResource) Configure(_ context.Context, req resource.Co
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *internetFwSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -142,7 +143,7 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 		input.Section.Name = sectionInput.Name.ValueString()
 	}
 
-	sectionIndexAPIData, err := r.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+	sectionIndexAPIData, err := r.client.Catov2.PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
@@ -161,7 +162,7 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 			Section: &cato_models.PolicyAddSectionInfoInput{
 				Name: "Default Outbound Internet",
 			}}
-		sectionCreateAPIData, err := r.client.catov2.PolicyInternetFirewallAddSection(
+		sectionCreateAPIData, err := r.client.Catov2.PolicyInternetFirewallAddSection(
 			ctx,
 			&cato_models.InternetFirewallPolicyMutationInput{},
 			input,
@@ -183,7 +184,7 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 	tflog.Debug(ctx, "Create.PolicyInternetFirewallAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.catov2.PolicyInternetFirewallAddSection(
+	policyChange, err := r.client.Catov2.PolicyInternetFirewallAddSection(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		input,
@@ -209,7 +210,7 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 	// Publishing new section
 	tflog.Info(ctx, "Create.publishing-rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyInternetFirewallPublishPolicyRevision(
+	_, err = r.client.Catov2.PolicyInternetFirewallPublishPolicyRevision(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		publishDataIfEnabled,
@@ -249,7 +250,7 @@ func (r *internetFwSectionResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.client.catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
+	body, err := r.client.Catov2.PolicyInternetFirewall(ctx, queryIfwPolicy, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyInternetFirewall.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -348,7 +349,7 @@ func (r *internetFwSectionResource) Update(ctx context.Context, req resource.Upd
 	tflog.Debug(ctx, "Update.PolicyInternetFirewallMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.catov2.PolicyInternetFirewallMoveSection(
+	moveSection, err := r.client.Catov2.PolicyInternetFirewallMoveSection(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		inputMoveSection,
@@ -380,7 +381,7 @@ func (r *internetFwSectionResource) Update(ctx context.Context, req resource.Upd
 	tflog.Debug(ctx, "Update.PolicyInternetFirewallUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.catov2.PolicyInternetFirewallUpdateSection(
+	updateSection, err := r.client.Catov2.PolicyInternetFirewallUpdateSection(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		inputUpdateSection,
@@ -411,7 +412,7 @@ func (r *internetFwSectionResource) Update(ctx context.Context, req resource.Upd
 	// Publishing new section
 	tflog.Info(ctx, "Update.publishing-rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyInternetFirewallPublishPolicyRevision(
+	_, err = r.client.Catov2.PolicyInternetFirewallPublishPolicyRevision(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		publishDataIfEnabled,
@@ -453,7 +454,7 @@ func (r *internetFwSectionResource) Delete(ctx context.Context, req resource.Del
 		ID: section.ID.ValueString(),
 	}
 
-	policyInternetFirewallRemoveSectionResponse, err := r.client.catov2.PolicyInternetFirewallRemoveSection(
+	policyInternetFirewallRemoveSectionResponse, err := r.client.Catov2.PolicyInternetFirewallRemoveSection(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		removeSection,
@@ -473,7 +474,7 @@ func (r *internetFwSectionResource) Delete(ctx context.Context, req resource.Del
 
 	tflog.Info(ctx, "Delete.publishing-rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyInternetFirewallPublishPolicyRevision(
+	_, err = r.client.Catov2.PolicyInternetFirewallPublishPolicyRevision(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		publishDataIfEnabled,

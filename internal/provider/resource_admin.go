@@ -19,7 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -35,7 +36,7 @@ func NewAdminResource() resource.Resource {
 }
 
 type adminResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *adminResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -159,7 +160,7 @@ func (r *adminResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *adminResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -276,7 +277,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	})
 
 	// Call the API
-	addAdminResult, err := r.client.catov2.AdminAddAdmin(ctx, input, curAccountID)
+	addAdminResult, err := r.client.Catov2.AdminAddAdmin(ctx, input, curAccountID)
 	tflog.Debug(ctx, "Create.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addAdminResult),
 	})
@@ -316,7 +317,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	plan.AdminID = types.StringValue(adminID)
 
 	// Read the admin data to populate computed fields
-	readAdminResult, err := r.client.catov2.Admin(ctx, curAccountID, adminID)
+	readAdminResult, err := r.client.Catov2.Admin(ctx, curAccountID, adminID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API Admin error",
@@ -476,7 +477,7 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	})
 
 	// Call the API to read the admin
-	readAdminResult, err := r.client.catov2.Admins(ctx, curAccountID, nil, nil, nil, nil, []string{curAdminID})
+	readAdminResult, err := r.client.Catov2.Admins(ctx, curAccountID, nil, nil, nil, nil, []string{curAdminID})
 	tflog.Debug(ctx, "Read.Admins.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(readAdminResult),
 	})
@@ -770,7 +771,7 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Call the API
-	updateAdminResult, err := r.client.catov2.AdminUpdateAdmin(ctx, curAdminID, input, curAccountID)
+	updateAdminResult, err := r.client.Catov2.AdminUpdateAdmin(ctx, curAdminID, input, curAccountID)
 	tflog.Debug(ctx, "Update.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateAdminResult),
 	})
@@ -848,7 +849,7 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	})
 
 	// Call the API
-	removeAdminResult, err := r.client.catov2.AdminRemoveAdmin(ctx, curAdminID, curAccountID)
+	removeAdminResult, err := r.client.Catov2.AdminRemoveAdmin(ctx, curAdminID, curAccountID)
 	tflog.Debug(ctx, "Delete.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removeAdminResult),
 	})

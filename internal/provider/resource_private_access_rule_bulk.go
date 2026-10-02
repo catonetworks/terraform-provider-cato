@@ -16,8 +16,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -29,7 +31,7 @@ var (
 )
 
 type privAccessRuleBulkResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func NewPrivAccessRuleBulkResource() resource.Resource {
@@ -45,7 +47,7 @@ func (r *privAccessRuleBulkResource) Configure(_ context.Context, req resource.C
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *privAccessRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -102,7 +104,7 @@ func (r *privAccessRuleBulkResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
-	if utils.CheckErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
 		return
 	}
 
@@ -172,7 +174,7 @@ func (r *privAccessRuleBulkResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
-	if utils.CheckErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveRules(ctx, ruleMap)) {
 		return
 	}
 
@@ -230,7 +232,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	stateRules := make(map[string]PrivateAccessBulkRule)
 	if utils.HasValue(plan.RuleData) {
 		var tfBulk map[string]types.Object
-		if utils.CheckErr(&diags, plan.RuleData.ElementsAs(ctx, &tfBulk, false)) {
+		if apperr.CheckErr(&diags, plan.RuleData.ElementsAs(ctx, &tfBulk, false)) {
 			return nil, nil, diags, ErrConvertError
 		}
 		for name, obj := range tfBulk {
@@ -244,7 +246,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	}
 
 	// Call Cato API to get the policy
-	result, err := r.client.catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
+	result, err := r.client.Catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Bulk PolicyReadPrivateAccessPolicy", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -388,7 +390,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(
 
 	// Call the API to move the rule
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return err
@@ -406,7 +408,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(
 
 // publish calls the API to publish the draft policy revision
 func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
-	result, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	result, err := r.client.Catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessPublishRevision", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return err

@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
@@ -61,7 +62,7 @@ func TestWfSubPolicyCreateSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(wanSubPolicyResponse("sub-1", "test-sub", "a sub", "scope-1", "scope"), nil).Once()
 
-	r := &wfSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &wfSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getWfSubPolicySchema(ctx, t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: newWfSubPolicyPlan(ctx, t, "")}, resp)
 	if resp.Diagnostics.HasError() {
@@ -85,7 +86,7 @@ func TestWfSubPolicyCreateAddError(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallAddSubPolicy(mock.Anything, mock.Anything, "account-123").
 		Return(nil, assertErr("add failed")).Once()
 
-	r := &wfSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &wfSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getWfSubPolicySchema(ctx, t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: newWfSubPolicyPlan(ctx, t, "")}, resp)
 	if !resp.Diagnostics.HasError() {
@@ -99,7 +100,7 @@ func TestWfSubPolicyReadSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(wanSubPolicyResponse("sub-1", "renamed", "desc", "scope-1", "scope-name"), nil).Once()
 
-	r := &wfSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &wfSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	state := newWfSubPolicyStateWithID(ctx, t)
 	resp := &resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, resp)
@@ -119,7 +120,7 @@ func TestWfSubPolicyReadRemovesMissing(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(emptyWanFirewallPolicyResponse(), nil).Once()
 
-	r := &wfSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &wfSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	state := newWfSubPolicyStateWithID(ctx, t)
 	resp := &resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, resp)
@@ -139,7 +140,7 @@ func TestWfSubPolicyDeleteSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
 		Return(nil, nil).Once()
 
-	r := &wfSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &wfSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.DeleteResponse{}
 	r.Delete(ctx, resource.DeleteRequest{State: newWfSubPolicyStateWithID(ctx, t)}, resp)
 	if resp.Diagnostics.HasError() {
@@ -153,7 +154,7 @@ func TestWfSubPolicyDeleteStatusFailure(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallRemoveSubPolicy(mock.Anything, mock.Anything, "account-123").
 		Return(wanRemoveSubPolicyResponse(cato_models.PolicyMutationStatusFailure, "cannot"), nil).Once()
 
-	r := &wfSubPolicyResource{client: &catoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
+	r := &wfSubPolicyResource{client: &client.CatoClientData{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.DeleteResponse{}
 	r.Delete(ctx, resource.DeleteRequest{State: newWfSubPolicyStateWithID(ctx, t)}, resp)
 	if !resp.Diagnostics.HasError() {

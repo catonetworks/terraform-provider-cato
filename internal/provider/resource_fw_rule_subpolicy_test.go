@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
@@ -185,7 +186,7 @@ func TestInternetFwRuleCreateIntoSubPolicy(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &client.CatoClientData{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.CreateRequest{Plan: newInternetFwRulePlanWithSubPolicy(ctx, t, "sub-1")}
@@ -217,7 +218,7 @@ func TestInternetFwRuleCreateSubPolicyNotFound(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &client.CatoClientData{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.CreateRequest{Plan: newInternetFwRulePlanWithSubPolicy(ctx, t, "sub-1")}

@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	catoClient "github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 )
 
 const (
@@ -253,7 +255,7 @@ func TestLicenseRead_SelectsConfiguredPooledAllocation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create cato client: %v", err)
 	}
-	r := &licenseResource{client: &catoClientData{AccountId: "3381", catov2: client}}
+	r := &licenseResource{client: &catoClient.CatoClientData{AccountId: "3381", Catov2: client}}
 	schemaResp := &resource.SchemaResponse{}
 	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
 	state := tfsdk.State{Schema: schemaResp.Schema}
@@ -344,9 +346,9 @@ func (f *licenseTestFixture) upsert(siteID, licenseID string, bw types.Int64) (*
 		LicenseInfo: types.ObjectNull(LicenseInfoResourceAttrTypes),
 	}
 
-	return upsertLicense(context.Background(), plan, &catoClientData{
+	return upsertLicense(context.Background(), plan, &catoClient.CatoClientData{
 		AccountId: "3381",
-		catov2:    client,
+		Catov2:    client,
 	})
 }
 

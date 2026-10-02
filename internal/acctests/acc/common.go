@@ -252,7 +252,7 @@ func GetPrivateApps(t *testing.T) []Ref {
 		}
 		// create the app
 		input := cato_models.CreatePrivateApplicationInput{
-			Description:        ptr(paName + " description"),
+			Description:        new(paName + " description"),
 			InternalAppAddress: GetRandIP(),
 			Name:               paName,
 		}
@@ -292,7 +292,7 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 	// try to fetch groups
 	groupsInput := &cato_models.GroupListInput{
 		Filter: []*cato_models.GroupListFilterInput{
-			{Name: []*cato_models.AdvancedStringFilterInput{{Regex: ptr(groupRE)}}},
+			{Name: []*cato_models.AdvancedStringFilterInput{{Regex: new(groupRE)}}},
 		},
 		Paging: &cato_models.PagingInput{From: 0, Limit: 10},
 		Sort:   &cato_models.GroupListSortInput{Name: &cato_models.SortOrderInput{Direction: cato_models.SortOrderAsc}},
@@ -316,7 +316,7 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 			continue
 		}
 		// create the group
-		createGroupInput := cato_models.CreateGroupInput{Name: groupName, Description: ptr(groupName + " terraform tests")}
+		createGroupInput := cato_models.CreateGroupInput{Name: groupName, Description: new(groupName + " terraform tests")}
 		res, err := client.GroupsCreateGroup(ctx, createGroupInput, CatoAccountID)
 		if err != nil {
 			t.Fatalf("ERROR creating test group: %v", err)
@@ -331,9 +331,9 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 func GetGlobalIPRanges(t *testing.T) []Ref {
 	var rangesFound []string
 	accTestRanges := []*cato_models.CreateGlobalIPRangeInput{
-		{Name: "acctest_global_ip_range_000", Description: ptr("acctest_global_ip_range_000 description"), IPRange: "255.255.0.0/24"},
-		{Name: "acctest_global_ip_range_001", Description: ptr("acctest_global_ip_range_001 description"), IPRange: "255.255.1.0/24"},
-		{Name: "acctest_global_ip_range_002", Description: ptr("acctest_global_ip_range_002 description"), IPRange: "255.255.2.0/24"},
+		{Name: "acctest_global_ip_range_000", Description: new("acctest_global_ip_range_000 description"), IPRange: "255.255.0.0/24"},
+		{Name: "acctest_global_ip_range_001", Description: new("acctest_global_ip_range_001 description"), IPRange: "255.255.1.0/24"},
+		{Name: "acctest_global_ip_range_002", Description: new("acctest_global_ip_range_002 description"), IPRange: "255.255.2.0/24"},
 	}
 
 	client := GetClient(t)
@@ -510,5 +510,3 @@ func GetSystemGroups(t *testing.T) []Ref     { return getFromVars(t, resSystemGr
 func GetDevicePostures(t *testing.T) []Ref   { return getFromVars(t, resDevicePostures) }
 func GetCustomApps(t *testing.T) []Ref       { return getFromVars(t, resCustomApps) }
 func GetCustomCategories(t *testing.T) []Ref { return getFromVars(t, resCustomCategories) }
-
-func ptr[T any](x T) *T { return &x }

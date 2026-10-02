@@ -17,6 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
+
+	catoClient "github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 )
 
 func TestLfSubPolicyAtSchemaIsImportSafe(t *testing.T) {
@@ -204,7 +206,7 @@ func TestLfSubPolicyMoveUsesScopeRuleID(t *testing.T) {
 	ctx := context.Background()
 	client := &lfSubPolicyFakeClient{}
 	res := &lfSubPolicyResource{
-		client:          &catoClientData{AccountId: "account-123"},
+		client:          &catoClient.CatoClientData{AccountId: "account-123"},
 		subPolicyClient: client,
 	}
 	var diags diag.Diagnostics
@@ -226,7 +228,7 @@ func TestLfSubPolicyCreatePreservesIDWhenPublishFails(t *testing.T) {
 	require.False(t, plan.Set(ctx, lfSubPolicyPlan()).HasError())
 	client := &lfSubPolicyFakeClient{publishErr: errors.New("publish timeout")}
 	res := &lfSubPolicyResource{
-		client:          &catoClientData{AccountId: "account-123"},
+		client:          &catoClient.CatoClientData{AccountId: "account-123"},
 		subPolicyClient: client,
 	}
 	response := &resource.CreateResponse{State: tfsdk.State{Schema: resourceSchema}}
@@ -256,7 +258,7 @@ func TestLfSubPolicyUpdateMovesImportedPositionAndPreservesPriorStateOnPublishFa
 	require.False(t, state.Set(ctx, stateModel).HasError())
 	client := &lfSubPolicyFakeClient{publishErr: errors.New("publish timeout")}
 	res := &lfSubPolicyResource{
-		client:          &catoClientData{AccountId: "account-123"},
+		client:          &catoClient.CatoClientData{AccountId: "account-123"},
 		subPolicyClient: client,
 	}
 	response := &resource.UpdateResponse{State: tfsdk.State{Schema: resourceSchema}}
@@ -287,7 +289,7 @@ func TestLfSubPolicyUpdateRejectsResolvedNullPosition(t *testing.T) {
 	require.False(t, state.Set(ctx, stateModel).HasError())
 	client := &lfSubPolicyFakeClient{}
 	res := &lfSubPolicyResource{
-		client:          &catoClientData{AccountId: "account-123"},
+		client:          &catoClient.CatoClientData{AccountId: "account-123"},
 		subPolicyClient: client,
 	}
 	response := &resource.UpdateResponse{State: tfsdk.State{Schema: resourceSchema}}
@@ -303,7 +305,7 @@ func TestLfSubPolicyPublishTreatsNoDraftAsSuccess(t *testing.T) {
 
 	client := &lfSubPolicyFakeClient{publishNotFound: true}
 	res := &lfSubPolicyResource{
-		client:          &catoClientData{AccountId: "account-123"},
+		client:          &catoClient.CatoClientData{AccountId: "account-123"},
 		subPolicyClient: client,
 	}
 	var diags diag.Diagnostics

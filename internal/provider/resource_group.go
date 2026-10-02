@@ -19,7 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -35,7 +36,7 @@ func NewGroupResource() resource.Resource {
 }
 
 type groupResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *groupResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -114,7 +115,7 @@ func (r *groupResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *groupResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -180,7 +181,7 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 	tflog.Debug(ctx, "Create.GroupsCreateGroup.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	result, err := r.client.catov2.GroupsCreateGroup(ctx, input, r.client.AccountId)
+	result, err := r.client.Catov2.GroupsCreateGroup(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.GroupsCreateGroup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -291,7 +292,7 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	tflog.Debug(ctx, "Update.GroupsUpdateGroup.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	result, err := r.client.catov2.GroupsUpdateGroup(ctx, input, r.client.AccountId)
+	result, err := r.client.Catov2.GroupsUpdateGroup(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.GroupsUpdateGroup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -366,7 +367,7 @@ func (r *groupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		Input: state.ID.ValueString(),
 	}
 
-	result, err := r.client.catov2.GroupsDeleteGroup(ctx, groupRef, r.client.AccountId)
+	result, err := r.client.Catov2.GroupsDeleteGroup(ctx, groupRef, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.GroupsDeleteGroup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -404,7 +405,7 @@ func (r *groupResource) hydrateGroupState(ctx context.Context, groupID string, p
 		Sort: &cato_models.GroupListSortInput{},
 	}
 
-	groupListResult, err := r.client.catov2.GroupsList(ctx, groupListInput, r.client.AccountId)
+	groupListResult, err := r.client.Catov2.GroupsList(ctx, groupListInput, r.client.AccountId)
 	tflog.Debug(ctx, "hydrateGroupState.GroupsList.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(groupListResult),
 	})
@@ -441,7 +442,7 @@ func (r *groupResource) hydrateGroupState(ctx context.Context, groupID string, p
 		Sort: &cato_models.GroupMembersListSortInput{},
 	}
 
-	membersResult, err := r.client.catov2.GroupsMembers(ctx, groupRef, groupMembersListInput, r.client.AccountId)
+	membersResult, err := r.client.Catov2.GroupsMembers(ctx, groupRef, groupMembersListInput, r.client.AccountId)
 	tflog.Debug(ctx, "hydrateGroupState.GroupsMembers.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(membersResult),
 	})

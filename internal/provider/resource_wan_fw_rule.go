@@ -29,8 +29,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -44,7 +45,7 @@ func NewWanFwRuleResource() resource.Resource {
 }
 
 type wanFwRuleResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *wanFwRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -3285,7 +3286,7 @@ func (r *wanFwRuleResource) Configure(_ context.Context, req resource.ConfigureR
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *wanFwRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -3325,7 +3326,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	// sub-policy cleanup rule so the API places it inside the sub-policy.
 	if !plan.SubPolicyID.IsNull() && !plan.SubPolicyID.IsUnknown() {
 		subID := plan.SubPolicyID.ValueString()
-		anchorBody, err := r.client.catov2.PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+		anchorBody, err := r.client.Catov2.PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 			return
@@ -3349,7 +3350,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
 
-	createRuleResponse, err := r.client.catov2.PolicyWanFirewallAddRule(ctx, input.create, r.client.AccountId)
+	createRuleResponse, err := r.client.Catov2.PolicyWanFirewallAddRule(ctx, input.create, r.client.AccountId)
 
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_createRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
@@ -3377,7 +3378,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	// publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
@@ -3391,7 +3392,7 @@ func (r *wanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 
 	// Read rule and hydrate response to state
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
-	body, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	body, err := r.client.Catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewall error",
@@ -3461,7 +3462,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
-	body, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	body, err := r.client.Catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewall error",
@@ -3620,7 +3621,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	input.update.ID = *ruleInput.ID.ValueStringPointer()
 
 	// move rule
-	moveRule, err := r.client.catov2.PolicyWanFirewallMoveRule(ctx, inputMoveRule, r.client.AccountId)
+	moveRule, err := r.client.Catov2.PolicyWanFirewallMoveRule(ctx, inputMoveRule, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallMoveRule error",
@@ -3645,7 +3646,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	})
 
 	// updating rule
-	updateRuleResponse, err := r.client.catov2.PolicyWanFirewallUpdateRule(ctx, input.update, r.client.AccountId)
+	updateRuleResponse, err := r.client.Catov2.PolicyWanFirewallUpdateRule(ctx, input.update, r.client.AccountId)
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_updateRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(updateRuleResponse),
 	})
@@ -3672,7 +3673,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	// publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
@@ -3683,7 +3684,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 
 	// Read rule and hydrate response to state
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
-	wanFWQueryResponse, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	wanFWQueryResponse, err := r.client.Catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
 	tflog.Debug(ctx, "wanFWQueryResponse", map[string]interface{}{
 		"wanFWQueryResponse": utils.InterfaceToJSONString(wanFWQueryResponse),
 	})
@@ -3765,7 +3766,7 @@ func (r *wanFwRuleResource) Delete(ctx context.Context, req resource.DeleteReque
 		"input": utils.InterfaceToJSONString(removeRule),
 	})
 
-	_, err := r.client.catov2.PolicyWanFirewallRemoveRule(ctx, removeRule, r.client.AccountId)
+	_, err := r.client.Catov2.PolicyWanFirewallRemoveRule(ctx, removeRule, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to connect or request the Catov2 API",
@@ -3775,7 +3776,7 @@ func (r *wanFwRuleResource) Delete(ctx context.Context, req resource.DeleteReque
 	}
 
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyWanFirewallPublishPolicyRevision error",

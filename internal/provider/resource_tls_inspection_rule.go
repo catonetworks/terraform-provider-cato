@@ -22,8 +22,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -37,7 +38,7 @@ func NewTLSInspectionRuleResource() resource.Resource {
 }
 
 type tlsInspectionRuleResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *tlsInspectionRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -939,7 +940,7 @@ func (r *tlsInspectionRuleResource) Configure(_ context.Context, req resource.Co
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 //nolint:funlen
@@ -961,7 +962,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
 
-	createRuleResponse, err := r.client.catov2.PolicyTLSInspectAddRule(ctx, input.create, r.client.AccountId)
+	createRuleResponse, err := r.client.Catov2.PolicyTLSInspectAddRule(ctx, input.create, r.client.AccountId)
 
 	tflog.Warn(ctx, "TFLOG_WARN_TLS_createRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
@@ -988,7 +989,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 
 	// Publishing new rule
 	tflog.Info(ctx, "publishing new TLS rule")
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectPublishPolicyRevision error",
@@ -998,7 +999,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspect error",
@@ -1056,7 +1057,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	body, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspect error",
@@ -1206,7 +1207,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	input.update.ID = *ruleInput.ID.ValueStringPointer()
 
 	// Move rule
-	moveRule, err := r.client.catov2.PolicyTLSInspectMoveRule(ctx, inputMoveRule, r.client.AccountId)
+	moveRule, err := r.client.Catov2.PolicyTLSInspectMoveRule(ctx, inputMoveRule, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectMoveRule error",
@@ -1231,7 +1232,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	})
 
 	// Updating rule
-	updateRuleResponse, err := r.client.catov2.PolicyTLSInspectUpdateRule(ctx, input.update, r.client.AccountId)
+	updateRuleResponse, err := r.client.Catov2.PolicyTLSInspectUpdateRule(ctx, input.update, r.client.AccountId)
 	tflog.Warn(ctx, "TFLOG_WARN_TLS_updateRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(updateRuleResponse),
 	})
@@ -1257,7 +1258,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 
 	// Publishing updated rule
 	tflog.Info(ctx, "publishing updated TLS rule")
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectPublishPolicyRevision error",
@@ -1267,7 +1268,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspect error",
@@ -1326,7 +1327,7 @@ func (r *tlsInspectionRuleResource) Delete(ctx context.Context, req resource.Del
 		ID: *ruleInput.ID.ValueStringPointer(),
 	}
 
-	removeRuleResponse, err := r.client.catov2.PolicyTLSInspectRemoveRule(ctx, removeRuleInput, r.client.AccountId)
+	removeRuleResponse, err := r.client.Catov2.PolicyTLSInspectRemoveRule(ctx, removeRuleInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectRemoveRule error",
@@ -1348,7 +1349,7 @@ func (r *tlsInspectionRuleResource) Delete(ctx context.Context, req resource.Del
 
 	// Publishing rule deletion
 	tflog.Info(ctx, "publishing TLS rule deletion")
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectPublishPolicyRevision error",

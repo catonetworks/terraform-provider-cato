@@ -20,8 +20,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -35,7 +36,7 @@ func NewAppTenantRestrictionRuleResource() resource.Resource {
 }
 
 type appTenantRestrictionRuleResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *appTenantRestrictionRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -209,7 +210,7 @@ func (r *appTenantRestrictionRuleResource) Configure(_ context.Context, req reso
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *appTenantRestrictionRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -231,7 +232,7 @@ func (r *appTenantRestrictionRuleResource) Create(ctx context.Context, req resou
 	}
 
 	tflog.Debug(ctx, "Create.PolicyAppTenantRestrictionAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	res, err := r.client.catov2.PolicyAppTenantRestrictionAddRule(ctx, input, r.client.AccountId)
+	res, err := r.client.Catov2.PolicyAppTenantRestrictionAddRule(ctx, input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionAddRule error", err.Error())
 		return
@@ -257,7 +258,7 @@ func (r *appTenantRestrictionRuleResource) Create(ctx context.Context, req resou
 		return
 	}
 
-	body, err := r.client.catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -311,7 +312,7 @@ func (r *appTenantRestrictionRuleResource) Read(ctx context.Context, req resourc
 		return
 	}
 
-	body, err := r.client.catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -394,7 +395,7 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 		return
 	}
 
-	moveRes, err := r.client.catov2.PolicyAppTenantRestrictionMoveRule(ctx, move, r.client.AccountId)
+	moveRes, err := r.client.Catov2.PolicyAppTenantRestrictionMoveRule(ctx, move, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionMoveRule error", err.Error())
 		return
@@ -415,7 +416,7 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 		return
 	}
 
-	updRes, err := r.client.catov2.PolicyAppTenantRestrictionUpdateRule(ctx, upd, r.client.AccountId)
+	updRes, err := r.client.Catov2.PolicyAppTenantRestrictionUpdateRule(ctx, upd, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionUpdateRule error", err.Error())
 		return
@@ -435,7 +436,7 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 		return
 	}
 
-	body, err := r.client.catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -501,7 +502,7 @@ func (r *appTenantRestrictionRuleResource) Delete(ctx context.Context, req resou
 		return
 	}
 	rm := cato_models.AppTenantRestrictionRemoveRuleInput{ID: rule.ID.ValueString()}
-	if _, err := r.client.catov2.PolicyAppTenantRestrictionRemoveRule(ctx, rm, r.client.AccountId); err != nil {
+	if _, err := r.client.Catov2.PolicyAppTenantRestrictionRemoveRule(ctx, rm, r.client.AccountId); err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionRemoveRule error", err.Error())
 		return
 	}

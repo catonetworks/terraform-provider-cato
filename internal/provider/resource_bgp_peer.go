@@ -21,7 +21,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -35,7 +36,7 @@ func NewBgpPeerResource() resource.Resource {
 }
 
 type bgpPeerResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 type BgpPeer struct {
@@ -257,7 +258,7 @@ func (r *bgpPeerResource) Configure(_ context.Context, req resource.ConfigureReq
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *bgpPeerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -361,7 +362,7 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 	tflog.Debug(ctx, "Create.SiteAddBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	addBgpPeerPayload, err := r.client.catov2.SiteAddBgpPeer(ctx, input, r.client.AccountId)
+	addBgpPeerPayload, err := r.client.Catov2.SiteAddBgpPeer(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addBgpPeerPayload),
 	})
@@ -399,7 +400,7 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 	tflog.Debug(ctx, "Read.SiteBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(bgpPeerRefInput),
 	})
-	result, err := r.client.catov2.SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
+	result, err := r.client.Catov2.SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
 	tflog.Debug(ctx, "Read.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -533,7 +534,7 @@ func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest
 	tflog.Debug(ctx, "Update.SiteUpdateBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	SiteUpdateBgpPeerResponse, err := r.client.catov2.SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
+	SiteUpdateBgpPeerResponse, err := r.client.Catov2.SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(SiteUpdateBgpPeerResponse),
 	})
@@ -565,7 +566,7 @@ func (r *bgpPeerResource) Delete(ctx context.Context, req resource.DeleteRequest
 	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeBgpPeerInput),
 	})
-	SiteRemoveBgpPeerResponse, err := r.client.catov2.SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
+	SiteRemoveBgpPeerResponse, err := r.client.Catov2.SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(SiteRemoveBgpPeerResponse),
 	})

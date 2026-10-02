@@ -6,6 +6,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 )
 
 type AppConnectorGroupDataSourceModel struct {
@@ -18,7 +20,7 @@ func AppConnectorGroupDataSource() datasource.DataSource {
 }
 
 type appConnectorGroupDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *appConnectorGroupDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -47,7 +49,7 @@ func (d *appConnectorGroupDataSource) Configure(_ context.Context, req datasourc
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (d *appConnectorGroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -56,7 +58,7 @@ func (d *appConnectorGroupDataSource) Read(ctx context.Context, req datasource.R
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-	result, err := d.client.catov2.AppConnectorReadGroups(ctx, d.client.AccountId)
+	result, err := d.client.Catov2.AppConnectorReadGroups(ctx, d.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to fetch app-connector groups", err.Error())
 		return

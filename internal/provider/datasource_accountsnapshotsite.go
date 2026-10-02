@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -22,7 +23,7 @@ func NewAccountSnapshotSiteDataSource() datasource.DataSource {
 }
 
 type accountSnapshotSiteDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 type SiteSnapshot struct {
@@ -233,7 +234,7 @@ func (d *accountSnapshotSiteDataSource) Configure(_ context.Context, req datasou
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 //nolint:gocyclo
@@ -262,7 +263,7 @@ func (d *accountSnapshotSiteDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 
-	accountSnapshotSite, err := d.client.catov2.AccountSnapshot(ctx, nil, nil, &d.client.AccountId)
+	accountSnapshotSite, err := d.client.Catov2.AccountSnapshot(ctx, nil, nil, &d.client.AccountId)
 	tflog.Debug(ctx, "Read.AccountSnapshot.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(accountSnapshotSite),
 	})

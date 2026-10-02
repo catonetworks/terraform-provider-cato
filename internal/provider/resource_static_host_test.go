@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 )
 
@@ -42,7 +43,7 @@ func TestStaticHostReadRefreshesState(t *testing.T) {
 		MacAddress: types.StringNull(),
 	})
 	r := &staticHostResource{
-		client:           &catoClientData{AccountId: "account-123"},
+		client:           &client.CatoClientData{AccountId: "account-123"},
 		staticHostClient: mockClient,
 	}
 	resp := &resource.ReadResponse{State: tfsdk.State{Schema: getStaticHostSchema(ctx, t)}}
@@ -79,7 +80,7 @@ func TestStaticHostReadSetsNullMacAddress(t *testing.T) {
 		MacAddress: types.StringValue("00:00:00:00:00:50"),
 	})
 	r := &staticHostResource{
-		client:           &catoClientData{AccountId: "account-123"},
+		client:           &client.CatoClientData{AccountId: "account-123"},
 		staticHostClient: mockClient,
 	}
 	resp := &resource.ReadResponse{State: tfsdk.State{Schema: getStaticHostSchema(ctx, t)}}
@@ -109,7 +110,7 @@ func TestStaticHostReadRemovesMissingResource(t *testing.T) {
 		Once()
 
 	r := &staticHostResource{
-		client:           &catoClientData{AccountId: "account-123"},
+		client:           &client.CatoClientData{AccountId: "account-123"},
 		staticHostClient: mockClient,
 	}
 	resp := &resource.ReadResponse{State: tfsdk.State{Schema: getStaticHostSchema(ctx, t)}}
@@ -138,7 +139,7 @@ func TestStaticHostReadReportsAPIError(t *testing.T) {
 		Once()
 
 	r := &staticHostResource{
-		client:           &catoClientData{AccountId: "account-123"},
+		client:           &client.CatoClientData{AccountId: "account-123"},
 		staticHostClient: mockClient,
 	}
 	resp := &resource.ReadResponse{State: tfsdk.State{Schema: getStaticHostSchema(ctx, t)}}

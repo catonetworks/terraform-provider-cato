@@ -13,7 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 func LicensingInfoDataSource() datasource.DataSource {
@@ -21,7 +22,7 @@ func LicensingInfoDataSource() datasource.DataSource {
 }
 
 type licensingInfoDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *licensingInfoDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -239,7 +240,7 @@ func (d *licensingInfoDataSource) Configure(_ context.Context, req datasource.Co
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 //nolint:gocyclo,funlen
@@ -250,7 +251,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	licensingInfoResponse, err := d.client.catov2.Licensing(ctx, d.client.AccountId)
+	licensingInfoResponse, err := d.client.Catov2.Licensing(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.Licensing.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(licensingInfoResponse),
 	})

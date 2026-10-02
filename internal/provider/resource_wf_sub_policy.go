@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -29,7 +30,7 @@ func NewWfSubPolicyResource() resource.Resource {
 }
 
 type wfSubPolicyResource struct {
-	client        *catoClientData
+	client        *client.CatoClientData
 	subPolyClient WanFirewallSubPolicyClient
 }
 
@@ -40,7 +41,7 @@ func (r *wfSubPolicyResource) getClient() WanFirewallSubPolicyClient {
 	if r.client == nil {
 		return nil
 	}
-	return r.client.catov2
+	return r.client.Catov2
 }
 
 func (r *wfSubPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -136,7 +137,7 @@ func (r *wfSubPolicyResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *wfSubPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

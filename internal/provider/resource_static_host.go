@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -29,7 +30,7 @@ func NewStaticHostResource() resource.Resource {
 }
 
 type staticHostResource struct {
-	client           *catoClientData
+	client           *client.CatoClientData
 	staticHostClient StaticHostClient
 }
 
@@ -46,7 +47,7 @@ func (r *staticHostResource) getStaticHostClient() StaticHostClient {
 		return nil
 	}
 
-	return r.client.catov2
+	return r.client.Catov2
 }
 
 func (r *staticHostResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -94,7 +95,7 @@ func (r *staticHostResource) Configure(_ context.Context, req resource.Configure
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *staticHostResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -129,7 +130,7 @@ func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequ
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	body, err := r.client.catov2.SiteAddStaticHost(ctx, plan.SiteID.ValueString(), input, r.client.AccountId)
+	body, err := r.client.Catov2.SiteAddStaticHost(ctx, plan.SiteID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -228,7 +229,7 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateStaticHostResponse, err := r.client.catov2.SiteUpdateStaticHost(ctx, plan.ID.ValueString(), input, r.client.AccountId)
+	siteUpdateStaticHostResponse, err := r.client.Catov2.SiteUpdateStaticHost(ctx, plan.ID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateStaticHostResponse),
 	})
@@ -256,7 +257,7 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	querySiteResult, err := r.client.catov2.EntityLookup(
+	querySiteResult, err := r.client.Catov2.EntityLookup(
 		ctx,
 		r.client.AccountId,
 		cato_models.EntityType("site"),
@@ -282,7 +283,7 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-		queryHostResult, err := r.client.catov2.EntityLookup(
+		queryHostResult, err := r.client.Catov2.EntityLookup(
 			ctx,
 			r.client.AccountId,
 			cato_models.EntityType("host"),
@@ -308,7 +309,7 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 		// check if host exist before removing
 		if len(queryHostResult.EntityLookup.GetItems()) == 1 {
-			siteRemoveStaticHostResponse, err := r.client.catov2.SiteRemoveStaticHost(ctx, state.ID.ValueString(), r.client.AccountId)
+			siteRemoveStaticHostResponse, err := r.client.Catov2.SiteRemoveStaticHost(ctx, state.ID.ValueString(), r.client.AccountId)
 			tflog.Debug(ctx, "Delete.SiteRemoveStaticHost.response", map[string]interface{}{
 				"response": utils.InterfaceToJSONString(siteRemoveStaticHostResponse),
 			})

@@ -19,7 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ func NewLanInterfaceLagMemberResource() resource.Resource {
 }
 
 type lanInterfaceLagMemberResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 const lanLagMemberIDParts = 2
@@ -98,7 +99,7 @@ func (r *lanInterfaceLagMemberResource) Configure(_ context.Context, req resourc
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *lanInterfaceLagMemberResource) ImportState(
@@ -126,7 +127,7 @@ func (r *lanInterfaceLagMemberResource) Create(ctx context.Context, req resource
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterfaceLanLagMember.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(
+	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(
 		ctx,
 		plan.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
@@ -206,7 +207,7 @@ func (r *lanInterfaceLagMemberResource) Update(ctx context.Context, req resource
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterfaceLanLag.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(
+	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(
 		ctx,
 		plan.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
@@ -261,7 +262,7 @@ func (r *lanInterfaceLagMemberResource) Delete(ctx context.Context, req resource
 	tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.catov2.SiteUpdateSocketInterface(
+	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(
 		ctx,
 		state.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()),
@@ -322,7 +323,7 @@ func (r *lanInterfaceLagMemberResource) hydrateLanInterfaceLagMemberState(
 	})
 
 	// Get the site's accountSnapshot to find the LAG master
-	siteAccountSnapshotAPIData, err := r.client.catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
+	siteAccountSnapshotAPIData, err := r.client.Catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
 	tflog.Debug(ctx, "Read.AccountSnapshot.response for LAG member", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteAccountSnapshotAPIData),
 	})

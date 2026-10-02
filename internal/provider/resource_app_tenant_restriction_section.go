@@ -18,7 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ func NewAppTenantRestrictionSectionResource() resource.Resource {
 }
 
 type appTenantRestrictionSectionResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *appTenantRestrictionSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -97,7 +98,7 @@ func (r *appTenantRestrictionSectionResource) Configure(_ context.Context, req r
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *appTenantRestrictionSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -130,7 +131,7 @@ func (r *appTenantRestrictionSectionResource) Create(ctx context.Context, req re
 	}
 
 	tflog.Debug(ctx, "Create.PolicyAppTenantRestrictionAddSection", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	policyChange, err := r.client.catov2.PolicyAppTenantRestrictionAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.client.Catov2.PolicyAppTenantRestrictionAddSection(ctx, input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionAddSection error", err.Error())
 		return
@@ -169,7 +170,7 @@ func (r *appTenantRestrictionSectionResource) Read(ctx context.Context, req reso
 		return
 	}
 
-	body, err := r.client.catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -256,7 +257,7 @@ func (r *appTenantRestrictionSectionResource) Update(ctx context.Context, req re
 		return
 	}
 
-	moveSection, err := r.client.catov2.PolicyAppTenantRestrictionMoveSection(ctx, inputMove, r.client.AccountId)
+	moveSection, err := r.client.Catov2.PolicyAppTenantRestrictionMoveSection(ctx, inputMove, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionMoveSection error", err.Error())
 		return
@@ -271,7 +272,7 @@ func (r *appTenantRestrictionSectionResource) Update(ctx context.Context, req re
 		}
 	}
 
-	updateSection, err := r.client.catov2.PolicyAppTenantRestrictionUpdateSection(ctx, inputUpdate, r.client.AccountId)
+	updateSection, err := r.client.Catov2.PolicyAppTenantRestrictionUpdateSection(ctx, inputUpdate, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionUpdateSection error", err.Error())
 		return
@@ -305,7 +306,7 @@ func (r *appTenantRestrictionSectionResource) Delete(ctx context.Context, req re
 		return
 	}
 	remove := cato_models.PolicyRemoveSectionInput{ID: section.ID.ValueString()}
-	if _, err := r.client.catov2.PolicyAppTenantRestrictionRemoveSection(ctx, remove, r.client.AccountId); err != nil {
+	if _, err := r.client.Catov2.PolicyAppTenantRestrictionRemoveSection(ctx, remove, r.client.AccountId); err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionRemoveSection error", err.Error())
 		return
 	}

@@ -1,0 +1,226 @@
+package dhcp
+
+import (
+	"context"
+	"fmt"
+
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
+)
+
+var dhcpSettingNull = types.ObjectNull(SettingsAttrTypes)
+
+// SettingsModifier returns a plan modifier for DHCP settings objects
+// handle ID/Name for relay_group reference
+func SettingsModifier(isRangeResource bool) planmodifier.Object {
+	return dhcpSettingsModifier{isRangeResource: isRangeResource}
+}
+
+// dhcpSettingsModifier implements the plan modifier.
+type dhcpSettingsModifier struct {
+	isRangeResource bool // if true, take rangeType from  `/range_type', otherwise '/native_range/range_type'
+}
+
+// Description returns a human-readable description of the plan modifier.
+func (m dhcpSettingsModifier) Description(_ context.Context) string {
+	return "Once set, the value of this attribute in state will not change."
+}
+
+// MarkdownDescription returns a markdown description of the plan modifier.
+func (m dhcpSettingsModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+// PlanModifyString implements the plan modification logic.
+// If DHCP type is DHCP_RELAY, ensures that the relay group reference is properly handled (ID/Name)
+func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
+	var cfg, state *Settings
+
+	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
+	if req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	if apperr.CheckErr(&resp.Diagnostics, req.ConfigValue.As(ctx, &cfg, basetypes.ObjectAsOptions{})) {
+		return
+	}
+	if cfg == nil { // removed from the config, use the default
+		resp.PlanValue = m.planDhcpDefault(ctx, req, &resp.Diagnostics)
+		return
+	}
+	if !req.StateValue.IsNull() && apperr.CheckErr(&resp.Diagnostics, req.StateValue.As(ctx, &state, basetypes.ObjectAsOptions{})) {
+		return
+	}
+
+	dhcpType := cato_models.DhcpType(cfg.DhcpType.ValueString())
+
+	// microsegmentation=true is only valid for DHCP_RANGE; false is the zero value and is always allowed
+	if dhcpType != cato_models.DhcpTypeDhcpRange && utils.HasValue(cfg.DhcpMicrosegmentation) && cfg.DhcpMicrosegmentation.ValueBool() {
+		resp.Diagnostics.AddError("configuration error in dhcp_settings",
+			"'dhcp_microsegmentation' can only be set to true when 'dhcp_type' is 'DHCP_RANGE'")
+		return
+	}
+
+	// DHCPSettings configured - different rules depending on the DHCP type
+	switch dhcpType {
+	case cato_models.DhcpTypeDhcpRelay:
+		resp.PlanValue = m.planDhcpRelay(ctx, state, cfg, &resp.Diagnostics)
+		return
+	case cato_models.DhcpTypeDhcpRange:
+		resp.PlanValue = m.planDhcpRange(ctx, state, cfg, &resp.Diagnostics)
+		return
+	case cato_models.DhcpTypeAccountDefault, cato_models.DhcpTypeDhcpDisabled:
+		resp.PlanValue = m.planDhcpEmpty(ctx, dhcpType.String(), &resp.Diagnostics)
+		return
+	default:
+		resp.Diagnostics.AddError("Unsupported DHCP type", "Unknown DHCP type: "+dhcpType.String())
+		return
+	}
+}
+
+func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *Settings, diags *diag.Diagnostics) types.Object {
+	if cfg.RelayGroupName.IsNull() && cfg.RelayGroupID.IsNull() {
+		diags.AddError("DHCP configuration error in dhcp_settings",
+			"'relay_group_name' or 'relay_group_id' must be defined in the config")
+		return dhcpSettingNull
+	}
+
+	stateRelayGroupName := types.StringNull()
+	stateRelayGroupID := types.StringNull()
+	if state != nil {
+		stateRelayGroupName = state.RelayGroupName
+		stateRelayGroupID = state.RelayGroupID
+	}
+
+	nameExplicit := relayFieldIsExplicit(cfg.RelayGroupName, stateRelayGroupName)
+	idExplicit := relayFieldIsExplicit(cfg.RelayGroupID, stateRelayGroupID)
+
+	if nameExplicit && idExplicit {
+		diags.AddError("DHCP configuration error in dhcp_settings",
+			fmt.Sprintf("only one of 'relay_group_name' or 'relay_group_id' can be specified in the config, "+
+				"[relay_group_id:%q, relay_group_name:%q]",
+				cfg.RelayGroupID.ValueString(), cfg.RelayGroupName.ValueString()))
+		return dhcpSettingNull
+	}
+
+	plan := Settings{
+		DhcpType:              cfg.DhcpType,
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+		RelayGroupID:          types.StringUnknown(),
+		RelayGroupName:        types.StringUnknown(),
+	}
+
+	if !cfg.RelayGroupName.IsNull() && !idExplicit {
+		plan.RelayGroupName = cfg.RelayGroupName
+		if state != nil && utils.HasValue(state.RelayGroupName) &&
+			state.RelayGroupName.ValueString() == cfg.RelayGroupName.ValueString() {
+			plan.RelayGroupID = state.RelayGroupID
+		}
+		return m.makePlanObj(ctx, plan, diags)
+	}
+
+	if !cfg.RelayGroupID.IsNull() {
+		plan.RelayGroupID = cfg.RelayGroupID
+		if state != nil && utils.HasValue(state.RelayGroupID) &&
+			state.RelayGroupID.ValueString() == cfg.RelayGroupID.ValueString() {
+			plan.RelayGroupName = state.RelayGroupName
+		}
+	}
+	return m.makePlanObj(ctx, plan, diags)
+}
+
+func relayFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if !utils.HasValue(cfgVal) {
+		return false
+	}
+	return !utils.HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
+}
+
+func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *Settings, diags *diag.Diagnostics) types.Object {
+	// Ensure IP Range is provided for DHCP_RANGE type
+	if cfg.IPRange.IsNull() {
+		diags.AddError("DHCP configuration error in dhcp_settings", "'ip_range' must be defined in the config ")
+		return dhcpSettingNull
+	}
+	myState := state
+	if myState == nil {
+		myState = &Settings{}
+	}
+
+	plan := Settings{
+		DhcpType:              cfg.DhcpType, // required
+		IPRange:               cfg.IPRange,  // required for DHCP_RANGE
+		DhcpMicrosegmentation: m.getOptionalBoolValue(cfg.DhcpMicrosegmentation, myState.DhcpMicrosegmentation, state != nil),
+		RelayGroupID:          types.StringNull(),
+		RelayGroupName:        types.StringNull(),
+	}
+
+	return m.makePlanObj(ctx, plan, diags)
+}
+
+func (m dhcpSettingsModifier) planDhcpEmpty(ctx context.Context, dhcpType string, diags *diag.Diagnostics) types.Object {
+	plan := Settings{
+		DhcpType:              types.StringValue(dhcpType),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+		RelayGroupID:          types.StringNull(),
+		RelayGroupName:        types.StringNull(),
+	}
+
+	return m.makePlanObj(ctx, plan, diags)
+}
+
+func (m dhcpSettingsModifier) makePlanObj(ctx context.Context, plan Settings, diags *diag.Diagnostics) types.Object {
+	planObj, objDiag := types.ObjectValueFrom(ctx, SettingsAttrTypes, plan)
+	if apperr.CheckErr(diags, objDiag) {
+		return types.ObjectNull(SettingsAttrTypes)
+	}
+	return planObj
+}
+
+func (m dhcpSettingsModifier) getOptionalBoolValue(cfgVal, stateVal types.Bool, isState bool) types.Bool {
+	// if it is in the config, use the config value
+	if !cfgVal.IsNull() {
+		return cfgVal
+	}
+	// if it is not in the config but is in state, use the state value
+	if isState && !stateVal.IsNull() {
+		return stateVal
+	}
+	// otherwise return unknown - not in the state yet, but API can return it
+	return types.BoolUnknown()
+}
+
+func (m dhcpSettingsModifier) planDhcpDefault(ctx context.Context, req planmodifier.ObjectRequest, diags *diag.Diagnostics) types.Object {
+	if !m.isRangeResource {
+		// Native range: user did not configure dhcp_settings. Keep null so that
+		// plan and post-apply state are consistent (parseNativeRange also returns
+		// null in this case). Users who want explicit ACCOUNT_DEFAULT must set it.
+		return dhcpSettingNull
+	}
+
+	// non-native range - default DHCP type depends on the range type
+	var rangeType types.String
+	if apperr.CheckErr(diags, req.Config.GetAttribute(ctx, path.Root("range_type"), &rangeType)) {
+		return dhcpSettingNull
+	}
+	if !utils.HasValue(rangeType) {
+		diags.AddError("internal error", "failed to get range_type")
+		return dhcpSettingNull
+	}
+
+	switch cato_models.SubnetType(rangeType.ValueString()) {
+	case cato_models.SubnetTypeNative, cato_models.SubnetTypeVlan:
+		return m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeAccountDefault), diags)
+	default:
+		return m.planDhcpEmpty(ctx, string(cato_models.DhcpTypeDhcpDisabled), diags)
+	}
+}

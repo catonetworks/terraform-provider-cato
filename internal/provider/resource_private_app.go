@@ -17,9 +17,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -35,7 +37,7 @@ func NewPrivateAppResource() resource.Resource {
 }
 
 type privateAppResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 type (
@@ -185,7 +187,7 @@ func (r *privateAppResource) Configure(_ context.Context, req resource.Configure
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *privateAppResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -216,7 +218,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 	// Call Cato API to create a new private app
 	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppCreatePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppCreatePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PrivateAppCreatePrivateApp error", err.Error())
@@ -305,7 +307,7 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppUpdatePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppUpdatePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -345,7 +347,7 @@ func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// Call Cato API to delete a connector
 	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppDeletePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppDeletePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -366,7 +368,7 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 
 	// Call Cato API to get a private-app
 	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, diags, err
@@ -526,7 +528,7 @@ func (r *privateAppResource) preparePublishedAppDomain(ctx context.Context, appD
 	}
 
 	var tfAppDomain PublishedAppDomain
-	if utils.CheckErr(diags, appDomain.As(ctx, &tfAppDomain, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, appDomain.As(ctx, &tfAppDomain, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 
@@ -545,7 +547,7 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 
 	var tfProbing PrivateAppProbing
-	if utils.CheckErr(diags, probing.As(ctx, &tfProbing, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, probing.As(ctx, &tfProbing, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 
@@ -577,14 +579,14 @@ func (r *privateAppResource) prepareProtocolPorts(
 		port := p.(types.Object)
 
 		var tfProtoPort ProtocolPort
-		if utils.CheckErr(diags, port.As(ctx, &tfProtoPort, basetypes.ObjectAsOptions{})) {
+		if apperr.CheckErr(diags, port.As(ctx, &tfProtoPort, basetypes.ObjectAsOptions{})) {
 			return nil
 		}
 
 		// Port numbers
 		if utils.HasValue(tfProtoPort.Ports) {
 			var tfPortNumbers []types.Int64
-			if utils.CheckErr(diags, tfProtoPort.Ports.ElementsAs(ctx, &tfPortNumbers, false)) {
+			if apperr.CheckErr(diags, tfProtoPort.Ports.ElementsAs(ctx, &tfPortNumbers, false)) {
 				return nil
 			}
 			for _, portNum := range tfPortNumbers {
@@ -597,7 +599,7 @@ func (r *privateAppResource) prepareProtocolPorts(
 		// Port range
 		if utils.HasValue(tfProtoPort.PortRange) {
 			var tfProtoRange PortRange
-			if utils.CheckErr(diags, tfProtoPort.PortRange.As(ctx, &tfProtoRange, basetypes.ObjectAsOptions{})) {
+			if apperr.CheckErr(diags, tfProtoPort.PortRange.As(ctx, &tfProtoRange, basetypes.ObjectAsOptions{})) {
 				return nil
 			}
 			svcInput.PortRange = &cato_models.PortRangeInput{

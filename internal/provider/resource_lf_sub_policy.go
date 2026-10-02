@@ -18,8 +18,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -36,7 +38,7 @@ func NewLfSubPolicyResource() resource.Resource {
 }
 
 type lfSubPolicyResource struct {
-	client          *catoClientData
+	client          *client.CatoClientData
 	subPolicyClient SocketLanSubPolicyClient
 }
 
@@ -44,7 +46,7 @@ func (r *lfSubPolicyResource) getClient() SocketLanSubPolicyClient {
 	if r.subPolicyClient != nil {
 		return r.subPolicyClient
 	}
-	return r.client.catov2
+	return r.client.Catov2
 }
 
 type configuredPositionModifier struct{}
@@ -171,8 +173,8 @@ func (r *lfSubPolicyResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
-	r.subPolicyClient = r.client.catov2
+	r.client = req.ProviderData.(*client.CatoClientData)
+	r.subPolicyClient = r.client.Catov2
 }
 
 // ImportState imports a LAN Firewall sub-policy by its ID.
@@ -207,7 +209,7 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	result, err := r.getClient().PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
 	subpol := result.GetPolicy().GetSocketLan().GetAddSubPolicy()
-	if utils.CheckAPIErrors(err, subpol.GetErrors(),
+	if apperr.CheckAPIErrors(err, subpol.GetErrors(),
 		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
 		return
 	}
@@ -268,7 +270,7 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	var tfScope LanFirewallSubPolicyScope
-	if utils.CheckErr(&resp.Diagnostics, plan.Scope.As(ctx, &tfScope, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(&resp.Diagnostics, plan.Scope.As(ctx, &tfScope, basetypes.ObjectAsOptions{})) {
 		return
 	}
 
@@ -297,7 +299,7 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 
 	result, err := r.getClient().PolicySocketLanUpdateRule(ctx, nil, input, r.client.AccountId)
 	subpol := result.GetPolicy().GetSocketLan().GetUpdateRule()
-	if utils.CheckAPIErrors(err, subpol.GetErrors(),
+	if apperr.CheckAPIErrors(err, subpol.GetErrors(),
 		fmt.Sprintf("failed to update LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
 		return
 	}
@@ -368,7 +370,7 @@ func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	// Call Cato API to delete the subpolicy
 	res, err := r.getClient().PolicySocketLanRemoveSubPolicy(ctx, nil, input, r.client.AccountId)
 	remove := res.GetPolicy().GetSocketLan().GetRemoveSubPolicy()
-	if utils.CheckAPIErrors(err, remove.GetErrors(),
+	if apperr.CheckAPIErrors(err, remove.GetErrors(),
 		fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &resp.Diagnostics) {
 		return
 	}
@@ -417,7 +419,7 @@ func (r *lfSubPolicyResource) prepareAt(ctx context.Context, at types.Object, di
 		return nil
 	}
 	var tfPosition PolicyRulePositionInput
-	if utils.CheckErr(diags, at.As(ctx, &tfPosition, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, at.As(ctx, &tfPosition, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 
@@ -444,7 +446,7 @@ func (r *lfSubPolicyResource) move(
 
 	result, err := r.getClient().PolicySocketLanMoveRule(ctx, input, r.client.AccountId)
 	move := result.GetPolicy().GetSocketLan().GetMoveRule()
-	if utils.CheckAPIErrors(err, move.GetErrors(), summary, diags) {
+	if apperr.CheckAPIErrors(err, move.GetErrors(), summary, diags) {
 		return
 	}
 	checkPolicyMutationStatus(move.GetStatus(), summary, diags)
@@ -481,7 +483,7 @@ func (r *lfSubPolicyResource) prepareScope(ctx context.Context, scope types.Obje
 		return nil
 	}
 	var tfScope LanFirewallSubPolicyScope
-	if utils.CheckErr(diags, scope.As(ctx, &tfScope, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, scope.As(ctx, &tfScope, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 
@@ -505,7 +507,7 @@ func (r *lfSubPolicyResource) prepareSite(ctx context.Context, site types.Object
 		return nil
 	}
 	var tfSite SocketLanSite
-	if utils.CheckErr(diags, site.As(ctx, &tfSite, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, site.As(ctx, &tfSite, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 	return &cato_models.SocketLanSiteInput{
@@ -534,7 +536,7 @@ func (r *lfSubPolicyResource) prepareSource(ctx context.Context, src types.Objec
 		return nil
 	}
 	var tfSource SocketLanSource
-	if utils.CheckErr(diags, src.As(ctx, &tfSource, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, src.As(ctx, &tfSource, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 	return &cato_models.SocketLanSourceInput{
@@ -581,7 +583,7 @@ func (r *lfSubPolicyResource) prepareDestination(ctx context.Context, dest types
 		return nil
 	}
 	var tfDestination SocketLanDestination
-	if utils.CheckErr(diags, dest.As(ctx, &tfDestination, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, dest.As(ctx, &tfDestination, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 	return &cato_models.SocketLanDestinationInput{
@@ -628,7 +630,7 @@ func (r *lfSubPolicyResource) prepareIPRange(ctx context.Context, ipRange types.
 		return nil
 	}
 	var tfFromTo []FromTo
-	if utils.CheckErr(diags, ipRange.ElementsAs(ctx, &tfFromTo, false)) {
+	if apperr.CheckErr(diags, ipRange.ElementsAs(ctx, &tfFromTo, false)) {
 		return nil
 	}
 
@@ -652,7 +654,7 @@ func (r *lfSubPolicyResource) prepareNat(ctx context.Context, nat types.Object, 
 		}
 	}
 	var tfNat PolicyNatSettings
-	if utils.CheckErr(diags, nat.As(ctx, &tfNat, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, nat.As(ctx, &tfNat, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 	natType := tfNat.NatType.ValueString()
@@ -682,7 +684,7 @@ func (r *lfSubPolicyResource) prepareService(ctx context.Context, svc types.Obje
 		return &cato_models.SocketLanServiceInput{}
 	}
 	var tfService PolicyService
-	if utils.CheckErr(diags, svc.As(ctx, &tfService, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, svc.As(ctx, &tfService, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 	return &cato_models.SocketLanServiceInput{
@@ -708,7 +710,7 @@ func (r *lfSubPolicyResource) prepareSimpleService(ctx context.Context, svc type
 		return nil
 	}
 	var tfSimpleServices []SimpleService
-	if utils.CheckErr(diags, svc.ElementsAs(ctx, &tfSimpleServices, false)) {
+	if apperr.CheckErr(diags, svc.ElementsAs(ctx, &tfSimpleServices, false)) {
 		return nil
 	}
 	out := make([]*cato_models.SimpleServiceInput, 0, len(tfSimpleServices))
@@ -728,7 +730,7 @@ func (r *lfSubPolicyResource) prepareCustomService(ctx context.Context, svc type
 		return nil
 	}
 	var tfCustServices []PolicyCustomService
-	if utils.CheckErr(diags, svc.ElementsAs(ctx, &tfCustServices, false)) {
+	if apperr.CheckErr(diags, svc.ElementsAs(ctx, &tfCustServices, false)) {
 		return nil
 	}
 	out := make([]*cato_models.CustomServiceInput, 0, len(tfCustServices))
@@ -750,7 +752,7 @@ func (r *lfSubPolicyResource) preparePortRange(ctx context.Context, portRange ty
 		return nil
 	}
 	var tfFromTo FromTo
-	if utils.CheckErr(diags, portRange.As(ctx, &tfFromTo, basetypes.ObjectAsOptions{})) {
+	if apperr.CheckErr(diags, portRange.As(ctx, &tfFromTo, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
 
@@ -1056,7 +1058,7 @@ func (r *lfSubPolicyResource) publish(ctx context.Context, diags *diag.Diagnosti
 			return
 		}
 	}
-	if utils.CheckAPIErrors(nil, apiErrors, summary, diags) {
+	if apperr.CheckAPIErrors(nil, apiErrors, summary, diags) {
 		return
 	}
 	checkPolicyMutationStatus(publish.GetStatus(), summary, diags)

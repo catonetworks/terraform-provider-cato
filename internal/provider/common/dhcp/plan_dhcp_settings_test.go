@@ -1,0 +1,426 @@
+package dhcp
+
+import (
+	"context"
+	"testing"
+
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+)
+
+func makeDhcpSettingsObj(t *testing.T, s Settings) types.Object {
+	t.Helper()
+	obj, diags := types.ObjectValueFrom(context.Background(), SettingsAttrTypes, s)
+	if diags.HasError() {
+		t.Fatalf("failed to create DhcpSettings object: %v", diags)
+	}
+	return obj
+}
+
+// TestPlanDhcpRelay_StateValuePropagation verifies that when Terraform propagates a prior-state
+// relay_group_id into the nested plan modifier config, the user-configured relay_group_name is
+// still accepted and the known ID is preserved.
+func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	state := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	cfg := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	result := m.planDhcpRelay(ctx, state, cfg, &d)
+
+	if d.HasError() {
+		t.Fatalf("expected no errors, got: %v", d)
+	}
+	if result.IsNull() || result.IsUnknown() {
+		t.Fatal("expected non-null, non-unknown plan result")
+	}
+
+	var planSettings Settings
+	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
+		t.Fatalf("failed to decode plan result: %v", dd)
+	}
+
+	if planSettings.RelayGroupName.ValueString() != "CHCVTPJ-DHCP" {
+		t.Errorf("expected relay_group_name=%q, got %q", "CHCVTPJ-DHCP", planSettings.RelayGroupName.ValueString())
+	}
+	if planSettings.RelayGroupID.ValueString() != "4456" {
+		t.Errorf("expected relay_group_id=%q (preserved from state), got %q", "4456", planSettings.RelayGroupID.ValueString())
+	}
+}
+
+// TestPlanDhcpRelay_ChangedNameStatePropagatedID verifies that when the user changes
+// relay_group_name and Terraform propagates the old relay_group_id from state, the plan uses
+// the new name and marks relay_group_id as unknown (to be resolved at apply time).
+func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	state := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	cfg := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("NEW-DHCP"),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	result := m.planDhcpRelay(ctx, state, cfg, &d)
+
+	if d.HasError() {
+		t.Fatalf("expected no errors, got: %v", d)
+	}
+
+	var planSettings Settings
+	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
+		t.Fatalf("failed to decode plan result: %v", dd)
+	}
+
+	if planSettings.RelayGroupName.ValueString() != "NEW-DHCP" {
+		t.Errorf("expected relay_group_name=%q, got %q", "NEW-DHCP", planSettings.RelayGroupName.ValueString())
+	}
+	if !planSettings.RelayGroupID.IsUnknown() {
+		t.Errorf("expected relay_group_id to be unknown (new name → id not yet resolved), got %q",
+			planSettings.RelayGroupID.ValueString())
+	}
+}
+
+// TestPlanDhcpRelay_ChangedIDStatePropagatedName verifies the symmetric state propagation case:
+// when the user changes relay_group_id and Terraform propagates the old relay_group_name from
+// state, the plan uses the new ID and marks relay_group_name as unknown.
+func TestPlanDhcpRelay_ChangedIDStatePropagatedName(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	state := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	cfg := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"), // propagated from state
+		RelayGroupID:          types.StringValue("9999"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	result := m.planDhcpRelay(ctx, state, cfg, &d)
+
+	if d.HasError() {
+		t.Fatalf("expected no errors, got: %v", d)
+	}
+
+	var planSettings Settings
+	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
+		t.Fatalf("failed to decode plan result: %v", dd)
+	}
+
+	if planSettings.RelayGroupID.ValueString() != "9999" {
+		t.Errorf("expected relay_group_id=%q, got %q", "9999", planSettings.RelayGroupID.ValueString())
+	}
+	if !planSettings.RelayGroupName.IsUnknown() {
+		t.Errorf("expected relay_group_name to be unknown (new id -> name not yet resolved), got %q",
+			planSettings.RelayGroupName.ValueString())
+	}
+}
+
+// TestPlanDhcpRelay_BothExplicitlyChangedErrors verifies that when both relay_group_name and
+// relay_group_id are configured, an error is produced.
+func TestPlanDhcpRelay_BothExplicitlyChangedErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	state := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("OLD-DHCP"),
+		RelayGroupID:          types.StringValue("1111"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	// Both differ from state → genuine conflict
+	cfg := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("NEW-DHCP"),
+		RelayGroupID:          types.StringValue("9999"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	m.planDhcpRelay(ctx, state, cfg, &d)
+
+	if !d.HasError() {
+		t.Fatal("expected error when both relay fields are explicitly changed, but got none")
+	}
+}
+
+// TestPlanDhcpRelay_NeitherSetErrors verifies that omitting both relay fields produces an error.
+func TestPlanDhcpRelay_NeitherSetErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	cfg := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringNull(),
+		RelayGroupID:          types.StringNull(),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	m.planDhcpRelay(ctx, nil, cfg, &d)
+
+	if !d.HasError() {
+		t.Fatal("expected error when neither relay field is set, but got none")
+	}
+}
+
+// TestPlanDhcpRelay_FirstCreateByName verifies correct behavior on first create (no prior state)
+// when the user configures only relay_group_name.
+func TestPlanDhcpRelay_FirstCreateByName(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	cfg := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("MY-DHCP"),
+		RelayGroupID:          types.StringNull(),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	result := m.planDhcpRelay(ctx, nil, cfg, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected error on first create: %v", d)
+	}
+
+	var planSettings Settings
+	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
+		t.Fatalf("failed to decode plan result: %v", dd)
+	}
+
+	if planSettings.RelayGroupName.ValueString() != "MY-DHCP" {
+		t.Errorf("expected relay_group_name=%q, got %q", "MY-DHCP", planSettings.RelayGroupName.ValueString())
+	}
+	if !planSettings.RelayGroupID.IsUnknown() {
+		t.Errorf("expected relay_group_id to be unknown on first create, got %q", planSettings.RelayGroupID.ValueString())
+	}
+}
+
+// TestPlanDhcpRelay_FirstCreateByID verifies correct behavior on first create (no prior state)
+// when the user configures only relay_group_id.
+func TestPlanDhcpRelay_FirstCreateByID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	cfg := &Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringNull(),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+
+	var d diag.Diagnostics
+	result := m.planDhcpRelay(ctx, nil, cfg, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected error on first create: %v", d)
+	}
+
+	var planSettings Settings
+	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
+		t.Fatalf("failed to decode plan result: %v", dd)
+	}
+
+	if planSettings.RelayGroupID.ValueString() != "4456" {
+		t.Errorf("expected relay_group_id=%q, got %q", "4456", planSettings.RelayGroupID.ValueString())
+	}
+	if !planSettings.RelayGroupName.IsUnknown() {
+		t.Errorf("expected relay_group_name to be unknown on first create, got %q", planSettings.RelayGroupName.ValueString())
+	}
+}
+
+// TestPlanModifyObject_DhcpRelayWithMicrosegmentationFalse verifies that
+// dhcp_microsegmentation=false with dhcp_type=DHCP_RELAY does not produce an error.
+// false is the zero/disabled value and must always be accepted regardless of dhcp_type.
+func TestPlanModifyObject_DhcpRelayWithMicrosegmentationFalse(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	cfgSettings := Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringNull(),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(false),
+	}
+
+	req := planmodifier.ObjectRequest{
+		ConfigValue: makeDhcpSettingsObj(t, cfgSettings),
+		StateValue:  types.ObjectNull(SettingsAttrTypes),
+	}
+	resp := &planmodifier.ObjectResponse{
+		PlanValue: req.ConfigValue,
+	}
+
+	m.PlanModifyObject(ctx, req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error for dhcp_microsegmentation=false with DHCP_RELAY, got: %v",
+			resp.Diagnostics)
+	}
+}
+
+// TestPlanModifyObject_DhcpRelayWithPropagatedIDAndMicrosegmentationFalse covers the ENG-193800
+// follow-up: Terraform can pass a state-propagated relay_group_id into the nested object plan
+// modifier even when the user only configured relay_group_name.
+func TestPlanModifyObject_DhcpRelayWithPropagatedIDAndMicrosegmentationFalse(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	stateSettings := Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolNull(),
+	}
+	cfgSettings := Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(false),
+	}
+
+	req := planmodifier.ObjectRequest{
+		ConfigValue: makeDhcpSettingsObj(t, cfgSettings),
+		StateValue:  makeDhcpSettingsObj(t, stateSettings),
+	}
+	resp := &planmodifier.ObjectResponse{
+		PlanValue: req.ConfigValue,
+	}
+
+	m.PlanModifyObject(ctx, req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error for propagated relay_group_id with dhcp_microsegmentation=false, got: %v",
+			resp.Diagnostics)
+	}
+}
+
+// TestPlanModifyObject_DhcpRelayWithMicrosegmentationTrue verifies that
+// dhcp_microsegmentation=true with dhcp_type=DHCP_RELAY produces an error,
+// since microsegmentation is only meaningful for DHCP_RANGE.
+func TestPlanModifyObject_DhcpRelayWithMicrosegmentationTrue(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	cfgSettings := Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
+		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
+		RelayGroupID:          types.StringNull(),
+		IPRange:               types.StringNull(),
+		DhcpMicrosegmentation: types.BoolValue(true),
+	}
+
+	req := planmodifier.ObjectRequest{
+		ConfigValue: makeDhcpSettingsObj(t, cfgSettings),
+		StateValue:  types.ObjectNull(SettingsAttrTypes),
+	}
+	resp := &planmodifier.ObjectResponse{
+		PlanValue: req.ConfigValue,
+	}
+
+	m.PlanModifyObject(ctx, req, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected error for dhcp_microsegmentation=true with DHCP_RELAY, but got none")
+	}
+}
+
+// TestPlanModifyObject_DhcpRangeWithMicrosegmentationTrue verifies that
+// dhcp_microsegmentation=true with dhcp_type=DHCP_RANGE is accepted.
+func TestPlanModifyObject_DhcpRangeWithMicrosegmentationTrue(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := dhcpSettingsModifier{}
+
+	cfgSettings := Settings{
+		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRange)),
+		RelayGroupName:        types.StringNull(),
+		RelayGroupID:          types.StringNull(),
+		IPRange:               types.StringValue("10.0.0.10-10.0.0.100"),
+		DhcpMicrosegmentation: types.BoolValue(true),
+	}
+
+	req := planmodifier.ObjectRequest{
+		ConfigValue: makeDhcpSettingsObj(t, cfgSettings),
+		StateValue:  types.ObjectNull(SettingsAttrTypes),
+	}
+	resp := &planmodifier.ObjectResponse{
+		PlanValue: req.ConfigValue,
+	}
+
+	m.PlanModifyObject(ctx, req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("expected no error for dhcp_microsegmentation=true with DHCP_RANGE, got: %v",
+			resp.Diagnostics)
+	}
+}

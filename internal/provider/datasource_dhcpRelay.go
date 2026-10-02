@@ -12,7 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 type dhcpRelayGroupLookup struct {
@@ -31,7 +32,7 @@ func DhcpRelayDataSource() datasource.DataSource {
 }
 
 type dhcpRelayGroupDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *dhcpRelayGroupDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -78,7 +79,7 @@ func (d *dhcpRelayGroupDataSource) Configure(_ context.Context, req datasource.C
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (d *dhcpRelayGroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -89,7 +90,7 @@ func (d *dhcpRelayGroupDataSource) Read(ctx context.Context, req datasource.Read
 	}
 
 	zeroInt64 := int64(0)
-	result, err := d.client.catov2.EntityLookupMinimal(
+	result, err := d.client.Catov2.EntityLookupMinimal(
 		ctx, d.client.AccountId, cato_models.EntityTypeDhcpRelayGroup, &zeroInt64, nil, nil, nil, nil,
 	)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{

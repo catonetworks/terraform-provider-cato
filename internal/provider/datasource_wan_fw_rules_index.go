@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 const systemRuleProperty = "SYSTEM"
@@ -19,7 +20,7 @@ func WanRulesIndexDataSource() datasource.DataSource {
 }
 
 type wanRulesIndexDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *wanRulesIndexDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -98,7 +99,7 @@ func (d *wanRulesIndexDataSource) Configure(_ context.Context, req datasource.Co
 	if req.ProviderData == nil {
 		return
 	}
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 var WanRuleIndexObjectType = types.ObjectType{AttrTypes: WanRuleIndexAttrTypes}
@@ -123,7 +124,7 @@ type WanRuleIndexLookup struct {
 
 func (d *wanRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var wanRuleIndexLookup WanRuleIndexLookup
-	ruleIndexAPIData, err := d.client.catov2.PolicyWanFirewallRulesIndex(ctx, d.client.AccountId)
+	ruleIndexAPIData, err := d.client.Catov2.PolicyWanFirewallRulesIndex(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanFirewallRulesIndex.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(ruleIndexAPIData),
 	})
@@ -136,7 +137,7 @@ func (d *wanRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadReq
 		return
 	}
 
-	sectionIndexAPIData, err := d.client.catov2.PolicyWanFirewallSectionsIndex(ctx, d.client.AccountId)
+	sectionIndexAPIData, err := d.client.Catov2.PolicyWanFirewallSectionsIndex(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndex.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})

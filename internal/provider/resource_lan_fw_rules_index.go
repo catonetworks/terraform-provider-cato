@@ -19,7 +19,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -33,7 +35,7 @@ func NewLanRulesIndexResource() resource.Resource {
 }
 
 type lanRulesIndexResource struct {
-	client       *catoClientData
+	client       *client.CatoClientData
 	catov2Client LanFwRuleClient
 }
 
@@ -179,8 +181,8 @@ func (r *lanRulesIndexResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
-	r.catov2Client = r.client.catov2
+	r.client = req.ProviderData.(*client.CatoClientData)
+	r.catov2Client = r.client.Catov2
 }
 
 func (r *lanRulesIndexResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -197,13 +199,13 @@ func (r *lanRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	if utils.CheckErr(&resp.Diagnostics, r.moveSections(ctx, indexMap.sections)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveSections(ctx, indexMap.sections)) {
 		return
 	}
-	if utils.CheckErr(&resp.Diagnostics, r.moveRulesOrSubPolicies(ctx, indexMap.rulesOrSubPols)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveRulesOrSubPolicies(ctx, indexMap.rulesOrSubPols)) {
 		return
 	}
-	if utils.CheckErr(&resp.Diagnostics, r.moveFirewallRules(ctx, indexMap.firewallRules)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveFirewallRules(ctx, indexMap.firewallRules)) {
 		return
 	}
 
@@ -997,7 +999,7 @@ func (r *lanRulesIndexResource) parsePlanSections(plan *LanFwRulesIndex,
 	}
 
 	tfSections := make(map[string]LanFwSectionData)
-	if utils.CheckErr(diags, plan.SectionData.ElementsAs(context.Background(), &tfSections, false)) {
+	if apperr.CheckErr(diags, plan.SectionData.ElementsAs(context.Background(), &tfSections, false)) {
 		return
 	}
 
@@ -1199,7 +1201,7 @@ func (r *lanRulesIndexResource) parsePlanNetRules(plan *LanFwRulesIndex, section
 	}
 
 	tfRuleData := make(map[string]LanNetworkRule)
-	if utils.CheckErr(diags, plan.NetworkRules.ElementsAs(context.Background(), &tfRuleData, false)) {
+	if apperr.CheckErr(diags, plan.NetworkRules.ElementsAs(context.Background(), &tfRuleData, false)) {
 		return
 	}
 
@@ -1289,7 +1291,7 @@ func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, netRuleK
 	}
 
 	tfRuleData := make(map[string]LanFirewallRule)
-	if utils.CheckErr(diags, plan.FirewallRules.ElementsAs(context.Background(), &tfRuleData, false)) {
+	if apperr.CheckErr(diags, plan.FirewallRules.ElementsAs(context.Background(), &tfRuleData, false)) {
 		return
 	}
 
@@ -1717,13 +1719,13 @@ func (r *lanRulesIndexResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	if utils.CheckErr(&resp.Diagnostics, r.moveSections(ctx, indexMap.sections)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveSections(ctx, indexMap.sections)) {
 		return
 	}
-	if utils.CheckErr(&resp.Diagnostics, r.moveRulesOrSubPolicies(ctx, indexMap.rulesOrSubPols)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveRulesOrSubPolicies(ctx, indexMap.rulesOrSubPols)) {
 		return
 	}
-	if utils.CheckErr(&resp.Diagnostics, r.moveFirewallRules(ctx, indexMap.firewallRules)) {
+	if apperr.CheckErr(&resp.Diagnostics, r.moveFirewallRules(ctx, indexMap.firewallRules)) {
 		return
 	}
 

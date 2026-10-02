@@ -18,7 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ func NewSocketLanSectionResource() resource.Resource {
 }
 
 type socketLanSectionResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *socketLanSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -103,7 +104,7 @@ func (r *socketLanSectionResource) Configure(_ context.Context, req resource.Con
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *socketLanSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -144,7 +145,7 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 	tflog.Debug(ctx, "Create.PolicySocketLanAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.catov2.PolicySocketLanAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.client.Catov2.PolicySocketLanAddSection(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicySocketLanAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -165,7 +166,7 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 	// publishing new section
 	tflog.Info(ctx, "Create.publishing-section")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicySocketLanPublishPolicyRevision.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
@@ -200,7 +201,7 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
-	body, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	body, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	tflog.Debug(ctx, "Read.PolicySocketLanPolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -314,7 +315,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	tflog.Debug(ctx, "Update.PolicySocketLanMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.catov2.PolicySocketLanMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	moveSection, err := r.client.Catov2.PolicySocketLanMoveSection(ctx, inputMoveSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicySocketLanMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
@@ -341,7 +342,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	tflog.Debug(ctx, "Update.PolicySocketLanUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.catov2.PolicySocketLanUpdateSection(ctx, nil, inputUpdateSection, r.client.AccountId)
+	updateSection, err := r.client.Catov2.PolicySocketLanUpdateSection(ctx, nil, inputUpdateSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicySocketLanUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
@@ -367,7 +368,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	// publishing section changes
 	tflog.Info(ctx, "Update.publishing-section")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -404,7 +405,7 @@ func (r *socketLanSectionResource) Delete(ctx context.Context, req resource.Dele
 		ID: section.ID.ValueString(),
 	}
 
-	PolicySocketLanRemoveSectionResponse, err := r.client.catov2.PolicySocketLanRemoveSection(ctx, nil, removeSection, r.client.AccountId)
+	PolicySocketLanRemoveSectionResponse, err := r.client.Catov2.PolicySocketLanRemoveSection(ctx, nil, removeSection, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicySocketLanRemoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(PolicySocketLanRemoveSectionResponse),
 	})
@@ -419,7 +420,7 @@ func (r *socketLanSectionResource) Delete(ctx context.Context, req resource.Dele
 
 	tflog.Info(ctx, "Delete.publishing-section")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicySocketLanPublishPolicyRevision error",

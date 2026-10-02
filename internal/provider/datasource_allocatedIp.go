@@ -12,7 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 type AllocatedIPLookup struct {
@@ -32,7 +33,7 @@ func AllocatedIPDataSource() datasource.DataSource {
 }
 
 type allocatedIPDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *allocatedIPDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -82,7 +83,7 @@ func (d *allocatedIPDataSource) Configure(_ context.Context, req datasource.Conf
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (d *allocatedIPDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -93,7 +94,7 @@ func (d *allocatedIPDataSource) Read(ctx context.Context, req datasource.ReadReq
 	}
 
 	zeroInt64 := int64(0)
-	result, err := d.client.catov2.EntityLookup(
+	result, err := d.client.Catov2.EntityLookup(
 		ctx, d.client.AccountId, cato_models.EntityTypeAllocatedIP, &zeroInt64, nil, nil, nil, nil, nil, nil, nil,
 	)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{

@@ -11,7 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 type wfRuleSectionLookup struct {
@@ -24,7 +25,7 @@ func WfRuleSectionsDataSource() datasource.DataSource {
 }
 
 type wfRuleSectionsDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *wfRuleSectionsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -66,7 +67,7 @@ func (d *wfRuleSectionsDataSource) Configure(_ context.Context, req datasource.C
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (d *wfRuleSectionsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -76,7 +77,7 @@ func (d *wfRuleSectionsDataSource) Read(ctx context.Context, req datasource.Read
 		return
 	}
 
-	result, err := d.client.catov2.PolicyWanFirewallSectionsIndex(ctx, d.client.AccountId)
+	result, err := d.client.Catov2.PolicyWanFirewallSectionsIndex(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndex.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})

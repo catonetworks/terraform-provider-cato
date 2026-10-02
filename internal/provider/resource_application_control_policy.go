@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 )
 
 var (
@@ -27,7 +29,7 @@ func NewApplicationControlPolicyResource() resource.Resource {
 }
 
 type applicationControlPolicyResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *applicationControlPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -81,7 +83,7 @@ func (r *applicationControlPolicyResource) Configure(_ context.Context, req reso
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *applicationControlPolicyResource) ImportState(
@@ -94,7 +96,7 @@ func (r *applicationControlPolicyResource) ImportState(
 
 func (r *applicationControlPolicyResource) readState(ctx context.Context) (ApplicationControlPolicyModel, error) {
 	out := ApplicationControlPolicyModel{ID: types.StringValue("application_control")}
-	body, err := r.client.catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		return out, err
 	}
@@ -178,7 +180,7 @@ func (r *applicationControlPolicyResource) updatePolicy(ctx context.Context, pla
 			DataControlEnabled: dc,
 		},
 	}
-	res, err := r.client.catov2.PolicyApplicationControlUpdatePolicy(ctx, in, r.client.AccountId)
+	res, err := r.client.Catov2.PolicyApplicationControlUpdatePolicy(ctx, in, r.client.AccountId)
 	if err != nil {
 		diags.AddError("PolicyApplicationControlUpdatePolicy", err.Error())
 		return diags

@@ -17,7 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -30,7 +31,7 @@ func NewTLSRulesIndexResource() resource.Resource {
 }
 
 type tlsRulesIndexResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *tlsRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -143,7 +144,7 @@ func (r *tlsRulesIndexResource) Configure(_ context.Context, req resource.Config
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *tlsRulesIndexResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -240,7 +241,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 	ruleObjectMap := make(map[string]attr.Value)
 
 	if plan.SectionToStartAfterID.ValueString() != "" {
-		result, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+		result, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.TlsinspectpolicySectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -270,7 +271,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 
 	// maps section_name -> section_id
 	sectionIDList := make(map[string]string)
-	sectionIndexAPIData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	sectionIndexAPIData, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.TlsinspectpolicySectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
@@ -351,7 +352,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 			"sectionIDList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveAPIData, err := r.client.catov2.PolicyTLSInspectMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveAPIData, err := r.client.Catov2.PolicyTLSInspectMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
 		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
 			sectionMoveAPIData.GetPolicy().TLSInspect != nil &&
@@ -432,7 +433,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIDData, err := r.client.catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+		ruleNameIDData, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.TlsinspectpolicyRulesIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(ruleNameIDData),
 		})
@@ -519,7 +520,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 					ID: ruleNameIDMap[mapRuleIndexToRuleName[int64(x)]],
 					To: toPosition,
 				}
-				ruleMoveAPIData, err := r.client.catov2.PolicyTLSInspectMoveRule(ctx, moveRuleConfig, r.client.AccountId)
+				ruleMoveAPIData, err := r.client.Catov2.PolicyTLSInspectMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyTLSInspectMoveRule.response", map[string]interface{}{
 					"ruleNameIDMap":             utils.InterfaceToJSONString(ruleNameIDMap),
 					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
@@ -549,7 +550,7 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 		}
 	}
 
-	_, err = r.client.catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",

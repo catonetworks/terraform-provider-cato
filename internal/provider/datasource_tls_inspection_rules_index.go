@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 func TLSRulesIndexDataSource() datasource.DataSource {
@@ -17,7 +18,7 @@ func TLSRulesIndexDataSource() datasource.DataSource {
 }
 
 type tlsRulesIndexDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *tlsRulesIndexDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -90,7 +91,7 @@ func (d *tlsRulesIndexDataSource) Configure(_ context.Context, req datasource.Co
 	if req.ProviderData == nil {
 		return
 	}
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 var TLSRuleIndexObjectType = types.ObjectType{AttrTypes: TLSRuleIndexAttrTypes}
@@ -112,7 +113,7 @@ type TLSRuleIndexLookup struct {
 
 func (d *tlsRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var tlsRuleIndexLookup TLSRuleIndexLookup
-	ruleIndexAPIData, err := d.client.catov2.Tlsinspectpolicy(ctx, d.client.AccountId)
+	ruleIndexAPIData, err := d.client.Catov2.Tlsinspectpolicy(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.Tlsinspectpolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(ruleIndexAPIData),
 	})

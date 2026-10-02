@@ -20,7 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 func applicationControlRuleRuleObjectFromPlan(p ApplicationControlRuleRulePlan) (types.Object, diag.Diagnostics) {
@@ -50,7 +51,7 @@ func NewApplicationControlRuleResource() resource.Resource {
 }
 
 type applicationControlRuleResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *applicationControlRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -152,7 +153,7 @@ func (r *applicationControlRuleResource) Configure(_ context.Context, req resour
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *applicationControlRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -174,7 +175,7 @@ func (r *applicationControlRuleResource) Create(ctx context.Context, req resourc
 	}
 
 	tflog.Debug(ctx, "Create.PolicyApplicationControlAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	res, err := r.client.catov2.PolicyApplicationControlAddRule(ctx, input, r.client.AccountId)
+	res, err := r.client.Catov2.PolicyApplicationControlAddRule(ctx, input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlAddRule error", err.Error())
 		return
@@ -200,7 +201,7 @@ func (r *applicationControlRuleResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	body, err := r.client.catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API ApplicationControlPolicy error", err.Error())
 		return
@@ -264,7 +265,7 @@ func (r *applicationControlRuleResource) Read(ctx context.Context, req resource.
 		return
 	}
 
-	body, err := r.client.catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API ApplicationControlPolicy error", err.Error())
 		return
@@ -340,7 +341,7 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	moveRes, err := r.client.catov2.PolicyApplicationControlMoveRule(ctx, move, r.client.AccountId)
+	moveRes, err := r.client.Catov2.PolicyApplicationControlMoveRule(ctx, move, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlMoveRule error", err.Error())
 		return
@@ -361,7 +362,7 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	updRes, err := r.client.catov2.PolicyApplicationControlUpdateRule(ctx, upd, r.client.AccountId)
+	updRes, err := r.client.Catov2.PolicyApplicationControlUpdateRule(ctx, upd, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlUpdateRule error", err.Error())
 		return
@@ -381,7 +382,7 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	body, err := r.client.catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API ApplicationControlPolicy error", err.Error())
 		return
@@ -441,7 +442,7 @@ func (r *applicationControlRuleResource) Delete(ctx context.Context, req resourc
 		return
 	}
 	rm := cato_models.ApplicationControlRemoveRuleInput{ID: rule.ID.ValueString()}
-	if _, err := r.client.catov2.PolicyApplicationControlRemoveRule(ctx, rm, r.client.AccountId); err != nil {
+	if _, err := r.client.Catov2.PolicyApplicationControlRemoveRule(ctx, rm, r.client.AccountId); err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlRemoveRule error", err.Error())
 		return
 	}

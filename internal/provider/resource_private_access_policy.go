@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -29,7 +30,7 @@ func NewPrivAccessPolicyResource() resource.Resource {
 }
 
 type privAccessPolicyResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *privAccessPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -74,7 +75,7 @@ func (r *privAccessPolicyResource) Configure(_ context.Context, req resource.Con
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *privAccessPolicyResource) ImportState(ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -169,7 +170,7 @@ func (r *privAccessPolicyResource) callUpdate(
 
 	// Call Cato API to update the policy
 	tflog.Debug(ctx, "PolicyPrivateAccessUpdatePolicy", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessUpdatePolicy(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessUpdatePolicy(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessUpdatePolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := "failed to update private access policy"
 	if err != nil {
@@ -205,7 +206,7 @@ func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Cont
 	var diags diag.Diagnostics
 
 	// Call Cato API to get the policy
-	result, err := r.client.catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
+	result, err := r.client.Catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "PolicyReadPrivateAccessPolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, nil, err

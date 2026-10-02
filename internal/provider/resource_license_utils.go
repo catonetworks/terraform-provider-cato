@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 )
 
 //nolint:gocyclo,funlen,ineffassign,lll,staticcheck
-func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData) (*cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses, error) {
+func upsertLicense(ctx context.Context, plan LicenseResource, cc *client.CatoClientData) (*cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses, error) {
 	diags := make(diag.Diagnostics, 0)
 	// Get all sites, check for valid siteID
 	siteExists := false
@@ -30,7 +31,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	fromInt64 := int64(0)
 	processedItems := int64(0)
 	for !siteExists && processedItems < tenThousandInt64 {
-		siteResponse, err := cc.catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, &thousandInt64, &fromInt64, nil, nil, nil, nil, nil, nil)
+		siteResponse, err := cc.Catov2.EntityLookup(ctx, cc.AccountId, cato_models.EntityTypeSite, &thousandInt64, &fromInt64, nil, nil, nil, nil, nil, nil)
 		tflog.Warn(ctx, "upsertLicense().EntityLookup.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(siteResponse),
 		})
@@ -64,7 +65,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 	}
 
 	// Get all licenses
-	licensingInfoResponse, err := cc.catov2.Licensing(ctx, cc.AccountId)
+	licensingInfoResponse, err := cc.Catov2.Licensing(ctx, cc.AccountId)
 	tflog.Warn(ctx, "upsertLicense().Licensing.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(licensingInfoResponse),
 	})
@@ -157,7 +158,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 						tflog.Warn(ctx, "upsertLicense().UpdateSiteBwLicense.request", map[string]interface{}{
 							"request": utils.InterfaceToJSONString(input),
 						})
-						UpdateSiteBwLicenseResponse, err := cc.catov2.UpdateSiteBwLicense(ctx, cc.AccountId, input)
+						UpdateSiteBwLicenseResponse, err := cc.Catov2.UpdateSiteBwLicense(ctx, cc.AccountId, input)
 						tflog.Warn(ctx, "upsertLicense().UpdateSiteBwLicense.response", map[string]interface{}{
 							"response": utils.InterfaceToJSONString(UpdateSiteBwLicenseResponse),
 						})
@@ -194,7 +195,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 				tflog.Warn(ctx, "upsertLicense().ReplaceSiteBwLicense.request", map[string]interface{}{
 					"request": utils.InterfaceToJSONString(input),
 				})
-				replaceSiteBwLicenseResponse, err := cc.catov2.ReplaceSiteBwLicense(ctx, cc.AccountId, input)
+				replaceSiteBwLicenseResponse, err := cc.Catov2.ReplaceSiteBwLicense(ctx, cc.AccountId, input)
 				tflog.Warn(ctx, "upsertLicense().ReplaceSiteBwLicense.response", map[string]interface{}{
 					"response": utils.InterfaceToJSONString(replaceSiteBwLicenseResponse),
 				})
@@ -234,7 +235,7 @@ func upsertLicense(ctx context.Context, plan LicenseResource, cc *catoClientData
 			tflog.Warn(ctx, "upsertLicense().AssignSiteBwLicense.response", map[string]interface{}{
 				"response": utils.InterfaceToJSONString(input),
 			})
-			assignSiteBwLicenseResponse, err := cc.catov2.AssignSiteBwLicense(ctx, cc.AccountId, input)
+			assignSiteBwLicenseResponse, err := cc.Catov2.AssignSiteBwLicense(ctx, cc.AccountId, input)
 			tflog.Warn(ctx, "upsertLicense().AssignSiteBwLicense.response", map[string]interface{}{
 				"response": utils.InterfaceToJSONString(assignSiteBwLicenseResponse),
 			})

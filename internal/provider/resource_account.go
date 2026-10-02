@@ -16,7 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -30,7 +31,7 @@ func NewAccountResource() resource.Resource {
 }
 
 type accountResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *accountResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -103,7 +104,7 @@ func (r *accountResource) Configure(_ context.Context, req resource.ConfigureReq
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *accountResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -148,7 +149,7 @@ func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest
 	tflog.Debug(ctx, "Create.Account.request", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	addAccountResult, err := r.client.catov2.AccountManagementAddAccount(ctx, input, r.client.AccountId)
+	addAccountResult, err := r.client.Catov2.AccountManagementAddAccount(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.Account.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addAccountResult),
 	})
@@ -204,7 +205,7 @@ func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	readAccountResponse, err := r.client.catov2.AccountManagement(ctx, state.ID.ValueString())
+	readAccountResponse, err := r.client.Catov2.AccountManagement(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Account error",
@@ -303,7 +304,7 @@ func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest
 	tflog.Debug(ctx, "Update.Account.request", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	updateAccountResult, err := r.client.catov2.AccountManagementUpdateAccount(ctx, input, plan.ID.ValueString())
+	updateAccountResult, err := r.client.Catov2.AccountManagementUpdateAccount(ctx, input, plan.ID.ValueString())
 	tflog.Debug(ctx, "Update.Account.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateAccountResult),
 	})
@@ -361,7 +362,7 @@ func (r *accountResource) Delete(ctx context.Context, req resource.DeleteRequest
 	tflog.Debug(ctx, "Delete.AccountManagementRemoveAccount.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(state.ID),
 	})
-	removedAccountResult, err := r.client.catov2.AccountManagementRemoveAccount(ctx, state.ID.ValueString(), r.client.AccountId)
+	removedAccountResult, err := r.client.Catov2.AccountManagementRemoveAccount(ctx, state.ID.ValueString(), r.client.AccountId)
 	tflog.Debug(ctx, "Delete.AccountManagementRemoveAccount.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removedAccountResult),
 	})

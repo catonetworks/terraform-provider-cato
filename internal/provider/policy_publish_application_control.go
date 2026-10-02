@@ -5,15 +5,17 @@ import (
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 )
 
 const errPolicyRevisionNotFound = "PolicyRevisionNotFound"
 
 // publishApplicationControlPolicyRevision publishes the Application Control draft when one exists.
 // If there is no draft, the API returns FAILURE with PolicyRevisionNotFound — that is treated as success.
-func publishApplicationControlPolicyRevision(ctx context.Context, c *catoClientData) diag.Diagnostics {
+func publishApplicationControlPolicyRevision(ctx context.Context, c *client.CatoClientData) diag.Diagnostics {
 	var diags diag.Diagnostics
-	res, err := c.catov2.PolicyApplicationControlPublishPolicyRevision(ctx, c.AccountId)
+	res, err := c.Catov2.PolicyApplicationControlPublishPolicyRevision(ctx, c.AccountId)
 	if err != nil {
 		diags.AddError("PolicyApplicationControlPublishPolicyRevision", err.Error())
 		return diags
@@ -48,9 +50,9 @@ func publishApplicationControlPolicyRevision(ctx context.Context, c *catoClientD
 
 // publishAppTenantRestrictionPolicyRevision publishes the app tenant restriction draft when one exists.
 // If there is no draft, the API returns FAILURE with PolicyRevisionNotFound — that is treated as success.
-func publishAppTenantRestrictionPolicyRevision(ctx context.Context, c *catoClientData) diag.Diagnostics {
+func publishAppTenantRestrictionPolicyRevision(ctx context.Context, c *client.CatoClientData) diag.Diagnostics {
 	var diags diag.Diagnostics
-	res, err := c.catov2.PolicyAppTenantRestrictionPublishPolicyRevision(ctx, c.AccountId)
+	res, err := c.Catov2.PolicyAppTenantRestrictionPublishPolicyRevision(ctx, c.AccountId)
 	if err != nil {
 		diags.AddError("PolicyAppTenantRestrictionPublishPolicyRevision", err.Error())
 		return diags

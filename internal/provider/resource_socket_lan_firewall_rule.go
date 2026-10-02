@@ -26,7 +26,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -40,7 +41,7 @@ func NewSocketLanFirewallRuleResource() resource.Resource {
 }
 
 type socketLanFirewallRuleResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *socketLanFirewallRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -1184,7 +1185,7 @@ func (r *socketLanFirewallRuleResource) Configure(_ context.Context, req resourc
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *socketLanFirewallRuleResource) ImportState(
@@ -1214,7 +1215,7 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 		"request": utils.InterfaceToJSONString(apiInput.create),
 	})
 
-	policyChange, err := r.client.catov2.PolicySocketLanFirewallAddRule(ctx, r.client.AccountId, nil, apiInput.create)
+	policyChange, err := r.client.Catov2.PolicySocketLanFirewallAddRule(ctx, r.client.AccountId, nil, apiInput.create)
 	tflog.Debug(ctx, "Create.PolicySocketLanFirewallAddRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -1236,7 +1237,7 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 	// Publish the changes
 	tflog.Info(ctx, "Create.publishing-rule")
 	publishInput := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPublishPolicyRevision error",
@@ -1249,7 +1250,7 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 	ruleID := policyChange.GetPolicy().GetSocketLan().GetFirewall().GetAddRule().Rule.GetRule().ID
 
 	// Read back the rule to populate state
-	queryResult, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	queryResult, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPolicy error",
@@ -1312,7 +1313,7 @@ func (r *socketLanFirewallRuleResource) Read(ctx context.Context, req resource.R
 	ruleID := ruleData.ID.ValueString()
 
 	// Query the API
-	queryResult, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	queryResult, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	tflog.Debug(ctx, "Read.PolicySocketLanPolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryResult),
 	})
@@ -1418,7 +1419,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallMoveRule.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(moveInput),
 	})
-	moveResult, err := r.client.catov2.PolicySocketLanFirewallMoveRule(ctx, r.client.AccountId, nil, moveInput)
+	moveResult, err := r.client.Catov2.PolicySocketLanFirewallMoveRule(ctx, r.client.AccountId, nil, moveInput)
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallMoveRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveResult),
 	})
@@ -1434,7 +1435,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallUpdateRule.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(apiInput.update),
 	})
-	updateResult, err := r.client.catov2.PolicySocketLanFirewallUpdateRule(ctx, r.client.AccountId, nil, apiInput.update)
+	updateResult, err := r.client.Catov2.PolicySocketLanFirewallUpdateRule(ctx, r.client.AccountId, nil, apiInput.update)
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallUpdateRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateResult),
 	})
@@ -1459,7 +1460,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	// Publish the changes
 	tflog.Info(ctx, "Update.publishing-rule")
 	publishInput := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPublishPolicyRevision error",
@@ -1469,7 +1470,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	}
 
 	// Read back and update state
-	queryResult, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	queryResult, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPolicy error",
@@ -1536,7 +1537,7 @@ func (r *socketLanFirewallRuleResource) Delete(ctx context.Context, req resource
 	tflog.Debug(ctx, "Delete.PolicySocketLanFirewallRemoveRule.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeInput),
 	})
-	removeResult, err := r.client.catov2.PolicySocketLanFirewallRemoveRule(ctx, r.client.AccountId, nil, removeInput)
+	removeResult, err := r.client.Catov2.PolicySocketLanFirewallRemoveRule(ctx, r.client.AccountId, nil, removeInput)
 	tflog.Debug(ctx, "Delete.PolicySocketLanFirewallRemoveRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removeResult),
 	})
@@ -1552,7 +1553,7 @@ func (r *socketLanFirewallRuleResource) Delete(ctx context.Context, req resource
 	// Publish the changes
 	tflog.Info(ctx, "Delete.publishing-rule")
 	publishInput := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPublishPolicyRevision error",

@@ -13,7 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 func GroupDataSource() datasource.DataSource {
@@ -21,7 +22,7 @@ func GroupDataSource() datasource.DataSource {
 }
 
 type groupDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *groupDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -101,7 +102,7 @@ func (d *groupDataSource) Configure(_ context.Context, req datasource.ConfigureR
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 //nolint:gocyclo,funlen
@@ -123,7 +124,7 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		Sort: &cato_models.GroupListSortInput{},
 	}
 
-	groupListResult, err := d.client.catov2.GroupsList(ctx, groupListInput, d.client.AccountId)
+	groupListResult, err := d.client.Catov2.GroupsList(ctx, groupListInput, d.client.AccountId)
 	tflog.Debug(ctx, "DataSource.GroupsList.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(groupListResult),
 	})
@@ -202,7 +203,7 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			Sort: &cato_models.GroupMembersListSortInput{},
 		}
 
-		membersResult, err := d.client.catov2.GroupsMembers(ctx, groupRef, groupMembersListInput, d.client.AccountId)
+		membersResult, err := d.client.Catov2.GroupsMembers(ctx, groupRef, groupMembersListInput, d.client.AccountId)
 		if err != nil {
 			tflog.Warn(ctx, "Failed to fetch members for group", map[string]interface{}{
 				"group_id": groupItem.ID,

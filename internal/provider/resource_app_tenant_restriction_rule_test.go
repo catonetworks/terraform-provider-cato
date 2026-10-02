@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
 )
 
 func TestNewAppTenantRestrictionRuleResource(t *testing.T) {
@@ -48,11 +50,11 @@ func TestAppTenantRestrictionRuleConfigureNilProviderData(t *testing.T) {
 
 func TestAppTenantRestrictionRuleConfigureSetsClient(t *testing.T) {
 	t.Parallel()
-	client := &catoClientData{AccountId: "123"}
+	catoClient := &client.CatoClientData{AccountId: "123"}
 	r := &appTenantRestrictionRuleResource{}
 	resp := &resource.ConfigureResponse{}
-	r.Configure(context.Background(), resource.ConfigureRequest{ProviderData: client}, resp)
-	if r.client != client {
+	r.Configure(context.Background(), resource.ConfigureRequest{ProviderData: catoClient}, resp)
+	if r.client != catoClient {
 		t.Fatal("expected resource client to be set from provider data")
 	}
 	if resp.Diagnostics.HasError() {

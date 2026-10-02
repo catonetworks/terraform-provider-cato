@@ -17,7 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -31,7 +32,7 @@ func NewWanFwSectionResource() resource.Resource {
 }
 
 type wanFwSectionResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *wanFwSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -103,7 +104,7 @@ func (r *wanFwSectionResource) Configure(_ context.Context, req resource.Configu
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *wanFwSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -144,7 +145,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 	tflog.Debug(ctx, "Create.PolicyWanFirewallAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.catov2.PolicyWanFirewallAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.client.Catov2.PolicyWanFirewallAddSection(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicyWanFirewallAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -163,7 +164,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 	// publishing new section
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
@@ -196,7 +197,7 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
-	body, err := r.client.catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	body, err := r.client.Catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanFirewall.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -301,7 +302,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Debug(ctx, "Update.PolicyWanFirewallMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.catov2.PolicyWanFirewallMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	moveSection, err := r.client.Catov2.PolicyWanFirewallMoveSection(ctx, inputMoveSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanFirewallMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
@@ -327,7 +328,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Debug(ctx, "Update.PolicyWanFirewallUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.catov2.PolicyWanFirewallUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	updateSection, err := r.client.Catov2.PolicyWanFirewallUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanFirewallUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
@@ -353,7 +354,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	// publishing new section
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
@@ -392,7 +393,7 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeSection),
 	})
-	policyWanFirewallRemoveSectionResponse, err := r.client.catov2.PolicyWanFirewallRemoveSection(ctx, removeSection, r.client.AccountId)
+	policyWanFirewallRemoveSectionResponse, err := r.client.Catov2.PolicyWanFirewallRemoveSection(ctx, removeSection, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyWanFirewallRemoveSectionResponse),
 	})
@@ -405,7 +406,7 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyWanFirewallPublishPolicyRevision error",

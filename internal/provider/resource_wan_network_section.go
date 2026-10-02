@@ -18,7 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ func NewWanNetworkSectionResource() resource.Resource {
 }
 
 type wanNetworkSectionResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *wanNetworkSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -101,7 +102,7 @@ func (r *wanNetworkSectionResource) Configure(_ context.Context, req resource.Co
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *wanNetworkSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -142,7 +143,7 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 	tflog.Debug(ctx, "Create.PolicyWanNetworkAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.catov2.PolicyWanNetworkAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.client.Catov2.PolicyWanNetworkAddSection(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicyWanNetworkAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -160,7 +161,7 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 
 	// publishing new section
 	tflog.Info(ctx, "publishing new section")
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -192,7 +193,7 @@ func (r *wanNetworkSectionResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	body, err := r.client.catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanNetwork.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -303,7 +304,7 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 	tflog.Debug(ctx, "Update.PolicyWanNetworkMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.catov2.PolicyWanNetworkMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	moveSection, err := r.client.Catov2.PolicyWanNetworkMoveSection(ctx, inputMoveSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanNetworkMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
@@ -329,7 +330,7 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 	tflog.Debug(ctx, "Update.PolicyWanNetworkUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.catov2.PolicyWanNetworkUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	updateSection, err := r.client.Catov2.PolicyWanNetworkUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanNetworkUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
@@ -354,7 +355,7 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 
 	// publishing updated section
 	tflog.Info(ctx, "publishing updated section")
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -393,7 +394,7 @@ func (r *wanNetworkSectionResource) Delete(ctx context.Context, req resource.Del
 	tflog.Debug(ctx, "Delete.PolicyWanNetworkRemoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeSection),
 	})
-	policyWanNetworkRemoveSectionResponse, err := r.client.catov2.PolicyWanNetworkRemoveSection(ctx, removeSection, r.client.AccountId)
+	policyWanNetworkRemoveSectionResponse, err := r.client.Catov2.PolicyWanNetworkRemoveSection(ctx, removeSection, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicyWanNetworkRemoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyWanNetworkRemoveSectionResponse),
 	})
@@ -405,7 +406,7 @@ func (r *wanNetworkSectionResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	_, err = r.client.catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyWanNetworkPublishPolicyRevision error",

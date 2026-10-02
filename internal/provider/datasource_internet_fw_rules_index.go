@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 func IfwRulesIndexDataSource() datasource.DataSource {
@@ -17,7 +18,7 @@ func IfwRulesIndexDataSource() datasource.DataSource {
 }
 
 type ifwRulesIndexDataSource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (d *ifwRulesIndexDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -91,7 +92,7 @@ func (d *ifwRulesIndexDataSource) Configure(_ context.Context, req datasource.Co
 	if req.ProviderData == nil {
 		return
 	}
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*client.CatoClientData)
 }
 
 var IfwRuleIndexObjectType = types.ObjectType{AttrTypes: IfwRuleIndexAttrTypes}
@@ -115,7 +116,7 @@ type IfwRuleIndexLookup struct {
 
 func (d *ifwRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var ifwRuleIndexLookup IfwRuleIndexLookup
-	ruleIndexAPIData, err := d.client.catov2.PolicyInternetFirewallRulesIndex(ctx, d.client.AccountId)
+	ruleIndexAPIData, err := d.client.Catov2.PolicyInternetFirewallRulesIndex(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyInternetFirewallRulesIndex.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(ruleIndexAPIData),
 	})
@@ -128,7 +129,7 @@ func (d *ifwRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadReq
 		return
 	}
 
-	sectionIndexAPIData, err := d.client.catov2.PolicyInternetFirewallSectionsIndex(ctx, d.client.AccountId)
+	sectionIndexAPIData, err := d.client.Catov2.PolicyInternetFirewallSectionsIndex(ctx, d.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyInternetFirewallSectionsIndex.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})

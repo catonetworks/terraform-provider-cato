@@ -1,0 +1,93 @@
+package sktsite
+
+import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/dhcp"
+)
+
+type SocketSite struct {
+	ID             types.String `tfsdk:"id"`
+	Name           types.String `tfsdk:"name"`
+	ConnectionType types.String `tfsdk:"connection_type"`
+	SiteType       types.String `tfsdk:"site_type"`
+	Description    types.String `tfsdk:"description"`
+	NativeRange    types.Object `tfsdk:"native_range"`
+	SiteLocation   types.Object `tfsdk:"site_location"`
+	Sockets        types.Set    `tfsdk:"sockets"` // []Socket
+}
+
+type NativeRange struct {
+	InterfaceIndex              types.String `tfsdk:"interface_index"`
+	InterfaceID                 types.String `tfsdk:"interface_id"`
+	InterfaceName               types.String `tfsdk:"interface_name"`
+	NativeNetworkLanInterfaceID types.String `tfsdk:"native_network_lan_interface_id"`
+	NativeNetworkRange          types.String `tfsdk:"native_network_range"`
+	NativeNetworkRangeID        types.String `tfsdk:"native_network_range_id"`
+	RangeName                   types.String `tfsdk:"range_name"`
+	RangeID                     types.String `tfsdk:"range_id"`
+	LocalIP                     types.String `tfsdk:"local_ip"`
+	PrimaryManagementIP         types.String `tfsdk:"primary_management_ip"`
+	SecondaryManagementIP       types.String `tfsdk:"secondary_management_ip"`
+	TranslatedSubnet            types.String `tfsdk:"translated_subnet"`
+	Gateway                     types.String `tfsdk:"gateway"`
+	RangeType                   types.String `tfsdk:"range_type"`
+	DhcpSettings                types.Object `tfsdk:"dhcp_settings"`
+	Vlan                        types.Int64  `tfsdk:"vlan"`
+	MdnsReflector               types.Bool   `tfsdk:"mdns_reflector"`
+	LagMinLinks                 types.Int64  `tfsdk:"lag_min_links"`
+	InterfaceDestType           types.String `tfsdk:"interface_dest_type"`
+	// InternetOnly                types.Bool   `tfsdk:"internet_only"`
+}
+
+var SiteNativeRangeResourceAttrTypes = map[string]attr.Type{
+	"interface_index":                 types.StringType,
+	"interface_id":                    types.StringType,
+	"interface_name":                  types.StringType,
+	"native_network_lan_interface_id": types.StringType,
+	"native_network_range":            types.StringType,
+	"native_network_range_id":         types.StringType,
+	"range_name":                      types.StringType,
+	"range_id":                        types.StringType,
+	"local_ip":                        types.StringType,
+	"primary_management_ip":           types.StringType,
+	"secondary_management_ip":         types.StringType,
+	"translated_subnet":               types.StringType,
+	"gateway":                         types.StringType,
+	"range_type":                      types.StringType,
+	"vlan":                            types.Int64Type,
+	"mdns_reflector":                  types.BoolType,
+	"lag_min_links":                   types.Int64Type,
+	"interface_dest_type":             types.StringType,
+	// "internet_only":                   types.BoolType,
+	"dhcp_settings": types.ObjectType{AttrTypes: dhcp.SettingsAttrTypes},
+}
+
+type Socket struct {
+	ID           types.String `tfsdk:"id"`
+	SerialNumber types.String `tfsdk:"serial_number"`
+	IsPrimary    types.Bool   `tfsdk:"is_primary"`
+	Platform     types.String `tfsdk:"platform"`
+}
+
+var SocketTypes = map[string]attr.Type{
+	"id":            types.StringType,
+	"serial_number": types.StringType,
+	"is_primary":    types.BoolType,
+	"platform":      types.StringType,
+}
+
+// InterfaceByConnType maps each socket site connection type to a default socket interface index.
+// Note: InterfaceIndex (e.g. "LAN_1") is not the same as InterfaceID (e.g. 479631);  SocketInterfaceIDEnum is about Index, not ID.
+var InterfaceByConnType = map[cato_models.SiteConnectionTypeEnum]cato_models.SocketInterfaceIDEnum{
+	cato_models.SiteConnectionTypeEnumSocketAWS1500:  cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketAz1500:   cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketEsx1500:  cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketGCP1500:  cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketX1500:    cato_models.SocketInterfaceIDEnumLan1,
+	cato_models.SiteConnectionTypeEnumSocketX1600:    cato_models.SocketInterfaceIDEnumInt5,
+	cato_models.SiteConnectionTypeEnumSocketX1600Lte: cato_models.SocketInterfaceIDEnumInt5,
+	cato_models.SiteConnectionTypeEnumSocketX1700:    cato_models.SocketInterfaceIDEnumInt3,
+}

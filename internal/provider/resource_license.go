@@ -20,7 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/utils"
 )
 
 var (
@@ -40,7 +41,7 @@ func NewLicenseResource() resource.Resource {
 }
 
 type licenseResource struct {
-	client *catoClientData
+	client *client.CatoClientData
 }
 
 func (r *licenseResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -190,7 +191,7 @@ func (r *licenseResource) Configure(_ context.Context, req resource.ConfigureReq
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*client.CatoClientData)
 }
 
 func (r *licenseResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -240,7 +241,7 @@ func (r *licenseResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 	// Get all licenses
-	licensingInfoResponse, err := r.client.catov2.Licensing(ctx, r.client.AccountId)
+	licensingInfoResponse, err := r.client.Catov2.Licensing(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.Licensing.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(licensingInfoResponse),
 	})
@@ -347,7 +348,7 @@ func (r *licenseResource) Delete(ctx context.Context, req resource.DeleteRequest
 	tflog.Debug(ctx, "Delete.RemoveSiteBwLicense.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	RemoveSiteBwLicenseResponse, err := r.client.catov2.RemoveSiteBwLicense(ctx, r.client.AccountId, input)
+	RemoveSiteBwLicenseResponse, err := r.client.Catov2.RemoveSiteBwLicense(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "Delete.RemoveSiteBwLicense.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(RemoveSiteBwLicenseResponse),
 	})

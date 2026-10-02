@@ -18,6 +18,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/client"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/netrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/sktsite"
 )
 
 var (
@@ -58,18 +63,6 @@ type catoProviderModel struct {
 	VersionCheckDisabled       types.Bool   `tfsdk:"version_check_disabled"`
 	VersionCheckTimeoutSeconds types.Int64  `tfsdk:"version_check_timeout_seconds"`
 }
-
-// added by JF to support use of two different clients (long story....)
-type catoClientData struct {
-	BaseURL              string
-	Token                string
-	AccountId            string //nolint:revive // Shared client field used across provider resources.
-	catov2               *cato.Client
-	accountSnapshotCache *accountSnapshotCache
-}
-
-func (p *catoClientData) V2() *cato.Client  { return p.catov2 }
-func (p *catoClientData) AccountID() string { return p.AccountId }
 
 func (p *catoProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "cato"
@@ -374,12 +367,12 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	dataSourceData := &catoClientData{
+	dataSourceData := &client.CatoClientData{
 		BaseURL:              baseurl,
 		Token:                token,
 		AccountId:            accountID,
-		catov2:               catoClient,
-		accountSnapshotCache: newAccountSnapshotCache(),
+		Catov2:               catoClient,
+		AccountSnapshotCache: client.NewAccountSnapshotCache(),
 	}
 
 	resp.DataSourceData = dataSourceData
@@ -446,12 +439,12 @@ func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
 	return retryClient.StandardClient()
 }
 
-func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
+func (p *catoProvider) cleanupDrafts(ctx context.Context, d *client.CatoClientData) {
 	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" || p.hasBeenInitialized.Load() {
 		return
 	}
 	p.hasBeenInitialized.Store(true)
-	resp, err := d.catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
+	resp, err := d.Catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
 	if err != nil {
 		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"err": err})
 		return
@@ -479,7 +472,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		TLSRulesIndexDataSource,
 		IfRuleSectionsDataSource,
 		WfRuleSectionsDataSource,
-		NetworkRangesDataSource,
+		netrange.NetworkRangesDataSource,
 		HostDataSource,
 		AppConnectorGroupDataSource,
 	}
@@ -497,10 +490,10 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewLanInterfaceResource,
 		NewLanInterfaceLagMemberResource,
 		NewLicenseResource,
-		NewNetworkRangeResource,
+		netrange.NewNetworkRangeResource,
 		NewGroupMembersResource,
-		NewSiteIpsecResource,
-		NewSocketSiteResource,
+		ipsite.NewSiteIpsecResource,
+		sktsite.NewSocketSiteResource,
 		NewStaticHostResource,
 		NewTLSInspectionRuleResource,
 		NewTLSInspectionSectionResource,
