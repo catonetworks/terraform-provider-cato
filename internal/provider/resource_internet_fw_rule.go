@@ -339,14 +339,31 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Required:    false,
 								Optional:    true,
 								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
+									parse.IDNameSetModifier(),
 								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
 								NestedObject: schema.NestedAttributeObject{
-									Attributes:    parse.SchemaNameID("User group"),
-									PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+									Attributes: map[string]schema.Attribute{
+										"name": schema.StringAttribute{
+											Description: "User Group Name",
+											Required:    false,
+											Optional:    true,
+											Validators: []validator.String{
+												stringvalidator.ConflictsWith(path.Expressions{
+													path.MatchRelative().AtParent().AtName("id"),
+												}...),
+											},
+											Computed: true,
+										},
+										"id": schema.StringAttribute{
+											Description: "User Group ID",
+											Required:    false,
+											Optional:    true,
+											Computed:    true,
+										},
+									},
 								},
 							},
 							"group": schema.SetNestedAttribute{
@@ -1072,15 +1089,35 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"users_group": schema.SetNestedAttribute{
-											Description: "",
+											Description: "Group of users",
 											Required:    false,
 											Optional:    true,
+											PlanModifiers: []planmodifier.Set{
+												parse.IDNameSetModifier(),
+											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    parse.SchemaNameID("Users Group"),
-												PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+												Attributes: map[string]schema.Attribute{
+													"name": schema.StringAttribute{
+														Description: "User Group Name",
+														Required:    false,
+														Optional:    true,
+														Validators: []validator.String{
+															stringvalidator.ConflictsWith(path.Expressions{
+																path.MatchRelative().AtParent().AtName("id"),
+															}...),
+														},
+														Computed: true,
+													},
+													"id": schema.StringAttribute{
+														Description: "User Group ID",
+														Required:    false,
+														Optional:    true,
+														Computed:    true,
+													},
+												},
 											},
 										},
 										"group": schema.SetNestedAttribute{

@@ -47,6 +47,7 @@ resource "cato_if_rule" "block_test_com_for_remote_users" {
       {
         name = "Exclude Marketing Teams"
         source = {
+          # Specify either name or id for each group.
           users_group = [
             {
               name = "Marketing-Teams"
