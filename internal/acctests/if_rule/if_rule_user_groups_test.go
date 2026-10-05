@@ -25,7 +25,7 @@ func TestAccInternetFw_UserGroups_AddRuleDoesNotUpdateExisting(t *testing.T) {
 	mockSrv.Run()
 	groups := internetFwUserGroupsForTest(t)
 	name := acc.GetRandName("ifw_group_plan")
-	existing := `cato_if_rule.groups["existing"]`
+	existing := "cato_if_rule.existing"
 	initial := internetFwUserGroupsConfig(name, []acc.Ref{groups[0], groups[1]}, false)
 	reversed := internetFwUserGroupsConfig(name, []acc.Ref{groups[1], groups[0]}, false)
 	added := internetFwUserGroupsConfig(name, []acc.Ref{groups[1], groups[0]}, true)
@@ -39,18 +39,18 @@ func TestAccInternetFw_UserGroups_AddRuleDoesNotUpdateExisting(t *testing.T) {
 		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{Config: initial, Check: check},
-			{Config: reversed, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+			{Config: reversed, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 			{
 				Config: added,
 				ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{
 					plancheck.ExpectResourceAction(existing, plancheck.ResourceActionNoop),
-					plancheck.ExpectResourceAction(`cato_if_rule.groups["additional"]`, plancheck.ResourceActionCreate),
+					plancheck.ExpectResourceAction("cato_if_rule.additional[0]", plancheck.ResourceActionCreate),
 					plancheck.ExpectResourceAction("cato_if_section.groups", plancheck.ResourceActionNoop),
 					plancheck.ExpectResourceAction("cato_bulk_if_move_rule.groups", plancheck.ResourceActionUpdate),
 				}},
 				Check: check,
 			},
-			{Config: added, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+			{Config: added, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 		},
 	})
 }
@@ -66,7 +66,7 @@ func TestAccInternetFw_UserGroups_ChangeReference(t *testing.T) {
 	mockSrv.Run()
 	groups := internetFwUserGroupsForTest(t)
 	name := acc.GetRandName("ifw_group_change")
-	existing := `cato_if_rule.groups["existing"]`
+	existing := "cato_if_rule.existing"
 	check := func(group acc.Ref) resource.TestCheckFunc {
 		return resource.ComposeAggregateTestCheckFunc(
 			resource.TestCheckResourceAttr(existing, "rule.source.users_group.#", "1"),
@@ -81,7 +81,7 @@ func TestAccInternetFw_UserGroups_ChangeReference(t *testing.T) {
 		Steps: []resource.TestStep{
 			{Config: initial, Check: check(groups[0])},
 			{Config: changed, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(existing, plancheck.ResourceActionUpdate)}}, Check: check(groups[1])},
-			{Config: changed, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+			{Config: changed, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 			{Config: initial, Check: check(groups[0])},
 		},
 	})
@@ -115,9 +115,9 @@ func internetFwUserGroupsConfig(name string, groups []acc.Ref, additional bool) 
 	}
 	extra := ""
 	if additional {
-		extra = fmt.Sprintf("additional = { name = %q, source = {} }", name+"-additional")
+		extra = fmt.Sprintf("additional = { name = %q, source = {} }", name+"-existing-additional")
 	}
-	return fmt.Sprintf(`
+	return acc.ProviderCfg() + fmt.Sprintf(`
 locals {
  rules = {
   existing = { name = %q, source = { users_group = [%s] } }
@@ -128,21 +128,33 @@ resource "cato_if_section" "groups" {
  at = { position = "LAST_IN_POLICY" }
  section = { name = %q }
 }
-resource "cato_if_rule" "groups" {
+resource "cato_if_rule" "existing" {
  depends_on = [cato_if_section.groups]
- for_each = local.rules
  at = { position = "LAST_IN_POLICY" }
  rule = {
-  name = each.value.name
+  name = local.rules.existing.name
   enabled = true
   action = "ALLOW"
-  source = each.value.source
+  source = local.rules.existing.source
+  destination = { domain = ["example.com"] }
+  tracking = { event = { enabled = true } }
+ }
+}
+resource "cato_if_rule" "additional" {
+ depends_on = [cato_if_section.groups]
+ count = length(local.rules) > 1 ? 1 : 0
+ at = { position = "LAST_IN_POLICY" }
+ rule = {
+  name = "${local.rules.existing.name}-additional"
+  enabled = true
+  action = "ALLOW"
+  source = {}
   destination = { domain = ["example.com"] }
   tracking = { event = { enabled = true } }
  }
 }
 resource "cato_bulk_if_move_rule" "groups" {
- depends_on = [cato_if_section.groups, cato_if_rule.groups]
+ depends_on = [cato_if_section.groups, cato_if_rule.existing, cato_if_rule.additional]
  section_data = { %q = { section_name = %q, section_index = 1 } }
  rule_data = {
   for idx, key in sort(keys(local.rules)) : local.rules[key].name => {

@@ -339,7 +339,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Required:    false,
 								Optional:    true,
 								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
+									planmodifiers.UserGroupReferencesModifier(),
 								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
@@ -355,19 +355,13 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "User Group ID",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
+											Computed:    true,
 										},
 									},
 								},
@@ -1099,7 +1093,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
-												setplanmodifier.UseStateForUnknown(), // Avoid drift
+												planmodifiers.UserGroupReferencesModifier(),
 											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
@@ -1115,19 +1109,13 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 																path.MatchRelative().AtParent().AtName("id"),
 															}...),
 														},
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
 														Computed: true,
 													},
 													"id": schema.StringAttribute{
 														Description: "User Group ID",
 														Required:    false,
 														Optional:    true,
-														PlanModifiers: []planmodifier.String{
-															stringplanmodifier.UseStateForUnknown(), // Avoid drift
-														},
-														Computed: true,
+														Computed:    true,
 													},
 												},
 											},
