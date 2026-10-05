@@ -574,11 +574,13 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 			return
 		}
 		for _, e := range apiErrors {
+			errorCode := gqlOptionalStr(e.GetErrorCode())
+			errorMessage := gqlOptionalStr(e.GetErrorMessage())
 			// A previous Delete may have removed the rule but failed to publish.
-			if *e.GetErrorCode() == "ruleNotExist" || *e.GetErrorCode() == "RuleNotFound" {
+			if errorCode == "ruleNotExist" || errorCode == "RuleNotFound" {
 				continue
 			}
-			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", errorMessage, errorCode))
 		}
 		if resp.Diagnostics.HasError() {
 			return
@@ -609,14 +611,16 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 			return
 		}
 		for _, e := range apiErrors {
+			errorCode := gqlOptionalStr(e.GetErrorCode())
+			errorMessage := gqlOptionalStr(e.GetErrorMessage())
 			// The deletion may already be published, leaving no draft to publish.
 			// Publishing may have succeeded in a previous try, even if Terraform did not
 			// receive the response. On retry, no remaining draft means there is nothing
 			// left to publish.
-			if *e.GetErrorCode() == "PolicyRevisionNotFound" {
+			if errorCode == "PolicyRevisionNotFound" {
 				continue
 			}
-			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", errorMessage, errorCode))
 		}
 	}
 }
