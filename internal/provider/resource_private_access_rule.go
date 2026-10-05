@@ -562,15 +562,20 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 	res := result.GetPolicy().GetPrivateAccess().GetRemoveRule()
-	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+	status := res.GetStatus()
+	if status == nil || *status == "" {
+		resp.Diagnostics.AddError(errMsg, "status not returned")
+		return
+	}
+	if *status != cato_models.PolicyMutationStatusSuccess {
 		apiErrors := res.GetErrors()
 		if len(apiErrors) == 0 {
-			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("returned status: %s", string(*res.GetStatus())))
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("returned status: %s", string(*status)))
 			return
 		}
 		for _, e := range apiErrors {
 			// A previous Delete may have removed the rule but failed to publish.
-			if *e.GetErrorCode() == "RuleNotFound" {
+			if *e.GetErrorCode() == "ruleNotExist" || *e.GetErrorCode() == "RuleNotFound" {
 				continue
 			}
 			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
@@ -592,10 +597,15 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 	pubRes := pubResult.GetPolicy().GetPrivateAccess().GetPublishPolicyRevision()
-	if *pubRes.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+	status = pubRes.GetStatus()
+	if status == nil || *status == "" {
+		resp.Diagnostics.AddError(errMsg, "status not returned")
+		return
+	}
+	if *status != cato_models.PolicyMutationStatusSuccess {
 		apiErrors := pubRes.GetErrors()
 		if len(apiErrors) == 0 {
-			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*pubRes.GetStatus()))
+			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*status))
 			return
 		}
 		for _, e := range apiErrors {

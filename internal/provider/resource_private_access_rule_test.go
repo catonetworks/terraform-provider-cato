@@ -45,6 +45,167 @@ func TestPrivateAccessRuleDelete(t *testing.T) {
 	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
 }
 
+func TestPrivateAccessRuleDeleteRuleNotExist(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"ruleNotExist","errorMessage":"rule does not exist"}]}}}}}`))
+		case "policyPrivateAccessPublishRevision":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Empty(t, resp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+}
+
+func TestPrivateAccessRuleDeleteRuleNotExistWithOtherError(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 1)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"ruleNotExist","errorMessage":"rule does not exist"},{"errorCode":"PolicyLocked","errorMessage":"policy is locked"}]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Len(t, resp.Diagnostics, 1)
+	require.True(t, resp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", resp.Diagnostics[0].Summary())
+	require.Equal(t, "ERROR: policy is locked [PolicyLocked]", resp.Diagnostics[0].Detail())
+	require.Len(t, operations, 1)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+}
+
+func TestPrivateAccessRuleDeletePublishMissingStatus(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+		case "policyPrivateAccessPublishRevision":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Len(t, resp.Diagnostics, 1)
+	require.True(t, resp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for 'test rule'", resp.Diagnostics[0].Summary())
+	require.Equal(t, "status not returned", resp.Diagnostics[0].Detail())
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+}
+
+func TestPrivateAccessRuleDeletePublishNullStatus(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+		case "policyPrivateAccessPublishRevision":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":null,"errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Len(t, resp.Diagnostics, 1)
+	require.True(t, resp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for 'test rule'", resp.Diagnostics[0].Summary())
+	require.Equal(t, "status not returned", resp.Diagnostics[0].Detail())
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+}
+
+func TestPrivateAccessRuleDeleteRetriesAfterPublishMissingStatus(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 2)
+	var deleteCalls, publishCalls atomic.Int32
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			if deleteCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"SUCCESS"}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":"FAILURE","errors":[{"errorCode":"ruleNotExist","errorMessage":"rule does not exist"}]}}}}}`))
+			}
+		case "policyPrivateAccessPublishRevision":
+			if publishCalls.Add(1) == 1 {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"errors":[]}}}}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"publishPolicyRevision":{"status":"SUCCESS","errors":[]}}}}}`))
+			}
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	// Terraform retains state after the first publish fails.
+	firstResp := resource.DeleteResponse{State: state}
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &firstResp)
+
+	require.Len(t, firstResp.Diagnostics, 1)
+	require.True(t, firstResp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for 'test rule'", firstResp.Diagnostics[0].Summary())
+	require.Equal(t, "status not returned", firstResp.Diagnostics[0].Detail())
+	require.Equal(t, state, firstResp.State)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+
+	// A second Delete must publish even though the rule is already absent from the draft.
+	retryResp := resource.DeleteResponse{State: firstResp.State}
+	r.Delete(ctx, resource.DeleteRequest{State: firstResp.State}, &retryResp)
+
+	require.Empty(t, retryResp.Diagnostics)
+	require.Len(t, operations, 2)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+	require.Equal(t, "policyPrivateAccessPublishRevision", <-operations)
+	require.EqualValues(t, 2, deleteCalls.Load())
+	require.EqualValues(t, 2, publishCalls.Load())
+}
+
 func TestPrivateAccessRuleDeleteGraphQLError(t *testing.T) {
 	ctx := context.Background()
 	operations := make(chan string, 1)
@@ -67,6 +228,58 @@ func TestPrivateAccessRuleDeleteGraphQLError(t *testing.T) {
 	require.True(t, resp.Diagnostics.HasError())
 	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", resp.Diagnostics[0].Summary())
 	require.Contains(t, resp.Diagnostics[0].Detail(), "delete request denied")
+	require.Len(t, operations, 1)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+}
+
+func TestPrivateAccessRuleDeleteMissingStatus(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 1)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Len(t, resp.Diagnostics, 1)
+	require.True(t, resp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", resp.Diagnostics[0].Summary())
+	require.Equal(t, "status not returned", resp.Diagnostics[0].Detail())
+	require.Len(t, operations, 1)
+	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
+}
+
+func TestPrivateAccessRuleDeleteNullStatus(t *testing.T) {
+	ctx := context.Background()
+	operations := make(chan string, 1)
+	r := newPrivateAccessRuleTestResource(t, operations, func(w http.ResponseWriter, operation string) {
+		switch operation {
+		case "policyPrivateAccessDeleteRule":
+			_, _ = w.Write([]byte(`{"data":{"policy":{"privateAccess":{"removeRule":{"status":null,"errors":[]}}}}}`))
+		default:
+			t.Errorf("unexpected GraphQL operation: %s", operation)
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	})
+
+	state := newPrivateAccessRuleTestState(ctx, t, r)
+
+	var resp resource.DeleteResponse
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &resp)
+
+	require.Len(t, resp.Diagnostics, 1)
+	require.True(t, resp.Diagnostics.HasError())
+	require.Equal(t, "Catov2 API PolicyPrivateAccessDeleteRule failed for 'test rule'", resp.Diagnostics[0].Summary())
+	require.Equal(t, "status not returned", resp.Diagnostics[0].Detail())
 	require.Len(t, operations, 1)
 	require.Equal(t, "policyPrivateAccessDeleteRule", <-operations)
 }
