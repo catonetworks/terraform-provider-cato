@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -77,6 +78,10 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 						"bandwidth": schema.Int64Attribute{
 							Description: "The bandwidth (in Mbps) to allocate from the pooled license.",
 							Required:    true,
+						},
+						"allocation_id": schema.StringAttribute{
+							Description: "The pooled bandwidth license allocation ID",
+							Computed:    true,
 						},
 						"license_id": schema.StringAttribute{
 							Description: "The pooled bandwidth license to allocate from",
@@ -281,13 +286,12 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 	input := cato_models.UpdateZtnaAppConnectorInput{
-		Description:               parse.KnownStringPointer(plan.Description),
-		GroupName:                 parse.KnownStringPointer(plan.GroupName),
-		ID:                        id,
-		Location:                  r.prepareLocation(ctx, plan.Location, &diags),
-		Name:                      parse.KnownStringPointer(plan.Name),
-		PooledBandwidthAllocation: r.prepareBwAllocation(ctx, plan.PooledBandwidthAllocation, &diags),
-		PreferredPopLocation:      r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
+		Description:          parse.KnownStringPointer(plan.Description),
+		GroupName:            parse.KnownStringPointer(plan.GroupName),
+		ID:                   id,
+		Location:             r.prepareLocation(ctx, plan.Location, &diags),
+		Name:                 parse.KnownStringPointer(plan.Name),
+		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
 	}
 
 	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
@@ -296,6 +300,11 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppConnectorUpdateConnector error", err.Error())
+		return
+	}
+
+	r.UpdateBwLicenses(ctx, state.PooledBandwidthAllocation, plan.PooledBandwidthAllocation, id, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -311,6 +320,78 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+}
+
+func (r *appConnectorResource) UpdateBwLicenses(ctx context.Context, stateLcs, planLcs types.Set,
+	appConID string, diags *diag.Diagnostics,
+) {
+	var tfStateLicenses, tfPlanLicenses []BandwidthAllocation
+	diags.Append(stateLcs.ElementsAs(ctx, &tfStateLicenses, false)...)
+	diags.Append(planLcs.ElementsAs(ctx, &tfPlanLicenses, false)...)
+	if diags.HasError() {
+		return
+	}
+
+	type licKey struct {
+		lic string
+		bw  int64
+	}
+	// Map of currently used licenses
+	stateMap := make(map[licKey]string) // [license+bandwidth]=>allocationID
+	for _, l := range tfStateLicenses {
+		k := licKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
+		stateMap[k] = l.AllocationID.ValueString()
+	}
+	// Map of planned licenses
+	planMap := make(map[licKey]string) // [license+bandwidth]=>allocationID
+	for _, l := range tfPlanLicenses {
+		k := licKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
+		planMap[k] = l.AllocationID.ValueString()
+	}
+
+	// Find licenses to remove
+	var toRemove []licKey
+	for k := range stateMap {
+		if _, ok := planMap[k]; !ok { // we have it now, but we don't plan to keep it
+			toRemove = append(toRemove, k)
+		}
+	}
+
+	// Find licenses to add
+	var toAdd []licKey
+	for k := range planMap {
+		if _, ok := stateMap[k]; !ok { // we don't have it now, but we plan it
+			toAdd = append(toAdd, k)
+		}
+	}
+
+	// Call API to remove licenses
+	for _, k := range toRemove {
+		input := cato_models.RemoveZtnaAppConnectorBwLicenseInput{AllocationID: stateMap[k]}
+		_, err := r.client.catov2.ZtnaAppConnectorRemoveZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		if err != nil {
+			diags.AddError("failed to remove AppConnector Pooled bandwidth license "+stateMap[k], err.Error())
+			return
+		}
+	}
+
+	// Call API to add licenses
+	for _, k := range toRemove {
+		input := cato_models.AddZtnaAppConnectorBwLicenseInput{
+			Bw:        k.bw,
+			LicenseID: k.lic,
+			ZtnaAppConnector: &cato_models.ZtnaAppConnectorRefInput{
+				By:    cato_models.ObjectRefByID,
+				Input: appConID,
+			},
+		}
+		_, err := r.client.catov2.ZtnaAppConnectorAddZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		if err != nil {
+			diags.AddError(fmt.Sprintf("%s [bw=%d, license='%s']",
+				"failed to add AppConnector Pooled bandwidth license ", k.bw, k.lic), err.Error())
+			return
+		}
 	}
 }
 
@@ -450,8 +531,9 @@ func (r *appConnectorResource) parseBwAllocations(ctx context.Context,
 	var bwAllocSlice []attr.Value
 	for _, bwa := range bwAllocs {
 		tfBwAlloc := BandwidthAllocation{
-			Bandwidth: types.Int64Value(bwa.Bw),
-			LicenseID: types.StringValue(bwa.LicenseID),
+			Bandwidth:    types.Int64Value(bwa.Bw),
+			AllocationID: types.StringValue(bwa.AllocationID),
+			LicenseID:    types.StringValue(bwa.LicenseID),
 		}
 		bwAllocObj, objDiags := types.ObjectValueFrom(ctx, BandwidthAllocationTypes, tfBwAlloc)
 		diags.Append(objDiags...)

@@ -48,13 +48,15 @@ type PostalAddressModel struct {
 }
 
 type BandwidthAllocation struct {
-	Bandwidth types.Int64  `tfsdk:"bandwidth"`
-	LicenseID types.String `tfsdk:"license_id"`
+	Bandwidth    types.Int64  `tfsdk:"bandwidth"`
+	AllocationID types.String `tfsdk:"allocation_id"`
+	LicenseID    types.String `tfsdk:"license_id"`
 }
 
 var BandwidthAllocationTypes = map[string]attr.Type{
-	"bandwidth":  types.Int64Type,
-	"license_id": types.StringType,
+	"bandwidth":     types.Int64Type,
+	"allocation_id": types.StringType,
+	"license_id":    types.StringType,
 }
 
 type PreferredPopLocationModel struct {
