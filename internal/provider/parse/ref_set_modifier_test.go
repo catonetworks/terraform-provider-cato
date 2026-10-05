@@ -1,4 +1,4 @@
-package planmodifiers
+package parse
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestUserGroupReferencesModifier(t *testing.T) {
-	refType := types.ObjectType{AttrTypes: map[string]attr.Type{"id": types.StringType, "name": types.StringType}}
+func TestIDNameSetModifier(t *testing.T) {
+	refType := types.ObjectType{AttrTypes: IDNameRefModelTypes}
 	ref := func(name, id types.String) types.Object {
 		return types.ObjectValueMust(refType.AttrTypes, map[string]attr.Value{"name": name, "id": id})
 	}
@@ -32,7 +32,7 @@ func TestUserGroupReferencesModifier(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := planmodifier.SetResponse{PlanValue: tc.plan}
-			UserGroupReferencesModifier().PlanModifySet(context.Background(), planmodifier.SetRequest{ConfigValue: tc.config, PlanValue: tc.plan, StateValue: tc.state}, &resp)
+			IDNameSetModifier().PlanModifySet(context.Background(), planmodifier.SetRequest{ConfigValue: tc.config, PlanValue: tc.plan, StateValue: tc.state}, &resp)
 			if resp.Diagnostics.HasError() {
 				t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 			}

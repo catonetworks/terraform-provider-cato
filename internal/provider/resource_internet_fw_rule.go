@@ -339,7 +339,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								Required:    false,
 								Optional:    true,
 								PlanModifiers: []planmodifier.Set{
-									planmodifiers.UserGroupReferencesModifier(),
+									parse.IDNameSetModifier(),
 								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
@@ -1093,7 +1093,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.Set{
-												planmodifiers.UserGroupReferencesModifier(),
+												parse.IDNameSetModifier(),
 											},
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),

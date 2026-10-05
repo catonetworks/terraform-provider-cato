@@ -1,4 +1,4 @@
-package planmodifiers
+package parse
 
 import (
 	"context"
@@ -9,32 +9,33 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type userGroupReferencesModifier struct{}
+type idNameSetModifier struct{}
 
-// UserGroupReferencesModifier preserves the computed counterpart of a user
-// group reference only when its configured name or ID matches a state member.
+// IDNameSetModifier preserves the computed counterpart of an ID/name
+// reference only when its configured name or ID matches a state member.
 // Matching the entire set avoids relying on the framework's positional state
-// values for nested elements, which can belong to a different group.
-func UserGroupReferencesModifier() planmodifier.Set {
-	return userGroupReferencesModifier{}
+// values for nested elements, which can belong to a different reference.
+// Set elements must use IDNameRefModelTypes and configure exactly one of name or ID.
+func IDNameSetModifier() planmodifier.Set {
+	return idNameSetModifier{}
 }
 
-func (m userGroupReferencesModifier) Description(_ context.Context) string {
-	return "Preserves user group IDs and names only for matching configured references."
+func (m idNameSetModifier) Description(_ context.Context) string {
+	return "Preserves reference IDs and names only for matching configured references."
 }
 
-func (m userGroupReferencesModifier) MarkdownDescription(ctx context.Context) string {
+func (m idNameSetModifier) MarkdownDescription(ctx context.Context) string {
 	return m.Description(ctx)
 }
 
-func (m userGroupReferencesModifier) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
+func (m idNameSetModifier) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() || req.PlanValue.IsNull() || req.PlanValue.IsUnknown() ||
 		req.StateValue.IsNull() || req.StateValue.IsUnknown() {
 		return
 	}
 	elements := make([]attr.Value, 0, len(req.ConfigValue.Elements()))
 	for _, element := range req.ConfigValue.Elements() {
-		value, diags, known := userGroupReferenceValue(ctx, element.(types.Object), req.StateValue)
+		value, diags, known := idNameReferenceValue(element.(types.Object), req.StateValue)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() || !known {
 			return
@@ -49,7 +50,7 @@ func (m userGroupReferencesModifier) PlanModifySet(ctx context.Context, req plan
 	}
 }
 
-func userGroupReferenceValue(ctx context.Context, configured types.Object, state types.Set) (types.Object, diag.Diagnostics, bool) {
+func idNameReferenceValue(configured types.Object, state types.Set) (types.Object, diag.Diagnostics, bool) {
 	if configured.IsNull() || configured.IsUnknown() {
 		return types.Object{}, nil, false
 	}
@@ -65,12 +66,12 @@ func userGroupReferenceValue(ctx context.Context, configured types.Object, state
 	if attrs[selector].IsNull() {
 		return types.Object{}, nil, false
 	}
-	attrs[computed] = matchingUserGroupValue(state, selector, attrs[selector], computed)
-	value, diags := types.ObjectValue(configured.AttributeTypes(ctx), attrs)
+	attrs[computed] = matchingIDNameValue(state, selector, attrs[selector], computed)
+	value, diags := types.ObjectValue(IDNameRefModelTypes, attrs)
 	return value, diags, true
 }
 
-func matchingUserGroupValue(state types.Set, selector string, configured attr.Value, computed string) types.String {
+func matchingIDNameValue(state types.Set, selector string, configured attr.Value, computed string) types.String {
 	for _, element := range state.Elements() {
 		object := element.(types.Object)
 		if object.IsNull() || object.IsUnknown() {
