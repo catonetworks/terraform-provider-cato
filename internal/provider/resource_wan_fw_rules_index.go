@@ -519,7 +519,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 		var reorderOut *cato_go_sdk.PolicyWanFirewallReorderPolicy
 		reorderErr := withAcctestPolicyRevisionCleanupRetryOnce(ctx, "PolicyWanFirewallReorderPolicy", func() error {
-			return discardFirewallAndWANPolicyRevisions(ctx, r.client.catov2, r.client.AccountId)
+			return discardFirewallAndWANPolicyRevisions(ctx, r.client.catov2.Client, r.client.AccountId)
 		}, func() error {
 			var callErr error
 			reorderOut, callErr = r.wanBulkPolicy().PolicyWanFirewallReorderPolicy(

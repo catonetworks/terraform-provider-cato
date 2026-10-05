@@ -33,7 +33,7 @@ func TestAccSocketSite_Basic(t *testing.T) {
 				Config: cfg.getTfConfigBasic(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "8"),
+					resource.TestCheckResourceAttr(res, "%", "9"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
 					resource.TestCheckResourceAttrSet(res, "id"),
@@ -78,7 +78,7 @@ func TestAccSocketSite_Basic(t *testing.T) {
 				Config: cfg.getTfConfigBasic(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "8"),
+					resource.TestCheckResourceAttr(res, "%", "9"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description 2"),
 					resource.TestCheckResourceAttrSet(res, "id"),
@@ -130,7 +130,7 @@ func TestAccSocketSite_ConnType(t *testing.T) {
 			Config: cfg.getTfConfigConnTypes(i),
 			Check: resource.ComposeAggregateTestCheckFunc(
 				acc.PrintAttributes(res),
-				resource.TestCheckResourceAttr(res, "%", "8"),
+				resource.TestCheckResourceAttr(res, "%", "9"),
 				resource.TestCheckResourceAttr(res, "connection_type", connType),
 				resource.TestCheckResourceAttr(res, "description", fmt.Sprintf("%s-%d description", cfg.resName, i)),
 				resource.TestCheckResourceAttrSet(res, "id"),
@@ -186,7 +186,7 @@ func TestAccSocketSite_Location(t *testing.T) {
 				Config: cfg.getTfConfigLocation(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "8"),
+					resource.TestCheckResourceAttr(res, "%", "9"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
 					resource.TestCheckResourceAttrSet(res, "id"),
@@ -287,7 +287,7 @@ func TestAccSocketSite_DHCP(t *testing.T) {
 				Config: cfg.getTfConfigDHCP(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "8"),
+					resource.TestCheckResourceAttr(res, "%", "9"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1500"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
 					resource.TestCheckResourceAttrSet(res, "id"),
@@ -370,7 +370,7 @@ func TestAccSocketSite_Interface(t *testing.T) {
 				Config: cfg.getTfConfigInterface(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "8"),
+					resource.TestCheckResourceAttr(res, "%", "9"),
 					resource.TestCheckResourceAttr(res, "connection_type", "SOCKET_X1700"),
 					resource.TestCheckResourceAttr(res, "description", cfg.resName+" description"),
 					resource.TestCheckResourceAttrSet(res, "id"),

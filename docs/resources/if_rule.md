@@ -60,6 +60,7 @@ resource "cato_if_rule" "block_test_com_for_remote_users" {
       {
         name = "Exclude Marketing Teams"
         source = {
+          # Specify either name or id for each group.
           users_group = [
             {
               name = "Marketing-Teams"
@@ -522,8 +523,8 @@ Optional:
 
 Optional:
 
-- `id` (String) User group ID
-- `name` (String) User group name
+- `id` (String) User Group ID
+- `name` (String) User Group Name
 
 
 
@@ -826,7 +827,7 @@ Optional:
 - `subnet` (List of String) Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
 - `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
 - `user` (Attributes Set) User defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
-- `users_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
+- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
 
 <a id="nestedatt--rule--exceptions--source--floating_subnet"></a>
 ### Nested Schema for `rule.exceptions.source.floating_subnet`
@@ -923,8 +924,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Users Group ID
-- `name` (String) Users Group name
+- `id` (String) User Group ID
+- `name` (String) User Group Name
 
 
 

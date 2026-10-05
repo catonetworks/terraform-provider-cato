@@ -64,11 +64,11 @@ type catoClientData struct {
 	BaseURL              string
 	Token                string
 	AccountId            string //nolint:revive // Shared client field used across provider resources.
-	catov2               *cato.Client
+	catov2               *providerSDKClient
 	accountSnapshotCache *accountSnapshotCache
 }
 
-func (p *catoClientData) V2() *cato.Client  { return p.catov2 }
+func (p *catoClientData) V2() *cato.Client  { return p.catov2.Client }
 func (p *catoClientData) AccountID() string { return p.AccountId }
 
 func (p *catoProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -378,7 +378,7 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		BaseURL:              baseurl,
 		Token:                token,
 		AccountId:            accountID,
-		catov2:               catoClient,
+		catov2:               newProviderSDKClient(catoClient),
 		accountSnapshotCache: newAccountSnapshotCache(),
 	}
 

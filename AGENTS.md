@@ -133,6 +133,27 @@ Violating this order will cause `make lint` to fail.
 - Commit secrets or sensitive internal information.
 - Edit files under `internal/provider/mocks/` by hand — regenerate with `make mocks`.
 
+## API-First Provider Contract
+
+Treat SDK regeneration fallout as a compatibility task, not permission for broad provider rewrites.
+
+- Start from clean provider `main`; never reuse a dirty migration experiment.
+- Pin the candidate SDK commit pseudo-version only for branch/PR testing. Replace it with the released SDK tag before provider merge.
+- Localize added optional generated arguments in one narrow adapter when practical.
+- Change resource logic directly only for genuine API behavior or generated response-shape changes.
+- Preserve AccountSnapshot account scoping and verify request/header shape when its generated arguments change.
+- Use an explicit, tested `GroupMembersListInput`; do not assume zero-value semantics without request-shape coverage.
+- Preserve Socket LAN section `subPolicyID` in the SDK projection. Never infer empty-section ownership from rule rows.
+- For policy revision discard, send the same explicit revision ID in discard and policy-mutation inputs; keep request-shape tests.
+- Regenerate affected mocks only with pinned `make mocks`. Never hand-edit files under `internal/provider/mocks/`.
+
+### Required Checks
+
+- Add focused unit/request-shape tests for changed behavior or forwarding.
+- Run `make sort-imports`, `make test`, `go build ./...`, `make lint`, and `make vul`.
+- Do not run acceptance tests unless explicitly requested.
+- Keep the provider PR dependent on the exact candidate SDK commit and unmerged until the SDK dependency is released.
+
 ## Skills
 Find all skills in `.agents/skills/`
 - Use `prepare-release/SKILL.md` to prepare the release of a new version of the terraform provider

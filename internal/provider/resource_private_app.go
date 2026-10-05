@@ -12,6 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -60,6 +63,9 @@ func (r *privateAppResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"creation_time": schema.StringAttribute{
 				Description: "Creation time",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"description": schema.StringAttribute{
 				Description: "Optional description of the private App",
@@ -68,6 +74,9 @@ func (r *privateAppResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"id": schema.StringAttribute{
 				Description: "The unique ID of the Private App",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"internal_app_address": schema.StringAttribute{
 				Description: "The local address of the application, IPv4 address or FQDN",
@@ -96,6 +105,10 @@ func (r *privateAppResource) schemaPrivateAppProbing() schema.SingleNestedAttrib
 	return schema.SingleNestedAttribute{
 		Description: "Private app probing settings",
 		Optional:    true,
+		Computed:    true,
+		PlanModifiers: []planmodifier.Object{
+			objectplanmodifier.UseStateForUnknown(),
+		},
 		Attributes: map[string]schema.Attribute{
 			"fault_threshold_down": schema.Int64Attribute{
 				Description: "Fault threshold",
@@ -104,6 +117,9 @@ func (r *privateAppResource) schemaPrivateAppProbing() schema.SingleNestedAttrib
 			"id": schema.StringAttribute{
 				Description: "Probing ID",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"interval": schema.Int64Attribute{
 				Description: "Probing interval",
@@ -167,10 +183,16 @@ func (r *privateAppResource) schemaPublishedAppDomain() schema.SingleNestedAttri
 			"creation_time": schema.StringAttribute{
 				Description: "Creation time",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"id": schema.StringAttribute{
 				Description: "ID of the private app domain",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"published_app_domain": schema.StringAttribute{
 				Description: "Published app domain",

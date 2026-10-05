@@ -256,6 +256,7 @@ func TestAccSocketLanNetworkRule_Full(t *testing.T) {
 
 type socketLanNetworkRuleCfg struct {
 	resName        string
+	networkPrefix  string
 	hosts          []acc.Ref
 	globalIPRanges []acc.Ref
 	siteRanges     []acc.Ref
@@ -267,9 +268,14 @@ type socketLanNetworkRuleCfg struct {
 }
 
 func newSocketLanNetworkRuleCfg(t *testing.T) socketLanNetworkRuleCfg {
+	networkPrefix := "192.168.247"
+	if !accmock.ACCMockActive {
+		networkPrefix = acc.GetRandNetworkPrefix()
+	}
 	return socketLanNetworkRuleCfg{
-		resName: acc.GetRandName("socket_lan_network_rule"),
-		t:       t,
+		resName:       acc.GetRandName("socket_lan_network_rule"),
+		networkPrefix: networkPrefix,
+		t:             t,
 	}
 }
 
@@ -304,7 +310,8 @@ func (p socketLanNetworkRuleCfg) prepareTfCfg(data map[string]any, tmplText stri
 // ----------------------------------------------------------------------
 func (p socketLanNetworkRuleCfg) getTfConfigSimple(index int) string {
 	data := map[string]any{
-		"Name": p.resName,
+		"Name":          p.resName,
+		"NetworkPrefix": p.networkPrefix,
 	}
 	return p.prepareTfCfg(data, socketLanNetworkRuleSimpleTFs[index])
 }
@@ -368,6 +375,7 @@ var socketLanNetworkRuleSimpleTFs = []string{
 func (p socketLanNetworkRuleCfg) getTfConfigFull(index int) string {
 	data := map[string]any{
 		"Name":           p.resName,
+		"NetworkPrefix":  p.networkPrefix,
 		"Hosts":          p.hosts,
 		"GlobalIPRanges": p.globalIPRanges,
 		"SiteRanges":     p.siteRanges,
@@ -545,11 +553,11 @@ const siteResource = `
 		connection_type = "SOCKET_X1500"
 
 		native_range = {
-			native_network_range = "192.168.247.0/24"
-			local_ip             = "192.168.247.1"
+			native_network_range = "{{ .NetworkPrefix }}.0/24"
+			local_ip             = "{{ .NetworkPrefix }}.1"
 			dhcp_settings = {
 				dhcp_type = "DHCP_RANGE"
-				ip_range  = "192.168.247.10-192.168.247.22"
+				ip_range  = "{{ .NetworkPrefix }}.10-{{ .NetworkPrefix }}.22"
 			}
 		}
 

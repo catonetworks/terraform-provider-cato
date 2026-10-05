@@ -421,6 +421,11 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 		}
 		return
 	}
+	ruleID := policyChange.GetPolicy().GetSocketLan().GetAddRule().GetRule().GetRule().GetID()
+	if ruleID == "" {
+		resp.Diagnostics.AddError("Rule ID missing", "The API did not return the ID for the created LAN network rule.")
+		return
+	}
 
 	// Publish the changes
 	tflog.Info(ctx, "Create.publishing-rule")
@@ -433,9 +438,6 @@ func (r *socketLanNetworkRuleResource) Create(ctx context.Context, req resource.
 		)
 		return
 	}
-
-	// Get the rule ID from the response
-	ruleID := policyChange.GetPolicy().GetSocketLan().GetAddRule().Rule.GetRule().ID
 
 	// Read back the rule to populate state
 	queryResult, err := r.client.catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)

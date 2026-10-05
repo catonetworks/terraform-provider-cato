@@ -543,6 +543,8 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 }
 
 // Delete private access policy rule
+//
+//nolint:gocyclo,funlen
 func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state PrivateAccessRuleModel
 	diags := req.State.Get(ctx, &state)
@@ -552,26 +554,76 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 	input := cato_models.PrivateAccessRemoveRuleInput{ID: state.ID.ValueString()}
 
-	// Call Cato API to delete a connector
+	// Call Cato API to delete the private access rule.
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
 	result, err := r.client.catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
-	errMsg := fmt.Sprintf("failed to delete private access rule '%s'", state.Name.ValueString())
+	errMsg := fmt.Sprintf("Catov2 API PolicyPrivateAccessDeleteRule failed for '%s'", state.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(errMsg, err.Error())
 		return
 	}
 	res := result.GetPolicy().GetPrivateAccess().GetRemoveRule()
-	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+	status := res.GetStatus()
+	if status == nil || *status == "" {
+		resp.Diagnostics.AddError(errMsg, "status not returned")
+		return
+	}
+	if *status != cato_models.PolicyMutationStatusSuccess {
 		apiErrors := res.GetErrors()
 		if len(apiErrors) == 0 {
-			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*res.GetStatus()))
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("returned status: %s", string(*status)))
 			return
 		}
 		for _, e := range apiErrors {
-			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
+			errorCode := gqlOptionalStr(e.GetErrorCode())
+			errorMessage := gqlOptionalStr(e.GetErrorMessage())
+			// A previous Delete may have removed the rule but failed to publish.
+			if errorCode == "ruleNotExist" || errorCode == "RuleNotFound" {
+				continue
+			}
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", errorMessage, errorCode))
 		}
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	// Publish the draft revision so the deletion takes effect and the rule no longer
+	// appears in the active policy.
+	// Mirrors resource_wan_fw_rule.go Delete() and the bulk publish() helper.
+	pubResult, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Delete/PolicyPrivateAccessPublishRevision",
+		map[string]interface{}{"response": utils.InterfaceToJSONString(pubResult)})
+	errMsg = fmt.Sprintf("Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for '%s'", state.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(errMsg, err.Error())
 		return
+	}
+	pubRes := pubResult.GetPolicy().GetPrivateAccess().GetPublishPolicyRevision()
+	status = pubRes.GetStatus()
+	if status == nil || *status == "" {
+		resp.Diagnostics.AddError(errMsg, "status not returned")
+		return
+	}
+	if *status != cato_models.PolicyMutationStatusSuccess {
+		apiErrors := pubRes.GetErrors()
+		if len(apiErrors) == 0 {
+			resp.Diagnostics.AddError(errMsg, "returned status: "+string(*status))
+			return
+		}
+		for _, e := range apiErrors {
+			errorCode := gqlOptionalStr(e.GetErrorCode())
+			errorMessage := gqlOptionalStr(e.GetErrorMessage())
+			// The deletion may already be published, leaving no draft to publish.
+			// Publishing may have succeeded in a previous try, even if Terraform did not
+			// receive the response. On retry, no remaining draft means there is nothing
+			// left to publish.
+			if errorCode == "PolicyRevisionNotFound" {
+				continue
+			}
+			resp.Diagnostics.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", errorMessage, errorCode))
+		}
 	}
 }
 
