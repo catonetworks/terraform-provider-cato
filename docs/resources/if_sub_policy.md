@@ -360,8 +360,8 @@ Optional:
 
 Optional:
 
-- `id` (String) User group ID
-- `name` (String) User group name
+- `id` (String) User Group ID
+- `name` (String) User Group Name
 
 
 
@@ -664,7 +664,7 @@ Optional:
 - `subnet` (List of String) Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
 - `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--scope--exceptions--source--system_group))
 - `user` (Attributes Set) User defined for your account (see [below for nested schema](#nestedatt--scope--exceptions--source--user))
-- `users_group` (Attributes Set) (see [below for nested schema](#nestedatt--scope--exceptions--source--users_group))
+- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--scope--exceptions--source--users_group))
 
 <a id="nestedatt--scope--exceptions--source--floating_subnet"></a>
 ### Nested Schema for `scope.exceptions.source.floating_subnet`
@@ -761,8 +761,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Users Group ID
-- `name` (String) Users Group name
+- `id` (String) User Group ID
+- `name` (String) User Group Name
 
 
 

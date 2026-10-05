@@ -6,6 +6,7 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -976,4 +977,67 @@ func getInternetFwRuleRuleAttribute(ctx context.Context, t *testing.T) schema.Si
 	}
 
 	return ruleAttr
+}
+
+// Exercise parent, nested-object, and field modifiers in framework order. Set
+// members intentionally have different configuration and state ordering.
+func TestInternetFwRuleUserGroupPlanPreservesIDsWhenReordered(t *testing.T) {
+	ctx := context.Background()
+	rule := getInternetFwRuleSchema(ctx, t).Attributes["rule"].(schema.SingleNestedAttribute)
+	source := rule.Attributes["source"].(schema.SingleNestedAttribute)
+	groups := source.Attributes["users_group"].(schema.SetNestedAttribute)
+	ref := func(name string, id types.String) types.Object {
+		return types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{"name": types.StringValue(name), "id": id})
+	}
+	stateElements := []attr.Value{ref("group-a", types.StringValue("id-a")), ref("group-b", types.StringValue("id-b"))}
+	configElements := []attr.Value{ref("group-b", types.StringNull()), ref("group-a", types.StringNull())}
+	planElements := []attr.Value{ref("group-b", types.StringUnknown()), ref("group-a", types.StringUnknown())}
+	makeSource := func(elements []attr.Value) types.Object {
+		attrs := emptyIfwSourceObject().Attributes()
+		attrs["users_group"] = types.SetValueMust(NameIDObjectType, elements)
+		return types.ObjectValueMust(IfwSourceAttrTypes, attrs)
+	}
+	config, state, plan := makeSource(configElements), makeSource(stateElements), makeSource(planElements)
+	sourcePath := path.Root("rule").AtName("source")
+	for _, modifier := range source.PlanModifiers {
+		resp := planmodifier.ObjectResponse{PlanValue: plan}
+		modifier.PlanModifyObject(ctx, planmodifier.ObjectRequest{Path: sourcePath, ConfigValue: config, StateValue: state, PlanValue: plan}, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("source diagnostics: %v", resp.Diagnostics)
+		}
+		plan = resp.PlanValue
+	}
+	plannedGroups := plan.Attributes()["users_group"].(types.Set)
+	result := make([]attr.Value, 0, 2)
+	for i, elem := range plannedGroups.Elements() {
+		plannedRef := elem.(types.Object)
+		configRef, stateRef := configElements[i].(types.Object), stateElements[i].(types.Object)
+		refPath := sourcePath.AtName("users_group").AtSetValue(elem)
+		for _, modifier := range groups.NestedObject.PlanModifiers {
+			resp := planmodifier.ObjectResponse{PlanValue: plannedRef}
+			modifier.PlanModifyObject(ctx, planmodifier.ObjectRequest{Path: refPath, ConfigValue: configRef, StateValue: stateRef, PlanValue: plannedRef}, &resp)
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("reference diagnostics: %v", resp.Diagnostics)
+			}
+			plannedRef = resp.PlanValue
+		}
+		attrs := plannedRef.Attributes()
+		for _, field := range []string{"name", "id"} {
+			attribute := groups.NestedObject.Attributes[field].(schema.StringAttribute)
+			for _, modifier := range attribute.PlanModifiers {
+				resp := planmodifier.StringResponse{PlanValue: attrs[field].(types.String)}
+				modifier.PlanModifyString(ctx, planmodifier.StringRequest{Path: refPath.AtName(field), ConfigValue: configRef.Attributes()[field].(types.String), StateValue: stateRef.Attributes()[field].(types.String), PlanValue: resp.PlanValue}, &resp)
+				if resp.Diagnostics.HasError() {
+					t.Fatalf("field diagnostics: %v", resp.Diagnostics)
+				}
+				attrs[field] = resp.PlanValue
+			}
+		}
+		result = append(result, types.ObjectValueMust(NameIDAttrTypes, attrs))
+	}
+	got := types.SetValueMust(NameIDObjectType, result)
+	want := types.SetValueMust(NameIDObjectType, stateElements)
+	if !got.Equal(want) {
+		t.Fatalf("unchanged groups must retain their own IDs: got %s, want %s", got, want)
+	}
 }
