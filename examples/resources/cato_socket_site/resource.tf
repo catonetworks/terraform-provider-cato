@@ -44,6 +44,8 @@ resource "cato_socket_site" "branch_site" {
   description     = "site description"
   site_type       = "BRANCH"
   connection_type = "SOCKET_X1500"
+  # For supported GCP vSocket HA sites only. The API accepts this setting but does not return it on read/import.
+  # is_cloud_router = true
 
   native_range = {
     native_network_range = "192.168.20.0/24"
