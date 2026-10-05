@@ -68,6 +68,8 @@ type SocketSiteClient interface {
 		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddSocketSite, error)
 	SiteSocketConfiguration(ctx context.Context, input cato_models.SiteSocketConfigurationInput, accountID string,
 		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteSocketConfiguration, error)
+	SiteRemoveSite(ctx context.Context, siteID string, accountID string,
+		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteRemoveSite, error)
 	SiteUpdateHa(ctx context.Context, accountID string, siteID string, updateHaInput cato_models.UpdateHaInput,
 		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateHa, error)
 }
@@ -135,6 +137,7 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"the Cato API and cannot be read back during refresh or import. Changing it requires replacing the site.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+				Validators:    []validator.Bool{validators.GetCloudRouterValidator()},
 			},
 			"native_range":  r.schemaNativeRange(),
 			"site_location": r.schemaSiteLocation(),
@@ -370,7 +373,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-	r.updateCloudRouter(ctx, &plan, siteID, &diags)
+	r.configureCloudRouterAfterCreate(ctx, &plan, siteID, &diags)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -1157,6 +1160,22 @@ func (r *socketSiteResource) updateCloudRouter(ctx context.Context, plan *tf.Soc
 	_, err := r.getSocketSiteClient().SiteUpdateHa(ctx, r.client.AccountId, siteID, input)
 	if err != nil {
 		diags.AddError("Catov2 API SiteUpdateHa error", err.Error())
+	}
+}
+
+func (r *socketSiteResource) cleanupCreatedSocketSite(ctx context.Context, siteID string, diags *diag.Diagnostics) {
+	_, err := r.getSocketSiteClient().SiteRemoveSite(ctx, siteID, r.client.AccountId)
+	if err != nil {
+		diags.AddError("Catov2 API SiteRemoveSite cleanup error", err.Error())
+	}
+}
+
+func (r *socketSiteResource) configureCloudRouterAfterCreate(ctx context.Context, plan *tf.SocketSite, siteID string,
+	diags *diag.Diagnostics,
+) {
+	r.updateCloudRouter(ctx, plan, siteID, diags)
+	if diags.HasError() {
+		r.cleanupCreatedSocketSite(ctx, siteID, diags)
 	}
 }
 

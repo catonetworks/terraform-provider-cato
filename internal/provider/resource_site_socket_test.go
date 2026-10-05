@@ -128,6 +128,9 @@ func TestSocketSiteSchemaIncludesCloudRouter(t *testing.T) {
 	if len(attr.PlanModifiers) != 1 {
 		t.Fatalf("expected one plan modifier, got %d", len(attr.PlanModifiers))
 	}
+	if len(attr.Validators) != 1 {
+		t.Fatalf("expected one validator, got %d", len(attr.Validators))
+	}
 	if attr.Description == "" {
 		t.Fatal("expected is_cloud_router description")
 	}
@@ -311,6 +314,71 @@ func TestSocketSiteUpdateCloudRouterError(t *testing.T) {
 
 	if !diags.HasError() {
 		t.Fatal("expected diagnostics")
+	}
+}
+
+func TestSocketSiteCleanupCreatedSocketSite(t *testing.T) {
+	t.Parallel()
+
+	mockClient := mocks.NewSocketSiteClient(t)
+	mockClient.EXPECT().SiteRemoveSite(mock.Anything, "site-123", "account-123").
+		Return(&cato_go_sdk.SiteRemoveSite{}, nil).Once()
+	r := &socketSiteResource{
+		client:           &catoClientData{AccountId: "account-123"},
+		socketSiteClient: mockClient,
+	}
+	var diags diag.Diagnostics
+
+	r.cleanupCreatedSocketSite(context.Background(), "site-123", &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+}
+
+func TestSocketSiteCleanupCreatedSocketSiteError(t *testing.T) {
+	t.Parallel()
+
+	mockClient := mocks.NewSocketSiteClient(t)
+	mockClient.EXPECT().SiteRemoveSite(mock.Anything, "site-123", "account-123").
+		Return(nil, errors.New("remove site failed")).Once()
+	r := &socketSiteResource{
+		client:           &catoClientData{AccountId: "account-123"},
+		socketSiteClient: mockClient,
+	}
+	var diags diag.Diagnostics
+
+	r.cleanupCreatedSocketSite(context.Background(), "site-123", &diags)
+
+	if !diags.HasError() {
+		t.Fatal("expected cleanup failure diagnostic")
+	}
+}
+
+func TestSocketSiteConfigureCloudRouterAfterCreateCleansUpOnError(t *testing.T) {
+	t.Parallel()
+
+	mockClient := mocks.NewSocketSiteClient(t)
+	mockClient.EXPECT().SiteUpdateHa(
+		mock.Anything,
+		"account-123",
+		"site-123",
+		mock.Anything,
+	).Return(nil, errors.New("update ha failed")).Once()
+	mockClient.EXPECT().SiteRemoveSite(mock.Anything, "site-123", "account-123").
+		Return(&cato_go_sdk.SiteRemoveSite{}, nil).Once()
+	r := &socketSiteResource{
+		client:           &catoClientData{AccountId: "account-123"},
+		socketSiteClient: mockClient,
+	}
+	var diags diag.Diagnostics
+
+	r.configureCloudRouterAfterCreate(context.Background(), &tf.SocketSite{
+		IsCloudRouter: types.BoolValue(true),
+	}, "site-123", &diags)
+
+	if !diags.HasError() {
+		t.Fatal("expected Cloud Router update failure diagnostic")
 	}
 }
 
