@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0 (2026-10-05)
+
+### Breaking changes
+- None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration.
+
+### Features
+- Added the write-only `is_cloud_router` setting to `cato_socket_site`, enabling Cloud Router mode for supported GCP vSocket HA sites. Changing the setting replaces the site; because the Cato API does not return it, it cannot be recovered during refresh or import.
+
+### Bug fixes
+- Fixed `cato_private_access_rule` deletion to publish the policy revision, so deleted rules are removed from the active private-access policy.
+- Fixed Internet Firewall user-group references to preserve the correct IDs when groups are reordered or changed, avoiding unintended updates in `cato_if_rule` configurations.
+- Fixed `cato_private_app` state handling for API-managed probing and domain fields, avoiding drift after refresh.
+- Fixed `cato_socket_site` descriptions to preserve an explicitly configured empty string instead of reporting drift.
+- Stabilized Socket LAN rule creation and socket-site cleanup when the Cato API returns delayed policy changes.
+
+### Notes
+- Updated the provider to the latest API schema. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches.
+
 ## 1.0.1 (2026-09-23)
 
 ### Breaking changes
