@@ -544,7 +544,7 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 
 // Delete private access policy rule
 //
-//nolint:gocyclo
+//nolint:gocyclo,funlen
 func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state PrivateAccessRuleModel
 	diags := req.State.Get(ctx, &state)
