@@ -16,3 +16,4 @@ packages:
       StaticHostClient:
       WanFirewallBulkPolicyClient:
       WanFirewallSubPolicyClient:
+      RoleManagementClient:
