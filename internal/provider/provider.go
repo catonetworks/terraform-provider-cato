@@ -467,6 +467,9 @@ func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
 
 func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewRoleDataSource,
+		NewRolesDataSource,
+		NewPermissionCatalogDataSource,
 		NewAccountSnapshotSiteDataSource,
 		AllocatedIPDataSource,
 		DhcpRelayDataSource,
@@ -487,6 +490,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewRoleResource,
 		NewAccountResource,
 		NewAdminResource,
 		NewBgpPeerResource,
