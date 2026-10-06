@@ -3,6 +3,7 @@ package sktsite
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -17,6 +18,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/parse"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/common/siteloc"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/sktsite/adapter"
 )
 
 func TestNewSocketSiteResource(t *testing.T) {
@@ -118,7 +120,7 @@ func TestSocketSiteFetchSocketConfiguration(t *testing.T) {
 
 	ctx := context.Background()
 	mockClient := mocks.NewSocketSiteClient(t)
-	configuration := socketConfigurationForTest(cato_models.SocketModelX1700, true)
+	configuration := socketConfigurationForTest(cato_models.SocketModelX1700)
 	apiResponse := &cato_go_sdk.SiteSocketConfiguration{
 		Site: cato_go_sdk.SiteSocketConfiguration_Site{SiteSocketConfiguration: configuration},
 	}
@@ -142,7 +144,7 @@ func TestSocketSiteFetchSocketConfiguration(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", diags)
 	}
-	if got != configuration {
+	if !reflect.DeepEqual(got, adapter.ProjectConfiguration(configuration)) {
 		t.Fatal("expected returned socket configuration")
 	}
 }
@@ -186,7 +188,7 @@ func TestConnectionTypeFromSocketConfiguration(t *testing.T) {
 		t.Run(string(model), func(t *testing.T) {
 			t.Parallel()
 
-			got := connectionTypeFromSocketConfiguration(socketConfigurationForTest(model, true))
+			got := connectionTypeFromSocketConfiguration(adapter.ProjectConfiguration(socketConfigurationForTest(model)))
 			if got.ValueString() != want {
 				t.Fatalf("expected %q, got %q", want, got.ValueString())
 			}
@@ -204,7 +206,7 @@ func TestSocketSiteParseSockets(t *testing.T) {
 	ctx := context.Background()
 	primarySerial, primaryPlatform := "primary-serial", "X1700"
 	secondarySerial, secondaryPlatform := "secondary-serial", "X1700"
-	configuration := socketConfigurationForTest(cato_models.SocketModelX1700, true)
+	configuration := socketConfigurationForTest(cato_models.SocketModelX1700)
 	configuration.PrimarySocketConfiguration.Serial = &primarySerial
 	configuration.PrimarySocketConfiguration.SocketInfo.Platform = &primaryPlatform
 	configuration.SecondarySocketConfiguration =
@@ -217,7 +219,7 @@ func TestSocketSiteParseSockets(t *testing.T) {
 		}
 	var diags diag.Diagnostics
 
-	got := (&socketSiteResource{}).parseSockets(ctx, configuration, &diags)
+	got := (&socketSiteResource{}).parseSockets(ctx, adapter.ProjectConfiguration(configuration), &diags)
 
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", diags)
@@ -245,12 +247,12 @@ func TestSocketSiteParseSockets(t *testing.T) {
 	}
 }
 
-func socketConfigurationForTest(model cato_models.SocketModel, isPrimary bool,
+func socketConfigurationForTest(model cato_models.SocketModel,
 ) *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration {
 	return &cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration{
 		PrimarySocketConfiguration: cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_PrimarySocketConfiguration{
 			SocketInfo: cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_PrimarySocketConfiguration_SocketInfo{
-				IsPrimary: isPrimary,
+				IsPrimary: true,
 				Model:     &model,
 			},
 		},
@@ -449,5 +451,21 @@ func newSocketSitePlanWithTranslatedSubnet(ctx context.Context, t *testing.T, tr
 		SiteType:       types.StringValue("DATACENTER"),
 		NativeRange:    nativeRange,
 		SiteLocation:   types.ObjectNull(siteloc.SiteLocationResourceAttrTypes),
+	}
+}
+
+func TestSocketSiteHAInputRestrictions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	plan := newSocketSitePlanWithTranslatedSubnet(ctx, t, types.StringValue("10.2.0.0/24"))
+	r := &socketSiteResource{}
+	var diags diag.Diagnostics
+	nr := r.prepareNetworkRangeInput(ctx, plan, plan, true, &diags)
+	iface, _ := r.prepareSocketInterfaceInput(ctx, plan, plan, true, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	if nr.LocalIP != nil || iface.Lan != nil {
+		t.Fatal("HA must omit local IP and LAN update")
 	}
 }

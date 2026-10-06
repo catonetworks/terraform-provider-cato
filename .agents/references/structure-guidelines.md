@@ -99,3 +99,26 @@ These guidelines define where the Go code (e.g. a method or a type definition) s
   - if it is related to error handling, it shall be placed in `./internal/provider/common/apperr` package.
   - otherwise, it shall be placed in `./internal/provider/common/utils` package.
   
+
+### Application and SDK boundaries for network range and socket site
+
+The `netrange` and `sktsite` packages use the following resource-local layers:
+
+- `resource_<name>.go` implements Terraform interfaces, wires application services
+  and adapters, translates errors into diagnostics, and manages Terraform state.
+- `resource_<name>_schema.go` constructs schemas and their validators/modifiers.
+- `resource_<name>_mapping.go` projects Terraform values to plain application
+  inputs and snapshots back to state. Mapping must not perform API calls.
+- `application/model.go`, `ports.go`, and `execute.go` define plain Go contracts
+  and orchestrate resource workflows. Application packages must not import the
+  Terraform framework, the Cato SDK, adapters, or their parent resource package.
+- `adapter/sdk.go` translates application contracts to SDK requests and converts
+  SDK responses/errors to application results. Adapters must not import Terraform
+  or their parent resource package. `sktsite/adapter/retry.go` executes hydration
+  retries using the policy selected by the application, with cancellable waits.
+
+Dependency direction is resource package → application and adapter; adapter →
+application. Shared DHCP contracts and relay lookup adapters live in
+`common/dhcp/application` and `common/dhcp/adapter`. Existing DHCP helpers remain
+available to resources that have not yet adopted these boundaries. SDK HTTP retry
+configuration remains owned by the provider; workflow retries do not retry mutations.

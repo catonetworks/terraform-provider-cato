@@ -41,12 +41,12 @@ func (_m *NetworkRangeClient) EXPECT() *NetworkRangeClient_Expecter {
 }
 
 // EntityLookup provides a mock function for the type NetworkRangeClient
-func (_mock *NetworkRangeClient) EntityLookup(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64, parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error) {
+func (_mock *NetworkRangeClient) EntityLookup(context1 context.Context, s string, entityType cato_models.EntityType, n *int64, n1 *int64, entityInput *cato_models.EntityInput, s1 *string, strings []string, sortInputs []*cato_models.SortInput, lookupFilterInputs []*cato_models.LookupFilterInput, strings1 []string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error) {
 	var tmpRet mock.Arguments
-	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, accountID, typeArg, limit, from, parent, search, entityIDs, sort, filters, helperFields, interceptors)
+	if len(requestInterceptors) > 0 {
+		tmpRet = _mock.Called(context1, s, entityType, n, n1, entityInput, s1, strings, sortInputs, lookupFilterInputs, strings1, requestInterceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, accountID, typeArg, limit, from, parent, search, entityIDs, sort, filters, helperFields)
+		tmpRet = _mock.Called(context1, s, entityType, n, n1, entityInput, s1, strings, sortInputs, lookupFilterInputs, strings1)
 	}
 	ret := tmpRet
 
@@ -57,17 +57,17 @@ func (_mock *NetworkRangeClient) EntityLookup(ctx context.Context, accountID str
 	var r0 *cato_go_sdk.EntityLookup
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.EntityType, *int64, *int64, *cato_models.EntityInput, *string, []string, []*cato_models.SortInput, []*cato_models.LookupFilterInput, []string, ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error)); ok {
-		return returnFunc(ctx, accountID, typeArg, limit, from, parent, search, entityIDs, sort, filters, helperFields, interceptors...)
+		return returnFunc(context1, s, entityType, n, n1, entityInput, s1, strings, sortInputs, lookupFilterInputs, strings1, requestInterceptors...)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.EntityType, *int64, *int64, *cato_models.EntityInput, *string, []string, []*cato_models.SortInput, []*cato_models.LookupFilterInput, []string, ...clientv2.RequestInterceptor) *cato_go_sdk.EntityLookup); ok {
-		r0 = returnFunc(ctx, accountID, typeArg, limit, from, parent, search, entityIDs, sort, filters, helperFields, interceptors...)
+		r0 = returnFunc(context1, s, entityType, n, n1, entityInput, s1, strings, sortInputs, lookupFilterInputs, strings1, requestInterceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.EntityLookup)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, cato_models.EntityType, *int64, *int64, *cato_models.EntityInput, *string, []string, []*cato_models.SortInput, []*cato_models.LookupFilterInput, []string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, accountID, typeArg, limit, from, parent, search, entityIDs, sort, filters, helperFields, interceptors...)
+		r1 = returnFunc(context1, s, entityType, n, n1, entityInput, s1, strings, sortInputs, lookupFilterInputs, strings1, requestInterceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -80,24 +80,24 @@ type NetworkRangeClient_EntityLookup_Call struct {
 }
 
 // EntityLookup is a helper method to define mock.On call
-//   - ctx context.Context
-//   - accountID string
-//   - typeArg cato_models.EntityType
-//   - limit *int64
-//   - from *int64
-//   - parent *cato_models.EntityInput
-//   - search *string
-//   - entityIDs []string
-//   - sort []*cato_models.SortInput
-//   - filters []*cato_models.LookupFilterInput
-//   - helperFields []string
-//   - interceptors ...clientv2.RequestInterceptor
-func (_e *NetworkRangeClient_Expecter) EntityLookup(ctx interface{}, accountID interface{}, typeArg interface{}, limit interface{}, from interface{}, parent interface{}, search interface{}, entityIDs interface{}, sort interface{}, filters interface{}, helperFields interface{}, interceptors ...interface{}) *NetworkRangeClient_EntityLookup_Call {
+//   - context1 context.Context
+//   - s string
+//   - entityType cato_models.EntityType
+//   - n *int64
+//   - n1 *int64
+//   - entityInput *cato_models.EntityInput
+//   - s1 *string
+//   - strings []string
+//   - sortInputs []*cato_models.SortInput
+//   - lookupFilterInputs []*cato_models.LookupFilterInput
+//   - strings1 []string
+//   - requestInterceptors ...clientv2.RequestInterceptor
+func (_e *NetworkRangeClient_Expecter) EntityLookup(context1 interface{}, s interface{}, entityType interface{}, n interface{}, n1 interface{}, entityInput interface{}, s1 interface{}, strings interface{}, sortInputs interface{}, lookupFilterInputs interface{}, strings1 interface{}, requestInterceptors ...interface{}) *NetworkRangeClient_EntityLookup_Call {
 	return &NetworkRangeClient_EntityLookup_Call{Call: _e.mock.On("EntityLookup",
-		append([]interface{}{ctx, accountID, typeArg, limit, from, parent, search, entityIDs, sort, filters, helperFields}, interceptors...)...)}
+		append([]interface{}{context1, s, entityType, n, n1, entityInput, s1, strings, sortInputs, lookupFilterInputs, strings1}, requestInterceptors...)...)}
 }
 
-func (_c *NetworkRangeClient_EntityLookup_Call) Run(run func(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64, parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_EntityLookup_Call {
+func (_c *NetworkRangeClient_EntityLookup_Call) Run(run func(context1 context.Context, s string, entityType cato_models.EntityType, n *int64, n1 *int64, entityInput *cato_models.EntityInput, s1 *string, strings []string, sortInputs []*cato_models.SortInput, lookupFilterInputs []*cato_models.LookupFilterInput, strings1 []string, requestInterceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_EntityLookup_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -172,18 +172,137 @@ func (_c *NetworkRangeClient_EntityLookup_Call) Return(entityLookup *cato_go_sdk
 	return _c
 }
 
-func (_c *NetworkRangeClient_EntityLookup_Call) RunAndReturn(run func(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64, parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput, filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error)) *NetworkRangeClient_EntityLookup_Call {
+func (_c *NetworkRangeClient_EntityLookup_Call) RunAndReturn(run func(context1 context.Context, s string, entityType cato_models.EntityType, n *int64, n1 *int64, entityInput *cato_models.EntityInput, s1 *string, strings []string, sortInputs []*cato_models.SortInput, lookupFilterInputs []*cato_models.LookupFilterInput, strings1 []string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error)) *NetworkRangeClient_EntityLookup_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// EntityLookupMinimal provides a mock function for the type NetworkRangeClient
+func (_mock *NetworkRangeClient) EntityLookupMinimal(context1 context.Context, s string, entityType cato_models.EntityType, n *int64, n1 *int64, entityInput *cato_models.EntityInput, sortInputs []*cato_models.SortInput, lookupFilterInputs []*cato_models.LookupFilterInput, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error) {
+	var tmpRet mock.Arguments
+	if len(requestInterceptors) > 0 {
+		tmpRet = _mock.Called(context1, s, entityType, n, n1, entityInput, sortInputs, lookupFilterInputs, requestInterceptors)
+	} else {
+		tmpRet = _mock.Called(context1, s, entityType, n, n1, entityInput, sortInputs, lookupFilterInputs)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for EntityLookupMinimal")
+	}
+
+	var r0 *cato_go_sdk.EntityLookup
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.EntityType, *int64, *int64, *cato_models.EntityInput, []*cato_models.SortInput, []*cato_models.LookupFilterInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error)); ok {
+		return returnFunc(context1, s, entityType, n, n1, entityInput, sortInputs, lookupFilterInputs, requestInterceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.EntityType, *int64, *int64, *cato_models.EntityInput, []*cato_models.SortInput, []*cato_models.LookupFilterInput, ...clientv2.RequestInterceptor) *cato_go_sdk.EntityLookup); ok {
+		r0 = returnFunc(context1, s, entityType, n, n1, entityInput, sortInputs, lookupFilterInputs, requestInterceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.EntityLookup)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, cato_models.EntityType, *int64, *int64, *cato_models.EntityInput, []*cato_models.SortInput, []*cato_models.LookupFilterInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(context1, s, entityType, n, n1, entityInput, sortInputs, lookupFilterInputs, requestInterceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// NetworkRangeClient_EntityLookupMinimal_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EntityLookupMinimal'
+type NetworkRangeClient_EntityLookupMinimal_Call struct {
+	*mock.Call
+}
+
+// EntityLookupMinimal is a helper method to define mock.On call
+//   - context1 context.Context
+//   - s string
+//   - entityType cato_models.EntityType
+//   - n *int64
+//   - n1 *int64
+//   - entityInput *cato_models.EntityInput
+//   - sortInputs []*cato_models.SortInput
+//   - lookupFilterInputs []*cato_models.LookupFilterInput
+//   - requestInterceptors ...clientv2.RequestInterceptor
+func (_e *NetworkRangeClient_Expecter) EntityLookupMinimal(context1 interface{}, s interface{}, entityType interface{}, n interface{}, n1 interface{}, entityInput interface{}, sortInputs interface{}, lookupFilterInputs interface{}, requestInterceptors ...interface{}) *NetworkRangeClient_EntityLookupMinimal_Call {
+	return &NetworkRangeClient_EntityLookupMinimal_Call{Call: _e.mock.On("EntityLookupMinimal",
+		append([]interface{}{context1, s, entityType, n, n1, entityInput, sortInputs, lookupFilterInputs}, requestInterceptors...)...)}
+}
+
+func (_c *NetworkRangeClient_EntityLookupMinimal_Call) Run(run func(context1 context.Context, s string, entityType cato_models.EntityType, n *int64, n1 *int64, entityInput *cato_models.EntityInput, sortInputs []*cato_models.SortInput, lookupFilterInputs []*cato_models.LookupFilterInput, requestInterceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_EntityLookupMinimal_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 cato_models.EntityType
+		if args[2] != nil {
+			arg2 = args[2].(cato_models.EntityType)
+		}
+		var arg3 *int64
+		if args[3] != nil {
+			arg3 = args[3].(*int64)
+		}
+		var arg4 *int64
+		if args[4] != nil {
+			arg4 = args[4].(*int64)
+		}
+		var arg5 *cato_models.EntityInput
+		if args[5] != nil {
+			arg5 = args[5].(*cato_models.EntityInput)
+		}
+		var arg6 []*cato_models.SortInput
+		if args[6] != nil {
+			arg6 = args[6].([]*cato_models.SortInput)
+		}
+		var arg7 []*cato_models.LookupFilterInput
+		if args[7] != nil {
+			arg7 = args[7].([]*cato_models.LookupFilterInput)
+		}
+		var arg8 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 8 {
+			variadicArgs = args[8].([]clientv2.RequestInterceptor)
+		}
+		arg8 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+			arg6,
+			arg7,
+			arg8...,
+		)
+	})
+	return _c
+}
+
+func (_c *NetworkRangeClient_EntityLookupMinimal_Call) Return(entityLookup *cato_go_sdk.EntityLookup, err error) *NetworkRangeClient_EntityLookupMinimal_Call {
+	_c.Call.Return(entityLookup, err)
+	return _c
+}
+
+func (_c *NetworkRangeClient_EntityLookupMinimal_Call) RunAndReturn(run func(context1 context.Context, s string, entityType cato_models.EntityType, n *int64, n1 *int64, entityInput *cato_models.EntityInput, sortInputs []*cato_models.SortInput, lookupFilterInputs []*cato_models.LookupFilterInput, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.EntityLookup, error)) *NetworkRangeClient_EntityLookupMinimal_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NetworkRange provides a mock function for the type NetworkRangeClient
-func (_mock *NetworkRangeClient) NetworkRange(ctx context.Context, accountID string, networkRangeID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.NetworkRange, error) {
+func (_mock *NetworkRangeClient) NetworkRange(context1 context.Context, s string, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.NetworkRange, error) {
 	var tmpRet mock.Arguments
-	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, accountID, networkRangeID, interceptors)
+	if len(requestInterceptors) > 0 {
+		tmpRet = _mock.Called(context1, s, s1, requestInterceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, accountID, networkRangeID)
+		tmpRet = _mock.Called(context1, s, s1)
 	}
 	ret := tmpRet
 
@@ -194,17 +313,17 @@ func (_mock *NetworkRangeClient) NetworkRange(ctx context.Context, accountID str
 	var r0 *cato_go_sdk.NetworkRange
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.NetworkRange, error)); ok {
-		return returnFunc(ctx, accountID, networkRangeID, interceptors...)
+		return returnFunc(context1, s, s1, requestInterceptors...)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...clientv2.RequestInterceptor) *cato_go_sdk.NetworkRange); ok {
-		r0 = returnFunc(ctx, accountID, networkRangeID, interceptors...)
+		r0 = returnFunc(context1, s, s1, requestInterceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.NetworkRange)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, accountID, networkRangeID, interceptors...)
+		r1 = returnFunc(context1, s, s1, requestInterceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -217,16 +336,16 @@ type NetworkRangeClient_NetworkRange_Call struct {
 }
 
 // NetworkRange is a helper method to define mock.On call
-//   - ctx context.Context
-//   - accountID string
-//   - networkRangeID string
-//   - interceptors ...clientv2.RequestInterceptor
-func (_e *NetworkRangeClient_Expecter) NetworkRange(ctx interface{}, accountID interface{}, networkRangeID interface{}, interceptors ...interface{}) *NetworkRangeClient_NetworkRange_Call {
+//   - context1 context.Context
+//   - s string
+//   - s1 string
+//   - requestInterceptors ...clientv2.RequestInterceptor
+func (_e *NetworkRangeClient_Expecter) NetworkRange(context1 interface{}, s interface{}, s1 interface{}, requestInterceptors ...interface{}) *NetworkRangeClient_NetworkRange_Call {
 	return &NetworkRangeClient_NetworkRange_Call{Call: _e.mock.On("NetworkRange",
-		append([]interface{}{ctx, accountID, networkRangeID}, interceptors...)...)}
+		append([]interface{}{context1, s, s1}, requestInterceptors...)...)}
 }
 
-func (_c *NetworkRangeClient_NetworkRange_Call) Run(run func(ctx context.Context, accountID string, networkRangeID string, interceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_NetworkRange_Call {
+func (_c *NetworkRangeClient_NetworkRange_Call) Run(run func(context1 context.Context, s string, s1 string, requestInterceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_NetworkRange_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -261,18 +380,18 @@ func (_c *NetworkRangeClient_NetworkRange_Call) Return(networkRange *cato_go_sdk
 	return _c
 }
 
-func (_c *NetworkRangeClient_NetworkRange_Call) RunAndReturn(run func(ctx context.Context, accountID string, networkRangeID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.NetworkRange, error)) *NetworkRangeClient_NetworkRange_Call {
+func (_c *NetworkRangeClient_NetworkRange_Call) RunAndReturn(run func(context1 context.Context, s string, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.NetworkRange, error)) *NetworkRangeClient_NetworkRange_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SiteAddNetworkRange provides a mock function for the type NetworkRangeClient
-func (_mock *NetworkRangeClient) SiteAddNetworkRange(ctx context.Context, lanSocketInterfaceID string, addNetworkRangeInput cato_models.AddNetworkRangeInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddNetworkRange, error) {
+func (_mock *NetworkRangeClient) SiteAddNetworkRange(context1 context.Context, s string, addNetworkRangeInput cato_models.AddNetworkRangeInput, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddNetworkRange, error) {
 	var tmpRet mock.Arguments
-	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, lanSocketInterfaceID, addNetworkRangeInput, accountID, interceptors)
+	if len(requestInterceptors) > 0 {
+		tmpRet = _mock.Called(context1, s, addNetworkRangeInput, s1, requestInterceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, lanSocketInterfaceID, addNetworkRangeInput, accountID)
+		tmpRet = _mock.Called(context1, s, addNetworkRangeInput, s1)
 	}
 	ret := tmpRet
 
@@ -283,17 +402,17 @@ func (_mock *NetworkRangeClient) SiteAddNetworkRange(ctx context.Context, lanSoc
 	var r0 *cato_go_sdk.SiteAddNetworkRange
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.AddNetworkRangeInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddNetworkRange, error)); ok {
-		return returnFunc(ctx, lanSocketInterfaceID, addNetworkRangeInput, accountID, interceptors...)
+		return returnFunc(context1, s, addNetworkRangeInput, s1, requestInterceptors...)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.AddNetworkRangeInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.SiteAddNetworkRange); ok {
-		r0 = returnFunc(ctx, lanSocketInterfaceID, addNetworkRangeInput, accountID, interceptors...)
+		r0 = returnFunc(context1, s, addNetworkRangeInput, s1, requestInterceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.SiteAddNetworkRange)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, cato_models.AddNetworkRangeInput, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, lanSocketInterfaceID, addNetworkRangeInput, accountID, interceptors...)
+		r1 = returnFunc(context1, s, addNetworkRangeInput, s1, requestInterceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -306,17 +425,17 @@ type NetworkRangeClient_SiteAddNetworkRange_Call struct {
 }
 
 // SiteAddNetworkRange is a helper method to define mock.On call
-//   - ctx context.Context
-//   - lanSocketInterfaceID string
+//   - context1 context.Context
+//   - s string
 //   - addNetworkRangeInput cato_models.AddNetworkRangeInput
-//   - accountID string
-//   - interceptors ...clientv2.RequestInterceptor
-func (_e *NetworkRangeClient_Expecter) SiteAddNetworkRange(ctx interface{}, lanSocketInterfaceID interface{}, addNetworkRangeInput interface{}, accountID interface{}, interceptors ...interface{}) *NetworkRangeClient_SiteAddNetworkRange_Call {
+//   - s1 string
+//   - requestInterceptors ...clientv2.RequestInterceptor
+func (_e *NetworkRangeClient_Expecter) SiteAddNetworkRange(context1 interface{}, s interface{}, addNetworkRangeInput interface{}, s1 interface{}, requestInterceptors ...interface{}) *NetworkRangeClient_SiteAddNetworkRange_Call {
 	return &NetworkRangeClient_SiteAddNetworkRange_Call{Call: _e.mock.On("SiteAddNetworkRange",
-		append([]interface{}{ctx, lanSocketInterfaceID, addNetworkRangeInput, accountID}, interceptors...)...)}
+		append([]interface{}{context1, s, addNetworkRangeInput, s1}, requestInterceptors...)...)}
 }
 
-func (_c *NetworkRangeClient_SiteAddNetworkRange_Call) Run(run func(ctx context.Context, lanSocketInterfaceID string, addNetworkRangeInput cato_models.AddNetworkRangeInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_SiteAddNetworkRange_Call {
+func (_c *NetworkRangeClient_SiteAddNetworkRange_Call) Run(run func(context1 context.Context, s string, addNetworkRangeInput cato_models.AddNetworkRangeInput, s1 string, requestInterceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_SiteAddNetworkRange_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -356,18 +475,18 @@ func (_c *NetworkRangeClient_SiteAddNetworkRange_Call) Return(siteAddNetworkRang
 	return _c
 }
 
-func (_c *NetworkRangeClient_SiteAddNetworkRange_Call) RunAndReturn(run func(ctx context.Context, lanSocketInterfaceID string, addNetworkRangeInput cato_models.AddNetworkRangeInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddNetworkRange, error)) *NetworkRangeClient_SiteAddNetworkRange_Call {
+func (_c *NetworkRangeClient_SiteAddNetworkRange_Call) RunAndReturn(run func(context1 context.Context, s string, addNetworkRangeInput cato_models.AddNetworkRangeInput, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddNetworkRange, error)) *NetworkRangeClient_SiteAddNetworkRange_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SiteRemoveNetworkRange provides a mock function for the type NetworkRangeClient
-func (_mock *NetworkRangeClient) SiteRemoveNetworkRange(ctx context.Context, networkRangeID string, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteRemoveNetworkRange, error) {
+func (_mock *NetworkRangeClient) SiteRemoveNetworkRange(context1 context.Context, s string, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteRemoveNetworkRange, error) {
 	var tmpRet mock.Arguments
-	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, networkRangeID, accountID, interceptors)
+	if len(requestInterceptors) > 0 {
+		tmpRet = _mock.Called(context1, s, s1, requestInterceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, networkRangeID, accountID)
+		tmpRet = _mock.Called(context1, s, s1)
 	}
 	ret := tmpRet
 
@@ -378,17 +497,17 @@ func (_mock *NetworkRangeClient) SiteRemoveNetworkRange(ctx context.Context, net
 	var r0 *cato_go_sdk.SiteRemoveNetworkRange
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteRemoveNetworkRange, error)); ok {
-		return returnFunc(ctx, networkRangeID, accountID, interceptors...)
+		return returnFunc(context1, s, s1, requestInterceptors...)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...clientv2.RequestInterceptor) *cato_go_sdk.SiteRemoveNetworkRange); ok {
-		r0 = returnFunc(ctx, networkRangeID, accountID, interceptors...)
+		r0 = returnFunc(context1, s, s1, requestInterceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.SiteRemoveNetworkRange)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, networkRangeID, accountID, interceptors...)
+		r1 = returnFunc(context1, s, s1, requestInterceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -401,16 +520,16 @@ type NetworkRangeClient_SiteRemoveNetworkRange_Call struct {
 }
 
 // SiteRemoveNetworkRange is a helper method to define mock.On call
-//   - ctx context.Context
-//   - networkRangeID string
-//   - accountID string
-//   - interceptors ...clientv2.RequestInterceptor
-func (_e *NetworkRangeClient_Expecter) SiteRemoveNetworkRange(ctx interface{}, networkRangeID interface{}, accountID interface{}, interceptors ...interface{}) *NetworkRangeClient_SiteRemoveNetworkRange_Call {
+//   - context1 context.Context
+//   - s string
+//   - s1 string
+//   - requestInterceptors ...clientv2.RequestInterceptor
+func (_e *NetworkRangeClient_Expecter) SiteRemoveNetworkRange(context1 interface{}, s interface{}, s1 interface{}, requestInterceptors ...interface{}) *NetworkRangeClient_SiteRemoveNetworkRange_Call {
 	return &NetworkRangeClient_SiteRemoveNetworkRange_Call{Call: _e.mock.On("SiteRemoveNetworkRange",
-		append([]interface{}{ctx, networkRangeID, accountID}, interceptors...)...)}
+		append([]interface{}{context1, s, s1}, requestInterceptors...)...)}
 }
 
-func (_c *NetworkRangeClient_SiteRemoveNetworkRange_Call) Run(run func(ctx context.Context, networkRangeID string, accountID string, interceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_SiteRemoveNetworkRange_Call {
+func (_c *NetworkRangeClient_SiteRemoveNetworkRange_Call) Run(run func(context1 context.Context, s string, s1 string, requestInterceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_SiteRemoveNetworkRange_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -445,18 +564,18 @@ func (_c *NetworkRangeClient_SiteRemoveNetworkRange_Call) Return(siteRemoveNetwo
 	return _c
 }
 
-func (_c *NetworkRangeClient_SiteRemoveNetworkRange_Call) RunAndReturn(run func(ctx context.Context, networkRangeID string, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteRemoveNetworkRange, error)) *NetworkRangeClient_SiteRemoveNetworkRange_Call {
+func (_c *NetworkRangeClient_SiteRemoveNetworkRange_Call) RunAndReturn(run func(context1 context.Context, s string, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteRemoveNetworkRange, error)) *NetworkRangeClient_SiteRemoveNetworkRange_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SiteUpdateNetworkRange provides a mock function for the type NetworkRangeClient
-func (_mock *NetworkRangeClient) SiteUpdateNetworkRange(ctx context.Context, networkRangeID string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateNetworkRange, error) {
+func (_mock *NetworkRangeClient) SiteUpdateNetworkRange(context1 context.Context, s string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateNetworkRange, error) {
 	var tmpRet mock.Arguments
-	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, networkRangeID, updateNetworkRangeInput, accountID, interceptors)
+	if len(requestInterceptors) > 0 {
+		tmpRet = _mock.Called(context1, s, updateNetworkRangeInput, s1, requestInterceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, networkRangeID, updateNetworkRangeInput, accountID)
+		tmpRet = _mock.Called(context1, s, updateNetworkRangeInput, s1)
 	}
 	ret := tmpRet
 
@@ -467,17 +586,17 @@ func (_mock *NetworkRangeClient) SiteUpdateNetworkRange(ctx context.Context, net
 	var r0 *cato_go_sdk.SiteUpdateNetworkRange
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.UpdateNetworkRangeInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateNetworkRange, error)); ok {
-		return returnFunc(ctx, networkRangeID, updateNetworkRangeInput, accountID, interceptors...)
+		return returnFunc(context1, s, updateNetworkRangeInput, s1, requestInterceptors...)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, cato_models.UpdateNetworkRangeInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.SiteUpdateNetworkRange); ok {
-		r0 = returnFunc(ctx, networkRangeID, updateNetworkRangeInput, accountID, interceptors...)
+		r0 = returnFunc(context1, s, updateNetworkRangeInput, s1, requestInterceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.SiteUpdateNetworkRange)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, cato_models.UpdateNetworkRangeInput, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, networkRangeID, updateNetworkRangeInput, accountID, interceptors...)
+		r1 = returnFunc(context1, s, updateNetworkRangeInput, s1, requestInterceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -490,17 +609,17 @@ type NetworkRangeClient_SiteUpdateNetworkRange_Call struct {
 }
 
 // SiteUpdateNetworkRange is a helper method to define mock.On call
-//   - ctx context.Context
-//   - networkRangeID string
+//   - context1 context.Context
+//   - s string
 //   - updateNetworkRangeInput cato_models.UpdateNetworkRangeInput
-//   - accountID string
-//   - interceptors ...clientv2.RequestInterceptor
-func (_e *NetworkRangeClient_Expecter) SiteUpdateNetworkRange(ctx interface{}, networkRangeID interface{}, updateNetworkRangeInput interface{}, accountID interface{}, interceptors ...interface{}) *NetworkRangeClient_SiteUpdateNetworkRange_Call {
+//   - s1 string
+//   - requestInterceptors ...clientv2.RequestInterceptor
+func (_e *NetworkRangeClient_Expecter) SiteUpdateNetworkRange(context1 interface{}, s interface{}, updateNetworkRangeInput interface{}, s1 interface{}, requestInterceptors ...interface{}) *NetworkRangeClient_SiteUpdateNetworkRange_Call {
 	return &NetworkRangeClient_SiteUpdateNetworkRange_Call{Call: _e.mock.On("SiteUpdateNetworkRange",
-		append([]interface{}{ctx, networkRangeID, updateNetworkRangeInput, accountID}, interceptors...)...)}
+		append([]interface{}{context1, s, updateNetworkRangeInput, s1}, requestInterceptors...)...)}
 }
 
-func (_c *NetworkRangeClient_SiteUpdateNetworkRange_Call) Run(run func(ctx context.Context, networkRangeID string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_SiteUpdateNetworkRange_Call {
+func (_c *NetworkRangeClient_SiteUpdateNetworkRange_Call) Run(run func(context1 context.Context, s string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput, s1 string, requestInterceptors ...clientv2.RequestInterceptor)) *NetworkRangeClient_SiteUpdateNetworkRange_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -540,7 +659,7 @@ func (_c *NetworkRangeClient_SiteUpdateNetworkRange_Call) Return(siteUpdateNetwo
 	return _c
 }
 
-func (_c *NetworkRangeClient_SiteUpdateNetworkRange_Call) RunAndReturn(run func(ctx context.Context, networkRangeID string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateNetworkRange, error)) *NetworkRangeClient_SiteUpdateNetworkRange_Call {
+func (_c *NetworkRangeClient_SiteUpdateNetworkRange_Call) RunAndReturn(run func(context1 context.Context, s string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput, s1 string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateNetworkRange, error)) *NetworkRangeClient_SiteUpdateNetworkRange_Call {
 	_c.Call.Return(run)
 	return _c
 }
