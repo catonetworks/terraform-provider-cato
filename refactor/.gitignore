@@ -1,0 +1,9 @@
+/bin/
+/.terraformrc
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/*.tfvars
+**/crash.log
