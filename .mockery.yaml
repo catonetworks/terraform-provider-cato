@@ -11,8 +11,18 @@ packages:
       InternetFirewallBulkPolicyClient:
       InternetFirewallPolicyClient:
       InternetFirewallSubPolicyClient:
-      NetworkRangeClient:
-      SocketSiteClient:
       StaticHostClient:
       WanFirewallBulkPolicyClient:
       WanFirewallSubPolicyClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/netrange/adapter:
+    interfaces:
+      NetworkRangeClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/sktsite/adapter:
+    interfaces:
+      SocketSiteClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/netrange/application:
+    interfaces:
+      NetworkRangePort:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/sktsite/application:
+    interfaces:
+      SocketSitePort:

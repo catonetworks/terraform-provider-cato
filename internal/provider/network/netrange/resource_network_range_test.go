@@ -943,3 +943,60 @@ func newNetworkRangeState(ctx context.Context, t *testing.T, model networkRangeM
 func nrStringPtr(v string) *string {
 	return &v
 }
+
+func TestNetworkRangeReadAbsentRemovesState(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	api := mocks.NewNetworkRangeClient(t)
+	api.EXPECT().NetworkRange(mock.Anything, "account-123", "nr-missing").Return(nil, nil).Once()
+	r := &networkRangeResource{client: &client.CatoClientData{AccountId: "account-123"}, networkRangeClient: api}
+	state := newNetworkRangeState(ctx, t, networkRangeModel{ID: types.StringValue("nr-missing")})
+	resp := &resource.ReadResponse{State: state}
+	r.Read(ctx, resource.ReadRequest{State: state}, resp)
+	if resp.Diagnostics.HasError() || !resp.State.Raw.IsNull() {
+		t.Fatalf("expected absent state without errors: %v", resp.Diagnostics)
+	}
+}
+
+func TestNetworkRangeCreateAndUpdateSuccess(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	for _, operation := range []string{"create", "update"} {
+		t.Run(operation, func(t *testing.T) {
+			t.Parallel()
+			api := mocks.NewNetworkRangeClient(t)
+			r := &networkRangeResource{client: &client.CatoClientData{AccountId: "account-123"}, networkRangeClient: api}
+			model := networkRangeModel{ID: types.StringValue("nr-1"), InterfaceID: types.StringValue("if-1")}
+			if operation == "create" {
+				api.EXPECT().SiteAddNetworkRange(mock.Anything, "if-1", mock.Anything, "account-123").Return(&cato.SiteAddNetworkRange{Site: cato.SiteAddNetworkRange_Site{AddNetworkRange: &cato.SiteAddNetworkRange_Site_AddNetworkRange{NetworkRangeID: "nr-1"}}}, nil).Once()
+			} else {
+				api.EXPECT().SiteUpdateNetworkRange(mock.Anything, "nr-1", mock.Anything, "account-123").Return(nil, nil).Once()
+			}
+			api.EXPECT().NetworkRange(mock.Anything, "account-123", "nr-1").Return(newNetworkRangeAPIResponse("nr-1"), nil).Once()
+			api.EXPECT().EntityLookup(mock.Anything, "account-123", cato_models.EntityTypeNetworkInterface, mock.Anything, mock.Anything, mock.Anything, mock.Anything, []string{"if-1"}, mock.Anything, mock.Anything, mock.Anything).Return(&cato.EntityLookup{EntityLookup: cato.EntityLookup_EntityLookup{Items: []*cato.EntityLookup_EntityLookup_Items{{Entity: cato.EntityLookup_EntityLookup_Items_Entity{ID: "if-1"}, HelperFields: map[string]any{"interfaceId": "LAN1"}}}}}, nil).Once()
+			state := tfsdk.State{Schema: getNetworkRangeSchema(ctx, t)}
+			if operation == "create" {
+				resp := &resource.CreateResponse{State: state}
+				r.Create(ctx, resource.CreateRequest{Plan: newNetworkRangePlan(ctx, t, model), Config: newNetworkRangeConfig(ctx, t, model)}, resp)
+				if resp.Diagnostics.HasError() {
+					t.Fatal(resp.Diagnostics)
+				}
+				state = resp.State
+			} else {
+				resp := &resource.UpdateResponse{State: state}
+				r.Update(ctx, resource.UpdateRequest{Plan: newNetworkRangePlan(ctx, t, model), Config: newNetworkRangeConfig(ctx, t, model)}, resp)
+				if resp.Diagnostics.HasError() {
+					t.Fatal(resp.Diagnostics)
+				}
+				state = resp.State
+			}
+			var got NetworkRange
+			if ds := state.Get(ctx, &got); ds.HasError() {
+				t.Fatal(ds)
+			}
+			if got.ID.ValueString() != "nr-1" || got.InterfaceIndex.ValueString() != "LAN1" {
+				t.Fatalf("unexpected state: %+v", got)
+			}
+		})
+	}
+}
