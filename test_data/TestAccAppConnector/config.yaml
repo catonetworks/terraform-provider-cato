@@ -20,6 +20,16 @@ Operations:
     Resource: appConnector
     IDPath: variables.connectorRef.ztnaAppConnector.input
 
+  ztnaAppConnectorRemoveZtnaAppConnectorBwLicense:
+    Type: DELETE
+    Resource: bwLicense
+    Static: true
+
+  ztnaAppConnectorAddZtnaAppConnectorBwLicense:
+    Type: CREATE
+    Resource: bwLicense
+    NamePath: variables.addZtnaAppConnectorBwLicenseInput.licenseId
+
   entityLookup:
     Type: READ
     ResourcePath: variables.type

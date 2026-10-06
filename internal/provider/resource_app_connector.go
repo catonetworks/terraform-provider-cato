@@ -377,7 +377,7 @@ func (r *appConnectorResource) UpdateBwLicenses(ctx context.Context, stateLcs, p
 	}
 
 	// Call API to add licenses
-	for _, k := range toRemove {
+	for _, k := range toAdd {
 		input := cato_models.AddZtnaAppConnectorBwLicenseInput{
 			Bw:        k.bw,
 			LicenseID: k.lic,
