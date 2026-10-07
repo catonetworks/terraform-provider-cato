@@ -71,7 +71,7 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"pooled_bandwidth_allocation": schema.SetNestedAttribute{
-				Description: "App connector location",
+				Description: "App connector pooled bandwidth license allocations",
 				Optional:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
