@@ -24,6 +24,11 @@ GraphQL:
                       "stateCode": "US-CA",
                       "timezone": "America/Los_Angeles",
                     },
+                  "pooledBandwidthAllocation":
+                    [
+                      { "licenseId": "L300", "bw": 300 },
+                      { "licenseId": "L100", "bw": 150 },
+                    ],
                   "preferredPopLocation":
                     {
                       "preferredOnly": false,

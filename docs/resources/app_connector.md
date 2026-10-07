@@ -47,6 +47,7 @@ resource "cato_app_connector" "example" {
 ### Optional
 
 - `description` (String) Optional description of the ZTNA App Connector (max 250 characters)
+- `pooled_bandwidth_allocation` (Attributes Set) App connector pooled bandwidth license allocations (see [below for nested schema](#nestedatt--pooled_bandwidth_allocation))
 - `preferred_pop_location` (Attributes) Preferred PoP locations settings (see [below for nested schema](#nestedatt--preferred_pop_location))
 
 ### Read-Only
@@ -70,6 +71,19 @@ Optional:
 
 - `address` (String) Street, number
 - `state_code` (String) State code
+
+
+<a id="nestedatt--pooled_bandwidth_allocation"></a>
+### Nested Schema for `pooled_bandwidth_allocation`
+
+Required:
+
+- `bandwidth` (Number) The bandwidth (in Mbps) to allocate from the pooled license.
+- `license_id` (String) The pooled bandwidth license to allocate from
+
+Read-Only:
+
+- `allocation_id` (String) The pooled bandwidth license allocation ID
 
 
 <a id="nestedatt--preferred_pop_location"></a>
