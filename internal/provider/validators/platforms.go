@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 )
 
 // PlatformValidator validates that the provided set of strings are valid platforms
@@ -20,7 +20,7 @@ func (v PlatformValidator) ValidateSet(ctx context.Context, req validator.SetReq
 		return
 	}
 
-	platforms := parse.PrepareStrings[cato_models.OperatingSystem](ctx, req.ConfigValue, &diags)
+	platforms := convert.PrepareStrings[cato_models.OperatingSystem](ctx, req.ConfigValue, &diags)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return

@@ -18,6 +18,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/netrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
 var (
@@ -64,8 +70,8 @@ type catoClientData struct {
 	BaseURL              string
 	Token                string
 	AccountId            string //nolint:revive // Shared client field used across provider resources.
-	catov2               *providerSDKClient
-	accountSnapshotCache *accountSnapshotCache
+	catov2               *catoclient.ProviderSDKClient
+	accountSnapshotCache *catoclient.AccountSnapshotCache
 }
 
 func (p *catoClientData) V2() *cato.Client  { return p.catov2.Client }
@@ -378,8 +384,8 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		BaseURL:              baseurl,
 		Token:                token,
 		AccountId:            accountID,
-		catov2:               newProviderSDKClient(catoClient),
-		accountSnapshotCache: newAccountSnapshotCache(),
+		catov2:               catoclient.NewProviderSDKClient(catoClient),
+		accountSnapshotCache: catoclient.NewAccountSnapshotCache(),
 	}
 
 	resp.DataSourceData = dataSourceData
@@ -479,7 +485,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		TLSRulesIndexDataSource,
 		IfRuleSectionsDataSource,
 		WfRuleSectionsDataSource,
-		NetworkRangesDataSource,
+		netrange.NetworkRangesDataSource,
 		HostDataSource,
 		AppConnectorGroupDataSource,
 	}
@@ -494,13 +500,13 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewInternetFwRuleResource,
 		NewInternetFwSectionResource,
 		NewIfSubPolicyResource,
-		NewLanInterfaceResource,
-		NewLanInterfaceLagMemberResource,
+		laninterface.NewLanInterfaceResource,
+		laninterface.NewLanInterfaceLagMemberResource,
 		NewLicenseResource,
-		NewNetworkRangeResource,
+		netrange.NewNetworkRangeResource,
 		NewGroupMembersResource,
-		NewSiteIpsecResource,
-		NewSocketSiteResource,
+		ipsecsite.NewSiteIpsecResource,
+		socketsite.NewSocketSiteResource,
 		NewStaticHostResource,
 		NewTLSInspectionRuleResource,
 		NewTLSInspectionSectionResource,

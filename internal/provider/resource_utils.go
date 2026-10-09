@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func contains(nameToIDMap map[string]struct{}, name string) bool {

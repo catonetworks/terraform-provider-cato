@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func GetGlobalIPRangeValidator() GlobalIPRangeValidator {
