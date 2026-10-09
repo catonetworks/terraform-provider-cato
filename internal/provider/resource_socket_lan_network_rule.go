@@ -25,9 +25,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -125,8 +125,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 						Optional:    true,
 						Computed:    true,
 						NestedObject: schema.NestedAttributeObject{
-							Attributes:    parse.SchemaNameID("Site"),
-							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+							Attributes:    idname.SchemaNameID("Site"),
+							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 						},
 						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 					},
@@ -135,8 +135,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 						Optional:    true,
 						Computed:    true,
 						NestedObject: schema.NestedAttributeObject{
-							Attributes:    parse.SchemaNameID("Group"),
-							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+							Attributes:    idname.SchemaNameID("Group"),
+							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 						},
 						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 					},
@@ -296,8 +296,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Host"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Host"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -306,8 +306,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Group"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Group"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -316,8 +316,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("System group"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("System group"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -326,8 +326,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Network interface"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Network interface"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -336,8 +336,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Global IP range"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Global IP range"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -349,8 +349,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional: true,
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Floating subnet"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Floating subnet"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -359,8 +359,8 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Site Natwork Subnet"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Site Natwork Subnet"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},

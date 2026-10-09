@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (

@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 // LanFirewallSubPolicy is the Terraform model for the cato_lf_sub_policy
@@ -84,6 +84,6 @@ type PolicySite struct {
 }
 
 var PolicySiteTypes = map[string]attr.Type{
-	"group": types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}},
-	"site":  types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}},
+	"group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
+	"site":  types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
 }

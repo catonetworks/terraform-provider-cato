@@ -17,9 +17,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/pops"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -73,7 +75,7 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "List of private applications",
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes: parse.SchemaNameID("Private app"),
+					Attributes: idname.SchemaNameID("Private app"),
 				},
 			},
 			"serial_number": schema.StringAttribute{
@@ -142,14 +144,14 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 			"primary": schema.SingleNestedAttribute{
 				Description:   "Physical location of the pripary Pop",
 				Optional:      true,
-				Attributes:    parse.SchemaNameID("Primary location"),
-				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				Attributes:    idname.SchemaNameID("Primary location"),
+				PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 			},
 			"secondary": schema.SingleNestedAttribute{
 				Description:   "Physical location of the secondary Pop",
 				Optional:      true,
-				Attributes:    parse.SchemaNameID("Secondary location"),
-				PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+				Attributes:    idname.SchemaNameID("Secondary location"),
+				PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 			},
 		},
 	}
@@ -178,7 +180,7 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	input := cato_models.AddZtnaAppConnectorInput{
-		Description:          parse.KnownStringPointer(plan.Description),
+		Description:          convert.KnownStringPointer(plan.Description),
 		GroupName:            plan.GroupName.ValueString(),
 		Location:             r.prepareLocation(ctx, plan.Location, &diags),
 		Name:                 plan.Name.ValueString(),
@@ -263,11 +265,11 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 	input := cato_models.UpdateZtnaAppConnectorInput{
-		Description:          parse.KnownStringPointer(plan.Description),
-		GroupName:            parse.KnownStringPointer(plan.GroupName),
+		Description:          convert.KnownStringPointer(plan.Description),
+		GroupName:            convert.KnownStringPointer(plan.GroupName),
 		ID:                   id,
 		Location:             r.prepareLocation(ctx, plan.Location, &diags),
-		Name:                 parse.KnownStringPointer(plan.Name),
+		Name:                 convert.KnownStringPointer(plan.Name),
 		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
 	}
 
@@ -340,10 +342,10 @@ func (r *appConnectorResource) prepareLocation(
 	}
 
 	sdkLocation := cato_models.ZtnaAppConnectorLocationInput{
-		Address:     parse.KnownStringPointer(tfLocation.Address),
+		Address:     convert.KnownStringPointer(tfLocation.Address),
 		City:        tfLocation.CityName.ValueString(),
 		CountryCode: tfLocation.CountryCode.ValueString(),
-		StateCode:   parse.KnownStringPointer(tfLocation.StateCode),
+		StateCode:   convert.KnownStringPointer(tfLocation.StateCode),
 		Timezone:    tfLocation.Timezone.ValueString(),
 	}
 
@@ -356,7 +358,7 @@ func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types
 		return nil
 	}
 
-	var tfLocation PreferredPopLocationModel
+	var tfLocation pops.PreferredPopLocationModel
 	diags.Append(loc.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
 		return nil
@@ -365,8 +367,8 @@ func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types
 	sdkLocation := cato_models.ZtnaAppConnectorPreferredPopLocationInput{
 		PreferredOnly: tfLocation.PreferredOnly.ValueBool(),
 		Automatic:     tfLocation.Automatic.ValueBool(),
-		Primary:       parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags),
-		Secondary:     parse.PrepareIDRef[cato_models.PopLocationRefInput](ctx, tfLocation.Secondary, diags),
+		Primary:       idname.PrepareIDName[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags),
+		Secondary:     idname.PrepareIDName[cato_models.PopLocationRefInput](ctx, tfLocation.Secondary, diags),
 	}
 
 	return &sdkLocation
@@ -399,27 +401,27 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appCon
 	var objDiags diag.Diagnostics
 
 	if loc == nil {
-		return types.ObjectNull(PreferredPopLocationModelTypes)
+		return types.ObjectNull(pops.PreferredPopLocationModelTypes)
 	}
 
 	// Prepare PreferredPopLocationModel object
-	tfLocation := PreferredPopLocationModel{
+	tfLocation := pops.PreferredPopLocationModel{
 		PreferredOnly: types.BoolValue(loc.PreferredOnly),
 		Automatic:     types.BoolValue(loc.Automatic),
-		Primary:       types.ObjectNull(parse.IDNameRefModelTypes),
-		Secondary:     types.ObjectNull(parse.IDNameRefModelTypes),
+		Primary:       types.ObjectNull(idname.ModelTypes),
+		Secondary:     types.ObjectNull(idname.ModelTypes),
 	}
 	if loc.Primary != nil {
-		tfLocation.Primary = parse.IDRef(ctx, *loc.Primary, diags)
+		tfLocation.Primary = idname.ParseIDName(ctx, *loc.Primary, diags)
 	}
 	if loc.Secondary != nil {
-		tfLocation.Secondary = parse.IDRef(ctx, *loc.Secondary, diags)
+		tfLocation.Secondary = idname.ParseIDName(ctx, *loc.Secondary, diags)
 	}
 
-	locObj, objDiags := types.ObjectValueFrom(ctx, PreferredPopLocationModelTypes, tfLocation)
+	locObj, objDiags := types.ObjectValueFrom(ctx, pops.PreferredPopLocationModelTypes, tfLocation)
 	diags.Append(objDiags...)
 	if diags.HasError() {
-		return types.ObjectNull(PreferredPopLocationModelTypes)
+		return types.ObjectNull(pops.PreferredPopLocationModelTypes)
 	}
 
 	return locObj
@@ -459,7 +461,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 		Location:             r.parseLocation(ctx, con.Location, &diags),
 		Name:                 types.StringValue(con.Name),
 		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
-		PrivateAppRef:        parse.IDRefSet(ctx, con.PrivateAppRef, &diags),
+		PrivateAppRef:        idname.ParseIDNameSet(ctx, con.PrivateAppRef, &diags),
 		SerialNumber:         types.StringPointerValue(con.SerialNumber),
 		SocketID:             types.StringPointerValue(con.SocketID),
 		SocketModel:          types.StringPointerValue((*string)(con.SocketModel)),

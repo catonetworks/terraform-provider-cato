@@ -20,9 +20,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -226,7 +226,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 	input := cato_models.CreatePrivateApplicationInput{
 		AllowICMPProtocol:  plan.AllowIcmpProtocol.ValueBool(),
-		Description:        parse.KnownStringPointer(plan.Description),
+		Description:        convert.KnownStringPointer(plan.Description),
 		InternalAppAddress: plan.InternalAppAddress.ValueString(),
 		Name:               plan.Name.ValueString(),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
@@ -314,15 +314,15 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	input := cato_models.UpdatePrivateApplicationInput{
-		AllowICMPProtocol:  parse.KnownBoolPointer(plan.AllowIcmpProtocol),
-		Description:        parse.KnownStringPointer(plan.Description),
+		AllowICMPProtocol:  convert.KnownBoolPointer(plan.AllowIcmpProtocol),
+		Description:        convert.KnownStringPointer(plan.Description),
 		ID:                 id,
-		InternalAppAddress: parse.KnownStringPointer(plan.InternalAppAddress),
-		Name:               parse.KnownStringPointer(plan.Name),
+		InternalAppAddress: convert.KnownStringPointer(plan.InternalAppAddress),
+		Name:               convert.KnownStringPointer(plan.Name),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
-		ProbingEnabled:     parse.KnownBoolPointer(plan.ProbingEnabled),
+		ProbingEnabled:     convert.KnownBoolPointer(plan.ProbingEnabled),
 		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
-		Published:          parse.KnownBoolPointer(plan.Published),
+		Published:          convert.KnownBoolPointer(plan.Published),
 		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
 	}
 
@@ -553,10 +553,10 @@ func (r *privateAppResource) preparePublishedAppDomain(ctx context.Context, appD
 	}
 
 	return &cato_models.PublishedAppDomainInput{
-		ConnectorGroupName: parse.KnownStringPointer(tfAppDomain.ConnectorGroupName),
-		CreationTime:       parse.KnownStringPointer(tfAppDomain.CreationTime),
-		ID:                 parse.KnownStringPointer(tfAppDomain.ID),
-		PublishedAppDomain: parse.KnownStringPointer(tfAppDomain.PublishedAppDomain),
+		ConnectorGroupName: convert.KnownStringPointer(tfAppDomain.ConnectorGroupName),
+		CreationTime:       convert.KnownStringPointer(tfAppDomain.CreationTime),
+		ID:                 convert.KnownStringPointer(tfAppDomain.ID),
+		PublishedAppDomain: convert.KnownStringPointer(tfAppDomain.PublishedAppDomain),
 	}
 }
 
@@ -572,10 +572,10 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 
 	return &cato_models.PrivateAppProbingInput{
-		FaultThresholdDown: parse.KnownInt64Pointer(tfProbing.FaultThresholdDown),
-		ID:                 parse.KnownStringPointer(tfProbing.ID),
-		Interval:           parse.KnownInt64Pointer(tfProbing.Interval),
-		Type:               parse.KnownStringPointer(tfProbing.Type),
+		FaultThresholdDown: convert.KnownInt64Pointer(tfProbing.FaultThresholdDown),
+		ID:                 convert.KnownStringPointer(tfProbing.ID),
+		Interval:           convert.KnownInt64Pointer(tfProbing.Interval),
+		Type:               convert.KnownStringPointer(tfProbing.Type),
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:gocyclo,funlen

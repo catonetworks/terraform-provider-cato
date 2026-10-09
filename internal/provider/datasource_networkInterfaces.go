@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 const (
@@ -251,7 +251,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 					fmt.Println("iface.Id " + iface.ID)
 					fmt.Println("*iface.Name " + *iface.Name)
 					curInterfaceIndex := getInterfaceIndexByConnType(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString(), connType)
-					if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == socketInterfaceDestTypeLAN ||
+					if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == string(cato_models.SocketInterfaceDestTypeLan) ||
 						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == lan1Interface) &&
 						"INT_"+iface.ID == curInterfaceIndex {
 						fmt.Println("NetworkInterfaceIndex==LAN and curInterfaceIndex=" + curInterfaceIndex)
@@ -262,7 +262,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 							Name:        socketConf[iface.ID],
 							// Name:        *iface.Name,
 						}
-					} else if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == socketInterfaceDestTypeLAN ||
+					} else if (networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == string(cato_models.SocketInterfaceDestTypeLan) ||
 						networkInterfacesDataSource.NetworkInterfaceIndex.ValueString() == lan1Interface) &&
 						socketConf[iface.ID] != "" {
 						ifaceMap[*siteID]["INT_"+iface.ID] = InterfaceConfig{
@@ -351,7 +351,7 @@ func getInterfaceIndexByConnType(interfaceName, connType string) string {
 	curInterfaceIndex := interfaceName
 	if interfaceName == lan1Interface && connType == "SOCKET_X1500" {
 		curInterfaceIndex = "LAN 01"
-	} else if interfaceName == socketInterfaceDestTypeLAN {
+	} else if interfaceName == string(cato_models.SocketInterfaceDestTypeLan) {
 		switch connType {
 		case "SOCKET_X1600", "SOCKET_X1600_LTE":
 			curInterfaceIndex = "INT_5"

@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (

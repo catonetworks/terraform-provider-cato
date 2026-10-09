@@ -1,6 +1,6 @@
 //go:build acctest
 
-package ipsec_site
+package ipsecsite
 
 import (
 	"bytes"
@@ -111,7 +111,7 @@ type ipsecSiteCfg struct {
 
 func newIpsecSiteCfg(t *testing.T) ipsecSiteCfg {
 	return ipsecSiteCfg{
-		resName:        acc.GetRandName("ipsec_site"),
+		resName:        acc.GetRandName("ipsecsite"),
 		allocatedIPIDs: getAllocatedIPIDs(t),
 		t:              t,
 	}
@@ -142,7 +142,7 @@ func getAllocatedIPIDs(t *testing.T) []string {
 		t.Fatalf("ERROR fetching allocated IPs: %v", lastErr)
 	}
 	if len(resultIDs) == 0 {
-		t.Skip("skipping ipsec_site acceptance test: no allocated public IPs found")
+		t.Skip("skipping ipsecsite acceptance test: no allocated public IPs found")
 	}
 	return resultIDs
 }

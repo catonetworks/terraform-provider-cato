@@ -16,8 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -378,7 +378,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(
 			ID: ruleID,
 			To: &cato_models.PolicyRulePositionInput{
 				Position: ptr(cato_models.PolicyRulePositionEnumAfterRule),
-				Ref:      parse.KnownStringPointer(currentRules[newPosition-1].ID),
+				Ref:      convert.KnownStringPointer(currentRules[newPosition-1].ID),
 			},
 		}
 	}

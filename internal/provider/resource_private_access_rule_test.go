@@ -16,7 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 func TestPrivateAccessRuleDelete(t *testing.T) {
@@ -896,7 +897,7 @@ func newPrivateAccessRuleTestResource(
 	httpClient.Timeout = 5 * time.Second
 	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
 	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: newProviderSDKClient(client)}}
+	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: catoclient.NewProviderSDKClient(client)}}
 	return r
 }
 
@@ -905,7 +906,7 @@ func newPrivateAccessRuleTestState(ctx context.Context, t *testing.T, r *privAcc
 	var schemaResp resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
 	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}
+	refType := types.ObjectType{AttrTypes: idname.ModelTypes}
 	diags := state.Set(ctx, PrivateAccessRuleModel{
 		ID:                types.StringValue("rule-123"),
 		Name:              types.StringValue("test rule"),

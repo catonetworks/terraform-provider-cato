@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 type PrivateAccessRuleModel struct {
@@ -45,8 +45,8 @@ type Source struct {
 }
 
 var SourceTypes = map[string]attr.Type{
-	"users":       types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}},
-	"user_groups": types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}},
+	"users":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
+	"user_groups": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
 }
 
 type UserAttributes struct {
@@ -144,7 +144,7 @@ type PoliciRuleTrackingAlert struct {
 var PolicyRuleTrackingAlertTypes = map[string]attr.Type{
 	"enabled":            types.BoolType,
 	"frequency":          types.StringType,
-	"mailing_list":       types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}},
-	"subscription_group": types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}},
-	"webhook":            types.SetType{ElemType: types.ObjectType{AttrTypes: parse.IDNameRefModelTypes}},
+	"mailing_list":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
+	"subscription_group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
+	"webhook":            types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
 }

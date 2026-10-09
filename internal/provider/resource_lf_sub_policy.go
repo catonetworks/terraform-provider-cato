@@ -18,8 +18,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -509,8 +510,8 @@ func (r *lfSubPolicyResource) prepareSite(ctx context.Context, site types.Object
 		return nil
 	}
 	return &cato_models.SocketLanSiteInput{
-		Group: parse.PrepareIDRefSet[cato_models.GroupRefInput](ctx, tfSite.Group, diags),
-		Site:  parse.PrepareIDRefSet[cato_models.SiteRefInput](ctx, tfSite.Site, diags),
+		Group: idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, tfSite.Group, diags),
+		Site:  idname.PrepareIDNameSet[cato_models.SiteRefInput](ctx, tfSite.Site, diags),
 	}
 }
 
@@ -538,17 +539,17 @@ func (r *lfSubPolicyResource) prepareSource(ctx context.Context, src types.Objec
 		return nil
 	}
 	return &cato_models.SocketLanSourceInput{
-		FloatingSubnet:    parse.PrepareIDRefSet[cato_models.FloatingSubnetRefInput](ctx, tfSource.FloatingSubnet, diags),
-		GlobalIPRange:     parse.PrepareIDRefSet[cato_models.GlobalIPRangeRefInput](ctx, tfSource.GlobalIPRange, diags),
-		Group:             parse.PrepareIDRefSet[cato_models.GroupRefInput](ctx, tfSource.Group, diags),
-		Host:              parse.PrepareIDRefSet[cato_models.HostRefInput](ctx, tfSource.Host, diags),
-		IP:                parse.PrepareStringList[string](ctx, tfSource.IP, diags),
+		FloatingSubnet:    idname.PrepareIDNameSet[cato_models.FloatingSubnetRefInput](ctx, tfSource.FloatingSubnet, diags),
+		GlobalIPRange:     idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, tfSource.GlobalIPRange, diags),
+		Group:             idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, tfSource.Group, diags),
+		Host:              idname.PrepareIDNameSet[cato_models.HostRefInput](ctx, tfSource.Host, diags),
+		IP:                convert.PrepareStringList[string](ctx, tfSource.IP, diags),
 		IPRange:           r.prepareIPRange(ctx, tfSource.IPRange, diags),
-		NetworkInterface:  parse.PrepareIDRefSet[cato_models.NetworkInterfaceRefInput](ctx, tfSource.NetworkInterface, diags),
-		SiteNetworkSubnet: parse.PrepareIDRefSet[cato_models.SiteNetworkSubnetRefInput](ctx, tfSource.SiteNetworkSubnet, diags),
-		Subnet:            parse.PrepareStringList[string](ctx, tfSource.Subnet, diags),
-		SystemGroup:       parse.PrepareIDRefSet[cato_models.SystemGroupRefInput](ctx, tfSource.SystemGroup, diags),
-		Vlan:              parse.PrepareInt64List[scalars.Vlan](ctx, tfSource.Vlan, diags),
+		NetworkInterface:  idname.PrepareIDNameSet[cato_models.NetworkInterfaceRefInput](ctx, tfSource.NetworkInterface, diags),
+		SiteNetworkSubnet: idname.PrepareIDNameSet[cato_models.SiteNetworkSubnetRefInput](ctx, tfSource.SiteNetworkSubnet, diags),
+		Subnet:            convert.PrepareStringList[string](ctx, tfSource.Subnet, diags),
+		SystemGroup:       idname.PrepareIDNameSet[cato_models.SystemGroupRefInput](ctx, tfSource.SystemGroup, diags),
+		Vlan:              convert.PrepareInt64List[scalars.Vlan](ctx, tfSource.Vlan, diags),
 	}
 }
 
@@ -585,17 +586,17 @@ func (r *lfSubPolicyResource) prepareDestination(ctx context.Context, dest types
 		return nil
 	}
 	return &cato_models.SocketLanDestinationInput{
-		FloatingSubnet:    parse.PrepareIDRefSet[cato_models.FloatingSubnetRefInput](ctx, tfDestination.FloatingSubnet, diags),
-		GlobalIPRange:     parse.PrepareIDRefSet[cato_models.GlobalIPRangeRefInput](ctx, tfDestination.GlobalIPRange, diags),
-		Group:             parse.PrepareIDRefSet[cato_models.GroupRefInput](ctx, tfDestination.Group, diags),
-		Host:              parse.PrepareIDRefSet[cato_models.HostRefInput](ctx, tfDestination.Host, diags),
-		IP:                parse.PrepareStringList[string](ctx, tfDestination.IP, diags),
+		FloatingSubnet:    idname.PrepareIDNameSet[cato_models.FloatingSubnetRefInput](ctx, tfDestination.FloatingSubnet, diags),
+		GlobalIPRange:     idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, tfDestination.GlobalIPRange, diags),
+		Group:             idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, tfDestination.Group, diags),
+		Host:              idname.PrepareIDNameSet[cato_models.HostRefInput](ctx, tfDestination.Host, diags),
+		IP:                convert.PrepareStringList[string](ctx, tfDestination.IP, diags),
 		IPRange:           r.prepareIPRange(ctx, tfDestination.IPRange, diags),
-		NetworkInterface:  parse.PrepareIDRefSet[cato_models.NetworkInterfaceRefInput](ctx, tfDestination.NetworkInterface, diags),
-		SiteNetworkSubnet: parse.PrepareIDRefSet[cato_models.SiteNetworkSubnetRefInput](ctx, tfDestination.SiteNetworkSubnet, diags),
-		Subnet:            parse.PrepareStringList[string](ctx, tfDestination.Subnet, diags),
-		SystemGroup:       parse.PrepareIDRefSet[cato_models.SystemGroupRefInput](ctx, tfDestination.SystemGroup, diags),
-		Vlan:              parse.PrepareInt64List[scalars.Vlan](ctx, tfDestination.Vlan, diags),
+		NetworkInterface:  idname.PrepareIDNameSet[cato_models.NetworkInterfaceRefInput](ctx, tfDestination.NetworkInterface, diags),
+		SiteNetworkSubnet: idname.PrepareIDNameSet[cato_models.SiteNetworkSubnetRefInput](ctx, tfDestination.SiteNetworkSubnet, diags),
+		Subnet:            convert.PrepareStringList[string](ctx, tfDestination.Subnet, diags),
+		SystemGroup:       idname.PrepareIDNameSet[cato_models.SystemGroupRefInput](ctx, tfDestination.SystemGroup, diags),
+		Vlan:              convert.PrepareInt64List[scalars.Vlan](ctx, tfDestination.Vlan, diags),
 	}
 }
 
@@ -734,7 +735,7 @@ func (r *lfSubPolicyResource) prepareCustomService(ctx context.Context, svc type
 	out := make([]*cato_models.CustomServiceInput, 0, len(tfCustServices))
 	for _, s := range tfCustServices {
 		svcInput := cato_models.CustomServiceInput{
-			Port:      parse.PrepareStringList[scalars.Port](ctx, s.Port, diags),
+			Port:      convert.PrepareStringList[scalars.Port](ctx, s.Port, diags),
 			PortRange: r.preparePortRange(ctx, s.PortRange, diags),
 			Protocol:  cato_models.IPProtocol(s.Protocol.ValueString()),
 		}
@@ -835,17 +836,17 @@ func (r *lfSubPolicyResource) parseSource(ctx context.Context,
 	dst cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Source, diags *diag.Diagnostics,
 ) types.Object {
 	tfSocketLanSource := SocketLanSource{
-		Vlan:              parse.Int64List(ctx, dst.GetVlan(), diags),
-		IP:                parse.StringList(ctx, dst.GetIP(), diags),
-		Subnet:            parse.StringList(ctx, dst.GetSubnet(), diags),
+		Vlan:              convert.ParseInt64List(ctx, dst.GetVlan(), diags),
+		IP:                convert.ParseStringList(ctx, dst.GetIP(), diags),
+		Subnet:            convert.ParseStringList(ctx, dst.GetSubnet(), diags),
 		IPRange:           FromToList(ctx, dst.GetIPRange(), diags),
-		Host:              parse.IDRefSet(ctx, dst.GetHost(), diags),
-		Group:             parse.IDRefSet(ctx, dst.GetGroup(), diags),
-		SystemGroup:       parse.IDRefSet(ctx, dst.GetSystemGroup(), diags),
-		NetworkInterface:  parse.IDRefSet(ctx, dst.GetNetworkInterface(), diags),
-		GlobalIPRange:     parse.IDRefSet(ctx, dst.GetGlobalIPRange(), diags),
-		FloatingSubnet:    parse.IDRefSet(ctx, dst.GetFloatingSubnet(), diags),
-		SiteNetworkSubnet: parse.IDRefSet(ctx, dst.GetSiteNetworkSubnet(), diags),
+		Host:              idname.ParseIDNameSet(ctx, dst.GetHost(), diags),
+		Group:             idname.ParseIDNameSet(ctx, dst.GetGroup(), diags),
+		SystemGroup:       idname.ParseIDNameSet(ctx, dst.GetSystemGroup(), diags),
+		NetworkInterface:  idname.ParseIDNameSet(ctx, dst.GetNetworkInterface(), diags),
+		GlobalIPRange:     idname.ParseIDNameSet(ctx, dst.GetGlobalIPRange(), diags),
+		FloatingSubnet:    idname.ParseIDNameSet(ctx, dst.GetFloatingSubnet(), diags),
+		SiteNetworkSubnet: idname.ParseIDNameSet(ctx, dst.GetSiteNetworkSubnet(), diags),
 	}
 	ruleSourceObj, objDiags := types.ObjectValueFrom(ctx, SocketLanSourceAttrTypes, tfSocketLanSource)
 	diags.Append(objDiags...)
@@ -861,17 +862,17 @@ func (r *lfSubPolicyResource) parseDestination(ctx context.Context,
 	dst cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Destination, diags *diag.Diagnostics,
 ) types.Object {
 	tfSocketLanDestination := SocketLanDestination{
-		Vlan:              parse.Int64List(ctx, dst.GetVlan(), diags),
-		IP:                parse.StringList(ctx, dst.GetIP(), diags),
-		Subnet:            parse.StringList(ctx, dst.GetSubnet(), diags),
+		Vlan:              convert.ParseInt64List(ctx, dst.GetVlan(), diags),
+		IP:                convert.ParseStringList(ctx, dst.GetIP(), diags),
+		Subnet:            convert.ParseStringList(ctx, dst.GetSubnet(), diags),
 		IPRange:           FromToList(ctx, dst.GetIPRange(), diags),
-		Host:              parse.IDRefSet(ctx, dst.GetHost(), diags),
-		Group:             parse.IDRefSet(ctx, dst.GetGroup(), diags),
-		SystemGroup:       parse.IDRefSet(ctx, dst.GetSystemGroup(), diags),
-		NetworkInterface:  parse.IDRefSet(ctx, dst.GetNetworkInterface(), diags),
-		GlobalIPRange:     parse.IDRefSet(ctx, dst.GetGlobalIPRange(), diags),
-		FloatingSubnet:    parse.IDRefSet(ctx, dst.GetFloatingSubnet(), diags),
-		SiteNetworkSubnet: parse.IDRefSet(ctx, dst.GetSiteNetworkSubnet(), diags),
+		Host:              idname.ParseIDNameSet(ctx, dst.GetHost(), diags),
+		Group:             idname.ParseIDNameSet(ctx, dst.GetGroup(), diags),
+		SystemGroup:       idname.ParseIDNameSet(ctx, dst.GetSystemGroup(), diags),
+		NetworkInterface:  idname.ParseIDNameSet(ctx, dst.GetNetworkInterface(), diags),
+		GlobalIPRange:     idname.ParseIDNameSet(ctx, dst.GetGlobalIPRange(), diags),
+		FloatingSubnet:    idname.ParseIDNameSet(ctx, dst.GetFloatingSubnet(), diags),
+		SiteNetworkSubnet: idname.ParseIDNameSet(ctx, dst.GetSiteNetworkSubnet(), diags),
 	}
 	ruleDestinationObj, objDiags := types.ObjectValueFrom(ctx, SocketLanDestinationAttrTypes, tfSocketLanDestination)
 	diags.Append(objDiags...)
@@ -999,7 +1000,7 @@ func (r *lfSubPolicyResource) parseCustomService(ctx context.Context,
 
 		tfCustomService := PolicyCustomService{
 			PortRange: portRangeObj,
-			Port:      parse.StringList(ctx, svc.Port, diags),
+			Port:      convert.ParseStringList(ctx, svc.Port, diags),
 			Protocol:  types.StringValue(string(svc.Protocol)),
 		}
 		customServiceObj, objDiags := types.ObjectValueFrom(ctx, PolicyCustomServiceTypes, tfCustomService)
@@ -1021,8 +1022,8 @@ func (r *lfSubPolicyResource) parseSite(ctx context.Context,
 	site cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Site, diags *diag.Diagnostics,
 ) types.Object {
 	tfSite := PolicySite{
-		Group: parse.IDRefSet(ctx, site.GetGroup(), diags),
-		Site:  parse.IDRefSet(ctx, site.GetSite(), diags),
+		Group: idname.ParseIDNameSet(ctx, site.GetGroup(), diags),
+		Site:  idname.ParseIDNameSet(ctx, site.GetSite(), diags),
 	}
 	siteObj, objDiags := types.ObjectValueFrom(ctx, PolicySiteTypes, tfSite)
 	diags.Append(objDiags...)
