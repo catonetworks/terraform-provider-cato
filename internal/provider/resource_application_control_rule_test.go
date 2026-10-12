@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
 func TestNewApplicationControlRuleResource(t *testing.T) {
@@ -50,7 +52,7 @@ func TestApplicationControlRuleConfigureNilProviderData(t *testing.T) {
 
 func TestApplicationControlRuleConfigureSetsClient(t *testing.T) {
 	t.Parallel()
-	client := &catoClientData{AccountId: "123"}
+	client := &catoclient.Service{AccountId: "123"}
 	r := &applicationControlRuleResource{}
 	resp := &resource.ConfigureResponse{}
 	r.Configure(context.Background(), resource.ConfigureRequest{ProviderData: client}, resp)

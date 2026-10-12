@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -37,7 +38,7 @@ func NewLfSubPolicyResource() resource.Resource {
 }
 
 type lfSubPolicyResource struct {
-	client          *catoClientData
+	client          *catoclient.Service
 	subPolicyClient SocketLanSubPolicyClient
 }
 
@@ -45,7 +46,7 @@ func (r *lfSubPolicyResource) getClient() SocketLanSubPolicyClient {
 	if r.subPolicyClient != nil {
 		return r.subPolicyClient
 	}
-	return r.client.catov2
+	return r.client.Catov2
 }
 
 type configuredPositionModifier struct{}
@@ -172,8 +173,8 @@ func (r *lfSubPolicyResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
-	r.subPolicyClient = r.client.catov2
+	r.client = req.ProviderData.(*catoclient.Service)
+	r.subPolicyClient = r.client.Catov2
 }
 
 // ImportState imports a LAN Firewall sub-policy by its ID.

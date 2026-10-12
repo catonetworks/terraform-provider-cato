@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -33,7 +34,7 @@ func NewLanRulesIndexResource() resource.Resource {
 }
 
 type lanRulesIndexResource struct {
-	client       *catoClientData
+	client       *catoclient.Service
 	catov2Client LanFwRuleClient
 }
 
@@ -179,8 +180,8 @@ func (r *lanRulesIndexResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoClientData)
-	r.catov2Client = r.client.catov2
+	r.client = req.ProviderData.(*catoclient.Service)
+	r.catov2Client = r.client.Catov2
 }
 
 func (r *lanRulesIndexResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

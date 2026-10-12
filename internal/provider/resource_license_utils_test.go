@@ -255,7 +255,7 @@ func TestLicenseRead_SelectsConfiguredPooledAllocation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create cato client: %v", err)
 	}
-	r := &licenseResource{client: &catoClientData{AccountId: "3381", catov2: catoclient.NewProviderSDKClient(client)}}
+	r := &licenseResource{client: &catoclient.Service{AccountId: "3381", Catov2: catoclient.NewProviderSDKClient(client)}}
 	schemaResp := &resource.SchemaResponse{}
 	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
 	state := tfsdk.State{Schema: schemaResp.Schema}
@@ -346,9 +346,9 @@ func (f *licenseTestFixture) upsert(siteID, licenseID string, bw types.Int64) (*
 		LicenseInfo: types.ObjectNull(LicenseInfoResourceAttrTypes),
 	}
 
-	return upsertLicense(context.Background(), plan, &catoClientData{
+	return upsertLicense(context.Background(), plan, &catoclient.Service{
 		AccountId: "3381",
-		catov2:    catoclient.NewProviderSDKClient(client),
+		Catov2:    catoclient.NewProviderSDKClient(client),
 	})
 }
 

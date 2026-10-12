@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -29,7 +30,7 @@ var (
 )
 
 type privAccessRuleBulkResource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 func NewPrivAccessRuleBulkResource() resource.Resource {
@@ -45,7 +46,7 @@ func (r *privAccessRuleBulkResource) Configure(_ context.Context, req resource.C
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *privAccessRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -244,7 +245,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	}
 
 	// Call Cato API to get the policy
-	result, err := r.client.catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
+	result, err := r.client.Catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Bulk PolicyReadPrivateAccessPolicy", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -388,7 +389,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(
 
 	// Call the API to move the rule
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return err
@@ -406,7 +407,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(
 
 // publish calls the API to publish the draft policy revision
 func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
-	result, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	result, err := r.client.Catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Bulk PolicyPrivateAccessPublishRevision", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return err

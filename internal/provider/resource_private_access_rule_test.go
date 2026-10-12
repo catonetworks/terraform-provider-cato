@@ -897,7 +897,7 @@ func newPrivateAccessRuleTestResource(
 	httpClient.Timeout = 5 * time.Second
 	client, err := cato.New(server.URL, "", "account-123", httpClient, nil)
 	require.NoError(t, err)
-	r := &privAccessRuleResource{client: &catoClientData{AccountId: "account-123", catov2: catoclient.NewProviderSDKClient(client)}}
+	r := &privAccessRuleResource{client: &catoclient.Service{AccountId: "account-123", Catov2: catoclient.NewProviderSDKClient(client)}}
 	return r
 }
 

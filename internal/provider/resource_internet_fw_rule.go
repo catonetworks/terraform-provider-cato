@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -45,7 +46,7 @@ const (
 )
 
 type internetFwRuleResource struct {
-	client    *catoClientData
+	client    *catoclient.Service
 	ifwClient InternetFirewallPolicyClient
 }
 
@@ -62,7 +63,7 @@ func (r *internetFwRuleResource) getIfwClient() InternetFirewallPolicyClient {
 		return nil
 	}
 
-	return r.client.catov2
+	return r.client.Catov2
 }
 
 func (r *internetFwRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -1508,7 +1509,7 @@ func (r *internetFwRuleResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *internetFwRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

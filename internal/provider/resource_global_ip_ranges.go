@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
@@ -30,7 +31,7 @@ func NewGlobalIPRangesResource() resource.Resource {
 }
 
 type globalIPRangesResource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 type ipRangePlanDetails struct {
@@ -137,7 +138,7 @@ func (r *globalIPRangesResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *globalIPRangesResource) ImportState(ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -288,7 +289,7 @@ func (r *globalIPRangesResource) Delete(ctx context.Context, req resource.Delete
 
 // hydrate is used in Read and Import to get the current state of global IP ranges from the API and convert it to the TF model
 func (r *globalIPRangesResource) hydrate(ctx context.Context, diags *diag.Diagnostics) *tf.GlobalIPRangesModel {
-	result, err := r.client.catov2.ObjectGlobalIPRangeList(ctx, r.client.AccountId, nil)
+	result, err := r.client.Catov2.ObjectGlobalIPRangeList(ctx, r.client.AccountId, nil)
 	if err != nil {
 		diags.AddError("Error fetching global IP ranges", err.Error())
 		return nil
@@ -453,7 +454,7 @@ func (r *globalIPRangesResource) deleteRanges(ctx context.Context, toDelete []tf
 func (r *globalIPRangesResource) callCreateRangesAPI(ctx context.Context, input []*cato_models.CreateGlobalIPRangeInput,
 	diags *diag.Diagnostics,
 ) (createdRanges []tf.GlobalIPRange) {
-	result, err := r.client.catov2.ObjectCreateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.ObjectCreateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
 	if err != nil {
 		diags.AddError("Error creating global IP ranges", err.Error())
 		return nil
@@ -477,7 +478,7 @@ func (r *globalIPRangesResource) callCreateRangesAPI(ctx context.Context, input 
 func (r *globalIPRangesResource) callUpdateRangesAPI(ctx context.Context, input []*cato_models.UpdateGlobalIPRangeInput,
 	diags *diag.Diagnostics,
 ) (updatedRanges []tf.GlobalIPRange) {
-	result, err := r.client.catov2.ObjectUpdateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.ObjectUpdateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
 	if err != nil {
 		diags.AddError("Error updating global IP ranges", err.Error())
 		return nil
@@ -501,7 +502,7 @@ func (r *globalIPRangesResource) callUpdateRangesAPI(ctx context.Context, input 
 func (r *globalIPRangesResource) callDeleteRangesAPI(ctx context.Context, input []*cato_models.GlobalIPRangeRefInput,
 	diags *diag.Diagnostics,
 ) {
-	_, err := r.client.catov2.ObjectDeleteGlobalIPRangeBulk(ctx, r.client.AccountId, input)
+	_, err := r.client.Catov2.ObjectDeleteGlobalIPRangeBulk(ctx, r.client.AccountId, input)
 	if err != nil {
 		diags.AddError("Error deleting global IP ranges", err.Error())
 		return

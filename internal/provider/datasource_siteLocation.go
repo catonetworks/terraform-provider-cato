@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
 //go:embed type_site_location_data.json
@@ -123,7 +125,7 @@ func (v sldFilterValidator) ValidateList(
 }
 
 type siteLocationDataSource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 func SiteLocationDataSource() datasource.DataSource {
@@ -219,7 +221,7 @@ func (d *siteLocationDataSource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (d *siteLocationDataSource) Read(

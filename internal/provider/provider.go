@@ -65,18 +65,6 @@ type catoProviderModel struct {
 	VersionCheckTimeoutSeconds types.Int64  `tfsdk:"version_check_timeout_seconds"`
 }
 
-// added by JF to support use of two different clients (long story....)
-type catoClientData struct {
-	BaseURL              string
-	Token                string
-	AccountId            string //nolint:revive // Shared client field used across provider resources.
-	catov2               *catoclient.ProviderSDKClient
-	accountSnapshotCache *catoclient.AccountSnapshotCache
-}
-
-func (p *catoClientData) V2() *cato.Client  { return p.catov2.Client }
-func (p *catoClientData) AccountID() string { return p.AccountId }
-
 func (p *catoProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "cato"
 	resp.Version = p.version
@@ -380,12 +368,12 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	dataSourceData := &catoClientData{
+	dataSourceData := &catoclient.Service{
 		BaseURL:              baseurl,
 		Token:                token,
 		AccountId:            accountID,
-		catov2:               catoclient.NewProviderSDKClient(catoClient),
-		accountSnapshotCache: catoclient.NewAccountSnapshotCache(),
+		Catov2:               catoclient.NewProviderSDKClient(catoClient),
+		AccountSnapshotCache: catoclient.NewAccountSnapshotCache(),
 	}
 
 	resp.DataSourceData = dataSourceData
@@ -452,12 +440,12 @@ func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
 	return retryClient.StandardClient()
 }
 
-func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoClientData) {
+func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoclient.Service) {
 	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") == "true" || p.hasBeenInitialized.Load() {
 		return
 	}
 	p.hasBeenInitialized.Store(true)
-	resp, err := d.catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
+	resp, err := d.Catov2.PolicyPrivateAccessDiscardRevision(ctx, d.AccountId)
 	if err != nil {
 		tflog.Error(ctx, "failed to discard draft private-access policy", map[string]any{"err": err})
 		return

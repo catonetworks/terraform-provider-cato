@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -42,7 +43,7 @@ func NewPrivAccessRuleResource() resource.Resource {
 }
 
 type privAccessRuleResource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 type (
@@ -353,7 +354,7 @@ func (r *privAccessRuleResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *privAccessRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -398,7 +399,7 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 
 	// Call Cato API to create a new rule
 	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessAddRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessAddRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := fmt.Sprintf("failed to add private access rule '%s'", ruleName)
 	if err != nil {
@@ -508,7 +509,7 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessUpdateRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessUpdateRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := fmt.Sprintf("failed to update private access rule '%s'", plan.Name.ValueString())
 	if err != nil {
@@ -557,7 +558,7 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 
 	// Call Cato API to delete the private access rule.
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := fmt.Sprintf("Catov2 API PolicyPrivateAccessDeleteRule failed for '%s'", state.Name.ValueString())
 	if err != nil {
@@ -593,7 +594,7 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 	// Publish the draft revision so the deletion takes effect and the rule no longer
 	// appears in the active policy.
 	// Mirrors resource_wan_fw_rule.go Delete() and the bulk publish() helper.
-	pubResult, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	pubResult, err := r.client.Catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Delete/PolicyPrivateAccessPublishRevision",
 		map[string]interface{}{"response": utils.InterfaceToJSONString(pubResult)})
 	errMsg = fmt.Sprintf("Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for '%s'", state.Name.ValueString())
@@ -1190,7 +1191,7 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 	var diags diag.Diagnostics
 
 	// Call Cato API to get the policy
-	result, err := r.client.catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
+	result, err := r.client.Catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "PolicyReadPrivateAccessPolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, nil, err

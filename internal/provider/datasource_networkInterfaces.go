@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -87,7 +88,7 @@ func NetworkInterfacesDataSource() datasource.DataSource {
 }
 
 type networkInterfacesDataSource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 func (d *networkInterfacesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -156,7 +157,7 @@ func (d *networkInterfacesDataSource) Configure(_ context.Context, req datasourc
 		return
 	}
 
-	d.client = req.ProviderData.(*catoClientData)
+	d.client = req.ProviderData.(*catoclient.Service)
 }
 
 //nolint:gocyclo,funlen
@@ -205,7 +206,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 
 	tflog.Warn(ctx, "ifaceMap '"+fmt.Sprintf("%v", ifaceMap)+"'")
 	zeroInt64 := int64(0)
-	entityLookupResponse, err := d.client.catov2.EntityLookup(
+	entityLookupResponse, err := d.client.Catov2.EntityLookup(
 		ctx, d.client.AccountId, cato_models.EntityTypeNetworkInterface, &zeroInt64, nil, nil, nil, nil, nil, nil, nil,
 	)
 	tflog.Debug(ctx, "Read.EntityLookup.response", map[string]interface{}{
@@ -216,7 +217,7 @@ func (d *networkInterfacesDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
-	accountSnapshotSite, err := d.client.catov2.AccountSnapshot(ctx, []string{}, nil, &d.client.AccountId)
+	accountSnapshotSite, err := d.client.Catov2.AccountSnapshot(ctx, []string{}, nil, &d.client.AccountId)
 	tflog.Debug(ctx, "Read.AccountSnapshot.response", map[string]interface{}{
 		"response":       utils.InterfaceToJSONString(accountSnapshotSite),
 		"interfaceIndex": utils.InterfaceToJSONString(networkInterfacesDataSource.NetworkInterfaceIndex.ValueString()),

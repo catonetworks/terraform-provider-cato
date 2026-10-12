@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
@@ -38,7 +39,7 @@ func NewPrivateAppResource() resource.Resource {
 }
 
 type privateAppResource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 type (
@@ -207,7 +208,7 @@ func (r *privateAppResource) Configure(_ context.Context, req resource.Configure
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *privateAppResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -238,7 +239,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 	// Call Cato API to create a new private app
 	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppCreatePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppCreatePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PrivateAppCreatePrivateApp error", err.Error())
@@ -327,7 +328,7 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppUpdatePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppUpdatePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -367,7 +368,7 @@ func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// Call Cato API to delete a connector
 	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppDeletePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppDeletePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -388,7 +389,7 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 
 	// Call Cato API to get a private-app
 	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, diags, err

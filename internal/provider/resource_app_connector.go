@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/pops"
@@ -42,7 +43,7 @@ func NewAppConnectorResource() resource.Resource {
 }
 
 type appConnectorResource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 func (r *appConnectorResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -162,7 +163,7 @@ func (r *appConnectorResource) Configure(_ context.Context, req resource.Configu
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *appConnectorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -190,7 +191,7 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Call Cato API to create a new connector
 	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.AppConnectorCreateConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorCreateConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppConnectorCreateConnector error", err.Error())
@@ -274,7 +275,7 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.AppConnectorUpdateConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorUpdateConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorUpdateConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -316,7 +317,7 @@ func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRe
 	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	result, err := r.client.catov2.AppConnectorDeleteConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorDeleteConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorDeleteConnector", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -442,7 +443,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 
 	// Call Cato API to get a connector
 	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.AppConnectorReadConnector(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.AppConnectorReadConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorReadConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, diags, err
