@@ -31,6 +31,10 @@ resource "cato_app_connector" "example" {
     secondary      = { name = "Chicago" }
   }
   type = "VIRTUAL"
+
+  # pooled_bandwidth_allocation = [
+  #   { license_id = "1234", bandwidth = 30 },
+  # ]
 }
 ```
 

@@ -503,6 +503,15 @@ func getFromEntityLookup(t *testing.T, lookupName string) []Ref {
 	return refs
 }
 
+func GetBWLicenses(t *testing.T) (licenses []string) {
+	if id := os.Getenv("ACC_TEST_BW_LICENSE"); id != "" {
+		return strings.Split(id, ",")
+	}
+
+	t.Fatalf("Failed to find a valid BW license")
+	return nil
+}
+
 func GetUsers(t *testing.T) []Ref              { return getFromEntityLookup(t, resUsers) }
 func GetDhcpRelayGroups(t *testing.T) []Ref    { return getFromEntityLookup(t, resDhcpRelayGroup) }
 func GetLocations(t *testing.T) []Ref          { return getFromEntityLookup(t, resLocation) }

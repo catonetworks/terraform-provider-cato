@@ -3,6 +3,8 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 type AppConnectorModel struct {
@@ -57,6 +59,8 @@ var BandwidthAllocationTypes = map[string]attr.Type{
 	"license_id":    types.StringType,
 }
 
+var BandwidthAllocationObjectType = types.ObjectType{AttrTypes: BandwidthAllocationTypes}
+
 type PreferredPopLocationModel struct {
 	PreferredOnly types.Bool   `tfsdk:"preferred_only"`
 	Automatic     types.Bool   `tfsdk:"automatic"`
@@ -67,6 +71,6 @@ type PreferredPopLocationModel struct {
 var PreferredPopLocationModelTypes = map[string]attr.Type{
 	"preferred_only": types.BoolType,
 	"automatic":      types.BoolType,
-	"primary":        types.ObjectType{AttrTypes: parse.IDNameRefModelTypes},
-	"secondary":      types.ObjectType{AttrTypes: parse.IDNameRefModelTypes},
+	"primary":        types.ObjectType{AttrTypes: idname.ModelTypes},
+	"secondary":      types.ObjectType{AttrTypes: idname.ModelTypes},
 }

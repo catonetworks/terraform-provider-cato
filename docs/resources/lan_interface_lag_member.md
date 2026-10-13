@@ -3,12 +3,12 @@
 page_title: "cato_lan_interface_lag_member Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The catolan_interface_lab_member resource contains the configuration parameters necessary to add a LAN interface member to a socket LAG interface.
+  The cato_lan_interface_lab_member resource contains the configuration parameters necessary to add a LAN interface member to a socket LAG interface.
 ---
 
 # cato_lan_interface_lag_member (Resource)
 
-The `catolan_interface_lab_member` resource contains the configuration parameters necessary to add a LAN interface member to a socket LAG interface.
+The `cato_lan_interface_lab_member` resource contains the configuration parameters necessary to add a LAN interface member to a socket LAG interface.
 
 ## Example Usage
 

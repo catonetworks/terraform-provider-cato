@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
@@ -74,8 +75,10 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"pooled_bandwidth_allocation": schema.SetNestedAttribute{
-				Description: "App connector pooled bandwidth license allocations",
-				Optional:    true,
+				Description:   "App connector pooled bandwidth license allocations",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(BandwidthAllocationObjectType)},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"bandwidth": schema.Int64Attribute{
@@ -203,13 +206,13 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	input := cato_models.AddZtnaAppConnectorInput{
-		Description:          convert.KnownStringPointer(plan.Description),
-		GroupName:            plan.GroupName.ValueString(),
-		Location:             r.prepareLocation(ctx, plan.Location, &diags),
-		Name:                 plan.Name.ValueString(),
+		Description:               convert.KnownStringPointer(plan.Description),
+		GroupName:                 plan.GroupName.ValueString(),
+		Location:                  r.prepareLocation(ctx, plan.Location, &diags),
+		Name:                      plan.Name.ValueString(),
 		PooledBandwidthAllocation: r.prepareBwAllocation(ctx, plan.PooledBandwidthAllocation, &diags),
-		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
-		Type:                 cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
+		PreferredPopLocation:      r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
+		Type:                      cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
 	}
 
 	// Call Cato API to create a new connector
@@ -369,16 +372,6 @@ func (r *appConnectorResource) UpdateBwLicenses(ctx context.Context, stateLcs, p
 		}
 	}
 
-	// Call API to remove licenses
-	for _, k := range toRemove {
-		input := cato_models.RemoveZtnaAppConnectorBwLicenseInput{AllocationID: stateMap[k]}
-		_, err := r.client.catov2.ZtnaAppConnectorRemoveZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
-		if err != nil {
-			diags.AddError("failed to remove AppConnector Pooled bandwidth license "+stateMap[k], err.Error())
-			return
-		}
-	}
-
 	// Call API to add licenses
 	for _, k := range toAdd {
 		input := cato_models.AddZtnaAppConnectorBwLicenseInput{
@@ -389,10 +382,20 @@ func (r *appConnectorResource) UpdateBwLicenses(ctx context.Context, stateLcs, p
 				Input: appConID,
 			},
 		}
-		_, err := r.client.catov2.ZtnaAppConnectorAddZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		_, err := r.client.Catov2.ZtnaAppConnectorAddZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
 		if err != nil {
 			diags.AddError(fmt.Sprintf("%s [bw=%d, license='%s']",
 				"failed to add AppConnector Pooled bandwidth license ", k.bw, k.lic), err.Error())
+			return
+		}
+	}
+
+	// Call API to remove licenses
+	for _, k := range toRemove {
+		input := cato_models.RemoveZtnaAppConnectorBwLicenseInput{AllocationID: stateMap[k]}
+		_, err := r.client.Catov2.ZtnaAppConnectorRemoveZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		if err != nil {
+			diags.AddError("failed to remove AppConnector Pooled bandwidth license "+stateMap[k], err.Error())
 			return
 		}
 	}
@@ -612,18 +615,18 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 	}
 
 	state := &AppConnectorModel{
-		Description:          types.StringPointerValue(con.Description),
-		GroupName:            types.StringValue(con.GroupName),
-		ID:                   types.StringValue(con.ID),
-		Location:             r.parseLocation(ctx, con.Location, &diags),
-		Name:                 types.StringValue(con.Name),
+		Description:               types.StringPointerValue(con.Description),
+		GroupName:                 types.StringValue(con.GroupName),
+		ID:                        types.StringValue(con.ID),
+		Location:                  r.parseLocation(ctx, con.Location, &diags),
+		Name:                      types.StringValue(con.Name),
 		PooledBandwidthAllocation: r.parseBwAllocations(ctx, con.PooledBandwidthAllocation, &diags),
-		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
-		PrivateAppRef:        idname.ParseIDNameSet(ctx, con.PrivateAppRef, &diags),
-		SerialNumber:         types.StringPointerValue(con.SerialNumber),
-		SocketID:             types.StringPointerValue(con.SocketID),
-		SocketModel:          types.StringPointerValue((*string)(con.SocketModel)),
-		Type:                 types.StringValue(con.Type.String()),
+		PreferredPopLocation:      r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
+		PrivateAppRef:             idname.ParseIDNameSet(ctx, con.PrivateAppRef, &diags),
+		SerialNumber:              types.StringPointerValue(con.SerialNumber),
+		SocketID:                  types.StringPointerValue(con.SocketID),
+		SocketModel:               types.StringPointerValue((*string)(con.SocketModel)),
+		Type:                      types.StringValue(con.Type.String()),
 	}
 
 	if diags.HasError() {
