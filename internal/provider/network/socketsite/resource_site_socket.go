@@ -4,25 +4,15 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
 	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/catonetworks/cato-go-sdk/scalars"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -31,7 +21,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/pops"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketinterface"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -99,234 +88,6 @@ func (r *socketSiteResource) getSocketSiteClient() Client {
 
 func (r *socketSiteResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_socket_site"
-}
-
-func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Description: "The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site " +
-			"to the Cato cloud ([virtual socket in AWS/Azure, or physical socket]" +
-			"(https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). " +
-			"Documentation for the underlying API used in this resource can be found at " +
-			"[mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite). \n\n" +
-			"**Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product]" +
-			"(https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description:   "Site ID",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"name": schema.StringAttribute{
-				Description: "Site name",
-				Required:    true,
-			},
-			"connection_type": schema.StringAttribute{
-				Description:   "Connection type for the site (SOCKET_X1500, SOCKET_AWS1500, SOCKET_AZ1500, ...)",
-				Required:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-				Validators:    []validator.String{SiteConnectionTypeValidator{}},
-			},
-			"site_type": schema.StringAttribute{
-				Description: "Site type (https://api.catonetworks.com/documentation/#definition-SiteType)",
-				Required:    true,
-			},
-			"description": schema.StringAttribute{
-				Description: "Site description",
-				Optional:    true,
-			},
-			"is_cloud_router": schema.BoolAttribute{
-				Description: "Enables Cloud Router mode for supported GCP vSocket HA sites. This value is write-only in " +
-					"the Cato API and cannot be read back during refresh or import. Changing it requires replacing the site.",
-				Optional:      true,
-				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
-				Validators:    []validator.Bool{GetCloudRouterValidator()},
-			},
-			"native_range":  r.schemaNativeRange(),
-			"site_location": r.schemaSiteLocation(),
-			"sockets":       r.schemaSockets(),
-		},
-	}
-}
-
-func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { //nolint:funlen
-	return schema.SingleNestedAttribute{
-		Description: "Site lan native range settings",
-		Required:    true,
-		Validators:  []validator.Object{GetNativeRangeValidator()},
-		Attributes: map[string]schema.Attribute{
-			"interface_index": schema.StringAttribute{
-				Description: "LAN native range interface index, default is LAN1 for SOCKET_X1500 models, " +
-					"INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models",
-				Optional:      true,
-				Computed:      true,
-				Validators:    []validator.String{socketinterface.IndexValidator{}},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"interface_id": schema.StringAttribute{
-				Description:   "LAN native range interface id",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"native_network_range": schema.StringAttribute{
-				Description: "Site native IP range (CIDR)",
-				Required:    true,
-			},
-			"native_network_lan_interface_id": schema.StringAttribute{
-				Description:   "ID of native range LAN interface (for additional network range update purposes)",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"native_network_range_id": schema.StringAttribute{
-				Description:   "Site native IP range ID (for update purpose)",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"interface_name": schema.StringAttribute{
-				Description:   "LAN native range interface name (e.g., 'LAN 01')",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"range_name": schema.StringAttribute{
-				Description:   "Native range name (typically 'Native Range')",
-				Computed:      true,
-				Optional:      false,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"range_id": schema.StringAttribute{
-				Description:   "Native range ID (base64 encoded identifier)",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"gateway": schema.StringAttribute{
-				Description:   "Gateway IP address for the native range",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"vlan": schema.Int64Attribute{
-				Description: "VLAN ID for the site native range (optional)",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.AtLeast(1),
-				},
-			},
-			"mdns_reflector": schema.BoolAttribute{
-				Description: "Site native range mDNS reflector. When enabled, the Socket functions as an mDNS gateway, " +
-					"it relays mDNS requests and response between all enabled subnets.",
-				Optional:      true,
-				Computed:      true,
-				Default:       booldefault.StaticBool(false),
-				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-			},
-			"local_ip": schema.StringAttribute{
-				Description: "Site native range local ip",
-				Required:    true,
-			},
-			"primary_management_ip": schema.StringAttribute{
-				Description:   "Site native range primary management IP",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"secondary_management_ip": schema.StringAttribute{
-				Description:   "Site native range secondary management IP",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"range_type": schema.StringAttribute{
-				Description:   "NATIVE",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"translated_subnet": schema.StringAttribute{
-				Description:   "Site translated native IP range (CIDR)",
-				Computed:      true,
-				Optional:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"lag_min_links": schema.Int64Attribute{
-				Description: "Number of interfaces to include in the link aggregation, " +
-					"only relevant for LAN_LAG_MASTER and LAN_LAG_MASTER_AND_VRRP interface destination types",
-				Optional:   true,
-				Validators: []validator.Int64{int64validator.AtLeast(1)},
-			},
-			"interface_dest_type": schema.StringAttribute{
-				Description: "Socket interface destination type for the native interface, " +
-					"example values: LAN, LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP, LAN_AND_HA, VRRP, VRRP_AND_LAN",
-				Optional:      true,
-				Computed:      true,
-				Validators:    []validator.String{SocketInterfaceDestTypeValidator{}},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"dhcp_settings": dhcp.SchemaDhcpSettings(false),
-		},
-	}
-}
-
-func (r *socketSiteResource) schemaSiteLocation() schema.SingleNestedAttribute {
-	return schema.SingleNestedAttribute{
-		Description: "Site location",
-		Required:    true,
-		Attributes: map[string]schema.Attribute{
-			"country_code": schema.StringAttribute{
-				Description: "Site country code (can be retrieve from entityLookup)",
-				Required:    true,
-			},
-			"state_code": schema.StringAttribute{
-				Description: "Optional site state code(can be retrieve from entityLookup)",
-				Optional:    true,
-			},
-			"timezone": schema.StringAttribute{
-				Description: "Site timezone (can be retrieve from entityLookup)",
-				Required:    true,
-			},
-			"city": schema.StringAttribute{
-				Description:   "Optional city",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"address": schema.StringAttribute{
-				Description:   "Optional address",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-		},
-	}
-}
-
-func (r *socketSiteResource) schemaSockets() schema.SetNestedAttribute {
-	return schema.SetNestedAttribute{
-		Description:   "Socket information",
-		Computed:      true,
-		PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
-		NestedObject: schema.NestedAttributeObject{
-			Attributes: map[string]schema.Attribute{
-				"id": schema.StringAttribute{
-					Description:   "Socket ID",
-					Computed:      true,
-					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-				},
-				"serial_number": schema.StringAttribute{
-					Description:   "Socket serial number",
-					Computed:      true,
-					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-				},
-				"is_primary": schema.BoolAttribute{
-					Description:   "Indicates if the socket is primary",
-					Computed:      true,
-					PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-				},
-				"platform": schema.StringAttribute{
-					Description:   "Socket platform",
-					Computed:      true,
-					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-				},
-			},
-		},
-	}
 }
 
 func (r *socketSiteResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
@@ -994,161 +755,10 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *SocketSi
 	return netRangeObj
 }
 
-// prepareSiteLocation constructs the API input (location part) for SiteAddSocketSite() from the Terraform plan data.
-func (r *socketSiteResource) prepareSiteLocation(ctx context.Context, location types.Object, diags *diag.Diagnostics,
-) *cato_models.AddSiteLocationInput {
-	if !utils.HasValue(location) {
-		return nil
-	}
-
-	var tfLocation tf.SiteLocation
-	if utils.CheckErr(diags, location.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})) {
-		return nil
-	}
-
-	return &cato_models.AddSiteLocationInput{
-		Address:     convert.KnownStringPointer(tfLocation.Address),
-		City:        convert.KnownStringPointer(tfLocation.City),
-		CountryCode: tfLocation.CountryCode.ValueString(),
-		StateCode:   convert.KnownStringPointer(tfLocation.StateCode),
-		Timezone:    tfLocation.Timezone.ValueString(),
-	}
-}
-
-// prepareSocketSiteInput constructs the API input for SiteAddSocketSite() from the Terraform plan data.
-// It may add error(s) to the diagnostics if the input data is invalid.
-func (r *socketSiteResource) prepareSocketSiteInput(ctx context.Context, plan *SocketSite, diags *diag.Diagnostics,
-) *cato_models.AddSocketSiteInput {
-	var tfNativeRange NativeRange
-	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
-		return nil
-	}
-
-	input := &cato_models.AddSocketSiteInput{
-		ConnectionType:     cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString()),
-		Description:        convert.KnownStringPointer(plan.Description),
-		Name:               plan.Name.ValueString(),
-		NativeNetworkRange: tfNativeRange.NativeNetworkRange.ValueString(),
-		SiteLocation:       r.prepareSiteLocation(ctx, plan.SiteLocation, diags),
-		SiteType:           cato_models.SiteType(plan.SiteType.ValueString()),
-		TranslatedSubnet:   convert.StringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
-		Vlan:               (*scalars.Vlan)(convert.KnownInt64Pointer(tfNativeRange.Vlan)),
-	}
-	return input
-}
-
-// prepareNetworkRangeInput constructs the API input for SiteUpdateNetworkRange() from the Terraform plan data.
-// It may add error(s) to the diagnostics if the input data is invalid.
-func (r *socketSiteResource) prepareNetworkRangeInput(ctx context.Context, cfg, plan *SocketSite, isHA bool, diags *diag.Diagnostics,
-) *cato_models.UpdateNetworkRangeInput {
-	var (
-		cfgNativeRange  NativeRange
-		planNativeRange NativeRange
-	)
-	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &planNativeRange, basetypes.ObjectAsOptions{})) {
-		return nil
-	}
-	configTranslatedSubnet := types.StringNull()
-	if cfg != nil && utils.HasValue(cfg.NativeRange) {
-		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
-			return nil
-		}
-		configTranslatedSubnet = cfgNativeRange.TranslatedSubnet
-	}
-	input := &cato_models.UpdateNetworkRangeInput{
-		Subnet:           convert.KnownStringPointer(planNativeRange.NativeNetworkRange),
-		TranslatedSubnet: convert.TranslatedSubnetForAPIInput(configTranslatedSubnet, planNativeRange.TranslatedSubnet),
-		MdnsReflector:    convert.KnownBoolPointer(planNativeRange.MdnsReflector),
-		Vlan:             convert.KnownInt64Pointer(planNativeRange.Vlan),
-		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, r.client, cato_models.SubnetTypeNative, planNativeRange.DhcpSettings, diags),
-		//    AzureFloatingIP *string `json:"azureFloatingIp,omitempty"` TODO: implement when AZURE HA support is added
-	}
-
-	if !isHA { // for HA scenario, local IP is not allowed to be modified
-		input.LocalIP = convert.KnownStringPointer(planNativeRange.LocalIP)
-	}
-
-	return input
-}
-
-// prepareSocketInterfaceInput prepares inputs for SiteUpdateSocketInterface API,
-// on error updates diags
-func (r *socketSiteResource) prepareSocketInterfaceInput(ctx context.Context, cfg, plan *SocketSite, isHA bool, diags *diag.Diagnostics,
-) (*cato_models.UpdateSocketInterfaceInput, cato_models.SocketInterfaceIDEnum) {
-	var (
-		cfgNativeRange    NativeRange
-		planNativeRange   NativeRange
-		lagLinksDestTypes = []cato_models.SocketInterfaceDestType{ // set lag input for these dest types
-			cato_models.SocketInterfaceDestTypeLanLagMaster,
-			cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp,
-		}
-		lanDestTypes = []cato_models.SocketInterfaceDestType{ // set lan input for these dest types
-			cato_models.SocketInterfaceDestTypeLan,
-			cato_models.SocketInterfaceDestTypeLanAndHa,
-			cato_models.SocketInterfaceDestTypeVrrpAndLan,
-			cato_models.SocketInterfaceDestTypeLanLagMaster,
-			cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp,
-		}
-	)
-
-	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &planNativeRange, basetypes.ObjectAsOptions{})) {
-		return nil, ""
-	}
-	configTranslatedSubnet := types.StringNull()
-	if cfg != nil && utils.HasValue(cfg.NativeRange) {
-		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
-			return nil, ""
-		}
-		configTranslatedSubnet = cfgNativeRange.TranslatedSubnet
-	}
-
-	interfaceDestType := cato_models.SocketInterfaceDestType(planNativeRange.InterfaceDestType.ValueString())
-
-	if interfaceDestType == "" {
-		interfaceDestType = cato_models.SocketInterfaceDestTypeLan // default to LAN if not specified
-	}
-
-	// Determine interface ifaceName with the following precedence: InterfaceName > InterfaceIndex > default based on connection type
-	ifaceName := convert.KnownStringPointer(planNativeRange.InterfaceName)
-	if ifaceName == nil {
-		ifaceName = convert.KnownStringPointer(planNativeRange.InterfaceIndex)
-	}
-	if ifaceName == nil {
-		ifaceName = new(string(InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]))
-	}
-
-	input := &cato_models.UpdateSocketInterfaceInput{
-		DestType: interfaceDestType,
-		Name:     ifaceName,
-	}
-
-	// MinLinks for LAG
-	if utils.HasValue(planNativeRange.LagMinLinks) && slices.Contains(lagLinksDestTypes, interfaceDestType) {
-		input.Lag = &cato_models.SocketInterfaceLagInput{MinLinks: planNativeRange.LagMinLinks.ValueInt64()}
-	}
-
-	// LAN input
-	if slices.Contains(lanDestTypes, interfaceDestType) && !isHA {
-		input.Lan = &cato_models.SocketInterfaceLanInput{
-			LocalIP:          planNativeRange.LocalIP.ValueString(),
-			Subnet:           planNativeRange.NativeNetworkRange.ValueString(),
-			TranslatedSubnet: convert.TranslatedSubnetForAPIInput(configTranslatedSubnet, planNativeRange.TranslatedSubnet),
-		}
-	}
-
-	// get interface index if configured, otherwise use a default based on connection type
-	interfaceIndex := cato_models.SocketInterfaceIDEnum(planNativeRange.InterfaceIndex.ValueString())
-	if interfaceIndex == "" {
-		interfaceIndex = InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]
-	}
-
-	return input, interfaceIndex
-}
-
 // createBasicSocketSite creates a socket site and returns the new site ID.
 // It does NOT update native range or interface details.
 func (r *socketSiteResource) createBasicSocketSite(ctx context.Context, plan *SocketSite, diags *diag.Diagnostics) (siteID string) {
-	socketSiteInput := r.prepareSocketSiteInput(ctx, plan, diags)
+	socketSiteInput := prepareSocketSiteInput(ctx, plan, diags)
 	if diags.HasError() {
 		return ""
 	}
@@ -1184,9 +794,7 @@ func (r *socketSiteResource) updateCloudRouter(ctx context.Context, plan *Socket
 		return
 	}
 
-	input := cato_models.UpdateHaInput{
-		IsCloudRouter: plan.IsCloudRouter.ValueBoolPointer(),
-	}
+	input := prepareUpdateHaInput(plan)
 	_, err := r.getSocketSiteClient().SiteUpdateHa(ctx, r.client.AccountId, siteID, input)
 	if err != nil {
 		diags.AddError("Catov2 API SiteUpdateHa error", err.Error())
@@ -1212,24 +820,9 @@ func (r *socketSiteResource) configureCloudRouterAfterCreate(ctx context.Context
 // updateBasicSocketSite updates a socket site
 // It does NOT update native range or interface details.
 func (r *socketSiteResource) updateBasicSocketSite(ctx context.Context, plan *SocketSite, diags *diag.Diagnostics) {
-	input := cato_models.UpdateSiteGeneralDetailsInput{
-		Description: convert.KnownStringPointer(plan.Description),
-		Name:        plan.Name.ValueStringPointer(),
-		SiteType:    (*cato_models.SiteType)(plan.SiteType.ValueStringPointer()),
-	}
-	if utils.HasValue(plan.SiteLocation) {
-		var tfLocation tf.SiteLocation
-		if utils.CheckErr(diags, plan.SiteLocation.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})) {
-			return
-		}
-		siteLocationInput := &cato_models.UpdateSiteLocationInput{
-			Address:     convert.KnownStringPointer(tfLocation.Address),
-			CityName:    convert.KnownStringPointer(tfLocation.City),
-			CountryCode: tfLocation.CountryCode.ValueStringPointer(),
-			StateCode:   convert.KnownStringPointer(tfLocation.StateCode),
-			Timezone:    tfLocation.Timezone.ValueStringPointer(),
-		}
-		input.SiteLocation = siteLocationInput
+	input := prepareUpdateSocketSiteGeneralDetailsInput(ctx, plan, diags)
+	if diags.HasError() {
+		return
 	}
 
 	_, err := r.client.Catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), input, r.client.AccountId)
@@ -1359,7 +952,7 @@ func (r *socketSiteResource) assignInterfaceIndex(ctx context.Context, currentIn
 func (r *socketSiteResource) updateNetworkRange(ctx context.Context, cfg, plan *SocketSite, networkRangeID string,
 	isHA bool, diags *diag.Diagnostics,
 ) {
-	networkRangeInput := r.prepareNetworkRangeInput(ctx, cfg, plan, isHA, diags)
+	networkRangeInput := prepareNetworkRangeInput(ctx, r.client, cfg, plan, isHA, diags)
 	if diags.HasError() {
 		return
 	}
@@ -1379,7 +972,7 @@ func (r *socketSiteResource) updateSocketInterface(ctx context.Context, cfg, pla
 		return // update does not work on GCP HA
 	}
 
-	socketIfaceInput, interfaceID := r.prepareSocketInterfaceInput(ctx, cfg, plan, isHA, diags)
+	socketIfaceInput, interfaceID := prepareSocketInterfaceInput(ctx, cfg, plan, isHA, diags)
 	if diags.HasError() {
 		return
 	}

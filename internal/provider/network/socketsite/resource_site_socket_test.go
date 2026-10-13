@@ -571,22 +571,22 @@ func TestSocketSitePrepareInputsTranslatedSubnet(t *testing.T) {
 			ctx := context.Background()
 			plan := newSocketSitePlanWithTranslatedSubnet(ctx, t, tt.translatedSubnet)
 			cfg := plan
-			r := &socketSiteResource{client: &catoclient.Service{}}
+			client := &catoclient.Service{}
 			var diags diag.Diagnostics
 
-			addInput := r.prepareSocketSiteInput(ctx, plan, &diags)
+			addInput := prepareSocketSiteInput(ctx, plan, &diags)
 			if diags.HasError() {
 				t.Fatalf("prepareSocketSiteInput: %v", diags)
 			}
 			assertTranslatedSubnetPointer(t, addInput.TranslatedSubnet, tt.wantNil, tt.wantValue)
 
-			networkRangeInput := r.prepareNetworkRangeInput(ctx, cfg, plan, false, &diags)
+			networkRangeInput := prepareNetworkRangeInput(ctx, client, cfg, plan, false, &diags)
 			if diags.HasError() {
 				t.Fatalf("prepareNetworkRangeInput: %v", diags)
 			}
 			assertTranslatedSubnetPointer(t, networkRangeInput.TranslatedSubnet, tt.wantNil, tt.wantValue)
 
-			socketIfaceInput, _ := r.prepareSocketInterfaceInput(ctx, cfg, plan, false, &diags)
+			socketIfaceInput, _ := prepareSocketInterfaceInput(ctx, cfg, plan, false, &diags)
 			if diags.HasError() {
 				t.Fatalf("prepareSocketInterfaceInput: %v", diags)
 			}
@@ -604,10 +604,10 @@ func TestSocketSitePrepareUpdateInputsTranslatedSubnetFromConfig(t *testing.T) {
 	ctx := context.Background()
 	plan := newSocketSitePlanWithTranslatedSubnet(ctx, t, types.StringValue("10.24.150.0/24"))
 	cfg := newSocketSitePlanWithTranslatedSubnet(ctx, t, types.StringNull())
-	r := &socketSiteResource{client: &catoclient.Service{}}
+	client := &catoclient.Service{}
 	var diags diag.Diagnostics
 
-	networkRangeInput := r.prepareNetworkRangeInput(ctx, cfg, plan, false, &diags)
+	networkRangeInput := prepareNetworkRangeInput(ctx, client, cfg, plan, false, &diags)
 	if diags.HasError() {
 		t.Fatalf("prepareNetworkRangeInput: %v", diags)
 	}
@@ -615,7 +615,7 @@ func TestSocketSitePrepareUpdateInputsTranslatedSubnetFromConfig(t *testing.T) {
 		t.Fatalf("expected translated subnet omitted when not in config, got %q", *networkRangeInput.TranslatedSubnet)
 	}
 
-	socketIfaceInput, _ := r.prepareSocketInterfaceInput(ctx, cfg, plan, false, &diags)
+	socketIfaceInput, _ := prepareSocketInterfaceInput(ctx, cfg, plan, false, &diags)
 	if diags.HasError() {
 		t.Fatalf("prepareSocketInterfaceInput: %v", diags)
 	}

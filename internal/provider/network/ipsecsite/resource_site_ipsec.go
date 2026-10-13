@@ -419,16 +419,6 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 }
 
-func prepareIpsecNetworkRangeUpdate(plan, state SiteIpsecIkeV2) (*cato_models.UpdateNetworkRangeInput, bool) {
-	if plan.NativeNetworkRange.Equal(state.NativeNetworkRange) {
-		return nil, false
-	}
-
-	return &cato_models.UpdateNetworkRangeInput{
-		Subnet: plan.NativeNetworkRange.ValueStringPointer(),
-	}, true
-}
-
 func (r *siteIpsecResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state SiteIpsecIkeV2
 	diags := req.State.Get(ctx, &state)

@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
-// hydrateAddIpsecIkeV2Site takes the plan and returns AddIpsecIkeV2SiteInput for site creation
+// hydrateAddIpsecIkeV2Site converts the Terraform plan into an SDK input for site creation.
 func hydrateAddIpsecIkeV2Site(ctx context.Context, plan SiteIpsecIkeV2) (cato_models.AddIpsecIkeV2SiteInput, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 	input := cato_models.AddIpsecIkeV2SiteInput{}
@@ -408,4 +408,14 @@ func hydrateUpdateIpsecIkeV2SiteGeneralDetails(
 	}
 
 	return input, diags
+}
+
+func prepareIpsecNetworkRangeUpdate(plan, state SiteIpsecIkeV2) (*cato_models.UpdateNetworkRangeInput, bool) {
+	if plan.NativeNetworkRange.Equal(state.NativeNetworkRange) {
+		return nil, false
+	}
+
+	return &cato_models.UpdateNetworkRangeInput{
+		Subnet: plan.NativeNetworkRange.ValueStringPointer(),
+	}, true
 }

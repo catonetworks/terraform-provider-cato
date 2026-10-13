@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -249,19 +248,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Prepare API input from the plan
-	rangeType := cato_models.SubnetType(plan.RangeType.ValueString())
-	networkRangeInput := &cato_models.AddNetworkRangeInput{
-		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, r.client, rangeType, plan.DhcpSettings, &resp.Diagnostics),
-		Gateway:          convert.KnownStringPointer(plan.Gateway),
-		InternetOnly:     convert.KnownBoolPointer(plan.InternetOnly),
-		LocalIP:          convert.KnownStringPointer(plan.LocalIP),
-		MdnsReflector:    convert.KnownBoolPointer(plan.MdnsReflector),
-		Name:             plan.Name.ValueString(),
-		RangeType:        cato_models.SubnetType(plan.RangeType.ValueString()),
-		Subnet:           plan.Subnet.ValueString(),
-		TranslatedSubnet: convert.TranslatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
-		Vlan:             convert.KnownInt64Pointer(plan.Vlan),
-	}
+	networkRangeInput := hydrateAddNetworkRangeAPI(ctx, r.client, cfg, plan, &resp.Diagnostics)
 	// TODO: check if !isHA { // for HA scenario, local IP is not allowed to be modified
 
 	if resp.Diagnostics.HasError() {
@@ -278,7 +265,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Create the network range via API
-	networkRange, err := r.getNetworkRangeClient().SiteAddNetworkRange(ctx, interfaceID, *networkRangeInput, r.client.AccountId)
+	networkRange, err := r.getNetworkRangeClient().SiteAddNetworkRange(ctx, interfaceID, networkRangeInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API SiteAddNetworkRange Error", err.Error())
 		return
@@ -342,19 +329,7 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	rangeType := cato_models.SubnetType(plan.RangeType.ValueString())
-	input := cato_models.UpdateNetworkRangeInput{
-		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, r.client, rangeType, plan.DhcpSettings, &resp.Diagnostics),
-		Gateway:          convert.KnownStringPointer(plan.Gateway),
-		InternetOnly:     convert.KnownBoolPointer(plan.InternetOnly),
-		LocalIP:          convert.KnownStringPointer(plan.LocalIP),
-		MdnsReflector:    convert.KnownBoolPointer(plan.MdnsReflector),
-		Name:             convert.KnownStringPointer(plan.Name),
-		RangeType:        (*cato_models.SubnetType)(convert.KnownStringPointer(plan.RangeType)),
-		Subnet:           convert.KnownStringPointer(plan.Subnet),
-		TranslatedSubnet: convert.TranslatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
-		Vlan:             convert.KnownInt64Pointer(plan.Vlan),
-	}
+	input := hydrateUpdateNetworkRangeAPI(ctx, r.client, cfg, plan, &resp.Diagnostics)
 
 	_, err := r.getNetworkRangeClient().SiteUpdateNetworkRange(ctx, plan.ID.ValueString(), input, r.client.AccountId)
 	if err != nil {
