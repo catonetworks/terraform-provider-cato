@@ -22,9 +22,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -41,7 +43,7 @@ func NewPrivAccessRuleResource() resource.Resource {
 }
 
 type privAccessRuleResource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 type (
@@ -71,8 +73,8 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Description: "Application name or id",
 				Required:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Application"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Application"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 			},
 			"connection_origins": schema.SetAttribute{
@@ -88,8 +90,8 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Country"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Country"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -104,8 +106,8 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Device"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Device"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -165,24 +167,24 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Description: "Mailing list name or id",
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
-							Attributes:    parse.SchemaNameID("Mailing list"),
-							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+							Attributes:    idname.SchemaNameID("Mailing list"),
+							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 						},
 					},
 					"subscription_group": schema.SetNestedAttribute{
 						Description: "Subscription group name or id",
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
-							Attributes:    parse.SchemaNameID("Subscription group"),
-							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+							Attributes:    idname.SchemaNameID("Subscription group"),
+							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 						},
 					},
 					"webhook": schema.SetNestedAttribute{
 						Description: "Webhook name or id",
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
-							Attributes:    parse.SchemaNameID("Webhook"),
-							PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+							Attributes:    idname.SchemaNameID("Webhook"),
+							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 						},
 					},
 				},
@@ -327,8 +329,8 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("User"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("User"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -337,8 +339,8 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    parse.SchemaNameID("Group"),
-					PlanModifiers: []planmodifier.Object{parse.IDNameModifier()},
+					Attributes:    idname.SchemaNameID("Group"),
+					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -352,7 +354,7 @@ func (r *privAccessRuleResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *privAccessRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -397,7 +399,7 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 
 	// Call Cato API to create a new rule
 	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessAddRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessAddRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessAddRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := fmt.Sprintf("failed to add private access rule '%s'", ruleName)
 	if err != nil {
@@ -494,10 +496,10 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 			Applications:          r.prepareApplicationsUpdate(ctx, plan.Applications, &resp.Diagnostics),
 			ConnectionsOriginList: r.prepareConnectionOrigins(ctx, plan.ConnectionOrigins, &resp.Diagnostics),
 			Country:               r.prepareCountries(ctx, plan.Countries, &resp.Diagnostics),
-			Description:           parse.KnownStringPointer(plan.Description),
+			Description:           convert.KnownStringPointer(plan.Description),
 			Device:                r.prepareDevice(ctx, plan.Devices, &resp.Diagnostics),
-			Enabled:               parse.KnownBoolPointer(plan.Enabled),
-			Name:                  parse.KnownStringPointer(plan.Name),
+			Enabled:               convert.KnownBoolPointer(plan.Enabled),
+			Name:                  convert.KnownStringPointer(plan.Name),
 			Platform:              r.preparePlatforms(ctx, plan.Platforms, &resp.Diagnostics),
 			Schedule:              r.prepareScheduleUpdate(ctx, plan.Schedule, &resp.Diagnostics),
 			Source:                r.prepareSourceUpdate(ctx, plan.Source, &resp.Diagnostics),
@@ -507,7 +509,7 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessUpdateRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessUpdateRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessUpdateRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := fmt.Sprintf("failed to update private access rule '%s'", plan.Name.ValueString())
 	if err != nil {
@@ -556,7 +558,7 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 
 	// Call Cato API to delete the private access rule.
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PolicyPrivateAccessDeleteRule(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PolicyPrivateAccessDeleteRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	errMsg := fmt.Sprintf("Catov2 API PolicyPrivateAccessDeleteRule failed for '%s'", state.Name.ValueString())
 	if err != nil {
@@ -592,7 +594,7 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 	// Publish the draft revision so the deletion takes effect and the rule no longer
 	// appears in the active policy.
 	// Mirrors resource_wan_fw_rule.go Delete() and the bulk publish() helper.
-	pubResult, err := r.client.catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	pubResult, err := r.client.Catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Delete/PolicyPrivateAccessPublishRevision",
 		map[string]interface{}{"response": utils.InterfaceToJSONString(pubResult)})
 	errMsg = fmt.Sprintf("Catov2 API Delete/PolicyPrivateAccessPublishRevision failed for '%s'", state.Name.ValueString())
@@ -633,8 +635,8 @@ func (r *privAccessRuleResource) parseSource(
 	diags *diag.Diagnostics,
 ) types.Object {
 	tfSource := Source{
-		Users:      parse.IDRefSet(ctx, src.User, diags),
-		UserGroups: parse.IDRefSet(ctx, src.UsersGroup, diags),
+		Users:      idname.ParseIDNameSet(ctx, src.User, diags),
+		UserGroups: idname.ParseIDNameSet(ctx, src.UsersGroup, diags),
 	}
 	obj, objDiags := types.ObjectValueFrom(ctx, SourceTypes, tfSource)
 	diags.Append(objDiags...)
@@ -659,13 +661,13 @@ func (r *privAccessRuleResource) prepareSource(
 	}
 
 	// user list
-	userInput = parse.PrepareIDRefSet[cato_models.UserRefInput](ctx, tfSource.Users, diags)
+	userInput = idname.PrepareIDNameSet[cato_models.UserRefInput](ctx, tfSource.Users, diags)
 	if diags.HasError() {
 		return nil
 	}
 
 	// group list
-	groupInput = parse.PrepareIDRefSet[cato_models.UsersGroupRefInput](ctx, tfSource.UserGroups, diags)
+	groupInput = idname.PrepareIDNameSet[cato_models.UsersGroupRefInput](ctx, tfSource.UserGroups, diags)
 	if diags.HasError() {
 		return nil
 	}
@@ -696,7 +698,7 @@ func (r *privAccessRuleResource) prepareApplications(
 	if !utils.HasValue(apps) {
 		return nil
 	}
-	applicationInput := parse.PrepareIDRefSet[cato_models.PrivateApplicationRefInput](ctx, apps, diags)
+	applicationInput := idname.PrepareIDNameSet[cato_models.PrivateApplicationRefInput](ctx, apps, diags)
 	if diags.HasError() {
 		return nil
 	}
@@ -753,7 +755,7 @@ func (r *privAccessRuleResource) prepareTracking(
 	sdkTracking.Alert.Frequency = cato_models.PolicyRuleTrackingFrequencyEnum(tfAlert.Frequency.ValueString())
 
 	// Mailing lists
-	sdkTracking.Alert.MailingList = parse.PrepareIDRefSet[cato_models.SubscriptionMailingListRefInput](
+	sdkTracking.Alert.MailingList = idname.PrepareIDNameSet[cato_models.SubscriptionMailingListRefInput](
 		ctx,
 		tfAlert.MailingList,
 		diags,
@@ -763,7 +765,7 @@ func (r *privAccessRuleResource) prepareTracking(
 	}
 
 	// Subscription groups
-	sdkTracking.Alert.SubscriptionGroup = parse.PrepareIDRefSet[cato_models.SubscriptionGroupRefInput](
+	sdkTracking.Alert.SubscriptionGroup = idname.PrepareIDNameSet[cato_models.SubscriptionGroupRefInput](
 		ctx,
 		tfAlert.SubscriptionGroup,
 		diags,
@@ -773,7 +775,7 @@ func (r *privAccessRuleResource) prepareTracking(
 	}
 
 	// Webhooks
-	sdkTracking.Alert.Webhook = parse.PrepareIDRefSet[cato_models.SubscriptionWebhookRefInput](
+	sdkTracking.Alert.Webhook = idname.PrepareIDNameSet[cato_models.SubscriptionWebhookRefInput](
 		ctx,
 		tfAlert.Webhook,
 		diags,
@@ -962,8 +964,8 @@ func (r *privAccessRuleResource) prepareActivePeriod(
 	diags.Append(ap.As(ctx, &tfPeriod, basetypes.ObjectAsOptions{})...)
 
 	sdkPeriod := cato_models.PolicyRuleActivePeriodInput{
-		EffectiveFrom:    parse.KnownStringPointer(tfPeriod.EffectiveFrom),
-		ExpiresAt:        parse.KnownStringPointer(tfPeriod.ExpiresAt),
+		EffectiveFrom:    convert.KnownStringPointer(tfPeriod.EffectiveFrom),
+		ExpiresAt:        convert.KnownStringPointer(tfPeriod.ExpiresAt),
 		UseEffectiveFrom: tfPeriod.UseEffectiveFrom.ValueBool(),
 		UseExpiresAt:     tfPeriod.UseExpiresAt.ValueBool(),
 	}
@@ -993,7 +995,7 @@ func (r *privAccessRuleResource) preparePlatforms(
 	platforms types.Set,
 	diags *diag.Diagnostics,
 ) []cato_models.OperatingSystem {
-	return parse.PrepareStrings[cato_models.OperatingSystem](ctx, platforms, diags)
+	return convert.PrepareStrings[cato_models.OperatingSystem](ctx, platforms, diags)
 }
 
 func (r *privAccessRuleResource) prepareCountries(
@@ -1001,7 +1003,7 @@ func (r *privAccessRuleResource) prepareCountries(
 	countries types.Set,
 	diags *diag.Diagnostics,
 ) []*cato_models.CountryRefInput {
-	return parse.PrepareIDRefSet[cato_models.CountryRefInput](ctx, countries, diags)
+	return idname.PrepareIDNameSet[cato_models.CountryRefInput](ctx, countries, diags)
 }
 
 func (r *privAccessRuleResource) prepareConnectionOrigins(
@@ -1009,7 +1011,7 @@ func (r *privAccessRuleResource) prepareConnectionOrigins(
 	os types.Set,
 	diags *diag.Diagnostics,
 ) []cato_models.ConnectionOriginsEnum {
-	return parse.PrepareStrings[cato_models.ConnectionOriginsEnum](ctx, os, diags)
+	return convert.PrepareStrings[cato_models.ConnectionOriginsEnum](ctx, os, diags)
 }
 
 func (r *privAccessRuleResource) prepareAction(action types.String) *cato_models.PrivateAccessPolicyActionInput {
@@ -1024,7 +1026,7 @@ func (r *privAccessRuleResource) prepareDevice(
 	devs types.Set,
 	diags *diag.Diagnostics,
 ) []*cato_models.DeviceProfileRefInput {
-	return parse.PrepareIDRefSet[cato_models.DeviceProfileRefInput](ctx, devs, diags)
+	return idname.PrepareIDNameSet[cato_models.DeviceProfileRefInput](ctx, devs, diags)
 }
 
 func (r *privAccessRuleResource) parseTracking(
@@ -1045,9 +1047,9 @@ func (r *privAccessRuleResource) parseTracking(
 	}
 
 	// Prepare Tracking.Alert object
-	mailingList := parse.IDRefSet(ctx, tr.Alert.MailingList, diags)
-	subscriptionGroup := parse.IDRefSet(ctx, tr.Alert.SubscriptionGroup, diags)
-	webHook := parse.IDRefSet(ctx, tr.Alert.Webhook, diags)
+	mailingList := idname.ParseIDNameSet(ctx, tr.Alert.MailingList, diags)
+	subscriptionGroup := idname.ParseIDNameSet(ctx, tr.Alert.SubscriptionGroup, diags)
+	webHook := idname.ParseIDNameSet(ctx, tr.Alert.Webhook, diags)
 	if diags.HasError() {
 		return types.ObjectNull(PolicyRuleTrackingTypes)
 	}
@@ -1117,7 +1119,7 @@ func (r *privAccessRuleResource) parsePolicySchedule(
 	recurringObj := types.ObjectNull(PolicyCustomRecurringTypes)
 	if sch.CustomRecurring != nil {
 		tfRecurring := PolicyCustomRecurring{
-			Days: parse.StringSet(ctx, sch.CustomRecurring.Days, diags),
+			Days: convert.StringSet(ctx, sch.CustomRecurring.Days, diags),
 			From: types.StringValue(string(sch.CustomRecurring.From)),
 			To:   types.StringValue(string(sch.CustomRecurring.To)),
 		}
@@ -1132,8 +1134,8 @@ func (r *privAccessRuleResource) parsePolicySchedule(
 	timeframeObj := types.ObjectNull(PolicyCustomTimeframeTypes)
 	if sch.CustomTimeframe != nil {
 		tfTimeframe := PolicyCustomTimeframe{
-			From: types.StringValue(parse.NormalizeDateTime(sch.CustomTimeframe.From)),
-			To:   types.StringValue(parse.NormalizeDateTime(sch.CustomTimeframe.To)),
+			From: types.StringValue(utils.NormalizeDateTime(sch.CustomTimeframe.From)),
+			To:   types.StringValue(utils.NormalizeDateTime(sch.CustomTimeframe.To)),
 		}
 		timeframeObj, objDiags = types.ObjectValueFrom(ctx, PolicyCustomTimeframeTypes, tfTimeframe)
 		diags.Append(objDiags...)
@@ -1166,8 +1168,8 @@ func (r *privAccessRuleResource) parsePolicyActivePeriod(
 
 	// Prepare Active Period
 	tfActivePeriod := PolicyRuleActivePeriod{
-		EffectiveFrom:    types.StringPointerValue(parse.NormalizeDateTimePtr(ap.EffectiveFrom)),
-		ExpiresAt:        types.StringPointerValue(parse.NormalizeDateTimePtr(ap.ExpiresAt)),
+		EffectiveFrom:    types.StringPointerValue(utils.NormalizeDateTimePtr(ap.EffectiveFrom)),
+		ExpiresAt:        types.StringPointerValue(utils.NormalizeDateTimePtr(ap.ExpiresAt)),
 		UseEffectiveFrom: types.BoolValue(ap.UseEffectiveFrom),
 		UseExpiresAt:     types.BoolValue(ap.UseExpiresAt),
 	}
@@ -1189,7 +1191,7 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 	var diags diag.Diagnostics
 
 	// Call Cato API to get the policy
-	result, err := r.client.catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
+	result, err := r.client.Catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "PolicyReadPrivateAccessPolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, nil, err
@@ -1207,15 +1209,15 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 		state = &PrivateAccessRuleModel{
 			Action:            types.StringValue(string(apiRule.Action.Action)),
 			ActivePeriod:      r.parsePolicyActivePeriod(ctx, apiRule.ActivePeriod, &diags),
-			Applications:      parse.IDRefSet(ctx, apiRule.Applications.Application, &diags),
-			ConnectionOrigins: parse.StringSet(ctx, apiRule.ConnectionsOriginList, &diags),
-			Countries:         parse.IDRefSet(ctx, apiRule.Country, &diags),
+			Applications:      idname.ParseIDNameSet(ctx, apiRule.Applications.Application, &diags),
+			ConnectionOrigins: convert.StringSet(ctx, apiRule.ConnectionsOriginList, &diags),
+			Countries:         idname.ParseIDNameSet(ctx, apiRule.Country, &diags),
 			Description:       types.StringValue(apiRule.Description),
-			Devices:           parse.IDRefSet(ctx, apiRule.Device, &diags),
+			Devices:           idname.ParseIDNameSet(ctx, apiRule.Device, &diags),
 			Enabled:           types.BoolValue(apiRule.Enabled),
 			ID:                types.StringValue(apiRule.ID),
 			Name:              types.StringValue(apiRule.Name),
-			Platforms:         parse.StringSet(ctx, apiRule.Platform, &diags),
+			Platforms:         convert.StringSet(ctx, apiRule.Platform, &diags),
 			Schedule:          r.parsePolicySchedule(ctx, apiRule.Schedule, &diags),
 			Source:            r.parseSource(ctx, apiRule.Source, &diags),
 			Tracking:          r.parseTracking(ctx, apiRule.Tracking, &diags),

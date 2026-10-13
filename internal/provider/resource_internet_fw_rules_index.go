@@ -19,7 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ func NewIfwRulesIndexResource() resource.Resource {
 }
 
 type ifwRulesIndexResource struct {
-	client  *catoClientData
+	client  *catoclient.Service
 	ifwBulk InternetFirewallBulkPolicyClient // optional override for tests
 }
 
@@ -146,7 +147,7 @@ func (r *ifwRulesIndexResource) Configure(_ context.Context, req resource.Config
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *ifwRulesIndexResource) ifwBulkPolicy() InternetFirewallBulkPolicyClient {
@@ -156,7 +157,7 @@ func (r *ifwRulesIndexResource) ifwBulkPolicy() InternetFirewallBulkPolicyClient
 	if r.client == nil {
 		return nil
 	}
-	return r.client.catov2
+	return r.client.Catov2
 }
 
 // func (r *ifwRulesIndexResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

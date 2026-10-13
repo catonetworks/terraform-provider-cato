@@ -20,9 +20,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
-	"github.com/catonetworks/terraform-provider-cato/internal/utils"
 )
 
 var (
@@ -38,7 +39,7 @@ func NewPrivateAppResource() resource.Resource {
 }
 
 type privateAppResource struct {
-	client *catoClientData
+	client *catoclient.Service
 }
 
 type (
@@ -207,7 +208,7 @@ func (r *privateAppResource) Configure(_ context.Context, req resource.Configure
 		return
 	}
 
-	r.client = req.ProviderData.(*catoClientData)
+	r.client = req.ProviderData.(*catoclient.Service)
 }
 
 func (r *privateAppResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -226,7 +227,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 	input := cato_models.CreatePrivateApplicationInput{
 		AllowICMPProtocol:  plan.AllowIcmpProtocol.ValueBool(),
-		Description:        parse.KnownStringPointer(plan.Description),
+		Description:        convert.KnownStringPointer(plan.Description),
 		InternalAppAddress: plan.InternalAppAddress.ValueString(),
 		Name:               plan.Name.ValueString(),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
@@ -238,7 +239,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 	// Call Cato API to create a new private app
 	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppCreatePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppCreatePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppCreatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PrivateAppCreatePrivateApp error", err.Error())
@@ -314,20 +315,20 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	input := cato_models.UpdatePrivateApplicationInput{
-		AllowICMPProtocol:  parse.KnownBoolPointer(plan.AllowIcmpProtocol),
-		Description:        parse.KnownStringPointer(plan.Description),
+		AllowICMPProtocol:  convert.KnownBoolPointer(plan.AllowIcmpProtocol),
+		Description:        convert.KnownStringPointer(plan.Description),
 		ID:                 id,
-		InternalAppAddress: parse.KnownStringPointer(plan.InternalAppAddress),
-		Name:               parse.KnownStringPointer(plan.Name),
+		InternalAppAddress: convert.KnownStringPointer(plan.InternalAppAddress),
+		Name:               convert.KnownStringPointer(plan.Name),
 		PrivateAppProbing:  r.preparePrivateAppProbing(ctx, plan.PrivateAppProbing, &resp.Diagnostics),
-		ProbingEnabled:     parse.KnownBoolPointer(plan.ProbingEnabled),
+		ProbingEnabled:     convert.KnownBoolPointer(plan.ProbingEnabled),
 		ProtocolPorts:      r.prepareProtocolPorts(ctx, plan.ProtocolPorts, &resp.Diagnostics),
-		Published:          parse.KnownBoolPointer(plan.Published),
+		Published:          convert.KnownBoolPointer(plan.Published),
 		PublishedAppDomain: r.preparePublishedAppDomain(ctx, plan.PublishedAppDomain, &resp.Diagnostics),
 	}
 
 	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppUpdatePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppUpdatePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppUpdatePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -367,7 +368,7 @@ func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// Call Cato API to delete a connector
 	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppDeletePrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppDeletePrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppDeletePrivateApp", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 
 	if err != nil {
@@ -388,7 +389,7 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 
 	// Call Cato API to get a private-app
 	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.catov2.PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
+	result, err := r.client.Catov2.PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
 		return nil, diags, err
@@ -553,10 +554,10 @@ func (r *privateAppResource) preparePublishedAppDomain(ctx context.Context, appD
 	}
 
 	return &cato_models.PublishedAppDomainInput{
-		ConnectorGroupName: parse.KnownStringPointer(tfAppDomain.ConnectorGroupName),
-		CreationTime:       parse.KnownStringPointer(tfAppDomain.CreationTime),
-		ID:                 parse.KnownStringPointer(tfAppDomain.ID),
-		PublishedAppDomain: parse.KnownStringPointer(tfAppDomain.PublishedAppDomain),
+		ConnectorGroupName: convert.KnownStringPointer(tfAppDomain.ConnectorGroupName),
+		CreationTime:       convert.KnownStringPointer(tfAppDomain.CreationTime),
+		ID:                 convert.KnownStringPointer(tfAppDomain.ID),
+		PublishedAppDomain: convert.KnownStringPointer(tfAppDomain.PublishedAppDomain),
 	}
 }
 
@@ -572,10 +573,10 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 	}
 
 	return &cato_models.PrivateAppProbingInput{
-		FaultThresholdDown: parse.KnownInt64Pointer(tfProbing.FaultThresholdDown),
-		ID:                 parse.KnownStringPointer(tfProbing.ID),
-		Interval:           parse.KnownInt64Pointer(tfProbing.Interval),
-		Type:               parse.KnownStringPointer(tfProbing.Type),
+		FaultThresholdDown: convert.KnownInt64Pointer(tfProbing.FaultThresholdDown),
+		ID:                 convert.KnownStringPointer(tfProbing.ID),
+		Interval:           convert.KnownInt64Pointer(tfProbing.Interval),
+		Type:               convert.KnownStringPointer(tfProbing.Type),
 	}
 }
 
