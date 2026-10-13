@@ -1,0 +1,158 @@
+package utils
+
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"regexp"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
+)
+
+type ObjectRefOutput struct {
+	By    string `json:"By"`
+	Input string `json:"Input"`
+}
+
+// TransformObjectRefInput is used to transform object {id = "1234"} or {name = "entites"}
+// with the following format { by = "ID" input = "1234"} or  { by = "NAME" input = "entities"}.
+// this is mandatory to cover difference between Create/Update & Read in the schema
+// IMPORTANT: Only id OR name can be submitted to the API, not both. Preference is given to ID for stability.
+func TransformObjectRefInput(input interface{}) (ObjectRefOutput, error) {
+	val := reflect.ValueOf(input)
+
+	if val.Kind() != reflect.Struct {
+		return ObjectRefOutput{}, fmt.Errorf("input isn't a type strut")
+	}
+
+	// First pass: look for ID field (preferred for stability)
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := val.Type().Field(i)
+
+		if field.Type() == reflect.TypeOf(types.String{}) && strings.EqualFold(fieldType.Name, "ID") {
+			terraformString := field.Interface().(types.String)
+
+			if !terraformString.IsNull() && !terraformString.IsUnknown() {
+				return ObjectRefOutput{
+					By:    "ID",
+					Input: terraformString.ValueString(),
+				}, nil
+			}
+		}
+	}
+
+	// Second pass: look for Name field (fallback only if no valid ID)
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := val.Type().Field(i)
+
+		if field.Type() == reflect.TypeOf(types.String{}) && strings.EqualFold(fieldType.Name, "NAME") {
+			terraformString := field.Interface().(types.String)
+
+			if !terraformString.IsNull() && !terraformString.IsUnknown() {
+				return ObjectRefOutput{
+					By:    "NAME",
+					Input: terraformString.ValueString(),
+				}, nil
+			}
+		}
+	}
+
+	return ObjectRefOutput{}, fmt.Errorf("no valid Name or ID attribute found")
+}
+
+func ToMap(s interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	v := reflect.ValueOf(s)
+
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return result
+	}
+
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		fieldValue := v.Field(i)
+
+		fieldName := field.Name
+
+		result[fieldName] = fieldValue.Interface()
+	}
+
+	return result
+}
+
+func InterfaceToJSONString(data interface{}) string {
+	jsonData, _ := json.Marshal(data)
+	return string(jsonData)
+}
+
+func ConvertOptionalString(input *string) types.String {
+	if input != nil {
+		return types.StringValue(*input)
+	}
+	return types.StringNull()
+}
+
+func CheckErr(diags *diag.Diagnostics, in diag.Diagnostics) bool {
+	diags.Append(in...)
+	return diags.HasError()
+}
+
+type HasValuer interface {
+	IsUnknown() bool
+	IsNull() bool
+}
+
+func HasValue(v HasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }
+
+func CheckAPIErrors[T apperr.APIErrors](err error, errors []T, summary string, diags *diag.Diagnostics) bool {
+	if err != nil {
+		diags.AddError(summary, err.Error())
+		return true
+	}
+	if len(errors) > 0 {
+		for _, e := range errors {
+			if msg := e.GetErrorMessage(); msg != nil {
+				diags.AddError(summary, *msg)
+			} else if code := e.GetErrorCode(); code != nil {
+				diags.AddError(summary, *code)
+			} else {
+				diags.AddError(summary, "API mutation failed without error details")
+			}
+		}
+		return true
+	}
+	return false
+}
+
+var dateTimeRE = regexp.MustCompile(`(^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?`)
+
+func NormalizeDateTimePtr(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	t := NormalizeDateTime(*s)
+	return &t
+}
+func NormalizeDateTime(s string) string {
+	if m := dateTimeRE.FindStringSubmatch(s); m != nil {
+		return m[1] + "Z"
+	}
+	return s
+}
+
+func StringFieldIsExplicit(cfgVal, stateVal types.String) bool {
+	if !HasValue(cfgVal) {
+		return false
+	}
+	return !HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
+}

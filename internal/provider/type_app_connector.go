@@ -3,8 +3,6 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
 )
 
 type AppConnectorModel struct {

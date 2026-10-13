@@ -1,0 +1,37 @@
+package tfmodel
+
+import (
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+type NetworkRange struct {
+	ID               types.String `tfsdk:"id"`
+	DhcpSettings     types.Object `tfsdk:"dhcp_settings"`
+	Gateway          types.String `tfsdk:"gateway"`
+	InterfaceID      types.String `tfsdk:"interface_id"`
+	InterfaceIndex   types.String `tfsdk:"interface_index"`
+	InternetOnly     types.Bool   `tfsdk:"internet_only"`
+	MdnsReflector    types.Bool   `tfsdk:"mdns_reflector"`
+	LocalIP          types.String `tfsdk:"local_ip"`
+	Name             types.String `tfsdk:"name"`
+	RangeType        types.String `tfsdk:"range_type"`
+	SiteID           types.String `tfsdk:"site_id"`
+	Subnet           types.String `tfsdk:"subnet"`
+	TranslatedSubnet types.String `tfsdk:"translated_subnet"`
+	Vlan             types.Int64  `tfsdk:"vlan"`
+}
+
+type NetworkRangeLookup struct {
+	SiteIDFilter types.List `tfsdk:"site_id_filter"`
+	NameFilter   types.List `tfsdk:"name_filter"`
+	Items        types.List `tfsdk:"items"`
+}
+
+var DhcpSettingsAttrTypes = map[string]attr.Type{
+	"dhcp_type":              types.StringType,
+	"ip_range":               types.StringType,
+	"relay_group_id":         types.StringType,
+	"relay_group_name":       types.StringType,
+	"dhcp_microsegmentation": types.BoolType,
+}

@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
 func TestNewInternetFwRuleResource(t *testing.T) {
@@ -59,7 +60,7 @@ func TestInternetFwRuleConfigureNilProviderData(t *testing.T) {
 }
 
 func TestInternetFwRuleConfigureSetsClient(t *testing.T) {
-	client := &catoClientData{AccountId: "123"}
+	client := &catoclient.Service{AccountId: "123"}
 	r := &internetFwRuleResource{}
 	resp := &resource.ConfigureResponse{}
 
@@ -370,7 +371,7 @@ func TestInternetFwRuleDelete(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &catoclient.Service{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.DeleteRequest{State: resourceState}
@@ -393,7 +394,7 @@ func TestInternetFwRuleCreate(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &catoclient.Service{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
@@ -424,7 +425,7 @@ func TestInternetFwRuleCreateSuccess(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &catoclient.Service{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
@@ -450,7 +451,7 @@ func TestInternetFwRuleReadRemovesMissingResource(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &catoclient.Service{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.ReadRequest{State: resourceState}
@@ -477,7 +478,7 @@ func TestInternetFwRuleReadSuccess(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &catoclient.Service{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.ReadRequest{State: resourceState}
@@ -503,7 +504,7 @@ func TestInternetFwRuleUpdate(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &catoclient.Service{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.UpdateRequest{
@@ -542,7 +543,7 @@ func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 		Once()
 
 	r := &internetFwRuleResource{
-		client:    &catoClientData{AccountId: "account-123"},
+		client:    &catoclient.Service{AccountId: "account-123"},
 		ifwClient: mockClient,
 	}
 	req := resource.UpdateRequest{

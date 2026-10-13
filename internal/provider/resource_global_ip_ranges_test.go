@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
 
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/tfmodel"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 )
 
 func TestGlobalIPRangesComputePlanDeletesMissingRanges(t *testing.T) {

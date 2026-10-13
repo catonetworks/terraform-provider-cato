@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/parse"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 )
 
 // DaysValidator validate days of week
@@ -20,7 +20,7 @@ func (v DaysValidator) ValidateSet(ctx context.Context, req validator.SetRequest
 		return
 	}
 
-	days := parse.PrepareStrings[cato_models.DayOfWeek](ctx, req.ConfigValue, &diags)
+	days := convert.PrepareStrings[cato_models.DayOfWeek](ctx, req.ConfigValue, &diags)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return
