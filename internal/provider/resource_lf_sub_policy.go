@@ -21,6 +21,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -418,7 +419,7 @@ func (r *lfSubPolicyResource) prepareAt(ctx context.Context, at types.Object, di
 	if !utils.HasValue(at) {
 		return nil
 	}
-	var tfPosition PolicyRulePositionInput
+	var tfPosition policyrule.Position
 	if utils.CheckErr(diags, at.As(ctx, &tfPosition, basetypes.ObjectAsOptions{})) {
 		return nil
 	}

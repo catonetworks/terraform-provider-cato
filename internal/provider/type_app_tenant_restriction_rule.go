@@ -3,6 +3,8 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 // AppTenantRestrictionHeaderAttrTypes is a single HTTP header name/value pair.
@@ -28,7 +30,7 @@ var AppTenantRestrictionRuleRuleAttrTypes = map[string]attr.Type{
 // AppTenantRestrictionRuleAttrTypes is the top-level resource attribute map.
 var AppTenantRestrictionRuleAttrTypes = map[string]attr.Type{
 	"id":   types.StringType,
-	"at":   PositionObjectType,
+	"at":   policyrule.PositionObjectType,
 	"rule": types.ObjectType{AttrTypes: AppTenantRestrictionRuleRuleAttrTypes},
 }
 

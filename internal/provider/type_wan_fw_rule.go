@@ -4,15 +4,17 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 type WanFirewallRule struct {
 	Rule        types.Object `tfsdk:"rule" json:"rule,omitempty"` // PolicyPolicyWanFirewallPolicyRulesRule
-	At          types.Object `tfsdk:"at" json:"at,omitempty"`     // *PolicyRulePositionInput
+	At          types.Object `tfsdk:"at" json:"at,omitempty"`     // *policyrule.PolicyRulePositionInput
 	SubPolicyID types.String `tfsdk:"sub_policy_id" json:"sub_policy_id,omitempty"`
 }
 
-// type PolicyRulePositionInput struct {
+// type policyrule.PolicyRulePositionInput struct {
 // 	Position types.String `tfsdk:"position"`
 // 	Ref      types.String `tfsdk:"ref"`
 // }
@@ -360,7 +362,7 @@ type PolicyPolicyWanFirewallPolicyRulesRuleExceptions struct {
 var WanFirewallRuleObjectType = types.ObjectType{AttrTypes: WanFirewallRuleAttrTypes}
 var WanFirewallRuleAttrTypes = map[string]attr.Type{
 	"rule": WanFirewallRuleRuleObjectType,
-	"at":   PositionObjectType,
+	"at":   policyrule.PositionObjectType,
 }
 
 var WanFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: WanFirewallRuleRuleAttrTypes}
@@ -381,7 +383,7 @@ var WanFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"destination":       types.ObjectType{AttrTypes: WanDestAttrTypes},
 	"service":           types.ObjectType{AttrTypes: WanServiceAttrTypes},
 	"action":            types.StringType,
-	"tracking":          TrackingObjectType,
+	"tracking":          policyrule.TrackingObjectType,
 	"schedule":          ScheduleObjectType,
 	"direction":         types.StringType,
 	"exceptions":        types.SetType{ElemType: types.ObjectType{AttrTypes: WanExceptionAttrTypes}},

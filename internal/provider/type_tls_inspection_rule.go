@@ -116,12 +116,6 @@ var TLSApplicationAttrTypes = map[string]attr.Type{
 	"country":              types.SetType{ElemType: NameIDObjectType},
 }
 
-// NameIDRef defines a nested object with ID and name fields.
-type NameIDRef struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
-}
-
 type FromTo struct {
 	From types.String `tfsdk:"from"`
 	To   types.String `tfsdk:"to"`

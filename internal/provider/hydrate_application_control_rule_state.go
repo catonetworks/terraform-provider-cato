@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 // hydrateApplicationControlRuleStateFromClient maps an Application Control policy rule into Terraform nested objects.
@@ -513,10 +515,10 @@ func acTrackingObjectFromApplicationRuleTracking(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if tr == nil {
-		return types.ObjectNull(TrackingAttrTypes)
+		return types.ObjectNull(policyrule.TrackingAttrTypes)
 	}
 	ev := tr.GetEvent()
-	evObj, d := types.ObjectValue(TrackingEventAttrTypes, map[string]attr.Value{
+	evObj, d := types.ObjectValue(policyrule.TrackingEventAttrTypes, map[string]attr.Value{
 		"enabled": types.BoolValue(ev.GetEnabled()),
 	})
 	diags.Append(d...)
@@ -525,7 +527,7 @@ func acTrackingObjectFromApplicationRuleTracking(
 	if al.GetFrequency() != nil {
 		freq = al.GetFrequency().String()
 	}
-	alObj, d := types.ObjectValue(TrackingAlertAttrTypes, map[string]attr.Value{
+	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
 		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "application_rule.tracking.alert.subscription_group"),
@@ -533,7 +535,7 @@ func acTrackingObjectFromApplicationRuleTracking(
 		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "application_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
-	o, d := types.ObjectValue(TrackingAttrTypes, map[string]attr.Value{
+	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
 		"event": evObj,
 		"alert": alObj,
 	})
@@ -547,10 +549,10 @@ func acTrackingObjectFromDataRuleTracking(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if tr == nil {
-		return types.ObjectNull(TrackingAttrTypes)
+		return types.ObjectNull(policyrule.TrackingAttrTypes)
 	}
 	ev := tr.GetEvent()
-	evObj, d := types.ObjectValue(TrackingEventAttrTypes, map[string]attr.Value{
+	evObj, d := types.ObjectValue(policyrule.TrackingEventAttrTypes, map[string]attr.Value{
 		"enabled": types.BoolValue(ev.GetEnabled()),
 	})
 	diags.Append(d...)
@@ -559,7 +561,7 @@ func acTrackingObjectFromDataRuleTracking(
 	if al.GetFrequency() != nil {
 		freq = al.GetFrequency().String()
 	}
-	alObj, d := types.ObjectValue(TrackingAlertAttrTypes, map[string]attr.Value{
+	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
 		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "data_rule.tracking.alert.subscription_group"),
@@ -567,7 +569,7 @@ func acTrackingObjectFromDataRuleTracking(
 		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "data_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
-	o, d := types.ObjectValue(TrackingAttrTypes, map[string]attr.Value{
+	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
 		"event": evObj,
 		"alert": alObj,
 	})
@@ -581,10 +583,10 @@ func acTrackingObjectFromFileRuleTracking(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if tr == nil {
-		return types.ObjectNull(TrackingAttrTypes)
+		return types.ObjectNull(policyrule.TrackingAttrTypes)
 	}
 	ev := tr.GetEvent()
-	evObj, d := types.ObjectValue(TrackingEventAttrTypes, map[string]attr.Value{
+	evObj, d := types.ObjectValue(policyrule.TrackingEventAttrTypes, map[string]attr.Value{
 		"enabled": types.BoolValue(ev.GetEnabled()),
 	})
 	diags.Append(d...)
@@ -593,7 +595,7 @@ func acTrackingObjectFromFileRuleTracking(
 	if al.GetFrequency() != nil {
 		freq = al.GetFrequency().String()
 	}
-	alObj, d := types.ObjectValue(TrackingAlertAttrTypes, map[string]attr.Value{
+	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
 		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "file_rule.tracking.alert.subscription_group"),
@@ -601,7 +603,7 @@ func acTrackingObjectFromFileRuleTracking(
 		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "file_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
-	o, d := types.ObjectValue(TrackingAttrTypes, map[string]attr.Value{
+	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
 		"event": evObj,
 		"alert": alObj,
 	})

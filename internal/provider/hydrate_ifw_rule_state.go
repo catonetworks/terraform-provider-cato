@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -197,10 +198,10 @@ func hydrateIfwRuleState(
 
 	// /// /// /// /// start Rule -> Tracking // /// /// /// /// /
 	curRuleTrackingObj, diagstmp := types.ObjectValue(
-		TrackingAttrTypes,
+		policyrule.TrackingAttrTypes,
 		map[string]attr.Value{
-			"event": types.ObjectNull(TrackingEventAttrTypes),
-			"alert": types.ObjectNull(TrackingAlertAttrTypes),
+			"event": types.ObjectNull(policyrule.TrackingEventAttrTypes),
+			"alert": types.ObjectNull(policyrule.TrackingAlertAttrTypes),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -208,7 +209,7 @@ func hydrateIfwRuleState(
 
 	// Rule -> Tracking -> Event
 	trackingEventValue, diagstmp := types.ObjectValue(
-		TrackingEventAttrTypes,
+		policyrule.TrackingEventAttrTypes,
 		map[string]attr.Value{
 			"enabled": types.BoolValue(currentRule.Tracking.Event.Enabled),
 		},
@@ -218,7 +219,7 @@ func hydrateIfwRuleState(
 
 	// Rule -> Tracking -> Alert
 	trackingAlertValue, diagstmp := types.ObjectValue(
-		TrackingAlertAttrTypes,
+		policyrule.TrackingAlertAttrTypes,
 		map[string]attr.Value{
 			"enabled":            types.BoolValue(currentRule.Tracking.Alert.Enabled),
 			"frequency":          types.StringValue(currentRule.Tracking.Alert.Frequency.String()),

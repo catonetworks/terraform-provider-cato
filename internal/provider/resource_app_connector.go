@@ -605,8 +605,8 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appCon
 	tfLocation := pops.PreferredPopLocationModel{
 		PreferredOnly: types.BoolValue(loc.PreferredOnly),
 		Automatic:     types.BoolValue(loc.Automatic),
-		Primary:       types.ObjectNull(idname.ModelTypes),
-		Secondary:     types.ObjectNull(idname.ModelTypes),
+		Primary:       types.ObjectNull(idname.RefAttrTypes),
+		Secondary:     types.ObjectNull(idname.RefAttrTypes),
 	}
 	if loc.Primary != nil {
 		tfLocation.Primary = idname.ParseIDName(ctx, *loc.Primary, diags)

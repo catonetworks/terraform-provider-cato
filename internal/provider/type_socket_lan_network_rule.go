@@ -3,6 +3,8 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 // SocketLanNetworkRule represents the top-level resource structure
@@ -74,17 +76,12 @@ type SocketLanNat struct {
 	NatType types.String `tfsdk:"nat_type" json:"nat_type,omitempty"`
 }
 
-// SocketLanSimpleService represents a simple named service
-type SocketLanSimpleService struct {
-	Name types.String `tfsdk:"name" json:"name,omitempty"`
-}
-
 // Attr types for state management
 
 var SocketLanNetworkRuleObjectType = types.ObjectType{AttrTypes: SocketLanNetworkRuleAttrTypes}
 var SocketLanNetworkRuleAttrTypes = map[string]attr.Type{
 	"rule": SocketLanNetworkRuleRuleObjectType,
-	"at":   PositionObjectType,
+	"at":   policyrule.PositionObjectType,
 }
 
 var SocketLanNetworkRuleRuleObjectType = types.ObjectType{AttrTypes: SocketLanNetworkRuleRuleAttrTypes}

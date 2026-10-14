@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -124,7 +125,7 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 	// setting at
 	if !plan.At.IsNull() {
 		input.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
@@ -249,7 +250,7 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 	if !utils.HasValue(state.At) {
 		var diagstmp diag.Diagnostics
 		curAtObj, diagstmp = types.ObjectValue(
-			PositionAttrTypes,
+			policyrule.PositionAttrTypes,
 			map[string]attr.Value{
 				"position": types.StringValue("LAST_IN_POLICY"),
 				"ref":      types.StringNull(),
@@ -302,7 +303,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	// setting at
 	if !plan.At.IsNull() {
 		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 

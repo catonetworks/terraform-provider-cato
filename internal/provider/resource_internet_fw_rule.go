@@ -31,6 +31,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -83,7 +84,7 @@ func (r *internetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				},
 			},
 			"at": schema.SingleNestedAttribute{
-				Description: "Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionInput)",
+				Description: "Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-policyrule.PolicyRulePositionInput)",
 				Required:    true,
 				Optional:    false,
 				Attributes: map[string]schema.Attribute{
@@ -1737,7 +1738,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	refValue := types.StringNull()
 
 	if !state.At.IsNull() && !state.At.IsUnknown() {
-		statePosInput := PolicyRulePositionInput{}
+		statePosInput := policyrule.Position{}
 		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 		if !diags.HasError() && !statePosInput.Position.IsNull() && !statePosInput.Position.IsUnknown() {
@@ -1749,7 +1750,7 @@ func (r *internetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	curAtObj, diagstmp := types.ObjectValue(
-		PositionAttrTypes,
+		policyrule.PositionAttrTypes,
 		map[string]attr.Value{
 			"position": types.StringValue(positionValue),
 			"ref":      refValue,
@@ -1784,7 +1785,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 	// Setting at (to move rule)
 	if !plan.At.IsNull() {
 		inputMoveRule.To = &cato_models.PolicyRulePositionInput{}
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
@@ -1898,7 +1899,7 @@ func (r *internetFwRuleResource) Update(ctx context.Context, req resource.Update
 		"OUTPUT": utils.InterfaceToJSONString(currentRule),
 	})
 
-	// Hydrate ruleInput from api respoonse
+	// Hydrate ruleInput from api response
 	ruleInputRead := hydrateIfwRuleState(ctx, plan, currentRule)
 	ruleInputRead.ID = types.StringValue(currentRule.ID)
 
@@ -1967,9 +1968,9 @@ func (r *internetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 }
 
-// IFW Rule Schema validation fuctions
+// IFW Rule Schema validation functions
 
-// Rule -> Alert Valildator
+// Rule -> Alert Validator
 type ruleAlertValidator struct{}
 
 func (v ruleAlertValidator) Description(_ context.Context) string {

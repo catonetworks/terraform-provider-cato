@@ -4,12 +4,14 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 // WanNetworkRule represents the top-level resource
 type WanNetworkRule struct {
 	Rule types.Object `tfsdk:"rule" json:"rule,omitempty"` // PolicyPolicyWanNetworkPolicyRulesRule
-	At   types.Object `tfsdk:"at" json:"at,omitempty"`     // *PolicyRulePositionInput
+	At   types.Object `tfsdk:"at" json:"at,omitempty"`     // *policyrule.PolicyRulePositionInput
 }
 
 // PolicyPolicyWanNetworkPolicyRulesRule represents a WAN Network rule
@@ -289,7 +291,7 @@ type PolicyPolicyWanNetworkPolicyRulesRuleExceptions struct {
 var WanNetworkRuleObjectType = types.ObjectType{AttrTypes: WanNetworkRuleAttrTypes}
 var WanNetworkRuleAttrTypes = map[string]attr.Type{
 	"rule": WanNetworkRuleRuleObjectType,
-	"at":   PositionObjectType,
+	"at":   policyrule.PositionObjectType,
 }
 
 var WanNetworkRuleRuleObjectType = types.ObjectType{AttrTypes: WanNetworkRuleRuleAttrTypes}

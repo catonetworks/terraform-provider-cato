@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func TestNewApplicationControlRuleResource(t *testing.T) {
@@ -73,7 +74,7 @@ func TestApplicationControlRuleImportState(t *testing.T) {
 	}
 	diags := resp.State.Set(ctx, ApplicationControlRule{
 		Rule: types.ObjectNull(ApplicationControlRuleRuleAttrTypes),
-		At:   types.ObjectNull(PositionAttrTypes),
+		At:   types.ObjectNull(policyrule.PositionAttrTypes),
 	})
 	if diags.HasError() {
 		t.Fatalf("unexpected seed state diagnostics: %+v", diags)
@@ -180,7 +181,7 @@ func newMinimalApplicationControlRulePlan(
 		"severity":                     types.StringValue(string(cato_models.ApplicationControlSeverityMedium)),
 		"schedule":                     types.ObjectNull(ScheduleAttrTypes),
 		"source":                       types.ObjectNull(ApplicationControlSourceAttrTypes),
-		"tracking":                     types.ObjectNull(TrackingAttrTypes),
+		"tracking":                     types.ObjectNull(policyrule.TrackingAttrTypes),
 		"device":                       types.SetNull(NameIDObjectType),
 		"access_method":                types.ListNull(types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}),
 		"application":                  types.ObjectNull(WanApplicationAttrTypes),
@@ -206,7 +207,7 @@ func newMinimalApplicationControlRulePlan(
 
 	return ApplicationControlRule{
 		Rule: types.ObjectValueMust(ApplicationControlRuleRuleAttrTypes, ruleAttrs),
-		At: types.ObjectValueMust(PositionAttrTypes, map[string]attr.Value{
+		At: types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		}),

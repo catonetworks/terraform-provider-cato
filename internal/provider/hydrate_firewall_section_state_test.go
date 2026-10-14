@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func TestHydrateFirewallSectionPositionState(t *testing.T) {
@@ -18,13 +20,13 @@ func TestHydrateFirewallSectionPositionState(t *testing.T) {
 		wantRef      types.String
 	}{
 		"missing import state defaults position": {
-			current:      types.ObjectNull(PositionAttrTypes),
+			current:      types.ObjectNull(policyrule.PositionAttrTypes),
 			wantPosition: ifwLastInPolicyPosition,
 			wantRef:      types.StringNull(),
 		},
 		"configured subpolicy reference is preserved": {
 			current: types.ObjectValueMust(
-				PositionAttrTypes,
+				policyrule.PositionAttrTypes,
 				map[string]attr.Value{
 					"position": types.StringValue(ifwLastInPolicyPosition),
 					"ref":      types.StringValue("subpolicy-123"),
@@ -35,7 +37,7 @@ func TestHydrateFirewallSectionPositionState(t *testing.T) {
 		},
 		"relative section position is preserved": {
 			current: types.ObjectValueMust(
-				PositionAttrTypes,
+				policyrule.PositionAttrTypes,
 				map[string]attr.Value{
 					"position": types.StringValue("BEFORE_SECTION"),
 					"ref":      types.StringValue("section-123"),

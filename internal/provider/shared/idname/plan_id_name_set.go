@@ -67,7 +67,7 @@ func idNameReferenceValue(configured types.Object, state types.Set) (types.Objec
 		return types.Object{}, nil, false
 	}
 	attrs[computed] = matchingIDNameValue(state, selector, attrs[selector], computed)
-	value, diags := types.ObjectValue(ModelTypes, attrs)
+	value, diags := types.ObjectValue(RefAttrTypes, attrs)
 	return value, diags, true
 }
 

@@ -34,9 +34,9 @@ func ParseIDName[T idRefTypes](ctx context.Context, ref T, diags *diag.Diagnosti
 	}
 
 	// make IDNameRefModel Object
-	obj, valueDiag := types.ObjectValueFrom(ctx, ModelTypes, idn(ref))
+	obj, valueDiag := types.ObjectValueFrom(ctx, RefAttrTypes, idn(ref))
 	if utils.CheckErr(diags, valueDiag) {
-		return types.ObjectNull(ModelTypes)
+		return types.ObjectNull(RefAttrTypes)
 	}
 	return obj
 }
@@ -47,7 +47,7 @@ func ParseIDNameSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 
 	// null value
 	if items == nil {
-		return types.SetNull(types.ObjectType{AttrTypes: ModelTypes})
+		return types.SetNull(types.ObjectType{AttrTypes: RefAttrTypes})
 	}
 
 	refObjects := make([]attr.Value, 0, len(items))
@@ -57,17 +57,17 @@ func ParseIDNameSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 		}
 		// make IDNameRefModel struct
 		val := idn(*i)
-		ref := Model{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
+		ref := Ref{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
 		// make IDNameRefModel Object
-		obj, valueDiag := types.ObjectValueFrom(ctx, ModelTypes, ref)
+		obj, valueDiag := types.ObjectValueFrom(ctx, RefAttrTypes, ref)
 		if utils.CheckErr(diags, valueDiag) {
-			return types.SetNull(types.ObjectType{AttrTypes: ModelTypes})
+			return types.SetNull(types.ObjectType{AttrTypes: RefAttrTypes})
 		}
 		// append to Object slice
 		refObjects = append(refObjects, obj)
 	}
 	// make Set value
-	setValues, valueDiag := types.SetValue(types.ObjectType{AttrTypes: ModelTypes}, refObjects)
+	setValues, valueDiag := types.SetValue(types.ObjectType{AttrTypes: RefAttrTypes}, refObjects)
 	diags.Append(valueDiag...)
 
 	return setValues
@@ -79,7 +79,7 @@ func ParseIDNameList[T idRefTypes](ctx context.Context, items []*T, diags *diag.
 
 	// null value
 	if items == nil {
-		return types.ListNull(types.ObjectType{AttrTypes: ModelTypes})
+		return types.ListNull(types.ObjectType{AttrTypes: RefAttrTypes})
 	}
 
 	refObjects := make([]attr.Value, 0, len(items))
@@ -89,17 +89,17 @@ func ParseIDNameList[T idRefTypes](ctx context.Context, items []*T, diags *diag.
 		}
 		// make IDNameRefModel struct
 		val := idn(*i)
-		ref := Model{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
+		ref := Ref{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
 		// make IDNameRefModel Object
-		obj, valueDiag := types.ObjectValueFrom(ctx, ModelTypes, ref)
+		obj, valueDiag := types.ObjectValueFrom(ctx, RefAttrTypes, ref)
 		if utils.CheckErr(diags, valueDiag) {
-			return types.ListNull(types.ObjectType{AttrTypes: ModelTypes})
+			return types.ListNull(types.ObjectType{AttrTypes: RefAttrTypes})
 		}
 		// append to Object slice
 		refObjects = append(refObjects, obj)
 	}
 	// make List value
-	list, valueDiag := types.ListValue(types.ObjectType{AttrTypes: ModelTypes}, refObjects)
+	list, valueDiag := types.ListValue(types.ObjectType{AttrTypes: RefAttrTypes}, refObjects)
 	diags.Append(valueDiag...)
 
 	return list
@@ -134,7 +134,7 @@ func PrepareIDNameSet[T idRefInputs](ctx context.Context, tfSet types.Set, diags
 // on error it sets the diagnostics error
 func prepareIDName(ctx context.Context, idName types.Object, diags *diag.Diagnostics,
 ) (by cato_models.ObjectRefBy, input string, isSet bool) {
-	var tfIDName Model
+	var tfIDName Ref
 	if !utils.HasValue(idName) {
 		return by, input, false
 	}

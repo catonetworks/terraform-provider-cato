@@ -10,7 +10,7 @@ import (
 )
 
 func TestIDNameSetModifier(t *testing.T) {
-	refType := types.ObjectType{AttrTypes: ModelTypes}
+	refType := types.ObjectType{AttrTypes: RefAttrTypes}
 	ref := func(name, id types.String) types.Object {
 		return types.ObjectValueMust(refType.AttrTypes, map[string]attr.Value{"name": name, "id": id})
 	}

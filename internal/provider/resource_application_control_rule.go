@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -236,12 +237,12 @@ func (r *applicationControlRuleResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	var pos PolicyRulePositionInput
+	var pos policyrule.Position
 	resp.Diagnostics.Append(plan.At.As(ctx, &pos, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	atObj, adiags := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+	atObj, adiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
 		"position": pos.Position,
 		"ref":      pos.Ref,
 	})
@@ -303,7 +304,7 @@ func (r *applicationControlRuleResource) Read(ctx context.Context, req resource.
 	// Preserve 'at' from state — the API does not return placement info.
 	// Default to LAST_IN_POLICY only when state has no 'at' (e.g. after import).
 	if state.At.IsNull() || state.At.IsUnknown() {
-		atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+		atObj, d := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		})
@@ -327,7 +328,7 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 	move := cato_models.PolicyMoveRuleInput{}
 	atAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 	if !plan.At.IsNull() {
-		pos := PolicyRulePositionInput{}
+		pos := policyrule.Position{}
 		resp.Diagnostics.Append(plan.At.As(ctx, &pos, atAsOpts)...)
 		move.To = &cato_models.PolicyRulePositionInput{
 			Position: (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer()),
@@ -408,12 +409,12 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	var pos PolicyRulePositionInput
+	var pos policyrule.Position
 	resp.Diagnostics.Append(plan.At.As(ctx, &pos, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	atObj, adiags := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+	atObj, adiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
 		"position": pos.Position,
 		"ref":      pos.Ref,
 	})

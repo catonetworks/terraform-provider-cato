@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -36,7 +38,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 
 	// setting at for creation only
 	if !plan.At.IsNull() {
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = append(diags, plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
 
 		hydrateAPIReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
@@ -124,7 +126,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceHostInput := make([]types.Object, 0, len(sourceInput.Host.Elements()))
 				diags = append(diags, sourceInput.Host.ElementsAs(ctx, &elementsSourceHostInput, false)...)
 
-				var itemSourceHostInput NameIDRef
+				var itemSourceHostInput idname.Ref
 				for _, item := range elementsSourceHostInput {
 					diags = append(diags, item.As(ctx, &itemSourceHostInput, basetypes.ObjectAsOptions{})...)
 
@@ -148,7 +150,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceSiteInput := make([]types.Object, 0, len(sourceInput.Site.Elements()))
 				diags = append(diags, sourceInput.Site.ElementsAs(ctx, &elementsSourceSiteInput, false)...)
 
-				var itemSourceSiteInput NameIDRef
+				var itemSourceSiteInput idname.Ref
 				for _, item := range elementsSourceSiteInput {
 					diags = append(diags, item.As(ctx, &itemSourceSiteInput, basetypes.ObjectAsOptions{})...)
 
@@ -191,7 +193,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceGlobalIPRangeInput := make([]types.Object, 0, len(sourceInput.GlobalIPRange.Elements()))
 				diags = append(diags, sourceInput.GlobalIPRange.ElementsAs(ctx, &elementsSourceGlobalIPRangeInput, false)...)
 
-				var itemSourceGlobalIPRangeInput NameIDRef
+				var itemSourceGlobalIPRangeInput idname.Ref
 				for _, item := range elementsSourceGlobalIPRangeInput {
 					diags = append(diags, item.As(ctx, &itemSourceGlobalIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -215,7 +217,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceSiteNetworkSubnetInput := make([]types.Object, 0, len(sourceInput.SiteNetworkSubnet.Elements()))
 				diags = append(diags, sourceInput.SiteNetworkSubnet.ElementsAs(ctx, &elementsSourceSiteNetworkSubnetInput, false)...)
 
-				var itemSourceSiteNetworkSubnetInput NameIDRef
+				var itemSourceSiteNetworkSubnetInput idname.Ref
 				for _, item := range elementsSourceSiteNetworkSubnetInput {
 					diags = append(diags, item.As(ctx, &itemSourceSiteNetworkSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -239,7 +241,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceFloatingSubnetInput := make([]types.Object, 0, len(sourceInput.FloatingSubnet.Elements()))
 				diags = append(diags, sourceInput.FloatingSubnet.ElementsAs(ctx, &elementsSourceFloatingSubnetInput, false)...)
 
-				var itemSourceFloatingSubnetInput NameIDRef
+				var itemSourceFloatingSubnetInput idname.Ref
 				for _, item := range elementsSourceFloatingSubnetInput {
 					diags = append(diags, item.As(ctx, &itemSourceFloatingSubnetInput, basetypes.ObjectAsOptions{})...)
 
@@ -263,7 +265,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceUserInput := make([]types.Object, 0, len(sourceInput.User.Elements()))
 				diags = append(diags, sourceInput.User.ElementsAs(ctx, &elementsSourceUserInput, false)...)
 
-				var itemSourceUserInput NameIDRef
+				var itemSourceUserInput idname.Ref
 				for _, item := range elementsSourceUserInput {
 					diags = append(diags, item.As(ctx, &itemSourceUserInput, basetypes.ObjectAsOptions{})...)
 
@@ -287,7 +289,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceUsersGroupInput := make([]types.Object, 0, len(sourceInput.UsersGroup.Elements()))
 				diags = append(diags, sourceInput.UsersGroup.ElementsAs(ctx, &elementsSourceUsersGroupInput, false)...)
 
-				var itemSourceUsersGroupInput NameIDRef
+				var itemSourceUsersGroupInput idname.Ref
 				for _, item := range elementsSourceUsersGroupInput {
 					diags = append(diags, item.As(ctx, &itemSourceUsersGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -311,7 +313,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceGroupInput := make([]types.Object, 0, len(sourceInput.Group.Elements()))
 				diags = append(diags, sourceInput.Group.ElementsAs(ctx, &elementsSourceGroupInput, false)...)
 
-				var itemSourceGroupInput NameIDRef
+				var itemSourceGroupInput idname.Ref
 				for _, item := range elementsSourceGroupInput {
 					diags = append(diags, item.As(ctx, &itemSourceGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -335,7 +337,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceSystemGroupInput := make([]types.Object, 0, len(sourceInput.SystemGroup.Elements()))
 				diags = append(diags, sourceInput.SystemGroup.ElementsAs(ctx, &elementsSourceSystemGroupInput, false)...)
 
-				var itemSourceSystemGroupInput NameIDRef
+				var itemSourceSystemGroupInput idname.Ref
 				for _, item := range elementsSourceSystemGroupInput {
 					diags = append(diags, item.As(ctx, &itemSourceSystemGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -359,7 +361,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsSourceNetworkInterfaceInput := make([]types.Object, 0, len(sourceInput.NetworkInterface.Elements()))
 				diags = append(diags, sourceInput.NetworkInterface.ElementsAs(ctx, &elementsSourceNetworkInterfaceInput, false)...)
 
-				var itemSourceNetworkInterfaceInput NameIDRef
+				var itemSourceNetworkInterfaceInput idname.Ref
 				for _, item := range elementsSourceNetworkInterfaceInput {
 					diags = append(diags, item.As(ctx, &itemSourceNetworkInterfaceInput, basetypes.ObjectAsOptions{})...)
 
@@ -388,7 +390,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 			elementsCountryInput := make([]types.Object, 0, len(ruleInput.Country.Elements()))
 			diags = append(diags, ruleInput.Country.ElementsAs(ctx, &elementsCountryInput, false)...)
 
-			var itemCountryInput NameIDRef
+			var itemCountryInput idname.Ref
 			for _, item := range elementsCountryInput {
 				diags = append(diags, item.As(ctx, &itemCountryInput, basetypes.ObjectAsOptions{})...)
 
@@ -412,7 +414,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 			elementsDevicePostureProfileInput := make([]types.Object, 0, len(ruleInput.DevicePostureProfile.Elements()))
 			diags = append(diags, ruleInput.DevicePostureProfile.ElementsAs(ctx, &elementsDevicePostureProfileInput, false)...)
 
-			var itemDevicePostureProfileInput NameIDRef
+			var itemDevicePostureProfileInput idname.Ref
 			for _, item := range elementsDevicePostureProfileInput {
 				diags = append(diags, item.As(ctx, &itemDevicePostureProfileInput, basetypes.ObjectAsOptions{})...)
 
@@ -458,7 +460,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsApplicationInput := make([]types.Object, 0, len(applicationInput.Application.Elements()))
 				diags = append(diags, applicationInput.Application.ElementsAs(ctx, &elementsApplicationInput, false)...)
 
-				var itemApplicationInput NameIDRef
+				var itemApplicationInput idname.Ref
 				for _, item := range elementsApplicationInput {
 					diags = append(diags, item.As(ctx, &itemApplicationInput, basetypes.ObjectAsOptions{})...)
 
@@ -482,7 +484,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsCustomAppInput := make([]types.Object, 0, len(applicationInput.CustomApp.Elements()))
 				diags = append(diags, applicationInput.CustomApp.ElementsAs(ctx, &elementsCustomAppInput, false)...)
 
-				var itemCustomAppInput NameIDRef
+				var itemCustomAppInput idname.Ref
 				for _, item := range elementsCustomAppInput {
 					diags = append(diags, item.As(ctx, &itemCustomAppInput, basetypes.ObjectAsOptions{})...)
 
@@ -506,7 +508,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsAppCategoryInput := make([]types.Object, 0, len(applicationInput.AppCategory.Elements()))
 				diags = append(diags, applicationInput.AppCategory.ElementsAs(ctx, &elementsAppCategoryInput, false)...)
 
-				var itemAppCategoryInput NameIDRef
+				var itemAppCategoryInput idname.Ref
 				for _, item := range elementsAppCategoryInput {
 					diags = append(diags, item.As(ctx, &itemAppCategoryInput, basetypes.ObjectAsOptions{})...)
 
@@ -530,7 +532,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsCustomCategoryInput := make([]types.Object, 0, len(applicationInput.CustomCategory.Elements()))
 				diags = append(diags, applicationInput.CustomCategory.ElementsAs(ctx, &elementsCustomCategoryInput, false)...)
 
-				var itemCustomCategoryInput NameIDRef
+				var itemCustomCategoryInput idname.Ref
 				for _, item := range elementsCustomCategoryInput {
 					diags = append(diags, item.As(ctx, &itemCustomCategoryInput, basetypes.ObjectAsOptions{})...)
 
@@ -605,7 +607,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsApplicationGlobalIPRangeInput := make([]types.Object, 0, len(applicationInput.GlobalIPRange.Elements()))
 				diags = append(diags, applicationInput.GlobalIPRange.ElementsAs(ctx, &elementsApplicationGlobalIPRangeInput, false)...)
 
-				var itemApplicationGlobalIPRangeInput NameIDRef
+				var itemApplicationGlobalIPRangeInput idname.Ref
 				for _, item := range elementsApplicationGlobalIPRangeInput {
 					diags = append(diags, item.As(ctx, &itemApplicationGlobalIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -638,7 +640,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsApplicationServiceInput := make([]types.Object, 0, len(applicationInput.Service.Elements()))
 				diags = append(diags, applicationInput.Service.ElementsAs(ctx, &elementsApplicationServiceInput, false)...)
 
-				var itemApplicationServiceInput NameIDRef
+				var itemApplicationServiceInput idname.Ref
 				for _, item := range elementsApplicationServiceInput {
 					diags = append(diags, item.As(ctx, &itemApplicationServiceInput, basetypes.ObjectAsOptions{})...)
 
@@ -662,7 +664,7 @@ func hydrateTLSRuleAPI(ctx context.Context, plan TLSInspectionRule) (hydrateTLSA
 				elementsApplicationCountryInput := make([]types.Object, 0, len(applicationInput.Country.Elements()))
 				diags = append(diags, applicationInput.Country.ElementsAs(ctx, &elementsApplicationCountryInput, false)...)
 
-				var itemApplicationCountryInput NameIDRef
+				var itemApplicationCountryInput idname.Ref
 				for _, item := range elementsApplicationCountryInput {
 					diags = append(diags, item.As(ctx, &itemApplicationCountryInput, basetypes.ObjectAsOptions{})...)
 

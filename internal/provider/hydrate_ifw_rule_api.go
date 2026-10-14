@@ -11,6 +11,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/portrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -49,7 +54,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 
 	// setting at for creation only
 	if !plan.At.IsNull() {
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = append(diags, plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
 
 		hydrateAPIReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
@@ -590,7 +595,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				elementsDestinationIPRangeInput := make([]types.Object, 0, len(destinationInput.IPRange.Elements()))
 				diags = append(diags, destinationInput.IPRange.ElementsAs(ctx, &elementsDestinationIPRangeInput, false)...)
 
-				var itemDestinationIPRangeInput PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
+				var itemDestinationIPRangeInput ipaddr.Range
 				for _, item := range elementsDestinationIPRangeInput {
 					diags = append(diags, item.As(ctx, &itemDestinationIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -777,7 +782,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 				diags = append(diags, serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)...)
 
-				var itemServiceCustomInput PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustom
+				var itemServiceCustomInput customservice.CustomService
 				for _, item := range elementsServiceCustomInput {
 					diags = append(diags, item.As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})...)
 
@@ -811,7 +816,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					// setting service custom port range
 					if !itemServiceCustomInput.PortRange.IsNull() {
 						tflog.Debug(ctx, "Processing port_range field")
-						var itemPortRange PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustomPortRange
+						var itemPortRange portrange.PortRange
 						diags = append(diags, itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
 						inputPortRange := cato_models.PortRangeInput{
@@ -861,12 +866,12 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 				Alert: &cato_models.PolicyRuleTrackingAlertUpdateInput{},
 			}
 
-			trackingInput := PolicyPolicyInternetFirewallPolicyRulesRuleTracking{}
+			trackingInput := policyrule.Tracking{}
 			diags = append(diags, ruleInput.Tracking.As(ctx, &trackingInput, basetypes.ObjectAsOptions{})...)
 
 			if !trackingInput.Event.IsUnknown() && !trackingInput.Event.IsNull() {
 				// setting tracking event
-				trackingEventInput := PolicyPolicyInternetFirewallPolicyRulesRuleTrackingEvent{}
+				trackingEventInput := policyrule.TrackingEvent{}
 				diags = append(diags, trackingInput.Event.As(ctx, &trackingEventInput, basetypes.ObjectAsOptions{})...)
 				rootAddRule.Tracking.Event.Enabled = trackingEventInput.Enabled.ValueBool()
 				rootUpdateRule.Tracking.Event.Enabled = trackingEventInput.Enabled.ValueBoolPointer()
@@ -875,7 +880,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			if !trackingInput.Alert.IsUnknown() && !trackingInput.Alert.IsNull() {
 				rootAddRule.Tracking.Alert = &cato_models.PolicyRuleTrackingAlertInput{}
 
-				trackingAlertInput := PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlert{}
+				trackingAlertInput := policyrule.TrackingAlert{}
 				diags = append(diags, trackingInput.Alert.As(ctx, &trackingAlertInput, basetypes.ObjectAsOptions{})...)
 
 				rootAddRule.Tracking.Alert.Enabled = trackingAlertInput.Enabled.ValueBool()
@@ -891,7 +896,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					elementsAlertSubscriptionGroupInput := make([]types.Object, 0, len(trackingAlertInput.SubscriptionGroup.Elements()))
 					diags = append(diags, trackingAlertInput.SubscriptionGroup.ElementsAs(ctx, &elementsAlertSubscriptionGroupInput, false)...)
 
-					var itemAlertSubscriptionGroupInput PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertSubscriptionGroup
+					var itemAlertSubscriptionGroupInput idname.Ref
 					for _, item := range elementsAlertSubscriptionGroupInput {
 						diags = append(diags, item.As(ctx, &itemAlertSubscriptionGroupInput, basetypes.ObjectAsOptions{})...)
 
@@ -919,7 +924,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					elementsAlertWebHookInput := make([]types.Object, 0, len(trackingAlertInput.Webhook.Elements()))
 					diags = append(diags, trackingAlertInput.Webhook.ElementsAs(ctx, &elementsAlertWebHookInput, false)...)
 
-					var itemAlertWebHookInput PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertSubscriptionGroup
+					var itemAlertWebHookInput idname.Ref
 					for _, item := range elementsAlertWebHookInput {
 						diags = append(diags, item.As(ctx, &itemAlertWebHookInput, basetypes.ObjectAsOptions{})...)
 
@@ -945,7 +950,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 					elementsAlertMailingListInput := make([]types.Object, 0, len(trackingAlertInput.MailingList.Elements()))
 					diags = append(diags, trackingAlertInput.MailingList.ElementsAs(ctx, &elementsAlertMailingListInput, false)...)
 
-					var itemAlertMailingListInput PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertSubscriptionGroup
+					var itemAlertMailingListInput idname.Ref
 					for _, item := range elementsAlertMailingListInput {
 						diags = append(diags, item.As(ctx, &itemAlertMailingListInput, basetypes.ObjectAsOptions{})...)
 
@@ -984,19 +989,19 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 			rootAddRule.Schedule.ActiveOn = cato_models.PolicyActiveOnEnum(scheduleInput.ActiveOn.ValueString())
 			rootUpdateRule.Schedule.ActiveOn = (*cato_models.PolicyActiveOnEnum)(scheduleInput.ActiveOn.ValueStringPointer())
 
-			// setting schedule custome time frame
+			// setting schedule custom time frame
 			if !scheduleInput.CustomTimeframe.IsNull() {
 				rootAddRule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeInput{}
 				rootUpdateRule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{}
 
-				customeTimeFrameInput := PolicyPolicyInternetFirewallPolicyRulesRuleScheduleCustomTimeframe{}
-				diags = append(diags, scheduleInput.CustomTimeframe.As(ctx, &customeTimeFrameInput, basetypes.ObjectAsOptions{})...)
+				customTimeFrameInput := PolicyPolicyInternetFirewallPolicyRulesRuleScheduleCustomTimeframe{}
+				diags = append(diags, scheduleInput.CustomTimeframe.As(ctx, &customTimeFrameInput, basetypes.ObjectAsOptions{})...)
 
-				rootAddRule.Schedule.CustomTimeframe.From = customeTimeFrameInput.From.ValueString()
-				rootAddRule.Schedule.CustomTimeframe.To = customeTimeFrameInput.To.ValueString()
+				rootAddRule.Schedule.CustomTimeframe.From = customTimeFrameInput.From.ValueString()
+				rootAddRule.Schedule.CustomTimeframe.To = customTimeFrameInput.To.ValueString()
 
-				rootUpdateRule.Schedule.CustomTimeframe.From = customeTimeFrameInput.From.ValueStringPointer()
-				rootUpdateRule.Schedule.CustomTimeframe.To = customeTimeFrameInput.To.ValueStringPointer()
+				rootUpdateRule.Schedule.CustomTimeframe.From = customTimeFrameInput.From.ValueStringPointer()
+				rootUpdateRule.Schedule.CustomTimeframe.To = customTimeFrameInput.To.ValueStringPointer()
 			} else {
 				rootUpdateRule.Schedule.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{}
 			}
@@ -1586,7 +1591,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						elementsDestinationIPRangeInput := make([]types.Object, 0, len(destinationInput.IPRange.Elements()))
 						diags = append(diags, destinationInput.IPRange.ElementsAs(ctx, &elementsDestinationIPRangeInput, false)...)
 
-						var itemDestinationIPRangeInput PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
+						var itemDestinationIPRangeInput ipaddr.Range
 						for _, item := range elementsDestinationIPRangeInput {
 							diags = append(diags, item.As(ctx, &itemDestinationIPRangeInput, basetypes.ObjectAsOptions{})...)
 
@@ -1783,7 +1788,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 						elementsServiceCustomInput := make([]types.Object, 0, len(serviceInput.Custom.Elements()))
 						diags = append(diags, serviceInput.Custom.ElementsAs(ctx, &elementsServiceCustomInput, false)...)
 
-						var itemServiceCustomInput PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustom
+						var itemServiceCustomInput customservice.CustomService
 						for _, item := range elementsServiceCustomInput {
 							diags = append(diags, item.As(ctx, &itemServiceCustomInput, basetypes.ObjectAsOptions{})...)
 
@@ -1818,7 +1823,7 @@ func hydrateIfwRuleAPI(ctx context.Context, plan InternetFirewallRule) (hydrateI
 							// setting service custom port range
 							if !itemServiceCustomInput.PortRange.IsNull() {
 								tflog.Debug(ctx, "Processing exception port_range field")
-								var itemPortRange PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustomPortRange
+								var itemPortRange portrange.PortRange
 								diags = append(diags, itemServiceCustomInput.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
 
 								inputPortRange := cato_models.PortRangeInput{

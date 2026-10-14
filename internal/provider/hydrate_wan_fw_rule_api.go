@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -37,7 +38,7 @@ func hydrateWanRuleAPI(ctx context.Context, plan WanFirewallRule) (hydrateWanAPI
 
 	// setting at for creation only
 	if !plan.At.IsNull() {
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = append(diags, plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
 
 		hydrateAPIReturn.create.At.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())

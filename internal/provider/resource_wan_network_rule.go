@@ -26,6 +26,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -2766,7 +2767,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	refValue := types.StringNull()
 
 	if !state.At.IsNull() && !state.At.IsUnknown() {
-		statePosInput := PolicyRulePositionInput{}
+		statePosInput := policyrule.Position{}
 		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 		if !diags.HasError() && !statePosInput.Position.IsNull() && !statePosInput.Position.IsUnknown() {
@@ -2778,7 +2779,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	curAtObj, diagstmp := types.ObjectValue(
-		PositionAttrTypes,
+		policyrule.PositionAttrTypes,
 		map[string]attr.Value{
 			"position": types.StringValue(positionValue),
 			"ref":      refValue,

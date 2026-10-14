@@ -5,11 +5,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var PositionObjectType = types.ObjectType{AttrTypes: PositionAttrTypes}
-var PositionAttrTypes = map[string]attr.Type{
-	"position": types.StringType,
-	"ref":      types.StringType,
-}
 var NameIDObjectType = types.ObjectType{AttrTypes: NameIDAttrTypes}
 var NameIDAttrTypes = map[string]attr.Type{
 	"name": types.StringType,
@@ -25,25 +20,6 @@ var FromToDaysAttrTypes = map[string]attr.Type{
 	"from": types.StringType,
 	"to":   types.StringType,
 	"days": types.ListType{ElemType: types.StringType},
-}
-
-// TrackingObjectType defines rule tracking attributes.
-var TrackingObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
-var TrackingAttrTypes = map[string]attr.Type{
-	"event": types.ObjectType{AttrTypes: TrackingEventAttrTypes},
-	"alert": types.ObjectType{AttrTypes: TrackingAlertAttrTypes},
-}
-var TrackingEventObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
-var TrackingEventAttrTypes = map[string]attr.Type{
-	"enabled": types.BoolType,
-}
-var TrackingAlertObjectType = types.ObjectType{AttrTypes: TrackingAttrTypes}
-var TrackingAlertAttrTypes = map[string]attr.Type{
-	"enabled":            types.BoolType,
-	"frequency":          types.StringType,
-	"subscription_group": types.SetType{ElemType: NameIDObjectType},
-	"webhook":            types.SetType{ElemType: NameIDObjectType},
-	"mailing_list":       types.SetType{ElemType: NameIDObjectType},
 }
 
 var ScheduleObjectType = types.ObjectType{AttrTypes: ScheduleAttrTypes}

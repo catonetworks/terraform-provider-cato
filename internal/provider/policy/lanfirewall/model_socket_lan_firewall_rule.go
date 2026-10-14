@@ -1,8 +1,14 @@
-package provider
+package lanfirewall
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/simpleservice"
 )
 
 // SocketLanFirewallRule represents the top-level resource structure for firewall rules
@@ -89,7 +95,7 @@ type SocketLanFirewallService struct {
 var SocketLanFirewallRuleObjectType = types.ObjectType{AttrTypes: SocketLanFirewallRuleAttrTypes}
 var SocketLanFirewallRuleAttrTypes = map[string]attr.Type{
 	"rule": SocketLanFirewallRuleRuleObjectType,
-	"at":   PositionObjectType,
+	"at":   policyrule.PositionObjectType,
 }
 
 var SocketLanFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: SocketLanFirewallRuleRuleAttrTypes}
@@ -104,7 +110,7 @@ var SocketLanFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"destination": SocketLanFirewallDestinationObjectType,
 	"application": SocketLanFirewallApplicationObjectType,
 	"service":     SocketLanFirewallServiceObjectType,
-	"tracking":    TrackingObjectType,
+	"tracking":    policyrule.TrackingObjectType,
 }
 
 var SocketLanFirewallSourceObjectType = types.ObjectType{AttrTypes: SocketLanFirewallSourceAttrTypes}
@@ -113,15 +119,15 @@ var SocketLanFirewallSourceAttrTypes = map[string]attr.Type{
 	"mac":                 types.ListType{ElemType: types.StringType},
 	"ip":                  types.ListType{ElemType: types.StringType},
 	"subnet":              types.ListType{ElemType: types.StringType},
-	"ip_range":            types.ListType{ElemType: FromToObjectType},
-	"host":                types.SetType{ElemType: NameIDObjectType},
-	"site":                types.SetType{ElemType: NameIDObjectType},
-	"group":               types.SetType{ElemType: NameIDObjectType},
-	"system_group":        types.SetType{ElemType: NameIDObjectType},
-	"network_interface":   types.SetType{ElemType: NameIDObjectType},
-	"global_ip_range":     types.SetType{ElemType: NameIDObjectType},
-	"floating_subnet":     types.SetType{ElemType: NameIDObjectType},
-	"site_network_subnet": types.SetType{ElemType: NameIDObjectType},
+	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
+	"host":                types.SetType{ElemType: idname.RefObjectType},
+	"site":                types.SetType{ElemType: idname.RefObjectType},
+	"group":               types.SetType{ElemType: idname.RefObjectType},
+	"system_group":        types.SetType{ElemType: idname.RefObjectType},
+	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
+	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
+	"floating_subnet":     types.SetType{ElemType: idname.RefObjectType},
+	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var SocketLanFirewallDestinationObjectType = types.ObjectType{AttrTypes: SocketLanFirewallDestinationAttrTypes}
@@ -129,32 +135,32 @@ var SocketLanFirewallDestinationAttrTypes = map[string]attr.Type{
 	"vlan":                types.ListType{ElemType: types.Int64Type},
 	"ip":                  types.ListType{ElemType: types.StringType},
 	"subnet":              types.ListType{ElemType: types.StringType},
-	"ip_range":            types.ListType{ElemType: FromToObjectType},
-	"host":                types.SetType{ElemType: NameIDObjectType},
-	"site":                types.SetType{ElemType: NameIDObjectType},
-	"group":               types.SetType{ElemType: NameIDObjectType},
-	"system_group":        types.SetType{ElemType: NameIDObjectType},
-	"network_interface":   types.SetType{ElemType: NameIDObjectType},
-	"global_ip_range":     types.SetType{ElemType: NameIDObjectType},
-	"floating_subnet":     types.SetType{ElemType: NameIDObjectType},
-	"site_network_subnet": types.SetType{ElemType: NameIDObjectType},
+	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
+	"host":                types.SetType{ElemType: idname.RefObjectType},
+	"site":                types.SetType{ElemType: idname.RefObjectType},
+	"group":               types.SetType{ElemType: idname.RefObjectType},
+	"system_group":        types.SetType{ElemType: idname.RefObjectType},
+	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
+	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
+	"floating_subnet":     types.SetType{ElemType: idname.RefObjectType},
+	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var SocketLanFirewallApplicationObjectType = types.ObjectType{AttrTypes: SocketLanFirewallApplicationAttrTypes}
 var SocketLanFirewallApplicationAttrTypes = map[string]attr.Type{
-	"application":     types.SetType{ElemType: NameIDObjectType},
-	"custom_app":      types.SetType{ElemType: NameIDObjectType},
+	"application":     types.SetType{ElemType: idname.RefObjectType},
+	"custom_app":      types.SetType{ElemType: idname.RefObjectType},
 	"domain":          types.ListType{ElemType: types.StringType},
 	"fqdn":            types.ListType{ElemType: types.StringType},
 	"ip":              types.ListType{ElemType: types.StringType},
 	"subnet":          types.ListType{ElemType: types.StringType},
-	"ip_range":        types.ListType{ElemType: FromToObjectType},
-	"global_ip_range": types.SetType{ElemType: NameIDObjectType},
+	"ip_range":        types.ListType{ElemType: ipaddr.RangeObjectType},
+	"global_ip_range": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var SocketLanFirewallServiceObjectType = types.ObjectType{AttrTypes: SocketLanFirewallServiceAttrTypes}
 var SocketLanFirewallServiceAttrTypes = map[string]attr.Type{
-	"simple":   types.SetType{ElemType: SimpleServiceObjectType},
-	"standard": types.SetType{ElemType: NameIDObjectType},
-	"custom":   types.ListType{ElemType: CustomServiceObjectType},
+	"simple":   types.SetType{ElemType: simpleservice.SimpleServiceObjectType},
+	"standard": types.SetType{ElemType: idname.RefObjectType},
+	"custom":   types.ListType{ElemType: customservice.CustomServiceObjectType},
 }

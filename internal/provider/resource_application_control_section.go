@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -115,7 +116,7 @@ func (r *applicationControlSectionResource) Create(ctx context.Context, req reso
 	input := cato_models.PolicyAddSectionInput{}
 	if !plan.At.IsNull() {
 		input.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		resp.Diagnostics.Append(plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
 		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
 		input.At.Ref = positionInput.Ref.ValueStringPointer()
@@ -210,7 +211,7 @@ func (r *applicationControlSectionResource) Read(ctx context.Context, req resour
 	// Preserve the at block from existing state; the API does not return positioning
 	// info on read. Only default to LAST_IN_POLICY when state has nothing (e.g. import).
 	if state.At.IsNull() || state.At.IsUnknown() {
-		atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+		atObj, d := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		})
@@ -245,7 +246,7 @@ func (r *applicationControlSectionResource) Update(ctx context.Context, req reso
 		}
 	}
 	if !plan.At.IsNull() {
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		resp.Diagnostics.Append(plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
 		inputMove.To = &cato_models.PolicySectionPositionInput{
 			Position: cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString()),

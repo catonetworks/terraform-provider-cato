@@ -28,6 +28,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -360,7 +361,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("Site Natwork Subnet"),
+					Attributes:    idname.SchemaNameID("Site Network Subnet"),
 					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
@@ -539,7 +540,7 @@ func (r *socketLanNetworkRuleResource) Read(ctx context.Context, req resource.Re
 	curAtObj := state.At
 	if !utils.HasValue(state.At) {
 		curAtObj, diagstmp = types.ObjectValue(
-			PositionAttrTypes,
+			policyrule.PositionAttrTypes,
 			map[string]attr.Value{
 				"position": types.StringValue("LAST_IN_POLICY"),
 				"ref":      types.StringNull(),
@@ -585,7 +586,7 @@ func (r *socketLanNetworkRuleResource) Update(ctx context.Context, req resource.
 	apiInput.update.ID = ruleID
 
 	// Move rule if position changed
-	var positionInput PolicyRulePositionInput
+	var positionInput policyrule.Position
 	diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 

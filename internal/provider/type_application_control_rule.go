@@ -3,6 +3,8 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 // ApplicationControlAccessMethodAttrTypes is one access-method row.
@@ -22,7 +24,7 @@ var applicationControlTypedRuleAttrTypes = map[string]attr.Type{
 	"severity":                     types.StringType,
 	"schedule":                     ScheduleObjectType,
 	"source":                       ApplicationControlSourceObjectType,
-	"tracking":                     TrackingObjectType,
+	"tracking":                     policyrule.TrackingObjectType,
 	"device":                       types.SetType{ElemType: NameIDObjectType},
 	"access_method":                types.ListType{ElemType: types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}},
 	"application":                  WanApplicationObjectType,
@@ -64,7 +66,7 @@ var ApplicationControlRuleRuleAttrTypes = map[string]attr.Type{
 // ApplicationControlRuleAttrTypes is the top-level resource attribute map.
 var ApplicationControlRuleAttrTypes = map[string]attr.Type{
 	"id":   types.StringType,
-	"at":   PositionObjectType,
+	"at":   policyrule.PositionObjectType,
 	"rule": types.ObjectType{AttrTypes: ApplicationControlRuleRuleAttrTypes},
 }
 

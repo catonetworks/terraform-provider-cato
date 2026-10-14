@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -123,7 +124,7 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 	// setting at
 	if !plan.At.IsNull() {
 		input.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
@@ -177,7 +178,7 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	// overiding state with section id
+	// overriding state with section id
 	resp.State.SetAttribute(
 		ctx,
 		path.Root("section").AtName("id"),
@@ -240,7 +241,7 @@ func (r *wanNetworkSectionResource) Read(ctx context.Context, req resource.ReadR
 	// hardcoding position supports the use case of bulk rule import/export
 	// getting around state changes for the position field
 	curAtObj, diagstmp := types.ObjectValue(
-		PositionAttrTypes,
+		policyrule.PositionAttrTypes,
 		map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
@@ -292,7 +293,7 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 	// setting at
 	if !plan.At.IsNull() {
 		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 

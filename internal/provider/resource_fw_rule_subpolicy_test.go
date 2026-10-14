@@ -15,6 +15,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 // ifwPolicyWithSubPolicy builds a policy snapshot containing a single sub-policy
@@ -105,7 +106,7 @@ func TestInternetFwRuleImportStateComposite(t *testing.T) {
 	}
 	diags := resp.State.Set(ctx, InternetFirewallRule{
 		Rule: types.ObjectNull(InternetFirewallRuleRuleAttrTypes),
-		At:   types.ObjectNull(PositionAttrTypes),
+		At:   types.ObjectNull(policyrule.PositionAttrTypes),
 	})
 	if diags.HasError() {
 		t.Fatalf("unexpected seed state diagnostics: %+v", diags)
@@ -137,7 +138,7 @@ func TestInternetFwRuleImportStateCompositeInvalid(t *testing.T) {
 	resp := &resource.ImportStateResponse{State: tfsdk.State{Schema: getInternetFwRuleSchema(ctx, t)}}
 	_ = resp.State.Set(ctx, InternetFirewallRule{
 		Rule: types.ObjectNull(InternetFirewallRuleRuleAttrTypes),
-		At:   types.ObjectNull(PositionAttrTypes),
+		At:   types.ObjectNull(policyrule.PositionAttrTypes),
 	})
 
 	r.ImportState(ctx, resource.ImportStateRequest{ID: "sub-42/"}, resp)

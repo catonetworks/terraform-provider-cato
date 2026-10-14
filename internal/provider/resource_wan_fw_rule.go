@@ -31,6 +31,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -391,7 +392,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "Site Natwork Subnet Name",
+											Description: "Site Network Subnet Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -405,7 +406,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "Site Natwork Subnet ID",
+											Description: "Site Network Subnet ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -815,7 +816,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
-											Description: "Site Natwork Subnet Name",
+											Description: "Site Network Subnet Name",
 											Required:    false,
 											Optional:    true,
 											Validators: []validator.String{
@@ -829,7 +830,7 @@ func (r *wanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
-											Description: "Site Natwork Subnet ID",
+											Description: "Site Network Subnet ID",
 											Required:    false,
 											Optional:    true,
 											PlanModifiers: []planmodifier.String{
@@ -3557,7 +3558,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	refValue := types.StringNull()
 
 	if !state.At.IsNull() && !state.At.IsUnknown() {
-		statePosInput := PolicyRulePositionInput{}
+		statePosInput := policyrule.Position{}
 		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 		if !diags.HasError() && !statePosInput.Position.IsNull() && !statePosInput.Position.IsUnknown() {
@@ -3569,7 +3570,7 @@ func (r *wanFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	curAtObj, diagstmp := types.ObjectValue(
-		PositionAttrTypes,
+		policyrule.PositionAttrTypes,
 		map[string]attr.Value{
 			"position": types.StringValue(positionValue),
 			"ref":      refValue,
@@ -3604,7 +3605,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	// setting at (to move rule)
 	if !plan.At.IsNull() {
 		inputMoveRule.To = &cato_models.PolicyRulePositionInput{}
-		positionInput := PolicyRulePositionInput{}
+		positionInput := policyrule.Position{}
 		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
@@ -3709,7 +3710,7 @@ func (r *wanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		"OUTPUT": utils.InterfaceToJSONString(currentRule),
 	})
 
-	// Hydrate ruleInput from api respoonse
+	// Hydrate ruleInput from api response
 	ruleInputRead, hydrateDiags := hydrateWanRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
 

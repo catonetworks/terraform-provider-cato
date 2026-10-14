@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -56,7 +57,7 @@ func hydrateApplicationControlAddRuleInput(
 
 	if !plan.At.IsNull() {
 		out.At = &cato_models.PolicyRulePositionInput{}
-		pos := PolicyRulePositionInput{}
+		pos := policyrule.Position{}
 		diags.Append(plan.At.As(ctx, &pos, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 		out.At.Position = (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer())
 		out.At.Ref = pos.Ref.ValueStringPointer()

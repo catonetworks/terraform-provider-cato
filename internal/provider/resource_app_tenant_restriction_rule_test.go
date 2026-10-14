@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func TestNewAppTenantRestrictionRuleResource(t *testing.T) {
@@ -71,7 +72,7 @@ func TestAppTenantRestrictionRuleImportState(t *testing.T) {
 	}
 	diags := resp.State.Set(ctx, AppTenantRestrictionRule{
 		Rule: types.ObjectNull(AppTenantRestrictionRuleRuleAttrTypes),
-		At:   types.ObjectNull(PositionAttrTypes),
+		At:   types.ObjectNull(policyrule.PositionAttrTypes),
 	})
 	if diags.HasError() {
 		t.Fatalf("unexpected seed state diagnostics: %+v", diags)

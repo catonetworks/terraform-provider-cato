@@ -22,6 +22,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -357,7 +358,7 @@ func (r *appTenantRestrictionRuleResource) Read(ctx context.Context, req resourc
 	// information, so we keep whatever was previously configured. On import the
 	// state has no 'at', so we fall back to the safe default LAST_IN_POLICY.
 	if state.At.IsNull() || state.At.IsUnknown() {
-		atObj, d := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+		atObj, d := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		})
@@ -381,7 +382,7 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 	move := cato_models.PolicyMoveRuleInput{}
 	atAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 	if !plan.At.IsNull() {
-		pos := PolicyRulePositionInput{}
+		pos := policyrule.Position{}
 		resp.Diagnostics.Append(plan.At.As(ctx, &pos, atAsOpts)...)
 		move.To = &cato_models.PolicyRulePositionInput{
 			Position: (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer()),
@@ -468,12 +469,12 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 		return
 	}
 
-	var pos PolicyRulePositionInput
+	var pos policyrule.Position
 	resp.Diagnostics.Append(plan.At.As(ctx, &pos, atAsOpts)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	atObj, adiags := types.ObjectValue(PositionAttrTypes, map[string]attr.Value{
+	atObj, adiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
 		"position": pos.Position,
 		"ref":      pos.Ref,
 	})

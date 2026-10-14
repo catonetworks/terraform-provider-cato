@@ -16,6 +16,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func TestNewIfSubPolicyResource(t *testing.T) {
@@ -271,7 +272,7 @@ func newIfSubPolicyModel(id string) InternetFirewallSubPolicy {
 		Name:        types.StringValue("test-sub"),
 		Description: types.StringValue("a sub"),
 		ScopeRuleID: types.StringNull(),
-		At: types.ObjectValueMust(PositionAttrTypes, map[string]attr.Value{
+		At: types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		}),

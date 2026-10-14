@@ -45,8 +45,8 @@ type Source struct {
 }
 
 var SourceTypes = map[string]attr.Type{
-	"users":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
-	"user_groups": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
+	"users":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+	"user_groups": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
 }
 
 type UserAttributes struct {
@@ -144,7 +144,7 @@ type PoliciRuleTrackingAlert struct {
 var PolicyRuleTrackingAlertTypes = map[string]attr.Type{
 	"enabled":            types.BoolType,
 	"frequency":          types.StringType,
-	"mailing_list":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
-	"subscription_group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
-	"webhook":            types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
+	"mailing_list":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+	"subscription_group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+	"webhook":            types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
 }

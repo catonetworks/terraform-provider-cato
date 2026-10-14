@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func TestLfSubPolicyAtSchemaIsImportSafe(t *testing.T) {
@@ -47,7 +48,7 @@ func TestLfSubPolicyPositionReplacementModifier(t *testing.T) {
 
 		resp := &planmodifier.ObjectResponse{}
 		modifier.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
-			StateValue: types.ObjectNull(PositionAttrTypes),
+			StateValue: types.ObjectNull(policyrule.PositionAttrTypes),
 			PlanValue:  first,
 		}, resp)
 
@@ -84,7 +85,7 @@ func TestLfSubPolicyPositionReplacementModifier(t *testing.T) {
 		resp := &planmodifier.ObjectResponse{}
 		modifier.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 			StateValue: first,
-			PlanValue:  types.ObjectUnknown(PositionAttrTypes),
+			PlanValue:  types.ObjectUnknown(policyrule.PositionAttrTypes),
 		}, resp)
 
 		require.False(t, resp.RequiresReplace)
@@ -96,7 +97,7 @@ func TestLfSubPolicyPositionReplacementModifier(t *testing.T) {
 		resp := &planmodifier.ObjectResponse{}
 		modifier.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 			StateValue: first,
-			PlanValue:  types.ObjectNull(PositionAttrTypes),
+			PlanValue:  types.ObjectNull(policyrule.PositionAttrTypes),
 		}, resp)
 
 		require.True(t, resp.Diagnostics.HasError())
@@ -251,7 +252,7 @@ func TestLfSubPolicyUpdateMovesImportedPositionAndPreservesPriorStateOnPublishFa
 	planModel.ID = types.StringValue("sub-policy-123")
 	planModel.ScopeRuleID = types.StringValue("scope-rule-123")
 	stateModel := planModel
-	stateModel.At = types.ObjectNull(PositionAttrTypes)
+	stateModel.At = types.ObjectNull(policyrule.PositionAttrTypes)
 	plan := tfsdk.Plan{Schema: resourceSchema}
 	require.False(t, plan.Set(ctx, planModel).HasError())
 	state := tfsdk.State{Schema: resourceSchema}
@@ -282,7 +283,7 @@ func TestLfSubPolicyUpdateRejectsResolvedNullPosition(t *testing.T) {
 	planModel.ID = types.StringValue("sub-policy-123")
 	planModel.ScopeRuleID = types.StringValue("scope-rule-123")
 	stateModel := planModel
-	planModel.At = types.ObjectNull(PositionAttrTypes)
+	planModel.At = types.ObjectNull(policyrule.PositionAttrTypes)
 	plan := tfsdk.Plan{Schema: resourceSchema}
 	require.False(t, plan.Set(ctx, planModel).HasError())
 	state := tfsdk.State{Schema: resourceSchema}
@@ -316,7 +317,7 @@ func TestLfSubPolicyPublishTreatsNoDraftAsSuccess(t *testing.T) {
 }
 
 func lfSubPolicyPosition(position string, ref types.String) types.Object {
-	return types.ObjectValueMust(PositionAttrTypes, map[string]attr.Value{
+	return types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
 		"position": types.StringValue(position),
 		"ref":      ref,
 	})

@@ -9,6 +9,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/portrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/simpleservice"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -33,7 +39,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 
 	// Parse position
 	if !plan.At.IsNull() {
-		var positionInput PolicyRulePositionInput
+		var positionInput policyrule.Position
 		diagstmp := plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
 		diags.Append(diagstmp...)
 
@@ -88,7 +94,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 
 			// Site references
 			if !siteData.Site.IsNull() && len(siteData.Site.Elements()) > 0 {
-				var sites []NameIDRef
+				var sites []idname.Ref
 				diagstmp = siteData.Site.ElementsAs(ctx, &sites, false)
 				diags.Append(diagstmp...)
 
@@ -108,7 +114,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 
 			// Group references
 			if !siteData.Group.IsNull() && len(siteData.Group.Elements()) > 0 {
-				var groups []NameIDRef
+				var groups []idname.Ref
 				diagstmp = siteData.Group.ElementsAs(ctx, &groups, false)
 				diags.Append(diagstmp...)
 
@@ -158,7 +164,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 
 			// Simple services
 			if !serviceData.Simple.IsNull() && len(serviceData.Simple.Elements()) > 0 {
-				var simpleServices []SocketLanSimpleService
+				var simpleServices []simpleservice.SimpleService
 				diagstmp = serviceData.Simple.ElementsAs(ctx, &simpleServices, false)
 				diags.Append(diagstmp...)
 
@@ -174,7 +180,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 
 			// Custom services
 			if !serviceData.Custom.IsNull() && len(serviceData.Custom.Elements()) > 0 {
-				var customServices []PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustom
+				var customServices []customservice.CustomService
 				diagstmp = serviceData.Custom.ElementsAs(ctx, &customServices, false)
 				diags.Append(diagstmp...)
 
@@ -195,7 +201,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 
 					// Port range
 					if !svc.PortRange.IsNull() {
-						var portRange PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustomPortRange
+						var portRange portrange.PortRange
 						diagstmp = svc.PortRange.As(ctx, &portRange, basetypes.ObjectAsOptions{})
 						diags.Append(diagstmp...)
 						customSvc.PortRange = &cato_models.PortRangeInput{
@@ -307,7 +313,7 @@ func hydrateSocketLanSourceAPI(
 
 	// IP Range
 	if !sourceData.IPRange.IsNull() && len(sourceData.IPRange.Elements()) > 0 {
-		var ipRanges []PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
+		var ipRanges []ipaddr.Range
 		diagstmp = sourceData.IPRange.ElementsAs(ctx, &ipRanges, false)
 		diags.Append(diagstmp...)
 		for _, r := range ipRanges {
@@ -324,7 +330,7 @@ func hydrateSocketLanSourceAPI(
 
 	// Host
 	if !sourceData.Host.IsNull() && len(sourceData.Host.Elements()) > 0 {
-		var hosts []NameIDRef
+		var hosts []idname.Ref
 		diagstmp = sourceData.Host.ElementsAs(ctx, &hosts, false)
 		diags.Append(diagstmp...)
 		for _, h := range hosts {
@@ -343,7 +349,7 @@ func hydrateSocketLanSourceAPI(
 
 	// Group
 	if !sourceData.Group.IsNull() && len(sourceData.Group.Elements()) > 0 {
-		var groups []NameIDRef
+		var groups []idname.Ref
 		diagstmp = sourceData.Group.ElementsAs(ctx, &groups, false)
 		diags.Append(diagstmp...)
 		for _, g := range groups {
@@ -362,7 +368,7 @@ func hydrateSocketLanSourceAPI(
 
 	// System Group
 	if !sourceData.SystemGroup.IsNull() && len(sourceData.SystemGroup.Elements()) > 0 {
-		var systemGroups []NameIDRef
+		var systemGroups []idname.Ref
 		diagstmp = sourceData.SystemGroup.ElementsAs(ctx, &systemGroups, false)
 		diags.Append(diagstmp...)
 		for _, sg := range systemGroups {
@@ -381,7 +387,7 @@ func hydrateSocketLanSourceAPI(
 
 	// Network Interface
 	if !sourceData.NetworkInterface.IsNull() && len(sourceData.NetworkInterface.Elements()) > 0 {
-		var networkInterfaces []NameIDRef
+		var networkInterfaces []idname.Ref
 		diagstmp = sourceData.NetworkInterface.ElementsAs(ctx, &networkInterfaces, false)
 		diags.Append(diagstmp...)
 		for _, ni := range networkInterfaces {
@@ -400,7 +406,7 @@ func hydrateSocketLanSourceAPI(
 
 	// Global IP Range
 	if !sourceData.GlobalIPRange.IsNull() && len(sourceData.GlobalIPRange.Elements()) > 0 {
-		var globalIPRanges []NameIDRef
+		var globalIPRanges []idname.Ref
 		diagstmp = sourceData.GlobalIPRange.ElementsAs(ctx, &globalIPRanges, false)
 		diags.Append(diagstmp...)
 		for _, gir := range globalIPRanges {
@@ -419,7 +425,7 @@ func hydrateSocketLanSourceAPI(
 
 	// Floating Subnet
 	if !sourceData.FloatingSubnet.IsNull() && len(sourceData.FloatingSubnet.Elements()) > 0 {
-		var floatingSubnets []NameIDRef
+		var floatingSubnets []idname.Ref
 		diagstmp = sourceData.FloatingSubnet.ElementsAs(ctx, &floatingSubnets, false)
 		diags.Append(diagstmp...)
 		for _, fs := range floatingSubnets {
@@ -438,7 +444,7 @@ func hydrateSocketLanSourceAPI(
 
 	// Site Network Subnet
 	if !sourceData.SiteNetworkSubnet.IsNull() && len(sourceData.SiteNetworkSubnet.Elements()) > 0 {
-		var siteNetworkSubnets []NameIDRef
+		var siteNetworkSubnets []idname.Ref
 		diagstmp = sourceData.SiteNetworkSubnet.ElementsAs(ctx, &siteNetworkSubnets, false)
 		diags.Append(diagstmp...)
 		for _, sns := range siteNetworkSubnets {
@@ -523,7 +529,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// IP Range
 	if !destData.IPRange.IsNull() && len(destData.IPRange.Elements()) > 0 {
-		var ipRanges []PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
+		var ipRanges []ipaddr.Range
 		diagstmp = destData.IPRange.ElementsAs(ctx, &ipRanges, false)
 		diags.Append(diagstmp...)
 		for _, r := range ipRanges {
@@ -540,7 +546,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// Host
 	if !destData.Host.IsNull() && len(destData.Host.Elements()) > 0 {
-		var hosts []NameIDRef
+		var hosts []idname.Ref
 		diagstmp = destData.Host.ElementsAs(ctx, &hosts, false)
 		diags.Append(diagstmp...)
 		for _, h := range hosts {
@@ -559,7 +565,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// Group
 	if !destData.Group.IsNull() && len(destData.Group.Elements()) > 0 {
-		var groups []NameIDRef
+		var groups []idname.Ref
 		diagstmp = destData.Group.ElementsAs(ctx, &groups, false)
 		diags.Append(diagstmp...)
 		for _, g := range groups {
@@ -578,7 +584,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// System Group
 	if !destData.SystemGroup.IsNull() && len(destData.SystemGroup.Elements()) > 0 {
-		var systemGroups []NameIDRef
+		var systemGroups []idname.Ref
 		diagstmp = destData.SystemGroup.ElementsAs(ctx, &systemGroups, false)
 		diags.Append(diagstmp...)
 		for _, sg := range systemGroups {
@@ -597,7 +603,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// Network Interface
 	if !destData.NetworkInterface.IsNull() && len(destData.NetworkInterface.Elements()) > 0 {
-		var networkInterfaces []NameIDRef
+		var networkInterfaces []idname.Ref
 		diagstmp = destData.NetworkInterface.ElementsAs(ctx, &networkInterfaces, false)
 		diags.Append(diagstmp...)
 		for _, ni := range networkInterfaces {
@@ -616,7 +622,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// Global IP Range
 	if !destData.GlobalIPRange.IsNull() && len(destData.GlobalIPRange.Elements()) > 0 {
-		var globalIPRanges []NameIDRef
+		var globalIPRanges []idname.Ref
 		diagstmp = destData.GlobalIPRange.ElementsAs(ctx, &globalIPRanges, false)
 		diags.Append(diagstmp...)
 		for _, gir := range globalIPRanges {
@@ -635,7 +641,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// Floating Subnet
 	if !destData.FloatingSubnet.IsNull() && len(destData.FloatingSubnet.Elements()) > 0 {
-		var floatingSubnets []NameIDRef
+		var floatingSubnets []idname.Ref
 		diagstmp = destData.FloatingSubnet.ElementsAs(ctx, &floatingSubnets, false)
 		diags.Append(diagstmp...)
 		for _, fs := range floatingSubnets {
@@ -654,7 +660,7 @@ func hydrateSocketLanDestinationAPI(
 
 	// Site Network Subnet
 	if !destData.SiteNetworkSubnet.IsNull() && len(destData.SiteNetworkSubnet.Elements()) > 0 {
-		var siteNetworkSubnets []NameIDRef
+		var siteNetworkSubnets []idname.Ref
 		diagstmp = destData.SiteNetworkSubnet.ElementsAs(ctx, &siteNetworkSubnets, false)
 		diags.Append(diagstmp...)
 		for _, sns := range siteNetworkSubnets {

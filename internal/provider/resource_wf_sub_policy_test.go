@@ -15,6 +15,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func TestNewWfSubPolicyResource(t *testing.T) {
@@ -189,7 +190,7 @@ func emptyWanScopeObject(id string) types.Object {
 		"destination":       types.ObjectNull(WanDestAttrTypes),
 		"service":           types.ObjectNull(WanServiceAttrTypes),
 		"action":            types.StringValue("ALLOW"),
-		"tracking":          types.ObjectNull(TrackingAttrTypes),
+		"tracking":          types.ObjectNull(policyrule.TrackingAttrTypes),
 		"schedule":          types.ObjectNull(ScheduleAttrTypes),
 		"direction":         types.StringValue("TO"),
 		"exceptions":        types.SetNull(WanExceptionObjectType),
@@ -202,7 +203,7 @@ func newWfSubPolicyModel(id string) WanFirewallSubPolicy {
 		Name:        types.StringValue("test-sub"),
 		Description: types.StringValue("a sub"),
 		ScopeRuleID: types.StringNull(),
-		At: types.ObjectValueMust(PositionAttrTypes, map[string]attr.Value{
+		At: types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		}),

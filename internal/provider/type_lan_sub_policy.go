@@ -13,7 +13,7 @@ type LanFirewallSubPolicy struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
-	At          types.Object `tfsdk:"at"`            // PolicyRulePositionInput
+	At          types.Object `tfsdk:"at"`            // policyrule.PolicyRulePositionInput
 	ScopeRuleID types.String `tfsdk:"scope_rule_id"` // computed SUB_POLICY_SCOPE rule id
 	Scope       types.Object `tfsdk:"scope"`         // LanFirewallSubPolicyScope
 }
@@ -84,6 +84,6 @@ type PolicySite struct {
 }
 
 var PolicySiteTypes = map[string]attr.Type{
-	"group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
-	"site":  types.SetType{ElemType: types.ObjectType{AttrTypes: idname.ModelTypes}},
+	"group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+	"site":  types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
 }

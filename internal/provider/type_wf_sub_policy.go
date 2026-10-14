@@ -12,7 +12,7 @@ type WanFirewallSubPolicy struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
-	At          types.Object `tfsdk:"at"`            // *PolicyRulePositionInput
+	At          types.Object `tfsdk:"at"`            // *policyrule.PolicyRulePositionInput
 	ScopeRuleID types.String `tfsdk:"scope_rule_id"` // computed SUB_POLICY_SCOPE rule id
 	Scope       types.Object `tfsdk:"scope"`         // PolicyPolicyWanFirewallPolicyRulesRule
 }

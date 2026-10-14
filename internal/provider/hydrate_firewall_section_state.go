@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func hydrateFirewallSectionPositionState(ctx context.Context, current types.Object) (types.Object, diag.Diagnostics) {
@@ -15,7 +17,7 @@ func hydrateFirewallSectionPositionState(ctx context.Context, current types.Obje
 	var diags diag.Diagnostics
 
 	if !current.IsNull() && !current.IsUnknown() {
-		var currentPosition PolicyRulePositionInput
+		var currentPosition policyrule.Position
 		currentDiags := current.As(ctx, &currentPosition, basetypes.ObjectAsOptions{})
 		diags.Append(currentDiags...)
 		if !currentDiags.HasError() {
@@ -29,7 +31,7 @@ func hydrateFirewallSectionPositionState(ctx context.Context, current types.Obje
 	}
 
 	result, resultDiags := types.ObjectValue(
-		PositionAttrTypes,
+		policyrule.PositionAttrTypes,
 		map[string]attr.Value{
 			"position": types.StringValue(position),
 			"ref":      ref,

@@ -4,22 +4,14 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 type InternetFirewallRule struct {
 	Rule        types.Object `tfsdk:"rule" json:"rule,omitempty"` // PolicyPolicyInternetFirewallPolicyRulesRule
-	At          types.Object `tfsdk:"at" json:"at,omitempty"`     // *PolicyRulePositionInput
+	At          types.Object `tfsdk:"at" json:"at,omitempty"`     // *policyrule.PolicyRulePositionInput
 	SubPolicyID types.String `tfsdk:"sub_policy_id" json:"sub_policy_id,omitempty"`
-}
-
-type PolicyRulePositionInput struct {
-	Position types.String `tfsdk:"position" json:"position,omitempty"`
-	Ref      types.String `tfsdk:"ref" json:"ref,omitempty"`
-}
-
-var PolicyRulePositionInputTypes = map[string]attr.Type{
-	"position": types.StringType,
-	"ref":      types.StringType,
 }
 
 type PolicyPolicyInternetFirewallPolicyRulesRule struct {
@@ -37,7 +29,7 @@ type PolicyPolicyInternetFirewallPolicyRulesRule struct {
 	Destination      types.Object `tfsdk:"destination" json:"destination,omitempty"` // PolicyPolicyInternetFirewallPolicyRulesRuleDestination
 	Service          types.Object `tfsdk:"service" json:"service,omitempty"`         // PolicyPolicyInternetFirewallPolicyRulesRuleService
 	Action           types.String `tfsdk:"action" json:"action,omitempty"`
-	Tracking         types.Object `tfsdk:"tracking" json:"tracking,omitempty"`           // PolicyPolicyInternetFirewallPolicyRulesRuleTracking
+	Tracking         types.Object `tfsdk:"tracking" json:"tracking,omitempty"`           // policyrule.PolicyTracking
 	ActivePeriod     types.Object `tfsdk:"active_period" json:"active_period,omitempty"` // PolicyPolicyInternetFirewallPolicyRulesRuleActivePeriod
 	Schedule         types.Object `tfsdk:"schedule" json:"schedule,omitempty"`           // PolicyPolicyInternetFirewallPolicyRulesRuleSchedule
 	Exceptions       types.Set    `tfsdk:"exceptions" json:"exceptions,omitempty"`       // []*PolicyPolicyInternetFirewallPolicyRulesRuleExceptions
@@ -95,7 +87,7 @@ type PolicyPolicyInternetFirewallPolicyRulesRuleDestination struct {
 	Fqdn                   types.List `tfsdk:"fqdn" json:"fqdn,omitempty"`
 	IP                     types.List `tfsdk:"ip" json:"ip,omitempty"`
 	Subnet                 types.List `tfsdk:"subnet" json:"subnet,omitempty"`
-	IPRange                types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`               // []*PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange
+	IPRange                types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`               // []*ipaddr.Range
 	GlobalIPRange          types.Set  `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"` // []*PolicyPolicyInternetFirewallPolicyRulesRuleDestinationGlobalIPRange
 	RemoteAsn              types.List `tfsdk:"remote_asn" json:"remote_asn,omitempty"`
 }
@@ -128,11 +120,6 @@ type PolicyPolicyInternetFirewallPolicyRulesRuleDestinationSanctionedAppsCategor
 type PolicyPolicyInternetFirewallPolicyRulesRuleDestinationCountry struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleDestinationIPRange struct {
-	From types.String `tfsdk:"from" json:"from,omitempty"`
-	To   types.String `tfsdk:"to" json:"to,omitempty"`
 }
 
 type PolicyPolicyInternetFirewallPolicyRulesRuleDestinationGlobalIPRange struct {
@@ -213,53 +200,10 @@ type PolicyPolicyInternetFirewallPolicyRulesRuleSourceFloatingSubnet struct {
 
 type PolicyPolicyInternetFirewallPolicyRulesRuleService struct {
 	Standard types.Set  `tfsdk:"standard" json:"standard,omitempty"` // []*PolicyPolicyInternetFirewallPolicyRulesRuleServiceStandard
-	Custom   types.List `tfsdk:"custom" json:"custom,omitempty"`     // []*PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustom
+	Custom   types.List `tfsdk:"custom" json:"custom,omitempty"`     // []*customservice.CustomService
 }
 
 type PolicyPolicyInternetFirewallPolicyRulesRuleServiceStandard struct {
-	ID   types.String `tfsdk:"id" json:"id,omitempty"`
-	Name types.String `tfsdk:"name" json:"name,omitempty"`
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustom struct {
-	Port      types.List   `tfsdk:"port" json:"port,omitempty"`
-	PortRange types.Object `tfsdk:"port_range" json:"port_range,omitempty"` // *PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustomPortRange
-	Protocol  types.String `tfsdk:"protocol" json:"protocol,omitempty"`
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleServiceCustomPortRange struct {
-	From types.String `tfsdk:"from" json:"from,omitempty"`
-	To   types.String `tfsdk:"to" json:"to,omitempty"`
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleTracking struct {
-	Event types.Object `tfsdk:"event" json:"event,omitempty"` // PolicyPolicyInternetFirewallPolicyRulesRuleTrackingEvent
-	Alert types.Object `tfsdk:"alert" json:"alert,omitempty"` // PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlert
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleTrackingEvent struct {
-	Enabled types.Bool `tfsdk:"enabled" json:"enabled,omitempty"`
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlert struct {
-	Enabled           types.Bool   `tfsdk:"enabled" json:"enabled,omitempty"`
-	Frequency         types.String `tfsdk:"frequency" json:"frequency,omitempty"`
-	SubscriptionGroup types.Set    `tfsdk:"subscription_group" json:"subscription_group,omitempty"` // []*PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertSubscriptionGroup
-	Webhook           types.Set    `tfsdk:"webhook" json:"webhook,omitempty"`                       // []*PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertWebhook
-	MailingList       types.Set    `tfsdk:"mailing_list" json:"mailing_list,omitempty"`             // []*PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertMailingList
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertSubscriptionGroup struct {
-	ID   types.String `tfsdk:"id" json:"id,omitempty"`
-	Name types.String `tfsdk:"name" json:"name,omitempty"`
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertWebhook struct {
-	ID   types.String `tfsdk:"id" json:"id,omitempty"`
-	Name types.String `tfsdk:"name" json:"name,omitempty"`
-}
-
-type PolicyPolicyInternetFirewallPolicyRulesRuleTrackingAlertMailingList struct {
 	ID   types.String `tfsdk:"id" json:"id,omitempty"`
 	Name types.String `tfsdk:"name" json:"name,omitempty"`
 }
@@ -301,7 +245,7 @@ type OperatingSystem types.String
 var InternetFirewallRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleAttrTypes}
 var InternetFirewallRuleAttrTypes = map[string]attr.Type{
 	"rule": InternetFirewallRuleRuleObjectType,
-	"at":   PositionObjectType,
+	"at":   policyrule.PositionObjectType,
 }
 
 var InternetFirewallRuleRuleObjectType = types.ObjectType{AttrTypes: InternetFirewallRuleRuleAttrTypes}
@@ -321,7 +265,7 @@ var InternetFirewallRuleRuleAttrTypes = map[string]attr.Type{
 	"destination":       types.ObjectType{AttrTypes: IfwDestAttrTypes},
 	"service":           types.ObjectType{AttrTypes: IfwServiceAttrTypes},
 	"action":            types.StringType,
-	"tracking":          TrackingObjectType,
+	"tracking":          policyrule.TrackingObjectType,
 	"schedule":          ScheduleObjectType,
 	"exceptions":        types.SetType{ElemType: types.ObjectType{AttrTypes: IfwExceptionAttrTypes}},
 }

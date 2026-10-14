@@ -19,6 +19,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
 func TestNewInternetFwRuleResource(t *testing.T) {
@@ -83,7 +84,7 @@ func TestInternetFwRuleImportState(t *testing.T) {
 
 	diags := resp.State.Set(ctx, InternetFirewallRule{
 		Rule: types.ObjectNull(InternetFirewallRuleRuleAttrTypes),
-		At:   types.ObjectNull(PositionAttrTypes),
+		At:   types.ObjectNull(policyrule.PositionAttrTypes),
 	})
 	if diags.HasError() {
 		t.Fatalf("unexpected seed state diagnostics: %+v", diags)
@@ -619,14 +620,14 @@ func TestRuleAlertValidatorMarkdownDescription(t *testing.T) {
 func TestRuleAlertValidatorValidateObjectSkipsNullAndUnknown(t *testing.T) {
 	ctx := context.Background()
 	v := ruleAlertValidator{}
-	objectType := types.ObjectType{AttrTypes: TrackingAlertAttrTypes}
+	objectType := types.ObjectType{AttrTypes: policyrule.TrackingAlertAttrTypes}
 
 	testCases := []struct {
 		name  string
 		value types.Object
 	}{
-		{name: "null", value: types.ObjectNull(TrackingAlertAttrTypes)},
-		{name: "unknown", value: types.ObjectUnknown(TrackingAlertAttrTypes)},
+		{name: "null", value: types.ObjectNull(policyrule.TrackingAlertAttrTypes)},
+		{name: "unknown", value: types.ObjectUnknown(policyrule.TrackingAlertAttrTypes)},
 		{name: "unknown_configured_type", value: types.ObjectUnknown(objectType.AttrTypes)},
 	}
 
@@ -649,7 +650,7 @@ func TestRuleAlertValidatorValidateObjectRequiresEnabledAndFrequency(t *testing.
 
 	v.ValidateObject(ctx, validator.ObjectRequest{
 		ConfigValue: types.ObjectValueMust(
-			TrackingAlertAttrTypes,
+			policyrule.TrackingAlertAttrTypes,
 			map[string]attr.Value{
 				"enabled":            types.BoolNull(),
 				"frequency":          types.StringNull(),
@@ -675,7 +676,7 @@ func TestRuleAlertValidatorValidateObjectAcceptsValidAlert(t *testing.T) {
 
 	v.ValidateObject(ctx, validator.ObjectRequest{
 		ConfigValue: types.ObjectValueMust(
-			TrackingAlertAttrTypes,
+			policyrule.TrackingAlertAttrTypes,
 			map[string]attr.Value{
 				"enabled":            types.BoolValue(true),
 				"frequency":          types.StringValue("DAILY"),
@@ -736,7 +737,7 @@ func newMinimalInternetFwRuleModel(ruleID string) InternetFirewallRule {
 
 	return InternetFirewallRule{
 		Rule: types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs),
-		At: types.ObjectValueMust(PositionAttrTypes, map[string]attr.Value{
+		At: types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		}),
@@ -815,11 +816,11 @@ func ifwDeviceAttributesObject(categories []string) types.Object {
 }
 
 func minimalTrackingObject() types.Object {
-	return types.ObjectValueMust(TrackingAttrTypes, map[string]attr.Value{
-		"event": types.ObjectValueMust(TrackingEventAttrTypes, map[string]attr.Value{
+	return types.ObjectValueMust(policyrule.TrackingAttrTypes, map[string]attr.Value{
+		"event": types.ObjectValueMust(policyrule.TrackingEventAttrTypes, map[string]attr.Value{
 			"enabled": types.BoolValue(false),
 		}),
-		"alert": types.ObjectNull(TrackingAlertAttrTypes),
+		"alert": types.ObjectNull(policyrule.TrackingAlertAttrTypes),
 	})
 }
 

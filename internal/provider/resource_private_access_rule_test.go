@@ -906,7 +906,7 @@ func newPrivateAccessRuleTestState(ctx context.Context, t *testing.T, r *privAcc
 	var schemaResp resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
 	state := tfsdk.State{Schema: schemaResp.Schema}
-	refType := types.ObjectType{AttrTypes: idname.ModelTypes}
+	refType := types.ObjectType{AttrTypes: idname.RefAttrTypes}
 	diags := state.Set(ctx, PrivateAccessRuleModel{
 		ID:                types.StringValue("rule-123"),
 		Name:              types.StringValue("test rule"),
