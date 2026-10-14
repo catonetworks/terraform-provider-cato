@@ -33,7 +33,7 @@ func (r *siteSettingsResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.UpdateDNSSiteSettings(ctx, r.Client.AccountId, plan.SiteID.ValueString(), input)
+	result, err := r.Client.DNS().UpdateDNSSiteSettings(ctx, r.Client.AccountId, plan.SiteID.ValueString(), input)
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "updateSiteSettings", err)
 		return
@@ -66,7 +66,7 @@ func (r *siteSettingsResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.UpdateDNSSiteSettings(ctx, r.Client.AccountId, plan.SiteID.ValueString(), input)
+	result, err := r.Client.DNS().UpdateDNSSiteSettings(ctx, r.Client.AccountId, plan.SiteID.ValueString(), input)
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "updateSiteSettings", err)
 		return
@@ -94,7 +94,7 @@ func (r *siteSettingsResource) Read(ctx context.Context, req resource.ReadReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDNSSiteSettings(ctx, r.Client.AccountId,
+	result, err := r.Client.DNS().NetworkConfigDNSSiteSettings(ctx, r.Client.AccountId,
 		models.SiteRefInput{By: models.ObjectRefByID, Input: state.SiteID.ValueString()},
 	)
 	if err != nil {
@@ -127,7 +127,7 @@ func (r *siteSettingsResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 	input := models.NetworkConfigDNSRemoveSiteSettingsInput{Site: []*models.SiteRefInput{{By: models.ObjectRefByID,
 		Input: state.SiteID.ValueString()}}}
-	result, err := r.Client.Catov2.NetworkConfigDNSRemoveSiteSettings(ctx, r.Client.AccountId, input)
+	result, err := r.Client.DNS().NetworkConfigDNSRemoveSiteSettings(ctx, r.Client.AccountId, input)
 	if err != nil {
 		if !nc.IsNotFound(err, "removeSiteSettings") {
 			nc.APIError(&resp.Diagnostics, "removeSiteSettings", err)

@@ -35,7 +35,7 @@ func (r *forwardingRuleResource) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDNSCreateForwardingRule(ctx, r.Client.AccountId,
+	result, err := r.Client.DNS().NetworkConfigDNSCreateForwardingRule(ctx, r.Client.AccountId,
 		models.NetworkConfigDNSCreateForwardingRuleInput{ForwardingRule: []*models.NetworkConfigDNSForwardingRuleCreateInput{&input}},
 	)
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *forwardingRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDNSForwardingRule(ctx, r.Client.AccountId,
+	result, err := r.Client.DNS().NetworkConfigDNSForwardingRule(ctx, r.Client.AccountId,
 		models.NetworkConfigDNSForwardingRuleRefInput{By: models.ObjectRefByID, Input: state.ID.ValueString()},
 	)
 	if err != nil {
@@ -105,7 +105,7 @@ func (r *forwardingRuleResource) Update(ctx context.Context, req resource.Update
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDNSUpdateForwardingRule(ctx, r.Client.AccountId,
+	result, err := r.Client.DNS().NetworkConfigDNSUpdateForwardingRule(ctx, r.Client.AccountId,
 		models.NetworkConfigDNSUpdateForwardingRuleInput{ForwardingRule: []*models.NetworkConfigDNSForwardingRuleUpdateInput{&input}},
 	)
 	if err != nil {
@@ -133,7 +133,7 @@ func (r *forwardingRuleResource) Delete(ctx context.Context, req resource.Delete
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDNSDeleteForwardingRule(ctx, r.Client.AccountId,
+	result, err := r.Client.DNS().NetworkConfigDNSDeleteForwardingRule(ctx, r.Client.AccountId,
 		models.NetworkConfigDNSDeleteForwardingRuleInput{ID: []string{state.ID.ValueString()}},
 	)
 	if err != nil {

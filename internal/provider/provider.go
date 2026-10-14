@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	networkdhcp "github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcp"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dns"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
@@ -487,9 +487,9 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		dns.NewSettingsResource,
 		dns.NewSiteSettingsResource,
 		dns.NewForwardingRuleResource,
-		networkdhcp.NewSettingsResource,
-		networkdhcp.NewOptionResource,
-		networkdhcp.NewRelayGroupResource,
+		dhcp.NewSettingsResource,
+		dhcp.NewOptionResource,
+		dhcp.NewRelayGroupResource,
 		NewAdminResource,
 		NewBgpPeerResource,
 		NewGroupResource,

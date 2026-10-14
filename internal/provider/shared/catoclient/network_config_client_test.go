@@ -29,7 +29,7 @@ func TestDNSUpdatePreservesNullAndEmpty(t *testing.T) {
 	defer server.Close()
 	sdk, err := cato.New(server.URL, "test-key", "account-123", server.Client(), nil)
 	require.NoError(t, err)
-	result, err := NewProviderSDKClient(sdk).UpdateDNSSettings(context.Background(), "account-123", DNSSettingsInput{Suffix: []string{}})
+	result, err := NewDNSClient(NewProviderSDKClient(sdk)).UpdateDNSSettings(context.Background(), "account-123", DNSSettingsInput{Suffix: []string{}})
 	require.NoError(t, err)
 	require.NotNil(t, result.NetworkConfig.DNS.UpdateSettings.Settings)
 }
@@ -50,7 +50,7 @@ func TestSiteDNSUpdatePreservesNullAndEmpty(t *testing.T) {
 	defer server.Close()
 	sdk, err := cato.New(server.URL, "test-key", "account-123", server.Client(), nil)
 	require.NoError(t, err)
-	result, err := NewProviderSDKClient(sdk).UpdateDNSSiteSettings(context.Background(), "account-123", "site-123", DNSSettingsInput{Suffix: []string{}})
+	result, err := NewDNSClient(NewProviderSDKClient(sdk)).UpdateDNSSiteSettings(context.Background(), "account-123", "site-123", DNSSettingsInput{Suffix: []string{}})
 	require.NoError(t, err)
 	require.Len(t, result.NetworkConfig.DNS.UpdateSiteSettings.SiteSettings, 1)
 }
@@ -59,4 +59,13 @@ func TestProviderSDKClientAllowsUninitializedClient(t *testing.T) {
 	t.Parallel()
 	require.NotPanics(t, func() { NewProviderSDKClient(nil) })
 	require.NotPanics(t, func() { NewProviderSDKClient(&cato.Client{}) })
+}
+
+func TestProviderSDKClientPreservesSharedHTTPClient(t *testing.T) {
+	t.Parallel()
+	httpClient := &http.Client{}
+	sdk, err := cato.New("https://example.test/graphql", "test-key", "account-123", httpClient, nil)
+	require.NoError(t, err)
+	NewProviderSDKClient(sdk)
+	require.Same(t, httpClient, sdk.Client.Client, "shared SDK constructor must not install feature-specific transport")
 }

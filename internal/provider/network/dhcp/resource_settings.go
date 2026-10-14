@@ -52,7 +52,7 @@ func (r *settingsResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if !nc.CheckAccount(&r.Resource, state.ID, &resp.Diagnostics) {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpSettings(ctx, r.Client.AccountId)
+	result, err := r.Client.DHCP().NetworkConfigDhcpSettings(ctx, r.Client.AccountId)
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "settings", err)
 		return

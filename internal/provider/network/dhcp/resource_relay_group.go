@@ -35,7 +35,7 @@ func (r *relayGroupResource) Create(ctx context.Context, req resource.CreateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpCreateRelayGroup(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpCreateRelayGroup(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpCreateRelayGroupInput{RelayGroup: []*models.NetworkConfigDhcpRelayGroupCreateInput{&input}},
 	)
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *relayGroupResource) Read(ctx context.Context, req resource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpRelayGroup(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpRelayGroup(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpRelayGroupRefInput{By: models.ObjectRefByID, Input: state.ID.ValueString()},
 	)
 	if err != nil {
@@ -105,7 +105,7 @@ func (r *relayGroupResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpUpdateRelayGroup(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpUpdateRelayGroup(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpUpdateRelayGroupInput{RelayGroup: []*models.NetworkConfigDhcpRelayGroupUpdateInput{&input}},
 	)
 	if err != nil {
@@ -133,7 +133,7 @@ func (r *relayGroupResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpDeleteRelayGroup(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpDeleteRelayGroup(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpDeleteRelayGroupInput{ID: []string{state.ID.ValueString()}},
 	)
 	if err != nil {

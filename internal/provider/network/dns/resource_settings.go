@@ -31,7 +31,7 @@ func (r *settingsResource) Create(ctx context.Context, req resource.CreateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.UpdateDNSSettings(ctx, r.Client.AccountId, input)
+	result, err := r.Client.DNS().UpdateDNSSettings(ctx, r.Client.AccountId, input)
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "updateSettings", err)
 		return
@@ -65,7 +65,7 @@ func (r *settingsResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.UpdateDNSSettings(ctx, r.Client.AccountId, input)
+	result, err := r.Client.DNS().UpdateDNSSettings(ctx, r.Client.AccountId, input)
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "updateSettings", err)
 		return
@@ -94,7 +94,7 @@ func (r *settingsResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if !nc.CheckAccount(&r.Resource, state.ID, &resp.Diagnostics) {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDNSSettings(ctx, r.Client.AccountId)
+	result, err := r.Client.DNS().NetworkConfigDNSSettings(ctx, r.Client.AccountId)
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "settings", err)
 		return

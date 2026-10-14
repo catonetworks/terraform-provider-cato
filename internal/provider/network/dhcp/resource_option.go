@@ -35,7 +35,7 @@ func (r *optionResource) Create(ctx context.Context, req resource.CreateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpCreateOption(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpCreateOption(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpCreateOptionInput{Option: []*models.NetworkConfigDhcpOptionCreateInput{&input}},
 	)
 	if err != nil {
@@ -61,7 +61,7 @@ func (r *optionResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpOption(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpOption(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpOptionRefInput{By: models.ObjectRefByID, Input: state.ID.ValueString()},
 	)
 	if err != nil {
@@ -103,7 +103,7 @@ func (r *optionResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpUpdateOption(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpUpdateOption(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpUpdateOptionInput{Option: []*models.NetworkConfigDhcpOptionUpdateInput{&input}},
 	)
 	if err != nil {
@@ -129,7 +129,7 @@ func (r *optionResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpDeleteOption(ctx, r.Client.AccountId,
+	result, err := r.Client.DHCP().NetworkConfigDhcpDeleteOption(ctx, r.Client.AccountId,
 		models.NetworkConfigDhcpDeleteOptionInput{ID: []string{state.ID.ValueString()}},
 	)
 	if err != nil {

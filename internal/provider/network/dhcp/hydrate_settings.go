@@ -23,7 +23,7 @@ func (r *settingsResource) write(ctx context.Context, plan *SettingsModel, diags
 	if plan.RelayEnabled.ValueBool() && !r.completeRelay(ctx, input.Relay, diags) {
 		return
 	}
-	result, err := r.Client.Catov2.NetworkConfigDhcpUpdateSettings(ctx, r.Client.AccountId, input)
+	result, err := r.Client.DHCP().NetworkConfigDhcpUpdateSettings(ctx, r.Client.AccountId, input)
 	if err != nil {
 		nc.APIError(diags, "updateSettings", err)
 		return
@@ -50,7 +50,7 @@ func (r *settingsResource) completeRelay(ctx context.Context, input *models.Netw
 		return true
 	}
 
-	current, err := r.Client.Catov2.NetworkConfigDhcpSettings(ctx, r.Client.AccountId)
+	current, err := r.Client.DHCP().NetworkConfigDhcpSettings(ctx, r.Client.AccountId)
 	if err != nil {
 		nc.APIError(diags, "read relay configuration", err)
 		return false

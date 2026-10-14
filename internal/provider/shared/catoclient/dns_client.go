@@ -3,9 +3,16 @@ package catoclient
 import (
 	"context"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
+
+type DNSClient struct{ *ProviderSDKClient }
+
+func NewDNSClient(client *ProviderSDKClient) *DNSClient { return &DNSClient{ProviderSDKClient: client} }
+
+func (s *Service) DNS() *DNSClient { return NewDNSClient(s.Catov2) }
 
 // DNSSettingsInput preserves explicit null servers and an empty suffix list.
 // Generated SDK inputs use omitempty, which cannot express these clear operations.
@@ -60,7 +67,7 @@ const dnsSiteSettingsDocument = `mutation networkConfigDnsUpdateSiteSettings (
 }
 `
 
-func (c *ProviderSDKClient) UpdateDNSSettings(ctx context.Context,
+func (c *DNSClient) UpdateDNSSettings(ctx context.Context,
 	accountID string,
 	input DNSSettingsInput) (*cato.NetworkConfigDNSUpdateSettings,
 	error) {
@@ -73,7 +80,7 @@ func (c *ProviderSDKClient) UpdateDNSSettings(ctx context.Context,
 	return &result, nil
 }
 
-func (c *ProviderSDKClient) UpdateDNSSiteSettings(ctx context.Context,
+func (c *DNSClient) UpdateDNSSiteSettings(ctx context.Context,
 	accountID,
 	siteID string,
 	input DNSSettingsInput) (*cato.NetworkConfigDNSUpdateSiteSettings,
@@ -90,4 +97,23 @@ func (c *ProviderSDKClient) UpdateDNSSiteSettings(ctx context.Context,
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (c *DNSClient) NetworkConfigDNSSettings(ctx context.Context, accountID string,
+	interceptors ...clientv2.RequestInterceptor) (*cato.NetworkConfigDNSSettings, error) {
+	return c.ProviderSDKClient.NetworkConfigDNSSettings(ctx, accountID,
+		append(interceptors, validateReadResponse("dns", "settings"))...)
+}
+
+func (c *DNSClient) NetworkConfigDNSSiteSettings(ctx context.Context, accountID string, siteRefInput cato_models.SiteRefInput,
+	interceptors ...clientv2.RequestInterceptor) (*cato.NetworkConfigDNSSiteSettings, error) {
+	return c.ProviderSDKClient.NetworkConfigDNSSiteSettings(ctx, accountID, siteRefInput,
+		append(interceptors, validateReadResponse("dns", "siteSettings"))...)
+}
+
+func (c *DNSClient) NetworkConfigDNSForwardingRule(ctx context.Context, accountID string,
+	input cato_models.NetworkConfigDNSForwardingRuleRefInput,
+	interceptors ...clientv2.RequestInterceptor) (*cato.NetworkConfigDNSForwardingRule, error) {
+	return c.ProviderSDKClient.NetworkConfigDNSForwardingRule(ctx, accountID, input,
+		append(interceptors, validateReadResponse("dns", "forwardingRule"))...)
 }

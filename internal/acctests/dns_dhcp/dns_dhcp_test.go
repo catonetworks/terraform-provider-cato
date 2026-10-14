@@ -122,7 +122,7 @@ func restoreBaseline(t *testing.T, client *catoclient.ProviderSDKClient, dns *ca
 	t.Helper()
 	ctx := context.Background()
 	settings := dns.NetworkConfig.DNS.Settings
-	_, err := client.UpdateDNSSettings(ctx, acc.CatoAccountID, catoclient.DNSSettingsInput{
+	_, err := catoclient.NewDNSClient(client).UpdateDNSSettings(ctx, acc.CatoAccountID, catoclient.DNSSettingsInput{
 		PrimaryServer: settings.PrimaryServer, SecondaryServer: settings.SecondaryServer, Suffix: settings.Suffix,
 		AcceptDNSRequestsOnLanInterfaceIP: settings.AcceptDNSRequestsOnLanInterfaceIP})
 	if err != nil {
@@ -138,7 +138,7 @@ func restoreBaseline(t *testing.T, client *catoclient.ProviderSDKClient, dns *ca
 		t.Errorf("restore DHCP settings: %v", err)
 	}
 	if override := site.NetworkConfig.DNS.SiteSettings; override != nil {
-		_, err = client.UpdateDNSSiteSettings(ctx, acc.CatoAccountID, siteID, catoclient.DNSSettingsInput{
+		_, err = catoclient.NewDNSClient(client).UpdateDNSSiteSettings(ctx, acc.CatoAccountID, siteID, catoclient.DNSSettingsInput{
 			PrimaryServer: override.PrimaryServer, SecondaryServer: override.SecondaryServer, Suffix: override.Suffix})
 	} else {
 		_, err = client.NetworkConfigDNSRemoveSiteSettings(ctx, acc.CatoAccountID, models.NetworkConfigDNSRemoveSiteSettingsInput{
