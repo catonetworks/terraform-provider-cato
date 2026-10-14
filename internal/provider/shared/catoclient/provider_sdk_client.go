@@ -204,6 +204,12 @@ type ProviderSDKClient struct {
 }
 
 func NewProviderSDKClient(client *cato.Client) *ProviderSDKClient {
+	if client == nil || client.Client == nil || client.Client.Client == nil {
+		return &ProviderSDKClient{Client: client}
+	}
+	if _, guarded := client.Client.Client.(*networkConfigReadClient); !guarded {
+		client.Client.Client = &networkConfigReadClient{HttpClient: client.Client.Client}
+	}
 	return &ProviderSDKClient{Client: client}
 }
 
