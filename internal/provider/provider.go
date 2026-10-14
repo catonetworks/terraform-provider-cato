@@ -491,6 +491,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewRoleResource,
+		NewRBACAssignmentResource,
 		NewAccountResource,
 		NewAdminResource,
 		NewBgpPeerResource,

@@ -1,0 +1,1 @@
+terraform import cato_rbac_assignment.example ACCOUNT_ID:ASSIGNMENT_ID
