@@ -147,7 +147,9 @@ python3 -m unittest test_preflight
 ```
 
 Opt-in real test captures/restores account/site settings, creates three unique collection
-items, verifies no-op plans and imports, and updates option value. Set
+items, verifies no-op plans and imports, and updates option value. The automated fixture orders writes with `depends_on`;
+concurrent legacy DNS writes caused a newly created forwarding rule to disappear in
+live testing. Keep `-parallelism=1` for manual apply/destroy. Set
 `TFACC_DNS_DHCP_SERVERS` to comma-separated valid test server IPs and
 `TFACC_DHCP_OPTION_TAG` to an unused option code. Do not run in parallel with manual fixture:
 

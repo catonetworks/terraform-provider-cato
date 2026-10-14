@@ -71,28 +71,33 @@ resource "cato_dns_settings" "test" {
  accept_dns_requests_on_lan_interface_ip = %t
 }
 resource "cato_dns_site_settings" "test" {
+ depends_on = [cato_dns_settings.test]
  site_id = %q
  primary_server = %s
  secondary_server = %s
  suffix = %s
 }
 resource "cato_dns_forwarding_rule" "test" {
+ depends_on = [cato_dns_site_settings.test]
  domain = %q
  server = %s
 }
 resource "cato_dhcp_settings" "test" {
+ depends_on = [cato_dns_forwarding_rule.test]
  lease_time = %d
  relay_enabled = %t
  relay_timeout = %s
  relay_group_id = %s
 }
 resource "cato_dhcp_option" "test" {
+ depends_on = [cato_dhcp_settings.test]
  tag = %d
  type = "ASCII"
  value = %q
  description = %q
 }
 resource "cato_dhcp_relay_group" "test" {
+ depends_on = [cato_dhcp_option.test]
  name = %q
  server = %s
 }
