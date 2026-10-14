@@ -45,7 +45,7 @@ func TestAccDNSDHCP(t *testing.T) {
 		t.Fatal("Missing baseline settings")
 	}
 	t.Cleanup(func() { restoreBaseline(t, client, dns, dhcp, site, siteID) })
-	name := fmt.Sprintf("acctest_dns_dhcp_%d", time.Now().UnixNano())
+	name := fmt.Sprintf("acctest-dns-dhcp-%d", time.Now().UnixNano())
 	dnsConfig := dns.NetworkConfig.DNS.Settings
 	dhcpConfig := dhcp.NetworkConfig.Dhcp.Settings
 	primary, secondary, suffix := hcl(dnsConfig.PrimaryServer), hcl(dnsConfig.SecondaryServer), hcl(dnsConfig.Suffix)
