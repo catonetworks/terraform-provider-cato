@@ -1,0 +1,15 @@
+# Response to an update request for an app connector resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            {
+              "updateZtnaAppConnector":
+                { "ztnaAppConnector": { "id": "1000" } },
+            },
+        },
+    }

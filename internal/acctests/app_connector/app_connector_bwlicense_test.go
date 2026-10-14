@@ -16,11 +16,11 @@ import (
 )
 
 func TestAccAppConnector_BWAllocation(t *testing.T) {
-	if os.Getenv("ACC_TEST_BW_LICENSE") == "" {
+	if !accmock.ACCMockActive && (os.Getenv("ACC_TEST_BW_LICENSE") == "") {
 		t.Skip("to enable TestAccAppConnector_BWAllocation, set ACC_TEST_BW_LICENSE=<license-id>")
 	}
 	acc.SkipByEnv(t)
-	mockSrv := accmock.NewMockServer(t, "TestAccAppConnector")
+	mockSrv := accmock.NewMockServer(t, "TestAccAppConnector_BWAllocation")
 	defer mockSrv.Close()
 	mockSrv.Run()
 	cfg := newAppConnectorLicenseCfg(t)
@@ -95,7 +95,12 @@ func TestAccAppConnector_BWAllocation(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "location.state_code", "US-CA"),
 					resource.TestCheckResourceAttr(res, "location.timezone", "America/Los_Angeles"),
 
-					resource.TestCheckResourceAttr(res, "pooled_bandwidth_allocation.#", "1"),
+					resource.TestCheckResourceAttr(res, "pooled_bandwidth_allocation.#", "2"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "pooled_bandwidth_allocation.*", map[string]string{
+						"license_id": cfg.bwLicenses[0],
+						"bandwidth":  "20",
+					}),
+
 					resource.TestCheckTypeSetElemNestedAttrs(res, "pooled_bandwidth_allocation.*", map[string]string{
 						"license_id": cfg.bwLicenses[0],
 						"bandwidth":  "30",
@@ -183,6 +188,7 @@ var appConnectorLicenseTFs = []string{`
 		}
 		pooled_bandwidth_allocation = [
 			{ license_id = "{{(index .PooledBWLicenseID 0)}}", bandwidth = 30 },
+			{ license_id = "{{(index .PooledBWLicenseID 0)}}", bandwidth = 20 },
 		]
 		preferred_pop_location = {
 			automatic      = true

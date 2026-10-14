@@ -49,6 +49,11 @@ type appConnectorResource struct {
 	client *catoclient.Service
 }
 
+type licenseKey struct {
+	lic string
+	bw  int64
+}
+
 func (r *appConnectorResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_app_connector"
 }
@@ -339,41 +344,75 @@ func (r *appConnectorResource) UpdateBwLicenses(ctx context.Context, stateLcs, p
 		return
 	}
 
-	type licKey struct {
-		lic string
-		bw  int64
-	}
 	// Map of currently used licenses
-	stateMap := make(map[licKey]string) // [license+bandwidth]=>allocationID
+	stateMap := make(map[licenseKey]string) // [license+bandwidth]=>allocationID
 	for _, l := range tfStateLicenses {
-		k := licKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
+		k := licenseKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
 		stateMap[k] = l.AllocationID.ValueString()
 	}
 	// Map of planned licenses
-	planMap := make(map[licKey]string) // [license+bandwidth]=>allocationID
+	planMap := make(map[licenseKey]string) // [license+bandwidth]=>allocationID
 	for _, l := range tfPlanLicenses {
-		k := licKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
+		k := licenseKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
 		planMap[k] = l.AllocationID.ValueString()
 	}
 
 	// Find licenses to remove
-	var toRemove []licKey
+	var toRemove = make(map[licenseKey]string) // [license+bandwidth]=>allocationID
 	for k := range stateMap {
 		if _, ok := planMap[k]; !ok { // we have it now, but we don't plan to keep it
-			toRemove = append(toRemove, k)
+			toRemove[k] = stateMap[k]
 		}
 	}
 
 	// Find licenses to add
-	var toAdd []licKey
+	var toAdd = make(map[licenseKey]string) // [license+bandwidth]=>allocationID
 	for k := range planMap {
 		if _, ok := stateMap[k]; !ok { // we don't have it now, but we plan it
-			toAdd = append(toAdd, k)
+			toAdd[k] = stateMap[k]
 		}
 	}
 
-	// Call API to add licenses
-	for _, k := range toAdd {
+	// Find licenses that can be updated
+	var toUpdate = make(map[string]int64) // [allocationID]=>bandwidth
+	for addKey := range toAdd {
+		for rmKey, allocID := range toRemove {
+			if addKey.lic == rmKey.lic {
+				toUpdate[allocID] = addKey.bw
+				delete(toRemove, rmKey)
+				delete(toAdd, addKey)
+				break
+			}
+		}
+	}
+
+	// Call APIs
+	r.updateBwLicenses(ctx, toUpdate, diags)
+	r.addBwLicenses(ctx, toAdd, appConID, diags)
+	r.rmBwLicenses(ctx, toRemove, diags)
+}
+
+// updateBwLicenses - Call API to update licenses
+func (r *appConnectorResource) updateBwLicenses(ctx context.Context, toUpdate map[string]int64, diags *diag.Diagnostics) {
+	for allocID, bw := range toUpdate {
+		input := cato_models.UpdateZtnaAppConnectorBwLicenseInput{
+			AllocationID: allocID,
+			Bw:           bw,
+		}
+		_, err := r.client.Catov2.ZtnaAppConnectorUpdateZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		if err != nil {
+			diags.AddError(fmt.Sprintf("%s [bw=%d, allocation='%s']",
+				"failed to update AppConnector Pooled bandwidth license ", bw, allocID), err.Error())
+			return
+		}
+	}
+}
+
+// addBwLicenses - Call API to add licenses
+func (r *appConnectorResource) addBwLicenses(ctx context.Context, toAdd map[licenseKey]string, appConID string,
+	diags *diag.Diagnostics,
+) {
+	for k := range toAdd {
 		input := cato_models.AddZtnaAppConnectorBwLicenseInput{
 			Bw:        k.bw,
 			LicenseID: k.lic,
@@ -389,13 +428,15 @@ func (r *appConnectorResource) UpdateBwLicenses(ctx context.Context, stateLcs, p
 			return
 		}
 	}
+}
 
-	// Call API to remove licenses
-	for _, k := range toRemove {
-		input := cato_models.RemoveZtnaAppConnectorBwLicenseInput{AllocationID: stateMap[k]}
+// rmBwLicenses - Call API to remove licenses
+func (r *appConnectorResource) rmBwLicenses(ctx context.Context, toRemove map[licenseKey]string, diags *diag.Diagnostics) {
+	for _, allocID := range toRemove {
+		input := cato_models.RemoveZtnaAppConnectorBwLicenseInput{AllocationID: allocID}
 		_, err := r.client.Catov2.ZtnaAppConnectorRemoveZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
 		if err != nil {
-			diags.AddError("failed to remove AppConnector Pooled bandwidth license "+stateMap[k], err.Error())
+			diags.AddError("failed to remove AppConnector Pooled bandwidth license "+allocID, err.Error())
 			return
 		}
 	}
@@ -528,10 +569,6 @@ func (r *appConnectorResource) parseBwAllocations(ctx context.Context,
 	diags *diag.Diagnostics,
 ) types.Set {
 	var objDiags diag.Diagnostics
-
-	if bwAllocs == nil {
-		return types.SetNull(types.ObjectType{AttrTypes: BandwidthAllocationTypes})
-	}
 
 	// Prepare BandwidthAllocation set
 	var bwAllocSlice []attr.Value

@@ -1,0 +1,633 @@
+# Response to a read request for a location entityLookup
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "entityLookup":
+            {
+              "items":
+                [
+                  {
+                    "entity":
+                      { "id": "13", "name": "Amsterdam", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "12", "name": "Ashburn", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "153",
+                        "name": "Ashburn_DC2",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "59", "name": "Atlanta", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "120", "name": "Auckland", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "144", "name": "Austin TX", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "70", "name": "Bangkok", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "155",
+                        "name": "Beijing_DC2",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "135", "name": "Bogota", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "102", "name": "Boston", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "127", "name": "Brussels", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "75", "name": "Bucharest", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "25",
+                        "name": "Buenos Aires",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "68", "name": "Calgary", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "27", "name": "Cape Town", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "111", "name": "Casablanca", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "112", "name": "Charlotte", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "145", "name": "Chennai", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "17", "name": "Chicago", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "125", "name": "Cincinnati", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "131", "name": "Copenhagen", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "18", "name": "Dallas", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "56", "name": "Denver", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "96", "name": "Detroit", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "15", "name": "Dubai_DC2", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "124", "name": "Dublin", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "22", "name": "Fortaleza", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "11", "name": "Frankfurt", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "148",
+                        "name": "Frankfurt_DC2",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "133", "name": "Helsinki", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "83", "name": "Ho Chi Minh", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "20", "name": "Hong Kong", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "128",
+                        "name": "Hong Kong DC2",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "157", "name": "Honolulu", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "106", "name": "Houston", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "117", "name": "Jakarta", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "86",
+                        "name": "Johannesburg",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "154",
+                        "name": "Kansas-City",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "61",
+                        "name": "Kuala Lumpur",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "21", "name": "Lagos", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "72", "name": "Las Vegas", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "108", "name": "Lima", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "19", "name": "London", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "16", "name": "Los Angeles", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "122", "name": "Madrid", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "121", "name": "Manchester", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "81", "name": "Manila", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "130", "name": "Marseille", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "92", "name": "Melbourne", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "67", "name": "Mexico City", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "50", "name": "Miami", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "85", "name": "Milan", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "118",
+                        "name": "Minneapolis",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "136", "name": "Monterrey", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "138", "name": "Montreal", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "65", "name": "Mumbai", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "119", "name": "Munich", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "152", "name": "Nairobi", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "57", "name": "New York", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "107", "name": "Osaka", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "149", "name": "Osaka_DC2", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "23", "name": "Oslo", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "101", "name": "Paris", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "71", "name": "Perth", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "137", "name": "Phoenix", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "126", "name": "Portland", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "116", "name": "Prague", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "129", "name": "Quito", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "30", "name": "Rome", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "140",
+                        "name": "Salt Lake City",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "132",
+                        "name": "San Jose, Costa Rica",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "66", "name": "Santa Clara", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "82", "name": "Santiago", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "110", "name": "Sao_Paulo", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "159", "name": "Sapporo", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "49", "name": "Seattle", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "115", "name": "Seoul", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "156",
+                        "name": "Shanghai_DC2",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      {
+                        "id": "146",
+                        "name": "Shenzhen_DC2",
+                        "type": "location",
+                      },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "29", "name": "Singapore", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "58", "name": "Stockholm", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "60", "name": "Sydney", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "113", "name": "Taipei", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "7", "name": "Tel Aviv", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "54", "name": "Tokyo", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "141", "name": "Tokyo_DC2", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "158", "name": "Tokyo_DC3", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "160", "name": "Tokyo_DC4", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "69", "name": "Toronto", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "151", "name": "Urumqi", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "147", "name": "Vancouver", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "10", "name": "Vienna", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "139", "name": "Warsaw", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                  {
+                    "entity":
+                      { "id": "104", "name": "Zurich", "type": "location" },
+                    "description": "",
+                    "helperFields": {},
+                  },
+                ],
+              "total": 94,
+            },
+        },
+    }

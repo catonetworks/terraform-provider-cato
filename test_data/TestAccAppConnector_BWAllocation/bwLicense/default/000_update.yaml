@@ -1,0 +1,18 @@
+# Response to an update request for an app connector license resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 0ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            {
+              "updateZtnaAppConnectorBwLicense":
+                {
+                  "pooledBandwidthAllocation":
+                    { "allocationId": "A100", "licenseId": "L100", "bw": 30 },
+                },
+            },
+        },
+    }

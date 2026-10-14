@@ -1,0 +1,50 @@
+Operations:
+  appConnectorCreateConnector:
+    Type: CREATE
+    Resource: appConnector
+    NamePath: variables.newConnector.name
+
+  appConnectorReadConnector:
+    Type: READ
+    Resource: appConnector
+    IDPath: variables.ref.input
+    Static: false
+
+  appConnectorUpdateConnector:
+    Type: UPDATE
+    Resource: appConnector
+    IDPath: variables.updateConnector.id
+
+  appConnectorDeleteConnector:
+    Type: DELETE
+    Resource: appConnector
+    IDPath: variables.connectorRef.ztnaAppConnector.input
+
+  ztnaAppConnectorRemoveZtnaAppConnectorBwLicense:
+    Type: DELETE
+    Resource: bwLicense
+    Static: true
+
+  ztnaAppConnectorAddZtnaAppConnectorBwLicense:
+    Type: CREATE
+    Resource: bwLicense
+    NamePath: variables.addZtnaAppConnectorBwLicenseInput.licenseId
+
+  ztnaAppConnectorUpdateZtnaAppConnectorBwLicense:
+    Type: UPDATE
+    Resource: bwLicense
+    Static: true
+    # IDPath: variables.updateZtnaAppConnectorBwLicenseInput.allocationId
+
+  entityLookup:
+    Type: READ
+    ResourcePath: variables.type
+    IDPath: variables.entityIDs
+    Subtypes:
+      location:
+        Static: true
+      site:
+        Static: false
+
+  policyPrivateAccessDiscardRevision:
+    Type: NO_CONTENT
