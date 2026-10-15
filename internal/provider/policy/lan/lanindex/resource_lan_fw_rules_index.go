@@ -1,4 +1,4 @@
-package provider
+package lanindex
 
 import (
 	"cmp"
@@ -12,10 +12,6 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -59,121 +55,6 @@ func (r *lanRulesIndexResource) getClient() LanFwRuleClient { return r.catov2Cli
 
 func (r *lanRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_bulk_lf_move_rule"
-}
-
-//nolint:funlen // Declarative nested schema remains clearer in one function.
-func (r *lanRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Description: "Manages ordering of LAN firewall policy items.\n\n" +
-			"**LAN Firewall Policy**\n" +
-			"- Section\n" +
-			"  - Network rule\n" +
-			"    - Firewall rule\n" +
-			"  - Sub-policy\n" +
-			"    - Section\n" +
-			"      - Network rule\n" +
-			"        - Firewall rule",
-
-		Attributes: map[string]schema.Attribute{
-			"section_data": schema.MapNestedAttribute{
-				Description: "Map of section indexes keyed by a caller-chosen stable key. " +
-					"For backward compatibility, the key is used as section_name when section_name is omitted.",
-				Required: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Description:   "Section id",
-							Computed:      true,
-							PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
-						},
-						"section_name": schema.StringAttribute{
-							Description: "LAN section name. Defaults to the map key for backward compatibility.",
-							Optional:    true,
-							Computed:    true,
-						},
-						"section_index": schema.Int64Attribute{
-							Description: "Position of the section in the policy or sub-policy. Starts with 1.",
-							Required:    true,
-						},
-						"sub_policy_name": schema.StringAttribute{
-							Description: "Sub-policy name. If not set, the main policy is used.",
-							Optional:    true,
-							Computed:    true,
-							Default:     stringdefault.StaticString(""),
-						},
-					},
-				},
-			},
-			"network_rules": schema.MapNestedAttribute{
-				Description: "Map of network rule or sub-policy indexes keyed by a caller-chosen stable key. " +
-					"For backward compatibility, the key is used as rule_name when rule_name is omitted.",
-				Required: false,
-				Optional: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Description:   "Network rule ID or sub-policy scope rule ID",
-							Computed:      true,
-							PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
-						},
-						"rule_type": schema.StringAttribute{
-							Description: "Rule type: POLICY_RULE, SUB_POLICY_SCOPE, SUB_RULE",
-							Computed:    true,
-						},
-						"rule_name": schema.StringAttribute{
-							Description: "Network rule or sub-policy name. Defaults to the map key for backward compatibility.",
-							Optional:    true,
-							Computed:    true,
-						},
-						"section_name": schema.StringAttribute{
-							Description: "LAN section name housing rule",
-							Required:    true,
-						},
-						"section_key": schema.StringAttribute{
-							Description: "Map key of the parent section. Required when section_name is ambiguous.",
-							Optional:    true,
-						},
-						"index_in_section": schema.Int64Attribute{
-							Description: "Index value remapped per section",
-							Required:    true,
-						},
-					},
-				},
-			},
-			"firewall_rules": schema.MapNestedAttribute{
-				Description: "Map of firewall rule indexes keyed by a caller-chosen stable key. " +
-					"For backward compatibility, the key is used as firewall_rule_name when firewall_rule_name is omitted.",
-				Required: false,
-				Optional: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Description:   "Firewall rule ID",
-							Computed:      true,
-							PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
-						},
-						"firewall_rule_name": schema.StringAttribute{
-							Description: "Firewall rule name. Defaults to the map key for backward compatibility.",
-							Optional:    true,
-							Computed:    true,
-						},
-						"net_rule_name": schema.StringAttribute{
-							Description: "Parent LAN network rule name",
-							Required:    true,
-						},
-						"net_rule_key": schema.StringAttribute{
-							Description: "Map key of the parent network rule. Required when net_rule_name is ambiguous.",
-							Optional:    true,
-						},
-						"index_in_rule": schema.Int64Attribute{
-							Description: "Index value remapped per network rule",
-							Required:    true,
-						},
-					},
-				},
-			},
-		},
-	}
 }
 
 func (r *lanRulesIndexResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
@@ -1351,7 +1232,7 @@ func (r *lanRulesIndexResource) parsePlanFwRules(plan *LanFwRulesIndex, netRuleK
 
 func (r *lanRulesIndexResource) moveSections(ctx context.Context, sections map[string]itemOrder) (diags diag.Diagnostics) {
 	movePolicySections := func(sect itemOrder) error {
-		// we need to loop backwards because the API does not support movint to the beginning
+		// we need to loop backwards because the API does not support moving to the beginning
 		for i := len(sect.target) - 1; i >= 0; i-- {
 			if sect.target[i].id != sect.current[i].id {
 				err := r.moveSectionToPosition(ctx, sect.parentID, sect.current, sect.target[i].id, sect.target[i].name, i)
@@ -1387,22 +1268,22 @@ func (r *lanRulesIndexResource) moveSectionToPosition(ctx context.Context, paren
 
 	tflog.Debug(ctx, "moving section '"+sectionName+"' to position "+strconv.Itoa(newPosition))
 
-	curPossition := -1
+	curPosition := -1
 	for i := range currentSections {
 		if currentSections[i].id == sectionID {
-			curPossition = i
+			curPosition = i
 			mySection = currentSections[i]
 			break
 		}
 	}
-	if curPossition == -1 {
-		return fmt.Errorf("internal error: failed to find sectioID %s", sectionID)
+	if curPosition == -1 {
+		return fmt.Errorf("internal error: failed to find sectionID %s", sectionID)
 	}
-	if curPossition == newPosition {
+	if curPosition == newPosition {
 		return nil // nothing to do
 	}
 
-	for i := curPossition; i < newPosition; i++ {
+	for i := curPosition; i < newPosition; i++ {
 		currentSections[i] = currentSections[i+1]
 	}
 	currentSections[newPosition] = mySection
@@ -1504,22 +1385,22 @@ func (r *lanRulesIndexResource) moveNetRuleToPosition(ctx context.Context, paren
 
 	tflog.Debug(ctx, "moving network rule '"+ruleName+"' to position "+strconv.Itoa(newPosition))
 
-	curPossition := -1
+	curPosition := -1
 	for i := range currentRulesOrSubPols {
 		if currentRulesOrSubPols[i].id == ruleID {
-			curPossition = i
+			curPosition = i
 			myRule = currentRulesOrSubPols[i]
 			break
 		}
 	}
-	if curPossition == -1 {
+	if curPosition == -1 {
 		return fmt.Errorf("internal error: failed to find rule ID %s", ruleID)
 	}
-	if curPossition == newPosition {
+	if curPosition == newPosition {
 		return nil // nothing to do
 	}
 
-	for i := curPossition; i < newPosition; i++ {
+	for i := curPosition; i < newPosition; i++ {
 		currentRulesOrSubPols[i] = currentRulesOrSubPols[i+1]
 	}
 	currentRulesOrSubPols[newPosition] = myRule
@@ -1566,22 +1447,22 @@ func (r *lanRulesIndexResource) moveSubPolicyToPosition(ctx context.Context, par
 
 	tflog.Debug(ctx, "moving sub-policy '"+policyName+"' to position "+strconv.Itoa(newPosition))
 
-	curPossition := -1
+	curPosition := -1
 	for i := range currentRulesOrSubPols {
 		if currentRulesOrSubPols[i].id == policyID {
-			curPossition = i
+			curPosition = i
 			myPolicy = currentRulesOrSubPols[i]
 			break
 		}
 	}
-	if curPossition == -1 {
+	if curPosition == -1 {
 		return fmt.Errorf("internal error: failed to find sub-policy ID %s", policyID)
 	}
-	if curPossition == newPosition {
+	if curPosition == newPosition {
 		return nil // nothing to do
 	}
 
-	for i := curPossition; i < newPosition; i++ {
+	for i := curPosition; i < newPosition; i++ {
 		currentRulesOrSubPols[i] = currentRulesOrSubPols[i+1]
 	}
 	currentRulesOrSubPols[newPosition] = myPolicy
@@ -1628,22 +1509,22 @@ func (r *lanRulesIndexResource) moveFwRuleToPosition(ctx context.Context, parent
 
 	tflog.Debug(ctx, "moving firewall rule '"+fwRuleName+"' to position "+strconv.Itoa(newPosition))
 
-	curPossition := -1
+	curPosition := -1
 	for i := range currentRules {
 		if currentRules[i].id == fwRuleID {
-			curPossition = i
+			curPosition = i
 			myRule = currentRules[i]
 			break
 		}
 	}
-	if curPossition == -1 {
+	if curPosition == -1 {
 		return fmt.Errorf("internal error: failed to find firewall rule ID %s", fwRuleID)
 	}
-	if curPossition == newPosition {
+	if curPosition == newPosition {
 		return nil // nothing to do
 	}
 
-	for i := curPossition; i < newPosition; i++ {
+	for i := curPosition; i < newPosition; i++ {
 		currentRules[i] = currentRules[i+1]
 	}
 	currentRules[newPosition] = myRule

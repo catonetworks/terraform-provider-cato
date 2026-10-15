@@ -1,24 +1,20 @@
-package provider
+package lanindex
 
 import (
 	"context"
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -39,65 +35,6 @@ type socketLanSectionResource struct {
 
 func (r *socketLanSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_socket_lan_section"
-}
-
-func (r *socketLanSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Description: "The `cato_socket_lan_section` resource contains the configuration parameters necessary to add a Socket LAN " +
-			"firewall section. Documentation for the underlying API used in this resource can be found at " +
-			"[mutation.policy.socketLan.addSection()](https://api.catonetworks.com/documentation/#mutation-policy.socketLan.addSection).",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "Section ID",
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"at": schema.SingleNestedAttribute{
-				Description: "Position of the section in the policy",
-				Required:    true,
-				Optional:    false,
-				Attributes: map[string]schema.Attribute{
-					"position": schema.StringAttribute{
-						Description: "Position relative to a policy or another section (AFTER_SECTION, BEFORE_SECTION, LAST_IN_POLICY)",
-						Required:    true,
-						Optional:    false,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-						Validators: []validator.String{
-							stringvalidator.OneOf("AFTER_SECTION", "BEFORE_SECTION", "LAST_IN_POLICY"),
-						},
-					},
-					"ref": schema.StringAttribute{
-						Description: "The identifier of the section relative to which the position of the added section is defined",
-						Required:    false,
-						Optional:    true,
-					},
-				},
-			},
-			"section": schema.SingleNestedAttribute{
-				Description: "Section parameters",
-				Required:    true,
-				Attributes: map[string]schema.Attribute{
-					"id": schema.StringAttribute{
-						Description: "Section ID",
-						Computed:    true,
-						Optional:    false,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"name": schema.StringAttribute{
-						Description: "Section Name",
-						Required:    true,
-						Optional:    false,
-					},
-				},
-			},
-		},
-	}
 }
 
 func (r *socketLanSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
@@ -136,7 +73,7 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 	// setting section
 	if !plan.Section.IsNull() {
 		input.Section = &cato_models.PolicyAddSectionInfoInput{}
-		sectionInput := PolicyAddSectionInfoInput{}
+		var sectionInput idname.Ref
 		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
@@ -215,7 +152,7 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	// retrieve section ID
-	section := PolicyUpdateSectionInfoInput{}
+	var section idname.Ref
 	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -232,7 +169,7 @@ func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRe
 		sectionExist = true
 		state.ID = types.StringValue(sectionListItem.GetSection().ID)
 		curSectionObj, diagstmp := types.ObjectValue(
-			NameIDAttrTypes,
+			idname.RefAttrTypes,
 			map[string]attr.Value{
 				"id":   types.StringValue(sectionListItem.GetSection().ID),
 				"name": types.StringValue(sectionListItem.GetSection().GetName()),
@@ -292,7 +229,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	// setting section
 	if !plan.Section.IsNull() {
 		inputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
-		sectionInput := PolicyUpdateSectionInfoInput{}
+		var sectionInput idname.Ref
 		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
 		resp.Diagnostics.Append(diags...)
 
@@ -329,7 +266,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// check for errors
-	if moveSection.Policy.SocketLan.MoveSection.Status != ifwMutationStatusSuccess {
+	if moveSection.Policy.SocketLan.MoveSection.Status != cato_models.PolicyMutationStatusSuccess {
 		for _, item := range moveSection.Policy.SocketLan.MoveSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Moving Section Resource",
@@ -356,7 +293,7 @@ func (r *socketLanSectionResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// check for errors
-	if updateSection.Policy.SocketLan.UpdateSection.Status != ifwMutationStatusSuccess {
+	if updateSection.Policy.SocketLan.UpdateSection.Status != cato_models.PolicyMutationStatusSuccess {
 		for _, item := range updateSection.Policy.SocketLan.UpdateSection.GetErrors() {
 			resp.Diagnostics.AddError(
 				"API Error Updating Section Resource",
@@ -395,7 +332,7 @@ func (r *socketLanSectionResource) Delete(ctx context.Context, req resource.Dele
 	}
 
 	// retrieve section ID
-	section := PolicyAddSectionInfoInput{}
+	var section idname.Ref
 	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

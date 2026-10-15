@@ -1,4 +1,4 @@
-package lfsubpolicy
+package lansubpolicy
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lannetwork"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lannetwork"
 )
 
 // Schema defines the Terraform schema for a LAN Firewall sub-policy.

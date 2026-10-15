@@ -173,7 +173,7 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 				Required:    true,
 			},
 			"primary": schema.SingleNestedAttribute{
-				Description:   "Physical location of the pripary Pop",
+				Description:   "Physical location of the primary Pop",
 				Optional:      true,
 				Attributes:    idname.SchemaNameID("Primary location"),
 				PlanModifiers: []planmodifier.Object{idname.PlanModifier()},

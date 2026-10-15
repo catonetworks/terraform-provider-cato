@@ -1,4 +1,4 @@
-package provider
+package lanindex
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"

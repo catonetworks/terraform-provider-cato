@@ -1,4 +1,4 @@
-package lfsubpolicy
+package lansubpolicy
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"

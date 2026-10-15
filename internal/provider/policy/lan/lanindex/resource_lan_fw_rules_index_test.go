@@ -1,4 +1,4 @@
-package provider
+package lanindex
 
 import (
 	"context"
@@ -644,7 +644,7 @@ func TestCreate(t *testing.T) {
 				ID: "s1.1.3",
 				To: &cato_models.PolicySectionPositionInput{
 					Position: cato_models.PolicySectionPositionEnumLastInPolicy,
-					Ref:      ptr("sub1.1"),
+					Ref:      new("sub1.1"),
 				},
 			},
 			accountID: "testID",
@@ -655,8 +655,8 @@ func TestCreate(t *testing.T) {
 			input: cato_models.PolicyMoveRuleInput{
 				ID: "sub1.3",
 				To: &cato_models.PolicyRulePositionInput{
-					Position: ptr(cato_models.PolicyRulePositionEnumBeforeRule),
-					Ref:      ptr("r1.3"),
+					Position: new(cato_models.PolicyRulePositionEnumBeforeRule),
+					Ref:      new("r1.3"),
 				},
 			},
 			accountID: "testID",
@@ -665,8 +665,8 @@ func TestCreate(t *testing.T) {
 			input: cato_models.PolicyMoveRuleInput{
 				ID: "r1.2",
 				To: &cato_models.PolicyRulePositionInput{
-					Position: ptr(cato_models.PolicyRulePositionEnumBeforeRule),
-					Ref:      ptr("sub1.1"),
+					Position: new(cato_models.PolicyRulePositionEnumBeforeRule),
+					Ref:      new("sub1.1"),
 				},
 			},
 			accountID: "testID",
@@ -675,8 +675,8 @@ func TestCreate(t *testing.T) {
 			input: cato_models.PolicyMoveRuleInput{
 				ID: "r1.1.2.3",
 				To: &cato_models.PolicyRulePositionInput{
-					Position: ptr(cato_models.PolicyRulePositionEnumLastInSection),
-					Ref:      ptr("s1.1.2"),
+					Position: new(cato_models.PolicyRulePositionEnumLastInSection),
+					Ref:      new("s1.1.2"),
 				},
 			},
 			accountID: "testID",
@@ -819,8 +819,8 @@ func (m *lanPolicyMockClient) PolicySocketLanPublishPolicyRevision(_ context.Con
 
 type lanPolicyPlanItem struct {
 	sectionData      map[string]lanPolicySectionData
-	networkRuleData  map[string]lanPolocyNetRuleData
-	firewallRuleData map[string]lanPolocyFwRuleData
+	networkRuleData  map[string]lanPolicyNetRuleData
+	firewallRuleData map[string]lanPolicyFwRuleData
 }
 type lanPolicySectionData struct {
 	id            string
@@ -828,7 +828,7 @@ type lanPolicySectionData struct {
 	subPolicyName string
 	sectionIndex  int
 }
-type lanPolocyNetRuleData struct {
+type lanPolicyNetRuleData struct {
 	id             string
 	ruleType       string
 	ruleName       string
@@ -837,7 +837,7 @@ type lanPolocyNetRuleData struct {
 	indexInSection int
 }
 
-type lanPolocyFwRuleData struct {
+type lanPolicyFwRuleData struct {
 	id               string
 	firewallRuleName string
 	netRuleName      string
@@ -873,7 +873,7 @@ var lanPolicyPlans = map[string]lanPolicyPlanItem{
 			"section_1.1.2": {id: "s1.1.2", subPolicyName: "sub_policy_1.1", sectionIndex: 2},
 			"section_1.1.3": {id: "s1.1.3", subPolicyName: "sub_policy_1.1", sectionIndex: 3},
 		},
-		networkRuleData: map[string]lanPolocyNetRuleData{
+		networkRuleData: map[string]lanPolicyNetRuleData{
 			"rule_1.1":       {id: "r1.1", ruleType: "POLICY_RULE", sectionName: "section_1", indexInSection: 1},
 			"rule_1.2":       {id: "r1.2", ruleType: "POLICY_RULE", sectionName: "section_1", indexInSection: 2},
 			"sub_policy_1.1": {id: "sp1.1", ruleType: "SUB_POLICY_SCOPE", sectionName: "section_1", indexInSection: 3},
@@ -884,7 +884,7 @@ var lanPolicyPlans = map[string]lanPolicyPlanItem{
 			"rule_1.1.2.2":   {id: "r1.1.2.2", ruleType: "POLICY_RULE", sectionName: "section_1.1.2", indexInSection: 2},
 			"rule_1.1.2.3":   {id: "r1.1.2.3", ruleType: "POLICY_RULE", sectionName: "section_1.1.2", indexInSection: 3},
 		},
-		firewallRuleData: map[string]lanPolocyFwRuleData{
+		firewallRuleData: map[string]lanPolicyFwRuleData{
 			"firewall_rule_1.1.2.1.1": {id: "fr1.1.2.1.1", netRuleName: "rule_1.1.2.1", indexInRule: 1},
 			"firewall_rule_1.1.2.1.2": {id: "fr1.1.2.1.2", netRuleName: "rule_1.1.2.1", indexInRule: 2},
 			"firewall_rule_1.1.2.1.3": {id: "fr1.1.2.1.3", netRuleName: "rule_1.1.2.1", indexInRule: 3},
@@ -917,7 +917,7 @@ func duplicateLanPolicyPlan(withSectionKeys, withNetRuleKeys bool) lanPolicyPlan
 				sectionIndex:  1,
 			},
 		},
-		networkRuleData: map[string]lanPolocyNetRuleData{
+		networkRuleData: map[string]lanPolicyNetRuleData{
 			"main-net": {
 				ruleName:       "Shared network rule",
 				sectionName:    "Shared section",
@@ -931,7 +931,7 @@ func duplicateLanPolicyPlan(withSectionKeys, withNetRuleKeys bool) lanPolicyPlan
 				indexInSection: 1,
 			},
 		},
-		firewallRuleData: map[string]lanPolocyFwRuleData{
+		firewallRuleData: map[string]lanPolicyFwRuleData{
 			"main-fw": {
 				firewallRuleName: "Shared firewall rule",
 				netRuleName:      "Shared network rule",
@@ -953,13 +953,13 @@ func singleLanPolicyPlan() lanPolicyPlanItem {
 		sectionData: map[string]lanPolicySectionData{
 			"Shared section": {sectionIndex: 1},
 		},
-		networkRuleData: map[string]lanPolocyNetRuleData{
+		networkRuleData: map[string]lanPolicyNetRuleData{
 			"Shared network rule": {
 				sectionName:    "Shared section",
 				indexInSection: 1,
 			},
 		},
-		firewallRuleData: map[string]lanPolocyFwRuleData{
+		firewallRuleData: map[string]lanPolicyFwRuleData{
 			"Shared firewall rule": {
 				netRuleName: "Shared network rule",
 				indexInRule: 1,
@@ -1054,7 +1054,7 @@ func duplicateLanPolicy() *cato_go_sdk.PolicySocketLanPolicy {
 					Enabled: true,
 					Sections: []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Sections{
 						duplicateLanSection("s-main", "Shared section", nil),
-						duplicateLanSection("s-child", "Shared section", ptr("sp-child")),
+						duplicateLanSection("s-child", "Shared section", new("sp-child")),
 					},
 					Rules: []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules{
 						duplicateLanRule("r-main", "Shared network rule", "s-main", "Shared section",
@@ -1295,21 +1295,21 @@ var mockLanPolicy = map[string]*cato_go_sdk.PolicySocketLanPolicy{
 							Section: cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Sections_Section{
 								ID:          "s1.1.3",
 								Name:        "section_1.1.3",
-								SubPolicyID: ptr("sub1.1"),
+								SubPolicyID: new("sub1.1"),
 							},
 						},
 						{
 							Section: cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Sections_Section{
 								ID:          "s1.1.1",
 								Name:        "section_1.1.1",
-								SubPolicyID: ptr("sub1.1"),
+								SubPolicyID: new("sub1.1"),
 							},
 						},
 						{
 							Section: cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Sections_Section{
 								ID:          "s1.1.2",
 								Name:        "section_1.1.2",
-								SubPolicyID: ptr("sub1.1"),
+								SubPolicyID: new("sub1.1"),
 							},
 						},
 						{
