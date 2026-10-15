@@ -342,3 +342,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 		},
 	}
 }
+
+func LanRuleSchema() schema.SingleNestedAttribute {
+	return (&socketLanNetworkRuleResource{}).lanRuleSchema()
+}

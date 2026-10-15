@@ -5,6 +5,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/landestination"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansource"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/portrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/simpleservice"
 )
 
 // LanFirewallSubPolicy is the Terraform model for the cato_lf_sub_policy
@@ -34,7 +38,7 @@ type LanFirewallSubPolicyScope struct {
 
 var LanFirewallSubPolicyScopeTypes = map[string]attr.Type{
 	"description": types.StringType,
-	"destination": types.ObjectType{AttrTypes: SocketLanDestinationAttrTypes},
+	"destination": types.ObjectType{AttrTypes: landestination.SocketLanDestinationAttrTypes},
 	"direction":   types.StringType,
 	"enabled":     types.BoolType,
 	"id":          types.StringType,
@@ -42,7 +46,7 @@ var LanFirewallSubPolicyScopeTypes = map[string]attr.Type{
 	"nat":         types.ObjectType{AttrTypes: PolicyNatSettingsTypes},
 	"service":     types.ObjectType{AttrTypes: PolicyServiceTypes},
 	"site":        types.ObjectType{AttrTypes: PolicySiteTypes},
-	"source":      types.ObjectType{AttrTypes: SocketLanSourceAttrTypes},
+	"source":      types.ObjectType{AttrTypes: lansource.SocketLanSourceAttrTypes},
 }
 
 type PolicyNatSettings struct {
@@ -62,7 +66,7 @@ type PolicyService struct {
 
 var PolicyServiceTypes = map[string]attr.Type{
 	"custom": types.ListType{ElemType: types.ObjectType{AttrTypes: PolicyCustomServiceTypes}},
-	"simple": types.SetType{ElemType: SimpleServiceObjectType},
+	"simple": types.SetType{ElemType: simpleservice.SimpleServiceObjectType},
 }
 
 // PolicyCustomService represents custom service definition
@@ -74,7 +78,7 @@ type PolicyCustomService struct {
 
 var PolicyCustomServiceTypes = map[string]attr.Type{
 	"port":       types.ListType{ElemType: types.StringType},
-	"port_range": FromToObjectType,
+	"port_range": portrange.PortRangeObjectType,
 	"protocol":   types.StringType,
 }
 

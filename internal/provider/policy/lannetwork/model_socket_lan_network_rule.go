@@ -5,8 +5,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/landestination"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansource"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
@@ -29,42 +30,6 @@ type SocketLanNetworkRuleData struct {
 	Destination types.Object `tfsdk:"destination" json:"destination,omitempty"`
 	Service     types.Object `tfsdk:"service" json:"service,omitempty"`
 	Nat         types.Object `tfsdk:"nat" json:"nat,omitempty"`
-}
-
-// SocketLanSite represents the site scope for the rule
-type SocketLanSite struct {
-	Site  types.Set `tfsdk:"site" json:"site,omitempty"`
-	Group types.Set `tfsdk:"group" json:"group,omitempty"`
-}
-
-// SocketLanSource represents source criteria for network rules
-type SocketLanSource struct {
-	Vlan              types.List `tfsdk:"vlan" json:"vlan,omitempty"`
-	IP                types.List `tfsdk:"ip" json:"ip,omitempty"`
-	Subnet            types.List `tfsdk:"subnet" json:"subnet,omitempty"`
-	IPRange           types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`
-	Host              types.Set  `tfsdk:"host" json:"host,omitempty"`
-	Group             types.Set  `tfsdk:"group" json:"group,omitempty"`
-	SystemGroup       types.Set  `tfsdk:"system_group" json:"system_group,omitempty"`
-	NetworkInterface  types.Set  `tfsdk:"network_interface" json:"network_interface,omitempty"`
-	GlobalIPRange     types.Set  `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"`
-	FloatingSubnet    types.Set  `tfsdk:"floating_subnet" json:"floating_subnet,omitempty"`
-	SiteNetworkSubnet types.Set  `tfsdk:"site_network_subnet" json:"site_network_subnet,omitempty"`
-}
-
-// SocketLanDestination represents destination criteria for network rules
-type SocketLanDestination struct {
-	Vlan              types.List `tfsdk:"vlan" json:"vlan,omitempty"`
-	IP                types.List `tfsdk:"ip" json:"ip,omitempty"`
-	Subnet            types.List `tfsdk:"subnet" json:"subnet,omitempty"`
-	IPRange           types.List `tfsdk:"ip_range" json:"ip_range,omitempty"`
-	Host              types.Set  `tfsdk:"host" json:"host,omitempty"`
-	Group             types.Set  `tfsdk:"group" json:"group,omitempty"`
-	SystemGroup       types.Set  `tfsdk:"system_group" json:"system_group,omitempty"`
-	NetworkInterface  types.Set  `tfsdk:"network_interface" json:"network_interface,omitempty"`
-	GlobalIPRange     types.Set  `tfsdk:"global_ip_range" json:"global_ip_range,omitempty"`
-	FloatingSubnet    types.Set  `tfsdk:"floating_subnet" json:"floating_subnet,omitempty"`
-	SiteNetworkSubnet types.Set  `tfsdk:"site_network_subnet" json:"site_network_subnet,omitempty"`
 }
 
 // SocketLanService represents service criteria for network rules
@@ -95,47 +60,11 @@ var SocketLanNetworkRuleRuleAttrTypes = map[string]attr.Type{
 	"enabled":     types.BoolType,
 	"direction":   types.StringType,
 	"transport":   types.StringType,
-	"site":        SocketLanSiteObjectType,
-	"source":      SocketLanSourceObjectType,
-	"destination": SocketLanDestinationObjectType,
+	"site":        lansite.SocketLanSiteObjectType,
+	"source":      lansource.SocketLanSourceObjectType,
+	"destination": landestination.SocketLanDestinationObjectType,
 	"service":     SocketLanServiceObjectType,
 	"nat":         SocketLanNatObjectType,
-}
-
-var SocketLanSiteObjectType = types.ObjectType{AttrTypes: SocketLanSiteAttrTypes}
-var SocketLanSiteAttrTypes = map[string]attr.Type{
-	"site":  types.SetType{ElemType: idname.RefObjectType},
-	"group": types.SetType{ElemType: idname.RefObjectType},
-}
-
-var SocketLanSourceObjectType = types.ObjectType{AttrTypes: SocketLanSourceAttrTypes}
-var SocketLanSourceAttrTypes = map[string]attr.Type{
-	"vlan":                types.ListType{ElemType: types.Int64Type},
-	"ip":                  types.ListType{ElemType: types.StringType},
-	"subnet":              types.ListType{ElemType: types.StringType},
-	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
-	"host":                types.SetType{ElemType: idname.RefObjectType},
-	"group":               types.SetType{ElemType: idname.RefObjectType},
-	"system_group":        types.SetType{ElemType: idname.RefObjectType},
-	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
-	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
-	"floating_subnet":     types.SetType{ElemType: idname.RefObjectType},
-	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
-}
-
-var SocketLanDestinationObjectType = types.ObjectType{AttrTypes: SocketLanDestinationAttrTypes}
-var SocketLanDestinationAttrTypes = map[string]attr.Type{
-	"vlan":                types.ListType{ElemType: types.Int64Type},
-	"ip":                  types.ListType{ElemType: types.StringType},
-	"subnet":              types.ListType{ElemType: types.StringType},
-	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
-	"host":                types.SetType{ElemType: idname.RefObjectType},
-	"group":               types.SetType{ElemType: idname.RefObjectType},
-	"system_group":        types.SetType{ElemType: idname.RefObjectType},
-	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
-	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
-	"floating_subnet":     types.SetType{ElemType: idname.RefObjectType},
-	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var SocketLanServiceObjectType = types.ObjectType{AttrTypes: SocketLanServiceAttrTypes}

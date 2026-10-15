@@ -4,12 +4,16 @@ import (
 	"context"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/landestination"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansource"
 )
 
 // SocketLanNetworkRuleStateOutput represents the state of a Socket LAN network rule
@@ -106,7 +110,7 @@ func hydrateSocketLanSiteState(
 		siteAttrs["group"] = groupSet
 	}
 
-	siteObj, _ := types.ObjectValue(SocketLanSiteAttrTypes, siteAttrs)
+	siteObj, _ := types.ObjectValue(lansite.SocketLanSiteAttrTypes, siteAttrs)
 	return siteObj
 }
 
@@ -271,7 +275,7 @@ func hydrateSocketLanSourceState(
 		sourceAttrs["site_network_subnet"] = snsSet
 	}
 
-	sourceObj, _ := types.ObjectValue(SocketLanSourceAttrTypes, sourceAttrs)
+	sourceObj, _ := types.ObjectValue(lansource.SocketLanSourceAttrTypes, sourceAttrs)
 	return sourceObj
 }
 
@@ -436,7 +440,7 @@ func hydrateSocketLanDestinationState(
 		destAttrs["site_network_subnet"] = snsSet
 	}
 
-	destObj, _ := types.ObjectValue(SocketLanDestinationAttrTypes, destAttrs)
+	destObj, _ := types.ObjectValue(landestination.SocketLanDestinationAttrTypes, destAttrs)
 	return destObj
 }
 

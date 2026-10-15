@@ -25,6 +25,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lanfirewall"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lannetwork"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lfsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -524,7 +525,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		lannetwork.NewSocketLanNetworkRuleResource,
 		lanfirewall.NewSocketLanFirewallRuleResource,
 		NewGlobalIPRangesResource,
-		NewLfSubPolicyResource,
+		lfsubpolicy.NewLfSubPolicyResource,
 		NewLanRulesIndexResource,
 	}
 }

@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/landestination"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansource"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
@@ -334,7 +336,7 @@ func lfSubPolicySchema(ctx context.Context, t *testing.T) schema.Schema {
 func lfSubPolicyPlan() LanFirewallSubPolicy {
 	scope := types.ObjectValueMust(LanFirewallSubPolicyScopeTypes, map[string]attr.Value{
 		"description": types.StringUnknown(),
-		"destination": types.ObjectNull(SocketLanDestinationAttrTypes),
+		"destination": types.ObjectNull(landestination.SocketLanDestinationAttrTypes),
 		"direction":   types.StringValue("BOTH"),
 		"enabled":     types.BoolValue(true),
 		"id":          types.StringUnknown(),
@@ -342,7 +344,7 @@ func lfSubPolicyPlan() LanFirewallSubPolicy {
 		"nat":         types.ObjectNull(PolicyNatSettingsTypes),
 		"service":     types.ObjectNull(PolicyServiceTypes),
 		"site":        types.ObjectNull(PolicySiteTypes),
-		"source":      types.ObjectNull(SocketLanSourceAttrTypes),
+		"source":      types.ObjectNull(lansource.SocketLanSourceAttrTypes),
 	})
 	return LanFirewallSubPolicy{
 		ID:          types.StringUnknown(),

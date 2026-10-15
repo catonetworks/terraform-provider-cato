@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lannetwork"
 )
 
 // Schema defines the Terraform schema for a LAN Firewall sub-policy.
@@ -59,7 +61,7 @@ func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 // policyScopeSchema derives the sub-policy scope schema from the LAN rule schema.
 func (r *lfSubPolicyResource) policyScopeSchema() schema.SingleNestedAttribute {
-	scopeAttr := (&socketLanNetworkRuleResource{}).lanRuleSchema()
+	scopeAttr := lannetwork.LanRuleSchema()
 	scopeAttr.Description = "Policy scope attributes"
 	scopeAttr.Required = true
 	delete(scopeAttr.Attributes, "transport")

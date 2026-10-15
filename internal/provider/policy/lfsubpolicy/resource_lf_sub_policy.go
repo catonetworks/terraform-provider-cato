@@ -17,8 +17,15 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/landestination"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansource"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/portrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/simpleservice"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -203,7 +210,7 @@ func (r *lfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 			Service:     r.prepareServiceUpdate(ctx, tfScope.Service, &resp.Diagnostics),
 			Site:        r.prepareSiteUpdate(ctx, tfScope.Site, &resp.Diagnostics),
 			Source:      r.prepareSourceUpdate(ctx, tfScope.Source, &resp.Diagnostics),
-			Transport:   ptr(cato_models.SocketLanTransportTypeLan),
+			Transport:   new(cato_models.SocketLanTransportTypeLan),
 		},
 	}
 
@@ -423,7 +430,7 @@ func (r *lfSubPolicyResource) prepareSite(ctx context.Context, site types.Object
 	if !utils.HasValue(site) {
 		return nil
 	}
-	var tfSite SocketLanSite
+	var tfSite lansite.SocketLanSite
 	if utils.CheckErr(diags, site.As(ctx, &tfSite, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
@@ -452,7 +459,7 @@ func (r *lfSubPolicyResource) prepareSource(ctx context.Context, src types.Objec
 	if !utils.HasValue(src) {
 		return nil
 	}
-	var tfSource SocketLanSource
+	var tfSource lansource.SocketLanSource
 	if utils.CheckErr(diags, src.As(ctx, &tfSource, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
@@ -499,7 +506,7 @@ func (r *lfSubPolicyResource) prepareDestination(ctx context.Context, dest types
 	if !utils.HasValue(dest) {
 		return nil
 	}
-	var tfDestination SocketLanDestination
+	var tfDestination landestination.SocketLanDestination
 	if utils.CheckErr(diags, dest.As(ctx, &tfDestination, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
@@ -546,7 +553,7 @@ func (r *lfSubPolicyResource) prepareIPRange(ctx context.Context, ipRange types.
 	if !utils.HasValue(ipRange) {
 		return nil
 	}
-	var tfFromTo []FromTo
+	var tfFromTo []ipaddr.Range
 	if utils.CheckErr(diags, ipRange.ElementsAs(ctx, &tfFromTo, false)) {
 		return nil
 	}
@@ -626,7 +633,7 @@ func (r *lfSubPolicyResource) prepareSimpleService(ctx context.Context, svc type
 	if !utils.HasValue(svc) {
 		return nil
 	}
-	var tfSimpleServices []SimpleService
+	var tfSimpleServices []simpleservice.SimpleService
 	if utils.CheckErr(diags, svc.ElementsAs(ctx, &tfSimpleServices, false)) {
 		return nil
 	}
@@ -668,7 +675,7 @@ func (r *lfSubPolicyResource) preparePortRange(ctx context.Context, portRange ty
 	if !utils.HasValue(portRange) {
 		return nil
 	}
-	var tfFromTo FromTo
+	var tfFromTo portrange.PortRange
 	if utils.CheckErr(diags, portRange.As(ctx, &tfFromTo, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
@@ -749,11 +756,11 @@ func (r *lfSubPolicyResource) parseRuleScope(ctx context.Context,
 	return subPolicyObj
 }
 
-// parseSource parses the source of a rule into a SocketLanDource object
+// parseSource parses the source of a rule into a SocketLanSource object
 func (r *lfSubPolicyResource) parseSource(ctx context.Context,
 	dst cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Source, diags *diag.Diagnostics,
 ) types.Object {
-	tfSocketLanSource := SocketLanSource{
+	tfSocketLanSource := lansource.SocketLanSource{
 		Vlan:              convert.ParseInt64List(ctx, dst.GetVlan(), diags),
 		IP:                convert.ParseStringList(ctx, dst.GetIP(), diags),
 		Subnet:            convert.ParseStringList(ctx, dst.GetSubnet(), diags),
@@ -766,10 +773,10 @@ func (r *lfSubPolicyResource) parseSource(ctx context.Context,
 		FloatingSubnet:    idname.ParseIDNameSet(ctx, dst.GetFloatingSubnet(), diags),
 		SiteNetworkSubnet: idname.ParseIDNameSet(ctx, dst.GetSiteNetworkSubnet(), diags),
 	}
-	ruleSourceObj, objDiags := types.ObjectValueFrom(ctx, SocketLanSourceAttrTypes, tfSocketLanSource)
+	ruleSourceObj, objDiags := types.ObjectValueFrom(ctx, lansource.SocketLanSourceAttrTypes, tfSocketLanSource)
 	diags.Append(objDiags...)
 	if diags.HasError() {
-		return types.ObjectNull(SocketLanSourceAttrTypes)
+		return types.ObjectNull(lansource.SocketLanSourceAttrTypes)
 	}
 
 	return ruleSourceObj
@@ -779,7 +786,7 @@ func (r *lfSubPolicyResource) parseSource(ctx context.Context,
 func (r *lfSubPolicyResource) parseDestination(ctx context.Context,
 	dst cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Destination, diags *diag.Diagnostics,
 ) types.Object {
-	tfSocketLanDestination := SocketLanDestination{
+	tfSocketLanDestination := landestination.SocketLanDestination{
 		Vlan:              convert.ParseInt64List(ctx, dst.GetVlan(), diags),
 		IP:                convert.ParseStringList(ctx, dst.GetIP(), diags),
 		Subnet:            convert.ParseStringList(ctx, dst.GetSubnet(), diags),
@@ -792,10 +799,10 @@ func (r *lfSubPolicyResource) parseDestination(ctx context.Context,
 		FloatingSubnet:    idname.ParseIDNameSet(ctx, dst.GetFloatingSubnet(), diags),
 		SiteNetworkSubnet: idname.ParseIDNameSet(ctx, dst.GetSiteNetworkSubnet(), diags),
 	}
-	ruleDestinationObj, objDiags := types.ObjectValueFrom(ctx, SocketLanDestinationAttrTypes, tfSocketLanDestination)
+	ruleDestinationObj, objDiags := types.ObjectValueFrom(ctx, landestination.SocketLanDestinationAttrTypes, tfSocketLanDestination)
 	diags.Append(objDiags...)
 	if diags.HasError() {
-		return types.ObjectNull(SocketLanDestinationAttrTypes)
+		return types.ObjectNull(landestination.SocketLanDestinationAttrTypes)
 	}
 
 	return ruleDestinationObj
@@ -805,12 +812,12 @@ func (r *lfSubPolicyResource) parseDestination(ctx context.Context,
 func FromToList[T fromtoer](ctx context.Context, fts []T, diags *diag.Diagnostics) types.List {
 	// null value
 	if fts == nil {
-		return types.ListNull(FromToObjectType)
+		return types.ListNull(ipaddr.RangeObjectType)
 	}
 
 	// existing empty list
 	if len(fts) == 0 {
-		val, valueDiag := types.ListValue(FromToObjectType, nil)
+		val, valueDiag := types.ListValue(ipaddr.RangeObjectType, nil)
 		diags.Append(valueDiag...)
 		return val
 	}
@@ -818,16 +825,16 @@ func FromToList[T fromtoer](ctx context.Context, fts []T, diags *diag.Diagnostic
 	// make []FromToObject
 	fromToSlice := make([]types.Object, 0, len(fts))
 	for _, ft := range fts {
-		tfFromTo := FromTo{
+		tfFromTo := ipaddr.Range{
 			From: types.StringValue(ft.GetFrom()),
 			To:   types.StringValue(ft.GetTo()),
 		}
-		ftObj, objDiags := types.ObjectValueFrom(ctx, FromToAttrTypes, tfFromTo)
+		ftObj, objDiags := types.ObjectValueFrom(ctx, ipaddr.RangeAttrTypes, tfFromTo)
 		diags.Append(objDiags...)
 		fromToSlice = append(fromToSlice, ftObj)
 	}
 	// convert to types.List
-	fromToList, valueDiag := types.ListValueFrom(ctx, FromToObjectType, fromToSlice)
+	fromToList, valueDiag := types.ListValueFrom(ctx, ipaddr.RangeObjectType, fromToSlice)
 	diags.Append(valueDiag...)
 
 	return fromToList
@@ -875,22 +882,22 @@ func (r *lfSubPolicyResource) parseSimpleService(ctx context.Context,
 	svcs []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service_Simple, diags *diag.Diagnostics,
 ) types.Set {
 	if len(svcs) == 0 {
-		return types.SetNull(SimpleServiceObjectType)
+		return types.SetNull(simpleservice.SimpleServiceObjectType)
 	}
 	serviceSlice := make([]types.Object, 0, len(svcs))
 	for _, svc := range svcs {
-		tfSimpleService := SimpleService{
+		tfSimpleService := simpleservice.SimpleService{
 			Name: types.StringValue(svc.GetName().String()),
 		}
-		simpleServiceObj, objDiags := types.ObjectValueFrom(ctx, SimpleServiceAttrTypes, tfSimpleService)
+		simpleServiceObj, objDiags := types.ObjectValueFrom(ctx, simpleservice.SimpleServiceAttrTypes, tfSimpleService)
 		diags.Append(objDiags...)
 		serviceSlice = append(serviceSlice, simpleServiceObj)
 	}
-	serviceList, valueDiag := types.SetValueFrom(ctx, SimpleServiceObjectType, serviceSlice)
+	serviceList, valueDiag := types.SetValueFrom(ctx, simpleservice.SimpleServiceObjectType, serviceSlice)
 	diags.Append(valueDiag...)
 
 	if diags.HasError() {
-		return types.SetNull(types.ObjectType{AttrTypes: SimpleServiceAttrTypes})
+		return types.SetNull(types.ObjectType{AttrTypes: simpleservice.SimpleServiceAttrTypes})
 	}
 
 	return serviceList
@@ -901,18 +908,18 @@ func (r *lfSubPolicyResource) parseCustomService(ctx context.Context,
 	svcs []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service_Custom, diags *diag.Diagnostics,
 ) types.List {
 	if len(svcs) == 0 {
-		return types.ListNull(CustomServiceObjectType)
+		return types.ListNull(customservice.CustomServiceObjectType)
 	}
 	serviceSlice := make([]types.Object, 0, len(svcs))
 	for _, svc := range svcs {
-		portRangeObj := types.ObjectNull(FromToAttrTypes)
+		portRangeObj := types.ObjectNull(portrange.PortRangeAttrTypes)
 		if svc.PortRange != nil {
-			tfPortRange := FromTo{
+			tfPortRange := portrange.PortRange{
 				From: types.StringPointerValue((*string)(svc.PortRange.GetFrom())),
 				To:   types.StringPointerValue((*string)(svc.PortRange.GetTo())),
 			}
 			var objDiags diag.Diagnostics
-			portRangeObj, objDiags = types.ObjectValueFrom(ctx, FromToAttrTypes, tfPortRange)
+			portRangeObj, objDiags = types.ObjectValueFrom(ctx, portrange.PortRangeAttrTypes, tfPortRange)
 			diags.Append(objDiags...)
 		}
 
@@ -925,7 +932,7 @@ func (r *lfSubPolicyResource) parseCustomService(ctx context.Context,
 		diags.Append(objDiags...)
 		serviceSlice = append(serviceSlice, customServiceObj)
 	}
-	serviceList, valueDiag := types.ListValueFrom(ctx, CustomServiceObjectType, serviceSlice)
+	serviceList, valueDiag := types.ListValueFrom(ctx, customservice.CustomServiceObjectType, serviceSlice)
 	diags.Append(valueDiag...)
 
 	if diags.HasError() {

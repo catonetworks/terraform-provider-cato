@@ -1,4 +1,4 @@
-package provider
+package lannetwork
 
 import (
 	"context"
@@ -12,6 +12,9 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/landestination"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/lansource"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/portrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/simpleservice"
@@ -81,7 +84,7 @@ func hydrateSocketLanNetworkRuleAPI(ctx context.Context, plan SocketLanNetworkRu
 
 		// Site
 		if !ruleData.Site.IsNull() {
-			var siteData SocketLanSite
+			var siteData lansite.SocketLanSite
 			diagstmp = ruleData.Site.As(ctx, &siteData, basetypes.ObjectAsOptions{})
 			diags.Append(diagstmp...)
 
@@ -254,7 +257,7 @@ func hydrateSocketLanSourceAPI(
 	updateInput *cato_models.SocketLanSourceUpdateInput,
 	diags *diag.Diagnostics,
 ) {
-	var sourceData SocketLanSource
+	var sourceData lansource.SocketLanSource
 	diagstmp := sourceObj.As(ctx, &sourceData, basetypes.ObjectAsOptions{})
 	diags.Append(diagstmp...)
 
@@ -470,7 +473,7 @@ func hydrateSocketLanDestinationAPI(
 	updateInput *cato_models.SocketLanDestinationUpdateInput,
 	diags *diag.Diagnostics,
 ) {
-	var destData SocketLanDestination
+	var destData landestination.SocketLanDestination
 	diagstmp := destObj.As(ctx, &destData, basetypes.ObjectAsOptions{})
 	diags.Append(diagstmp...)
 
