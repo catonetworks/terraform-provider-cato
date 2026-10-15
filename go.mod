@@ -5,7 +5,7 @@ go 1.26.9
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v1.0.1-0.20261014144606-7a9f0bfa1b95
+	github.com/catonetworks/cato-go-sdk v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
