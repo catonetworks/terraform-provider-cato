@@ -81,6 +81,8 @@ func TestAccAppConnector(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "location.state_code", "US-CA"),
 					resource.TestCheckResourceAttr(res, "location.timezone", "America/Los_Angeles"),
 
+					resource.TestCheckResourceAttr(res, "pooled_bandwidth_allocation.#", "0"),
+
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.%", "4"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.automatic", "true"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.preferred_only", "false"),
@@ -107,6 +109,8 @@ func TestAccAppConnector(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "location.country_code", "GB"),
 					resource.TestCheckNoResourceAttr(res, "location.state_code"), // Not set
 					resource.TestCheckResourceAttr(res, "location.timezone", "Europe/London"),
+
+					resource.TestCheckNoResourceAttr(res, "pooled_bandwidth_allocation.#"),
 
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.%", "4"),
 					resource.TestCheckResourceAttr(res, "preferred_pop_location.automatic", "false"),

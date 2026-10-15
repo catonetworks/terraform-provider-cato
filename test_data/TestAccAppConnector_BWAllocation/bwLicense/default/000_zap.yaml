@@ -1,0 +1,18 @@
+# Response to a read request for an app connector resource.
+GraphQL:
+  StatusCode: 200
+  Delay: 50ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            {
+              "removeZtnaAppConnectorBwLicense":
+                {
+                  "pooledBandwidthAllocation":
+                    { "allocationId": "A100", "bw": 100, "licenseId": "L100" },
+                },
+            },
+        },
+    }

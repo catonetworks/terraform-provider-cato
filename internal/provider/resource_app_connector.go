@@ -3,10 +3,12 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -17,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
@@ -46,6 +49,11 @@ type appConnectorResource struct {
 	client *catoclient.Service
 }
 
+type licenseKey struct {
+	lic string
+	bw  int64
+}
+
 func (r *appConnectorResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_app_connector"
 }
@@ -70,6 +78,28 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 			"name": schema.StringAttribute{
 				Description: "The unique name of the ZTNA App Connector",
 				Required:    true,
+			},
+			"pooled_bandwidth_allocation": schema.SetNestedAttribute{
+				Description:   "App connector pooled bandwidth license allocations",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(BandwidthAllocationObjectType)},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"bandwidth": schema.Int64Attribute{
+							Description: "The bandwidth (in Mbps) to allocate from the pooled license.",
+							Required:    true,
+						},
+						"allocation_id": schema.StringAttribute{
+							Description: "The pooled bandwidth license allocation ID",
+							Computed:    true,
+						},
+						"license_id": schema.StringAttribute{
+							Description: "The pooled bandwidth license to allocate from",
+							Required:    true,
+						},
+					},
+				},
 			},
 			"preferred_pop_location": r.schemaPreferredPopLocation(),
 			"private_apps": schema.SetNestedAttribute{
@@ -181,12 +211,13 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	input := cato_models.AddZtnaAppConnectorInput{
-		Description:          convert.KnownStringPointer(plan.Description),
-		GroupName:            plan.GroupName.ValueString(),
-		Location:             r.prepareLocation(ctx, plan.Location, &diags),
-		Name:                 plan.Name.ValueString(),
-		PreferredPopLocation: r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
-		Type:                 cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
+		Description:               convert.KnownStringPointer(plan.Description),
+		GroupName:                 plan.GroupName.ValueString(),
+		Location:                  r.prepareLocation(ctx, plan.Location, &diags),
+		Name:                      plan.Name.ValueString(),
+		PooledBandwidthAllocation: r.prepareBwAllocation(ctx, plan.PooledBandwidthAllocation, &diags),
+		PreferredPopLocation:      r.preparePopLocation(ctx, plan.PreferredPopLocation, &diags),
+		Type:                      cato_models.ZtnaAppConnectorType(plan.Type.ValueString()),
 	}
 
 	// Call Cato API to create a new connector
@@ -283,6 +314,11 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
+	r.UpdateBwLicenses(ctx, state.PooledBandwidthAllocation, plan.PooledBandwidthAllocation, id, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Hydrate state from API
 	hydratedState, diags, hydrateErr := r.hydrateAppConnectorState(ctx, id, plan)
 	if hydrateErr != nil {
@@ -295,6 +331,114 @@ func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+}
+
+func (r *appConnectorResource) UpdateBwLicenses(ctx context.Context, stateLcs, planLcs types.Set,
+	appConID string, diags *diag.Diagnostics,
+) {
+	var tfStateLicenses, tfPlanLicenses []BandwidthAllocation
+	diags.Append(stateLcs.ElementsAs(ctx, &tfStateLicenses, false)...)
+	diags.Append(planLcs.ElementsAs(ctx, &tfPlanLicenses, false)...)
+	if diags.HasError() {
+		return
+	}
+
+	// Map of currently used licenses
+	stateMap := make(map[licenseKey]string) // [license+bandwidth]=>allocationID
+	for _, l := range tfStateLicenses {
+		k := licenseKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
+		stateMap[k] = l.AllocationID.ValueString()
+	}
+	// Map of planned licenses
+	planMap := make(map[licenseKey]string) // [license+bandwidth]=>allocationID
+	for _, l := range tfPlanLicenses {
+		k := licenseKey{lic: l.LicenseID.ValueString(), bw: l.Bandwidth.ValueInt64()}
+		planMap[k] = l.AllocationID.ValueString()
+	}
+
+	// Find licenses to remove
+	var toRemove = make(map[licenseKey]string) // [license+bandwidth]=>allocationID
+	for k := range stateMap {
+		if _, ok := planMap[k]; !ok { // we have it now, but we don't plan to keep it
+			toRemove[k] = stateMap[k]
+		}
+	}
+
+	// Find licenses to add
+	var toAdd = make(map[licenseKey]string) // [license+bandwidth]=>allocationID
+	for k := range planMap {
+		if _, ok := stateMap[k]; !ok { // we don't have it now, but we plan it
+			toAdd[k] = stateMap[k]
+		}
+	}
+
+	// Find licenses that can be updated
+	var toUpdate = make(map[string]int64) // [allocationID]=>bandwidth
+	for addKey := range toAdd {
+		for rmKey, allocID := range toRemove {
+			if addKey.lic == rmKey.lic {
+				toUpdate[allocID] = addKey.bw
+				delete(toRemove, rmKey)
+				delete(toAdd, addKey)
+				break
+			}
+		}
+	}
+
+	// Call APIs
+	r.updateBwLicenses(ctx, toUpdate, diags)
+	r.addBwLicenses(ctx, toAdd, appConID, diags)
+	r.rmBwLicenses(ctx, toRemove, diags)
+}
+
+// updateBwLicenses - Call API to update licenses
+func (r *appConnectorResource) updateBwLicenses(ctx context.Context, toUpdate map[string]int64, diags *diag.Diagnostics) {
+	for allocID, bw := range toUpdate {
+		input := cato_models.UpdateZtnaAppConnectorBwLicenseInput{
+			AllocationID: allocID,
+			Bw:           bw,
+		}
+		_, err := r.client.Catov2.ZtnaAppConnectorUpdateZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		if err != nil {
+			diags.AddError(fmt.Sprintf("%s [bw=%d, allocation='%s']",
+				"failed to update AppConnector Pooled bandwidth license ", bw, allocID), err.Error())
+			return
+		}
+	}
+}
+
+// addBwLicenses - Call API to add licenses
+func (r *appConnectorResource) addBwLicenses(ctx context.Context, toAdd map[licenseKey]string, appConID string,
+	diags *diag.Diagnostics,
+) {
+	for k := range toAdd {
+		input := cato_models.AddZtnaAppConnectorBwLicenseInput{
+			Bw:        k.bw,
+			LicenseID: k.lic,
+			ZtnaAppConnector: &cato_models.ZtnaAppConnectorRefInput{
+				By:    cato_models.ObjectRefByID,
+				Input: appConID,
+			},
+		}
+		_, err := r.client.Catov2.ZtnaAppConnectorAddZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		if err != nil {
+			diags.AddError(fmt.Sprintf("%s [bw=%d, license='%s']",
+				"failed to add AppConnector Pooled bandwidth license ", k.bw, k.lic), err.Error())
+			return
+		}
+	}
+}
+
+// rmBwLicenses - Call API to remove licenses
+func (r *appConnectorResource) rmBwLicenses(ctx context.Context, toRemove map[licenseKey]string, diags *diag.Diagnostics) {
+	for _, allocID := range toRemove {
+		input := cato_models.RemoveZtnaAppConnectorBwLicenseInput{AllocationID: allocID}
+		_, err := r.client.Catov2.ZtnaAppConnectorRemoveZtnaAppConnectorBwLicense(ctx, r.client.AccountId, input)
+		if err != nil {
+			diags.AddError("failed to remove AppConnector Pooled bandwidth license "+allocID, err.Error())
+			return
+		}
 	}
 }
 
@@ -353,6 +497,30 @@ func (r *appConnectorResource) prepareLocation(
 	return &sdkLocation
 }
 
+func (r *appConnectorResource) prepareBwAllocation(ctx context.Context, bwAlloc types.Set, diags *diag.Diagnostics,
+) []*cato_models.ZtnaAppConnectorPooledBandwidthAllocationInput {
+	if !utils.HasValue(bwAlloc) {
+		return []*cato_models.ZtnaAppConnectorPooledBandwidthAllocationInput{}
+	}
+
+	var tfBwAllocations []BandwidthAllocation
+	diags.Append(bwAlloc.ElementsAs(ctx, &tfBwAllocations, false)...)
+	if diags.HasError() {
+		return nil
+	}
+
+	bwAllocations := make([]*cato_models.ZtnaAppConnectorPooledBandwidthAllocationInput, 0, len(tfBwAllocations))
+	for _, tfBwAlloc := range tfBwAllocations {
+		bwAllocations = append(bwAllocations,
+			&cato_models.ZtnaAppConnectorPooledBandwidthAllocationInput{
+				Bw:        tfBwAlloc.Bandwidth.ValueInt64(),
+				LicenseID: tfBwAlloc.LicenseID.ValueString(),
+			})
+	}
+
+	return bwAllocations
+}
+
 func (r *appConnectorResource) preparePopLocation(ctx context.Context, loc types.Object, diags *diag.Diagnostics,
 ) *cato_models.ZtnaAppConnectorPreferredPopLocationInput {
 	if !utils.HasValue(loc) {
@@ -394,6 +562,34 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr appConnec
 	}
 
 	return locObj
+}
+
+func (r *appConnectorResource) parseBwAllocations(ctx context.Context,
+	bwAllocs []*cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PooledBandwidthAllocation,
+	diags *diag.Diagnostics,
+) types.Set {
+	var objDiags diag.Diagnostics
+
+	// Prepare BandwidthAllocation set
+	var bwAllocSlice []attr.Value
+	for _, bwa := range bwAllocs {
+		tfBwAlloc := BandwidthAllocation{
+			Bandwidth:    types.Int64Value(bwa.Bw),
+			AllocationID: types.StringValue(bwa.AllocationID),
+			LicenseID:    types.StringValue(bwa.LicenseID),
+		}
+		bwAllocObj, objDiags := types.ObjectValueFrom(ctx, BandwidthAllocationTypes, tfBwAlloc)
+		diags.Append(objDiags...)
+		bwAllocSlice = append(bwAllocSlice, bwAllocObj)
+	}
+	bwAllocSet, objDiags := types.SetValue(types.ObjectType{AttrTypes: BandwidthAllocationTypes}, bwAllocSlice)
+	diags.Append(objDiags...)
+
+	if diags.HasError() {
+		return types.SetNull(types.ObjectType{AttrTypes: BandwidthAllocationTypes})
+	}
+
+	return bwAllocSet
 }
 
 func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appConnectorPreferredPopLocation,
@@ -456,17 +652,18 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 	}
 
 	state := &AppConnectorModel{
-		Description:          types.StringPointerValue(con.Description),
-		GroupName:            types.StringValue(con.GroupName),
-		ID:                   types.StringValue(con.ID),
-		Location:             r.parseLocation(ctx, con.Location, &diags),
-		Name:                 types.StringValue(con.Name),
-		PreferredPopLocation: r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
-		PrivateAppRef:        idname.ParseIDNameSet(ctx, con.PrivateAppRef, &diags),
-		SerialNumber:         types.StringPointerValue(con.SerialNumber),
-		SocketID:             types.StringPointerValue(con.SocketID),
-		SocketModel:          types.StringPointerValue((*string)(con.SocketModel)),
-		Type:                 types.StringValue(con.Type.String()),
+		Description:               types.StringPointerValue(con.Description),
+		GroupName:                 types.StringValue(con.GroupName),
+		ID:                        types.StringValue(con.ID),
+		Location:                  r.parseLocation(ctx, con.Location, &diags),
+		Name:                      types.StringValue(con.Name),
+		PooledBandwidthAllocation: r.parseBwAllocations(ctx, con.PooledBandwidthAllocation, &diags),
+		PreferredPopLocation:      r.parsePopLocation(ctx, con.PreferredPopLocation, &diags),
+		PrivateAppRef:             idname.ParseIDNameSet(ctx, con.PrivateAppRef, &diags),
+		SerialNumber:              types.StringPointerValue(con.SerialNumber),
+		SocketID:                  types.StringPointerValue(con.SocketID),
+		SocketModel:               types.StringPointerValue((*string)(con.SocketModel)),
+		Type:                      types.StringValue(con.Type.String()),
 	}
 
 	if diags.HasError() {
