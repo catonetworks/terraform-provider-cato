@@ -1,9 +1,12 @@
-package provider
+package lannetwork
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
@@ -101,8 +104,8 @@ var SocketLanNetworkRuleRuleAttrTypes = map[string]attr.Type{
 
 var SocketLanSiteObjectType = types.ObjectType{AttrTypes: SocketLanSiteAttrTypes}
 var SocketLanSiteAttrTypes = map[string]attr.Type{
-	"site":  types.SetType{ElemType: NameIDObjectType},
-	"group": types.SetType{ElemType: NameIDObjectType},
+	"site":  types.SetType{ElemType: idname.RefObjectType},
+	"group": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var SocketLanSourceObjectType = types.ObjectType{AttrTypes: SocketLanSourceAttrTypes}
@@ -110,14 +113,14 @@ var SocketLanSourceAttrTypes = map[string]attr.Type{
 	"vlan":                types.ListType{ElemType: types.Int64Type},
 	"ip":                  types.ListType{ElemType: types.StringType},
 	"subnet":              types.ListType{ElemType: types.StringType},
-	"ip_range":            types.ListType{ElemType: FromToObjectType},
-	"host":                types.SetType{ElemType: NameIDObjectType},
-	"group":               types.SetType{ElemType: NameIDObjectType},
-	"system_group":        types.SetType{ElemType: NameIDObjectType},
-	"network_interface":   types.SetType{ElemType: NameIDObjectType},
-	"global_ip_range":     types.SetType{ElemType: NameIDObjectType},
-	"floating_subnet":     types.SetType{ElemType: NameIDObjectType},
-	"site_network_subnet": types.SetType{ElemType: NameIDObjectType},
+	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
+	"host":                types.SetType{ElemType: idname.RefObjectType},
+	"group":               types.SetType{ElemType: idname.RefObjectType},
+	"system_group":        types.SetType{ElemType: idname.RefObjectType},
+	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
+	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
+	"floating_subnet":     types.SetType{ElemType: idname.RefObjectType},
+	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var SocketLanDestinationObjectType = types.ObjectType{AttrTypes: SocketLanDestinationAttrTypes}
@@ -125,20 +128,20 @@ var SocketLanDestinationAttrTypes = map[string]attr.Type{
 	"vlan":                types.ListType{ElemType: types.Int64Type},
 	"ip":                  types.ListType{ElemType: types.StringType},
 	"subnet":              types.ListType{ElemType: types.StringType},
-	"ip_range":            types.ListType{ElemType: FromToObjectType},
-	"host":                types.SetType{ElemType: NameIDObjectType},
-	"group":               types.SetType{ElemType: NameIDObjectType},
-	"system_group":        types.SetType{ElemType: NameIDObjectType},
-	"network_interface":   types.SetType{ElemType: NameIDObjectType},
-	"global_ip_range":     types.SetType{ElemType: NameIDObjectType},
-	"floating_subnet":     types.SetType{ElemType: NameIDObjectType},
-	"site_network_subnet": types.SetType{ElemType: NameIDObjectType},
+	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
+	"host":                types.SetType{ElemType: idname.RefObjectType},
+	"group":               types.SetType{ElemType: idname.RefObjectType},
+	"system_group":        types.SetType{ElemType: idname.RefObjectType},
+	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
+	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
+	"floating_subnet":     types.SetType{ElemType: idname.RefObjectType},
+	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var SocketLanServiceObjectType = types.ObjectType{AttrTypes: SocketLanServiceAttrTypes}
 var SocketLanServiceAttrTypes = map[string]attr.Type{
 	"simple": types.SetType{ElemType: SimpleServiceObjectType},
-	"custom": types.ListType{ElemType: CustomServiceObjectType},
+	"custom": types.ListType{ElemType: customservice.CustomServiceObjectType},
 }
 
 type SimpleService struct {

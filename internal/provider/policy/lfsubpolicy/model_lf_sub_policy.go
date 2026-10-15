@@ -1,4 +1,4 @@
-package provider
+package lfsubpolicy
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"

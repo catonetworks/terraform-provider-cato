@@ -1,9 +1,12 @@
-package provider
+package lannetwork
 
 import (
 	"context"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -71,21 +74,21 @@ func hydrateSocketLanSiteState(
 	apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule,
 ) types.Object {
 	siteAttrs := map[string]attr.Value{
-		"site":  types.SetNull(NameIDObjectType),
-		"group": types.SetNull(NameIDObjectType),
+		"site":  types.SetNull(idname.RefObjectType),
+		"group": types.SetNull(idname.RefObjectType),
 	}
 
 	// Sites
 	if len(apiRule.Site.Site) > 0 {
 		var sites []attr.Value
 		for _, s := range apiRule.Site.Site {
-			siteObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			siteObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(s.ID),
 				"name": types.StringValue(s.Name),
 			})
 			sites = append(sites, siteObj)
 		}
-		siteSet, _ := types.SetValue(NameIDObjectType, sites)
+		siteSet, _ := types.SetValue(idname.RefObjectType, sites)
 		siteAttrs["site"] = siteSet
 	}
 
@@ -93,13 +96,13 @@ func hydrateSocketLanSiteState(
 	if len(apiRule.Site.Group) > 0 {
 		var groups []attr.Value
 		for _, g := range apiRule.Site.Group {
-			groupObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			groupObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(g.ID),
 				"name": types.StringValue(g.Name),
 			})
 			groups = append(groups, groupObj)
 		}
-		groupSet, _ := types.SetValue(NameIDObjectType, groups)
+		groupSet, _ := types.SetValue(idname.RefObjectType, groups)
 		siteAttrs["group"] = groupSet
 	}
 
@@ -116,14 +119,14 @@ func hydrateSocketLanSourceState(
 		"vlan":                types.ListNull(types.Int64Type),
 		"ip":                  types.ListNull(types.StringType),
 		"subnet":              types.ListNull(types.StringType),
-		"ip_range":            types.ListNull(FromToObjectType),
-		"host":                types.SetNull(NameIDObjectType),
-		"group":               types.SetNull(NameIDObjectType),
-		"system_group":        types.SetNull(NameIDObjectType),
-		"network_interface":   types.SetNull(NameIDObjectType),
-		"global_ip_range":     types.SetNull(NameIDObjectType),
-		"floating_subnet":     types.SetNull(NameIDObjectType),
-		"site_network_subnet": types.SetNull(NameIDObjectType),
+		"ip_range":            types.ListNull(ipaddr.RangeObjectType),
+		"host":                types.SetNull(idname.RefObjectType),
+		"group":               types.SetNull(idname.RefObjectType),
+		"system_group":        types.SetNull(idname.RefObjectType),
+		"network_interface":   types.SetNull(idname.RefObjectType),
+		"global_ip_range":     types.SetNull(idname.RefObjectType),
+		"floating_subnet":     types.SetNull(idname.RefObjectType),
+		"site_network_subnet": types.SetNull(idname.RefObjectType),
 	}
 
 	// VLAN
@@ -160,13 +163,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.IPRange) > 0 {
 		var ipRanges []attr.Value
 		for _, r := range apiSource.IPRange {
-			rangeObj, _ := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
+			rangeObj, _ := types.ObjectValue(ipaddr.RangeAttrTypes, map[string]attr.Value{
 				"from": types.StringValue(r.From),
 				"to":   types.StringValue(r.To),
 			})
 			ipRanges = append(ipRanges, rangeObj)
 		}
-		ipRangeList, _ := types.ListValue(FromToObjectType, ipRanges)
+		ipRangeList, _ := types.ListValue(ipaddr.RangeObjectType, ipRanges)
 		sourceAttrs["ip_range"] = ipRangeList
 	}
 
@@ -174,13 +177,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.Host) > 0 {
 		var hosts []attr.Value
 		for _, h := range apiSource.Host {
-			hostObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			hostObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(h.ID),
 				"name": types.StringValue(h.Name),
 			})
 			hosts = append(hosts, hostObj)
 		}
-		hostSet, _ := types.SetValue(NameIDObjectType, hosts)
+		hostSet, _ := types.SetValue(idname.RefObjectType, hosts)
 		sourceAttrs["host"] = hostSet
 	}
 
@@ -188,13 +191,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.Group) > 0 {
 		var groups []attr.Value
 		for _, g := range apiSource.Group {
-			groupObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			groupObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(g.ID),
 				"name": types.StringValue(g.Name),
 			})
 			groups = append(groups, groupObj)
 		}
-		groupSet, _ := types.SetValue(NameIDObjectType, groups)
+		groupSet, _ := types.SetValue(idname.RefObjectType, groups)
 		sourceAttrs["group"] = groupSet
 	}
 
@@ -202,13 +205,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.SystemGroup) > 0 {
 		var systemGroups []attr.Value
 		for _, sg := range apiSource.SystemGroup {
-			sgObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			sgObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(sg.ID),
 				"name": types.StringValue(sg.Name),
 			})
 			systemGroups = append(systemGroups, sgObj)
 		}
-		sgSet, _ := types.SetValue(NameIDObjectType, systemGroups)
+		sgSet, _ := types.SetValue(idname.RefObjectType, systemGroups)
 		sourceAttrs["system_group"] = sgSet
 	}
 
@@ -216,13 +219,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.NetworkInterface) > 0 {
 		var networkInterfaces []attr.Value
 		for _, ni := range apiSource.NetworkInterface {
-			niObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			niObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(ni.ID),
 				"name": types.StringValue(ni.Name),
 			})
 			networkInterfaces = append(networkInterfaces, niObj)
 		}
-		niSet, _ := types.SetValue(NameIDObjectType, networkInterfaces)
+		niSet, _ := types.SetValue(idname.RefObjectType, networkInterfaces)
 		sourceAttrs["network_interface"] = niSet
 	}
 
@@ -230,13 +233,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.GlobalIPRange) > 0 {
 		var globalIPRanges []attr.Value
 		for _, gir := range apiSource.GlobalIPRange {
-			girObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			girObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(gir.ID),
 				"name": types.StringValue(gir.Name),
 			})
 			globalIPRanges = append(globalIPRanges, girObj)
 		}
-		girSet, _ := types.SetValue(NameIDObjectType, globalIPRanges)
+		girSet, _ := types.SetValue(idname.RefObjectType, globalIPRanges)
 		sourceAttrs["global_ip_range"] = girSet
 	}
 
@@ -244,13 +247,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.FloatingSubnet) > 0 {
 		var floatingSubnets []attr.Value
 		for _, fs := range apiSource.FloatingSubnet {
-			fsObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			fsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(fs.ID),
 				"name": types.StringValue(fs.Name),
 			})
 			floatingSubnets = append(floatingSubnets, fsObj)
 		}
-		fsSet, _ := types.SetValue(NameIDObjectType, floatingSubnets)
+		fsSet, _ := types.SetValue(idname.RefObjectType, floatingSubnets)
 		sourceAttrs["floating_subnet"] = fsSet
 	}
 
@@ -258,13 +261,13 @@ func hydrateSocketLanSourceState(
 	if len(apiSource.SiteNetworkSubnet) > 0 {
 		var siteNetworkSubnets []attr.Value
 		for _, sns := range apiSource.SiteNetworkSubnet {
-			snsObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			snsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(sns.ID),
 				"name": types.StringValue(sns.Name),
 			})
 			siteNetworkSubnets = append(siteNetworkSubnets, snsObj)
 		}
-		snsSet, _ := types.SetValue(NameIDObjectType, siteNetworkSubnets)
+		snsSet, _ := types.SetValue(idname.RefObjectType, siteNetworkSubnets)
 		sourceAttrs["site_network_subnet"] = snsSet
 	}
 
@@ -281,14 +284,14 @@ func hydrateSocketLanDestinationState(
 		"vlan":                types.ListNull(types.Int64Type),
 		"ip":                  types.ListNull(types.StringType),
 		"subnet":              types.ListNull(types.StringType),
-		"ip_range":            types.ListNull(FromToObjectType),
-		"host":                types.SetNull(NameIDObjectType),
-		"group":               types.SetNull(NameIDObjectType),
-		"system_group":        types.SetNull(NameIDObjectType),
-		"network_interface":   types.SetNull(NameIDObjectType),
-		"global_ip_range":     types.SetNull(NameIDObjectType),
-		"floating_subnet":     types.SetNull(NameIDObjectType),
-		"site_network_subnet": types.SetNull(NameIDObjectType),
+		"ip_range":            types.ListNull(ipaddr.RangeObjectType),
+		"host":                types.SetNull(idname.RefObjectType),
+		"group":               types.SetNull(idname.RefObjectType),
+		"system_group":        types.SetNull(idname.RefObjectType),
+		"network_interface":   types.SetNull(idname.RefObjectType),
+		"global_ip_range":     types.SetNull(idname.RefObjectType),
+		"floating_subnet":     types.SetNull(idname.RefObjectType),
+		"site_network_subnet": types.SetNull(idname.RefObjectType),
 	}
 
 	// VLAN
@@ -325,13 +328,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.IPRange) > 0 {
 		var ipRanges []attr.Value
 		for _, r := range apiDest.IPRange {
-			rangeObj, _ := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
+			rangeObj, _ := types.ObjectValue(ipaddr.RangeAttrTypes, map[string]attr.Value{
 				"from": types.StringValue(r.From),
 				"to":   types.StringValue(r.To),
 			})
 			ipRanges = append(ipRanges, rangeObj)
 		}
-		ipRangeList, _ := types.ListValue(FromToObjectType, ipRanges)
+		ipRangeList, _ := types.ListValue(ipaddr.RangeObjectType, ipRanges)
 		destAttrs["ip_range"] = ipRangeList
 	}
 
@@ -339,13 +342,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.Host) > 0 {
 		var hosts []attr.Value
 		for _, h := range apiDest.Host {
-			hostObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			hostObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(h.ID),
 				"name": types.StringValue(h.Name),
 			})
 			hosts = append(hosts, hostObj)
 		}
-		hostSet, _ := types.SetValue(NameIDObjectType, hosts)
+		hostSet, _ := types.SetValue(idname.RefObjectType, hosts)
 		destAttrs["host"] = hostSet
 	}
 
@@ -353,13 +356,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.Group) > 0 {
 		var groups []attr.Value
 		for _, g := range apiDest.Group {
-			groupObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			groupObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(g.ID),
 				"name": types.StringValue(g.Name),
 			})
 			groups = append(groups, groupObj)
 		}
-		groupSet, _ := types.SetValue(NameIDObjectType, groups)
+		groupSet, _ := types.SetValue(idname.RefObjectType, groups)
 		destAttrs["group"] = groupSet
 	}
 
@@ -367,13 +370,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.SystemGroup) > 0 {
 		var systemGroups []attr.Value
 		for _, sg := range apiDest.SystemGroup {
-			sgObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			sgObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(sg.ID),
 				"name": types.StringValue(sg.Name),
 			})
 			systemGroups = append(systemGroups, sgObj)
 		}
-		sgSet, _ := types.SetValue(NameIDObjectType, systemGroups)
+		sgSet, _ := types.SetValue(idname.RefObjectType, systemGroups)
 		destAttrs["system_group"] = sgSet
 	}
 
@@ -381,13 +384,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.NetworkInterface) > 0 {
 		var networkInterfaces []attr.Value
 		for _, ni := range apiDest.NetworkInterface {
-			niObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			niObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(ni.ID),
 				"name": types.StringValue(ni.Name),
 			})
 			networkInterfaces = append(networkInterfaces, niObj)
 		}
-		niSet, _ := types.SetValue(NameIDObjectType, networkInterfaces)
+		niSet, _ := types.SetValue(idname.RefObjectType, networkInterfaces)
 		destAttrs["network_interface"] = niSet
 	}
 
@@ -395,13 +398,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.GlobalIPRange) > 0 {
 		var globalIPRanges []attr.Value
 		for _, gir := range apiDest.GlobalIPRange {
-			girObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			girObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(gir.ID),
 				"name": types.StringValue(gir.Name),
 			})
 			globalIPRanges = append(globalIPRanges, girObj)
 		}
-		girSet, _ := types.SetValue(NameIDObjectType, globalIPRanges)
+		girSet, _ := types.SetValue(idname.RefObjectType, globalIPRanges)
 		destAttrs["global_ip_range"] = girSet
 	}
 
@@ -409,13 +412,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.FloatingSubnet) > 0 {
 		var floatingSubnets []attr.Value
 		for _, fs := range apiDest.FloatingSubnet {
-			fsObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			fsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(fs.ID),
 				"name": types.StringValue(fs.Name),
 			})
 			floatingSubnets = append(floatingSubnets, fsObj)
 		}
-		fsSet, _ := types.SetValue(NameIDObjectType, floatingSubnets)
+		fsSet, _ := types.SetValue(idname.RefObjectType, floatingSubnets)
 		destAttrs["floating_subnet"] = fsSet
 	}
 
@@ -423,13 +426,13 @@ func hydrateSocketLanDestinationState(
 	if len(apiDest.SiteNetworkSubnet) > 0 {
 		var siteNetworkSubnets []attr.Value
 		for _, sns := range apiDest.SiteNetworkSubnet {
-			snsObj, _ := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+			snsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue(sns.ID),
 				"name": types.StringValue(sns.Name),
 			})
 			siteNetworkSubnets = append(siteNetworkSubnets, snsObj)
 		}
-		snsSet, _ := types.SetValue(NameIDObjectType, siteNetworkSubnets)
+		snsSet, _ := types.SetValue(idname.RefObjectType, siteNetworkSubnets)
 		destAttrs["site_network_subnet"] = snsSet
 	}
 
@@ -443,7 +446,7 @@ func hydrateSocketLanServiceState(
 ) types.Object {
 	serviceAttrs := map[string]attr.Value{
 		"simple": types.SetNull(SimpleServiceObjectType),
-		"custom": types.ListNull(CustomServiceObjectType),
+		"custom": types.ListNull(customservice.CustomServiceObjectType),
 	}
 
 	// Simple services
@@ -466,7 +469,7 @@ func hydrateSocketLanServiceState(
 			customAttrs := map[string]attr.Value{
 				"protocol":   types.StringValue(string(c.Protocol)),
 				"port":       types.ListNull(types.StringType),
-				"port_range": types.ObjectNull(FromToAttrTypes),
+				"port_range": types.ObjectNull(ipaddr.RangeAttrTypes),
 			}
 
 			// Ports
@@ -481,17 +484,17 @@ func hydrateSocketLanServiceState(
 
 			// Port range
 			if c.PortRange != nil {
-				portRangeObj, _ := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
+				portRangeObj, _ := types.ObjectValue(ipaddr.RangeAttrTypes, map[string]attr.Value{
 					"from": types.StringValue(string(c.PortRange.From)),
 					"to":   types.StringValue(string(c.PortRange.To)),
 				})
 				customAttrs["port_range"] = portRangeObj
 			}
 
-			customObj, _ := types.ObjectValue(CustomServiceAttrTypes, customAttrs)
+			customObj, _ := types.ObjectValue(customservice.CustomServiceAttrTypes, customAttrs)
 			customServices = append(customServices, customObj)
 		}
-		customList, _ := types.ListValue(CustomServiceObjectType, customServices)
+		customList, _ := types.ListValue(customservice.CustomServiceObjectType, customServices)
 		serviceAttrs["custom"] = customList
 	}
 
