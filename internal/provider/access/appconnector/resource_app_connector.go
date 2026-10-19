@@ -1,4 +1,4 @@
-package provider
+package appconnector
 
 import (
 	"context"
@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
@@ -203,7 +204,7 @@ func (r *appConnectorResource) ImportState(ctx context.Context, req resource.Imp
 
 // Create a new app connector
 func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan AppConnectorModel
+	var plan Model
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -249,7 +250,7 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 
 // Read app connector data from Cato API
 func (r *appConnectorResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state AppConnectorModel
+	var state Model
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -278,14 +279,14 @@ func (r *appConnectorResource) Read(ctx context.Context, req resource.ReadReques
 
 // Update app connector configuration
 func (r *appConnectorResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan AppConnectorModel
+	var plan Model
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var state AppConnectorModel
+	var state Model
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -444,7 +445,7 @@ func (r *appConnectorResource) rmBwLicenses(ctx context.Context, toRemove map[li
 
 // Delete app connector
 func (r *appConnectorResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state AppConnectorModel
+	var state Model
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -480,7 +481,7 @@ func (r *appConnectorResource) prepareLocation(
 		return nil
 	}
 
-	var tfLocation AppConnectorLocation
+	var tfLocation Location
 	diags.Append(addr.As(ctx, &tfLocation, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
 		return nil
@@ -547,7 +548,7 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr appConnec
 	diags *diag.Diagnostics,
 ) types.Object {
 	// Prepare AppConnectorLocation object
-	tfLocation := AppConnectorLocation{
+	tfLocation := Location{
 		Address:     types.StringPointerValue(addr.Address),
 		CityName:    types.StringValue(addr.CityName),
 		CountryCode: types.StringValue(addr.CountryCode),
@@ -555,10 +556,10 @@ func (r *appConnectorResource) parseLocation(ctx context.Context, addr appConnec
 		Timezone:    types.StringValue(addr.Timezone),
 	}
 
-	locObj, objDiags := types.ObjectValueFrom(ctx, AppConnectorLocationTypes, tfLocation)
+	locObj, objDiags := types.ObjectValueFrom(ctx, LocationTypes, tfLocation)
 	diags.Append(objDiags...)
 	if diags.HasError() {
-		return types.ObjectNull(AppConnectorLocationTypes)
+		return types.ObjectNull(LocationTypes)
 	}
 
 	return locObj
@@ -628,8 +629,8 @@ func (r *appConnectorResource) parsePopLocation(ctx context.Context, loc *appCon
 func (r *appConnectorResource) hydrateAppConnectorState(
 	ctx context.Context,
 	appConnectorID string,
-	_ AppConnectorModel,
-) (*AppConnectorModel, diag.Diagnostics, error) {
+	_ Model,
+) (*Model, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	input := cato_models.ZtnaAppConnectorRefInput{
@@ -651,7 +652,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 		return nil, diags, ErrAppConnectorNotFound
 	}
 
-	state := &AppConnectorModel{
+	state := &Model{
 		Description:               types.StringPointerValue(con.Description),
 		GroupName:                 types.StringValue(con.GroupName),
 		ID:                        types.StringValue(con.ID),
@@ -667,7 +668,7 @@ func (r *appConnectorResource) hydrateAppConnectorState(
 	}
 
 	if diags.HasError() {
-		return nil, diags, ErrAPIResponseParse
+		return nil, diags, apperr.ErrAPIResponseParse
 	}
 
 	return state, nil, nil

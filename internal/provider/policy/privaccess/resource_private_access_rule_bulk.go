@@ -1,4 +1,4 @@
-package provider
+package privaccess
 
 import (
 	"cmp"
@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -279,7 +280,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 		ruleObj, objDiags := types.ObjectValueFrom(ctx, PrivateAccessBulkRuleTypes, tfRule)
 		diags.Append(objDiags...)
 		if diags.HasError() {
-			return nil, nil, diags, ErrAPIResponseParse
+			return nil, nil, diags, apperr.ErrAPIResponseParse
 		}
 		apiRulesTf[apiRule.Name] = ruleObj
 		apiRulesGo[apiRule.Name] = tfRule
@@ -289,7 +290,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	rulesMap, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: PrivateAccessBulkRuleTypes}, apiRulesTf)
 	diags.Append(objDiags...)
 	if diags.HasError() {
-		return nil, nil, diags, ErrAPIResponseParse
+		return nil, nil, diags, apperr.ErrAPIResponseParse
 	}
 	state := &PrivateAccessRuleBulkModel{
 		RuleData: rulesMap,
@@ -372,13 +373,13 @@ func (r *privAccessRuleBulkResource) moveToPosition(
 	if newPosition == 0 {
 		input = cato_models.PolicyMoveRuleInput{
 			ID: ruleID,
-			To: &cato_models.PolicyRulePositionInput{Position: ptr(cato_models.PolicyRulePositionEnumFirstInPolicy)},
+			To: &cato_models.PolicyRulePositionInput{Position: new(cato_models.PolicyRulePositionEnumFirstInPolicy)},
 		}
 	} else {
 		input = cato_models.PolicyMoveRuleInput{
 			ID: ruleID,
 			To: &cato_models.PolicyRulePositionInput{
-				Position: ptr(cato_models.PolicyRulePositionEnumAfterRule),
+				Position: new(cato_models.PolicyRulePositionEnumAfterRule),
 				Ref:      convert.KnownStringPointer(currentRules[newPosition-1].ID),
 			},
 		}

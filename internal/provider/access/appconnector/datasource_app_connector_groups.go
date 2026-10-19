@@ -1,4 +1,4 @@
-package provider
+package appconnector
 
 import (
 	"context"
@@ -10,12 +10,12 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
-type AppConnectorGroupDataSourceModel struct {
+type GroupDataSourceModel struct {
 	Items []types.String `tfsdk:"items"`
 	Total types.Int64    `tfsdk:"total"`
 }
 
-func AppConnectorGroupDataSource() datasource.DataSource {
+func GroupDataSource() datasource.DataSource {
 	return &appConnectorGroupDataSource{}
 }
 
@@ -53,7 +53,7 @@ func (d *appConnectorGroupDataSource) Configure(_ context.Context, req datasourc
 }
 
 func (d *appConnectorGroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var groups AppConnectorGroupDataSourceModel
+	var groups GroupDataSourceModel
 	if diags := req.Config.Get(ctx, &groups); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return

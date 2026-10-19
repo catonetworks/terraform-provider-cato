@@ -1,4 +1,4 @@
-package provider
+package privateapp
 
 import (
 	"context"
@@ -78,7 +78,7 @@ func TestPreparePrivateAppProbingSkipsUnconfiguredValue(t *testing.T) {
 
 	got := r.preparePrivateAppProbing(
 		context.Background(),
-		types.ObjectUnknown(PrivateAppProbingTypes),
+		types.ObjectUnknown(ProbingTypes),
 		&diags,
 	)
 

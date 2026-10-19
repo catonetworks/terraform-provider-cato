@@ -1,11 +1,11 @@
-package provider
+package privateapp
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type PrivateAppModel struct {
+type Model struct {
 	AllowIcmpProtocol  types.Bool   `tfsdk:"allow_icmp_protocol"`
 	CreationTime       types.String `tfsdk:"creation_time"`
 	Description        types.String `tfsdk:"description"`
@@ -33,14 +33,14 @@ var PublishedAppDomainTypes = map[string]attr.Type{
 	"published_app_domain": types.StringType,
 }
 
-type PrivateAppProbing struct {
+type Probing struct {
 	FaultThresholdDown types.Int64  `tfsdk:"fault_threshold_down"`
 	ID                 types.String `tfsdk:"id"`
 	Interval           types.Int64  `tfsdk:"interval"`
 	Type               types.String `tfsdk:"type"`
 }
 
-var PrivateAppProbingTypes = map[string]attr.Type{
+var ProbingTypes = map[string]attr.Type{
 	"fault_threshold_down": types.Int64Type,
 	"id":                   types.StringType,
 	"interval":             types.Int64Type,

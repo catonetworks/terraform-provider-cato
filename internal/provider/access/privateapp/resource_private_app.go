@@ -1,4 +1,4 @@
-package provider
+package privateapp
 
 import (
 	"context"
@@ -218,7 +218,7 @@ func (r *privateAppResource) ImportState(ctx context.Context, req resource.Impor
 
 // Create a new private app
 func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan PrivateAppModel
+	var plan Model
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -266,7 +266,7 @@ func (r *privateAppResource) Create(ctx context.Context, req resource.CreateRequ
 
 // Read the private app
 func (r *privateAppResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state PrivateAppModel
+	var state Model
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -295,14 +295,14 @@ func (r *privateAppResource) Read(ctx context.Context, req resource.ReadRequest,
 
 // Update the private app
 func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan PrivateAppModel
+	var plan Model
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var state PrivateAppModel
+	var state Model
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -353,7 +353,7 @@ func (r *privateAppResource) Update(ctx context.Context, req resource.UpdateRequ
 
 // Delete the private app
 func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state PrivateAppModel
+	var state Model
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -379,7 +379,7 @@ func (r *privateAppResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 // hydratePrivateAppState fetches the current state of a privateApp from the API
 // It takes a plan parameter to match config members with API members correctly
-func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, privateAppID string) (*PrivateAppModel, diag.Diagnostics, error) {
+func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, privateAppID string) (*Model, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	input := cato_models.PrivateApplicationRefInput{
@@ -401,7 +401,7 @@ func (r *privateAppResource) hydratePrivateAppState(ctx context.Context, private
 		return nil, diags, ErrPrivateAppNotFound
 	}
 
-	state := &PrivateAppModel{
+	state := &Model{
 		AllowIcmpProtocol:  types.BoolValue(app.AllowICMPProtocol),
 		CreationTime:       types.StringValue(app.CreationTime),
 		Description:        types.StringPointerValue(app.Description),
@@ -521,20 +521,20 @@ func (r *privateAppResource) parsePrivateAppProbing(
 	diags *diag.Diagnostics,
 ) types.Object {
 	var objDiags diag.Diagnostics
-	objNull := types.ObjectNull(PrivateAppProbingTypes)
+	objNull := types.ObjectNull(ProbingTypes)
 
 	if probing == nil {
 		return objNull
 	}
 
-	tfProbing := PrivateAppProbing{
+	tfProbing := Probing{
 		FaultThresholdDown: types.Int64Value(probing.FaultThresholdDown),
 		ID:                 types.StringValue(probing.ID),
 		Interval:           types.Int64Value(probing.Interval),
 		Type:               types.StringValue(probing.Type),
 	}
 
-	probingObj, objDiags := types.ObjectValueFrom(ctx, PrivateAppProbingTypes, tfProbing)
+	probingObj, objDiags := types.ObjectValueFrom(ctx, ProbingTypes, tfProbing)
 	diags.Append(objDiags...)
 	if diags.HasError() {
 		return objNull
@@ -567,7 +567,7 @@ func (r *privateAppResource) preparePrivateAppProbing(ctx context.Context, probi
 		return nil
 	}
 
-	var tfProbing PrivateAppProbing
+	var tfProbing Probing
 	if utils.CheckErr(diags, probing.As(ctx, &tfProbing, basetypes.ObjectAsOptions{})) {
 		return nil
 	}
@@ -637,5 +637,3 @@ func (r *privateAppResource) prepareProtocolPorts(
 
 	return out
 }
-
-func ptr[T any](x T) *T { return &x }

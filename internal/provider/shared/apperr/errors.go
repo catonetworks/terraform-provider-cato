@@ -7,8 +7,13 @@ type APIErrors interface {
 	GetErrorMessage() *string
 }
 
-// ErrConfig generic configuration error
-var ErrConfig = errors.New("configuration error")
+var (
+	// ErrConfig generic configuration error
+	ErrConfig = errors.New("configuration error")
+
+	// ErrAPIResponseParse failed to parse API response
+	ErrAPIResponseParse = errors.New("failed to parse API response")
+)
 
 func AssertErr(message string) error {
 	return &TestError{message: message}

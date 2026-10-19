@@ -1,4 +1,4 @@
-package provider
+package privaccess
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
@@ -35,7 +36,6 @@ var (
 	_ resource.ResourceWithImportState = &privAccessRuleResource{}
 
 	ErrPrivateAcccessRuleNotFound = errors.New("private access rule not found")
-	ErrAPIResponseParse           = errors.New("failed to parse API response")
 )
 
 func NewPrivAccessRuleResource() resource.Resource {
@@ -364,7 +364,7 @@ func (r *privAccessRuleResource) ImportState(ctx context.Context, req resource.I
 
 // Create private access policy rule
 func (r *privAccessRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan PrivateAccessRuleModel
+	var plan RuleModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -390,7 +390,7 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 			UserAttributes:        r.prepareUserAttributes(ctx, plan.UserAttributes, &resp.Diagnostics),
 		},
 		At: &cato_models.PolicyRulePositionInput{
-			Position: ptr(cato_models.PolicyRulePositionEnumLastInPolicy),
+			Position: new(cato_models.PolicyRulePositionEnumLastInPolicy),
 		},
 	}
 	if resp.Diagnostics.HasError() {
@@ -440,7 +440,7 @@ func (r *privAccessRuleResource) Create(ctx context.Context, req resource.Create
 
 // Read private access policy rule
 func (r *privAccessRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state PrivateAccessRuleModel
+	var state RuleModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -469,14 +469,14 @@ func (r *privAccessRuleResource) Read(ctx context.Context, req resource.ReadRequ
 
 // Update private access policy rule
 func (r *privAccessRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan PrivateAccessRuleModel
+	var plan RuleModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var state PrivateAccessRuleModel
+	var state RuleModel
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -548,7 +548,7 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 //
 //nolint:gocyclo,funlen
 func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state PrivateAccessRuleModel
+	var state RuleModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -804,7 +804,7 @@ func (r *privAccessRuleResource) prepareTrackingUpdate(
 			Webhook:           upd.Alert.Webhook,
 		},
 		Event: &cato_models.PolicyRuleTrackingEventUpdateInput{
-			Enabled: ptr(upd.Event.Enabled),
+			Enabled: new(upd.Event.Enabled),
 		},
 	}
 }
@@ -1018,7 +1018,7 @@ func (r *privAccessRuleResource) prepareAction(action types.String) *cato_models
 	return &cato_models.PrivateAccessPolicyActionInput{Action: cato_models.PrivateAccessPolicyActionEnum(action.ValueString())}
 }
 func (r *privAccessRuleResource) prepareActionUpdate(action types.String) *cato_models.PrivateAccessPolicyActionUpdateInput {
-	return &cato_models.PrivateAccessPolicyActionUpdateInput{Action: ptr(cato_models.PrivateAccessPolicyActionEnum(action.ValueString()))}
+	return &cato_models.PrivateAccessPolicyActionUpdateInput{Action: new(cato_models.PrivateAccessPolicyActionEnum(action.ValueString()))}
 }
 
 func (r *privAccessRuleResource) prepareDevice(
@@ -1187,7 +1187,7 @@ func (r *privAccessRuleResource) parsePolicyActivePeriod(
 func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 	ctx context.Context,
 	ruleID string,
-) (*PrivateAccessRuleModel, diag.Diagnostics, error) {
+) (*RuleModel, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	// Call Cato API to get the policy
@@ -1197,7 +1197,7 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 		return nil, nil, err
 	}
 
-	var state *PrivateAccessRuleModel
+	var state *RuleModel
 
 	// Map API response to PrivAccessPolicyModel
 	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
@@ -1206,7 +1206,7 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 			continue
 		}
 		apiRule := polRule.Rule
-		state = &PrivateAccessRuleModel{
+		state = &RuleModel{
 			Action:            types.StringValue(string(apiRule.Action.Action)),
 			ActivePeriod:      r.parsePolicyActivePeriod(ctx, apiRule.ActivePeriod, &diags),
 			Applications:      idname.ParseIDNameSet(ctx, apiRule.Applications.Application, &diags),
@@ -1230,7 +1230,7 @@ func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 		return nil, diags, ErrPrivateAcccessRuleNotFound
 	}
 	if diags.HasError() {
-		return nil, diags, ErrAPIResponseParse
+		return nil, diags, apperr.ErrAPIResponseParse
 	}
 
 	return state, nil, nil

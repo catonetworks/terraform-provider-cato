@@ -1,4 +1,4 @@
-package provider
+package privaccess
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -85,7 +86,7 @@ func (r *privAccessPolicyResource) ImportState(ctx context.Context, _ resource.I
 // Create does not really create anything as the plolicy always exists.
 // It updates the 'enabled' field of the policy.
 func (r *privAccessPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan PrivAccessPolicyModel
+	var plan PolicyModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -107,7 +108,7 @@ func (r *privAccessPolicyResource) Create(ctx context.Context, req resource.Crea
 
 // Read the policy status
 func (r *privAccessPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state PrivAccessPolicyModel
+	var state PolicyModel
 
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -131,7 +132,7 @@ func (r *privAccessPolicyResource) Read(ctx context.Context, req resource.ReadRe
 
 // Update the policy
 func (r *privAccessPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan PrivAccessPolicyModel
+	var plan PolicyModel
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -160,7 +161,7 @@ func (r *privAccessPolicyResource) Delete(_ context.Context, _ resource.DeleteRe
 func (r *privAccessPolicyResource) callUpdate(
 	ctx context.Context,
 	isEnabled bool,
-) (newState *PrivAccessPolicyModel, diags diag.Diagnostics) {
+) (newState *PolicyModel, diags diag.Diagnostics) {
 	// Set the enabled polEnabled
 	polEnabled := cato_models.PolicyToggleStateDisabled
 	if isEnabled {
@@ -202,7 +203,7 @@ func (r *privAccessPolicyResource) callUpdate(
 }
 
 // hydratePrivAccessPolicyState fetches the current state of a privAccessPolicy from the API
-func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Context) (*PrivAccessPolicyModel, diag.Diagnostics, error) {
+func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Context) (*PolicyModel, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
 	// Call Cato API to get the policy
@@ -214,13 +215,13 @@ func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Cont
 
 	// Map API response to PrivAccessPolicyModel
 	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
-	state := &PrivAccessPolicyModel{
+	state := &PolicyModel{
 		Audit:   r.parseAudit(ctx, policy.Audit, &diags),
 		Enabled: types.BoolValue(policy.Enabled),
 		ID:      types.StringValue("0"), // there is just 1 default policy, the ID is used in automated tests
 	}
 	if diags.HasError() {
-		return nil, diags, ErrAPIResponseParse
+		return nil, diags, apperr.ErrAPIResponseParse
 	}
 
 	return state, nil, nil

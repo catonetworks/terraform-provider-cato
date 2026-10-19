@@ -1,4 +1,4 @@
-package provider
+package privaccess
 
 import (
 	"context"
@@ -907,7 +907,7 @@ func newPrivateAccessRuleTestState(ctx context.Context, t *testing.T, r *privAcc
 	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
 	state := tfsdk.State{Schema: schemaResp.Schema}
 	refType := types.ObjectType{AttrTypes: idname.RefAttrTypes}
-	diags := state.Set(ctx, PrivateAccessRuleModel{
+	diags := state.Set(ctx, RuleModel{
 		ID:                types.StringValue("rule-123"),
 		Name:              types.StringValue("test rule"),
 		Action:            types.StringValue("ALLOW"),

@@ -1,4 +1,4 @@
-package provider
+package privaccess
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -7,7 +7,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
-type PrivateAccessRuleModel struct {
+type RuleModel struct {
 	Action            types.String `tfsdk:"action"`             // e.g. "ALLOW"
 	ActivePeriod      types.Object `tfsdk:"active_period"`      // PolicyRuleActivePeriod
 	Applications      types.Set    `tfsdk:"applications"`       // []IDNameRefModel
@@ -27,13 +27,13 @@ type PrivateAccessRuleModel struct {
 	// Section          *PrivAccessPolicySection `tfsdk:"section"` -- not available in the 1st phase
 }
 
-type PrivAccessPolicySection struct {
+type PolicySection struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	SubpolicyID types.String `tfsdk:"subpolicy_id"`
 }
 
-var PrivAccessPolicySectionTypes = map[string]attr.Type{
+var PolicySectionTypes = map[string]attr.Type{
 	"id":           types.StringType,
 	"name":         types.StringType,
 	"subpolicy_id": types.StringType,
@@ -117,7 +117,7 @@ var PolicyRuleActivePeriodTypes = map[string]attr.Type{
 
 type PolicyRuleTracking struct {
 	Event types.Object `tfsdk:"event"` // PolicyRuleTrackingEvent
-	Alert types.Object `tfsdk:"alert"` // PoliciRuleTrackingAlert
+	Alert types.Object `tfsdk:"alert"` // PolicyRuleTrackingAlert
 }
 
 var PolicyRuleTrackingTypes = map[string]attr.Type{

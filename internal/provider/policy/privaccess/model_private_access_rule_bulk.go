@@ -1,4 +1,4 @@
-package provider
+package privaccess
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"

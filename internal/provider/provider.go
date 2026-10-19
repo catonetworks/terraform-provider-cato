@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/appconnector"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/privateapp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/netrange"
@@ -29,6 +31,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lanindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lannetwork"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lansubpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privaccess"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanfirewall"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanindex"
@@ -486,7 +489,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		WfRuleSectionsDataSource,
 		netrange.NetworkRangesDataSource,
 		HostDataSource,
-		AppConnectorGroupDataSource,
+		appconnector.GroupDataSource,
 	}
 }
 
@@ -519,11 +522,11 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		wanindex.NewWanRulesIndexResource,
 		wanindex.NewWanNetworkRulesIndexResource,
 		tls.NewTLSRulesIndexResource,
-		NewAppConnectorResource,
-		NewPrivateAppResource,
-		NewPrivAccessPolicyResource,
-		NewPrivAccessRuleResource,
-		NewPrivAccessRuleBulkResource,
+		appconnector.NewAppConnectorResource,
+		privateapp.NewPrivateAppResource,
+		privaccess.NewPrivAccessPolicyResource,
+		privaccess.NewPrivAccessRuleResource,
+		privaccess.NewPrivAccessRuleBulkResource,
 		NewAppTenantRestrictionRuleResource,
 		NewAppTenantRestrictionSectionResource,
 		NewApplicationControlPolicyResource,

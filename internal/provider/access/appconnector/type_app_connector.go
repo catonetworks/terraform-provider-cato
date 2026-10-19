@@ -1,4 +1,4 @@
-package provider
+package appconnector
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -7,7 +7,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
-type AppConnectorModel struct {
+type Model struct {
 	Description               types.String `tfsdk:"description"`
 	GroupName                 types.String `tfsdk:"group_name"`
 	ID                        types.String `tfsdk:"id"`
@@ -22,7 +22,7 @@ type AppConnectorModel struct {
 	Type                      types.String `tfsdk:"type"`
 }
 
-type AppConnectorLocation struct {
+type Location struct {
 	Address     types.String `tfsdk:"address"`
 	CityName    types.String `tfsdk:"city_name"`
 	CountryCode types.String `tfsdk:"country_code"`
@@ -30,7 +30,7 @@ type AppConnectorLocation struct {
 	Timezone    types.String `tfsdk:"timezone"`
 }
 
-var AppConnectorLocationTypes = map[string]attr.Type{
+var LocationTypes = map[string]attr.Type{
 	"address":      types.StringType,
 	"city_name":    types.StringType,
 	"country_code": types.StringType,
