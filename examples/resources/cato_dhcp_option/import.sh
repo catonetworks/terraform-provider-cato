@@ -1,0 +1,1 @@
+terraform import cato_dhcp_option.example OPAQUE_RESOURCE_ID

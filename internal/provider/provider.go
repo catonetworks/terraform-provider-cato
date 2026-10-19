@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcp"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dns"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/netrange"
@@ -437,7 +439,9 @@ func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
 	retryClient.RetryWaitMin = retryConfig.retryWaitMin
 	retryClient.RetryWaitMax = retryConfig.retryWaitMax
 
-	return retryClient.StandardClient()
+	client := retryClient.StandardClient()
+	client.Timeout = 2 * time.Minute
+	return client
 }
 
 func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoclient.Service) {
@@ -482,6 +486,12 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewAccountResource,
+		dns.NewSettingsResource,
+		dns.NewSiteSettingsResource,
+		dns.NewForwardingRuleResource,
+		dhcp.NewSettingsResource,
+		dhcp.NewOptionResource,
+		dhcp.NewRelayGroupResource,
 		NewAdminResource,
 		NewBgpPeerResource,
 		NewGroupResource,

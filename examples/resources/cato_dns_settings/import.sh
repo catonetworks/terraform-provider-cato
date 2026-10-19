@@ -1,0 +1,1 @@
+terraform import cato_dns_settings.example ACCOUNT_ID
