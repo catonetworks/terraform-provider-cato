@@ -126,7 +126,7 @@ func (d *allocatedIPDataSource) Read(ctx context.Context, req datasource.ReadReq
 	for _, item := range result.GetEntityLookup().GetItems() {
 		helperFields := item.GetHelperFields()
 		ip := cast.ToString(helperFields["allocatedIp"])
-		if !filterByName || contains(namesMap, ip) {
+		if !filterByName || utils.Contains(namesMap, ip) {
 			location := cast.ToString(helperFields["popLocation"])
 			cc := cast.ToString(helperFields["countryCode"])
 			obj, diags := types.ObjectValue(

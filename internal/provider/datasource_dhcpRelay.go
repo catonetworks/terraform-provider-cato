@@ -122,7 +122,7 @@ func (d *dhcpRelayGroupDataSource) Read(ctx context.Context, req datasource.Read
 
 	for _, item := range result.GetEntityLookup().GetItems() {
 		name := cast.ToString(item.GetEntity().GetName())
-		if !filterByName || contains(namesMap, name) {
+		if !filterByName || utils.Contains(namesMap, name) {
 			dhcpRelayServers := strings.Split(item.Description, ",")
 			var dhcpRelayServersValues []attr.Value
 			for _, s := range dhcpRelayServers {

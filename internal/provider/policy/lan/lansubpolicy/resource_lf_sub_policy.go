@@ -865,7 +865,7 @@ func (r *lfSubPolicyResource) parseService(ctx context.Context,
 		return types.ObjectNull(PolicyServiceTypes)
 	}
 	tfSvc := PolicyService{
-		Custom: r.parseCustomService(ctx, svc.Custom, diags),
+		Custom: r.ParseCustomService(ctx, svc.Custom, diags),
 		Simple: r.parseSimpleService(ctx, svc.Simple, diags),
 	}
 	svcObj, objDiags := types.ObjectValueFrom(ctx, PolicyServiceTypes, tfSvc)
@@ -903,8 +903,8 @@ func (r *lfSubPolicyResource) parseSimpleService(ctx context.Context,
 	return serviceList
 }
 
-// parseCustomService converts API custom services into a Terraform list.
-func (r *lfSubPolicyResource) parseCustomService(ctx context.Context,
+// customservice.ParseCustomService converts API custom services into a Terraform list.
+func (r *lfSubPolicyResource) ParseCustomService(ctx context.Context,
 	svcs []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Service_Custom, diags *diag.Diagnostics,
 ) types.List {
 	if len(svcs) == 0 {

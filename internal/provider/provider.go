@@ -23,10 +23,17 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/netrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/inetfirewall"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/inetindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lanfirewall"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lanindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lannetwork"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lansubpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanfirewall"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wannetwork"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wansubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -474,7 +481,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		SiteLocationDataSource,
 		IfwRulesIndexDataSource,
 		WanRulesIndexDataSource,
-		TLSRulesIndexDataSource,
+		tls.RulesIndexDataSource,
 		IfRuleSectionsDataSource,
 		WfRuleSectionsDataSource,
 		netrange.NetworkRangesDataSource,
@@ -489,9 +496,9 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewAdminResource,
 		NewBgpPeerResource,
 		NewGroupResource,
-		NewInternetFwRuleResource,
-		NewInternetFwSectionResource,
-		NewIfSubPolicyResource,
+		inetfirewall.NewInternetFwRuleResource,
+		inetindex.NewInternetFwSectionResource,
+		inetindex.NewIfSubPolicyResource,
 		laninterface.NewLanInterfaceResource,
 		laninterface.NewLanInterfaceLagMemberResource,
 		NewLicenseResource,
@@ -500,18 +507,18 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		ipsecsite.NewSiteIpsecResource,
 		socketsite.NewSocketSiteResource,
 		NewStaticHostResource,
-		NewTLSInspectionRuleResource,
-		NewTLSInspectionSectionResource,
-		NewWanFwRuleResource,
-		NewWanFwSectionResource,
-		NewWfSubPolicyResource,
+		tls.NewTLSInspectionRuleResource,
+		tls.NewTLSInspectionSectionResource,
+		wanfirewall.NewWanFwRuleResource,
+		wanindex.NewWanFwSectionResource,
+		wansubpolicy.NewWfSubPolicyResource,
 		NewWanInterfaceResource,
-		NewWanNetworkRuleResource,
-		NewWanNetworkSectionResource,
-		NewIfwRulesIndexResource,
-		NewWanRulesIndexResource,
-		NewWanNetworkRulesIndexResource,
-		NewTLSRulesIndexResource,
+		wannetwork.NewWanNetworkRuleResource,
+		wanindex.NewWanNetworkSectionResource,
+		inetindex.NewIfwRulesIndexResource,
+		wanindex.NewWanRulesIndexResource,
+		wanindex.NewWanNetworkRulesIndexResource,
+		tls.NewTLSRulesIndexResource,
 		NewAppConnectorResource,
 		NewPrivateAppResource,
 		NewPrivAccessPolicyResource,

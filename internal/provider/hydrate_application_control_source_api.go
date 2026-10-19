@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/inetfirewall"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -65,7 +66,7 @@ func applicationControlSourcePairFromTerraformObject(
 	if !sourceInput.Country.IsUnknown() && !sourceInput.Country.IsNull() {
 		objs := make([]types.Object, 0, len(sourceInput.Country.Elements()))
 		diags.Append(sourceInput.Country.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleCountry
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleCountry
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -88,7 +89,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -113,7 +114,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceSite
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceSite
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -134,7 +135,7 @@ func applicationControlSourcePairFromTerraformObject(
 	if !sourceInput.IPRange.IsUnknown() && !sourceInput.IPRange.IsNull() {
 		objs := make([]types.Object, 0, len(sourceInput.IPRange.Elements()))
 		diags.Append(sourceInput.IPRange.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceIPRange
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceIPRange
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			add.IPRange = append(add.IPRange, &cato_models.IPAddressRangeInput{
@@ -153,7 +154,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceGlobalIPRange
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceGlobalIPRange
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -179,7 +180,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceNetworkInterface
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceNetworkInterface
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -205,7 +206,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceSiteNetworkSubnet
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceSiteNetworkSubnet
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -231,7 +232,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceFloatingSubnet
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceFloatingSubnet
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -257,7 +258,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceUser
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceUser
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -281,7 +282,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceUsersGroup
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceUsersGroup
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -307,7 +308,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceGroup
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceGroup
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)
@@ -331,7 +332,7 @@ func applicationControlSourcePairFromTerraformObject(
 		}
 		objs := make([]types.Object, 0, len(set.Elements()))
 		diags.Append(set.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceSystemGroup
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceSystemGroup
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			out, err := utils.TransformObjectRefInput(item)

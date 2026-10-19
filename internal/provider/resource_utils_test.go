@@ -1,6 +1,10 @@
 package provider
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+)
 
 func TestParseFlexibleTimeString(t *testing.T) {
 	const (
@@ -9,7 +13,7 @@ func TestParseFlexibleTimeString(t *testing.T) {
 	)
 
 	t.Run("parses timestamp without timezone", func(t *testing.T) {
-		got, err := parseFlexibleTimeString("2024-01-02T03:04:05")
+		got, err := utils.ParseFlexibleTimeString("2024-01-02T03:04:05")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -20,7 +24,7 @@ func TestParseFlexibleTimeString(t *testing.T) {
 	})
 
 	t.Run("parses RFC3339 timestamp with timezone", func(t *testing.T) {
-		got, err := parseFlexibleTimeString("2024-01-02T03:04:05+02:00")
+		got, err := utils.ParseFlexibleTimeString("2024-01-02T03:04:05+02:00")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -31,7 +35,7 @@ func TestParseFlexibleTimeString(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid timestamp", func(t *testing.T) {
-		_, err := parseFlexibleTimeString("not-a-time")
+		_, err := utils.ParseFlexibleTimeString("not-a-time")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -42,7 +46,7 @@ func TestParseTimeString(t *testing.T) {
 	const expectedNormalizedTime = "2024-01-02T01:04:05Z"
 
 	t.Run("normalizes timestamp to UTC RFC3339", func(t *testing.T) {
-		got, err := parseTimeString("2024-01-02T03:04:05+02:00")
+		got, err := utils.ParseTimeString("2024-01-02T03:04:05+02:00")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -54,7 +58,7 @@ func TestParseTimeString(t *testing.T) {
 
 	t.Run("preserves configured value when time matches exactly", func(t *testing.T) {
 		preserved := "2024-01-02T03:04:05+02:00"
-		got, err := parseTimeString("2024-01-02T01:04:05Z", preserved)
+		got, err := utils.ParseTimeString("2024-01-02T01:04:05Z", preserved)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -65,7 +69,7 @@ func TestParseTimeString(t *testing.T) {
 	})
 
 	t.Run("ignores invalid preserve value and returns normalized time", func(t *testing.T) {
-		got, err := parseTimeString("2024-01-02T03:04:05", "invalid")
+		got, err := utils.ParseTimeString("2024-01-02T03:04:05", "invalid")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -76,7 +80,7 @@ func TestParseTimeString(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid timestamp", func(t *testing.T) {
-		_, err := parseTimeString("not-a-time")
+		_, err := utils.ParseTimeString("not-a-time")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -85,7 +89,7 @@ func TestParseTimeString(t *testing.T) {
 
 func TestParseTimeStringWithTZ(t *testing.T) {
 	t.Run("normalizes timestamp to explicit UTC offset", func(t *testing.T) {
-		got, err := parseTimeStringWithTZ("2024-01-02T03:04:05+02:00")
+		got, err := utils.ParseTimeStringWithTZ("2024-01-02T03:04:05+02:00")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -96,7 +100,7 @@ func TestParseTimeStringWithTZ(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid timestamp", func(t *testing.T) {
-		_, err := parseTimeStringWithTZ("not-a-time")
+		_, err := utils.ParseTimeStringWithTZ("not-a-time")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

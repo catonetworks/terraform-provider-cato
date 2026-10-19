@@ -148,7 +148,7 @@ func TestLfSubPolicyServiceHydrationPreservesNullBranches(t *testing.T) {
 
 		var diags diag.Diagnostics
 		require.True(t, res.parseSimpleService(ctx, nil, &diags).IsNull())
-		require.True(t, res.parseCustomService(ctx, nil, &diags).IsNull())
+		require.True(t, res.ParseCustomService(ctx, nil, &diags).IsNull())
 		require.False(t, diags.HasError(), "unexpected diagnostics: %+v", diags)
 	})
 
@@ -163,7 +163,7 @@ func TestLfSubPolicyServiceHydrationPreservesNullBranches(t *testing.T) {
 			},
 		}
 
-		value := res.parseCustomService(ctx, custom, &diags)
+		value := res.ParseCustomService(ctx, custom, &diags)
 
 		require.False(t, diags.HasError(), "unexpected diagnostics: %+v", diags)
 		var parsed []PolicyCustomService

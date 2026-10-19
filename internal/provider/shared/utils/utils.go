@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -155,4 +156,51 @@ func StringFieldIsExplicit(cfgVal, stateVal types.String) bool {
 		return false
 	}
 	return !HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
+}
+
+func ParseTimeStringWithTZ(timeStr string) (string, error) {
+	t, err := ParseFlexibleTimeString(timeStr)
+	if err != nil {
+		return "", err
+	}
+	return t.UTC().Format("2006-01-02T15:04:05+00:00"), nil
+}
+
+func ParseFlexibleTimeString(timeStr string) (time.Time, error) {
+	t, err := time.Parse("2006-01-02T15:04:05", timeStr)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, timeStr)
+		if err != nil {
+			return time.Time{}, err
+		}
+	}
+	return t, nil
+}
+
+func ParseTimeString(timeStr string, preserveWith ...string) (string, error) {
+	t, err := ParseFlexibleTimeString(timeStr)
+	if err != nil {
+		return "", err
+	}
+
+	if len(preserveWith) > 0 && preserveWith[0] != "" {
+		preservedTime, err := ParseFlexibleTimeString(preserveWith[0])
+		if err == nil && preservedTime.UTC().Equal(t.UTC()) {
+			return preserveWith[0], nil
+		}
+	}
+
+	return t.UTC().Format(time.RFC3339), nil
+}
+
+func GqlOptionalStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func Contains(nameToIDMap map[string]struct{}, name string) bool {
+	_, exists := nameToIDMap[name]
+	return exists
 }

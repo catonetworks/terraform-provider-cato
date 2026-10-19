@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/inetfirewall"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanfirewall"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -381,7 +383,7 @@ func acDlpProfileAdd(
 	if !p.ContentProfile.IsNull() && !p.ContentProfile.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.ContentProfile.Elements()))
 		diags.Append(p.ContentProfile.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
 		for _, el := range objs {
 			diags.Append(el.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
@@ -397,7 +399,7 @@ func acDlpProfileAdd(
 	if !p.EdmProfile.IsNull() && !p.EdmProfile.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.EdmProfile.Elements()))
 		diags.Append(p.EdmProfile.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
 		for _, el := range objs {
 			diags.Append(el.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
@@ -439,7 +441,7 @@ func acApplicationActivityFromPlan(
 	for _, o := range objs {
 		var row ApplicationControlActivityPlan
 		diags.Append(o.As(ctx, &row, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
-		var act PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		var act inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
 		diags.Append(row.Activity.As(ctx, &act, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 		ref, err := utils.TransformObjectRefInput(act)
 		if err != nil {
@@ -504,21 +506,21 @@ func acFillCommonAdd(
 	actionConfig **cato_models.ApplicationControlActionConfigInput,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
-	in := &cato_models.PolicyScheduleInput{ActiveOn: cato_models.PolicyActiveOnEnum(policyActiveOnAlways)}
+	in := &cato_models.PolicyScheduleInput{ActiveOn: cato_models.PolicyActiveOnEnumAlways}
 	if !p.Schedule.IsNull() && !p.Schedule.IsUnknown() {
-		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
+		sch := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
 		scheduleTopOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 		diags.Append(p.Schedule.As(ctx, &sch, scheduleTopOpts)...)
 		if !sch.ActiveOn.IsNull() {
 			in.ActiveOn = cato_models.PolicyActiveOnEnum(sch.ActiveOn.ValueString())
 		}
 		if !sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
-			ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
+			ctf := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
 			diags.Append(sch.CustomTimeframe.As(ctx, &ctf, basetypes.ObjectAsOptions{})...)
 			in.CustomTimeframe = &cato_models.PolicyCustomTimeframeInput{From: ctf.From.ValueString(), To: ctf.To.ValueString()}
 		}
 		if !sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
-			cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
+			cr := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
 			diags.Append(sch.CustomRecurring.As(ctx, &cr, basetypes.ObjectAsOptions{})...)
 			in.CustomRecurring = &cato_models.PolicyCustomRecurringInput{
 				From: cato_scalars.Time(cr.From.ValueString()),
@@ -541,7 +543,7 @@ func acFillCommonAdd(
 	if !p.Device.IsNull() && !p.Device.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.Device.Elements()))
 		diags.Append(p.Device.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
@@ -588,14 +590,14 @@ func acFillCommonUpdate(
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if !p.Schedule.IsNull() && !p.Schedule.IsUnknown() {
-		sch := PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
+		sch := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleSchedule{}
 		scheduleTopOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 		diags.Append(p.Schedule.As(ctx, &sch, scheduleTopOpts)...)
 		upd := &cato_models.PolicyScheduleUpdateInput{
 			ActiveOn: (*cato_models.PolicyActiveOnEnum)(sch.ActiveOn.ValueStringPointer()),
 		}
 		if !sch.CustomTimeframe.IsNull() && !sch.CustomTimeframe.IsUnknown() {
-			ctf := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
+			ctf := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomTimeframe{}
 			diags.Append(sch.CustomTimeframe.As(ctx, &ctf, basetypes.ObjectAsOptions{})...)
 			upd.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{
 				From: ctf.From.ValueStringPointer(), To: ctf.To.ValueStringPointer(),
@@ -604,7 +606,7 @@ func acFillCommonUpdate(
 			upd.CustomTimeframe = &cato_models.PolicyCustomTimeframeUpdateInput{}
 		}
 		if !sch.CustomRecurring.IsNull() && !sch.CustomRecurring.IsUnknown() {
-			cr := PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
+			cr := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleScheduleCustomRecurring{}
 			diags.Append(sch.CustomRecurring.As(ctx, &cr, basetypes.ObjectAsOptions{})...)
 			upd.CustomRecurring = &cato_models.PolicyCustomRecurringUpdateInput{
 				From: (*cato_scalars.Time)(cr.From.ValueStringPointer()),
@@ -629,7 +631,7 @@ func acFillCommonUpdate(
 	if !p.Device.IsNull() && !p.Device.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.Device.Elements()))
 		diags.Append(p.Device.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
 		for _, o := range objs {
 			diags.Append(o.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
@@ -675,7 +677,7 @@ func acActionConfigAdd(
 	if !p.UserNotification.IsNull() && !p.UserNotification.IsUnknown() {
 		objs := make([]types.Object, 0, len(p.UserNotification.Elements()))
 		diags.Append(p.UserNotification.ElementsAs(ctx, &objs, false)...)
-		var item PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+		var item inetfirewall.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
 		for _, el := range objs {
 			diags.Append(el.As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
@@ -709,7 +711,7 @@ func acApplicationInputFromWanShape(
 	o types.Object,
 	diags diag.Diagnostics,
 ) (*cato_models.ApplicationControlApplicationInput, diag.Diagnostics) {
-	wan := PolicyPolicyWanFirewallPolicyRulesRuleApplication{}
+	wan := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleApplication{}
 	diags.Append(o.As(ctx, &wan, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	out := &cato_models.ApplicationControlApplicationInput{}
 	appendFirst := func(set types.Set, setter func(*cato_models.ApplicationRefInput)) {
@@ -721,7 +723,7 @@ func acApplicationInputFromWanShape(
 		if len(objs) == 0 {
 			return
 		}
-		var item PolicyPolicyWanFirewallPolicyRulesRuleApplicationApplication
+		var item wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleApplicationApplication
 		diags.Append(objs[0].As(ctx, &item, basetypes.ObjectAsOptions{})...)
 		ref, err := utils.TransformObjectRefInput(item)
 		if err != nil {
@@ -739,7 +741,7 @@ func acApplicationInputFromWanShape(
 		if len(objs) == 0 {
 			return
 		}
-		var item PolicyPolicyWanFirewallPolicyRulesRuleApplicationAppCategory
+		var item wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleApplicationAppCategory
 		diags.Append(objs[0].As(ctx, &item, basetypes.ObjectAsOptions{})...)
 		ref, err := utils.TransformObjectRefInput(item)
 		if err != nil {
@@ -753,7 +755,7 @@ func acApplicationInputFromWanShape(
 		objs := make([]types.Object, 0, len(wan.CustomApp.Elements()))
 		diags.Append(wan.CustomApp.ElementsAs(ctx, &objs, false)...)
 		if len(objs) > 0 {
-			var item PolicyPolicyWanFirewallPolicyRulesRuleApplicationCustomApp
+			var item wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleApplicationCustomApp
 			diags.Append(objs[0].As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
 			if err == nil {
@@ -766,7 +768,7 @@ func acApplicationInputFromWanShape(
 		objs := make([]types.Object, 0, len(wan.CustomCategory.Elements()))
 		diags.Append(wan.CustomCategory.ElementsAs(ctx, &objs, false)...)
 		if len(objs) > 0 {
-			var item PolicyPolicyWanFirewallPolicyRulesRuleApplicationCustomCategory
+			var item wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleApplicationCustomCategory
 			diags.Append(objs[0].As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
 			if err == nil {
@@ -778,7 +780,7 @@ func acApplicationInputFromWanShape(
 		objs := make([]types.Object, 0, len(wan.SanctionedAppsCategory.Elements()))
 		diags.Append(wan.SanctionedAppsCategory.ElementsAs(ctx, &objs, false)...)
 		if len(objs) > 0 {
-			var item PolicyPolicyWanFirewallPolicyRulesRuleApplicationSanctionedAppsCategory
+			var item wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleApplicationSanctionedAppsCategory
 			diags.Append(objs[0].As(ctx, &item, basetypes.ObjectAsOptions{})...)
 			ref, err := utils.TransformObjectRefInput(item)
 			if err == nil {
@@ -813,7 +815,7 @@ func acTrackingAdd(
 	o types.Object,
 	diags diag.Diagnostics,
 ) (*cato_models.PolicyTrackingInput, diag.Diagnostics) {
-	t := PolicyPolicyWanFirewallPolicyRulesRuleTracking{}
+	t := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleTracking{}
 	trackOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 	diags.Append(o.As(ctx, &t, trackOpts)...)
 	out := &cato_models.PolicyTrackingInput{
@@ -821,12 +823,12 @@ func acTrackingAdd(
 		Alert: &cato_models.PolicyRuleTrackingAlertInput{Enabled: false, Frequency: "DAILY"},
 	}
 	if !t.Event.IsNull() && !t.Event.IsUnknown() {
-		ev := PolicyPolicyWanFirewallPolicyRulesRuleTrackingEvent{}
+		ev := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleTrackingEvent{}
 		diags.Append(t.Event.As(ctx, &ev, trackOpts)...)
 		out.Event.Enabled = ev.Enabled.ValueBool()
 	}
 	if !t.Alert.IsNull() && !t.Alert.IsUnknown() {
-		al := PolicyPolicyWanFirewallPolicyRulesRuleTrackingAlert{}
+		al := wanfirewall.PolicyPolicyWanFirewallPolicyRulesRuleTrackingAlert{}
 		diags.Append(t.Alert.As(ctx, &al, trackOpts)...)
 		out.Alert.Enabled = al.Enabled.ValueBool()
 		out.Alert.Frequency = cato_models.PolicyRuleTrackingFrequencyEnum(al.Frequency.ValueString())

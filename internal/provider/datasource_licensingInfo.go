@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -377,7 +378,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 						var curSites []attr.Value
 						for _, site := range license.PooledBandwidthLicense.Sites {
 							curSite, _ := types.ObjectValue(
-								NameIDAttrTypes,
+								idname.RefAttrTypes,
 								map[string]attr.Value{
 									"name": types.StringValue(site.SitePooledBandwidthLicenseSite.Name),
 									"id":   types.StringValue(site.SitePooledBandwidthLicenseSite.ID),
@@ -410,7 +411,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 							matches = state.IsAssigned.ValueBool()
 						}
 						curSite, _ := types.ObjectValue(
-							NameIDAttrTypes,
+							idname.RefAttrTypes,
 							map[string]attr.Value{
 								"name": types.StringValue(license.SiteLicense.Site.Name),
 								"id":   types.StringValue(license.SiteLicense.Site.ID),

@@ -12,8 +12,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanfirewall"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
 
 func TestNewApplicationControlRuleResource(t *testing.T) {
@@ -131,13 +134,13 @@ func TestHydrateApplicationControlAddRuleInputDefaultsDataCriteria(t *testing.T)
 	plan := newMinimalApplicationControlRulePlan(cato_models.ApplicationControlRuleTypeData, "data_rule")
 	dataRuleAttrs := plan.Rule.Attributes()["data_rule"].(types.Object).Attributes()
 	dataRuleAttrs["dlp_profile"] = types.ObjectValueMust(applicationControlDlpProfileAttrTypes, map[string]attr.Value{
-		"content_profile": types.SetValueMust(NameIDObjectType, []attr.Value{
-			types.ObjectValueMust(NameIDAttrTypes, map[string]attr.Value{
+		"content_profile": types.SetValueMust(idname.RefObjectType, []attr.Value{
+			types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{
 				"id":   types.StringValue("content-profile-1"),
 				"name": types.StringNull(),
 			}),
 		}),
-		"edm_profile": types.SetNull(NameIDObjectType),
+		"edm_profile": types.SetNull(idname.RefObjectType),
 	})
 	ruleAttrs := plan.Rule.Attributes()
 	ruleAttrs["data_rule"] = types.ObjectValueMust(applicationControlTypedRuleAttrTypes, dataRuleAttrs)
@@ -179,12 +182,12 @@ func newMinimalApplicationControlRulePlan(
 	typedRule := types.ObjectValueMust(applicationControlTypedRuleAttrTypes, map[string]attr.Value{
 		"action":                       types.StringValue(string(cato_models.ApplicationControlActionMonitor)),
 		"severity":                     types.StringValue(string(cato_models.ApplicationControlSeverityMedium)),
-		"schedule":                     types.ObjectNull(ScheduleAttrTypes),
+		"schedule":                     types.ObjectNull(policyschedule.ScheduleAttrTypes),
 		"source":                       types.ObjectNull(ApplicationControlSourceAttrTypes),
 		"tracking":                     types.ObjectNull(policyrule.TrackingAttrTypes),
-		"device":                       types.SetNull(NameIDObjectType),
+		"device":                       types.SetNull(idname.RefObjectType),
 		"access_method":                types.ListNull(types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}),
-		"application":                  types.ObjectNull(WanApplicationAttrTypes),
+		"application":                  types.ObjectNull(wanfirewall.WanApplicationAttrTypes),
 		"application_activity":         types.ListNull(types.ObjectType{AttrTypes: applicationControlActivityAttrTypes}),
 		"application_activity_satisfy": types.StringNull(),
 		"action_config":                types.ObjectNull(applicationControlActionConfigAttrTypes),

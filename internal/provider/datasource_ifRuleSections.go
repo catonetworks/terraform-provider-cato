@@ -105,7 +105,7 @@ func (d *ifRuleSectionsDataSource) Read(ctx context.Context, req datasource.Read
 	for _, item := range result.Policy.InternetFirewall.Policy.Sections {
 		sectionName := cast.ToString(item.Section.Name)
 		sectionID := cast.ToString(item.Section.ID)
-		if !filterByName || contains(namesMap, sectionName) {
+		if !filterByName || utils.Contains(namesMap, sectionName) {
 			obj, diags := types.ObjectValue(
 				attrTypes,
 				map[string]attr.Value{

@@ -578,8 +578,8 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 			return
 		}
 		for _, e := range apiErrors {
-			errorCode := gqlOptionalStr(e.GetErrorCode())
-			errorMessage := gqlOptionalStr(e.GetErrorMessage())
+			errorCode := utils.GqlOptionalStr(e.GetErrorCode())
+			errorMessage := utils.GqlOptionalStr(e.GetErrorMessage())
 			// A previous Delete may have removed the rule but failed to publish.
 			if errorCode == "ruleNotExist" || errorCode == "RuleNotFound" {
 				continue
@@ -615,8 +615,8 @@ func (r *privAccessRuleResource) Delete(ctx context.Context, req resource.Delete
 			return
 		}
 		for _, e := range apiErrors {
-			errorCode := gqlOptionalStr(e.GetErrorCode())
-			errorMessage := gqlOptionalStr(e.GetErrorMessage())
+			errorCode := utils.GqlOptionalStr(e.GetErrorCode())
+			errorMessage := utils.GqlOptionalStr(e.GetErrorMessage())
 			// The deletion may already be published, leaving no draft to publish.
 			// Publishing may have succeeded in a previous try, even if Terraform did not
 			// receive the response. On retry, no remaining draft means there is nothing

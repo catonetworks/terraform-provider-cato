@@ -24,7 +24,7 @@ import (
 func TestBulkLfMoveRuleExampleData(t *testing.T) {
 	t.Parallel()
 
-	payload, err := os.ReadFile("../../examples/resources/cato_bulk_lf_move_rule/data/lanFirewall.json")
+	payload, err := os.ReadFile("../../../../../examples/resources/cato_bulk_lf_move_rule/data/lanFirewall.json")
 	require.NoError(t, err)
 	var fixture struct {
 		Sections      map[string]any `json:"sections"`

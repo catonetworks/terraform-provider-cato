@@ -174,15 +174,15 @@ func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadR
 		switch {
 		case filterBySiteID && filterByName:
 			// Both filters specified - both must match
-			nameMatches := contains(namesMap, nameValue) || contains(namesMap, cast.ToString(helperFields["interfaceName"]))
-			siteIDMatches := contains(siteIDsMap, cast.ToString(helperFields["siteId"]))
+			nameMatches := utils.Contains(namesMap, nameValue) || utils.Contains(namesMap, cast.ToString(helperFields["interfaceName"]))
+			siteIDMatches := utils.Contains(siteIDsMap, cast.ToString(helperFields["siteId"]))
 			shouldInclude = nameMatches && siteIDMatches
 		case filterByName:
 			// Only name filter specified
-			shouldInclude = contains(namesMap, nameValue) || contains(namesMap, cast.ToString(helperFields["interfaceName"]))
+			shouldInclude = utils.Contains(namesMap, nameValue) || utils.Contains(namesMap, cast.ToString(helperFields["interfaceName"]))
 		case filterBySiteID:
 			// Only site ID filter specified
-			shouldInclude = contains(siteIDsMap, cast.ToString(helperFields["siteId"]))
+			shouldInclude = utils.Contains(siteIDsMap, cast.ToString(helperFields["siteId"]))
 		default:
 			// No filters specified - include all
 			shouldInclude = true
@@ -225,9 +225,4 @@ func (d *networkRangesDataSource) Read(ctx context.Context, req datasource.ReadR
 	if diags := resp.State.Set(ctx, &networkRangesDataSource); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
-}
-
-func contains(nameToIDMap map[string]struct{}, name string) bool {
-	_, exists := nameToIDMap[name]
-	return exists
 }

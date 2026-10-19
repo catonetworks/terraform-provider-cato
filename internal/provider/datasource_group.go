@@ -172,13 +172,13 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		switch {
 		case filterByID && filterByName:
 			// Both filters - both must match
-			idMatches := contains(idsMap, groupItem.ID)
-			nameMatches := contains(namesMap, groupItem.Name)
+			idMatches := utils.Contains(idsMap, groupItem.ID)
+			nameMatches := utils.Contains(namesMap, groupItem.Name)
 			shouldInclude = idMatches && nameMatches
 		case filterByID:
-			shouldInclude = contains(idsMap, groupItem.ID)
+			shouldInclude = utils.Contains(idsMap, groupItem.ID)
 		case filterByName:
-			shouldInclude = contains(namesMap, groupItem.Name)
+			shouldInclude = utils.Contains(namesMap, groupItem.Name)
 		default:
 			// No filters - include all
 			shouldInclude = true

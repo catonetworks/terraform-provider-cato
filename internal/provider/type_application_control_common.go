@@ -3,24 +3,27 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
 )
 
 // ApplicationControlSourceAttrTypes matches ApplicationControlSource in the Cato API (WAN-like + country).
 var ApplicationControlSourceAttrTypes = map[string]attr.Type{
-	"country":             types.SetType{ElemType: NameIDObjectType},
+	"country":             types.SetType{ElemType: idname.RefObjectType},
 	"ip":                  types.ListType{ElemType: types.StringType},
-	"host":                types.SetType{ElemType: NameIDObjectType},
-	"site":                types.SetType{ElemType: NameIDObjectType},
+	"host":                types.SetType{ElemType: idname.RefObjectType},
+	"site":                types.SetType{ElemType: idname.RefObjectType},
 	"subnet":              types.ListType{ElemType: types.StringType},
-	"ip_range":            types.ListType{ElemType: FromToObjectType},
-	"global_ip_range":     types.SetType{ElemType: NameIDObjectType},
-	"network_interface":   types.SetType{ElemType: NameIDObjectType},
-	"site_network_subnet": types.SetType{ElemType: NameIDObjectType},
-	"floating_subnet":     types.SetType{ElemType: NameIDObjectType},
-	"user":                types.SetType{ElemType: NameIDObjectType},
-	"users_group":         types.SetType{ElemType: NameIDObjectType},
-	"group":               types.SetType{ElemType: NameIDObjectType},
-	"system_group":        types.SetType{ElemType: NameIDObjectType},
+	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
+	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
+	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
+	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
+	"floating_subnet":     types.SetType{ElemType: idname.RefObjectType},
+	"user":                types.SetType{ElemType: idname.RefObjectType},
+	"users_group":         types.SetType{ElemType: idname.RefObjectType},
+	"group":               types.SetType{ElemType: idname.RefObjectType},
+	"system_group":        types.SetType{ElemType: idname.RefObjectType},
 }
 
 var ApplicationControlSourceObjectType = types.ObjectType{AttrTypes: ApplicationControlSourceAttrTypes}

@@ -549,7 +549,7 @@ func parseGroupMemberListWithConfig[T any](ctx context.Context, items []T, confi
 }
 
 // parseGroupMemberList converts API group member items to a Terraform set
-// Similar to parseNameIDList but includes the type field
+// Similar to oldidname.ParseNameIDList but includes the type field
 func parseGroupMemberList[T any](ctx context.Context, items []T, attrName string) types.Set {
 	tflog.Debug(ctx, "parseGroupMemberList() "+attrName)
 

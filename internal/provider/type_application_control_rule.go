@@ -4,7 +4,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanfirewall"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
 
 // ApplicationControlAccessMethodAttrTypes is one access-method row.
@@ -15,19 +18,19 @@ var ApplicationControlAccessMethodAttrTypes = map[string]attr.Type{
 }
 
 var applicationControlActivityAttrTypes = map[string]attr.Type{
-	"activity": NameIDObjectType,
+	"activity": idname.RefObjectType,
 }
 
 // applicationControlTypedRuleAttrTypes is shared shape for application/data/file nested blocks.
 var applicationControlTypedRuleAttrTypes = map[string]attr.Type{
 	"action":                       types.StringType,
 	"severity":                     types.StringType,
-	"schedule":                     ScheduleObjectType,
+	"schedule":                     policyschedule.ScheduleObjectType,
 	"source":                       ApplicationControlSourceObjectType,
 	"tracking":                     policyrule.TrackingObjectType,
-	"device":                       types.SetType{ElemType: NameIDObjectType},
+	"device":                       types.SetType{ElemType: idname.RefObjectType},
 	"access_method":                types.ListType{ElemType: types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}},
-	"application":                  WanApplicationObjectType,
+	"application":                  wanfirewall.WanApplicationObjectType,
 	"application_activity":         types.ListType{ElemType: types.ObjectType{AttrTypes: applicationControlActivityAttrTypes}},
 	"application_activity_satisfy": types.StringType,
 	"action_config":                types.ObjectType{AttrTypes: applicationControlActionConfigAttrTypes},
@@ -37,12 +40,12 @@ var applicationControlTypedRuleAttrTypes = map[string]attr.Type{
 }
 
 var applicationControlActionConfigAttrTypes = map[string]attr.Type{
-	"user_notification": types.SetType{ElemType: NameIDObjectType},
+	"user_notification": types.SetType{ElemType: idname.RefObjectType},
 }
 
 var applicationControlDlpProfileAttrTypes = map[string]attr.Type{
-	"content_profile": types.SetType{ElemType: NameIDObjectType},
-	"edm_profile":     types.SetType{ElemType: NameIDObjectType},
+	"content_profile": types.SetType{ElemType: idname.RefObjectType},
+	"edm_profile":     types.SetType{ElemType: idname.RefObjectType},
 }
 
 var applicationControlFileAttributeAttrTypes = map[string]attr.Type{

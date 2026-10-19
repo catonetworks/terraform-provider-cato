@@ -8,6 +8,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
 
 // normalizePolicyTimestampString normalizes API datetime strings (e.g. ...00.000) to RFC3339-style
@@ -46,7 +51,7 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 		return out, diags
 	}
 
-	out.Application = types.ObjectNull(NameIDAttrTypes)
+	out.Application = types.ObjectNull(idname.RefAttrTypes)
 	out.Headers = types.ListNull(types.ObjectType{AttrTypes: AppTenantRestrictionHeaderAttrTypes})
 	out.Source = types.ObjectNull(ApplicationControlSourceAttrTypes)
 
@@ -66,7 +71,7 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 	}
 
 	if app := r.GetApplication(); app != nil && (app.GetID() != "" || app.GetName() != "") {
-		appObj, d := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+		appObj, d := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 			"id":   types.StringValue(app.GetID()),
 			"name": types.StringValue(app.GetName()),
 		})
@@ -97,13 +102,13 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 		var ctfObj types.Object
 		if ct := sch.GetCustomTimeframeAppTenantRestriction(); ct != nil {
 			var dtf diag.Diagnostics
-			ctfObj, dtf = types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
+			ctfObj, dtf = types.ObjectValue(policyschedule.CustomTimeframeAttrTypes, map[string]attr.Value{
 				"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
 				"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 			})
 			diags.Append(dtf...)
 		} else {
-			ctfObj = types.ObjectNull(FromToAttrTypes)
+			ctfObj = types.ObjectNull(policyschedule.CustomTimeframeAttrTypes)
 		}
 
 		var crObj types.Object
@@ -116,23 +121,23 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 			if cr.GetTo() != nil {
 				toS = normalizePolicyRecurringClock(string(*cr.GetTo()))
 			}
-			days := parseList(ctx, types.StringType, cr.GetDays(), "rule.schedule.custom_recurring.days")
+			days := convert.ParseList(ctx, types.StringType, cr.GetDays(), "rule.schedule.custom_recurring.days")
 			var dcr diag.Diagnostics
-			crObj, dcr = types.ObjectValue(FromToDaysAttrTypes, map[string]attr.Value{
+			crObj, dcr = types.ObjectValue(policyschedule.FromToDaysAttrTypes, map[string]attr.Value{
 				"from": types.StringValue(fromS),
 				"to":   types.StringValue(toS),
 				"days": days,
 			})
 			diags.Append(dcr...)
 		} else {
-			crObj = types.ObjectNull(FromToDaysAttrTypes)
+			crObj = types.ObjectNull(policyschedule.FromToDaysAttrTypes)
 		}
 
 		active := ""
 		if sch.GetActiveOn() != nil {
 			active = string(*sch.GetActiveOn())
 		}
-		schObj, d := types.ObjectValue(ScheduleAttrTypes, map[string]attr.Value{
+		schObj, d := types.ObjectValue(policyschedule.ScheduleAttrTypes, map[string]attr.Value{
 			"active_on":        types.StringValue(active),
 			"custom_timeframe": ctfObj,
 			"custom_recurring": crObj,
@@ -144,20 +149,20 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 	src := r.GetSource()
 	if src != nil {
 		srcAttrs := map[string]attr.Value{
-			"country":             parseNameIDList(ctx, src.GetCountry(), "rule.source.country"),
-			"ip":                  parseList(ctx, types.StringType, src.GetIP(), "rule.source.ip"),
-			"host":                parseNameIDList(ctx, src.GetHost(), "rule.source.host"),
-			"site":                parseNameIDList(ctx, src.GetSite(), "rule.source.site"),
-			"subnet":              parseList(ctx, types.StringType, src.GetSubnet(), "rule.source.subnet"),
-			"ip_range":            parseFromToList(ctx, src.GetIPRange(), "rule.source.ip_range"),
-			"global_ip_range":     parseNameIDList(ctx, src.GetGlobalIPRange(), "rule.source.global_ip_range"),
-			"network_interface":   parseNameIDList(ctx, src.GetNetworkInterface(), "rule.source.network_interface"),
-			"site_network_subnet": parseNameIDList(ctx, src.GetSiteNetworkSubnet(), "rule.source.site_network_subnet"),
-			"floating_subnet":     parseNameIDList(ctx, src.GetFloatingSubnet(), "rule.source.floating_subnet"),
-			"user":                parseNameIDList(ctx, src.GetUser(), "rule.source.user"),
-			"users_group":         parseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),
-			"group":               parseNameIDList(ctx, src.GetGroup(), "rule.source.group"),
-			"system_group":        parseNameIDList(ctx, src.GetSystemGroup(), "rule.source.system_group"),
+			"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "rule.source.country"),
+			"ip":                  convert.ParseList(ctx, types.StringType, src.GetIP(), "rule.source.ip"),
+			"host":                oldidname.ParseNameIDList(ctx, src.GetHost(), "rule.source.host"),
+			"site":                oldidname.ParseNameIDList(ctx, src.GetSite(), "rule.source.site"),
+			"subnet":              convert.ParseList(ctx, types.StringType, src.GetSubnet(), "rule.source.subnet"),
+			"ip_range":            convert.ParseFromToList(ctx, src.GetIPRange(), "rule.source.ip_range"),
+			"global_ip_range":     oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(), "rule.source.global_ip_range"),
+			"network_interface":   oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(), "rule.source.network_interface"),
+			"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(), "rule.source.site_network_subnet"),
+			"floating_subnet":     oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(), "rule.source.floating_subnet"),
+			"user":                oldidname.ParseNameIDList(ctx, src.GetUser(), "rule.source.user"),
+			"users_group":         oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),
+			"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "rule.source.group"),
+			"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "rule.source.system_group"),
 		}
 		o, d := types.ObjectValue(ApplicationControlSourceAttrTypes, srcAttrs)
 		diags.Append(d...)

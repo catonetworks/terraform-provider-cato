@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/portrange"
 )
 
@@ -20,3 +21,10 @@ var CustomServiceAttrTypes = map[string]attr.Type{
 	"protocol":   types.StringType,
 }
 var CustomServiceObjectType = types.ObjectType{AttrTypes: CustomServiceAttrTypes}
+
+var CustomServiceIPAttrTypes = map[string]attr.Type{
+	"name":     types.StringType,
+	"ip":       types.StringType,
+	"ip_range": ipaddr.RangeObjectType,
+}
+var CustomServiceIPObjectType = types.ObjectType{AttrTypes: CustomServiceIPAttrTypes}

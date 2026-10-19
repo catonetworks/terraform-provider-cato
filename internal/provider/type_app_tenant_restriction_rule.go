@@ -4,7 +4,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
 
 // AppTenantRestrictionHeaderAttrTypes is a single HTTP header name/value pair.
@@ -21,9 +23,9 @@ var AppTenantRestrictionRuleRuleAttrTypes = map[string]attr.Type{
 	"enabled":     types.BoolType,
 	"action":      types.StringType,
 	"severity":    types.StringType,
-	"application": NameIDObjectType,
+	"application": idname.RefObjectType,
 	"headers":     types.ListType{ElemType: types.ObjectType{AttrTypes: AppTenantRestrictionHeaderAttrTypes}},
-	"schedule":    ScheduleObjectType,
+	"schedule":    policyschedule.ScheduleObjectType,
 	"source":      ApplicationControlSourceObjectType,
 }
 

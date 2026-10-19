@@ -3,6 +3,8 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 type LicensingWrapper struct {
@@ -167,7 +169,7 @@ var LicenseAttrTypes = map[string]attr.Type{
 	// "site_license_group":  &types.StringType,
 	// "site_license_type":   &types.StringType,
 	// "allocated_bandwidth": &types.Int64Type,
-	// "site":                &NameIDObjectType,
+	// "site":                &idname.RefObjectType,
 	"sites": types.ListType{
 		ElemType: &SiteAllocationObjectType,
 	},
@@ -178,6 +180,6 @@ var LicenseAttrTypes = map[string]attr.Type{
 
 var SiteAllocationObjectType = types.ObjectType{AttrTypes: SiteAllocationAttrTypes}
 var SiteAllocationAttrTypes = map[string]attr.Type{
-	"site":                NameIDObjectType,
+	"site":                idname.RefObjectType,
 	"allocated_bandwidth": types.Int64Type,
 }

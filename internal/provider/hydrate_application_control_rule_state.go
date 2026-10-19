@@ -10,7 +10,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanfirewall"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
 
 // hydrateApplicationControlRuleStateFromClient maps an Application Control policy rule into Terraform nested objects.
@@ -93,7 +99,8 @@ func applicationControlTypedRuleStateFromApplicationRule(
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := ar.GetActionConfig(); cfg != nil {
-		un := parseNameIDList(ctx, cfg.GetUserNotification(), "application_rule.action_config.user_notification")
+		un := oldidname.ParseNameIDList(ctx, cfg.GetUserNotification(),
+			"application_rule.action_config.user_notification")
 		o, d := types.ObjectValue(applicationControlActionConfigAttrTypes, map[string]attr.Value{
 			"user_notification": un,
 		})
@@ -102,12 +109,13 @@ func applicationControlTypedRuleStateFromApplicationRule(
 	}
 
 	attrs := map[string]attr.Value{
-		"action":                       types.StringValue(ar.GetAction().String()),
-		"severity":                     types.StringValue(ar.GetSeverity().String()),
-		"schedule":                     schObj,
-		"source":                       srcObj,
-		"tracking":                     trObj,
-		"device":                       parseNameIDList(ctx, ar.GetDevice(), "application_rule.device"),
+		"action":   types.StringValue(ar.GetAction().String()),
+		"severity": types.StringValue(ar.GetSeverity().String()),
+		"schedule": schObj,
+		"source":   srcObj,
+		"tracking": trObj,
+		"device": oldidname.ParseNameIDList(ctx, ar.GetDevice(),
+			"application_rule.device"),
 		"access_method":                acList,
 		"application":                  appObj,
 		"application_activity":         activityList,
@@ -144,7 +152,7 @@ func applicationControlTypedRuleStateFromDataRule(
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := dr.GetActionConfig(); cfg != nil {
-		un := parseNameIDList(ctx, cfg.GetUserNotification(), "data_rule.action_config.user_notification")
+		un := oldidname.ParseNameIDList(ctx, cfg.GetUserNotification(), "data_rule.action_config.user_notification")
 		o, d := types.ObjectValue(applicationControlActionConfigAttrTypes, map[string]attr.Value{
 			"user_notification": un,
 		})
@@ -155,8 +163,8 @@ func applicationControlTypedRuleStateFromDataRule(
 	dlpObj := types.ObjectNull(applicationControlDlpProfileAttrTypes)
 	if dp := dr.GetDlpProfile(); dp != nil {
 		o, d := types.ObjectValue(applicationControlDlpProfileAttrTypes, map[string]attr.Value{
-			"content_profile": parseNameIDList(ctx, dp.GetContentProfile(), "data_rule.dlp_profile.content_profile"),
-			"edm_profile":     parseNameIDList(ctx, dp.GetEdmProfile(), "data_rule.dlp_profile.edm_profile"),
+			"content_profile": oldidname.ParseNameIDList(ctx, dp.GetContentProfile(), "data_rule.dlp_profile.content_profile"),
+			"edm_profile":     oldidname.ParseNameIDList(ctx, dp.GetEdmProfile(), "data_rule.dlp_profile.edm_profile"),
 		})
 		diags.Append(d...)
 		dlpObj = o
@@ -170,7 +178,7 @@ func applicationControlTypedRuleStateFromDataRule(
 		"schedule":                     schObj,
 		"source":                       srcObj,
 		"tracking":                     trObj,
-		"device":                       parseNameIDList(ctx, dr.GetDevice(), "data_rule.device"),
+		"device":                       oldidname.ParseNameIDList(ctx, dr.GetDevice(), "data_rule.device"),
 		"access_method":                acList,
 		"application":                  appObj,
 		"application_activity":         activityList,
@@ -207,7 +215,7 @@ func applicationControlTypedRuleStateFromFileRule(
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := fr.GetActionConfig(); cfg != nil {
-		un := parseNameIDList(ctx, cfg.GetUserNotification(), "file_rule.action_config.user_notification")
+		un := oldidname.ParseNameIDList(ctx, cfg.GetUserNotification(), "file_rule.action_config.user_notification")
 		o, d := types.ObjectValue(applicationControlActionConfigAttrTypes, map[string]attr.Value{
 			"user_notification": un,
 		})
@@ -223,7 +231,7 @@ func applicationControlTypedRuleStateFromFileRule(
 		"schedule":                     schObj,
 		"source":                       srcObj,
 		"tracking":                     trObj,
-		"device":                       parseNameIDList(ctx, fr.GetDevice(), "file_rule.device"),
+		"device":                       oldidname.ParseNameIDList(ctx, fr.GetDevice(), "file_rule.device"),
 		"access_method":                acList,
 		"application":                  appObj,
 		"application_activity":         activityList,
@@ -244,7 +252,7 @@ func acScheduleObjectFromApplicationRuleSchedule(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if sch == nil {
-		return types.ObjectNull(ScheduleAttrTypes)
+		return types.ObjectNull(policyschedule.ScheduleAttrTypes)
 	}
 	active := ""
 	if sch.GetActiveOn() != nil {
@@ -252,14 +260,14 @@ func acScheduleObjectFromApplicationRuleSchedule(
 	}
 	var ctfObj types.Object
 	if ct := sch.GetCustomTimeframeApplicationRule(); ct != nil {
-		o, d := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
+		o, d := types.ObjectValue(policyschedule.CustomTimeframeAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
 			"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 		})
 		diags.Append(d...)
 		ctfObj = o
 	} else {
-		ctfObj = types.ObjectNull(FromToAttrTypes)
+		ctfObj = types.ObjectNull(policyschedule.CustomTimeframeAttrTypes)
 	}
 	var crObj types.Object
 	if cr := sch.GetCustomRecurringApplicationRule(); cr != nil {
@@ -267,29 +275,30 @@ func acScheduleObjectFromApplicationRuleSchedule(
 		for _, d := range cr.GetDays() {
 			dayStrings = append(dayStrings, d.String())
 		}
-		days := parseList(ctx, types.StringType, dayStrings, "application_rule.schedule.custom_recurring.days")
-		o, d := types.ObjectValue(FromToDaysAttrTypes, map[string]attr.Value{
+		days := convert.ParseList(ctx, types.StringType, dayStrings,
+			"application_rule.schedule.custom_recurring.days")
+		o, d := types.ObjectValue(policyschedule.FromToDaysAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(normalizePolicyRecurringClock(string(cr.From))),
 			"to":   types.StringValue(normalizePolicyRecurringClock(string(cr.To))),
 			"days": days,
 		})
 		diags.Append(d...)
 		if d.HasError() || o.IsUnknown() {
-			crObj = types.ObjectNull(FromToDaysAttrTypes)
+			crObj = types.ObjectNull(policyschedule.FromToDaysAttrTypes)
 		} else {
 			crObj = o
 		}
 	} else {
-		crObj = types.ObjectNull(FromToDaysAttrTypes)
+		crObj = types.ObjectNull(policyschedule.FromToDaysAttrTypes)
 	}
-	o, d := types.ObjectValue(ScheduleAttrTypes, map[string]attr.Value{
+	o, d := types.ObjectValue(policyschedule.ScheduleAttrTypes, map[string]attr.Value{
 		"active_on":        types.StringValue(active),
 		"custom_timeframe": ctfObj,
 		"custom_recurring": crObj,
 	})
 	diags.Append(d...)
 	if d.HasError() || o.IsUnknown() {
-		return types.ObjectNull(ScheduleAttrTypes)
+		return types.ObjectNull(policyschedule.ScheduleAttrTypes)
 	}
 	return o
 }
@@ -300,7 +309,7 @@ func acScheduleObjectFromDataRuleSchedule(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if sch == nil {
-		return types.ObjectNull(ScheduleAttrTypes)
+		return types.ObjectNull(policyschedule.ScheduleAttrTypes)
 	}
 	active := ""
 	if sch.GetActiveOn() != nil {
@@ -308,14 +317,14 @@ func acScheduleObjectFromDataRuleSchedule(
 	}
 	var ctfObj types.Object
 	if ct := sch.GetCustomTimeframeDataRule(); ct != nil {
-		o, d := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
+		o, d := types.ObjectValue(policyschedule.CustomTimeframeAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
 			"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 		})
 		diags.Append(d...)
 		ctfObj = o
 	} else {
-		ctfObj = types.ObjectNull(FromToAttrTypes)
+		ctfObj = types.ObjectNull(policyschedule.CustomTimeframeAttrTypes)
 	}
 	var crObj types.Object
 	if cr := sch.GetCustomRecurringDataRule(); cr != nil {
@@ -323,7 +332,7 @@ func acScheduleObjectFromDataRuleSchedule(
 		for _, d := range cr.GetDays() {
 			dayStrings = append(dayStrings, d.String())
 		}
-		days := parseList(ctx, types.StringType, dayStrings, "data_rule.schedule.custom_recurring.days")
+		days := convert.ParseList(ctx, types.StringType, dayStrings, "data_rule.schedule.custom_recurring.days")
 		fromS := ""
 		toS := ""
 		if cr.GetFrom() != nil {
@@ -332,28 +341,28 @@ func acScheduleObjectFromDataRuleSchedule(
 		if cr.GetTo() != nil {
 			toS = normalizePolicyRecurringClock(string(*cr.GetTo()))
 		}
-		o, d := types.ObjectValue(FromToDaysAttrTypes, map[string]attr.Value{
+		o, d := types.ObjectValue(policyschedule.FromToDaysAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(fromS),
 			"to":   types.StringValue(toS),
 			"days": days,
 		})
 		diags.Append(d...)
 		if d.HasError() || o.IsUnknown() {
-			crObj = types.ObjectNull(FromToDaysAttrTypes)
+			crObj = types.ObjectNull(policyschedule.FromToDaysAttrTypes)
 		} else {
 			crObj = o
 		}
 	} else {
-		crObj = types.ObjectNull(FromToDaysAttrTypes)
+		crObj = types.ObjectNull(policyschedule.FromToDaysAttrTypes)
 	}
-	o, d := types.ObjectValue(ScheduleAttrTypes, map[string]attr.Value{
+	o, d := types.ObjectValue(policyschedule.ScheduleAttrTypes, map[string]attr.Value{
 		"active_on":        types.StringValue(active),
 		"custom_timeframe": ctfObj,
 		"custom_recurring": crObj,
 	})
 	diags.Append(d...)
 	if d.HasError() || o.IsUnknown() {
-		return types.ObjectNull(ScheduleAttrTypes)
+		return types.ObjectNull(policyschedule.ScheduleAttrTypes)
 	}
 	return o
 }
@@ -364,7 +373,7 @@ func acScheduleObjectFromFileRuleSchedule(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if sch == nil {
-		return types.ObjectNull(ScheduleAttrTypes)
+		return types.ObjectNull(policyschedule.ScheduleAttrTypes)
 	}
 	active := ""
 	if sch.GetActiveOn() != nil {
@@ -372,14 +381,14 @@ func acScheduleObjectFromFileRuleSchedule(
 	}
 	var ctfObj types.Object
 	if ct := sch.GetCustomTimeframeFileRule(); ct != nil {
-		o, d := types.ObjectValue(FromToAttrTypes, map[string]attr.Value{
+		o, d := types.ObjectValue(policyschedule.CustomTimeframeAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(normalizePolicyTimestampString(ct.GetFrom())),
 			"to":   types.StringValue(normalizePolicyTimestampString(ct.GetTo())),
 		})
 		diags.Append(d...)
 		ctfObj = o
 	} else {
-		ctfObj = types.ObjectNull(FromToAttrTypes)
+		ctfObj = types.ObjectNull(policyschedule.CustomTimeframeAttrTypes)
 	}
 	var crObj types.Object
 	if cr := sch.GetCustomRecurringFileRule(); cr != nil {
@@ -387,7 +396,7 @@ func acScheduleObjectFromFileRuleSchedule(
 		for _, d := range cr.GetDays() {
 			dayStrings = append(dayStrings, d.String())
 		}
-		days := parseList(ctx, types.StringType, dayStrings, "file_rule.schedule.custom_recurring.days")
+		days := convert.ParseList(ctx, types.StringType, dayStrings, "file_rule.schedule.custom_recurring.days")
 		fromS := ""
 		toS := ""
 		if cr.GetFrom() != nil {
@@ -396,28 +405,28 @@ func acScheduleObjectFromFileRuleSchedule(
 		if cr.GetTo() != nil {
 			toS = normalizePolicyRecurringClock(string(*cr.GetTo()))
 		}
-		o, d := types.ObjectValue(FromToDaysAttrTypes, map[string]attr.Value{
+		o, d := types.ObjectValue(policyschedule.FromToDaysAttrTypes, map[string]attr.Value{
 			"from": types.StringValue(fromS),
 			"to":   types.StringValue(toS),
 			"days": days,
 		})
 		diags.Append(d...)
 		if d.HasError() || o.IsUnknown() {
-			crObj = types.ObjectNull(FromToDaysAttrTypes)
+			crObj = types.ObjectNull(policyschedule.FromToDaysAttrTypes)
 		} else {
 			crObj = o
 		}
 	} else {
-		crObj = types.ObjectNull(FromToDaysAttrTypes)
+		crObj = types.ObjectNull(policyschedule.FromToDaysAttrTypes)
 	}
-	o, d := types.ObjectValue(ScheduleAttrTypes, map[string]attr.Value{
+	o, d := types.ObjectValue(policyschedule.ScheduleAttrTypes, map[string]attr.Value{
 		"active_on":        types.StringValue(active),
 		"custom_timeframe": ctfObj,
 		"custom_recurring": crObj,
 	})
 	diags.Append(d...)
 	if d.HasError() || o.IsUnknown() {
-		return types.ObjectNull(ScheduleAttrTypes)
+		return types.ObjectNull(policyschedule.ScheduleAttrTypes)
 	}
 	return o
 }
@@ -431,20 +440,34 @@ func acSourceObjectFromApplicationRuleSource(
 		return types.ObjectNull(ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
-		"country":             parseNameIDList(ctx, src.GetCountry(), "application_rule.source.country"),
-		"ip":                  parseList(ctx, types.StringType, src.GetIP(), "application_rule.source.ip"),
-		"host":                parseNameIDList(ctx, src.GetHost(), "application_rule.source.host"),
-		"site":                parseNameIDList(ctx, src.GetSite(), "application_rule.source.site"),
-		"subnet":              parseList(ctx, types.StringType, src.GetSubnet(), "application_rule.source.subnet"),
-		"ip_range":            parseFromToList(ctx, src.GetIPRange(), "application_rule.source.ip_range"),
-		"global_ip_range":     parseNameIDList(ctx, src.GetGlobalIPRange(), "application_rule.source.global_ip_range"),
-		"network_interface":   parseNameIDList(ctx, src.GetNetworkInterface(), "application_rule.source.network_interface"),
-		"site_network_subnet": parseNameIDList(ctx, src.GetSiteNetworkSubnet(), "application_rule.source.site_network_subnet"),
-		"floating_subnet":     parseNameIDList(ctx, src.GetFloatingSubnet(), "application_rule.source.floating_subnet"),
-		"user":                parseNameIDList(ctx, src.GetUser(), "application_rule.source.user"),
-		"users_group":         parseNameIDList(ctx, src.GetUsersGroup(), "application_rule.source.users_group"),
-		"group":               parseNameIDList(ctx, src.GetGroup(), "application_rule.source.group"),
-		"system_group":        parseNameIDList(ctx, src.GetSystemGroup(), "application_rule.source.system_group"),
+		"country": oldidname.ParseNameIDList(ctx, src.GetCountry(),
+			"application_rule.source.country"),
+		"ip": convert.ParseList(ctx, types.StringType, src.GetIP(),
+			"application_rule.source.ip"),
+		"host": oldidname.ParseNameIDList(ctx, src.GetHost(),
+			"application_rule.source.host"),
+		"site": oldidname.ParseNameIDList(ctx, src.GetSite(),
+			"application_rule.source.site"),
+		"subnet": convert.ParseList(ctx, types.StringType, src.GetSubnet(),
+			"application_rule.source.subnet"),
+		"ip_range": convert.ParseFromToList(ctx, src.GetIPRange(),
+			"application_rule.source.ip_range"),
+		"global_ip_range": oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(),
+			"application_rule.source.global_ip_range"),
+		"network_interface": oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(),
+			"application_rule.source.network_interface"),
+		"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(),
+			"application_rule.source.site_network_subnet"),
+		"floating_subnet": oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(),
+			"application_rule.source.floating_subnet"),
+		"user": oldidname.ParseNameIDList(ctx, src.GetUser(),
+			"application_rule.source.user"),
+		"users_group": oldidname.ParseNameIDList(ctx, src.GetUsersGroup(),
+			"application_rule.source.users_group"),
+		"group": oldidname.ParseNameIDList(ctx, src.GetGroup(),
+			"application_rule.source.group"),
+		"system_group": oldidname.ParseNameIDList(ctx, src.GetSystemGroup(),
+			"application_rule.source.system_group"),
 	}
 	o, d := types.ObjectValue(ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
@@ -460,20 +483,20 @@ func acSourceObjectFromDataRuleSource(
 		return types.ObjectNull(ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
-		"country":             parseNameIDList(ctx, src.GetCountry(), "data_rule.source.country"),
-		"ip":                  parseList(ctx, types.StringType, src.GetIP(), "data_rule.source.ip"),
-		"host":                parseNameIDList(ctx, src.GetHost(), "data_rule.source.host"),
-		"site":                parseNameIDList(ctx, src.GetSite(), "data_rule.source.site"),
-		"subnet":              parseList(ctx, types.StringType, src.GetSubnet(), "data_rule.source.subnet"),
-		"ip_range":            parseFromToList(ctx, src.GetIPRange(), "data_rule.source.ip_range"),
-		"global_ip_range":     parseNameIDList(ctx, src.GetGlobalIPRange(), "data_rule.source.global_ip_range"),
-		"network_interface":   parseNameIDList(ctx, src.GetNetworkInterface(), "data_rule.source.network_interface"),
-		"site_network_subnet": parseNameIDList(ctx, src.GetSiteNetworkSubnet(), "data_rule.source.site_network_subnet"),
-		"floating_subnet":     parseNameIDList(ctx, src.GetFloatingSubnet(), "data_rule.source.floating_subnet"),
-		"user":                parseNameIDList(ctx, src.GetUser(), "data_rule.source.user"),
-		"users_group":         parseNameIDList(ctx, src.GetUsersGroup(), "data_rule.source.users_group"),
-		"group":               parseNameIDList(ctx, src.GetGroup(), "data_rule.source.group"),
-		"system_group":        parseNameIDList(ctx, src.GetSystemGroup(), "data_rule.source.system_group"),
+		"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "data_rule.source.country"),
+		"ip":                  convert.ParseList(ctx, types.StringType, src.GetIP(), "data_rule.source.ip"),
+		"host":                oldidname.ParseNameIDList(ctx, src.GetHost(), "data_rule.source.host"),
+		"site":                oldidname.ParseNameIDList(ctx, src.GetSite(), "data_rule.source.site"),
+		"subnet":              convert.ParseList(ctx, types.StringType, src.GetSubnet(), "data_rule.source.subnet"),
+		"ip_range":            convert.ParseFromToList(ctx, src.GetIPRange(), "data_rule.source.ip_range"),
+		"global_ip_range":     oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(), "data_rule.source.global_ip_range"),
+		"network_interface":   oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(), "data_rule.source.network_interface"),
+		"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(), "data_rule.source.site_network_subnet"),
+		"floating_subnet":     oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(), "data_rule.source.floating_subnet"),
+		"user":                oldidname.ParseNameIDList(ctx, src.GetUser(), "data_rule.source.user"),
+		"users_group":         oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "data_rule.source.users_group"),
+		"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "data_rule.source.group"),
+		"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "data_rule.source.system_group"),
 	}
 	o, d := types.ObjectValue(ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
@@ -489,20 +512,20 @@ func acSourceObjectFromFileRuleSource(
 		return types.ObjectNull(ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
-		"country":             parseNameIDList(ctx, src.GetCountry(), "file_rule.source.country"),
-		"ip":                  parseList(ctx, types.StringType, src.GetIP(), "file_rule.source.ip"),
-		"host":                parseNameIDList(ctx, src.GetHost(), "file_rule.source.host"),
-		"site":                parseNameIDList(ctx, src.GetSite(), "file_rule.source.site"),
-		"subnet":              parseList(ctx, types.StringType, src.GetSubnet(), "file_rule.source.subnet"),
-		"ip_range":            parseFromToList(ctx, src.GetIPRange(), "file_rule.source.ip_range"),
-		"global_ip_range":     parseNameIDList(ctx, src.GetGlobalIPRange(), "file_rule.source.global_ip_range"),
-		"network_interface":   parseNameIDList(ctx, src.GetNetworkInterface(), "file_rule.source.network_interface"),
-		"site_network_subnet": parseNameIDList(ctx, src.GetSiteNetworkSubnet(), "file_rule.source.site_network_subnet"),
-		"floating_subnet":     parseNameIDList(ctx, src.GetFloatingSubnet(), "file_rule.source.floating_subnet"),
-		"user":                parseNameIDList(ctx, src.GetUser(), "file_rule.source.user"),
-		"users_group":         parseNameIDList(ctx, src.GetUsersGroup(), "file_rule.source.users_group"),
-		"group":               parseNameIDList(ctx, src.GetGroup(), "file_rule.source.group"),
-		"system_group":        parseNameIDList(ctx, src.GetSystemGroup(), "file_rule.source.system_group"),
+		"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "file_rule.source.country"),
+		"ip":                  convert.ParseList(ctx, types.StringType, src.GetIP(), "file_rule.source.ip"),
+		"host":                oldidname.ParseNameIDList(ctx, src.GetHost(), "file_rule.source.host"),
+		"site":                oldidname.ParseNameIDList(ctx, src.GetSite(), "file_rule.source.site"),
+		"subnet":              convert.ParseList(ctx, types.StringType, src.GetSubnet(), "file_rule.source.subnet"),
+		"ip_range":            convert.ParseFromToList(ctx, src.GetIPRange(), "file_rule.source.ip_range"),
+		"global_ip_range":     oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(), "file_rule.source.global_ip_range"),
+		"network_interface":   oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(), "file_rule.source.network_interface"),
+		"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(), "file_rule.source.site_network_subnet"),
+		"floating_subnet":     oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(), "file_rule.source.floating_subnet"),
+		"user":                oldidname.ParseNameIDList(ctx, src.GetUser(), "file_rule.source.user"),
+		"users_group":         oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "file_rule.source.users_group"),
+		"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "file_rule.source.group"),
+		"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "file_rule.source.system_group"),
 	}
 	o, d := types.ObjectValue(ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
@@ -528,11 +551,14 @@ func acTrackingObjectFromApplicationRuleTracking(
 		freq = al.GetFrequency().String()
 	}
 	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
-		"enabled":            types.BoolValue(al.GetEnabled()),
-		"frequency":          types.StringValue(freq),
-		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "application_rule.tracking.alert.subscription_group"),
-		"webhook":            parseNameIDListOrEmptySet(ctx, al.GetWebhook(), "application_rule.tracking.alert.webhook"),
-		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "application_rule.tracking.alert.mailing_list"),
+		"enabled":   types.BoolValue(al.GetEnabled()),
+		"frequency": types.StringValue(freq),
+		"subscription_group": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(),
+			"application_rule.tracking.alert.subscription_group"),
+		"webhook": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetWebhook(),
+			"application_rule.tracking.alert.webhook"),
+		"mailing_list": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetMailingList(),
+			"application_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
@@ -564,9 +590,9 @@ func acTrackingObjectFromDataRuleTracking(
 	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
-		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "data_rule.tracking.alert.subscription_group"),
-		"webhook":            parseNameIDListOrEmptySet(ctx, al.GetWebhook(), "data_rule.tracking.alert.webhook"),
-		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "data_rule.tracking.alert.mailing_list"),
+		"subscription_group": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "data_rule.tracking.alert.subscription_group"),
+		"webhook":            oldidname.ParseNameIDListOrEmptySet(ctx, al.GetWebhook(), "data_rule.tracking.alert.webhook"),
+		"mailing_list":       oldidname.ParseNameIDListOrEmptySet(ctx, al.GetMailingList(), "data_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
@@ -598,9 +624,9 @@ func acTrackingObjectFromFileRuleTracking(
 	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
-		"subscription_group": parseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "file_rule.tracking.alert.subscription_group"),
-		"webhook":            parseNameIDListOrEmptySet(ctx, al.GetWebhook(), "file_rule.tracking.alert.webhook"),
-		"mailing_list":       parseNameIDListOrEmptySet(ctx, al.GetMailingList(), "file_rule.tracking.alert.mailing_list"),
+		"subscription_group": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "file_rule.tracking.alert.subscription_group"),
+		"webhook":            oldidname.ParseNameIDListOrEmptySet(ctx, al.GetWebhook(), "file_rule.tracking.alert.webhook"),
+		"mailing_list":       oldidname.ParseNameIDListOrEmptySet(ctx, al.GetMailingList(), "file_rule.tracking.alert.mailing_list"),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
@@ -618,7 +644,7 @@ func wanApplicationObjectFromApplicationRuleApplication(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if a == nil {
-		return types.ObjectNull(WanApplicationAttrTypes)
+		return types.ObjectNull(wanfirewall.WanApplicationAttrTypes)
 	}
 	var apps []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_ApplicationRule_Application_Application
 	if p := a.GetApplication(); p != nil {
@@ -641,22 +667,27 @@ func wanApplicationObjectFromApplicationRuleApplication(
 		sac = append(sac, p)
 	}
 	emptyStrList, _ := types.ListValue(types.StringType, []attr.Value{})
-	emptyIPRangeList, _ := types.ListValue(FromToObjectType, []attr.Value{})
-	emptyNameIDSet, _ := types.SetValue(NameIDObjectType, []attr.Value{})
+	emptyIPRangeList, _ := types.ListValue(ipaddr.RangeObjectType, []attr.Value{})
+	emptyNameIDSet, _ := types.SetValue(idname.RefObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              parseNameIDListOrEmptySet(ctx, apps, "application_rule.application.application"),
-		"custom_app":               parseNameIDListOrEmptySet(ctx, customs, "application_rule.application.custom_app"),
-		"app_category":             parseNameIDListOrEmptySet(ctx, cats, "application_rule.application.app_category"),
-		"custom_category":          parseNameIDListOrEmptySet(ctx, customCats, "application_rule.application.custom_category"),
-		"sanctioned_apps_category": parseNameIDListOrEmptySet(ctx, sac, "application_rule.application.sanctioned_apps_category"),
-		"domain":                   emptyStrList,
-		"fqdn":                     emptyStrList,
-		"ip":                       emptyStrList,
-		"subnet":                   emptyStrList,
-		"ip_range":                 emptyIPRangeList,
-		"global_ip_range":          emptyNameIDSet,
+		"application": oldidname.ParseNameIDListOrEmptySet(ctx, apps,
+			"application_rule.application.application"),
+		"custom_app": oldidname.ParseNameIDListOrEmptySet(ctx, customs,
+			"application_rule.application.custom_app"),
+		"app_category": oldidname.ParseNameIDListOrEmptySet(ctx, cats,
+			"application_rule.application.app_category"),
+		"custom_category": oldidname.ParseNameIDListOrEmptySet(ctx, customCats,
+			"application_rule.application.custom_category"),
+		"sanctioned_apps_category": oldidname.ParseNameIDListOrEmptySet(ctx, sac,
+			"application_rule.application.sanctioned_apps_category"),
+		"domain":          emptyStrList,
+		"fqdn":            emptyStrList,
+		"ip":              emptyStrList,
+		"subnet":          emptyStrList,
+		"ip_range":        emptyIPRangeList,
+		"global_ip_range": emptyNameIDSet,
 	}
-	o, d := types.ObjectValue(WanApplicationAttrTypes, attrs)
+	o, d := types.ObjectValue(wanfirewall.WanApplicationAttrTypes, attrs)
 	diags.Append(d...)
 	return o
 }
@@ -667,7 +698,7 @@ func wanApplicationObjectFromDataRuleApplication(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if a == nil {
-		return types.ObjectNull(WanApplicationAttrTypes)
+		return types.ObjectNull(wanfirewall.WanApplicationAttrTypes)
 	}
 	var apps []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_DataRule_Application_Application
 	if p := a.GetApplication(); p != nil {
@@ -690,14 +721,14 @@ func wanApplicationObjectFromDataRuleApplication(
 		sac = append(sac, p)
 	}
 	emptyStrList2, _ := types.ListValue(types.StringType, []attr.Value{})
-	emptyIPRangeList2, _ := types.ListValue(FromToObjectType, []attr.Value{})
-	emptyNameIDSet2, _ := types.SetValue(NameIDObjectType, []attr.Value{})
+	emptyIPRangeList2, _ := types.ListValue(ipaddr.RangeObjectType, []attr.Value{})
+	emptyNameIDSet2, _ := types.SetValue(idname.RefObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              parseNameIDListOrEmptySet(ctx, apps, "data_rule.application.application"),
-		"custom_app":               parseNameIDListOrEmptySet(ctx, customs, "data_rule.application.custom_app"),
-		"app_category":             parseNameIDListOrEmptySet(ctx, cats, "data_rule.application.app_category"),
-		"custom_category":          parseNameIDListOrEmptySet(ctx, customCats, "data_rule.application.custom_category"),
-		"sanctioned_apps_category": parseNameIDListOrEmptySet(ctx, sac, "data_rule.application.sanctioned_apps_category"),
+		"application":              oldidname.ParseNameIDListOrEmptySet(ctx, apps, "data_rule.application.application"),
+		"custom_app":               oldidname.ParseNameIDListOrEmptySet(ctx, customs, "data_rule.application.custom_app"),
+		"app_category":             oldidname.ParseNameIDListOrEmptySet(ctx, cats, "data_rule.application.app_category"),
+		"custom_category":          oldidname.ParseNameIDListOrEmptySet(ctx, customCats, "data_rule.application.custom_category"),
+		"sanctioned_apps_category": oldidname.ParseNameIDListOrEmptySet(ctx, sac, "data_rule.application.sanctioned_apps_category"),
 		"domain":                   emptyStrList2,
 		"fqdn":                     emptyStrList2,
 		"ip":                       emptyStrList2,
@@ -705,7 +736,7 @@ func wanApplicationObjectFromDataRuleApplication(
 		"ip_range":                 emptyIPRangeList2,
 		"global_ip_range":          emptyNameIDSet2,
 	}
-	o, d := types.ObjectValue(WanApplicationAttrTypes, attrs)
+	o, d := types.ObjectValue(wanfirewall.WanApplicationAttrTypes, attrs)
 	diags.Append(d...)
 	return o
 }
@@ -716,7 +747,7 @@ func wanApplicationObjectFromFileRuleApplication(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if a == nil {
-		return types.ObjectNull(WanApplicationAttrTypes)
+		return types.ObjectNull(wanfirewall.WanApplicationAttrTypes)
 	}
 	var apps []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_FileRule_Application_Application
 	if p := a.GetApplication(); p != nil {
@@ -739,14 +770,14 @@ func wanApplicationObjectFromFileRuleApplication(
 		sac = append(sac, p)
 	}
 	emptyStrList3, _ := types.ListValue(types.StringType, []attr.Value{})
-	emptyIPRangeList3, _ := types.ListValue(FromToObjectType, []attr.Value{})
-	emptyNameIDSet3, _ := types.SetValue(NameIDObjectType, []attr.Value{})
+	emptyIPRangeList3, _ := types.ListValue(ipaddr.RangeObjectType, []attr.Value{})
+	emptyNameIDSet3, _ := types.SetValue(idname.RefObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              parseNameIDListOrEmptySet(ctx, apps, "file_rule.application.application"),
-		"custom_app":               parseNameIDListOrEmptySet(ctx, customs, "file_rule.application.custom_app"),
-		"app_category":             parseNameIDListOrEmptySet(ctx, cats, "file_rule.application.app_category"),
-		"custom_category":          parseNameIDListOrEmptySet(ctx, customCats, "file_rule.application.custom_category"),
-		"sanctioned_apps_category": parseNameIDListOrEmptySet(ctx, sac, "file_rule.application.sanctioned_apps_category"),
+		"application":              oldidname.ParseNameIDListOrEmptySet(ctx, apps, "file_rule.application.application"),
+		"custom_app":               oldidname.ParseNameIDListOrEmptySet(ctx, customs, "file_rule.application.custom_app"),
+		"app_category":             oldidname.ParseNameIDListOrEmptySet(ctx, cats, "file_rule.application.app_category"),
+		"custom_category":          oldidname.ParseNameIDListOrEmptySet(ctx, customCats, "file_rule.application.custom_category"),
+		"sanctioned_apps_category": oldidname.ParseNameIDListOrEmptySet(ctx, sac, "file_rule.application.sanctioned_apps_category"),
 		"domain":                   emptyStrList3,
 		"fqdn":                     emptyStrList3,
 		"ip":                       emptyStrList3,
@@ -754,7 +785,7 @@ func wanApplicationObjectFromFileRuleApplication(
 		"ip_range":                 emptyIPRangeList3,
 		"global_ip_range":          emptyNameIDSet3,
 	}
-	o, d := types.ObjectValue(WanApplicationAttrTypes, attrs)
+	o, d := types.ObjectValue(wanfirewall.WanApplicationAttrTypes, attrs)
 	diags.Append(d...)
 	return o
 }
@@ -953,7 +984,7 @@ func acFileAttributeListFromFileRule(
 func acBuildActivityList(pairs [][2]string, diags *diag.Diagnostics) types.List {
 	elems := make([]attr.Value, 0, len(pairs))
 	for _, p := range pairs {
-		actObj, d := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+		actObj, d := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 			"id":   types.StringValue(p[0]),
 			"name": types.StringValue(p[1]),
 		})

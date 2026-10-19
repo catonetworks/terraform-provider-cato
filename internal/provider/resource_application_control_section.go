@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -123,7 +124,7 @@ func (r *applicationControlSectionResource) Create(ctx context.Context, req reso
 	}
 	if !plan.Section.IsNull() {
 		input.Section = &cato_models.PolicyAddSectionInfoInput{}
-		sectionInput := PolicyAddSectionInfoInput{}
+		sectionInput := idname.Ref{}
 		resp.Diagnostics.Append(plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})...)
 		input.Section.Name = sectionInput.Name.ValueString()
 	}
@@ -177,7 +178,7 @@ func (r *applicationControlSectionResource) Read(ctx context.Context, req resour
 		return
 	}
 
-	section := PolicyUpdateSectionInfoInput{}
+	section := idname.Ref{}
 	resp.Diagnostics.Append(state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -199,7 +200,7 @@ func (r *applicationControlSectionResource) Read(ctx context.Context, req resour
 		}
 		found = true
 		state.ID = types.StringValue(item.GetSection().GetID())
-		cur, d := types.ObjectValue(NameIDAttrTypes, map[string]attr.Value{
+		cur, d := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
 			"id":   types.StringValue(item.GetSection().GetID()),
 			"name": types.StringValue(item.GetSection().GetName()),
 		})
@@ -238,7 +239,7 @@ func (r *applicationControlSectionResource) Update(ctx context.Context, req reso
 	inputUpdate := cato_models.PolicyUpdateSectionInput{}
 	inputMove := cato_models.PolicyMoveSectionInput{}
 	if !plan.Section.IsNull() {
-		sectionInput := PolicyUpdateSectionInfoInput{}
+		sectionInput := idname.Ref{}
 		resp.Diagnostics.Append(plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})...)
 		inputUpdate.ID = sectionInput.ID.ValueString()
 		inputUpdate.Section = &cato_models.PolicyUpdateSectionInfoInput{
@@ -301,7 +302,7 @@ func (r *applicationControlSectionResource) Delete(ctx context.Context, req reso
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	section := PolicyAddSectionInfoInput{}
+	section := idname.Ref{}
 	resp.Diagnostics.Append(state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
