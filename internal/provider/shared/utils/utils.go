@@ -204,3 +204,26 @@ func Contains(nameToIDMap map[string]struct{}, name string) bool {
 	_, exists := nameToIDMap[name]
 	return exists
 }
+
+// NormalizePolicyTimestampString normalizes API datetime strings (e.g. ...00.000) to RFC3339-style
+// values that match typical Terraform configuration (…00Z).
+func NormalizePolicyTimestampString(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasSuffix(s, ".000") {
+		s = strings.TrimSuffix(s, ".000")
+		if !strings.HasSuffix(s, "Z") {
+			s += "Z"
+		}
+	}
+	return s
+}
+
+// NormalizePolicyRecurringClock maps API values like "08:00:00" to "08:00" so state
+// matches common Terraform configuration and avoids inconsistent-result errors.
+func NormalizePolicyRecurringClock(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) == 8 && strings.Count(s, ":") == 2 && strings.HasSuffix(s, ":00") {
+		return s[:5]
+	}
+	return s
+}

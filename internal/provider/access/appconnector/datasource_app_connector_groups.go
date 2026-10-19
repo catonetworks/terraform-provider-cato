@@ -16,18 +16,18 @@ type GroupDataSourceModel struct {
 }
 
 func GroupDataSource() datasource.DataSource {
-	return &appConnectorGroupDataSource{}
+	return &groupDataSource{}
 }
 
-type appConnectorGroupDataSource struct {
+type groupDataSource struct {
 	client *catoclient.Service
 }
 
-func (d *appConnectorGroupDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *groupDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_app_connector_group"
 }
 
-func (d *appConnectorGroupDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *groupDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "AppConnector group schema definition",
 		Attributes: map[string]schema.Attribute{
@@ -44,7 +44,7 @@ func (d *appConnectorGroupDataSource) Schema(_ context.Context, _ datasource.Sch
 	}
 }
 
-func (d *appConnectorGroupDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+func (d *groupDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -52,7 +52,7 @@ func (d *appConnectorGroupDataSource) Configure(_ context.Context, req datasourc
 	d.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (d *appConnectorGroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var groups GroupDataSourceModel
 	if diags := req.Config.Get(ctx, &groups); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
