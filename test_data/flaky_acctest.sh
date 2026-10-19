@@ -56,7 +56,7 @@ should_retry() {
 	# Skip reasons can mention known transient errors but do not mean the
 	# package's actual failure is transient.
 	grep -Ev '"Output":".*skipping test' "$1" |
-		grep -Ei '(internal server error|connection (error|refused)|DOWNSTREAM_SERVICE_ERROR|message\\":\\"Internal server\\n")' \
+		grep -Ei '(internal server error|connection (error|refused)|context deadline exceeded|Client[.]Timeout exceeded|DOWNSTREAM_SERVICE_ERROR|message\\":\\"Internal server\\n")' \
 			> /dev/null && return 0
 	return 1
 }
