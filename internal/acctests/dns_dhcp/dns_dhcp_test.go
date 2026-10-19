@@ -20,8 +20,13 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
+const envEnableDNSDHCPCRUD = "TFACC_ENABLE_DNS_DHCP_CRUD"
+
 // Opt-in live test: captures/restores account and site settings and creates only its own collection items.
 func TestAccDNSDHCP(t *testing.T) {
+	if os.Getenv(envEnableDNSDHCPCRUD) != "true" {
+		t.Skipf("set %s=true to run DNS/DHCP CRUD acceptance test", envEnableDNSDHCPCRUD)
+	}
 	siteID, servers, tag := liveInputs(t)
 	sdk, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, nil, nil)
 	if err != nil {

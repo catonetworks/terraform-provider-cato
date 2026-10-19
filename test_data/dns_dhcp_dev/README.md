@@ -155,10 +155,13 @@ live testing. Keep `-parallelism=1` for manual apply/destroy. Set
 
 ```sh
 unset TF_ACC_MOCK
-TF_ACC=1 DISABLE_POLICY_RULE_CLEANUP=true \
+TF_ACC=1 TFACC_ENABLE_DNS_DHCP_CRUD=true DISABLE_POLICY_RULE_CLEANUP=true \
   go test -tags=acctest -count=1 -parallel=1 -p=1 -timeout=20m \
   ./internal/acctests/dns_dhcp -run '^TestAccDNSDHCP$'
 ```
+
+The suite skips unless `TFACC_ENABLE_DNS_DHCP_CRUD=true`; explicitly enabled runs
+still require all endpoint and input checks.
 
 Live tests change account/site configuration. They are separate from ordinary unit checks
 and require an explicitly selected dev test account. Inspect retained baseline and errors
