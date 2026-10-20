@@ -1,6 +1,7 @@
 package tls
 
 import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -139,4 +140,10 @@ var TLSInspectionRuleRuleAttrTypes = map[string]attr.Type{
 	"device_posture_profile":       types.SetType{ElemType: idname.RefObjectType},
 	"platform":                     types.StringType,
 	"application":                  types.ObjectType{AttrTypes: TLSApplicationAttrTypes},
+}
+
+// hydrateTLSAPITypes create sub-types for both create and update calls to populate both entries
+type hydrateTLSAPITypes struct {
+	create cato_models.TLSInspectAddRuleInput
+	update cato_models.TLSInspectUpdateRuleInput
 }

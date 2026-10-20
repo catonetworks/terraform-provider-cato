@@ -16,21 +16,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketlansource"
 )
 
-// SocketLanNetworkRuleStateOutput represents the state of a Socket LAN network rule
-type SocketLanNetworkRuleStateOutput struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	Enabled     types.Bool   `tfsdk:"enabled"`
-	Direction   types.String `tfsdk:"direction"`
-	Transport   types.String `tfsdk:"transport"`
-	Site        types.Object `tfsdk:"site"`
-	Source      types.Object `tfsdk:"source"`
-	Destination types.Object `tfsdk:"destination"`
-	Service     types.Object `tfsdk:"service"`
-	Nat         types.Object `tfsdk:"nat"`
-}
-
 func hydrateSocketLanNetworkRuleState(
 	ctx context.Context,
 	_ SocketLanNetworkRule,

@@ -1,6 +1,7 @@
 package privateapp
 
 import (
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -68,3 +69,9 @@ var PortRangeTypes = map[string]attr.Type{
 	"from": types.Int64Type,
 	"to":   types.Int64Type,
 }
+
+type (
+	privateAppProtocolPorts      = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_ProtocolPorts
+	privateAppPublishedAppDomain = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PublishedAppDomain
+	privateAppProbing            = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PrivateAppProbing
+)

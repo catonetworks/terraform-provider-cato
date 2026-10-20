@@ -2,6 +2,7 @@
 package wnwrule
 
 import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -419,4 +420,10 @@ var WanNetworkExceptionAttrTypes = map[string]attr.Type{
 	"source":      WanNetworkSourceObjectType,
 	"destination": WanNetworkDestObjectType,
 	"application": WanNetworkExceptionApplicationObjectType,
+}
+
+// hydrateWanNetworkAPITypes create sub-types for both create and update calls to populate both entries
+type hydrateWanNetworkAPITypes struct {
+	create cato_models.WanNetworkAddRuleInput
+	update cato_models.WanNetworkUpdateRuleInput
 }

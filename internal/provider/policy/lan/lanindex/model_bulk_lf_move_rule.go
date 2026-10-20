@@ -1,6 +1,7 @@
 package lanindex
 
 import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -57,4 +58,57 @@ var LanFirewallRuleTypes = map[string]attr.Type{
 	"net_rule_name":      types.StringType,
 	"net_rule_key":       types.StringType,
 	"index_in_rule":      types.Int64Type,
+}
+
+type lfIndexMap struct {
+	// Section order in given policy
+	// map[policyID]{
+	//   current:[{sectionName:secA,id:100},{sectionName:secB,id:101},...],
+	//   target: [{sectionName:secB,id:101},{sectionName:secA,id:100},...]}
+	sections map[string]itemOrder
+
+	// Rule or subPolicy order in given section
+	// map[sectionID]{
+	//   current:[{name:ruleA,id:100,typ:rule},{name:subPolA,id:123,typ:subPolicy},...],
+	//   target: [{name:subPolA,id:123,typ:subPolicy},{name:ruleA,id:100,typ:rule},...],
+	rulesOrSubPols map[string]itemOrderType
+
+	// Firewall rule order in given network rule
+	// map[networkRuleID]{
+	//   current:[{name:FwRuleA,id:100},{name:FwRuleB,id:123},...],
+	//   target: [{name:FwRuleB,id:123},{name:FwRuleA,id:100},...],
+	firewallRules map[string]itemOrder
+}
+
+type itemOrder struct {
+	parentID   string
+	parentName string
+	current    []nameID
+	target     []nameID
+}
+
+type nameID struct {
+	name, id string
+}
+
+type itemOrderType struct {
+	parentID   string
+	parentName string
+	current    []nameIDType
+	target     []nameIDType
+}
+
+type nameIDType struct {
+	name, id string
+	ruleType cato_models.PolicyRuleTypeEnum
+}
+
+type lanFwStateAliases struct {
+	sectionKeyByID        map[string]string
+	netRuleKeyByID        map[string]string
+	firewallRuleKeyByID   map[string]string
+	netRuleParentKeyByID  map[string]string
+	firewallParentKeyByID map[string]string
+	manageNetworkRules    bool
+	manageFirewallRules   bool
 }

@@ -18,12 +18,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-// SocketLanFirewallRuleAPIInput holds both create and update inputs
-type SocketLanFirewallRuleAPIInput struct {
-	create cato_models.SocketLanFirewallAddRuleInput
-	update cato_models.SocketLanFirewallUpdateRuleInput
-}
-
 //nolint:gocyclo,funlen
 func hydrateSocketLanFirewallRuleAPI(ctx context.Context, plan SocketLanFirewallRule) (SocketLanFirewallRuleAPIInput, diag.Diagnostics) {
 	var result SocketLanFirewallRuleAPIInput

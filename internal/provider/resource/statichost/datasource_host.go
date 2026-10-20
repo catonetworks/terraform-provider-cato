@@ -16,20 +16,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-type HostLookup struct {
-	NameFilter types.List `tfsdk:"name_filter"`
-	IPFilter   types.List `tfsdk:"ip_filter"`
-	Items      types.List `tfsdk:"items"`
-}
-
-type Host struct {
-	ID      types.String `tfsdk:"id"`
-	Name    types.String `tfsdk:"name"`
-	IPAddr  types.String `tfsdk:"ip"`
-	Network types.String `tfsdk:"net"`
-	SiteID  types.String `tfsdk:"site_id"`
-}
-
 // terraform field names
 const (
 	tfNameFilter = "name_filter"
@@ -48,11 +34,6 @@ var attrTypes = map[string]attr.Type{
 	tfIP:     types.StringType,
 	tfNet:    types.StringType,
 	tfSiteID: types.StringType,
-}
-
-type hostFilter struct {
-	namesMap map[string]struct{}
-	ipsMap   map[string]struct{}
 }
 
 func HostDataSource() datasource.DataSource {

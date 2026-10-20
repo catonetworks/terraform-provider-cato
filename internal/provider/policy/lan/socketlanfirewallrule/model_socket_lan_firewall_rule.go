@@ -1,6 +1,7 @@
 package socketlanfirewallrule
 
 import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -163,4 +164,25 @@ var SocketLanFirewallServiceAttrTypes = map[string]attr.Type{
 	"simple":   types.SetType{ElemType: simpleservice.SimpleServiceObjectType},
 	"standard": types.SetType{ElemType: idname.RefObjectType},
 	"custom":   types.ListType{ElemType: customservice.CustomServiceObjectType},
+}
+
+// SocketLanFirewallRuleAPIInput holds both create and update inputs
+type SocketLanFirewallRuleAPIInput struct {
+	create cato_models.SocketLanFirewallAddRuleInput
+	update cato_models.SocketLanFirewallUpdateRuleInput
+}
+
+// SocketLanFirewallRuleStateOutput represents the state of a Socket LAN firewall rule
+type SocketLanFirewallRuleStateOutput struct {
+	ID          types.String `tfsdk:"id"`
+	Name        types.String `tfsdk:"name"`
+	Description types.String `tfsdk:"description"`
+	Enabled     types.Bool   `tfsdk:"enabled"`
+	Direction   types.String `tfsdk:"direction"`
+	Action      types.String `tfsdk:"action"`
+	Source      types.Object `tfsdk:"source"`
+	Destination types.Object `tfsdk:"destination"`
+	Application types.Object `tfsdk:"application"`
+	Service     types.Object `tfsdk:"service"`
+	Tracking    types.Object `tfsdk:"tracking"`
 }

@@ -1,6 +1,9 @@
 package ifindex
 
-import "github.com/hashicorp/terraform-plugin-framework/types"
+import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
 
 type IfwRulesIndex struct {
 	SectionToStartAfterID types.String `tfsdk:"section_to_start_after_id"`
@@ -49,3 +52,9 @@ type IfwRulesRuleItemIndex struct {
 // 	Name           types.String `tfsdk:"name"`
 // 	Properties     types.List   `tfsdk:"properties"`
 // }
+
+type ifwSectionMove struct {
+	section   IfwRulesSectionDataIndex
+	input     cato_models.PolicyMoveSectionInput
+	protected bool
+}

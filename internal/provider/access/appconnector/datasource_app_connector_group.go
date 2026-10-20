@@ -10,11 +10,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
-type GroupDataSourceModel struct {
-	Items []types.String `tfsdk:"items"`
-	Total types.Int64    `tfsdk:"total"`
-}
-
 func GroupDataSource() datasource.DataSource {
 	return &groupDataSource{}
 }

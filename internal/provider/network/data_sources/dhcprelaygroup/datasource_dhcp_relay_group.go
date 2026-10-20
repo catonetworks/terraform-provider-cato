@@ -16,17 +16,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-type groupLookup struct {
-	NameFilter types.List `tfsdk:"name_filter"`
-	Items      types.List `tfsdk:"items"`
-}
-
-type Group struct {
-	ID               types.String `tfsdk:"id"`
-	Name             types.String `tfsdk:"name"`
-	DhcpRelayServers types.List   `tfsdk:"dhcp_relay_servers"`
-}
-
 func DataSource() datasource.DataSource {
 	return &groupDataSource{}
 }

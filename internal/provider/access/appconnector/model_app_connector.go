@@ -1,6 +1,7 @@
 package appconnector
 
 import (
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -73,4 +74,14 @@ var PreferredPopLocationModelTypes = map[string]attr.Type{
 	"automatic":      types.BoolType,
 	"primary":        types.ObjectType{AttrTypes: idname.RefAttrTypes},
 	"secondary":      types.ObjectType{AttrTypes: idname.RefAttrTypes},
+}
+
+type (
+	appConnectorLocation             = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location
+	appConnectorPreferredPopLocation = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation
+)
+
+type licenseKey struct {
+	lic string
+	bw  int64
 }

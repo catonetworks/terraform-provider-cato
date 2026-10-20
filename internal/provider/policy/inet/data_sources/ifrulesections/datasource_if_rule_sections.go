@@ -15,11 +15,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-type ifRuleSectionLookup struct {
-	NameFilter types.List `tfsdk:"name_filter"`
-	Items      types.List `tfsdk:"items"`
-}
-
 func IfRuleSectionsDataSource() datasource.DataSource {
 	return &ifRuleSectionsDataSource{}
 }

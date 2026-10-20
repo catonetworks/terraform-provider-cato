@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -41,12 +40,6 @@ func NewPrivateAppResource() resource.Resource {
 type privateAppResource struct {
 	client *catoclient.Service
 }
-
-type (
-	privateAppProtocolPorts      = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_ProtocolPorts
-	privateAppPublishedAppDomain = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PublishedAppDomain
-	privateAppProbing            = cato_go_sdk.PrivateAppReadPrivateApp_PrivateApplication_PrivateApplication_PrivateAppProbing
-)
 
 func (r *privateAppResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_private_app"

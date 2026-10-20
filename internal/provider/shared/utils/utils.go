@@ -14,11 +14,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 )
 
-type ObjectRefOutput struct {
-	By    string `json:"By"`
-	Input string `json:"Input"`
-}
-
 // TransformObjectRefInput is used to transform object {id = "1234"} or {name = "entites"}
 // with the following format { by = "ID" input = "1234"} or  { by = "NAME" input = "entities"}.
 // this is mandatory to cover difference between Create/Update & Read in the schema

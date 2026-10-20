@@ -32,12 +32,6 @@ func appendObjectRefTransformError(diags []diag.Diagnostic, fieldPath string, er
 	))
 }
 
-// HydrateIfwAPITypes create sub-types for both create and update calls to populate both entries
-type HydrateIfwAPITypes struct {
-	Create cato_models.InternetFirewallAddRuleInput
-	Update cato_models.InternetFirewallUpdateRuleInput
-}
-
 // HydrateIfwRuleAPI takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato api data used to either create or update IFW entries
 //

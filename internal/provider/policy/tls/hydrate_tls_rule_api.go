@@ -15,12 +15,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-// hydrateTLSAPITypes create sub-types for both create and update calls to populate both entries
-type hydrateTLSAPITypes struct {
-	create cato_models.TLSInspectAddRuleInput
-	update cato_models.TLSInspectUpdateRuleInput
-}
-
 // hydrateTLSRuleAPI takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato API data used to either create or update TLS entries
 //

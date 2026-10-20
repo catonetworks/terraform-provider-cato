@@ -37,22 +37,12 @@ var (
 	ErrAppConnectorNotFound = errors.New("app-connector not found")
 )
 
-type (
-	appConnectorLocation             = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_Location
-	appConnectorPreferredPopLocation = cato_go_sdk.AppConnectorReadConnector_ZtnaAppConnector_ZtnaAppConnector_PreferredPopLocation
-)
-
 func NewAppConnectorResource() resource.Resource {
 	return &appConnectorResource{}
 }
 
 type appConnectorResource struct {
 	client *catoclient.Service
-}
-
-type licenseKey struct {
-	lic string
-	bw  int64
 }
 
 func (r *appConnectorResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

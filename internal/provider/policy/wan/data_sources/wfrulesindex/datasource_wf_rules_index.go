@@ -118,10 +118,6 @@ var WanRuleIndexAttrTypes = map[string]attr.Type{
 	},
 }
 
-type WanRuleIndexLookup struct {
-	Rules types.List `tfsdk:"rules"`
-}
-
 func (d *wanRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var wanRuleIndexLookup WanRuleIndexLookup
 	ruleIndexAPIData, err := d.client.Catov2.PolicyWanFirewallRulesIndex(ctx, d.client.AccountId)

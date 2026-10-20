@@ -15,11 +15,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-type wfRuleSectionLookup struct {
-	NameFilter types.List `tfsdk:"name_filter"`
-	Items      types.List `tfsdk:"items"`
-}
-
 func WfRuleSectionsDataSource() datasource.DataSource {
 	return &wfRuleSectionsDataSource{}
 }

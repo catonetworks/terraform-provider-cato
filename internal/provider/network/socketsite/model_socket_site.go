@@ -92,3 +92,10 @@ var InterfaceByConnType = map[cato_models.SiteConnectionTypeEnum]cato_models.Soc
 	cato_models.SiteConnectionTypeEnumSocketX1600Lte: cato_models.SocketInterfaceIDEnumInt5,
 	cato_models.SiteConnectionTypeEnumSocketX1700:    cato_models.SocketInterfaceIDEnumInt3,
 }
+
+type nativeInterfaceDetails struct {
+	interfaceIndex *string
+	interfaceID    *string
+	interfaceName  *string
+	destType       *string
+}

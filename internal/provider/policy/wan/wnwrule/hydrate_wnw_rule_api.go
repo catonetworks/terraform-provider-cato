@@ -14,12 +14,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-// hydrateWanNetworkAPITypes create sub-types for both create and update calls to populate both entries
-type hydrateWanNetworkAPITypes struct {
-	create cato_models.WanNetworkAddRuleInput
-	update cato_models.WanNetworkUpdateRuleInput
-}
-
 // hydrateWanNetworkRuleAPI takes in the current state/plan along with context and returns the created
 // diagnostic data as well as cato API data used to either create or update WAN Network entries
 //

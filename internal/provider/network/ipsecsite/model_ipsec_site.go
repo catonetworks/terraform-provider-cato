@@ -1,6 +1,7 @@
 package ipsecsite
 
 import (
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -108,4 +109,10 @@ var IpsecResourceAttrTypes = map[string]attr.Type{
 	"init_message":        types.ObjectType{AttrTypes: IpsecMessageResourceAttrTypes},
 	"auth_message":        types.ObjectType{AttrTypes: IpsecMessageResourceAttrTypes},
 	"network_ranges":      types.ListType{ElemType: types.StringType},
+}
+
+// hydrateIpsecTunnelsAPITypes holds both Add and Update tunnel inputs
+type hydrateIpsecTunnelsAPITypes struct {
+	add    cato_models.AddIpsecIkeV2SiteTunnelsInput
+	update cato_models.UpdateIpsecIkeV2SiteTunnelsInput
 }

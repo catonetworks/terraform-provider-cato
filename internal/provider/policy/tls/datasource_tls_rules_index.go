@@ -107,10 +107,6 @@ var RuleIndexAttrTypes = map[string]attr.Type{
 	"name":             types.StringType,
 }
 
-type RuleIndexLookup struct {
-	Rules types.List `tfsdk:"rules"`
-}
-
 func (d *tlsRulesIndexDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var tlsRuleIndexLookup RuleIndexLookup
 	ruleIndexAPIData, err := d.client.Catov2.Tlsinspectpolicy(ctx, d.client.AccountId)

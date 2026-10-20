@@ -1,6 +1,7 @@
 package privateaccess
 
 import (
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -148,3 +149,11 @@ var PolicyRuleTrackingAlertTypes = map[string]attr.Type{
 	"subscription_group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
 	"webhook":            types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
 }
+
+type (
+	privateAccessRuleSource         = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source
+	privateAccessRuleTracking       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking
+	privateAccessRuleUserAttributes = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_UserAttributes
+	privateAccessRuleSchedule       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Schedule
+	privateAccessRuleActivePeriod   = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_ActivePeriod
+)

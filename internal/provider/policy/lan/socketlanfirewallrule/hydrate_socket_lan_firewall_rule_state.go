@@ -15,21 +15,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/simpleservice"
 )
 
-// SocketLanFirewallRuleStateOutput represents the state of a Socket LAN firewall rule
-type SocketLanFirewallRuleStateOutput struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	Enabled     types.Bool   `tfsdk:"enabled"`
-	Direction   types.String `tfsdk:"direction"`
-	Action      types.String `tfsdk:"action"`
-	Source      types.Object `tfsdk:"source"`
-	Destination types.Object `tfsdk:"destination"`
-	Application types.Object `tfsdk:"application"`
-	Service     types.Object `tfsdk:"service"`
-	Tracking    types.Object `tfsdk:"tracking"`
-}
-
 func hydrateSocketLanFirewallRuleState(
 	ctx context.Context,
 	plan SocketLanFirewallRule,

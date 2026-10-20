@@ -34,13 +34,6 @@ type globalIPRangesResource struct {
 	client *catoclient.Service
 }
 
-type ipRangePlanDetails struct {
-	toCreate []tf.GlobalIPRange
-	toUpdate []tf.GlobalIPRange
-	toDelete []tf.GlobalIPRange
-	toKeep   []tf.GlobalIPRange
-}
-
 func (r *globalIPRangesResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_global_ip_ranges"
 }

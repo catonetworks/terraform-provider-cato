@@ -65,13 +65,6 @@ type Client interface {
 		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateHa, error)
 }
 
-type nativeInterfaceDetails struct {
-	interfaceIndex *string
-	interfaceID    *string
-	interfaceName  *string
-	destType       *string
-}
-
 var numberRE = regexp.MustCompile(`^\d+$`)
 
 func (r *socketSiteResource) getSocketSiteClient() Client {

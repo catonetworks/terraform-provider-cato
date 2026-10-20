@@ -347,12 +347,6 @@ func (r *ifwRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-type ifwSectionMove struct {
-	section   IfwRulesSectionDataIndex
-	input     cato_models.PolicyMoveSectionInput
-	protected bool
-}
-
 func buildIfwSectionMoves(
 	sections []IfwRulesSectionDataIndex,
 	sectionIDs map[string]string,

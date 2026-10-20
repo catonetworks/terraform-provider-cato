@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/cato-go-sdk/scalars"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -45,14 +44,6 @@ func NewPrivAccessRuleResource() resource.Resource {
 type privAccessRuleResource struct {
 	client *catoclient.Service
 }
-
-type (
-	privateAccessRuleSource         = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source
-	privateAccessRuleTracking       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking
-	privateAccessRuleUserAttributes = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_UserAttributes
-	privateAccessRuleSchedule       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Schedule
-	privateAccessRuleActivePeriod   = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_ActivePeriod
-)
 
 func (r *privAccessRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_private_access_rule"
