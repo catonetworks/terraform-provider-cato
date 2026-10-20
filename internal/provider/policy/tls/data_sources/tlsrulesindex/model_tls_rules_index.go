@@ -1,4 +1,4 @@
-package tlsindex
+package tlsrulesindex
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/types"

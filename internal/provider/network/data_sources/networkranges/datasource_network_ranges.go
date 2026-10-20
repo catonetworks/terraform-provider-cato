@@ -1,4 +1,4 @@
-package networkrange
+package networkranges
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-func NetworkRangesDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &networkRangesDataSource{}
 }
 

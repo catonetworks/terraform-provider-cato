@@ -1,4 +1,4 @@
-package statichost
+package host
 
 import (
 	"context"
@@ -36,7 +36,7 @@ var attrTypes = map[string]attr.Type{
 	tfSiteID: types.StringType,
 }
 
-func HostDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &hostDataSource{}
 }
 
@@ -104,7 +104,7 @@ func (d *hostDataSource) Configure(_ context.Context, req datasource.ConfigureRe
 }
 
 func (d *hostDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var hostLookup HostLookup
+	var hostLookup Lookup
 	if diags := req.Config.Get(ctx, &hostLookup); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -165,7 +165,7 @@ func (d *hostDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 // makeFilter prepares lookup maps for names and IPs;
 // if IsNull() then the respective map is nil
-func makeFilter(hostLookup *HostLookup) *hostFilter {
+func makeFilter(hostLookup *Lookup) *hostFilter {
 	var f hostFilter
 
 	if !hostLookup.NameFilter.IsNull() {

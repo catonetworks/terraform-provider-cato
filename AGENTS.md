@@ -19,6 +19,8 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
   `policy/`, and `resource/`). Keep each resource implementation, model, schema,
   hydration helpers, and tests together in its package. Tests belong beside the
   implementation they exercise; split files that test multiple resources.
+  - Data sources and their models belong in `<domain>/data_sources/<name>/`,
+    separate from resource implementation packages.
   - Policy families use resource-specific child packages, for example
     `policy/tls/tlsrule/`, `tlssection/`, and `tlsindex/`.
   - Share policy-family helpers in the parent package and cross-domain helpers

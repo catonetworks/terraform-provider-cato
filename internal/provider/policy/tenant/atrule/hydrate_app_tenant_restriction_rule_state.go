@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
+	applicationcontrol2 "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
@@ -31,7 +31,7 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 
 	out.Application = types.ObjectNull(idname.RefAttrTypes)
 	out.Headers = types.ListNull(types.ObjectType{AttrTypes: AppTenantRestrictionHeaderAttrTypes})
-	out.Source = types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
+	out.Source = types.ObjectNull(applicationcontrol2.ApplicationControlSourceAttrTypes)
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())
@@ -142,7 +142,7 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 			"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "rule.source.group"),
 			"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "rule.source.system_group"),
 		}
-		o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
+		o, d := types.ObjectValue(applicationcontrol2.ApplicationControlSourceAttrTypes, srcAttrs)
 		diags.Append(d...)
 		out.Source = o
 	}

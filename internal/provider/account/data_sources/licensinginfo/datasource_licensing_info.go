@@ -1,4 +1,4 @@
-package license
+package licensinginfo
 
 import (
 	"context"
@@ -15,10 +15,11 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/licensing"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-func LicensingInfoDataSource() datasource.DataSource {
+func NewDataSource() datasource.DataSource {
 	return &licensingInfoDataSource{}
 }
 
@@ -368,7 +369,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 				case "CATO_IP_ADD":
 					total := int(license.PublicIpsLicense.Total)
 					curTotal = types.Int64Value(int64(total))
-				case licenseSkuCatoPB, licenseSkuCatoPBSSE:
+				case licensing.SKUCatoPB, licensing.SKUCatoPBSSE:
 					total := int(license.PooledBandwidthLicense.Total)
 					curTotal = types.Int64Value(int64(total))
 					if len(license.PooledBandwidthLicense.Sites) > 0 {
@@ -402,7 +403,7 @@ func (d *licensingInfoDataSource) Read(ctx context.Context, req datasource.ReadR
 					"CATO_SAAS_SECURITY_API_ONE_APP", "CATO_SAAS_SECURITY_API_TWO_APPS":
 					total := int(license.SaasSecurityAPILicense.Total)
 					curTotal = types.Int64Value(int64(total))
-				case licenseSkuCatoSite, licenseSkuCatoSSESite:
+				case licensing.SKUCatoSite, licensing.SKUCatoSSESite:
 					total := int(license.SiteLicense.Total)
 					curTotal = types.Int64Value(int64(total))
 					var curSites []attr.Value

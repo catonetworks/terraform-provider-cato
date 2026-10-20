@@ -4,8 +4,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
+	applicationcontrol2 "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
@@ -27,7 +27,7 @@ var applicationControlTypedRuleAttrTypes = map[string]attr.Type{
 	"action":                       types.StringType,
 	"severity":                     types.StringType,
 	"schedule":                     policyschedule.ScheduleObjectType,
-	"source":                       applicationcontrol.ApplicationControlSourceObjectType,
+	"source":                       applicationcontrol2.ApplicationControlSourceObjectType,
 	"tracking":                     policyrule.TrackingObjectType,
 	"device":                       types.SetType{ElemType: idname.RefObjectType},
 	"access_method":                types.ListType{ElemType: types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}},

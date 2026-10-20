@@ -1,4 +1,4 @@
-package appconnector
+package appconnectorgroup
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/types"

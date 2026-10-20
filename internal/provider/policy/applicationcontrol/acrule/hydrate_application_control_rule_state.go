@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
+	applicationcontrol2 "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iprange"
@@ -439,7 +439,7 @@ func acSourceObjectFromApplicationRuleSource(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if src == nil {
-		return types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
+		return types.ObjectNull(applicationcontrol2.ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
 		"country": oldidname.ParseNameIDList(ctx, src.GetCountry(),
@@ -471,7 +471,7 @@ func acSourceObjectFromApplicationRuleSource(
 		"system_group": oldidname.ParseNameIDList(ctx, src.GetSystemGroup(),
 			"application_rule.source.system_group"),
 	}
-	o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
+	o, d := types.ObjectValue(applicationcontrol2.ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
 	return o
 }
@@ -482,7 +482,7 @@ func acSourceObjectFromDataRuleSource(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if src == nil {
-		return types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
+		return types.ObjectNull(applicationcontrol2.ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
 		"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "data_rule.source.country"),
@@ -500,7 +500,7 @@ func acSourceObjectFromDataRuleSource(
 		"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "data_rule.source.group"),
 		"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "data_rule.source.system_group"),
 	}
-	o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
+	o, d := types.ObjectValue(applicationcontrol2.ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
 	return o
 }
@@ -511,7 +511,7 @@ func acSourceObjectFromFileRuleSource(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if src == nil {
-		return types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
+		return types.ObjectNull(applicationcontrol2.ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
 		"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "file_rule.source.country"),
@@ -529,7 +529,7 @@ func acSourceObjectFromFileRuleSource(
 		"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "file_rule.source.group"),
 		"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "file_rule.source.system_group"),
 	}
-	o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
+	o, d := types.ObjectValue(applicationcontrol2.ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
 	return o
 }

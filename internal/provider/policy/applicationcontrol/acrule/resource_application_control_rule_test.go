@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
+	applicationcontrol2 "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
@@ -184,7 +184,7 @@ func newMinimalApplicationControlRulePlan(
 		"action":                       types.StringValue(string(cato_models.ApplicationControlActionMonitor)),
 		"severity":                     types.StringValue(string(cato_models.ApplicationControlSeverityMedium)),
 		"schedule":                     types.ObjectNull(policyschedule.ScheduleAttrTypes),
-		"source":                       types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes),
+		"source":                       types.ObjectNull(applicationcontrol2.ApplicationControlSourceAttrTypes),
 		"tracking":                     types.ObjectNull(policyrule.TrackingAttrTypes),
 		"device":                       types.SetNull(idname.RefObjectType),
 		"access_method":                types.ListNull(types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}),

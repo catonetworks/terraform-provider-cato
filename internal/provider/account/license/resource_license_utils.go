@@ -10,14 +10,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/licensing"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 const (
-	licenseSkuCatoPB       = "CATO_PB"
-	licenseSkuCatoPBSSE    = "CATO_PB_SSE"
-	licenseSkuCatoSite     = "CATO_SITE"
-	licenseSkuCatoSSESite  = "CATO_SSE_SITE"
 	bandwidthRequiredError = "Bandwidth must be set for 'CATO_PB' and 'CATO_PB_SSE' pooled bandwidth license type."
 )
 
@@ -107,10 +104,10 @@ func upsertLicense(ctx context.Context, plan Resource, cc *catoclient.Service) (
 	if licenseExists {
 		// Check for the correct license type
 		tflog.Warn(ctx, "Checking license SKU for CATO_PB, CATO_PB_SSE, CATO_SITE, or CATO_SSE_SITE type, license.Sku='"+string(license.Sku)+"'")
-		if string(license.Sku) != licenseSkuCatoPB &&
-			string(license.Sku) != licenseSkuCatoPBSSE &&
-			string(license.Sku) != licenseSkuCatoSite &&
-			string(license.Sku) != licenseSkuCatoSSESite {
+		if string(license.Sku) != licensing.SKUCatoPB &&
+			string(license.Sku) != licensing.SKUCatoPBSSE &&
+			string(license.Sku) != licensing.SKUCatoSite &&
+			string(license.Sku) != licensing.SKUCatoSSESite {
 			message := "Site License ID '" + plan.LicenseID.ValueString() + "' is not a valid site license. Must be 'CATO_PB', 'CATO_PB_SSE', 'CATO_SITE', or 'CATO_SSE_SITE' license type."
 			diags = append(diags, diag.NewErrorDiagnostic("INVALID LICENSE TYPE", message))
 			return nil, fmt.Errorf("INVALID LICENSE TYPE: %s", message)
@@ -119,7 +116,7 @@ func upsertLicense(ctx context.Context, plan Resource, cc *catoclient.Service) (
 		// A site can have allocations from multiple pooled licenses. When the
 		// selected pool is already assigned, scope the update and comparison to
 		// that allocation instead of whichever site allocation was listed last.
-		if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
+		if string(license.Sku) == licensing.SKUCatoPB || string(license.Sku) == licensing.SKUCatoPBSSE {
 			selectedAllocatedBw, selectedPoolIsAssigned := getSiteAssignmentForLicense(plan.SiteID.ValueString(), license)
 			if selectedPoolIsAssigned {
 				allocatedBw = selectedAllocatedBw
@@ -139,7 +136,7 @@ func upsertLicense(ctx context.Context, plan Resource, cc *catoclient.Service) (
 			// if the site is already assigned to this license
 			if curSiteLicenseID.ValueString() == plan.LicenseID.ValueString() {
 				tflog.Warn(ctx, "Site ID '"+plan.SiteID.ValueString()+"' is already assigned to license ID '"+fmt.Sprintf("%v", license.ID)+"'")
-				if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
+				if string(license.Sku) == licensing.SKUCatoPB || string(license.Sku) == licensing.SKUCatoPBSSE {
 					if plan.BW.ValueInt64() != *allocatedBw {
 						// Checking license SKU type for PB
 						tflog.Warn(ctx, "Pooled bandwidth license identfied '"+license.Sku.String()+"', assigning BW")
@@ -182,7 +179,7 @@ func upsertLicense(ctx context.Context, plan Resource, cc *catoclient.Service) (
 				input.Site = siteRef
 				// Check for BW if pooled
 				tflog.Warn(ctx, "Checking license SKU type for PB")
-				if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
+				if string(license.Sku) == licensing.SKUCatoPB || string(license.Sku) == licensing.SKUCatoPBSSE {
 					if plan.BW.IsUnknown() || plan.BW.IsNull() {
 						message := bandwidthRequiredError
 						diags = append(diags, diag.NewErrorDiagnostic("INVALID CONFIGURATION", message))
@@ -214,7 +211,7 @@ func upsertLicense(ctx context.Context, plan Resource, cc *catoclient.Service) (
 			input.Site = siteRef
 			// Check for BW if pooled
 			tflog.Warn(ctx, "Checking license SKU type for PB")
-			if string(license.Sku) == licenseSkuCatoPB || string(license.Sku) == licenseSkuCatoPBSSE {
+			if string(license.Sku) == licensing.SKUCatoPB || string(license.Sku) == licensing.SKUCatoPBSSE {
 				if plan.BW.IsUnknown() || plan.BW.IsNull() {
 					message := bandwidthRequiredError
 					diags = append(diags, diag.NewErrorDiagnostic("INVALID CONFIGURATION", message))

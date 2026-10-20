@@ -19,14 +19,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/appconnector"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectorgroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/privateapp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/account"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/admin"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/licensinginfo"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/license"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/host"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkinterfaces"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/sitelocation"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
@@ -52,6 +56,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlssection"
@@ -65,6 +70,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
+	groupdata "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/groupmembers"
@@ -494,18 +500,18 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		accountsnapshotsite.NewAccountSnapshotSiteDataSource,
 		allocatedip.Source,
 		dhcprelaygroup.DataSource,
-		group.DataSource,
-		license.LicensingInfoDataSource,
+		groupdata.DataSource,
+		licensinginfo.NewDataSource,
 		networkinterfaces.NetworkInterfacesDataSource,
 		sitelocation.DataSource,
 		ifwrulesindex.IndexDataSource,
 		wfrulesindex.WanRulesIndexDataSource,
-		tlsindex.RulesIndexDataSource,
+		tlsrulesindex.RulesIndexDataSource,
 		ifrulesections.IfRuleSectionsDataSource,
 		wfrulesections.WfRuleSectionsDataSource,
-		networkrange.NetworkRangesDataSource,
-		statichost.HostDataSource,
-		appconnector.GroupDataSource,
+		networkranges.DataSource,
+		host.DataSource,
+		appconnectorgroup.GroupDataSource,
 	}
 }
 

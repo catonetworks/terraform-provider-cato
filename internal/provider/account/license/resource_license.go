@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/licensing"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -237,7 +238,7 @@ func hydrateLicenseState(
 		"status":              types.StringValue(string(curLicense.Status)),
 		"total":               types.Int64Value(curLicense.SiteLicense.Total),
 	}
-	if curLicense.Sku == licenseSkuCatoPB || curLicense.Sku == licenseSkuCatoPBSSE {
+	if curLicense.Sku == licensing.SKUCatoPB || curLicense.Sku == licensing.SKUCatoPBSSE {
 		licenseInfoAttrs = map[string]attr.Value{
 			"allocated_bandwidth": types.Int64Value(curLicense.PooledBandwidthLicense.AllocatedBandwidth),
 			"expiration_date":     types.StringValue(curLicense.ExpirationDate),
@@ -254,7 +255,7 @@ func hydrateLicenseState(
 
 	licenseInfo, diagstmp := types.ObjectValue(LicenseInfoResourceAttrTypes, licenseInfoAttrs)
 	diags = append(diags, diagstmp...)
-	if curLicense.Sku == licenseSkuCatoPB || curLicense.Sku == licenseSkuCatoSite {
+	if curLicense.Sku == licensing.SKUCatoPB || curLicense.Sku == licensing.SKUCatoSite {
 		if curLicense.Status != licenseStatusActive {
 			diags.AddError(
 				"INACTIVE LICENSE STATUS",
@@ -299,13 +300,13 @@ func getSiteAssignmentForLicense(
 	license *cato_go_sdk.Licensing_Licensing_LicensingInfo_Licenses,
 ) (allocatedBw *int64, isAssigned bool) {
 	switch license.Sku {
-	case licenseSkuCatoPB, licenseSkuCatoPBSSE:
+	case licensing.SKUCatoPB, licensing.SKUCatoPBSSE:
 		for _, site := range license.PooledBandwidthLicense.Sites {
 			if site.SitePooledBandwidthLicenseSite.ID == siteID {
 				return &site.AllocatedBandwidth, true
 			}
 		}
-	case licenseSkuCatoSite, licenseSkuCatoSSESite:
+	case licensing.SKUCatoSite, licensing.SKUCatoSSESite:
 		if license.SiteLicense.Site != nil && license.SiteLicense.Site.ID == siteID {
 			return nil, true
 		}
@@ -350,7 +351,7 @@ func getCurrentAssignedLicenseBySiteID(
 	licenses := licensingInfoResponse.Licensing.LicensingInfo.Licenses
 	for _, curLicense := range licenses {
 		switch curLicense.Sku {
-		case licenseSkuCatoPB, licenseSkuCatoPBSSE:
+		case licensing.SKUCatoPB, licensing.SKUCatoPBSSE:
 			if len(curLicense.PooledBandwidthLicense.Sites) > 0 {
 				for _, site := range curLicense.PooledBandwidthLicense.Sites {
 					if site.SitePooledBandwidthLicenseSite.ID != "" {
@@ -371,7 +372,7 @@ func getCurrentAssignedLicenseBySiteID(
 					}
 				}
 			}
-		case licenseSkuCatoSite, licenseSkuCatoSSESite:
+		case licensing.SKUCatoSite, licensing.SKUCatoSSESite:
 			if curLicense.SiteLicense.Site != nil {
 				if curLicense.SiteLicense.Site.ID == curSiteID {
 					tflog.Warn(ctx, "getCurrentAssignedLicenseBySiteID() - Site ID matched! "+curLicense.SiteLicense.Site.ID)
@@ -401,7 +402,7 @@ func checkStaticLicenseForAssignment(
 			tflog.Debug(ctx, "Calling checkStaticLicenseForAssignment()", map[string]interface{}{
 				"curLicense.ID": fmt.Sprintf("%v", curLicense.ID),
 			})
-			if *curLicense.ID == licenseID && (curLicense.Sku == licenseSkuCatoSite || curLicense.Sku == licenseSkuCatoSSESite) {
+			if *curLicense.ID == licenseID && (curLicense.Sku == licensing.SKUCatoSite || curLicense.Sku == licensing.SKUCatoSSESite) {
 				if curLicense.SiteLicense.Site != nil {
 					tflog.Debug(ctx, "Calling checkStaticLicenseForAssignment() curLicense.SiteLicense.Site", map[string]interface{}{
 						"curLicense.SiteLicense.Site.ID":                  curLicense.SiteLicense.Site.ID,

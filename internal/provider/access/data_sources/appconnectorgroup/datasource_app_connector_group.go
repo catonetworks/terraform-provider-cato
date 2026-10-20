@@ -1,4 +1,4 @@
-package appconnector
+package appconnectorgroup
 
 import (
 	"context"

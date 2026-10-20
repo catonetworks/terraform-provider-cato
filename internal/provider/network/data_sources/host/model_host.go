@@ -1,10 +1,10 @@
-package statichost
+package host
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type HostLookup struct {
+type Lookup struct {
 	NameFilter types.List `tfsdk:"name_filter"`
 	IPFilter   types.List `tfsdk:"ip_filter"`
 	Items      types.List `tfsdk:"items"`
