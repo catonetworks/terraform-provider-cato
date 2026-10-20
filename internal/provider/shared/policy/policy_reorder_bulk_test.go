@@ -1,0 +1,280 @@
+package policy
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+)
+
+func TestBuildPolicyReorderInput_twoRulesSwapOrder(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "A", Index: 1},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r2", RuleName: "B", Index: 2},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "Sec", RuleName: "B", IndexInSection: 1},
+		{SectionName: "Sec", RuleName: "A", IndexInSection: 2},
+	}
+	in, err := BuildPolicyReorderInput(sections, rules, planned)
+	require.NoError(t, err)
+	require.Len(t, in.Sections, 1)
+	require.Len(t, in.Sections[0].Rules, 2)
+	require.Equal(t, "r2", in.Sections[0].Rules[0].Ref.Input)
+	require.Equal(t, "r1", in.Sections[0].Rules[1].Ref.Input)
+}
+
+func TestBuildPolicyReorderInput_pinsOmittedSystemRule(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "system", RuleName: "System", Index: 0, IsSystem: true},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "A", Index: 1},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r2", RuleName: "B", Index: 2},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "Sec", RuleName: "B", IndexInSection: 1},
+		{SectionName: "Sec", RuleName: "A", IndexInSection: 2},
+	}
+
+	in, err := BuildPolicyReorderInput(sections, rules, planned)
+
+	require.NoError(t, err)
+	require.Len(t, in.Sections, 1)
+	require.Len(t, in.Sections[0].Rules, 3)
+	require.Equal(t, "system", in.Sections[0].Rules[0].Ref.Input)
+	require.Equal(t, "r2", in.Sections[0].Rules[1].Ref.Input)
+	require.Equal(t, "r1", in.Sections[0].Rules[2].Ref.Input)
+}
+
+func TestBuildPolicyReorderInput_rejectsSystemRuleIncludedAtCurrentPosition(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "system", RuleName: "System", Index: 0, IsSystem: true},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "A", Index: 1},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r2", RuleName: "B", Index: 2},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "Sec", RuleName: "System", IndexInSection: 1},
+		{SectionName: "Sec", RuleName: "B", IndexInSection: 2},
+		{SectionName: "Sec", RuleName: "A", IndexInSection: 3},
+	}
+
+	_, err := BuildPolicyReorderInput(sections, rules, planned)
+
+	require.ErrorContains(t, err, `system rule "System" in section "Sec" cannot be managed by rule_data`)
+	require.ErrorContains(t, err, "omit system rules to pin them automatically")
+}
+
+func TestBuildPolicyReorderInput_rejectsSameSectionSystemRuleMove(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "system", RuleName: "System", Index: 0, IsSystem: true},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "A", Index: 1},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r2", RuleName: "B", Index: 2},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "Sec", RuleName: "B", IndexInSection: 1},
+		{SectionName: "Sec", RuleName: "System", IndexInSection: 2},
+		{SectionName: "Sec", RuleName: "A", IndexInSection: 3},
+	}
+
+	_, err := BuildPolicyReorderInput(sections, rules, planned)
+
+	require.ErrorContains(t, err, `system rule "System" in section "Sec" cannot be managed by rule_data`)
+	require.ErrorContains(t, err, "omit system rules to pin them automatically")
+}
+
+func TestBuildPolicyReorderInput_pinsSystemRuleAtMiddlePosition(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "A", Index: 0},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "system", RuleName: "System", Index: 1, IsSystem: true},
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r2", RuleName: "B", Index: 2},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "Sec", RuleName: "B", IndexInSection: 1},
+		{SectionName: "Sec", RuleName: "A", IndexInSection: 2},
+	}
+
+	in, err := BuildPolicyReorderInput(sections, rules, planned)
+
+	require.NoError(t, err)
+	require.Len(t, in.Sections[0].Rules, 3)
+	require.Equal(t, "r2", in.Sections[0].Rules[0].Ref.Input)
+	require.Equal(t, "system", in.Sections[0].Rules[1].Ref.Input)
+	require.Equal(t, "r1", in.Sections[0].Rules[2].Ref.Input)
+}
+
+func TestBuildPolicyReorderInput_rejectsSystemRuleSectionMove(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{
+		{ID: "s1", Name: "SecA"},
+		{ID: "s2", Name: "SecB"},
+	}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "SecA", RuleID: "system", RuleName: "System", Index: 0, IsSystem: true},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "SecB", RuleName: "System", IndexInSection: 1},
+	}
+
+	_, err := BuildPolicyReorderInput(sections, rules, planned)
+
+	require.ErrorContains(t, err, `system rule "System" in section "SecA" cannot be managed by rule_data`)
+}
+
+func TestBuildPolicyReorderInput_errorsWhenSystemPositionCannotBeRetained(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{
+		{ID: "s1", Name: "SecA"},
+		{ID: "s2", Name: "SecB"},
+	}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "SecA", RuleID: "r1", RuleName: "A", Index: 0},
+		{SectionID: "s1", SectionName: "SecA", RuleID: "r2", RuleName: "B", Index: 1},
+		{SectionID: "s1", SectionName: "SecA", RuleID: "system", RuleName: "System", Index: 2, IsSystem: true},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "SecB", RuleName: "A", IndexInSection: 1},
+		{SectionName: "SecB", RuleName: "B", IndexInSection: 2},
+	}
+
+	_, err := BuildPolicyReorderInput(sections, rules, planned)
+
+	require.ErrorContains(t, err, `system rule "System" cannot remain at position 2`)
+}
+
+func TestBuildPolicyReorderInput_includesEmptySection(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{
+		{ID: "empty", Name: "EmptySec"},
+		{ID: "s1", Name: "Sec"},
+	}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "A", Index: 1},
+	}
+	planned := []BulkPlannedRuleIndex{{SectionName: "Sec", RuleName: "A", IndexInSection: 1}}
+	in, err := BuildPolicyReorderInput(sections, rules, planned)
+	require.NoError(t, err)
+	require.Len(t, in.Sections, 2)
+	require.Equal(t, "empty", in.Sections[0].Ref.Input)
+	require.Len(t, in.Sections[0].Rules, 0)
+	require.Equal(t, "s1", in.Sections[1].Ref.Input)
+	require.Len(t, in.Sections[1].Rules, 1)
+}
+
+func TestBuildPolicyReorderInput_ignoresSectionlessSubPolicyRules(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "main", RuleName: "Main", Index: 1},
+		{SectionID: "", SectionName: "", RuleID: "child", RuleName: "Sub-policy child", Index: 1},
+		{SectionID: "", SectionName: "", RuleID: "cleanup", RuleName: "Sub-policy cleanup", Index: 2},
+	}
+	planned := []BulkPlannedRuleIndex{{SectionName: "Sec", RuleName: "Main", IndexInSection: 1}}
+
+	in, err := BuildPolicyReorderInput(sections, rules, planned)
+
+	require.NoError(t, err)
+	require.Len(t, in.Sections, 1)
+	require.Len(t, in.Sections[0].Rules, 1)
+	require.Equal(t, "main", in.Sections[0].Rules[0].Ref.Input)
+}
+
+func TestBuildPolicyReorderInput_plannedUnknownRule(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "A", Index: 1},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "Sec", RuleName: "missing", IndexInSection: 1},
+	}
+	_, err := BuildPolicyReorderInput(sections, rules, planned)
+	require.Error(t, err)
+}
+
+func TestBuildPolicyReorderInput_crossSectionPlannedRules(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{
+		{ID: "sa", Name: "SecA"},
+		{ID: "sb", Name: "SecB"},
+	}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "sa", SectionName: "SecA", RuleID: "idX", RuleName: "X", Index: 1},
+		{SectionID: "sb", SectionName: "SecB", RuleID: "idY", RuleName: "Y", Index: 1},
+	}
+	// Move Y into SecA above X; SecB remains in the payload with an empty rule list.
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "SecA", RuleName: "Y", IndexInSection: 1},
+		{SectionName: "SecA", RuleName: "X", IndexInSection: 2},
+	}
+	in, err := BuildPolicyReorderInput(sections, rules, planned)
+	require.NoError(t, err)
+	require.Len(t, in.Sections, 2)
+	require.Equal(t, "sa", in.Sections[0].Ref.Input)
+	require.Len(t, in.Sections[0].Rules, 2)
+	require.Equal(t, "idY", in.Sections[0].Rules[0].Ref.Input)
+	require.Equal(t, "idX", in.Sections[0].Rules[1].Ref.Input)
+	require.Equal(t, "sb", in.Sections[1].Ref.Input)
+	require.Len(t, in.Sections[1].Rules, 0)
+}
+
+func TestInternetFirewallReorderError_propagatesCallError(t *testing.T) {
+	t.Parallel()
+	err := InternetFirewallReorderError(nil, errors.New("network"))
+	require.ErrorContains(t, err, "network")
+}
+
+func TestInternetFirewallBulkPolicyClient_ReorderInvoked(t *testing.T) {
+	t.Parallel()
+	m := mocks.NewInternetFirewallBulkPolicyClient(t)
+	ctx := context.Background()
+	accountID := "acc-1"
+	reorderIn := cato_models.PolicyReorderInput{
+		Sections: []*cato_models.PolicyReorderSectionInput{
+			{
+				Ref: &cato_models.PolicyElementRefInput{By: cato_models.ObjectRefByID, Input: "s1"},
+				Rules: []*cato_models.PolicyReorderRuleInput{
+					{
+						Ref:      &cato_models.PolicyElementRefInput{By: cato_models.ObjectRefByID, Input: "r1"},
+						SubRules: []*cato_models.PolicyReorderSubRuleInput{},
+					},
+				},
+			},
+		},
+	}
+
+	m.On("PolicyInternetFirewallReorderPolicy", ctx, mock.Anything, reorderIn, accountID).
+		Return(nil, errors.New("injected")).
+		Once()
+
+	_, err := m.PolicyInternetFirewallReorderPolicy(ctx, nil, reorderIn, accountID)
+	require.ErrorContains(t, err, "injected")
+}
+
+func TestWanFirewallBulkPolicyClient_ReorderInvoked(t *testing.T) {
+	t.Parallel()
+	m := mocks.NewWanFirewallBulkPolicyClient(t)
+	ctx := context.Background()
+	accountID := "acc-2"
+	reorderIn := cato_models.PolicyReorderInput{Sections: []*cato_models.PolicyReorderSectionInput{}}
+
+	m.On("PolicyWanFirewallReorderPolicy", ctx, mock.Anything, reorderIn, accountID).
+		Return(nil, errors.New("injected")).
+		Once()
+
+	_, err := m.PolicyWanFirewallReorderPolicy(ctx, nil, reorderIn, accountID)
+	require.ErrorContains(t, err, "injected")
+}

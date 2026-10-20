@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/netrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/networkrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -63,7 +63,7 @@ func (v NativeRangeValidator) ValidateObject(ctx context.Context, req validator.
 	}
 
 	// Validate that local_ip is within native_network_range
-	if netrange.CheckLocalIP(&resp.Diagnostics, nativeRange.LocalIP, nativeRange.NativeNetworkRange) != nil {
+	if networkrange.CheckLocalIP(&resp.Diagnostics, nativeRange.LocalIP, nativeRange.NativeNetworkRange) != nil {
 		return
 	}
 
@@ -117,7 +117,7 @@ func (v NativeRangeValidator) checkInterfaceIndex(diags *diag.Diagnostics, nativ
 		fmt.Sprintf("interface_index can only be specified when connection_type is one of: %v",
 			connTypesWithInterfaceIndex),
 	)
-	return apperr.ErrConfig
+	return apperror.ErrConfig
 }
 
 // checkLag checks lag settings on the native range
@@ -139,7 +139,7 @@ func (v NativeRangeValidator) checkLag(diags *diag.Diagnostics, destType cato_mo
 	if destIsLagMaster && !hasLagMinLinks {
 		diags.AddError("Invalid LAG Configuration",
 			fmt.Sprintf("When interface_dest_type is %s, lag_min_links must be specified.", destType))
-		return apperr.ErrConfig
+		return apperror.ErrConfig
 	}
 
 	// If lag_min_links has a value, interface_dest_type must be LAN_LAG_MASTER or LAN_LAG_MASTER_AND_VRRP
@@ -148,7 +148,7 @@ func (v NativeRangeValidator) checkLag(diags *diag.Diagnostics, destType cato_mo
 			fmt.Sprintf("lag_min_links can only be configured when interface_dest_type is LAN_LAG_MASTER or "+
 				"LAN_LAG_MASTER_AND_VRRP, but interface_dest_type is %s.", destType),
 		)
-		return apperr.ErrConfig
+		return apperror.ErrConfig
 	}
 
 	return nil

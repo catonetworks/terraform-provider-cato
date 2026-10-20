@@ -58,8 +58,8 @@ func TestIDNamePlanModifierPlanModifyObject(t *testing.T) {
 
 		m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 			Path:        path.Root("ref"),
-			ConfigValue: types.ObjectUnknown(ModelTypes),
-			StateValue:  types.ObjectNull(ModelTypes),
+			ConfigValue: types.ObjectUnknown(RefAttrTypes),
+			StateValue:  types.ObjectNull(RefAttrTypes),
 		}, resp)
 
 		if resp.Diagnostics.HasError() {
@@ -78,7 +78,7 @@ func TestIDNamePlanModifierPlanModifyObject(t *testing.T) {
 			m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 				Path:        path.Root("ref"),
 				ConfigValue: newRefObject(t, types.StringNull(), types.StringNull()),
-				StateValue:  types.ObjectNull(ModelTypes),
+				StateValue:  types.ObjectNull(RefAttrTypes),
 			}, resp)
 
 			if !resp.Diagnostics.HasError() {
@@ -93,7 +93,7 @@ func TestIDNamePlanModifierPlanModifyObject(t *testing.T) {
 			m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 				Path:        path.Root("ref"),
 				ConfigValue: newRefObject(t, types.StringValue("name-1"), types.StringValue("id-1")),
-				StateValue:  types.ObjectNull(ModelTypes),
+				StateValue:  types.ObjectNull(RefAttrTypes),
 			}, resp)
 
 			if !resp.Diagnostics.HasError() {
@@ -174,7 +174,7 @@ func TestIDNamePlanModifierPlanModifyObject(t *testing.T) {
 
 		m.PlanModifyObject(context.Background(), planmodifier.ObjectRequest{
 			Path:        path.Root("ref"),
-			ConfigValue: types.ObjectNull(ModelTypes),
+			ConfigValue: types.ObjectNull(RefAttrTypes),
 			StateValue:  newRefObject(t, types.StringValue("n1"), types.StringValue("id-1")),
 		}, resp)
 
@@ -187,7 +187,7 @@ func TestIDNamePlanModifierPlanModifyObject(t *testing.T) {
 func newRefObject(t *testing.T, name, id types.String) types.Object {
 	t.Helper()
 
-	obj, diags := types.ObjectValue(ModelTypes, map[string]attr.Value{
+	obj, diags := types.ObjectValue(RefAttrTypes, map[string]attr.Value{
 		"name": name,
 		"id":   id,
 	})
@@ -197,10 +197,10 @@ func newRefObject(t *testing.T, name, id types.String) types.Object {
 	return obj
 }
 
-func mustAsRefModel(t *testing.T, v types.Object) Model {
+func mustAsRefModel(t *testing.T, v types.Object) Ref {
 	t.Helper()
 
-	var out Model
+	var out Ref
 	diags := v.As(context.Background(), &out, basetypes.ObjectAsOptions{})
 	if diags.HasError() {
 		t.Fatalf("unexpected object conversion diagnostics: %+v", diags)

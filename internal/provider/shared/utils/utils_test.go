@@ -97,6 +97,7 @@ func TestNormalizeDateTimePtr(t *testing.T) {
 		got := NormalizeDateTimePtr(&in)
 		if got == nil {
 			t.Fatal("expected non-nil pointer")
+			return
 		}
 		if *got != "2024-02-03T04:05:06Z" {
 			t.Fatalf("unexpected normalized pointer value: %q", *got)

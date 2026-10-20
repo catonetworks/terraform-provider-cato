@@ -33,8 +33,8 @@ func (m idNamePlanModifier) MarkdownDescription(ctx context.Context) string {
 //
 //nolint:gocyclo
 func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
-	var cfg, state *Model
-	var plan Model
+	var cfg, state *Ref
+	var plan Ref
 
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
 	if req.ConfigValue.IsUnknown() {
@@ -47,7 +47,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		if req.StateValue.IsNull() {
 			return
 		}
-		resp.PlanValue = types.ObjectNull(ModelTypes)
+		resp.PlanValue = types.ObjectNull(RefAttrTypes)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		// Name is different -> set ID as unknown
 		plan.Name = cfg.Name
 		plan.ID = types.StringUnknown()
-		planObj, diag := types.ObjectValueFrom(ctx, ModelTypes, plan)
+		planObj, diag := types.ObjectValueFrom(ctx, RefAttrTypes, plan)
 		if utils.CheckErr(&resp.Diagnostics, diag) {
 			return
 		}
@@ -96,7 +96,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 	// ID is different -> set Name as unknown
 	plan.Name = types.StringUnknown()
 	plan.ID = cfg.ID
-	planObj, diag := types.ObjectValueFrom(ctx, ModelTypes, plan)
+	planObj, diag := types.ObjectValueFrom(ctx, RefAttrTypes, plan)
 	if utils.CheckErr(&resp.Diagnostics, diag) {
 		return
 	}

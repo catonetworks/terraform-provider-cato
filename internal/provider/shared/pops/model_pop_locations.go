@@ -17,6 +17,6 @@ type PreferredPopLocationModel struct {
 var PreferredPopLocationModelTypes = map[string]attr.Type{
 	"preferred_only": types.BoolType,
 	"automatic":      types.BoolType,
-	"primary":        types.ObjectType{AttrTypes: idname.ModelTypes},
-	"secondary":      types.ObjectType{AttrTypes: idname.ModelTypes},
+	"primary":        types.ObjectType{AttrTypes: idname.RefAttrTypes},
+	"secondary":      types.ObjectType{AttrTypes: idname.RefAttrTypes},
 }

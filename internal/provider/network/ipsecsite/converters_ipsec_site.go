@@ -35,12 +35,6 @@ func hydrateAddIpsecIkeV2Site(ctx context.Context, plan SiteIpsecIkeV2) (cato_mo
 	return input, diags
 }
 
-// hydrateIpsecTunnelsAPITypes holds both Add and Update tunnel inputs
-type hydrateIpsecTunnelsAPITypes struct {
-	add    cato_models.AddIpsecIkeV2SiteTunnelsInput
-	update cato_models.UpdateIpsecIkeV2SiteTunnelsInput
-}
-
 // hydrateAddIpsecIkeV2SiteTunnels takes the plan and returns both Add and Update inputs for tunnels
 //
 //nolint:funlen

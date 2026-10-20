@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -43,7 +43,7 @@ func (d dhcpChecker) check(ctx context.Context, diags *diag.Diagnostics, dhcp, p
 
 	// get dhcp config
 	if utils.CheckErr(diags, dhcp.As(ctx, &dhcpSettings, basetypes.ObjectAsOptions{})) {
-		return apperr.ErrConfig
+		return apperror.ErrConfig
 	}
 	if d.isUnknown(dhcpSettings) {
 		return nil
@@ -52,7 +52,7 @@ func (d dhcpChecker) check(ctx context.Context, diags *diag.Diagnostics, dhcp, p
 	var priorDhcpSettings *Settings
 	if utils.HasValue(priorState) {
 		if utils.CheckErr(diags, priorState.As(ctx, &priorDhcpSettings, basetypes.ObjectAsOptions{})) {
-			return apperr.ErrConfig
+			return apperror.ErrConfig
 		}
 		if d.isUnknown(priorDhcpSettings) {
 			priorDhcpSettings = nil
@@ -87,7 +87,7 @@ func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings Settin
 		if relayGroupIDExplicit || relayGroupNameExplicit {
 			diags.AddError("Invalid DHCP Configuration",
 				fmt.Sprintf("relay_group_id or relay_group_name can only be configured when DHCP type is 'DHCP_RELAY' (have %q)", dhcpType))
-			return apperr.ErrConfig
+			return apperror.ErrConfig
 		}
 		return nil
 	}
@@ -96,12 +96,12 @@ func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings Settin
 	if !relayGroupNameSet && !relayGroupIDSet {
 		diags.AddError("Invalid DHCP Configuration",
 			"either relay_group_id or relay_group_name must be configured when DHCP type is 'DHCP_RELAY'")
-		return apperr.ErrConfig
+		return apperror.ErrConfig
 	}
 	if relayGroupNameExplicit && relayGroupIDExplicit {
 		diags.AddError("Invalid DHCP Configuration",
 			"only one of relay_group_id or relay_group_name can be configured when DHCP type is 'DHCP_RELAY'")
-		return apperr.ErrConfig
+		return apperror.ErrConfig
 	}
 	return nil
 }
@@ -131,7 +131,7 @@ func (d dhcpChecker) checkDHCPRange(diags *diag.Diagnostics, dhcpSettings Settin
 		if !ipRangeSet {
 			diags.AddError("Invalid DHCP Configuration",
 				"ip_range must be configured when DHCP type is 'DHCP_RANGE'")
-			return apperr.ErrConfig
+			return apperror.ErrConfig
 		}
 		return nil
 	}
@@ -140,13 +140,13 @@ func (d dhcpChecker) checkDHCPRange(diags *diag.Diagnostics, dhcpSettings Settin
 	if ipRangeSet {
 		diags.AddError("Invalid DHCP Configuration",
 			"ip_range can only be configured when DHCP type is 'DHCP_RANGE'")
-		return apperr.ErrConfig
+		return apperror.ErrConfig
 	}
 
 	if utils.HasValue(dhcpSettings.DhcpMicrosegmentation) && dhcpSettings.DhcpMicrosegmentation.ValueBool() {
 		diags.AddError("Invalid DHCP Configuration",
 			"dhcp_microsegmentation can only be seto to true, when DHCP type is 'DHCP_RANGE'")
-		return apperr.ErrConfig
+		return apperror.ErrConfig
 	}
 
 	return nil
