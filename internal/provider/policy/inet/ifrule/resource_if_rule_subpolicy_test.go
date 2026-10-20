@@ -1,4 +1,4 @@
-package ifsubpolicy
+package ifrule
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -51,22 +50,11 @@ func ifwPolicyWithSubPolicy(subID, subName string) *cato_go_sdk.Policy {
 	}
 }
 
-func TestIfwSubPolicyCleanupRuleID(t *testing.T) {
-	body := ifwPolicyWithSubPolicy("sub-1", "MySub")
-
-	if got := ifwSubPolicyCleanupRuleID(body, "sub-1"); got != "cleanup-1" {
-		t.Fatalf("expected cleanup-1, got %q", got)
-	}
-	if got := ifwSubPolicyCleanupRuleID(body, "missing"); got != "" {
-		t.Fatalf("expected empty for missing sub-policy, got %q", got)
-	}
-}
-
 func newInternetFwRulePlanWithSubPolicy(ctx context.Context, t *testing.T, subID string) tfsdk.Plan {
 	t.Helper()
-	model := ifrule.NewMinimalInternetFwRuleModel("")
+	model := NewMinimalInternetFwRuleModel("")
 	model.SubPolicyID = types.StringValue(subID)
-	plan := tfsdk.Plan{Schema: ifrule.GetInternetFwRuleSchema(ctx, t)}
+	plan := tfsdk.Plan{Schema: GetInternetFwRuleSchema(ctx, t)}
 	if diags := plan.Set(ctx, model); diags.HasError() {
 		t.Fatalf("unexpected plan diagnostics: %+v", diags)
 	}
@@ -88,7 +76,7 @@ func TestInternetFwRuleCreateIntoSubPolicy(t *testing.T) {
 		PolicyInternetFirewallAddRule(mock.Anything, mock.Anything, "account-123").
 		RunAndReturn(func(_ context.Context, in cato_models.InternetFirewallAddRuleInput, _ string, _ ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyInternetFirewallAddRule, error) {
 			capturedAt = in.At
-			return ifrule.SuccessfulAddRuleResponse("rule-123"), nil
+			return SuccessfulAddRuleResponse("rule-123"), nil
 		}).
 		Once()
 	mockClient.EXPECT().
@@ -98,15 +86,15 @@ func TestInternetFwRuleCreateIntoSubPolicy(t *testing.T) {
 	// Second PolicyInternetFirewall call hydrates state after publish.
 	mockClient.EXPECT().
 		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(ifrule.InternetFirewallPolicyResponseWithRule(ifrule.MinimalAPIRule("test-ifw-rule", 10)), nil).
+		Return(InternetFirewallPolicyResponseWithRule(MinimalAPIRule("test-ifw-rule", 10)), nil).
 		Once()
 
-	r := &ifrule.InternetFwRuleResource{
+	r := &InternetFwRuleResource{
 		Client:    &catoclient.Service{AccountId: "account-123"},
 		IfwClient: mockClient,
 	}
 	req := resource.CreateRequest{Plan: newInternetFwRulePlanWithSubPolicy(ctx, t, "sub-1")}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: ifrule.GetInternetFwRuleSchema(ctx, t)}}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
 
 	r.Create(ctx, req, resp)
 
@@ -130,15 +118,15 @@ func TestInternetFwRuleCreateSubPolicyNotFound(t *testing.T) {
 
 	mockClient.EXPECT().
 		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(ifrule.EmptyInternetFirewallPolicyResponse(), nil).
+		Return(EmptyInternetFirewallPolicyResponse(), nil).
 		Once()
 
-	r := &ifrule.InternetFwRuleResource{
+	r := &InternetFwRuleResource{
 		Client:    &catoclient.Service{AccountId: "account-123"},
 		IfwClient: mockClient,
 	}
 	req := resource.CreateRequest{Plan: newInternetFwRulePlanWithSubPolicy(ctx, t, "sub-1")}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: ifrule.GetInternetFwRuleSchema(ctx, t)}}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
 
 	r.Create(ctx, req, resp)
 
