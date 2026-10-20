@@ -13,10 +13,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ipaddr"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
+	customservice "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/custom_service"
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
+	ipaddr "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ip_range"
+	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/old_id_name"
 )
 
 //nolint:gocyclo,funlen

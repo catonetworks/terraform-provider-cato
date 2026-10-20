@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/appcontrol"
+	planmodifiers "github.com/catonetworks/terraform-provider-cato/internal/provider/plan_modifiers"
+	appcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/application_control"
 )
 
 //nolint:funlen

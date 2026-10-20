@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_rule"
 )
 
 func TestNewAppTenantRestrictionRuleResource(t *testing.T) {

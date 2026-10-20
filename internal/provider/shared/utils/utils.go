@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
+	apperr "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/app_error"
 )
 
 type ObjectRefOutput struct {

@@ -15,13 +15,13 @@
 
 ## Good Examples To Inspect
 
-- `internal/provider/resource_internet_fw_rule_test.go`
+- `internal/provider/policy/inet/if_rule/resource_if_rule_test.go`
   - Direct lifecycle tests for Create, Read, Update, Delete, Import, validators, and plan modifiers.
   - Uses `mocks.NewInternetFirewallPolicyClient(t)`.
   - Builds `tfsdk.Plan` and `tfsdk.State` from the resource schema.
   - Includes SDK response helpers such as `successfulAddRuleResponse` and policy response builders.
 
-- `internal/provider/resource_site_socket_test.go`
+- `internal/provider/network/socket_site/resource_socket_site_test.go`
   - Shows interface injection for `SocketSiteClient`.
   - Uses `mock.MatchedBy` to assert exact `cato_models.AddSocketSiteInput` payload fields.
   - Tests validation-before-API behavior by expecting diagnostics and setting no API expectations.

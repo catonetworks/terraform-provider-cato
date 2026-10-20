@@ -8,11 +8,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/appcontrol"
+	appcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/application_control"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
+	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/old_id_name"
+	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_schedule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 

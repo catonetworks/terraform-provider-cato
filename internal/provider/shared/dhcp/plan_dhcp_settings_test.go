@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tf_model"
 )
 
 func makeDhcpSettingsObj(t *testing.T, s Settings) types.Object {

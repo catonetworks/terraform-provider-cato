@@ -4,10 +4,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/appcontrol"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
+	appcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/application_control"
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_rule"
+	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_schedule"
 )
 
 // AppTenantRestrictionHeaderAttrTypes is a single HTTP header name/value pair.

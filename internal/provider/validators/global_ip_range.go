@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tf_model"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 

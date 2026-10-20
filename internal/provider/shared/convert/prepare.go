@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_rule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 

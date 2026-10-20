@@ -8,10 +8,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/inetfirewall"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanfirewall"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/appcontrol"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	inetfirewall "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/if_rule"
+	wanfirewall "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wf_rule"
+	appcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/application_control"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_rule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 

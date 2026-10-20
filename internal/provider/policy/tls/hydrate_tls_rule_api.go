@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_rule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
