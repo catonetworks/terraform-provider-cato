@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketinterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -25,7 +26,7 @@ func hydrateLanInterfaceAPI(ctx context.Context, cfg, plan LanInterface) cato_mo
 	}
 
 	// For LAN_LAG_MEMBER, only send basic interface info - no LAN, LAG, or VRRP config
-	if destType != lanLagMemberDestType {
+	if destType != socketinterface.LanLagMemberDestType {
 		// Add LAN configuration for non-LAG member interfaces
 		input.Lan = &cato_models.SocketInterfaceLanInput{
 			Subnet:           plan.Subnet.ValueString(),

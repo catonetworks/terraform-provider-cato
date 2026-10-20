@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/groupmembers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -217,7 +218,7 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		if membersResult != nil && membersResult.Groups.Group != nil {
 			for _, member := range membersResult.Groups.Group.Members.Items {
 				memberObj, diags := types.ObjectValue(
-					MemberAttrTypes,
+					groupmembers.MemberAttrTypes,
 					map[string]attr.Value{
 						"id":   types.StringValue(member.ID),
 						"name": types.StringValue(member.Name),
@@ -232,7 +233,7 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			}
 		}
 
-		membersSet, diags := types.SetValue(MemberObjectType, memberValues)
+		membersSet, diags := types.SetValue(groupmembers.MemberObjectType, memberValues)
 		if diags.HasError() {
 			resp.Diagnostics.Append(diags...)
 			return

@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketinterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -321,7 +322,7 @@ func (r *lanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 			siteID := site.GetID()
 			if siteID != nil && state.SiteID.ValueString() == *siteID {
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
-					if iface.DestType != nil && *iface.DestType == lanLagMemberDestType {
+					if iface.DestType != nil && *iface.DestType == socketinterface.LanLagMemberDestType {
 						tflog.Debug(ctx, "Create.AccountSnapshot.response found LAN_LAG_MEMBER", map[string]interface{}{
 							"response": utils.InterfaceToJSONString(iface),
 						})
@@ -485,7 +486,7 @@ func (r *lanInterfaceResource) hydrateLanInterfaceState(ctx context.Context, sta
 			siteID := site.GetID()
 			if siteID != nil && state.SiteID.ValueString() == *siteID {
 				for _, iface := range site.InfoSiteSnapshot.Interfaces {
-					if iface.DestType != nil && *iface.DestType == lanLagMemberDestType {
+					if iface.DestType != nil && *iface.DestType == socketinterface.LanLagMemberDestType {
 						lagMinLinks++
 					}
 				}
