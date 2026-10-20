@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	planmodifiers "github.com/catonetworks/terraform-provider-cato/internal/provider/plan_modifiers"
-	appcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/application_control"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 )
 
 //nolint:funlen
@@ -172,7 +172,7 @@ func (r *appTenantRestrictionRuleResource) Schema(_ context.Context, _ resource.
 							objectplanmodifier.UseStateForUnknown(),
 							planmodifiers.SourceDestObjectModifier(),
 						},
-						Attributes: appcontrol.ApplicationControlSourceSchemaAttributes(),
+						Attributes: applicationcontrol.ApplicationControlSourceSchemaAttributes(),
 					},
 				},
 			},

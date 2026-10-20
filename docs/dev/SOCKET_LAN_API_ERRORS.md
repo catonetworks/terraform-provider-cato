@@ -448,4 +448,4 @@ Don't use `Computed: true` on optional collection fields unless the API computes
 - `internal/provider/hydrate_socket_lan_network_rule_state.go` - Network rule state hydration
 - `internal/provider/hydrate_socket_lan_firewall_rule_api.go` - Firewall rule API hydration
 - `internal/provider/hydrate_socket_lan_firewall_rule_state.go` - Firewall rule state hydration
-- `internal/provider/policy/inet/if_rule/hydrate_if_rule_state.go` - Reference implementation (Internet Firewall)
+- `internal/provider/policy/inet/ifrule/hydrate_if_rule_state.go` - Reference implementation (Internet Firewall)

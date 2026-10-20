@@ -9,7 +9,7 @@ import (
 	schemaValidator "github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tf_model"
+	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 )
 
 func TestGlobalIPRangeValidatorAcceptsSupportedFormats(t *testing.T) {

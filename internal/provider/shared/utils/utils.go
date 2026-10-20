@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	apperr "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/app_error"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 )
 
 type ObjectRefOutput struct {
@@ -115,7 +115,7 @@ type HasValuer interface {
 
 func HasValue(v HasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }
 
-func CheckAPIErrors[T apperr.APIErrors](err error, errors []T, summary string, diags *diag.Diagnostics) bool {
+func CheckAPIErrors[T apperror.APIErrors](err error, errors []T, summary string, diags *diag.Diagnostics) bool {
 	if err != nil {
 		diags.AddError(summary, err.Error())
 		return true

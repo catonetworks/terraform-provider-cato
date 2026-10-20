@@ -4,10 +4,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	appcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/application_control"
-	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
-	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_rule"
-	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_schedule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
 
 // AppTenantRestrictionHeaderAttrTypes is a single HTTP header name/value pair.
@@ -27,7 +27,7 @@ var AppTenantRestrictionRuleRuleAttrTypes = map[string]attr.Type{
 	"application": idname.RefObjectType,
 	"headers":     types.ListType{ElemType: types.ObjectType{AttrTypes: AppTenantRestrictionHeaderAttrTypes}},
 	"schedule":    policyschedule.ScheduleObjectType,
-	"source":      appcontrol.ApplicationControlSourceObjectType,
+	"source":      applicationcontrol.ApplicationControlSourceObjectType,
 }
 
 // AppTenantRestrictionRuleAttrTypes is the top-level resource attribute map.

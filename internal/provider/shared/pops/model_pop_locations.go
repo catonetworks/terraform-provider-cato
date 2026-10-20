@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 type PreferredPopLocationModel struct {

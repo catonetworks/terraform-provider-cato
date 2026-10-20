@@ -4,9 +4,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	customservice "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/custom_service"
-	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
-	ipaddr "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ip_range"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iprange"
 )
 
 // InspectionRule represents the top-level resource structure
@@ -89,7 +89,7 @@ var TLSSourceAttrTypes = map[string]attr.Type{
 	"subnet":              types.ListType{ElemType: types.StringType},
 	"host":                types.SetType{ElemType: idname.RefObjectType},
 	"site":                types.SetType{ElemType: idname.RefObjectType},
-	"ip_range":            types.ListType{ElemType: ipaddr.RangeObjectType},
+	"ip_range":            types.ListType{ElemType: iprange.RangeObjectType},
 	"global_ip_range":     types.SetType{ElemType: idname.RefObjectType},
 	"network_interface":   types.SetType{ElemType: idname.RefObjectType},
 	"site_network_subnet": types.SetType{ElemType: idname.RefObjectType},
@@ -110,7 +110,7 @@ var TLSApplicationAttrTypes = map[string]attr.Type{
 	"fqdn":                 types.ListType{ElemType: types.StringType},
 	"ip":                   types.ListType{ElemType: types.StringType},
 	"subnet":               types.ListType{ElemType: types.StringType},
-	"ip_range":             types.ListType{ElemType: ipaddr.RangeObjectType},
+	"ip_range":             types.ListType{ElemType: iprange.RangeObjectType},
 	"global_ip_range":      types.SetType{ElemType: idname.RefObjectType},
 	"remote_asn":           types.ListType{ElemType: types.StringType},
 	"service":              types.SetType{ElemType: idname.RefObjectType},

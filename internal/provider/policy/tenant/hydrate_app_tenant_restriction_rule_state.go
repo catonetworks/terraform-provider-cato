@@ -8,11 +8,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	appcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/application_control"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
-	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/old_id_name"
-	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy_schedule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -31,7 +31,7 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 
 	out.Application = types.ObjectNull(idname.RefAttrTypes)
 	out.Headers = types.ListNull(types.ObjectType{AttrTypes: AppTenantRestrictionHeaderAttrTypes})
-	out.Source = types.ObjectNull(appcontrol.ApplicationControlSourceAttrTypes)
+	out.Source = types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())
@@ -142,7 +142,7 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 			"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "rule.source.group"),
 			"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "rule.source.system_group"),
 		}
-		o, d := types.ObjectValue(appcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
+		o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
 		diags.Append(d...)
 		out.Source = o
 	}

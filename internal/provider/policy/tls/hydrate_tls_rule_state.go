@@ -13,10 +13,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	customservice "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/custom_service"
-	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/id_name"
-	ipaddr "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/ip_range"
-	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/old_id_name"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iprange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
 )
 
 //nolint:gocyclo,funlen
@@ -296,14 +296,14 @@ func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string
 	switch {
 	case ipRangeField.Kind() == reflect.Pointer:
 		if ipRangeField.IsNil() {
-			ipRangeVal = types.ObjectNull(ipaddr.RangeAttrTypes)
+			ipRangeVal = types.ObjectNull(iprange.RangeAttrTypes)
 		} else {
 			ipRangeField = ipRangeField.Elem()
 			from := ipRangeField.FieldByName("From")
 			to := ipRangeField.FieldByName("To")
 			var diagsTmp diag.Diagnostics
 			ipRangeVal, diagsTmp = types.ObjectValue(
-				ipaddr.RangeAttrTypes,
+				iprange.RangeAttrTypes,
 				map[string]attr.Value{
 					"from": types.StringValue(from.String()),
 					"to":   types.StringValue(to.String()),
@@ -316,7 +316,7 @@ func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string
 		to := ipRangeField.FieldByName("To")
 		var diagsTmp diag.Diagnostics
 		ipRangeVal, diagsTmp = types.ObjectValue(
-			ipaddr.RangeAttrTypes,
+			iprange.RangeAttrTypes,
 			map[string]attr.Value{
 				"from": types.StringValue(from.String()),
 				"to":   types.StringValue(to.String()),
@@ -324,7 +324,7 @@ func parseCustomServiceIP(ctx context.Context, item interface{}, attrName string
 		)
 		_ = diagsTmp
 	default:
-		ipRangeVal = types.ObjectNull(ipaddr.RangeAttrTypes)
+		ipRangeVal = types.ObjectNull(iprange.RangeAttrTypes)
 	}
 
 	// Create final custom service IP object
