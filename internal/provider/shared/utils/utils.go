@@ -146,13 +146,6 @@ func NormalizeDateTime(s string) string {
 	return s
 }
 
-func StringFieldIsExplicit(cfgVal, stateVal types.String) bool {
-	if !HasValue(cfgVal) {
-		return false
-	}
-	return !HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
-}
-
 func ParseTimeStringWithTZ(timeStr string) (string, error) {
 	t, err := ParseFlexibleTimeString(timeStr)
 	if err != nil {

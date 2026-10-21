@@ -10,7 +10,6 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -79,7 +78,7 @@ func (r *appConnectorResource) Schema(_ context.Context, _ resource.SchemaReques
 			"type": schema.StringAttribute{
 				Description: "Connector type (virtual, physical)",
 				Required:    true,
-				Validators:  []validator.String{validators.AppConTypeValidator{}},
+				Validators:  []validator.String{AppConTypeValidator{}},
 			},
 		},
 	}
@@ -131,13 +130,13 @@ func (r *appConnectorResource) schemaPreferredPopLocation() schema.SingleNestedA
 				Description:   "Physical location of the primary Pop",
 				Optional:      true,
 				Attributes:    idname.SchemaNameID("Primary location"),
-				PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 			"secondary": schema.SingleNestedAttribute{
 				Description:   "Physical location of the secondary Pop",
 				Optional:      true,
 				Attributes:    idname.SchemaNameID("Secondary location"),
-				PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 	}

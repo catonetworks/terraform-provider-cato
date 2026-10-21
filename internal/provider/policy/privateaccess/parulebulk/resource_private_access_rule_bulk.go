@@ -161,23 +161,6 @@ func (r *privAccessRuleBulkResource) Update(ctx context.Context, req resource.Up
 	}
 }
 
-func (r *privAccessRuleBulkResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	var plan *PrivateAccessRuleBulkModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if plan == nil {
-		return
-	}
-
-	plan.Publish = types.Int64Value(plan.Publish.ValueInt64() + 1)
-	resp.Diagnostics.Append(resp.Plan.Set(ctx, plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-}
-
 func (r *privAccessRuleBulkResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	fmt.Println("bulk Delete")
 }

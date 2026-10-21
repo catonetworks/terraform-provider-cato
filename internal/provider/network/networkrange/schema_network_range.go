@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketinterface"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 // Schema defines the schema for the network range resource
@@ -47,7 +47,7 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:      false,
 				Optional:      true,
 				Computed:      true,
-				Validators:    []validator.String{socketinterface.IndexValidator{}},
+				Validators:    []validator.String{validators.SocketInterfaceIndexValidator{}},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"internet_only": schema.BoolAttribute{
