@@ -5,10 +5,15 @@ import (
 	"testing"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/stretchr/testify/require"
 
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 )
@@ -424,5 +429,37 @@ func TestPlanModifyObject_DhcpRangeWithMicrosegmentationTrue(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("expected no error for dhcp_microsegmentation=true with DHCP_RANGE, got: %v",
 			resp.Diagnostics)
+	}
+}
+
+func TestDHCPSettingsModifierDefaults(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	null := types.ObjectNull(tf.DhcpSettingsAttrTypes)
+	for _, tc := range []struct {
+		name, rangeType, wantType string
+		isRange, wantNull         bool
+	}{
+		{"native range omitted", string(cato_models.SubnetTypeNative), "", false, true},
+		{"network native", string(cato_models.SubnetTypeNative), "ACCOUNT_DEFAULT", true, false},
+		{"network VLAN", string(cato_models.SubnetTypeVlan), "ACCOUNT_DEFAULT", true, false},
+		{"network routed", string(cato_models.SubnetTypeRouted), "DHCP_DISABLED", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := tfsdk.Config{Schema: schema.Schema{Attributes: map[string]schema.Attribute{"range_type": schema.StringAttribute{Required: true}}}}
+			raw, diags := types.ObjectValueMust(map[string]attr.Type{"range_type": types.StringType}, map[string]attr.Value{"range_type": types.StringValue(tc.rangeType)}).ToTerraformValue(ctx)
+			require.NoError(t, diags)
+			config.Raw = raw
+			resp := &planmodifier.ObjectResponse{PlanValue: null}
+			DHCPSettingsModifier(tc.isRange).PlanModifyObject(ctx, planmodifier.ObjectRequest{Config: config, ConfigValue: null, StateValue: null, PlanValue: null, Path: path.Root("dhcp_settings")}, resp)
+			require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+			if tc.wantNull {
+				require.True(t, resp.PlanValue.IsNull())
+				return
+			}
+			require.Equal(t, tc.wantType, resp.PlanValue.Attributes()["dhcp_type"].(types.String).ValueString())
+			require.True(t, resp.PlanValue.Attributes()["relay_group_id"].IsNull())
+			require.True(t, resp.PlanValue.Attributes()["ip_range"].IsNull())
+		})
 	}
 }
