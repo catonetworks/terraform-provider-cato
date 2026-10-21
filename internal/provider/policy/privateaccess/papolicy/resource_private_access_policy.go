@@ -1,0 +1,216 @@
+package papolicy
+
+import (
+	"context"
+	"fmt"
+
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+)
+
+var (
+	_ resource.Resource                = &privAccessPolicyResource{}
+	_ resource.ResourceWithConfigure   = &privAccessPolicyResource{}
+	_ resource.ResourceWithImportState = &privAccessPolicyResource{}
+)
+
+func NewPrivAccessPolicyResource() resource.Resource {
+	return &privAccessPolicyResource{}
+}
+
+type privAccessPolicyResource struct {
+	client *catoclient.Service
+}
+
+func (r *privAccessPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_private_access_policy"
+}
+
+func (r *privAccessPolicyResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	r.client = req.ProviderData.(*catoclient.Service)
+}
+
+func (r *privAccessPolicyResource) ImportState(ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("enabled"), false)...)
+}
+
+// Create does not really create anything as the plolicy always exists.
+// It updates the 'enabled' field of the policy.
+func (r *privAccessPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan PolicyModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	hydratedState, diags := r.callUpdate(ctx, plan.Enabled.ValueBool())
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	diags = resp.State.Set(ctx, hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Read the policy status
+func (r *privAccessPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state PolicyModel
+
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	hydratedState, diags, hydrateErr := r.hydratePrivAccessPolicyState(ctx)
+	if hydrateErr != nil {
+		resp.Diagnostics.AddError("Error hydrating privatea access policy state", hydrateErr.Error())
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Update the policy
+func (r *privAccessPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan PolicyModel
+
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	hydratedState, diags := r.callUpdate(ctx, plan.Enabled.ValueBool())
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	diags = resp.State.Set(ctx, hydratedState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Delete does not do anything, the policy always exists
+func (r *privAccessPolicyResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+}
+
+// callUpdate implements the actual update logic use by Update() or Create()
+func (r *privAccessPolicyResource) callUpdate(
+	ctx context.Context,
+	isEnabled bool,
+) (newState *PolicyModel, diags diag.Diagnostics) {
+	// Set the enabled polEnabled
+	polEnabled := cato_models.PolicyToggleStateDisabled
+	if isEnabled {
+		polEnabled = cato_models.PolicyToggleStateEnabled
+	}
+	input := cato_models.PrivateAccessPolicyUpdateInput{State: &polEnabled}
+
+	// Call Cato API to update the policy
+	tflog.Debug(ctx, "PolicyPrivateAccessUpdatePolicy", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
+	result, err := r.client.Catov2.PolicyPrivateAccessUpdatePolicy(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "PolicyPrivateAccessUpdatePolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	errMsg := "failed to update private access policy"
+	if err != nil {
+		diags.AddError(errMsg, err.Error())
+		return nil, diags
+	}
+
+	pol := result.GetPolicy().GetPrivateAccess().GetUpdatePolicy()
+	if pol == nil {
+		diags.AddError(errMsg, "policy query returned nil")
+		return nil, diags
+	}
+	if pol.Status != cato_models.PolicyMutationStatusSuccess {
+		diags.AddError(errMsg, "returned status: "+string(pol.Status))
+		for _, e := range pol.Errors {
+			diags.AddError(errMsg, fmt.Sprintf("ERROR: %v [%v]", *e.GetErrorMessage(), *e.GetErrorCode()))
+		}
+		return nil, diags
+	}
+
+	// Hydrate state from API
+	newState, hydrateDiags, hydrateErr := r.hydratePrivAccessPolicyState(ctx)
+	if hydrateErr != nil {
+		diags.AddError("Error hydrating privateAccessRule state", hydrateErr.Error())
+		diags.Append(hydrateDiags...)
+		return nil, diags
+	}
+	return newState, diags
+}
+
+// hydratePrivAccessPolicyState fetches the current state of a privAccessPolicy from the API
+func (r *privAccessPolicyResource) hydratePrivAccessPolicyState(ctx context.Context) (*PolicyModel, diag.Diagnostics, error) {
+	var diags diag.Diagnostics
+
+	// Call Cato API to get the policy
+	result, err := r.client.Catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "PolicyReadPrivateAccessPolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Map API response to PrivAccessPolicyModel
+	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
+	state := &PolicyModel{
+		Audit:   r.parseAudit(ctx, policy.Audit, &diags),
+		Enabled: types.BoolValue(policy.Enabled),
+		ID:      types.StringValue("0"), // there is just 1 default policy, the ID is used in automated tests
+	}
+	if diags.HasError() {
+		return nil, diags, apperror.ErrAPIResponseParse
+	}
+
+	return state, nil, nil
+}
+
+func (r *privAccessPolicyResource) parseAudit(
+	ctx context.Context,
+	aud *cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Audit,
+	diags *diag.Diagnostics,
+) types.Object {
+	var objectDiags diag.Diagnostics
+
+	// Prepare PolicyAudit object
+	auditObj := types.ObjectNull(PolicyAuditTypes)
+	if aud != nil {
+		tfAudit := PolicyAudit{
+			PublishedBy:   types.StringValue(aud.PublishedBy),
+			PublishedTime: types.StringValue(aud.PublishedTime),
+		}
+		auditObj, objectDiags = types.ObjectValueFrom(ctx, PolicyAuditTypes, tfAudit)
+		diags.Append(objectDiags...)
+		if diags.HasError() {
+			return auditObj
+		}
+	}
+
+	return auditObj
+}

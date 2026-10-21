@@ -7,20 +7,30 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 
 ## Architecture
 - Each Terraform resource has a full CRUD implementation.
-- The top-level Terraform model for a resource is defined in `type_*.go` with
+- The top-level Terraform model for a resource is defined in `model_*.go` with
   strongly-typed fields. Nested objects are mapped via framework attribute types
-  (`attrTypes` maps / `ObjectAsOptions`), not plain Go structs - exception here are well defined shared types, e.g. GroupMembers in `type_group.go`. 
+  (`attrTypes` maps / `ObjectAsOptions`), not plain Go structs - exception here are well defined shared types, e.g. Member in `shared/groupmembers/model_group_member.go`.
 - Read, Create, and Update implementations share state-mapping logic. For complex resources  extracted into `hydrate_<name>_state.go` (API response → Terraform state) and `hydrate_<name>_api.go` (Terraform state → API input). Simple resources may map API responses through resource-local helpers.
 
 ## Structure
 - `main.go` — provider entry point, wires `internal/provider.New(version)`.
-- `internal/provider/` — provider config, resources, data sources, shared types,
-  validators, plan modifiers, hydration helpers, and generated mocks.
+- `internal/provider/` — provider config and registration, with one resource per
+  package under the existing domain folders (`account/`, `access/`, `network/`,
+  `policy/`, and `resource/`). Keep each resource implementation, model, schema,
+  hydration helpers, and tests together in its package. Tests belong beside the
+  implementation they exercise; split files that test multiple resources.
+  - Data sources and their models belong in `<domain>/data_sources/<name>/`,
+    separate from resource implementation packages.
+  - Policy families use resource-specific child packages, for example
+    `policy/tls/tlsrule/`, `tlssection/`, and `tlsindex/`.
+  - Share policy-family helpers in the parent package and cross-domain helpers
+    in `shared/`; shared packages must not import resource implementations.
   - `resource_*.go` — resource CRUD implementations
   - `resource_*_test.go` — unit test for resource implementations
   - `datasource_*.go` — data source read implementations
   - `datasource_*_test.go` — data source for resource implementations
-  - `type_*.go` — Terraform schema model types
+  - `model_*.go` — Terraform model types
+  - `schema_*.go` — resource Schema methods, schema builders, and attribute type maps
   - `hydrate_*_api.go` / `hydrate_*_state.go` — shared conversion helpers
   - `planmodifiers/` — custom plan modifier implementations
   - `validators/` — custom attribute validators
@@ -114,10 +124,11 @@ Imports must follow the order enforced by `make sort-imports`:
 Violating this order will cause `make lint` to fail.
 
 ## Adding a New Resource
-1. `internal/provider/type_<name>.go` — define the Terraform model struct and schema.
-2. `internal/provider/resource_<name>.go` — implement `Create`, `Read`, `Update`, `Delete`, `ImportState`.
-3. `internal/provider/hydrate_<name>_api.go` — Terraform state → API input conversion (if non-trivial).
-4. `internal/provider/hydrate_<name>_state.go` — API response → Terraform state conversion (if non-trivial).
+1. `internal/provider/<domain>/<name>/model_<name>.go` — define the Terraform model.
+   Put the resource `Schema` method and schema builders in `schema_<name>.go` in the same package.
+2. `internal/provider/<domain>/<name>/resource_<name>.go` — implement `Create`, `Read`, `Update`, `Delete`, `ImportState`.
+3. `internal/provider/<domain>/<name>/hydrate_<name>_api.go` — Terraform state → API input conversion (if non-trivial).
+4. `internal/provider/<domain>/<name>/hydrate_<name>_state.go` — API response → Terraform state conversion (if non-trivial).
 5. Register in `internal/provider/provider.go` under `Resources()`.
 6. Add `examples/resources/cato_<name>/resource.tf` — complete example using all available parameters; comment out optional ones.
 7. Add `templates/resources/<name>.md.tmpl` if custom docs are needed; otherwise `tfplugindocs` generates them automatically.

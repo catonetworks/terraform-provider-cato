@@ -11,9 +11,9 @@ import (
 
 const errPolicyRevisionNotFound = "PolicyRevisionNotFound"
 
-// publishApplicationControlPolicyRevision publishes the Application Control draft when one exists.
+// PublishApplicationControlPolicyRevision publishes the Application Control draft when one exists.
 // If there is no draft, the API returns FAILURE with PolicyRevisionNotFound — that is treated as success.
-func publishApplicationControlPolicyRevision(ctx context.Context, c *catoclient.Service) diag.Diagnostics {
+func PublishApplicationControlPolicyRevision(ctx context.Context, c *catoclient.Service) diag.Diagnostics {
 	var diags diag.Diagnostics
 	res, err := c.Catov2.PolicyApplicationControlPublishPolicyRevision(ctx, c.AccountId)
 	if err != nil {

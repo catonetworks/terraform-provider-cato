@@ -19,40 +19,61 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/appconnector"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectorgroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/privateapp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/account"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/admin"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/licensinginfo"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/license"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/host"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkinterfaces"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/sitelocation"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterfacelagmember"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/networkrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifwrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lanindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lansection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lfsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/socketlanfirewallrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/socketlannetworkrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlssection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/data_sources/wfrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/data_sources/wfrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsubpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
+	groupdata "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/groupmembers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/statichost"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/waninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
@@ -479,18 +500,18 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		accountsnapshotsite.NewAccountSnapshotSiteDataSource,
 		allocatedip.Source,
 		dhcprelaygroup.DataSource,
-		group.DataSource,
-		license.LicensingInfoDataSource,
+		groupdata.DataSource,
+		licensinginfo.NewDataSource,
 		networkinterfaces.NetworkInterfacesDataSource,
 		sitelocation.DataSource,
 		ifwrulesindex.IndexDataSource,
 		wfrulesindex.WanRulesIndexDataSource,
-		tls.RulesIndexDataSource,
+		tlsrulesindex.RulesIndexDataSource,
 		ifrulesections.IfRuleSectionsDataSource,
 		wfrulesections.WfRuleSectionsDataSource,
-		networkrange.NetworkRangesDataSource,
-		statichost.HostDataSource,
-		appconnector.GroupDataSource,
+		networkranges.DataSource,
+		host.DataSource,
+		appconnectorgroup.GroupDataSource,
 	}
 }
 
@@ -501,39 +522,39 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,
-		ifindex.NewInternetFwSectionResource,
-		ifindex.NewIfSubPolicyResource,
+		ifsection.NewInternetFwSectionResource,
+		ifsubpolicy.NewIfSubPolicyResource,
 		laninterface.NewLanInterfaceResource,
-		laninterface.NewLanInterfaceLagMemberResource,
+		laninterfacelagmember.NewLanInterfaceLagMemberResource,
 		license.NewLicenseResource,
 		networkrange.NewNetworkRangeResource,
-		group.NewGroupMembersResource,
+		groupmembers.NewGroupMembersResource,
 		ipsecsite.NewSiteIpsecResource,
 		socketsite.NewSocketSiteResource,
 		statichost.NewStaticHostResource,
-		tls.NewTLSInspectionRuleResource,
-		tls.NewTLSInspectionSectionResource,
+		tlsrule.NewTLSInspectionRuleResource,
+		tlssection.NewTLSInspectionSectionResource,
 		wfrule.NewWanFwRuleResource,
-		wanindex.NewWanFwSectionResource,
+		wfsection.NewWanFwSectionResource,
 		wfsubpolicy.NewWfSubPolicyResource,
 		waninterface.NewWanInterfaceResource,
 		wnwrule.NewWanNetworkRuleResource,
-		wanindex.NewWanNetworkSectionResource,
+		wnwsection.NewWanNetworkSectionResource,
 		ifindex.NewIfwRulesIndexResource,
 		wanindex.NewWanRulesIndexResource,
-		wanindex.NewWanNetworkRulesIndexResource,
-		tls.NewTLSRulesIndexResource,
+		wnwindex.NewWanNetworkRulesIndexResource,
+		tlsindex.NewTLSRulesIndexResource,
 		appconnector.NewAppConnectorResource,
 		privateapp.NewPrivateAppResource,
-		privateaccess.NewPrivAccessPolicyResource,
-		privateaccess.NewPrivAccessRuleResource,
-		privateaccess.NewPrivAccessRuleBulkResource,
-		tenant.NewAppTenantRestrictionRuleResource,
-		tenant.NewAppTenantRestrictionSectionResource,
-		applicationcontrol.NewApplicationControlPolicyResource,
-		applicationcontrol.NewApplicationControlRuleResource,
-		applicationcontrol.NewApplicationControlSectionResource,
-		lanindex.NewSocketLanSectionResource,
+		papolicy.NewPrivAccessPolicyResource,
+		parule.NewPrivAccessRuleResource,
+		parulebulk.NewPrivAccessRuleBulkResource,
+		atrule.NewAppTenantRestrictionRuleResource,
+		atsection.NewAppTenantRestrictionSectionResource,
+		acpolicy.NewApplicationControlPolicyResource,
+		acrule.NewApplicationControlRuleResource,
+		acsection.NewApplicationControlSectionResource,
+		lansection.NewSocketLanSectionResource,
 		socketlannetworkrule.NewSocketLanNetworkRuleResource,
 		socketlanfirewallrule.NewSocketLanFirewallRuleResource,
 		globalipranges.NewGlobalIPRangesResource,

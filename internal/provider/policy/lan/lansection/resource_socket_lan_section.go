@@ -1,0 +1,369 @@
+package lansection
+
+import (
+	"context"
+	"fmt"
+
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+)
+
+var (
+	_ resource.Resource                = &socketLanSectionResource{}
+	_ resource.ResourceWithConfigure   = &socketLanSectionResource{}
+	_ resource.ResourceWithImportState = &socketLanSectionResource{}
+)
+
+func NewSocketLanSectionResource() resource.Resource {
+	return &socketLanSectionResource{}
+}
+
+type socketLanSectionResource struct {
+	client *catoclient.Service
+}
+
+func (r *socketLanSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_socket_lan_section"
+}
+
+func (r *socketLanSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	r.client = req.ProviderData.(*catoclient.Service)
+}
+
+func (r *socketLanSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
+}
+
+func (r *socketLanSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan SocketLanSection
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	input := cato_models.PolicyAddSectionInput{}
+
+	// setting at
+	if !plan.At.IsNull() {
+		input.At = &cato_models.PolicySectionPositionInput{}
+		positionInput := policyrule.Position{}
+		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+
+		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
+		input.At.Ref = positionInput.Ref.ValueStringPointer()
+	}
+
+	// setting section
+	if !plan.Section.IsNull() {
+		input.Section = &cato_models.PolicyAddSectionInfoInput{}
+		var sectionInput idname.Ref
+		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+
+		input.Section.Name = sectionInput.Name.ValueString()
+	}
+
+	tflog.Debug(ctx, "Create.PolicySocketLanAddSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(input),
+	})
+	policyChange, err := r.client.Catov2.PolicySocketLanAddSection(ctx, input, r.client.AccountId)
+	tflog.Debug(ctx, "Create.PolicySocketLanAddSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(policyChange),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicySocketLanAddSection error",
+			err.Error(),
+		)
+		return
+	}
+	if len(policyChange.Policy.SocketLan.AddSection.Errors) > 0 {
+		for _, e := range policyChange.Policy.SocketLan.AddSection.Errors {
+			resp.Diagnostics.AddError("ERROR: "+*e.ErrorCode, *e.ErrorMessage)
+			return
+		}
+	}
+
+	// publishing new section
+	tflog.Info(ctx, "Create.publishing-section")
+	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
+	tflog.Debug(ctx, "Create.PolicySocketLanPublishPolicyRevision.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(input),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicySocketLanPublishPolicyRevision error",
+			err.Error(),
+		)
+		return
+	}
+
+	plan.ID = types.StringValue(policyChange.GetPolicy().GetSocketLan().GetAddSection().Section.GetSection().ID)
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// overriding state with section id
+	resp.State.SetAttribute(
+		ctx,
+		path.Root("section").AtName("id"),
+		policyChange.GetPolicy().GetSocketLan().GetAddSection().Section.GetSection().ID,
+	)
+}
+
+func (r *socketLanSectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state SocketLanSection
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	body, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	tflog.Debug(ctx, "Read.PolicySocketLanPolicy.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(body),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API error",
+			err.Error(),
+		)
+		return
+	}
+
+	// retrieve section ID
+	var section idname.Ref
+	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	sectionList := body.GetPolicy().SocketLan.Policy.GetSections()
+	sectionExist := false
+	for _, sectionListItem := range sectionList {
+		if sectionListItem.GetSection().ID != section.ID.ValueString() {
+			continue
+		}
+
+		sectionExist = true
+		state.ID = types.StringValue(sectionListItem.GetSection().ID)
+		curSectionObj, diagstmp := types.ObjectValue(
+			idname.RefAttrTypes,
+			map[string]attr.Value{
+				"id":   types.StringValue(sectionListItem.GetSection().ID),
+				"name": types.StringValue(sectionListItem.GetSection().GetName()),
+			},
+		)
+		resp.Diagnostics.Append(diagstmp...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.Section = curSectionObj
+	}
+
+	// Hard coding LAST_IN_POLICY position as the API does not return any value
+	curAtObj := state.At
+	if !utils.HasValue(state.At) {
+		var diagstmp diag.Diagnostics
+		curAtObj, diagstmp = types.ObjectValue(
+			policyrule.PositionAttrTypes,
+			map[string]attr.Value{
+				"position": types.StringValue("LAST_IN_POLICY"),
+				"ref":      types.StringNull(),
+			},
+		)
+		resp.Diagnostics.Append(diagstmp...)
+	}
+	state.At = curAtObj
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// remove resource if it doesn't exist anymore
+	if !sectionExist {
+		tflog.Warn(ctx, "socket lan section not found, resource removed")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+//nolint:funlen
+func (r *socketLanSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan SocketLanSection
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	inputUpdateSection := cato_models.PolicyUpdateSectionInput{}
+	inputMoveSection := cato_models.PolicyMoveSectionInput{}
+
+	// setting section
+	if !plan.Section.IsNull() {
+		inputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
+		var sectionInput idname.Ref
+		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+
+		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
+		inputUpdateSection.ID = sectionInput.ID.ValueString()
+	}
+
+	// setting at
+	if !plan.At.IsNull() {
+		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
+		positionInput := policyrule.Position{}
+		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+
+		inputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
+		inputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
+		inputMoveSection.ID = inputUpdateSection.ID
+	}
+
+	// move section
+	tflog.Debug(ctx, "Update.PolicySocketLanMoveSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputMoveSection),
+	})
+	moveSection, err := r.client.Catov2.PolicySocketLanMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	tflog.Debug(ctx, "Update.PolicySocketLanMoveSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(moveSection),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicySocketLanMoveSection error",
+			err.Error(),
+		)
+		return
+	}
+
+	// check for errors
+	if moveSection.Policy.SocketLan.MoveSection.Status != cato_models.PolicyMutationStatusSuccess {
+		for _, item := range moveSection.Policy.SocketLan.MoveSection.GetErrors() {
+			resp.Diagnostics.AddError(
+				"API Error Moving Section Resource",
+				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
+			)
+		}
+		return
+	}
+
+	// update section
+	tflog.Debug(ctx, "Update.PolicySocketLanUpdateSection.request", map[string]interface{}{
+		"request": utils.InterfaceToJSONString(inputUpdateSection),
+	})
+	updateSection, err := r.client.Catov2.PolicySocketLanUpdateSection(ctx, nil, inputUpdateSection, r.client.AccountId)
+	tflog.Debug(ctx, "Update.PolicySocketLanUpdateSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(updateSection),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicySocketLanUpdateSection error",
+			err.Error(),
+		)
+		return
+	}
+
+	// check for errors
+	if updateSection.Policy.SocketLan.UpdateSection.Status != cato_models.PolicyMutationStatusSuccess {
+		for _, item := range updateSection.Policy.SocketLan.UpdateSection.GetErrors() {
+			resp.Diagnostics.AddError(
+				"API Error Updating Section Resource",
+				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
+			)
+		}
+		return
+	}
+
+	// publishing section changes
+	tflog.Info(ctx, "Update.publishing-section")
+	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API PolicySocketLanPublishPolicyRevision error",
+			err.Error(),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+func (r *socketLanSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state SocketLanSection
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// retrieve section ID
+	var section idname.Ref
+	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	removeSection := cato_models.PolicyRemoveSectionInput{
+		ID: section.ID.ValueString(),
+	}
+
+	PolicySocketLanRemoveSectionResponse, err := r.client.Catov2.PolicySocketLanRemoveSection(ctx, nil, removeSection, r.client.AccountId)
+	tflog.Debug(ctx, "Delete.PolicySocketLanRemoveSection.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(PolicySocketLanRemoveSectionResponse),
+	})
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to connect or request the Catov2 API",
+			err.Error(),
+		)
+		return
+	}
+
+	tflog.Info(ctx, "Delete.publishing-section")
+	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
+	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishDataIfEnabled, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Catov2 API Delete/PolicySocketLanPublishPolicyRevision error",
+			err.Error(),
+		)
+		return
+	}
+}

@@ -1,0 +1,159 @@
+package parule
+
+import (
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+)
+
+type RuleModel struct {
+	Action            types.String `tfsdk:"action"`             // e.g. "ALLOW"
+	ActivePeriod      types.Object `tfsdk:"active_period"`      // PolicyRuleActivePeriod
+	Applications      types.Set    `tfsdk:"applications"`       // []IDNameRefModel
+	ConnectionOrigins types.Set    `tfsdk:"connection_origins"` // []string
+	Countries         types.Set    `tfsdk:"countries"`          // []IDNameRefModel
+	Description       types.String `tfsdk:"description"`
+	Devices           types.Set    `tfsdk:"devices"` // []IDNameRefModel
+	Enabled           types.Bool   `tfsdk:"enabled"`
+	ID                types.String `tfsdk:"id"`
+	Name              types.String `tfsdk:"name"`
+	Platforms         types.Set    `tfsdk:"platforms"`       // []string
+	Schedule          types.Object `tfsdk:"schedule"`        // PolicySchedule
+	Source            types.Object `tfsdk:"source"`          // Source
+	Tracking          types.Object `tfsdk:"tracking"`        // Tracking
+	UserAttributes    types.Object `tfsdk:"user_attributes"` // UserAttributes
+
+	// Section          *PrivAccessPolicySection `tfsdk:"section"` -- not available in the 1st phase
+}
+
+type PolicySection struct {
+	ID          types.String `tfsdk:"id"`
+	Name        types.String `tfsdk:"name"`
+	SubpolicyID types.String `tfsdk:"subpolicy_id"`
+}
+
+var PolicySectionTypes = map[string]attr.Type{
+	"id":           types.StringType,
+	"name":         types.StringType,
+	"subpolicy_id": types.StringType,
+}
+
+type Source struct {
+	Users      types.Set `tfsdk:"users"`       // IDNameRefModel
+	UserGroups types.Set `tfsdk:"user_groups"` // IDNameRefModel
+}
+
+var SourceTypes = map[string]attr.Type{
+	"users":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+	"user_groups": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+}
+
+type UserAttributes struct {
+	RiskScore types.Object `tfsdk:"risk_score"`
+}
+
+var UserAttributesTypes = map[string]attr.Type{
+	"risk_score": types.ObjectType{AttrTypes: RiskScoreTypes},
+}
+
+type RiskScore struct {
+	Category types.String `tfsdk:"category"` // e.g. "ANY"
+	Operator types.String `tfsdk:"operator"` // e.g. "GTE"
+}
+
+var RiskScoreTypes = map[string]attr.Type{
+	"category": types.StringType,
+	"operator": types.StringType,
+}
+
+type PolicySchedule struct {
+	ActiveOn        types.String `tfsdk:"active_on"`        // e.g. "ALWAYS"
+	CustomRecurring types.Object `tfsdk:"custom_recurring"` // PolicyCustomRecurring
+	CustomTimeframe types.Object `tfsdk:"custom_timeframe"` // PolicyCustomTimeframe
+}
+
+var PolicyScheduleTypes = map[string]attr.Type{
+	"active_on":        types.StringType,
+	"custom_recurring": types.ObjectType{AttrTypes: PolicyCustomRecurringTypes},
+	"custom_timeframe": types.ObjectType{AttrTypes: PolicyCustomTimeframeTypes},
+}
+
+type PolicyCustomRecurring struct {
+	Days types.Set    `tfsdk:"days"` // []string
+	From types.String `tfsdk:"from"`
+	To   types.String `tfsdk:"to"`
+}
+
+var PolicyCustomRecurringTypes = map[string]attr.Type{
+	"days": types.SetType{ElemType: types.StringType},
+	"from": types.StringType,
+	"to":   types.StringType,
+}
+
+type PolicyCustomTimeframe struct {
+	From types.String `tfsdk:"from"`
+	To   types.String `tfsdk:"to"`
+}
+
+var PolicyCustomTimeframeTypes = map[string]attr.Type{
+	"from": types.StringType,
+	"to":   types.StringType,
+}
+
+type PolicyRuleActivePeriod struct {
+	EffectiveFrom    types.String `tfsdk:"effective_from"`
+	ExpiresAt        types.String `tfsdk:"expires_at"`
+	UseEffectiveFrom types.Bool   `tfsdk:"use_effective_from"`
+	UseExpiresAt     types.Bool   `tfsdk:"use_expires_at"`
+}
+
+var PolicyRuleActivePeriodTypes = map[string]attr.Type{
+	"effective_from":     types.StringType,
+	"expires_at":         types.StringType,
+	"use_effective_from": types.BoolType,
+	"use_expires_at":     types.BoolType,
+}
+
+type PolicyRuleTracking struct {
+	Event types.Object `tfsdk:"event"` // PolicyRuleTrackingEvent
+	Alert types.Object `tfsdk:"alert"` // PolicyRuleTrackingAlert
+}
+
+var PolicyRuleTrackingTypes = map[string]attr.Type{
+	"event": types.ObjectType{AttrTypes: PolicyRuleTrackingEventTypes},
+	"alert": types.ObjectType{AttrTypes: PolicyRuleTrackingAlertTypes},
+}
+
+type PolicyRuleTrackingEvent struct {
+	Enabled types.Bool `tfsdk:"enabled"`
+}
+
+var PolicyRuleTrackingEventTypes = map[string]attr.Type{
+	"enabled": types.BoolType,
+}
+
+type PoliciRuleTrackingAlert struct {
+	Enabled           types.Bool   `tfsdk:"enabled"`
+	Frequency         types.String `tfsdk:"frequency"`
+	MailingList       types.Set    `tfsdk:"mailing_list"`       // IDNameRefModel
+	SubscriptionGroup types.Set    `tfsdk:"subscription_group"` // IDNameRefModel
+	Webhook           types.Set    `tfsdk:"webhook"`            // IDNameRefModel
+}
+
+var PolicyRuleTrackingAlertTypes = map[string]attr.Type{
+	"enabled":            types.BoolType,
+	"frequency":          types.StringType,
+	"mailing_list":       types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+	"subscription_group": types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+	"webhook":            types.SetType{ElemType: types.ObjectType{AttrTypes: idname.RefAttrTypes}},
+}
+
+type (
+	privateAccessRuleSource         = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Source
+	privateAccessRuleTracking       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Tracking
+	privateAccessRuleUserAttributes = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_UserAttributes
+	privateAccessRuleSchedule       = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_Schedule
+	privateAccessRuleActivePeriod   = cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules_Rule_ActivePeriod
+)
