@@ -1,4 +1,4 @@
-package idname
+package planmodifiers
 
 import (
 	"context"
@@ -7,16 +7,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 type idNameSetModifier struct{}
 
-// SetPlanModifier preserves the computed counterpart of an ID/name
+// IDNameSetPlanModifier preserves the computed counterpart of an ID/name
 // reference only when its configured name or ID matches a state member.
 // Matching the entire set avoids relying on the framework's positional state
 // values for nested elements, which can belong to a different reference.
 // Set elements must use IDNameRefModelTypes and configure exactly one of name or ID.
-func SetPlanModifier() planmodifier.Set {
+func IDNameSetPlanModifier() planmodifier.Set {
 	return idNameSetModifier{}
 }
 
@@ -67,7 +69,7 @@ func idNameReferenceValue(configured types.Object, state types.Set) (types.Objec
 		return types.Object{}, nil, false
 	}
 	attrs[computed] = matchingIDNameValue(state, selector, attrs[selector], computed)
-	value, diags := types.ObjectValue(RefAttrTypes, attrs)
+	value, diags := types.ObjectValue(idname.RefAttrTypes, attrs)
 	return value, diags, true
 }
 

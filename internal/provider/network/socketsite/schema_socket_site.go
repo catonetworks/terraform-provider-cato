@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketinterface"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -75,7 +75,7 @@ func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { 
 					"INT_5 for SOCKET_X1600 and SOCKET_X1600_LTE, and INT_3 for SOCKET_X1700 models",
 				Optional:      true,
 				Computed:      true,
-				Validators:    []validator.String{socketinterface.IndexValidator{}},
+				Validators:    []validator.String{validators.SocketInterfaceIndexValidator{}},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"interface_id": schema.StringAttribute{

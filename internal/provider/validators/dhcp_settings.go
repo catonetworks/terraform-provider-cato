@@ -1,4 +1,4 @@
-package dhcp
+package validators
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func (d dhcpChecker) CheckWithPriorState(ctx context.Context, diags *diag.Diagno
 }
 
 func (d dhcpChecker) check(ctx context.Context, diags *diag.Diagnostics, dhcp, priorState types.Object) error {
-	var dhcpSettings *Settings
+	var dhcpSettings *tf.DhcpSettings
 
 	if !utils.HasValue(dhcp) {
 		return nil
@@ -49,7 +49,7 @@ func (d dhcpChecker) check(ctx context.Context, diags *diag.Diagnostics, dhcp, p
 		return nil
 	}
 
-	var priorDhcpSettings *Settings
+	var priorDhcpSettings *tf.DhcpSettings
 	if utils.HasValue(priorState) {
 		if utils.CheckErr(diags, priorState.As(ctx, &priorDhcpSettings, basetypes.ObjectAsOptions{})) {
 			return apperror.ErrConfig
@@ -75,11 +75,11 @@ func (d dhcpChecker) check(ctx context.Context, diags *diag.Diagnostics, dhcp, p
 // checkDHCPRelay validates the consistency of DHCP relay settings
 // if DHCP type is DHCP_RELAY, exactly one of relay_group_name or relay_group_id must be set,
 // otherwise, neither can be set.
-func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings Settings, priorState *Settings) error {
+func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings tf.DhcpSettings, priorState *tf.DhcpSettings) error {
 	relayGroupNameSet := utils.HasValue(dhcpSettings.RelayGroupName)
 	relayGroupIDSet := utils.HasValue(dhcpSettings.RelayGroupID)
-	relayGroupNameExplicit := utils.StringFieldIsExplicit(dhcpSettings.RelayGroupName, priorStateRelayGroupName(priorState))
-	relayGroupIDExplicit := utils.StringFieldIsExplicit(dhcpSettings.RelayGroupID, priorStateRelayGroupID(priorState))
+	relayGroupNameExplicit := StringFieldIsExplicit(dhcpSettings.RelayGroupName, priorStateRelayGroupName(priorState))
+	relayGroupIDExplicit := StringFieldIsExplicit(dhcpSettings.RelayGroupID, priorStateRelayGroupID(priorState))
 	dhcpType := cato_models.DhcpType(dhcpSettings.DhcpType.ValueString())
 
 	// If DHCP type is not DHCP_RELAY, relay group name/id must not be configured
@@ -106,14 +106,14 @@ func (d dhcpChecker) checkDHCPRelay(diags *diag.Diagnostics, dhcpSettings Settin
 	return nil
 }
 
-func priorStateRelayGroupName(state *Settings) types.String {
+func priorStateRelayGroupName(state *tf.DhcpSettings) types.String {
 	if state == nil {
 		return types.StringNull()
 	}
 	return state.RelayGroupName
 }
 
-func priorStateRelayGroupID(state *Settings) types.String {
+func priorStateRelayGroupID(state *tf.DhcpSettings) types.String {
 	if state == nil {
 		return types.StringNull()
 	}
@@ -123,7 +123,7 @@ func priorStateRelayGroupID(state *Settings) types.String {
 // checkDHCPRange validates the consistency of DHCP range settings
 // - if DHCP type is DHCP_RANGE, ip_range must be set, otherwise it must not be set.
 // - if DHCP type is not  DHCP_RANGE, dhcp_microsegmentation must not be set to true
-func (d dhcpChecker) checkDHCPRange(diags *diag.Diagnostics, dhcpSettings Settings) error {
+func (d dhcpChecker) checkDHCPRange(diags *diag.Diagnostics, dhcpSettings tf.DhcpSettings) error {
 	dhcpType := cato_models.DhcpType(dhcpSettings.DhcpType.ValueString())
 	ipRangeSet := utils.HasValue(dhcpSettings.IPRange)
 
@@ -153,7 +153,7 @@ func (d dhcpChecker) checkDHCPRange(diags *diag.Diagnostics, dhcpSettings Settin
 }
 
 // isUnknown returns true if dhcpSettings or any of its components have unknown values.
-func (d dhcpChecker) isUnknown(dhcpSettings *Settings) bool {
+func (d dhcpChecker) isUnknown(dhcpSettings *tf.DhcpSettings) bool {
 	if dhcpSettings == nil {
 		return true
 	}
@@ -164,12 +164,12 @@ func (d dhcpChecker) isUnknown(dhcpSettings *Settings) bool {
 		dhcpSettings.DhcpMicrosegmentation.IsUnknown()
 }
 
-// TypeValidator validates that the provided string is a valid DHCP type
+// DHCPTypeValidator validates that the provided string is a valid DHCP type
 type (
-	TypeValidator struct{}
+	DHCPTypeValidator struct{}
 )
 
-func (v TypeValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v DHCPTypeValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if !utils.HasValue(req.ConfigValue) {
 		return
 	}
@@ -183,9 +183,9 @@ func (v TypeValidator) ValidateString(_ context.Context, req validator.StringReq
 	}
 }
 
-func (v TypeValidator) Description(_ context.Context) string {
+func (v DHCPTypeValidator) Description(_ context.Context) string {
 	return fmt.Sprintf("DHCP type must be one of: %v", cato_models.AllDhcpType)
 }
-func (v TypeValidator) MarkdownDescription(ctx context.Context) string {
+func (v DHCPTypeValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
 }

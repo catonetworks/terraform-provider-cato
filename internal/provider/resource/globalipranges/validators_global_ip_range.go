@@ -1,17 +1,15 @@
-package validators
+package globalipranges
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"net"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 func GetGlobalIPRangeValidator() GlobalIPRangeValidator {
@@ -46,7 +44,7 @@ func (v GlobalIPRangeValidator) ValidateGlobalIPRange(tfRanges []tf.GlobalIPRang
 			diags.AddError("Invalid Configuration", "ip_range cannot be empty")
 			return
 		}
-		if !isValidIPRange(rangeValue) {
+		if !validators.IsValidIPRange(rangeValue) {
 			diags.AddError("Invalid Configuration", fmt.Sprintf(
 				"ip_range '%s' must be a valid IP address, CIDR block, or IP range in start-end format",
 				rangeValue,
@@ -73,33 +71,6 @@ func (v GlobalIPRangeValidator) ValidateGlobalIPRange(tfRanges []tf.GlobalIPRang
 		}
 		uniqueRanges[rangeValue] = struct{}{}
 	}
-}
-
-func isValidIPRange(value string) bool {
-	if net.ParseIP(value) != nil {
-		return true
-	}
-	if _, _, err := net.ParseCIDR(value); err == nil {
-		return true
-	}
-
-	start, end, ok := strings.Cut(value, "-")
-	if !ok || strings.Contains(end, "-") {
-		return false
-	}
-
-	startIP := net.ParseIP(strings.TrimSpace(start))
-	endIP := net.ParseIP(strings.TrimSpace(end))
-	if startIP == nil || endIP == nil {
-		return false
-	}
-
-	// Do not compare IPv4 and IPv6 addresses as one ordered range.
-	if (startIP.To4() == nil) != (endIP.To4() == nil) {
-		return false
-	}
-
-	return bytes.Compare(startIP.To16(), endIP.To16()) <= 0
 }
 
 func (v GlobalIPRangeValidator) Description(_ context.Context) string {

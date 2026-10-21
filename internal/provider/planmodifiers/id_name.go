@@ -1,4 +1,4 @@
-package idname
+package planmodifiers
 
 import (
 	"context"
@@ -8,11 +8,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-// PlanModifier returns a plan modifier for ID/Name reference objects
-func PlanModifier() planmodifier.Object {
+// IDNamePlanModifier returns a plan modifier for ID/Name reference objects
+func IDNamePlanModifier() planmodifier.Object {
 	return idNamePlanModifier{}
 }
 
@@ -33,8 +34,8 @@ func (m idNamePlanModifier) MarkdownDescription(ctx context.Context) string {
 //
 //nolint:gocyclo
 func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
-	var cfg, state *Ref
-	var plan Ref
+	var cfg, state *idname.Ref
+	var plan idname.Ref
 
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
 	if req.ConfigValue.IsUnknown() {
@@ -47,7 +48,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		if req.StateValue.IsNull() {
 			return
 		}
-		resp.PlanValue = types.ObjectNull(RefAttrTypes)
+		resp.PlanValue = types.ObjectNull(idname.RefAttrTypes)
 		return
 	}
 
@@ -79,7 +80,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 		// Name is different -> set ID as unknown
 		plan.Name = cfg.Name
 		plan.ID = types.StringUnknown()
-		planObj, diag := types.ObjectValueFrom(ctx, RefAttrTypes, plan)
+		planObj, diag := types.ObjectValueFrom(ctx, idname.RefAttrTypes, plan)
 		if utils.CheckErr(&resp.Diagnostics, diag) {
 			return
 		}
@@ -96,7 +97,7 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 	// ID is different -> set Name as unknown
 	plan.Name = types.StringUnknown()
 	plan.ID = cfg.ID
-	planObj, diag := types.ObjectValueFrom(ctx, RefAttrTypes, plan)
+	planObj, diag := types.ObjectValueFrom(ctx, idname.RefAttrTypes, plan)
 	if utils.CheckErr(&resp.Diagnostics, diag) {
 		return
 	}

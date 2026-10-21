@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -27,9 +26,8 @@ var (
 )
 
 const (
-	licenseSiteRefByID                = "ID"
-	licenseStatusActive               = "ACTIVE"
-	multipleOfTenValidatorDescription = "Ensures the value is a multiple of 10"
+	licenseSiteRefByID  = "ID"
+	licenseStatusActive = "ACTIVE"
 )
 
 func NewLicenseResource() resource.Resource {
@@ -415,27 +413,4 @@ func checkStaticLicenseForAssignment(
 		}
 	}
 	return curSiteID, isAssigned
-}
-
-// General purpose functions
-type customInt64Validator struct{}
-
-func (v customInt64Validator) Description(_ context.Context) string {
-	return multipleOfTenValidatorDescription
-}
-func (v customInt64Validator) MarkdownDescription(_ context.Context) string {
-	return multipleOfTenValidatorDescription
-}
-func (v customInt64Validator) ValidateInt64(_ context.Context, req validator.Int64Request, resp *validator.Int64Response) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-	val := req.ConfigValue.ValueInt64()
-	if val%10 != 0 {
-		resp.Diagnostics.AddAttributeError(
-			req.Path,
-			"Invalid bandwidth, must be in increments of 10",
-			fmt.Sprintf("The value %d is not a multiple of 10", val),
-		)
-	}
 }

@@ -1,4 +1,4 @@
-package dhcp
+package planmodifiers
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 )
 
-func makeDhcpSettingsObj(t *testing.T, s Settings) types.Object {
+func makeDhcpSettingsObj(t *testing.T, s tf.DhcpSettings) types.Object {
 	t.Helper()
 	obj, diags := types.ObjectValueFrom(context.Background(), tf.DhcpSettingsAttrTypes, s)
 	if diags.HasError() {
@@ -31,7 +31,7 @@ func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	state := &Settings{
+	state := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringValue("4456"),
@@ -39,7 +39,7 @@ func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
 
-	cfg := &Settings{
+	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
@@ -57,7 +57,7 @@ func TestPlanDhcpRelay_StateValuePropagation(t *testing.T) {
 		t.Fatal("expected non-null, non-unknown plan result")
 	}
 
-	var planSettings Settings
+	var planSettings tf.DhcpSettings
 	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
 		t.Fatalf("failed to decode plan result: %v", dd)
 	}
@@ -79,7 +79,7 @@ func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	state := &Settings{
+	state := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringValue("4456"),
@@ -87,7 +87,7 @@ func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
 
-	cfg := &Settings{
+	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("NEW-DHCP"),
 		RelayGroupID:          types.StringValue("4456"), // propagated from state
@@ -102,7 +102,7 @@ func TestPlanDhcpRelay_ChangedNameStatePropagatedID(t *testing.T) {
 		t.Fatalf("expected no errors, got: %v", d)
 	}
 
-	var planSettings Settings
+	var planSettings tf.DhcpSettings
 	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
 		t.Fatalf("failed to decode plan result: %v", dd)
 	}
@@ -125,7 +125,7 @@ func TestPlanDhcpRelay_ChangedIDStatePropagatedName(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	state := &Settings{
+	state := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringValue("4456"),
@@ -133,7 +133,7 @@ func TestPlanDhcpRelay_ChangedIDStatePropagatedName(t *testing.T) {
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
 
-	cfg := &Settings{
+	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"), // propagated from state
 		RelayGroupID:          types.StringValue("9999"),
@@ -148,7 +148,7 @@ func TestPlanDhcpRelay_ChangedIDStatePropagatedName(t *testing.T) {
 		t.Fatalf("expected no errors, got: %v", d)
 	}
 
-	var planSettings Settings
+	var planSettings tf.DhcpSettings
 	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
 		t.Fatalf("failed to decode plan result: %v", dd)
 	}
@@ -170,7 +170,7 @@ func TestPlanDhcpRelay_BothExplicitlyChangedErrors(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	state := &Settings{
+	state := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("OLD-DHCP"),
 		RelayGroupID:          types.StringValue("1111"),
@@ -179,7 +179,7 @@ func TestPlanDhcpRelay_BothExplicitlyChangedErrors(t *testing.T) {
 	}
 
 	// Both differ from state → genuine conflict
-	cfg := &Settings{
+	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("NEW-DHCP"),
 		RelayGroupID:          types.StringValue("9999"),
@@ -202,7 +202,7 @@ func TestPlanDhcpRelay_NeitherSetErrors(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	cfg := &Settings{
+	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringNull(),
 		RelayGroupID:          types.StringNull(),
@@ -226,7 +226,7 @@ func TestPlanDhcpRelay_FirstCreateByName(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	cfg := &Settings{
+	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("MY-DHCP"),
 		RelayGroupID:          types.StringNull(),
@@ -241,7 +241,7 @@ func TestPlanDhcpRelay_FirstCreateByName(t *testing.T) {
 		t.Fatalf("unexpected error on first create: %v", d)
 	}
 
-	var planSettings Settings
+	var planSettings tf.DhcpSettings
 	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
 		t.Fatalf("failed to decode plan result: %v", dd)
 	}
@@ -262,7 +262,7 @@ func TestPlanDhcpRelay_FirstCreateByID(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	cfg := &Settings{
+	cfg := &tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringNull(),
 		RelayGroupID:          types.StringValue("4456"),
@@ -277,7 +277,7 @@ func TestPlanDhcpRelay_FirstCreateByID(t *testing.T) {
 		t.Fatalf("unexpected error on first create: %v", d)
 	}
 
-	var planSettings Settings
+	var planSettings tf.DhcpSettings
 	if dd := result.As(ctx, &planSettings, basetypes.ObjectAsOptions{}); dd.HasError() {
 		t.Fatalf("failed to decode plan result: %v", dd)
 	}
@@ -299,7 +299,7 @@ func TestPlanModifyObject_DhcpRelayWithMicrosegmentationFalse(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	cfgSettings := Settings{
+	cfgSettings := tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringNull(),
@@ -332,14 +332,14 @@ func TestPlanModifyObject_DhcpRelayWithPropagatedIDAndMicrosegmentationFalse(t *
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	stateSettings := Settings{
+	stateSettings := tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringValue("4456"),
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
 	}
-	cfgSettings := Settings{
+	cfgSettings := tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringValue("4456"), // propagated from state, not user config
@@ -372,7 +372,7 @@ func TestPlanModifyObject_DhcpRelayWithMicrosegmentationTrue(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	cfgSettings := Settings{
+	cfgSettings := tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRelay)),
 		RelayGroupName:        types.StringValue("CHCVTPJ-DHCP"),
 		RelayGroupID:          types.StringNull(),
@@ -403,7 +403,7 @@ func TestPlanModifyObject_DhcpRangeWithMicrosegmentationTrue(t *testing.T) {
 	ctx := context.Background()
 	m := dhcpSettingsModifier{}
 
-	cfgSettings := Settings{
+	cfgSettings := tf.DhcpSettings{
 		DhcpType:              types.StringValue(string(cato_models.DhcpTypeDhcpRange)),
 		RelayGroupName:        types.StringNull(),
 		RelayGroupID:          types.StringNull(),

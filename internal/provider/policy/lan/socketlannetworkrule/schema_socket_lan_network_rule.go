@@ -101,7 +101,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 						Computed:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Site"),
-							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 						},
 						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 					},
@@ -111,7 +111,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 						Computed:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Group"),
-							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 						},
 						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 					},
@@ -272,7 +272,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Host"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -282,7 +282,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Group"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -292,7 +292,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("System group"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -302,7 +302,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Network interface"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -312,7 +312,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Global IP range"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -325,7 +325,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Floating subnet"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -335,7 +335,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Site Network Subnet"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},

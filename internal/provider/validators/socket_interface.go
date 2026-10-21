@@ -1,4 +1,4 @@
-package socketinterface
+package validators
 
 import (
 	"context"
@@ -10,12 +10,12 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-// IndexValidator validates that the provided string is a valid socket interface index
+// SocketInterfaceIndexValidator validates that the provided string is a valid socket interface index
 type (
-	IndexValidator struct{}
+	SocketInterfaceIndexValidator struct{}
 )
 
-func (v IndexValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v SocketInterfaceIndexValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if !utils.HasValue(req.ConfigValue) {
 		return
 	}
@@ -29,9 +29,9 @@ func (v IndexValidator) ValidateString(_ context.Context, req validator.StringRe
 	}
 }
 
-func (v IndexValidator) Description(_ context.Context) string {
+func (v SocketInterfaceIndexValidator) Description(_ context.Context) string {
 	return fmt.Sprintf("Socket interface index must be one of: %v", cato_models.AllSocketInterfaceIDEnum)
 }
-func (v IndexValidator) MarkdownDescription(ctx context.Context) string {
+func (v SocketInterfaceIndexValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
 }

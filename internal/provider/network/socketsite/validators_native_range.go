@@ -13,9 +13,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/networkrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 // Connection types where it is allowed to specify interface index
@@ -77,7 +77,7 @@ func (v NativeRangeValidator) ValidateObject(ctx context.Context, req validator.
 	}
 
 	// Validate DHCP settings
-	if dhcp.DHCPChecker.Check(ctx, &resp.Diagnostics, nativeRange.DhcpSettings) != nil {
+	if validators.DHCPChecker.Check(ctx, &resp.Diagnostics, nativeRange.DhcpSettings) != nil {
 		return
 	}
 }

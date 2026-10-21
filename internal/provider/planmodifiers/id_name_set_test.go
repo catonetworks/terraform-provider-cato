@@ -1,4 +1,4 @@
-package idname
+package planmodifiers
 
 import (
 	"context"
@@ -7,10 +7,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 func TestIDNameSetModifier(t *testing.T) {
-	refType := types.ObjectType{AttrTypes: RefAttrTypes}
+	refType := types.ObjectType{AttrTypes: idname.RefAttrTypes}
 	ref := func(name, id types.String) types.Object {
 		return types.ObjectValueMust(refType.AttrTypes, map[string]attr.Value{"name": name, "id": id})
 	}
@@ -32,7 +34,7 @@ func TestIDNameSetModifier(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := planmodifier.SetResponse{PlanValue: tc.plan}
-			SetPlanModifier().PlanModifySet(context.Background(), planmodifier.SetRequest{ConfigValue: tc.config, PlanValue: tc.plan, StateValue: tc.state}, &resp)
+			IDNameSetPlanModifier().PlanModifySet(context.Background(), planmodifier.SetRequest{ConfigValue: tc.config, PlanValue: tc.plan, StateValue: tc.state}, &resp)
 			if resp.Diagnostics.HasError() {
 				t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 			}

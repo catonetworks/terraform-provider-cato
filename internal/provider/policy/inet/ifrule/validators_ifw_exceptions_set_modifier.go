@@ -1,4 +1,4 @@
-package planmodifiers
+package ifrule
 
 import (
 	"context"

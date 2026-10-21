@@ -32,8 +32,9 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
   - `model_*.go` — Terraform model types
   - `schema_*.go` — resource Schema methods, schema builders, and attribute type maps
   - `hydrate_*_api.go` / `hydrate_*_state.go` — shared conversion helpers
-  - `planmodifiers/` — custom plan modifier implementations
-  - `validators/` — custom attribute validators
+  - `validators_*.go` — resource-specific validators and plan modifier implementations
+  - `validators/` — reusable validators and validation helpers; filenames have no `validators_` prefix
+  - `planmodifiers/` — reusable plan modifiers and planning helpers
   - `mocks/` — mockery-generated mocks (do not edit manually)
 - `internal/acctests/` — acceptance tests that call real Cato APIs.
 - `internal/accmock/` and `test_data/` — mocked API integration tests.
@@ -42,7 +43,7 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 - `docs/` - generated provider docs output
 
 ## Setup
-- Go `1.26.4` (see `go.mod`).
+- Go `1.26.10` (see `go.mod`).
 - Terraform CLI for running examples and acceptance tests.
 - Required env vars for API access: `CATO_BASEURL`, `CATO_TOKEN`, provider
   `account_id`. Examples also accept `TF_VAR_token` / `TF_VAR_account_id`.

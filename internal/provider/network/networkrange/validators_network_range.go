@@ -12,10 +12,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/networkrange"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 func GetNetworkRangeValidator() NetworkRangeValidator {
@@ -64,13 +64,13 @@ func (v NetworkRangeValidator) validateNetworkRange(
 	}
 
 	// Validate DHCP settings
-	if dhcp.DHCPChecker.CheckWithPriorState(ctx, diags, networkRange.DhcpSettings, priorStateDhcpSettings(priorState)) != nil {
+	if validators.DHCPChecker.CheckWithPriorState(ctx, diags, networkRange.DhcpSettings, priorStateDhcpSettings(priorState)) != nil {
 		return
 	}
 
 	// Validate that interface_id and interface_index cannot be set simultaneously
-	idExplicit := utils.StringFieldIsExplicit(networkRange.InterfaceID, priorStateInterfaceID(priorState))
-	indexExplicit := utils.StringFieldIsExplicit(networkRange.InterfaceIndex, priorStateInterfaceIndex(priorState))
+	idExplicit := validators.StringFieldIsExplicit(networkRange.InterfaceID, priorStateInterfaceID(priorState))
+	indexExplicit := validators.StringFieldIsExplicit(networkRange.InterfaceIndex, priorStateInterfaceIndex(priorState))
 	if idExplicit && indexExplicit {
 		diags.AddError("Invalid network range Configuration",
 			fmt.Sprintf("interface_id '%s' and interface_index '%s' cannot be set simultaneously.",

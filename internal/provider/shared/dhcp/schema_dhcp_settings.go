@@ -4,6 +4,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 // SchemaDhcpSettings returns the schema for the DHCP settings of a network range resource.
@@ -12,12 +15,12 @@ func SchemaDhcpSettings(isRangeResource bool) schema.SingleNestedAttribute {
 		Description:   "Site native range DHCP settings (Only relevant for NATIVE and VLAN range_type)",
 		Optional:      true,
 		Computed:      true,
-		PlanModifiers: []planmodifier.Object{SettingsModifier(isRangeResource)},
+		PlanModifiers: []planmodifier.Object{planmodifiers.DHCPSettingsModifier(isRangeResource)},
 		Attributes: map[string]schema.Attribute{
 			"dhcp_type": schema.StringAttribute{
 				Description: "Network range dhcp type (https://api.catonetworks.com/documentation/#definition-DhcpType)",
 				Required:    true,
-				Validators:  []validator.String{TypeValidator{}},
+				Validators:  []validator.String{validators.DHCPTypeValidator{}},
 			},
 			"ip_range": schema.StringAttribute{
 				Description: "Network range dhcp range (format \"192.168.1.10-192.168.1.20\")",

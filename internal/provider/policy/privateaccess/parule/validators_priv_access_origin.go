@@ -1,4 +1,4 @@
-package validators
+package parule
 
 import (
 	"context"

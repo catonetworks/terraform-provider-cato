@@ -6,8 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 func (r *globalIPRangesResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -20,7 +18,7 @@ func (r *globalIPRangesResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"ranges": schema.SetNestedAttribute{
 				Description: "List of global IP ranges. Values can be a single IP, an inclusive start-end range, or a CIDR block.",
 				Required:    true,
-				Validators:  []validator.Set{validators.GetGlobalIPRangeValidator()},
+				Validators:  []validator.Set{GetGlobalIPRangeValidator()},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"description": schema.StringAttribute{

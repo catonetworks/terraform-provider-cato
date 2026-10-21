@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
@@ -25,7 +26,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"action": schema.StringAttribute{
 				Description: "ALLOW or BLOCK",
 				Required:    true,
-				Validators:  []validator.String{validators.PrivAccPolicyActionValidator{}},
+				Validators:  []validator.String{PrivAccPolicyActionValidator{}},
 			},
 			"active_period": r.schemaActivePeriod(),
 			"applications": schema.SetNestedAttribute{
@@ -33,7 +34,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Required:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Application"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 			},
 			"connection_origins": schema.SetAttribute{
@@ -41,7 +42,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
-				Validators:    []validator.Set{validators.PrivAccPolicyConnOriginValidator{}},
+				Validators:    []validator.Set{PrivAccPolicyConnOriginValidator{}},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"countries": schema.SetNestedAttribute{
@@ -50,7 +51,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Country"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -66,7 +67,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Device"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -127,7 +128,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Mailing list"),
-							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 						},
 					},
 					"subscription_group": schema.SetNestedAttribute{
@@ -135,7 +136,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Subscription group"),
-							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 						},
 					},
 					"webhook": schema.SetNestedAttribute{
@@ -143,7 +144,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Optional:    true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Webhook"),
-							PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 						},
 					},
 				},
@@ -289,7 +290,7 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("User"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
@@ -299,11 +300,11 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Group"),
-					PlanModifiers: []planmodifier.Object{idname.PlanModifier()},
+					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 		},
-		Validators: []validator.Object{validators.PrivAccPolicySourceValidator{}},
+		Validators: []validator.Object{PrivAccPolicySourceValidator{}},
 	}
 }

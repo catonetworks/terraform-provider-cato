@@ -1,4 +1,4 @@
-package dhcp
+package planmodifiers
 
 import (
 	"context"
@@ -13,13 +13,14 @@ import (
 
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
 var dhcpSettingNull = types.ObjectNull(tf.DhcpSettingsAttrTypes)
 
-// SettingsModifier returns a plan modifier for DHCP settings objects
+// DHCPSettingsModifier returns a plan modifier for DHCP settings objects
 // handle ID/Name for relay_group reference
-func SettingsModifier(isRangeResource bool) planmodifier.Object {
+func DHCPSettingsModifier(isRangeResource bool) planmodifier.Object {
 	return dhcpSettingsModifier{isRangeResource: isRangeResource}
 }
 
@@ -41,7 +42,7 @@ func (m dhcpSettingsModifier) MarkdownDescription(ctx context.Context) string {
 // PlanModifyString implements the plan modification logic.
 // If DHCP type is DHCP_RELAY, ensures that the relay group reference is properly handled (ID/Name)
 func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
-	var cfg, state *Settings
+	var cfg, state *tf.DhcpSettings
 
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
 	if req.ConfigValue.IsUnknown() {
@@ -85,7 +86,7 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 	}
 }
 
-func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *Settings, diags *diag.Diagnostics) types.Object {
+func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
 	if cfg.RelayGroupName.IsNull() && cfg.RelayGroupID.IsNull() {
 		diags.AddError("DHCP configuration error in dhcp_settings",
 			"'relay_group_name' or 'relay_group_id' must be defined in the config")
@@ -99,8 +100,8 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *Set
 		stateRelayGroupID = state.RelayGroupID
 	}
 
-	nameExplicit := relayFieldIsExplicit(cfg.RelayGroupName, stateRelayGroupName)
-	idExplicit := relayFieldIsExplicit(cfg.RelayGroupID, stateRelayGroupID)
+	nameExplicit := validators.StringFieldIsExplicit(cfg.RelayGroupName, stateRelayGroupName)
+	idExplicit := validators.StringFieldIsExplicit(cfg.RelayGroupID, stateRelayGroupID)
 
 	if nameExplicit && idExplicit {
 		diags.AddError("DHCP configuration error in dhcp_settings",
@@ -110,7 +111,7 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *Set
 		return dhcpSettingNull
 	}
 
-	plan := Settings{
+	plan := tf.DhcpSettings{
 		DhcpType:              cfg.DhcpType,
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
@@ -137,14 +138,7 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *Set
 	return m.makePlanObj(ctx, plan, diags)
 }
 
-func relayFieldIsExplicit(cfgVal, stateVal types.String) bool {
-	if !utils.HasValue(cfgVal) {
-		return false
-	}
-	return !utils.HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
-}
-
-func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *Settings, diags *diag.Diagnostics) types.Object {
+func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
 	// Ensure IP Range is provided for DHCP_RANGE type
 	if cfg.IPRange.IsNull() {
 		diags.AddError("DHCP configuration error in dhcp_settings", "'ip_range' must be defined in the config ")
@@ -152,10 +146,10 @@ func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *Set
 	}
 	myState := state
 	if myState == nil {
-		myState = &Settings{}
+		myState = &tf.DhcpSettings{}
 	}
 
-	plan := Settings{
+	plan := tf.DhcpSettings{
 		DhcpType:              cfg.DhcpType, // required
 		IPRange:               cfg.IPRange,  // required for DHCP_RANGE
 		DhcpMicrosegmentation: m.getOptionalBoolValue(cfg.DhcpMicrosegmentation, myState.DhcpMicrosegmentation, state != nil),
@@ -167,7 +161,7 @@ func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *Set
 }
 
 func (m dhcpSettingsModifier) planDhcpEmpty(ctx context.Context, dhcpType string, diags *diag.Diagnostics) types.Object {
-	plan := Settings{
+	plan := tf.DhcpSettings{
 		DhcpType:              types.StringValue(dhcpType),
 		IPRange:               types.StringNull(),
 		DhcpMicrosegmentation: types.BoolNull(),
@@ -178,7 +172,7 @@ func (m dhcpSettingsModifier) planDhcpEmpty(ctx context.Context, dhcpType string
 	return m.makePlanObj(ctx, plan, diags)
 }
 
-func (m dhcpSettingsModifier) makePlanObj(ctx context.Context, plan Settings, diags *diag.Diagnostics) types.Object {
+func (m dhcpSettingsModifier) makePlanObj(ctx context.Context, plan tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
 	planObj, objDiag := types.ObjectValueFrom(ctx, tf.DhcpSettingsAttrTypes, plan)
 	if utils.CheckErr(diags, objDiag) {
 		return types.ObjectNull(tf.DhcpSettingsAttrTypes)
