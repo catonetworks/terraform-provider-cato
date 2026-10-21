@@ -32,7 +32,8 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
   - `model_*.go` — Terraform model types
   - `schema_*.go` — resource Schema methods, schema builders, and attribute type maps
   - `hydrate_*_api.go` / `hydrate_*_state.go` — shared conversion helpers
-  - `validators_*.go` — resource-specific validators and plan modifier implementations
+  - `validators_<resource>.go` — all resource-specific validators and plan modifier implementations in one file
+  - `validators_<resource>_test.go` — tests for those validators and plan modifiers
   - `validators/` — reusable validators and validation helpers; filenames have no `validators_` prefix
   - `planmodifiers/` — reusable plan modifiers and planning helpers
   - `mocks/` — mockery-generated mocks (do not edit manually)

@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/stretchr/testify/require"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
@@ -103,4 +105,24 @@ func TestRuleAlertValidatorValidateObjectAcceptsValidAlert(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
 	}
+}
+
+func TestInternetFirewallExceptionModifierResolvesUnknownCountryID(t *testing.T) {
+	t.Parallel()
+	ref := func(id types.String) types.Object {
+		return types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"name": types.StringValue("country-a"), "id": id})
+	}
+	exceptionTypes := map[string]attr.Type{"country": types.SetType{ElemType: idname.RefObjectType}}
+	exception := func(id types.String) types.Set {
+		country := types.SetValueMust(idname.RefObjectType, []attr.Value{ref(id)})
+		object := types.ObjectValueMust(exceptionTypes, map[string]attr.Value{"country": country})
+		return types.SetValueMust(types.ObjectType{AttrTypes: exceptionTypes}, []attr.Value{object})
+	}
+	config, plan := exception(types.StringNull()), exception(types.StringUnknown())
+	resp := &planmodifier.SetResponse{PlanValue: plan}
+	IfwExceptionsSetModifier().PlanModifySet(context.Background(), planmodifier.SetRequest{
+		ConfigValue: config, PlanValue: plan, StateValue: types.SetNull(types.ObjectType{AttrTypes: exceptionTypes}),
+	}, resp)
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+	require.True(t, config.Equal(resp.PlanValue), "expected configured name to be retained and unknown ID resolved to null")
 }

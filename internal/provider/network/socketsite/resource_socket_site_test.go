@@ -195,48 +195,6 @@ func TestSocketSiteFetchSocketConfigurationError(t *testing.T) {
 	}
 }
 
-func TestSocketSiteValidateCloudRouterInput(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		plan      *SocketSite
-		wantError bool
-	}{
-		"omitted": {
-			plan: &SocketSite{
-				ConnectionType: types.StringValue("SOCKET_AWS1500"),
-				IsCloudRouter:  types.BoolNull(),
-			},
-		},
-		"gcp_socket": {
-			plan: &SocketSite{
-				ConnectionType: types.StringValue("SOCKET_GCP1500"),
-				IsCloudRouter:  types.BoolValue(true),
-			},
-		},
-		"non_gcp_socket": {
-			plan: &SocketSite{
-				ConnectionType: types.StringValue("SOCKET_AWS1500"),
-				IsCloudRouter:  types.BoolValue(true),
-			},
-			wantError: true,
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			var diags diag.Diagnostics
-			(&socketSiteResource{}).validateCloudRouterInput(tt.plan, &diags)
-
-			if gotError := diags.HasError(); gotError != tt.wantError {
-				t.Fatalf("expected error=%t, got %t: %+v", tt.wantError, gotError, diags)
-			}
-		})
-	}
-}
-
 func TestSocketSiteUpdateCloudRouter(t *testing.T) {
 	t.Parallel()
 
@@ -470,20 +428,6 @@ func socketConfigurationForTest(model cato_models.SocketModel, isPrimary bool,
 				Model:     &model,
 			},
 		},
-	}
-}
-
-func TestSocketSiteNativeRangeValidatorDescription(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	v := GetNativeRangeValidator()
-
-	if v.Description(ctx) == "" {
-		t.Fatal("expected non-empty description")
-	}
-	if got, want := v.MarkdownDescription(ctx), v.Description(ctx); got != want {
-		t.Fatalf("expected markdown description to match description\nwant: %q\ngot:  %q", want, got)
 	}
 }
 

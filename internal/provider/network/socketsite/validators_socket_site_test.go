@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -12,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCloudRouterValidatorValidate(t *testing.T) {
@@ -127,6 +129,104 @@ func TestCloudRouterValidatorValidateBoolReadsConnectionTypeFromConfig(t *testin
 			if gotError := resp.Diagnostics.HasError(); gotError != tt.wantError {
 				t.Fatalf("expected error=%t, got %t: %+v", tt.wantError, gotError, resp.Diagnostics)
 			}
+		})
+	}
+}
+
+func TestSocketSiteValidateCloudRouterInput(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		plan      *SocketSite
+		wantError bool
+	}{
+		"omitted": {
+			plan: &SocketSite{
+				ConnectionType: types.StringValue("SOCKET_AWS1500"),
+				IsCloudRouter:  types.BoolNull(),
+			},
+		},
+		"gcp_socket": {
+			plan: &SocketSite{
+				ConnectionType: types.StringValue("SOCKET_GCP1500"),
+				IsCloudRouter:  types.BoolValue(true),
+			},
+		},
+		"non_gcp_socket": {
+			plan: &SocketSite{
+				ConnectionType: types.StringValue("SOCKET_AWS1500"),
+				IsCloudRouter:  types.BoolValue(true),
+			},
+			wantError: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			var diags diag.Diagnostics
+			(&socketSiteResource{}).validateCloudRouterInput(tt.plan, &diags)
+
+			if gotError := diags.HasError(); gotError != tt.wantError {
+				t.Fatalf("expected error=%t, got %t: %+v", tt.wantError, gotError, diags)
+			}
+		})
+	}
+}
+
+func TestSocketSiteNativeRangeValidatorDescription(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	v := GetNativeRangeValidator()
+
+	if v.Description(ctx) == "" {
+		t.Fatal("expected non-empty description")
+	}
+	if got, want := v.MarkdownDescription(ctx), v.Description(ctx); got != want {
+		t.Fatalf("expected markdown description to match description\nwant: %q\ngot:  %q", want, got)
+	}
+}
+
+func TestSocketSiteConnectionTypeValidation(t *testing.T) {
+	t.Parallel()
+	v := SiteConnectionTypeValidator{}
+	for _, tc := range []struct {
+		name      string
+		value     types.String
+		wantError bool
+	}{
+		{"valid", types.StringValue(string(cato_models.AllSiteConnectionTypeEnum[0])), false},
+		{"invalid", types.StringValue("INVALID"), true},
+		{"null", types.StringNull(), true},
+		{"unknown", types.StringUnknown(), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), validator.StringRequest{Path: path.Root("value"), ConfigValue: tc.value}, resp)
+			require.Equal(t, tc.wantError, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+		})
+	}
+}
+
+func TestSocketSiteInterfaceDestTypeValidation(t *testing.T) {
+	t.Parallel()
+	v := SocketInterfaceDestTypeValidator{}
+	for _, tc := range []struct {
+		name      string
+		value     types.String
+		wantError bool
+	}{
+		{"valid", types.StringValue(string(cato_models.AllSocketInterfaceDestType[0])), false},
+		{"invalid", types.StringValue("INVALID"), true},
+		{"null", types.StringNull(), false},
+		{"unknown", types.StringUnknown(), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), validator.StringRequest{Path: path.Root("value"), ConfigValue: tc.value}, resp)
+			require.Equal(t, tc.wantError, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
 		})
 	}
 }

@@ -18,6 +18,61 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
+func GetCloudRouterValidator() CloudRouterValidator {
+	return CloudRouterValidator{}
+}
+
+// CloudRouterValidator validates that Cloud Router mode is configured only for GCP vSocket sites.
+type CloudRouterValidator struct{}
+
+func (v CloudRouterValidator) ValidateBool(ctx context.Context, req validator.BoolRequest, resp *validator.BoolResponse) {
+	var connectionType types.String
+
+	if !utils.HasValue(req.ConfigValue) {
+		return
+	}
+	if utils.CheckErr(&resp.Diagnostics, req.Config.GetAttribute(ctx, path.Root("connection_type"), &connectionType)) {
+		return
+	}
+
+	v.validate(connectionType, req.ConfigValue, &resp.Diagnostics)
+}
+
+func (CloudRouterValidator) Description(_ context.Context) string {
+	return "is_cloud_router can only be configured for GCP vSocket HA sites"
+}
+
+func (v CloudRouterValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (CloudRouterValidator) validate(connectionType types.String, isCloudRouter types.Bool, diags *diag.Diagnostics) {
+	if !utils.HasValue(isCloudRouter) || !utils.HasValue(connectionType) {
+		return
+	}
+
+	if connectionType.ValueString() != string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
+		diags.AddError(
+			"Unsupported Cloud Router configuration",
+			"is_cloud_router is supported only for GCP vSocket HA sites.",
+		)
+	}
+}
+
+func (r *socketSiteResource) validateCloudRouterInput(plan *SocketSite, diags *diag.Diagnostics) {
+	if !utils.HasValue(plan.IsCloudRouter) {
+		return
+	}
+
+	if plan.ConnectionType.ValueString() != string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
+		diags.AddAttributeError(
+			path.Root("is_cloud_router"),
+			"Unsupported Cloud Router configuration",
+			"`is_cloud_router` is supported only for GCP vSocket HA sites.",
+		)
+	}
+}
+
 // Connection types where it is allowed to specify interface index
 var connTypesWithInterfaceIndex = []cato_models.SiteConnectionTypeEnum{
 	cato_models.SiteConnectionTypeEnumSocketX1500,
@@ -172,4 +227,56 @@ func (v NativeRangeValidator) isUnknown(nativeRange NativeRange) bool { //nolint
 		nativeRange.MdnsReflector.IsUnknown() ||
 		nativeRange.LagMinLinks.IsUnknown() ||
 		nativeRange.InterfaceDestType.IsUnknown()
+}
+
+// SiteConnectionTypeValidator validates that the provided string is a valid site connection type
+type (
+	SiteConnectionTypeValidator struct{}
+)
+
+func (v SiteConnectionTypeValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsUnknown() {
+		return
+	}
+	value := req.ConfigValue.ValueString()
+	connType := cato_models.SiteConnectionTypeEnum(value)
+	if !connType.IsValid() {
+		resp.Diagnostics.AddError("Field validation error",
+			fmt.Sprintf("invalid site connection type (%s: %s)\n - valid options: %+v", req.Path.String(),
+				value, cato_models.AllSiteConnectionTypeEnum))
+		return
+	}
+}
+
+func (v SiteConnectionTypeValidator) Description(_ context.Context) string {
+	return fmt.Sprintf("Site connection type must be one of: %v", cato_models.AllSiteConnectionTypeEnum)
+}
+func (v SiteConnectionTypeValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+// SocketInterfaceDestTypeValidator validates that the provided string is a valid socket interface destination type
+type (
+	SocketInterfaceDestTypeValidator struct{}
+)
+
+func (v SocketInterfaceDestTypeValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if !utils.HasValue(req.ConfigValue) {
+		return
+	}
+	value := req.ConfigValue.ValueString()
+	ifaceDestType := cato_models.SocketInterfaceDestType(value)
+	if !ifaceDestType.IsValid() {
+		resp.Diagnostics.AddError("Field validation error",
+			fmt.Sprintf("invalid interface destination type (%s: %s)\n - valid options: %+v", req.Path.String(),
+				value, cato_models.AllSocketInterfaceDestType))
+		return
+	}
+}
+
+func (v SocketInterfaceDestTypeValidator) Description(_ context.Context) string {
+	return fmt.Sprintf("Socket interface destination type must be one of: %v", cato_models.AllSocketInterfaceDestType)
+}
+func (v SocketInterfaceDestTypeValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
 }
