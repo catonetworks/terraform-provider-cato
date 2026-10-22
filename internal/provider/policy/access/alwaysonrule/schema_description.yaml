@@ -1,0 +1,177 @@
+# Resource: cato_always_on_rule
+# Package: internal/provider/policy/access/alwaysonrule
+# Source: https://system.cc.catonetworks.com/api/schema?with_undocumented=true
+# Create: ZtnaAlwaysOnPolicyMutations.addRule
+# Update: ZtnaAlwaysOnPolicyMutations.updateRule
+# Delete: ZtnaAlwaysOnPolicyMutations.removeRule
+# Read: ZtnaAlwaysOnPolicyQueries.policy
+# Preserve the ZtnaAlwaysOnAddRuleInput tree; computed rule fields come from
+# ZtnaAlwaysOnRuleMutationPayload.rule.rule (also returned by policy.rules[].rule).
+# Required modes follow GraphQL non-null markers, including fields with defaults.
+# ObjectRefBy/String reference inputs use id/name with computed_optional modes
+# and the idName hint, as specified by the References special case.
+# SDK v1.1.0 omits section.subPolicyId from generated CRUD selections; excluded pending SDK support.
+# Sets are proposed for unordered matching criteria, pending user approval.
+Attributes:
+  - Name: at
+    Description: Position of the new rule in the policy
+    Type: nested
+    Attributes:
+      - Name: position
+        Description: Insertion position (AFTER_RULE, BEFORE_RULE, FIRST_IN_POLICY, FIRST_IN_SECTION, LAST_IN_POLICY, or LAST_IN_SECTION)
+        Type: string
+        Mode: optional
+        Hints:
+          - enum=PolicyRulePositionEnum
+      - Name: ref
+        Description: ID of the rule or section relative to which the new rule is positioned
+        Type: string
+        Mode: optional
+    Mode: optional
+
+  - Name: rule
+    Description: Parameters for the Always On policy rule
+    Type: nested
+    Attributes:
+      - Name: action
+        Description: Action applied when the rule matches (ENFORCE or IGNORE; API default is ENFORCE)
+        Type: string
+        Mode: required
+        Hints:
+          - enum=ZtnaAlwaysOnRuleActionEnum
+
+      - Name: allow_fail_open
+        Description: Allow direct internet access until a connection to the PoP is established (API default is false)
+        Type: bool
+        Mode: required
+
+      - Name: allow_user_bypass
+        Description: Allow users to bypass Always On (API default is false)
+        Type: bool
+        Mode: required
+
+      - Name: anti_tamper_mode
+        Description: Level of protection against tampering (OFF, MONITOR, or PROTECT; API default is OFF)
+        Type: string
+        Mode: optional
+        Hints:
+          - enum=AntiTamperModeEnum
+
+      - Name: bypass_duration
+        Description: Duration of the disconnection allowed when bypassing Always On
+        Type: nested
+        Attributes:
+          - Name: time
+            Description: Bypass duration value
+            Type: int64
+            Mode: required
+          - Name: unit
+            Description: Bypass duration unit (HOURS or MINUTES; API default is MINUTES)
+            Type: string
+            Mode: required
+            Hints:
+              - enum=ZtnaAlwaysOnTimeUnit
+        Mode: required
+
+      - Name: description
+        Description: Rule description (API default is an empty string)
+        Type: string
+        Mode: required
+
+      - Name: device_posture_profile
+        Description: Device posture profiles matched with logical OR; combined with other criteria using logical AND (API default is an empty collection)
+        Type: set
+        ItemType: nested
+        Attributes:
+          - Name: id
+            Description: Device posture profile ID
+            Type: string
+            Mode: computed_optional
+          - Name: name
+            Description: Device posture profile name
+            Type: string
+            Mode: computed_optional
+        Mode: required
+        Hints:
+          - idName
+
+      - Name: enabled
+        Description: Whether the rule is enabled
+        Type: bool
+        Mode: required
+
+      - Name: id
+        Description: Always On policy rule ID
+        Type: string
+        Mode: computed
+
+      - Name: index
+        Description: Position or priority of the rule in the policy
+        Type: int64
+        Mode: computed
+
+      - Name: name
+        Description: Rule name
+        Type: string
+        Mode: required
+
+      - Name: platform
+        Description: Operating systems matched with logical OR (ANDROID, CHROMEOS, EMBEDDED, IOS, LINUX, MACOS, or WINDOWS); combined with other criteria using logical AND (API default is an empty collection)
+        Type: set
+        ItemType: string
+        Mode: required
+        Hints:
+          - enum=OperatingSystem
+
+      - Name: section
+        Description: Policy section containing the rule
+        Type: nested
+        Attributes:
+          - Name: id
+            Description: Policy section ID
+            Type: string
+            Mode: computed
+          - Name: name
+            Description: Policy section name
+            Type: string
+            Mode: computed
+        Mode: computed
+
+      - Name: source
+        Description: Source users and user groups matched with logical OR within each criterion and logical AND between criteria (API default contains empty user and users_group collections)
+        Type: nested
+        Attributes:
+          - Name: user
+            Description: Individual users defined for the account (API default is an empty collection)
+            Type: set
+            ItemType: nested
+            Attributes:
+              - Name: id
+                Description: User ID
+                Type: string
+                Mode: computed_optional
+              - Name: name
+                Description: User name
+                Type: string
+                Mode: computed_optional
+            Mode: required
+            Hints:
+              - idName
+          - Name: users_group
+            Description: User groups defined for the account (API default is an empty collection)
+            Type: set
+            ItemType: nested
+            Attributes:
+              - Name: id
+                Description: User group ID
+                Type: string
+                Mode: computed_optional
+              - Name: name
+                Description: User group name
+                Type: string
+                Mode: computed_optional
+            Mode: required
+            Hints:
+              - idName
+        Mode: required
+    Mode: required
