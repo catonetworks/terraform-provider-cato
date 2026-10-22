@@ -8,6 +8,8 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/mock"
@@ -17,6 +19,37 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
+
+func TestInternetFwRuleAppCategoryPlanResolvesOverlappingReferences(t *testing.T) {
+	ctx := context.Background()
+	ref := func(id, name types.String) attr.Value {
+		return types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": id, "name": name})
+	}
+	config := types.SetValueMust(idname.RefObjectType, []attr.Value{
+		ref(types.StringValue("suspected_malware"), types.StringNull()),
+		ref(types.StringNull(), types.StringValue("Malware")),
+		ref(types.StringNull(), types.StringValue("Alcohol and Tobacco")),
+	})
+	plan := types.SetValueMust(idname.RefObjectType, []attr.Value{
+		ref(types.StringValue("suspected_malware"), types.StringUnknown()),
+		ref(types.StringUnknown(), types.StringValue("Malware")),
+		ref(types.StringUnknown(), types.StringValue("Alcohol and Tobacco")),
+	})
+	state := types.SetValueMust(idname.RefObjectType, []attr.Value{
+		ref(types.StringValue("food_drinks_tobacco"), types.StringValue("Alcohol and Tobacco")),
+		ref(types.StringValue("suspected_malware"), types.StringValue("Malware")),
+	})
+	rule := GetInternetFwRuleSchema(ctx, t).Attributes["rule"].(schema.SingleNestedAttribute)
+	destination := rule.Attributes["destination"].(schema.SingleNestedAttribute)
+	categories := destination.Attributes["app_category"].(schema.SetNestedAttribute)
+	for _, modifier := range categories.PlanModifiers {
+		resp := planmodifier.SetResponse{PlanValue: plan}
+		modifier.PlanModifySet(ctx, planmodifier.SetRequest{ConfigValue: config, PlanValue: plan, StateValue: state}, &resp)
+		require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+		plan = resp.PlanValue
+	}
+	require.True(t, plan.Equal(state), "got %s, want %s", plan, state)
+}
 
 func TestHydrateIfwRuleStateDuplicateAppCategories(t *testing.T) {
 	apiRule := MinimalAPIRule("test-ifw-rule", 1)

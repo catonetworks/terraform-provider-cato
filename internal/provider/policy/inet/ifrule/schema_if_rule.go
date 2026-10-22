@@ -509,20 +509,21 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 							},
 							"app_category": schema.SetNestedAttribute{
-								Description: "Cato category of applications which are dynamically updated by Cato",
-								Required:    false,
-								Optional:    true,
+								Description:   "Cato category of applications which are dynamically updated by Cato",
+								Required:      false,
+								Optional:      true,
+								PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
 								NestedObject: schema.NestedAttributeObject{
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
 											Description: "App category name",
 											Computed:    true,
 											Optional:    true,
 											Validators: []validator.String{
+												stringvalidator.ExactlyOneOf(path.MatchRelative().AtParent().AtName("id")),
 												stringvalidator.OneOf("Advertisements", "AI Media Generators", "Alcohol and Tobacco", "Anonymizers", "Authentication Services", "Beauty", "Botnets", "Business Information", "Business Operations AI", "Business Systems", "CDN", "Chat and IM", "Cheating", "Code Assistants", "Compromised", "Computers and Technology", "Conversational AI", "Criminal Activity", "Cults", "Database", "DNS over HTTPS", "Education", "Email", "Entertainment", "ERP And CRM", "File Sharing", "Finance", "Gambling", "Games", "General", "Generative AI Tools", "Government", "Greeting Cards", "Hacking", "Health and Medicine", "Healthcare AI", "Hiring", "Illegal Drugs", "Industrial Protocols", "Information Security", "Internet Conferencing", "Keyloggers", "Leisure and Recreation", "Malware", "Media Streams", "Military", "Network Protocol", "Network Utilities", "News", "Nudity", "Office Programs And Services", "Online Storage", "P2P", "Parked domains", "PDF Converters", "Personal Sites", "Phishing", "Politics", "Porn", "Productivity", "Questionable", "Real Estate", "Religion", "Remote Access", "Search Engines and Portals", "Sex education", "Shopping", "Social", "Software Downloads", "Software Updates", "SPAM", "Sports", "Spyware", "Tasteless", "Translation", "Travel AI Assistance", "Travel", "Uncategorized", "Undefined", "Vehicles", "Violence and Hate", "Voip Video", "Weapons", "Web Hosting", "Web Posting", "Writing Assistants"),
 											},
 										},
