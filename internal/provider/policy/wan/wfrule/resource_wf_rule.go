@@ -170,7 +170,7 @@ func (r *WanFwRuleResource) Create(ctx context.Context, req resource.CreateReque
 	// Hydrate ruleInput from api response
 	ruleInputRead, hydrateDiags := HydrateWanRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
-	convertCreateInput3(currentRule, &ruleInputRead)
+	populateWanRuleID(currentRule, &ruleInputRead)
 	tflog.Info(ctx, "ruleInputRead - "+fmt.Sprintf("%v", ruleInputRead))
 
 	// Handle exceptions correlation manually to preserve plan structure

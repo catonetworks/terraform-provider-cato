@@ -86,21 +86,10 @@ func convertUpdateInput(
 	return resultPlanDetails
 }
 
-// convertCreateValues converts between the Terraform model and SDK values.
-func convertCreateValues(
+// globalIPRangeObjectFromModel encodes one Terraform range and appends conversion diagnostics.
+func globalIPRangeObjectFromModel(
 	ctx context.Context,
-	diags diag.Diagnostics,
-	tfRange tf.GlobalIPRange,
-) (resultRangeObj basetypes.ObjectValue) {
-	resultRangeObj, objDiags := types.ObjectValueFrom(ctx, tf.GlobalIPRangeTypes, tfRange)
-	diags.Append(objDiags...)
-	return resultRangeObj
-}
-
-// convertUpdateValues converts between the Terraform model and SDK values.
-func convertUpdateValues(
-	ctx context.Context,
-	diags diag.Diagnostics,
+	diags *diag.Diagnostics,
 	tfRange tf.GlobalIPRange,
 ) (resultRangeObj basetypes.ObjectValue) {
 	resultRangeObj, objDiags := types.ObjectValueFrom(ctx, tf.GlobalIPRangeTypes, tfRange)

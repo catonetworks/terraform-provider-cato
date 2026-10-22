@@ -103,7 +103,7 @@ func (r *socketLanSectionResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	convertCreateInput3(&plan, policyChange)
+	populateSocketLanSectionID(&plan, policyChange)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

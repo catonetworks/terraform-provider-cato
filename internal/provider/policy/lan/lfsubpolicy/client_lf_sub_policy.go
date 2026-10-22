@@ -6,9 +6,6 @@ import (
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	diag "github.com/hashicorp/terraform-plugin-framework/diag"
-
-	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 // SocketLanSubPolicyClient is the narrow SDK surface used by the
@@ -65,35 +62,6 @@ func (r *lfSubPolicyResource) getClient() SocketLanSubPolicyClient {
 type fromtoer interface {
 	GetFrom() string
 	GetTo() string
-}
-
-// publish calls the API to publish the draft policy revision
-func (r *lfSubPolicyResource) publish(ctx context.Context, diags *diag.Diagnostics) {
-	const summary = "failed to publish LAN firewall policy"
-	const notFound = "PolicyRevisionNotFound"
-	result, err := r.resourceAPI().PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
-	if err != nil {
-		diags.AddError(summary, err.Error())
-		return
-	}
-	publish := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
-	apiErrors := publish.GetErrors()
-	if len(apiErrors) > 0 {
-		allNotFound := true
-		for _, apiError := range apiErrors {
-			if code := apiError.GetErrorCode(); code == nil || *code != notFound {
-				allNotFound = false
-				break
-			}
-		}
-		if allNotFound {
-			return
-		}
-	}
-	if utils.CheckAPIErrors(nil, apiErrors, summary, diags) {
-		return
-	}
-	checkPolicyMutationStatus(publish.GetStatus(), summary, diags)
 }
 
 // ResourceClient contains only the SDK operations used by this resource.

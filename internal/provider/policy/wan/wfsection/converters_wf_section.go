@@ -48,8 +48,8 @@ func convertCreateInput(
 	return resultInput
 }
 
-// convertCreateInput3 converts between the Terraform model and SDK values.
-func convertCreateInput3(plan *WanFirewallSection, policyChange *cato_go_sdk.PolicyWanFirewallAddSection) {
+// populateWanSectionID sets the created WAN section ID from the mutation response.
+func populateWanSectionID(plan *WanFirewallSection, policyChange *cato_go_sdk.PolicyWanFirewallAddSection) {
 	plan.ID = types.StringValue(policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID)
 }
 

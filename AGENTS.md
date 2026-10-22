@@ -13,6 +13,8 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 - `resource_<name>.go` owns Terraform lifecycle orchestration, diagnostics, and state persistence.
 - `converters_<name>.go` owns Terraform model ↔ SDK input/response conversion, including nested values and null/unknown handling.
 - `client_<name>.go` owns the resource's narrow `ResourceClient` interface and SDK forwarding adapter. Resources accept an injected `apiClient`; normal execution uses the configured provider SDK. Keep SDK access, API lookup helpers, and retries behind this boundary.
+- Keep publish lifecycle decisions and policy-publication diagnostics in resource files; client adapters forward the SDK requests.
+- Converters must propagate diagnostics through a pointer or an explicit return value; callers must retain them in the Terraform response.
 - Keep shared conversions and policy-family helpers in their existing shared packages; pass narrow client interfaces through shared helpers that perform API calls. Preserve account scoping, caching, retries, and request shapes.
 
 ## Structure

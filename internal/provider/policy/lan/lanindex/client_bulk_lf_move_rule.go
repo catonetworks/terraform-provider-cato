@@ -6,7 +6,6 @@ import (
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	diag "github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
 type LanFwRuleClient interface {
@@ -27,39 +26,6 @@ type LanFwRuleClient interface {
 }
 
 func (r *lanRulesIndexResource) getClient() LanFwRuleClient { return r.catov2Client }
-
-// publish calls the API to publish the draft policy revision
-func (r *lanRulesIndexResource) publish(ctx context.Context, diags *diag.Diagnostics) {
-	const summary = "failed to publish LAN firewall policy"
-	const notFound = "PolicyRevisionNotFound"
-	result, err := r.resourceAPI().PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
-	if err != nil {
-		diags.AddError(summary, err.Error())
-		return
-	}
-	publish := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
-	errors := publish.GetErrors()
-	if len(errors) > 0 {
-		hasAPIError := false
-		for _, e := range errors {
-			if code := e.GetErrorCode(); code != nil && *code == notFound {
-				continue
-			}
-			hasAPIError = true
-			if msg := e.GetErrorMessage(); msg != nil {
-				diags.AddError(summary, *msg)
-			} else {
-				diags.AddError(summary, "unknown error")
-			}
-		}
-		if hasAPIError {
-			return
-		}
-	}
-	if err := lanPolicyMutationStatusError(publish.GetStatus()); err != nil {
-		diags.AddError(summary, err.Error())
-	}
-}
 
 // ResourceClient contains only the SDK operations used by this resource.
 type ResourceClient interface {

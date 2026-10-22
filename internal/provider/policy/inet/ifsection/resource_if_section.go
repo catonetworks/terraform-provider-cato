@@ -153,7 +153,7 @@ func (r *internetFwSectionResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	convertCreateInput3(&plan, policyChange)
+	populateInternetFirewallSectionID(&plan, policyChange)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

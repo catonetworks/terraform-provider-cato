@@ -1,10 +1,14 @@
 package globalipranges
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
 	cato "github.com/catonetworks/cato-go-sdk"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
@@ -41,4 +45,14 @@ func TestGlobalIPRangeResponseConverters(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGlobalIPRangeObjectConversionDiagnostics(t *testing.T) {
+	// A mismatched schema forces ObjectValueFrom to report a conversion error.
+	original := tf.GlobalIPRangeTypes
+	tf.GlobalIPRangeTypes = map[string]attr.Type{"name": types.BoolType}
+	t.Cleanup(func() { tf.GlobalIPRangeTypes = original })
+	var diags diag.Diagnostics
+	globalIPRangeObjectFromModel(context.Background(), &diags, tf.GlobalIPRange{})
+	require.True(t, diags.HasError(), "conversion errors must reach the caller")
 }

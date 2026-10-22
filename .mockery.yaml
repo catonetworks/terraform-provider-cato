@@ -46,3 +46,9 @@ packages:
         config:
           filename: GroupMembersResourceClient.go
           structname: GroupMembersResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: GlobalIPRangesResourceClient.go
+          structname: GlobalIPRangesResourceClient

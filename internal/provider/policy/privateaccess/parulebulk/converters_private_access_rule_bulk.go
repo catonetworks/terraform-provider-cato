@@ -12,8 +12,8 @@ import (
 	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 )
 
-// convertMoveToPositionValues converts between the Terraform model and SDK values.
-func convertMoveToPositionValues(
+// privateAccessMoveRuleInput updates local rule order and builds the SDK move request.
+func privateAccessMoveRuleInput(
 	currentRules []*PrivateAccessBulkRule,
 	ruleID string,
 	newPosition int,
@@ -44,10 +44,10 @@ func convertMoveToPositionValues(
 	return resultInput
 }
 
-// convertHydratePrivAccessRuleBulkStateValues converts between the Terraform model and SDK values.
-func convertHydratePrivAccessRuleBulkStateValues(
+// privateAccessRuleMapFromObjects encodes rule objects as the Terraform rule_data map.
+func privateAccessRuleMapFromObjects(
 	ctx context.Context,
-	diags diag.Diagnostics,
+	diags *diag.Diagnostics,
 	apiRulesTf map[string]types.Object,
 ) (resultRulesMap basetypes.MapValue) {
 	resultRulesMap, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: PrivateAccessBulkRuleTypes}, apiRulesTf)
@@ -55,8 +55,8 @@ func convertHydratePrivAccessRuleBulkStateValues(
 	return resultRulesMap
 }
 
-// convertHydratePrivAccessRuleBulkStateValues2 converts between the Terraform model and SDK values.
-func convertHydratePrivAccessRuleBulkStateValues2(
+// privateAccessBulkStateFromRules builds bulk state while preserving the configured publish value.
+func privateAccessBulkStateFromRules(
 	plan *PrivateAccessRuleBulkModel,
 	rulesMap basetypes.MapValue,
 ) (resultState *PrivateAccessRuleBulkModel) {
@@ -68,18 +68,18 @@ func convertHydratePrivAccessRuleBulkStateValues2(
 	return resultState
 }
 
-// convertHydratePrivAccessRuleBulkStateValues3 converts between the Terraform model and SDK values.
-func convertHydratePrivAccessRuleBulkStateValues3(
+// privateAccessRuleFromObject decodes a configured Terraform rule and appends diagnostics.
+func privateAccessRuleFromObject(
 	ctx context.Context,
-	diags diag.Diagnostics,
+	diags *diag.Diagnostics,
 	obj types.Object,
 ) (resultTfRule PrivateAccessBulkRule) {
 	diags.Append(obj.As(ctx, &resultTfRule, basetypes.ObjectAsOptions{})...)
 	return resultTfRule
 }
 
-// convertHydratePrivAccessRuleBulkStateValues4 converts between the Terraform model and SDK values.
-func convertHydratePrivAccessRuleBulkStateValues4(
+// privateAccessRuleFromResponse matches an SDK rule with its configured Terraform rule.
+func privateAccessRuleFromResponse(
 	stateRules map[string]PrivateAccessBulkRule,
 	polRule *cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules,
 ) (
@@ -98,10 +98,10 @@ func convertHydratePrivAccessRuleBulkStateValues4(
 	return resultAPIRule, resultTfRule, resultStateRule, resultOk
 }
 
-// convertHydratePrivAccessRuleBulkStateValues5 converts between the Terraform model and SDK values.
-func convertHydratePrivAccessRuleBulkStateValues5(
+// privateAccessRuleObjectFromModel encodes an SDK-enriched rule with its configured index.
+func privateAccessRuleObjectFromModel(
 	ctx context.Context,
-	diags diag.Diagnostics,
+	diags *diag.Diagnostics,
 	tfRule *PrivateAccessBulkRule,
 	stateRule PrivateAccessBulkRule,
 ) (resultRuleObj basetypes.ObjectValue) {

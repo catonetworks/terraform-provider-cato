@@ -171,7 +171,7 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 	})
 
 	// Hydrate ruleInput from api response
-	ruleObject := convertCreateInput3(ctx, plan, &diags, currentRule)
+	ruleObject := internetFirewallRuleObjectFromResponse(ctx, plan, &diags, currentRule)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

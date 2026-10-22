@@ -2,36 +2,11 @@ package parulebulk
 
 import (
 	"context"
-	"fmt"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
-
-	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
-
-// publish calls the API to publish the draft policy revision
-func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
-	result, err := r.resourceAPI().PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "Bulk PolicyPrivateAccessPublishRevision", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
-	if err != nil {
-		return err
-	}
-	res := result.GetPolicy().GetPrivateAccess().GetPublishPolicyRevision()
-	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		apiErrors := res.GetErrors()
-		if len(apiErrors) > 0 {
-			if *apiErrors[0].GetErrorCode() == "PolicyRevisionNotFound" {
-				return nil // there was nothing to publish
-			}
-			return fmt.Errorf("error publishing policy - %s", *apiErrors[0].GetErrorMessage())
-		}
-		return fmt.Errorf("error publishing policy")
-	}
-	return nil
-}
 
 // ResourceClient contains only the SDK operations used by this resource.
 type ResourceClient interface {

@@ -2632,8 +2632,8 @@ func useStateExceptionDeviceAttributes(ctx context.Context, state InternetFirewa
 	return types.ObjectNull(IfwDeviceAttrAttrTypes)
 }
 
-// convertCreateInput3 converts between the Terraform model and SDK values.
-func convertCreateInput3(
+// internetFirewallRuleObjectFromResponse encodes the SDK rule using plan-aware state hydration.
+func internetFirewallRuleObjectFromResponse(
 	ctx context.Context,
 	plan InternetFirewallRule,
 	priorDiags *diag.Diagnostics,

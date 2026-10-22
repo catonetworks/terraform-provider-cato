@@ -200,7 +200,7 @@ func (r *privAccessRuleBulkResource) moveToPosition(
 		return nil // nothing to do
 	}
 
-	input := convertMoveToPositionValues(currentRules, ruleID, newPosition, myRule, curPossition)
+	input := privateAccessMoveRuleInput(currentRules, ruleID, newPosition, myRule, curPossition)
 	if r.client == nil {
 		return nil
 	}
@@ -277,7 +277,7 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 			return nil, nil, diags, ErrConvertError
 		}
 		for name, obj := range tfBulk {
-			tfRule := convertHydratePrivAccessRuleBulkStateValues3(ctx, diags, obj)
+			tfRule := privateAccessRuleFromObject(ctx, &diags, obj)
 			if diags.HasError() {
 				return nil, nil, diags, ErrConvertError
 			}
@@ -306,11 +306,11 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 		)
 	}
 	for _, polRule := range policy.Rules {
-		apiRule, tfRule, stateRule, ok := convertHydratePrivAccessRuleBulkStateValues4(stateRules, polRule)
+		apiRule, tfRule, stateRule, ok := privateAccessRuleFromResponse(stateRules, polRule)
 		if !ok {
 			return nil, nil, nil, fmt.Errorf("rule '%s' from API is not found in the PrivateAccessRuleBulkModel state", apiRule.Name)
 		}
-		ruleObj := convertHydratePrivAccessRuleBulkStateValues5(ctx, diags, tfRule, stateRule)
+		ruleObj := privateAccessRuleObjectFromModel(ctx, &diags, tfRule, stateRule)
 		if diags.HasError() {
 			return nil, nil, diags, apperror.ErrAPIResponseParse
 		}
@@ -319,11 +319,32 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	}
 
 	// Prepate the tf state - ruleData map from enriched apiRules
-	rulesMap := convertHydratePrivAccessRuleBulkStateValues(ctx, diags, apiRulesTf)
+	rulesMap := privateAccessRuleMapFromObjects(ctx, &diags, apiRulesTf)
 	if diags.HasError() {
 		return nil, nil, diags, apperror.ErrAPIResponseParse
 	}
-	state := convertHydratePrivAccessRuleBulkStateValues2(plan, rulesMap)
+	state := privateAccessBulkStateFromRules(plan, rulesMap)
 
 	return state, apiRulesGo, nil, nil
+}
+
+// publish calls the API to publish the draft policy revision
+func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
+	result, err := r.resourceAPI().PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Bulk PolicyPrivateAccessPublishRevision", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	if err != nil {
+		return err
+	}
+	res := result.GetPolicy().GetPrivateAccess().GetPublishPolicyRevision()
+	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+		apiErrors := res.GetErrors()
+		if len(apiErrors) > 0 {
+			if *apiErrors[0].GetErrorCode() == "PolicyRevisionNotFound" {
+				return nil // there was nothing to publish
+			}
+			return fmt.Errorf("error publishing policy - %s", *apiErrors[0].GetErrorMessage())
+		}
+		return fmt.Errorf("error publishing policy")
+	}
+	return nil
 }

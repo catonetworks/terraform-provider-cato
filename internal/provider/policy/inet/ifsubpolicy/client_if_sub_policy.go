@@ -58,16 +58,6 @@ func (r *ifSubPolicyResource) getClient() InternetFirewallSubPolicyClient {
 	return r.client.Catov2
 }
 
-func (r *ifSubPolicyResource) publish(ctx context.Context) error {
-	_, err := r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
-		&cato_models.PolicyPublishRevisionInput{},
-		r.client.AccountId,
-	)
-	return err
-}
-
 // ResourceClient contains only the SDK operations used by this resource.
 type ResourceClient interface {
 	PolicyInternetFirewall(

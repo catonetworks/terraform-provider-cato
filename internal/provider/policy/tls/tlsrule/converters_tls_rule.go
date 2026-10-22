@@ -1042,8 +1042,8 @@ func convertCreateInput2(
 	return resultRuleObject
 }
 
-// convertCreateInput3 converts between the Terraform model and SDK values.
-func convertCreateInput3(
+// populateTLSRuleState sets the created rule ID and hydrated Terraform rule object.
+func populateTLSRuleState(
 	plan *InspectionRule,
 	currentRule *cato_go_sdk.Tlsinspectpolicy_Policy_TLSInspect_Policy_Rules_Rule,
 	ruleObject basetypes.ObjectValue,

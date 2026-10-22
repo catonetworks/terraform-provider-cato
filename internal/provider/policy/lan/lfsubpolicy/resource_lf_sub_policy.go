@@ -323,3 +323,32 @@ func preserveLfSubPolicyUpdateState(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	return !resp.Diagnostics.HasError()
 }
+
+// publish calls the API to publish the draft policy revision
+func (r *lfSubPolicyResource) publish(ctx context.Context, diags *diag.Diagnostics) {
+	const summary = "failed to publish LAN firewall policy"
+	const notFound = "PolicyRevisionNotFound"
+	result, err := r.resourceAPI().PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
+	if err != nil {
+		diags.AddError(summary, err.Error())
+		return
+	}
+	publish := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
+	apiErrors := publish.GetErrors()
+	if len(apiErrors) > 0 {
+		allNotFound := true
+		for _, apiError := range apiErrors {
+			if code := apiError.GetErrorCode(); code == nil || *code != notFound {
+				allNotFound = false
+				break
+			}
+		}
+		if allNotFound {
+			return
+		}
+	}
+	if utils.CheckAPIErrors(nil, apiErrors, summary, diags) {
+		return
+	}
+	checkPolicyMutationStatus(publish.GetStatus(), summary, diags)
+}

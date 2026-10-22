@@ -18,15 +18,6 @@ func (r *wfSubPolicyResource) getClient() WanFirewallSubPolicyClient {
 	return r.client.Catov2
 }
 
-func (r *wfSubPolicyResource) publish(ctx context.Context) error {
-	_, err := r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.PolicyPublishRevisionInput{},
-		r.client.AccountId,
-	)
-	return err
-}
-
 // WanFirewallSubPolicyClient is the narrow SDK surface used by the
 // cato_wf_sub_policy resource.
 type WanFirewallSubPolicyClient interface {

@@ -3142,8 +3142,8 @@ func HydrateWanRuleState(
 	return ruleInput, diags
 }
 
-// convertCreateInput3 converts between the Terraform model and SDK values.
-func convertCreateInput3(
+// populateWanRuleID copies the SDK rule ID into the hydrated Terraform rule.
+func populateWanRuleID(
 	currentRule *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule,
 	ruleInputRead *PolicyPolicyWanFirewallPolicyRulesRule,
 ) {

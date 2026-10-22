@@ -49,8 +49,8 @@ func convertCreateInput(
 	return resultInput
 }
 
-// convertCreateInput3 converts between the Terraform model and SDK values.
-func convertCreateInput3(plan *SocketLanSection, policyChange *cato_go_sdk.PolicySocketLanAddSection) {
+// populateSocketLanSectionID sets the created LAN section ID from the mutation response.
+func populateSocketLanSectionID(plan *SocketLanSection, policyChange *cato_go_sdk.PolicySocketLanAddSection) {
 	plan.ID = types.StringValue(policyChange.GetPolicy().GetSocketLan().GetAddSection().Section.GetSection().ID)
 }
 

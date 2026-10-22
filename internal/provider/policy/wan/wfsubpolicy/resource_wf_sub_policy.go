@@ -106,7 +106,7 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 		return
 	}
-	scope, scopeState := convertCreateInput3(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
+	scope, scopeState := wanSubPolicyStateFromPolicy(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -256,4 +256,13 @@ func (r *wfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 		resp.Diagnostics.AddError("Catov2 API Delete/PolicyWanFirewallPublishPolicyRevision error", err.Error())
 		return
 	}
+}
+
+func (r *wfSubPolicyResource) publish(ctx context.Context) error {
+	_, err := r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(
+		ctx,
+		&cato_models.PolicyPublishRevisionInput{},
+		r.client.AccountId,
+	)
+	return err
 }

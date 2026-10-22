@@ -102,8 +102,8 @@ func convertCreateInput2(
 	return resultExisting, resultAddInput
 }
 
-// convertCreateInput3 converts between the Terraform model and SDK values.
-func convertCreateInput3(
+// wanSubPolicyStateFromPolicy finds the created sub-policy and hydrates its published scope rule.
+func wanSubPolicyStateFromPolicy(
 	ctx context.Context,
 	plan *WanFirewallSubPolicy,
 	priorDiags *diag.Diagnostics,

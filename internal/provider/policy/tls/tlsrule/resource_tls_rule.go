@@ -143,7 +143,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	convertCreateInput3(&plan, currentRule, ruleObject)
+	populateTLSRuleState(&plan, currentRule, ruleObject)
 
 	// Set the complete plan to state
 	diags = resp.State.Set(ctx, plan)

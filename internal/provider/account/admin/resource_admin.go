@@ -126,7 +126,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	convertCreateInput3(ctx, &plan, curAccountID, readAdminResult, &resp.Diagnostics)
+	populateAdminStateFromResponse(ctx, &plan, curAccountID, readAdminResult, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

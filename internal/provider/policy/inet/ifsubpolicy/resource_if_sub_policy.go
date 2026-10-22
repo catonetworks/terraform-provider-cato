@@ -113,7 +113,7 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
 		return
 	}
-	scopeObj := convertCreateInput3(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
+	scopeObj := internetFirewallSubPolicyStateFromPolicy(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -275,3 +275,13 @@ func (r *ifSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 // subPolicyScopeRuleType is the ruleType value the API assigns to the scope rule
 // that a sub-policy is created with.
 const subPolicyScopeRuleType = cato_models.PolicyRuleTypeEnumSubPolicyScope
+
+func (r *ifSubPolicyResource) publish(ctx context.Context) error {
+	_, err := r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		&cato_models.PolicyPublishRevisionInput{},
+		r.client.AccountId,
+	)
+	return err
+}

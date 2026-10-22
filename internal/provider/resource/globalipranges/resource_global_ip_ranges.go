@@ -84,15 +84,15 @@ func (r *globalIPRangesResource) Create(ctx context.Context, req resource.Create
 	// prepare new state (with IDs from API response)
 	globalIPRanges := make([]attr.Value, 0, len(newRanges))
 	for _, tfRange := range newRanges {
-		rangeObj := convertCreateValues(ctx, diags, tfRange)
-		if diags.HasError() {
+		rangeObj := globalIPRangeObjectFromModel(ctx, &resp.Diagnostics, tfRange)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 		globalIPRanges = append(globalIPRanges, rangeObj)
 	}
 	globalIPRangesSet, setDiags := types.SetValue(types.ObjectType{AttrTypes: tf.GlobalIPRangeTypes}, globalIPRanges)
-	diags.Append(setDiags...)
-	if diags.HasError() {
+	resp.Diagnostics.Append(setDiags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	newState := tf.GlobalIPRangesModel{Ranges: globalIPRangesSet}
@@ -164,15 +164,15 @@ func (r *globalIPRangesResource) Update(ctx context.Context, req resource.Update
 
 	globalIPRanges := make([]attr.Value, 0, len(newRanges))
 	for _, tfRange := range newRanges {
-		rangeObj := convertUpdateValues(ctx, diags, tfRange)
-		if diags.HasError() {
+		rangeObj := globalIPRangeObjectFromModel(ctx, &resp.Diagnostics, tfRange)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 		globalIPRanges = append(globalIPRanges, rangeObj)
 	}
 	globalIPRangesSet, setDiags := types.SetValue(types.ObjectType{AttrTypes: tf.GlobalIPRangeTypes}, globalIPRanges)
-	diags.Append(setDiags...)
-	if diags.HasError() {
+	resp.Diagnostics.Append(setDiags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 

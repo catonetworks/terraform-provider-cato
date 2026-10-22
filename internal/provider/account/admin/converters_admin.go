@@ -120,10 +120,10 @@ func convertCreateInput2(plan *Admin, curAccountID string, adminID string) {
 	plan.AdminID = types.StringValue(adminID)
 }
 
-// convertCreateInput3 converts between the Terraform model and SDK values.
+// populateAdminStateFromResponse applies computed admin fields and managed-role names after creation.
 //
 //nolint:gocyclo,funlen
-func convertCreateInput3(
+func populateAdminStateFromResponse(
 	ctx context.Context,
 	plan *Admin,
 	curAccountID string,
