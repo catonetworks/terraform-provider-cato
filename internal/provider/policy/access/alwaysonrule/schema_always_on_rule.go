@@ -15,6 +15,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -25,31 +26,8 @@ func (r *alwaysOnRuleResource) Schema(_ context.Context, _ resource.SchemaReques
 	resp.Schema = schema.Schema{
 		Description: "The cato_always_on_rule resource configures an Always On policy rule in the Cato platform.",
 		Attributes: map[string]schema.Attribute{
-			"at":   schemaAlwaysOnRulePosition(),
+			"at":   policyrule.SchemaPosition(),
 			"rule": schemaAlwaysOnRule(),
-		},
-	}
-}
-
-func schemaAlwaysOnRulePosition() schema.SingleNestedAttribute {
-	return schema.SingleNestedAttribute{
-		Description: "Position of the new rule in the policy",
-		Optional:    true,
-		Attributes: map[string]schema.Attribute{
-			"position": schema.StringAttribute{
-				Description: "Insertion position (AFTER_RULE, BEFORE_RULE, FIRST_IN_POLICY, FIRST_IN_SECTION, " +
-					"LAST_IN_POLICY, or LAST_IN_SECTION)",
-				Required: true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...),
-				},
-			},
-			"ref": schema.StringAttribute{
-				Description:   "ID of the rule or section relative to which the new rule is positioned",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{planmodifiers.NullStringModifier()},
-			},
 		},
 	}
 }

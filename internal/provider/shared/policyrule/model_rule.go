@@ -5,6 +5,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// Position Parameters required to define the rule position
+// Graphql input PolicyRulePositionInput
 type Position struct {
 	Position types.String `tfsdk:"position" json:"position,omitempty"`
 	Ref      types.String `tfsdk:"ref" json:"ref,omitempty"`

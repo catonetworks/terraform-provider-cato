@@ -131,7 +131,66 @@ Create or update the model file named 'model_{resource-name}.go' where the resou
 The Go types and variables must match the schema_description and the Schema from the Schema method.
 Use the coding-rules `MODEL-*`.
 
+
 ### 2.3 Resource file
 Create or update the resource file named 'resource_{resource-name}.go' where the resource name is the snail_case resource name without the "cato_" prefix.
-Use the `assets/resource_template.go`, replace the placeholders `<...>` with the appropriate value.
-Do not delete or replace bodies of the functions ImportState, Create, Read, Update, Delete if they already exist
+Use the `assets/resource_template.go` for the scaffolding, replace the placeholders `<...>` with the appropriate value.
+The resource file shall contain the NewXXX function and the following methods:
+  - getClient
+  - Metadata
+  - Configure
+  - ImportState
+  - Create
+  - Read
+  - Update
+  - Delete
+Other helper functions, converters must be in a converters file.
+
+#### 2.3.1 Method getClient
+The `getClient` method must be made based on resource_template.go template.
+
+#### 2.3.2 Method Metadata
+The `Metadata` method must be made based on resource_template.go template.
+
+#### 2.3.3 Method Configure
+The `Configure` method must be made based on resource_template.go template.
+
+#### 2.3.4 Method ImportState
+If the resource-related API supports fetching by ID and the resource has the `id` attribute,
+use the `ImportStatePassthroughID` helper function to provide information to the framework,
+no other code is needed in the method body.
+Otherwise ask the user if and how it is to be implemented.
+The `ImportStatePassthroughID` requires the ID path to be specified, for example
+```go
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
+```
+
+#### 2.3.5 Method Create
+The `Create` method should have the following structure:
+- get a plan
+- call the API
+   - prepare input for the create API call (converter helper function)
+   - call the API
+   - check for errors
+   - convert the response into terraform type system (converter helper function)
+- update the state
+
+If there is one API call per resource, the 'call API' block will be part of the Create method directly,
+else there should be calls to helper methods, each helper implementing its 'call API' block.
+
+Getting a plan example:
+```go
+var plan Model
+diags := req.Plan.Get(ctx, &plan)
+resp.Diagnostics.Append(diags...)
+if resp.Diagnostics.HasError() {
+	return
+}
+```
+
+### 2.4 Converter file
+Create or update the converter file named 'converters_{resource-name}.go' where the resource name is the snail_case resource name without the "cato_" prefix.
+There are two major groups of converters:
+- input builders: convert TF type system (typically plan) into a plain Go structures (typically SDK types defined in cato_models package)
+- parsers: convert API responses into TF type system

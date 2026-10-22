@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
@@ -54,7 +53,7 @@ func TestHydrateFirewallSectionPositionState(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			got, diags := convert.DefaultSectionPosition(context.Background(), test.current)
+			got, diags := policyrule.DefaultSectionPosition(context.Background(), test.current)
 			require.False(t, diags.HasError(), "unexpected diagnostics: %+v", diags)
 
 			attrs := got.Attributes()
