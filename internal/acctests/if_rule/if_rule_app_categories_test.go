@@ -49,9 +49,9 @@ resource "cato_if_rule" "categories" {
 		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{Config: initial, Check: check("2")},
-			{Config: initial, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+			{Config: initial, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 			{Config: updated, Check: resource.ComposeAggregateTestCheckFunc(check("3"), resource.TestCheckTypeSetElemNestedAttrs("cato_if_rule.categories", "rule.destination.app_category.*", map[string]string{"id": "botnets", "name": "Botnets"}))},
-			{Config: updated, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+			{Config: updated, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 		},
 	})
 }
