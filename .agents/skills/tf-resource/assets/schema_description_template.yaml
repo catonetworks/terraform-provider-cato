@@ -1,0 +1,11 @@
+Attributes:
+  - Name: <snake_case attribute name>
+    Description: <English description>
+    Type: <one of [string,bool,float32,float64,int32,int64,list,map,set,nested]>
+    ItemType: <one of [string,bool,float32,float64,int32,int64,nested],
+      only used when the Type is one of [list,map,set]>
+    Attributes:
+      <list of item attributes with the same structure as the top-level Attributes,
+      only used when the Type is one of [list,map,set,nested]>,
+    Mode: <one of [computed,required,optional,optional_computed]>
+    Hints: <optional list of hints for implementation>
