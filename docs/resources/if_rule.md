@@ -91,7 +91,14 @@ resource "cato_if_rule" "example_min" {
     description = "test description"
     enabled     = true
     source      = {}
-    destination = {}
+    destination = {
+      # Optional: select each application category by either name or id.
+      # API responses containing repeated references are stored once in this set.
+      # app_category = [
+      #   { name = "Alcohol and Tobacco" },
+      #   { id = "suspected_malware" },
+      # ]
+    }
     action      = "ALLOW"
     tracking = {
       event = {
