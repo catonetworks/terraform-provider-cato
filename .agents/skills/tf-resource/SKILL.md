@@ -107,6 +107,7 @@ one of computed,required,optional,optional_computed.
 
 - if the attribute is not in the input, and is only returned, set the mode to 'computed'
 - if the Graphql attribute is required in the input (marked with '!') set the mode to 'required'
+- if the attribute type is enum,  set the mode to 'required'
 - if the attribute is not required in the input, and its type is 'list', 'map', or 'set',  set the mode to 'optional_computed'
 - if the attribute is not required in the input, and its type is not 'list', 'map', or 'set',  set the mode to 'optional'
 

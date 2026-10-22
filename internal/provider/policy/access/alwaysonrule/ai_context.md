@@ -27,6 +27,10 @@ matching ID in policy.rules[].rule.
 See schema_description.yaml. Preserve the create input tree: optional `at` and
 required `rule`. Compute rule.id, rule.index, and rule.section from responses.
 Required modes follow GraphQL non-null markers even when GraphQL defines defaults.
+All enum attributes are required per tf-resource section 1.2.5, including
+at.position (when at is configured) and rule.anti_tamper_mode. Enum validation
+uses stringvalidator.OneOf(utils.ToStrings(cato_models.AllEnumName)...), per
+coding rule TFSCHEMA-010.
 Use unordered sets for platforms, device profiles, users, and user groups.
 Use id/name references instead of by/input objects, following the skill.
 Enum hints identify actual SDK model types.
@@ -38,11 +42,13 @@ the live API fields and nullability; no input discrepancy found.
 
 ## Implementation considerations
 
-- Optional anti_tamper_mode has API default OFF. Resolve this default explicitly
-  rather than sending an empty enum value or producing perpetual state drift.
+- anti_tamper_mode is required in Terraform despite being optional in the API
+  with default OFF. Empty enum values are rejected.
 - `at` is a create positioning input. Updates need explicit positioning semantics;
   the updateRule mutation does not accept `at` (moveRule exists separately).
 - SDK update collection fields have omitempty tags. Verify explicit empty-array
   forwarding when clearing matching criteria; omission would leave old values.
 - Preserve existing untracked files and root schema_description.yaml.
-- Implementation and tests await schema approval required by tf-resource step 1.8.
+- The user approved the schema and requested schema implementation, then directed
+  alignment with the updated skill and coding rules. Schema implementation exists;
+  model, CRUD, registration, and their tests remain to be implemented.
