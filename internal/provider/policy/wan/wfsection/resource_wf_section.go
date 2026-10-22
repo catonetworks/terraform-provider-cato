@@ -5,18 +5,12 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -31,6 +25,8 @@ func NewWanFwSectionResource() resource.Resource {
 
 type wanFwSectionResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *wanFwSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -45,7 +41,11 @@ func (r *wanFwSectionResource) Configure(_ context.Context, req resource.Configu
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *wanFwSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *wanFwSectionResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
@@ -58,32 +58,12 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	input := cato_models.PolicyAddSectionInput{}
-
-	// setting at
-	if !plan.At.IsNull() {
-		input.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		input.At.Ref = positionInput.Ref.ValueStringPointer()
-	}
-
-	// setting section
-	if !plan.Section.IsNull() {
-		input.Section = &cato_models.PolicyAddSectionInfoInput{}
-		sectionInput := idname.Ref{}
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		input.Section.Name = sectionInput.Name.ValueString()
-	}
+	input := convertCreateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Create.PolicyWanFirewallAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.Catov2.PolicyWanFirewallAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.resourceAPI().PolicyWanFirewallAddSection(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicyWanFirewallAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -102,7 +82,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 	// publishing new section
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
@@ -111,7 +91,7 @@ func (r *wanFwSectionResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	plan.ID = types.StringValue(policyChange.GetPolicy().GetWanFirewall().GetAddSection().Section.GetSection().ID)
+	convertCreateInput3(&plan, policyChange)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -135,7 +115,7 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	queryWanPolicy := &cato_models.WanFirewallPolicyInput{}
-	body, err := r.client.Catov2.PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
+	body, err := r.resourceAPI().PolicyWanFirewall(ctx, queryWanPolicy, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanFirewall.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -149,40 +129,16 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	// retrieve section ID
-	section := idname.Ref{}
-	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	section := convertReadState2(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	sectionList := body.GetPolicy().WanFirewall.Policy.GetSections()
-	sectionExist := false
-	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.ID.ValueString() {
-			continue
-		}
-
-		sectionExist = true
-		state.ID = types.StringValue(sectionListItem.GetSection().ID)
-		curSectionObj, diagstmp := types.ObjectValue(
-			idname.RefAttrTypes,
-			map[string]attr.Value{
-				"id":   types.StringValue(sectionListItem.GetSection().ID),
-				"name": types.StringValue(sectionListItem.GetSection().GetName()),
-			},
-		)
-		resp.Diagnostics.Append(diagstmp...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.Section = curSectionObj
+	sectionExist, diagstmp := convertReadState3(ctx, &state, body, section, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-
-	// The API does not return section position. Preserve configuration state to
-	// avoid drift, defaulting imports without position state to LAST_IN_POLICY.
-	curAtObj, diagstmp := convert.DefaultSectionPosition(ctx, state.At)
-	state.At = curAtObj
 	resp.Diagnostics.Append(diagstmp...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -202,7 +158,6 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 	}
 }
 
-//nolint:funlen
 func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanFirewallSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -211,36 +166,12 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	inputUpdateSection := cato_models.PolicyUpdateSectionInput{}
-	inputMoveSection := cato_models.PolicyMoveSectionInput{}
-
-	// setting section
-	if !plan.Section.IsNull() {
-		inputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
-		sectionInput := idname.Ref{}
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.ID.ValueString()
-	}
-
-	// setting at
-	if !plan.At.IsNull() {
-		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		inputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
-		inputMoveSection.ID = inputUpdateSection.ID
-	}
+	inputUpdateSection, inputMoveSection := convertUpdateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Update.PolicyWanFirewallMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.Catov2.PolicyWanFirewallMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	moveSection, err := r.resourceAPI().PolicyWanFirewallMoveSection(ctx, inputMoveSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanFirewallMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
@@ -266,7 +197,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Debug(ctx, "Update.PolicyWanFirewallUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.Catov2.PolicyWanFirewallUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	updateSection, err := r.resourceAPI().PolicyWanFirewallUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanFirewallUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
@@ -292,7 +223,7 @@ func (r *wanFwSectionResource) Update(ctx context.Context, req resource.UpdateRe
 	// publishing new section
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanFirewallPublishPolicyRevision error",
@@ -317,21 +248,18 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	// retrieve section ID
-	section := idname.Ref{}
-	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	section := convertDeleteInput(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.ID.ValueString(),
-	}
+	removeSection := convertDeleteInput2(section)
 
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeSection),
 	})
-	policyWanFirewallRemoveSectionResponse, err := r.client.Catov2.PolicyWanFirewallRemoveSection(ctx, removeSection, r.client.AccountId)
+	policyWanFirewallRemoveSectionResponse, err := r.resourceAPI().PolicyWanFirewallRemoveSection(ctx, removeSection, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyWanFirewallRemoveSectionResponse),
 	})
@@ -344,7 +272,7 @@ func (r *wanFwSectionResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.Catov2.PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(ctx, publishDataIfEnabled, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyWanFirewallPublishPolicyRevision error",

@@ -6,16 +6,13 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -30,13 +27,23 @@ func NewTLSInspectionRuleResource() resource.Resource {
 
 type tlsInspectionRuleResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *tlsInspectionRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *tlsInspectionRuleResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_tls_rule"
 }
 
-func (r *tlsInspectionRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *tlsInspectionRuleResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -44,7 +51,6 @@ func (r *tlsInspectionRuleResource) Configure(_ context.Context, req resource.Co
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-//nolint:funlen
 func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InspectionRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -63,7 +69,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
 
-	createRuleResponse, err := r.client.Catov2.PolicyTLSInspectAddRule(ctx, input.create, r.client.AccountId)
+	createRuleResponse, err := r.resourceAPI().PolicyTLSInspectAddRule(ctx, input.create, r.client.AccountId)
 
 	tflog.Warn(ctx, "TFLOG_WARN_TLS_createRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
@@ -90,7 +96,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 
 	// Publishing new rule
 	tflog.Info(ctx, "publishing new TLS rule")
-	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectPublishPolicyRevision error",
@@ -100,7 +106,7 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().Tlsinspectpolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspect error",
@@ -129,16 +135,15 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	// Hydrate ruleInput from api response
 	ruleInputRead, hydrateDiags := hydrateTLSRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
-	ruleInputRead.ID = types.StringValue(currentRule.ID)
+	convertCreateInput(currentRule, &ruleInputRead)
 	tflog.Info(ctx, "ruleInputRead - "+fmt.Sprintf("%v", ruleInputRead))
 
-	ruleObject, diags := types.ObjectValueFrom(ctx, TLSInspectionRuleRuleAttrTypes, ruleInputRead)
+	ruleObject := convertCreateInput2(ctx, &diags, ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.Rule = ruleObject
-	plan.ID = types.StringValue(currentRule.ID)
+	convertCreateInput3(&plan, currentRule, ruleObject)
 
 	// Set the complete plan to state
 	diags = resp.State.Set(ctx, plan)
@@ -149,7 +154,6 @@ func (r *tlsInspectionRuleResource) Create(ctx context.Context, req resource.Cre
 	resp.Diagnostics.Append(diags...)
 }
 
-//nolint:gocyclo,funlen
 func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state InspectionRule
 	diags := req.State.Get(ctx, &state)
@@ -158,7 +162,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().Tlsinspectpolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspect error",
@@ -170,8 +174,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 	// Retrieve rule ID
 	var ruleID string
 	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		rule := PolicyPolicyTLSInspectPolicyRulesRule{}
-		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
+		rule := convertReadValues(ctx, state, &diags)
 		if diags.HasError() {
 			tflog.Debug(ctx, "Failed to convert full state to struct, attempting to extract ID only")
 			resp.Diagnostics = resp.Diagnostics[:0]
@@ -233,28 +236,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 	resp.Diagnostics.Append(diags...)
 
 	// Check if position is set in state, if not default to LAST_IN_POLICY
-	positionValue := string(cato_models.PolicySectionPositionEnumLastInPolicy)
-	refValue := types.StringNull()
-
-	if !state.At.IsNull() && !state.At.IsUnknown() {
-		statePosInput := policyrule.Position{}
-		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if !diags.HasError() && !statePosInput.Position.IsNull() && !statePosInput.Position.IsUnknown() {
-			positionValue = statePosInput.Position.ValueString()
-			if !statePosInput.Ref.IsNull() && !statePosInput.Ref.IsUnknown() {
-				refValue = statePosInput.Ref
-			}
-		}
-	}
-
-	curAtObj, diagstmp := types.ObjectValue(
-		policyrule.PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue(positionValue),
-			"ref":      refValue,
-		},
-	)
+	curAtObj, diagstmp := convertReadState(ctx, state, &diags, &resp.Diagnostics)
 	resp.Diagnostics.Append(diagstmp...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -270,7 +252,7 @@ func (r *tlsInspectionRuleResource) Read(ctx context.Context, req resource.ReadR
 	resp.Diagnostics.Append(diags...)
 }
 
-//nolint:gocyclo,funlen
+//nolint:funlen
 func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan InspectionRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -286,21 +268,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Setting input for moving rule
-	inputMoveRule := cato_models.PolicyMoveRuleInput{}
-
-	// Setting at (to move rule)
-	if !plan.At.IsNull() {
-		inputMoveRule.To = &cato_models.PolicyRulePositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputMoveRule.To.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
-		inputMoveRule.To.Ref = positionInput.Ref.ValueStringPointer()
-	}
-
-	ruleInput := PolicyPolicyTLSInspectPolicyRulesRule{}
-	diags = plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+	inputMoveRule, ruleInput := convertUpdateInput(ctx, plan, &diags, &resp.Diagnostics)
 	resp.Diagnostics.Append(diags...)
 
 	// Settings other rule attributes
@@ -308,7 +276,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	input.update.ID = *ruleInput.ID.ValueStringPointer()
 
 	// Move rule
-	moveRule, err := r.client.Catov2.PolicyTLSInspectMoveRule(ctx, inputMoveRule, r.client.AccountId)
+	moveRule, err := r.resourceAPI().PolicyTLSInspectMoveRule(ctx, inputMoveRule, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectMoveRule error",
@@ -333,7 +301,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	})
 
 	// Updating rule
-	updateRuleResponse, err := r.client.Catov2.PolicyTLSInspectUpdateRule(ctx, input.update, r.client.AccountId)
+	updateRuleResponse, err := r.resourceAPI().PolicyTLSInspectUpdateRule(ctx, input.update, r.client.AccountId)
 	tflog.Warn(ctx, "TFLOG_WARN_TLS_updateRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(updateRuleResponse),
 	})
@@ -359,7 +327,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 
 	// Publishing updated rule
 	tflog.Info(ctx, "publishing updated TLS rule")
-	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectPublishPolicyRevision error",
@@ -369,7 +337,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().Tlsinspectpolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspect error",
@@ -394,9 +362,7 @@ func (r *tlsInspectionRuleResource) Update(ctx context.Context, req resource.Upd
 	// Hydrate ruleInput from api response
 	ruleInputRead, hydrateDiags := hydrateTLSRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
-	ruleInputRead.ID = types.StringValue(currentRule.ID)
-
-	ruleObject, diags := types.ObjectValueFrom(ctx, TLSInspectionRuleRuleAttrTypes, ruleInputRead)
+	ruleObject := convertUpdateInput2(ctx, &diags, currentRule, &ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -420,15 +386,12 @@ func (r *tlsInspectionRuleResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	ruleInput := PolicyPolicyTLSInspectPolicyRulesRule{}
-	diags = state.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+	ruleInput := convertDeleteInput(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 
-	removeRuleInput := cato_models.TLSInspectRemoveRuleInput{
-		ID: *ruleInput.ID.ValueStringPointer(),
-	}
+	removeRuleInput := convertDeleteInput2(ruleInput)
 
-	removeRuleResponse, err := r.client.Catov2.PolicyTLSInspectRemoveRule(ctx, removeRuleInput, r.client.AccountId)
+	removeRuleResponse, err := r.resourceAPI().PolicyTLSInspectRemoveRule(ctx, removeRuleInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectRemoveRule error",
@@ -450,7 +413,7 @@ func (r *tlsInspectionRuleResource) Delete(ctx context.Context, req resource.Del
 
 	// Publishing rule deletion
 	tflog.Info(ctx, "publishing TLS rule deletion")
-	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTlsInspectPublishPolicyRevision error",
@@ -460,7 +423,11 @@ func (r *tlsInspectionRuleResource) Delete(ctx context.Context, req resource.Del
 	}
 }
 
-func (r *tlsInspectionRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *tlsInspectionRuleResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
 	// Set rule.id to the imported ID

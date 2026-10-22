@@ -4,16 +4,13 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Yamashou/gqlgenc/clientv2"
-	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -29,22 +26,8 @@ func NewStaticHostResource() resource.Resource {
 type staticHostResource struct {
 	client           *catoclient.Service
 	staticHostClient Client
-}
 
-type Client interface {
-	SiteStaticHost(ctx context.Context, accountID string, siteRefInput cato_models.SiteRefInput, hostID string,
-		interceptors ...clientv2.RequestInterceptor) (*cato.SiteStaticHost, error)
-}
-
-func (r *staticHostResource) getStaticHostClient() Client {
-	if r.staticHostClient != nil {
-		return r.staticHostClient
-	}
-	if r.client == nil {
-		return nil
-	}
-
-	return r.client.Catov2
+	apiClient ResourceClient
 }
 
 func (r *staticHostResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -59,7 +42,11 @@ func (r *staticHostResource) Configure(_ context.Context, req resource.Configure
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *staticHostResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *staticHostResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	siteID, hostID, ok := strings.Cut(req.ID, "/")
 	if !ok || siteID == "" || hostID == "" {
 		resp.Diagnostics.AddError(
@@ -82,16 +69,12 @@ func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// setting input
-	input := cato_models.AddStaticHostInput{
-		Name:       plan.Name.ValueString(),
-		IP:         plan.IP.ValueString(),
-		MacAddress: plan.MacAddress.ValueStringPointer(),
-	}
+	input := convertCreateInput(plan)
 
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	body, err := r.client.Catov2.SiteAddStaticHost(ctx, plan.SiteID.ValueString(), input, r.client.AccountId)
+	body, err := r.resourceAPI().SiteAddStaticHost(ctx, plan.SiteID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -125,13 +108,10 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	staticHost, err := r.getStaticHostClient().SiteStaticHost(
+	staticHost, err := r.resourceAPI().SiteStaticHost(
 		ctx,
 		r.client.AccountId,
-		cato_models.SiteRefInput{
-			By:    cato_models.ObjectRefByID,
-			Input: state.SiteID.ValueString(),
-		},
+		staticHostSiteRefFromTerraform(state),
 		state.ID.ValueString(),
 	)
 	tflog.Debug(ctx, "Read.SiteStaticHost.response", map[string]interface{}{
@@ -151,15 +131,7 @@ func (r *staticHostResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	host := staticHost.GetSite().GetStaticHost().GetHost()
-	state.ID = types.StringValue(host.HostID)
-	state.Name = types.StringValue(host.Name)
-	state.IP = types.StringValue(host.IP)
-	if host.MacAddress == nil {
-		state.MacAddress = types.StringNull()
-	} else {
-		state.MacAddress = types.StringValue(*host.MacAddress)
-	}
+	convertReadState(&state, staticHost)
 
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
@@ -177,11 +149,7 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// setting input
-	input := cato_models.UpdateStaticHostInput{
-		Name:       plan.Name.ValueStringPointer(),
-		IP:         plan.IP.ValueStringPointer(),
-		MacAddress: plan.MacAddress.ValueStringPointer(),
-	}
+	input := convertUpdateInput(plan)
 
 	tflog.Debug(ctx, "static_host update", map[string]interface{}{
 		"input": utils.InterfaceToJSONString(input),
@@ -190,7 +158,7 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateStaticHostResponse, err := r.client.Catov2.SiteUpdateStaticHost(ctx, plan.ID.ValueString(), input, r.client.AccountId)
+	siteUpdateStaticHostResponse, err := r.resourceAPI().SiteUpdateStaticHost(ctx, plan.ID.ValueString(), input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteUpdateStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateStaticHostResponse),
 	})
@@ -218,7 +186,7 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	querySiteResult, err := r.client.Catov2.EntityLookup(
+	querySiteResult, err := r.resourceAPI().EntityLookup(
 		ctx,
 		r.client.AccountId,
 		cato_models.EntityType("site"),
@@ -244,7 +212,7 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-		queryHostResult, err := r.client.Catov2.EntityLookup(
+		queryHostResult, err := r.resourceAPI().EntityLookup(
 			ctx,
 			r.client.AccountId,
 			cato_models.EntityType("host"),
@@ -270,7 +238,7 @@ func (r *staticHostResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 		// check if host exist before removing
 		if len(queryHostResult.EntityLookup.GetItems()) == 1 {
-			siteRemoveStaticHostResponse, err := r.client.Catov2.SiteRemoveStaticHost(ctx, state.ID.ValueString(), r.client.AccountId)
+			siteRemoveStaticHostResponse, err := r.resourceAPI().SiteRemoveStaticHost(ctx, state.ID.ValueString(), r.client.AccountId)
 			tflog.Debug(ctx, "Delete.SiteRemoveStaticHost.response", map[string]interface{}{
 				"response": utils.InterfaceToJSONString(siteRemoveStaticHostResponse),
 			})

@@ -6,13 +6,43 @@ structname: "{{.InterfaceName}}"
 force-file-write: true
 formatter: gofmt
 packages:
-  github.com/catonetworks/terraform-provider-cato/internal/provider:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifindex:
     interfaces:
       InternetFirewallBulkPolicyClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule:
+    interfaces:
       InternetFirewallPolicyClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifsubpolicy:
+    interfaces:
       InternetFirewallSubPolicyClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/networkrange:
+    interfaces:
       NetworkRangeClient:
-      SocketSiteClient:
-      StaticHostClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite:
+    interfaces:
+      Client:
+        config:
+          filename: SocketSiteClient.go
+          structname: SocketSiteClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/statichost:
+    interfaces:
+      Client:
+        config:
+          filename: StaticHostClient.go
+          structname: StaticHostClient
+      ResourceClient:
+        config:
+          filename: StaticHostResourceClient.go
+          structname: StaticHostResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanindex:
+    interfaces:
       WanFirewallBulkPolicyClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsubpolicy:
+    interfaces:
       WanFirewallSubPolicyClient:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/groupmembers:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: GroupMembersResourceClient.go
+          structname: GroupMembersResourceClient

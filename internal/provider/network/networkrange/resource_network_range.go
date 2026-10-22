@@ -2,27 +2,24 @@ package networkrange
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
+	json "encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
-	"github.com/Yamashou/gqlgenc/clientv2"
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/spf13/cast"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	dhcp "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -59,30 +56,8 @@ func NewNetworkRangeResource() resource.Resource {
 type networkRangeResource struct {
 	client             *catoclient.Service
 	networkRangeClient NetworkRangeClient
-}
 
-type NetworkRangeClient interface {
-	SiteAddNetworkRange(ctx context.Context, lanSocketInterfaceID string, addNetworkRangeInput cato_models.AddNetworkRangeInput,
-		accountID string, interceptors ...clientv2.RequestInterceptor) (*cato.SiteAddNetworkRange, error)
-	SiteUpdateNetworkRange(ctx context.Context, networkRangeID string, updateNetworkRangeInput cato_models.UpdateNetworkRangeInput,
-		accountID string, interceptors ...clientv2.RequestInterceptor) (*cato.SiteUpdateNetworkRange, error)
-	SiteRemoveNetworkRange(ctx context.Context, networkRangeID string, accountID string,
-		interceptors ...clientv2.RequestInterceptor) (*cato.SiteRemoveNetworkRange, error)
-	NetworkRange(ctx context.Context, accountID string, networkRangeID string,
-		interceptors ...clientv2.RequestInterceptor) (*cato.NetworkRange, error)
-	EntityLookup(ctx context.Context, accountID string, typeArg cato_models.EntityType, limit *int64, from *int64,
-		parent *cato_models.EntityInput, search *string, entityIDs []string, sort []*cato_models.SortInput,
-		filters []*cato_models.LookupFilterInput, helperFields []string, interceptors ...clientv2.RequestInterceptor) (*cato.EntityLookup, error)
-}
-
-func (r *networkRangeResource) getNetworkRangeClient() NetworkRangeClient {
-	if r.networkRangeClient != nil {
-		return r.networkRangeClient
-	}
-	if r.client == nil {
-		return nil
-	}
-	return r.client.Catov2
+	apiClient ResourceClient
 }
 
 func (r *networkRangeResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -97,7 +72,11 @@ func (r *networkRangeResource) Configure(_ context.Context, req resource.Configu
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *networkRangeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *networkRangeResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
@@ -136,7 +115,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Prepare API input from the plan
-	networkRangeInput := hydrateAddNetworkRangeAPI(ctx, r.client, cfg, plan, &resp.Diagnostics)
+	networkRangeInput := hydrateAddNetworkRangeAPI(ctx, r.dhcpClient(), cfg, plan, &resp.Diagnostics)
 	// TODO: check if !isHA { // for HA scenario, local IP is not allowed to be modified
 
 	if resp.Diagnostics.HasError() {
@@ -153,7 +132,7 @@ func (r *networkRangeResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Create the network range via API
-	networkRange, err := r.getNetworkRangeClient().SiteAddNetworkRange(ctx, interfaceID, networkRangeInput, r.client.AccountId)
+	networkRange, err := r.resourceAPI().SiteAddNetworkRange(ctx, interfaceID, networkRangeInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API SiteAddNetworkRange Error", err.Error())
 		return
@@ -217,9 +196,9 @@ func (r *networkRangeResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	input := hydrateUpdateNetworkRangeAPI(ctx, r.client, cfg, plan, &resp.Diagnostics)
+	input := hydrateUpdateNetworkRangeAPI(ctx, r.dhcpClient(), cfg, plan, &resp.Diagnostics)
 
-	_, err := r.getNetworkRangeClient().SiteUpdateNetworkRange(ctx, plan.ID.ValueString(), input, r.client.AccountId)
+	_, err := r.resourceAPI().SiteUpdateNetworkRange(ctx, plan.ID.ValueString(), input, r.client.AccountId)
 	if err != nil {
 		var apiError cato.RespErrors
 		interfaceNotPresent := false
@@ -269,7 +248,7 @@ func (r *networkRangeResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	// check if interface is already removed and fail gracefully
 	//	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-	_, err := r.getNetworkRangeClient().SiteRemoveNetworkRange(ctx, state.ID.ValueString(), r.client.AccountId)
+	_, err := r.resourceAPI().SiteRemoveNetworkRange(ctx, state.ID.ValueString(), r.client.AccountId)
 	if err != nil {
 		var apiError struct {
 			NetworkErrors interface{} `json:"networkErrors"`
@@ -322,186 +301,46 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, cfg
 	isDhcpSettingsDefault := r.checkDhcpSettingsDefault(ctx, cfg, state, diags)
 	dhcpSettingsObj := dhcp.SettingsDefault(ctx, diags)
 	if responseRange.DhcpSettings != nil && !isDhcpSettingsDefault {
-		dhcpSettingsObj = dhcp.ParseSettings(ctx, r.client, responseRange.DhcpSettings, diags)
+		dhcpSettingsObj = dhcp.ParseSettings(ctx, r.dhcpClient(), responseRange.DhcpSettings, diags)
 	}
 	if diags.HasError() {
 		return tf.NetworkRange{}, true
 	}
 
-	newState := tf.NetworkRange{
-		ID:               types.StringValue(networkRangeID),
-		DhcpSettings:     dhcpSettingsObj,
-		Gateway:          types.StringPointerValue(responseRange.Gateway),
-		InterfaceID:      types.StringValue(interfaceID),
-		InterfaceIndex:   types.StringValue(interfaceIndex),
-		InternetOnly:     types.BoolValue(responseRange.InternetOnly),
-		MdnsReflector:    types.BoolValue(responseRange.MdnsReflector),
-		LocalIP:          types.StringPointerValue(responseRange.LocalIP), // TODO: HA
-		Name:             types.StringValue(responseRange.Name),
-		RangeType:        types.StringValue(string(responseRange.RangeType)),
-		SiteID:           state.SiteID,
-		Subnet:           types.StringValue(responseRange.Subnet),
-		TranslatedSubnet: types.StringPointerValue(responseRange.TranslatedSubnet),
-		Vlan:             types.Int64PointerValue(responseRange.Vlan),
-	}
-
-	if responseRange.RangeType != cato_models.SubnetTypeVlan {
-		newState.Vlan = types.Int64Null()
-	}
-	if state.MdnsReflector.IsNull() {
-		newState.MdnsReflector = types.BoolNull()
-	}
-	if !state.Gateway.IsUnknown() {
-		newState.Gateway = state.Gateway
-	}
+	newState := convertHydrateNetworkRangeStateValues(state, networkRangeID, responseRange, interfaceIndex, interfaceID, dhcpSettingsObj)
 
 	return newState, true
 }
 
-// fetchNetworkRange retrieves the network range details from the API, and returns nil if the network range is not found,
-// on error the diags gets updated.
-func (r *networkRangeResource) fetchNetworkRange(ctx context.Context, networkRangeID string, diags *diag.Diagnostics,
-) (responseRange *cato.NetworkRange_Site_NetworkRange) {
-	const notFoundMsg = "Invalid network range id: "
-
-	queryRangeResult, err := r.getNetworkRangeClient().NetworkRange(ctx, r.client.AccountId, networkRangeID)
-	if err != nil {
-		// Check if error is not found error, if so return (nil, false, nil) to indicate resource should be removed from state without error
-		if gqlError, ok := errors.AsType[*clientv2.ErrorResponse](err); ok {
-			if (gqlError.GqlErrors != nil) && (len(*gqlError.GqlErrors) > 0) && strings.Contains((*gqlError.GqlErrors)[0].Message, notFoundMsg) {
-				return nil
-			}
-		}
-		diags.AddError(
-			"Catov2 NetworkRange API error",
-			fmt.Sprintf("error fetching network range details for range ID '%s': %v", networkRangeID, err),
-		)
-		return nil
-	}
-	if queryRangeResult == nil || queryRangeResult.Site.NetworkRange == nil {
-		return nil
-	}
-	return queryRangeResult.Site.NetworkRange
-}
-
-// getSiteIdFromNetworkRange retrieves the site_id and interface info for a network range using entityLookup
-func (r *networkRangeResource) getSiteIDFromNetworkRange(ctx context.Context, networkRangeID string,
-) (siteID string, interfaceName string, err error) {
-	result, err := r.getNetworkRangeClient().EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("siteRange"),
-		nil, nil, nil, nil, []string{networkRangeID}, nil, nil, nil)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to lookup network range site: %w", err)
-	}
-
-	if result == nil || len(result.EntityLookup.GetItems()) == 0 {
-		return "", "", fmt.Errorf("network range %s not found in entityLookup", networkRangeID)
-	}
-
-	item := result.EntityLookup.GetItems()[0]
-	helperFields := item.GetHelperFields()
-	if helperFields == nil {
-		return "", "", fmt.Errorf("no helperFields returned for network range %s", networkRangeID)
-	}
-
-	// Extract siteID from helperFields
-	siteID = cast.ToString(helperFields["siteId"])
-	if siteID == "" {
-		return "", "", fmt.Errorf("siteId not found in helperFields for network range %s", networkRangeID)
-	}
-
-	// Extract interfaceName from helperFields
-	interfaceName = cast.ToString(helperFields["interfaceName"])
-
-	return siteID, interfaceName, nil
-}
-
-// getInterfaceIndex looks up the network interface Index for a given site ID and interface ID
-func (r *networkRangeResource) getInterfaceIndex(ctx context.Context, siteID, interfaceID string, diags *diag.Diagnostics,
-) (interfaceIndex string) {
-	site := &cato_models.EntityInput{Type: cato_models.EntityTypeSite, ID: siteID}
-	networkInterfaceResponse, err := r.client.Catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityTypeNetworkInterface,
-		new(int64(0)), nil, site, nil, []string{interfaceID}, nil, nil, nil)
-	if err != nil {
-		diags.AddError("Error retrieving network interface "+interfaceID, err.Error())
-		return ""
-	}
-	for _, item := range networkInterfaceResponse.GetEntityLookup().GetItems() {
-		if item.GetEntity().GetID() == interfaceID {
-			helperFields := item.GetHelperFields()
-			curIfaceIndex := cast.ToString(helperFields["interfaceId"])
-			if numberRE.MatchString(curIfaceIndex) {
-				curIfaceIndex = "INT_" + curIfaceIndex
-			}
-			return curIfaceIndex
-		}
-	}
-	diags.AddError("Error retrieving network interface",
-		"network interface with id '"+interfaceID+"' not found in site '"+siteID+"'")
-	return ""
-}
-
-// getInterfaceID looks up the network interface ID for a given site ID and interface index
-func (r *networkRangeResource) getInterfaceID(ctx context.Context, siteID, interfaceIndex string, diags *diag.Diagnostics,
-) (interfaceID string) {
-	site := &cato_models.EntityInput{Type: cato_models.EntityTypeSite, ID: siteID}
-	networkInterfaceResponse, err := r.client.Catov2.EntityLookup(ctx, r.client.AccountId,
-		cato_models.EntityTypeNetworkInterface, new(int64(0)), nil, site, nil, nil, nil, nil, nil)
-	if err != nil {
-		diags.AddError("Error retrieving network interface "+interfaceIndex, err.Error())
-		return ""
-	}
-	for _, item := range networkInterfaceResponse.GetEntityLookup().GetItems() {
-		helperFields := item.GetHelperFields()
-		curIfaceIndex := cast.ToString(helperFields["interfaceId"])
-		if numberRE.MatchString(curIfaceIndex) {
-			curIfaceIndex = "INT_" + curIfaceIndex
-		}
-		if curIfaceIndex == interfaceIndex {
-			return item.GetEntity().GetID()
-		}
-	}
-	diags.AddError("Error retrieving network interface",
-		"network interface with index '"+interfaceIndex+"' not found in site '"+siteID+"'")
-	return ""
-}
-
-// checkDhcpSettingsDefault checks DHCP settings config or state,
-// If config is provided,
-// return true if it is not defined or if dhcp_type is set to ACCOUNT_DEFAULT, false otherwise
-// If config is not provided (nil), check the state with the same logic to determine if DHCP settings are default
-//
-// Reason: API does not return ACCOUNT_DEFAULT, but some other value based on CMA account configuration
-func (r *networkRangeResource) checkDhcpSettingsDefault(ctx context.Context, cfg, state *tf.NetworkRange,
+func hydrateUpdateNetworkRangeAPI(
+	ctx context.Context,
+	client dhcp.SdkClienter,
+	cfg, plan *tf.NetworkRange,
 	diags *diag.Diagnostics,
-) (isDhcpSettingsDefault bool) {
-	// cfg defined -> Create/Update flow; check the config value
-	if cfg != nil {
-		if !utils.HasValue(cfg.DhcpSettings) {
-			return false
-		}
-		var cfgDhcpSettings dhcp.Settings
-		if utils.CheckErr(diags, cfg.DhcpSettings.As(ctx, &cfgDhcpSettings, basetypes.ObjectAsOptions{})) {
-			return false
-		}
-		if utils.HasValue(cfgDhcpSettings.DhcpType) &&
-			(cfgDhcpSettings.DhcpType.ValueString() == string(cato_models.DhcpTypeAccountDefault)) {
-			return true
-		}
-		return false
-	}
+) cato_models.UpdateNetworkRangeInput {
+	rangeType := cato_models.SubnetType(plan.RangeType.ValueString())
 
-	// cfg is nil -> called from Read(); check the state
-	if state == nil || !utils.HasValue(state.DhcpSettings) {
-		return false
+	return cato_models.UpdateNetworkRangeInput{
+		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, client, rangeType, plan.DhcpSettings, diags),
+		Gateway:          convert.KnownStringPointer(plan.Gateway),
+		InternetOnly:     convert.KnownBoolPointer(plan.InternetOnly),
+		LocalIP:          convert.KnownStringPointer(plan.LocalIP),
+		MdnsReflector:    convert.KnownBoolPointer(plan.MdnsReflector),
+		Name:             convert.KnownStringPointer(plan.Name),
+		RangeType:        (*cato_models.SubnetType)(convert.KnownStringPointer(plan.RangeType)),
+		Subnet:           convert.KnownStringPointer(plan.Subnet),
+		TranslatedSubnet: convert.TranslatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
+		Vlan:             convert.KnownInt64Pointer(plan.Vlan),
 	}
+}
 
-	var stateDhcpSettings dhcp.Settings
-	if utils.CheckErr(diags, state.DhcpSettings.As(ctx, &stateDhcpSettings, basetypes.ObjectAsOptions{})) {
-		return false
-	}
-	if utils.HasValue(stateDhcpSettings.DhcpType) &&
-		(stateDhcpSettings.DhcpType.ValueString() == string(cato_models.DhcpTypeAccountDefault)) {
-		return true
-	}
-	return false
+func hydrateAddNetworkRangeAPI(
+	ctx context.Context,
+	client dhcp.SdkClienter,
+	cfg, plan *tf.NetworkRange,
+	diags *diag.Diagnostics,
+) cato_models.AddNetworkRangeInput {
+	rangeType := cato_models.SubnetType(plan.RangeType.ValueString())
+
+	return addNetworkRangeInputFromTerraform(ctx, client, cfg, plan, diags, rangeType)
 }

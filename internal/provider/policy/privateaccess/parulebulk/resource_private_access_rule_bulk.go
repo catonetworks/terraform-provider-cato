@@ -9,16 +9,14 @@ import (
 	"strconv"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	apperror "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -31,17 +29,27 @@ var (
 
 type privAccessRuleBulkResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func NewPrivAccessRuleBulkResource() resource.Resource {
 	return &privAccessRuleBulkResource{}
 }
 
-func (r *privAccessRuleBulkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *privAccessRuleBulkResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_private_access_rule_bulk"
 }
 
-func (r *privAccessRuleBulkResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *privAccessRuleBulkResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -165,88 +173,60 @@ func (r *privAccessRuleBulkResource) Delete(_ context.Context, _ resource.Delete
 	fmt.Println("bulk Delete")
 }
 
-// hydratePrivAccessRuleBulkState fetches the current state of a privAccessRuleBulk from the API
-// It takes a plan parameter to match config members with API members correctly
-func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
+// moveToPosition moves the rule with given ID to the given position in	[]currentRules (shifting the rest down)
+// and calls the API to move the rule in the CMA
+// Warning: it only moves the rule up, moving down is not supported!
+func (r *privAccessRuleBulkResource) moveToPosition(
 	ctx context.Context,
-	plan *PrivateAccessRuleBulkModel,
-) (*PrivateAccessRuleBulkModel, map[string]*PrivateAccessBulkRule, diag.Diagnostics, error) {
-	var diags diag.Diagnostics
+	currentRules []*PrivateAccessBulkRule,
+	ruleID, ruleName string,
+	newPosition int,
+) error {
+	var myRule *PrivateAccessBulkRule
+	tflog.Debug(ctx, "moving private-access rule '"+ruleName+"' to position "+strconv.Itoa(newPosition))
 
-	// Create a Go map[rule-name]PrivateAccessBulkRule{...} from the plan/state
-	stateRules := make(map[string]PrivateAccessBulkRule)
-	if utils.HasValue(plan.RuleData) {
-		var tfBulk map[string]types.Object
-		if utils.CheckErr(&diags, plan.RuleData.ElementsAs(ctx, &tfBulk, false)) {
-			return nil, nil, diags, ErrConvertError
-		}
-		for name, obj := range tfBulk {
-			var tfRule PrivateAccessBulkRule
-			diags.Append(obj.As(ctx, &tfRule, basetypes.ObjectAsOptions{})...)
-			if diags.HasError() {
-				return nil, nil, diags, ErrConvertError
-			}
-			stateRules[name] = tfRule
+	curPossition := -1
+	for i := len(currentRules) - 1; i >= 0; i-- {
+		if currentRules[i].ID.ValueString() == ruleID {
+			curPossition = i
+			myRule = currentRules[i]
+			break
 		}
 	}
+	if curPossition == -1 {
+		return fmt.Errorf("internal error: failed to find ruleID")
+	}
+	if curPossition == newPosition {
+		return nil // nothing to do
+	}
 
-	// Call Cato API to get the policy
-	result, err := r.client.Catov2.PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "Bulk PolicyReadPrivateAccessPolicy", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(result),
-	})
+	input := convertMoveToPositionValues(currentRules, ruleID, newPosition, myRule, curPossition)
+	if r.client == nil {
+		return nil
+	}
+
+	// Call the API to move the rule
+	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
+	result, err := r.resourceAPI().PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
+	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
-
-	// Merge rules from the API and rules from the state
-	apiRulesTf := make(map[string]types.Object)
-	apiRulesGo := make(map[string]*PrivateAccessBulkRule)
-	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
-	if len(policy.Rules) != len(stateRules) {
-		return nil, nil, nil, fmt.Errorf(
-			"rules returned by API (count=%d) do not match the PrivateAccessRuleBulkModel state (count=%d)",
-			len(policy.Rules),
-			len(stateRules),
-		)
-	}
-	for _, polRule := range policy.Rules {
-		apiRule := polRule.Rule
-		tfRule := &PrivateAccessBulkRule{
-			ID:       types.StringValue(apiRule.ID),
-			Name:     types.StringValue(apiRule.Name),
-			CMAIndex: apiRule.Index,
+	res := result.GetPolicy().GetPrivateAccess().GetMoveRule()
+	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+		apiErrors := res.GetErrors()
+		if len(apiErrors) > 0 {
+			return fmt.Errorf("error moving rule '%s' [%s] - %s", ruleName, *apiErrors[0].GetErrorCode(), *apiErrors[0].GetErrorMessage())
 		}
-		stateRule, ok := stateRules[apiRule.Name]
-		if !ok {
-			return nil, nil, nil, fmt.Errorf("rule '%s' from API is not found in the PrivateAccessRuleBulkModel state", apiRule.Name)
-		}
-		tfRule.Index = stateRule.Index
-		ruleObj, objDiags := types.ObjectValueFrom(ctx, PrivateAccessBulkRuleTypes, tfRule)
-		diags.Append(objDiags...)
-		if diags.HasError() {
-			return nil, nil, diags, apperror.ErrAPIResponseParse
-		}
-		apiRulesTf[apiRule.Name] = ruleObj
-		apiRulesGo[apiRule.Name] = tfRule
+		return fmt.Errorf("error moving rule '%s'", ruleName)
 	}
-
-	// Prepate the tf state - ruleData map from enriched apiRules
-	rulesMap, objDiags := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: PrivateAccessBulkRuleTypes}, apiRulesTf)
-	diags.Append(objDiags...)
-	if diags.HasError() {
-		return nil, nil, diags, apperror.ErrAPIResponseParse
-	}
-	state := &PrivateAccessRuleBulkModel{
-		RuleData: rulesMap,
-		Publish:  types.Int64Value(plan.Publish.ValueInt64()),
-		ID:       types.StringValue("0"),
-	}
-
-	return state, apiRulesGo, nil, nil
+	return nil
 }
 
-func (r *privAccessRuleBulkResource) moveRules(ctx context.Context, ruleMap map[string]*PrivateAccessBulkRule) diag.Diagnostics {
+func (r *privAccessRuleBulkResource) moveRules(
+	ctx context.Context,
+	ruleMap map[string]*PrivateAccessBulkRule,
+) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	if len(ruleMap) == 0 {
@@ -281,93 +261,69 @@ func (r *privAccessRuleBulkResource) moveRules(ctx context.Context, ruleMap map[
 	return nil
 }
 
-// moveToPosition moves the rule with given ID to the given position in	[]currentRules (shifting the rest down)
-// and calls the API to move the rule in the CMA
-// Warning: it only moves the rule up, moving down is not supported!
-func (r *privAccessRuleBulkResource) moveToPosition(
+// hydratePrivAccessRuleBulkState fetches the current state of a privAccessRuleBulk from the API
+// It takes a plan parameter to match config members with API members correctly
+func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	ctx context.Context,
-	currentRules []*PrivateAccessBulkRule,
-	ruleID, ruleName string,
-	newPosition int,
-) error {
-	var myRule *PrivateAccessBulkRule
-	tflog.Debug(ctx, "moving private-access rule '"+ruleName+"' to position "+strconv.Itoa(newPosition))
+	plan *PrivateAccessRuleBulkModel,
+) (*PrivateAccessRuleBulkModel, map[string]*PrivateAccessBulkRule, diag.Diagnostics, error) {
+	var diags diag.Diagnostics
 
-	curPossition := -1
-	for i := len(currentRules) - 1; i >= 0; i-- {
-		if currentRules[i].ID.ValueString() == ruleID {
-			curPossition = i
-			myRule = currentRules[i]
-			break
+	// Create a Go map[rule-name]PrivateAccessBulkRule{...} from the plan/state
+	stateRules := make(map[string]PrivateAccessBulkRule)
+	if utils.HasValue(plan.RuleData) {
+		var tfBulk map[string]types.Object
+		if utils.CheckErr(&diags, plan.RuleData.ElementsAs(ctx, &tfBulk, false)) {
+			return nil, nil, diags, ErrConvertError
 		}
-	}
-	if curPossition == -1 {
-		return fmt.Errorf("internal error: failed to find ruleID")
-	}
-	if curPossition == newPosition {
-		return nil // nothing to do
-	}
-
-	for i := curPossition; i > newPosition; i-- {
-		currentRules[i] = currentRules[i-1]
-	}
-	currentRules[newPosition] = myRule
-
-	// Prepare input for API to move the rule
-	var input cato_models.PolicyMoveRuleInput
-	if newPosition == 0 {
-		input = cato_models.PolicyMoveRuleInput{
-			ID: ruleID,
-			To: &cato_models.PolicyRulePositionInput{Position: new(cato_models.PolicyRulePositionEnumFirstInPolicy)},
-		}
-	} else {
-		input = cato_models.PolicyMoveRuleInput{
-			ID: ruleID,
-			To: &cato_models.PolicyRulePositionInput{
-				Position: new(cato_models.PolicyRulePositionEnumAfterRule),
-				Ref:      convert.KnownStringPointer(currentRules[newPosition-1].ID),
-			},
-		}
-	}
-	if r.client == nil {
-		return nil
-	}
-
-	// Call the API to move the rule
-	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	result, err := r.client.Catov2.PolicyPrivateAccessMoveRule(ctx, r.client.AccountId, input)
-	tflog.Debug(ctx, "Bulk PolicyPrivateAccessMoveRule", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
-	if err != nil {
-		return err
-	}
-	res := result.GetPolicy().GetPrivateAccess().GetMoveRule()
-	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		apiErrors := res.GetErrors()
-		if len(apiErrors) > 0 {
-			return fmt.Errorf("error moving rule '%s' [%s] - %s", ruleName, *apiErrors[0].GetErrorCode(), *apiErrors[0].GetErrorMessage())
-		}
-		return fmt.Errorf("error moving rule '%s'", ruleName)
-	}
-	return nil
-}
-
-// publish calls the API to publish the draft policy revision
-func (r *privAccessRuleBulkResource) publish(ctx context.Context) error {
-	result, err := r.client.Catov2.PolicyPrivateAccessPublishRevision(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "Bulk PolicyPrivateAccessPublishRevision", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
-	if err != nil {
-		return err
-	}
-	res := result.GetPolicy().GetPrivateAccess().GetPublishPolicyRevision()
-	if *res.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		apiErrors := res.GetErrors()
-		if len(apiErrors) > 0 {
-			if *apiErrors[0].GetErrorCode() == "PolicyRevisionNotFound" {
-				return nil // there was nothing to publish
+		for name, obj := range tfBulk {
+			tfRule := convertHydratePrivAccessRuleBulkStateValues3(ctx, diags, obj)
+			if diags.HasError() {
+				return nil, nil, diags, ErrConvertError
 			}
-			return fmt.Errorf("error publishing policy - %s", *apiErrors[0].GetErrorMessage())
+			stateRules[name] = tfRule
 		}
-		return fmt.Errorf("error publishing policy")
 	}
-	return nil
+
+	// Call Cato API to get the policy
+	result, err := r.resourceAPI().PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
+	tflog.Debug(ctx, "Bulk PolicyReadPrivateAccessPolicy", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(result),
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Merge rules from the API and rules from the state
+	apiRulesTf := make(map[string]types.Object)
+	apiRulesGo := make(map[string]*PrivateAccessBulkRule)
+	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
+	if len(policy.Rules) != len(stateRules) {
+		return nil, nil, nil, fmt.Errorf(
+			"rules returned by API (count=%d) do not match the PrivateAccessRuleBulkModel state (count=%d)",
+			len(policy.Rules),
+			len(stateRules),
+		)
+	}
+	for _, polRule := range policy.Rules {
+		apiRule, tfRule, stateRule, ok := convertHydratePrivAccessRuleBulkStateValues4(stateRules, polRule)
+		if !ok {
+			return nil, nil, nil, fmt.Errorf("rule '%s' from API is not found in the PrivateAccessRuleBulkModel state", apiRule.Name)
+		}
+		ruleObj := convertHydratePrivAccessRuleBulkStateValues5(ctx, diags, tfRule, stateRule)
+		if diags.HasError() {
+			return nil, nil, diags, apperror.ErrAPIResponseParse
+		}
+		apiRulesTf[apiRule.Name] = ruleObj
+		apiRulesGo[apiRule.Name] = tfRule
+	}
+
+	// Prepate the tf state - ruleData map from enriched apiRules
+	rulesMap := convertHydratePrivAccessRuleBulkStateValues(ctx, diags, apiRulesTf)
+	if diags.HasError() {
+		return nil, nil, diags, apperror.ErrAPIResponseParse
+	}
+	state := convertHydratePrivAccessRuleBulkStateValues2(plan, rulesMap)
+
+	return state, apiRulesGo, nil, nil
 }

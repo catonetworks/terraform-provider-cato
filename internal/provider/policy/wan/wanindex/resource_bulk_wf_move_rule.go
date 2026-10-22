@@ -3,23 +3,20 @@ package wanindex
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
-	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/spf13/cast"
+	attr "github.com/hashicorp/terraform-plugin-framework/attr"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
+	cast "github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -35,6 +32,8 @@ func NewWanRulesIndexResource() resource.Resource {
 type wanRulesIndexResource struct {
 	client  *catoclient.Service
 	wanBulk WanFirewallBulkPolicyClient // optional override for tests
+
+	apiClient ResourceClient
 }
 
 func (r *wanRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -48,21 +47,6 @@ func (r *wanRulesIndexResource) Configure(_ context.Context, req resource.Config
 
 	r.client = req.ProviderData.(*catoclient.Service)
 }
-
-func (r *wanRulesIndexResource) wanBulkPolicy() WanFirewallBulkPolicyClient {
-	if r.wanBulk != nil {
-		return r.wanBulk
-	}
-	if r.client == nil {
-		return nil
-	}
-	return r.client.Catov2
-}
-
-// func (r *wanRulesIndexResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-// 	// Retrieve import ID and save to id attribute
-// 	// resource.ImportStatePassthroughID(ctx, path.Root("Id"), req, resp)
-// }
 
 func (r *wanRulesIndexResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan WanRulesIndex
@@ -158,7 +142,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 	ruleObjectMap := make(map[string]attr.Value)
 
 	if plan.SectionToStartAfterID.ValueString() != "" {
-		result, err := r.wanBulkPolicy().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+		result, err := r.resourceAPI().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.PolicyWanFirewallSectionsIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -185,7 +169,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 	// maps section_name -> section_id
 	sectionIDList := make(map[string]string)
-	sectionIndexAPIData, err := r.wanBulkPolicy().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+	sectionIndexAPIData, err := r.resourceAPI().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.PolicyWanFirewallSectionsIndexInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
@@ -198,25 +182,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 	}
 
 	// for easier processing, a map of section name to ID is created
-	for _, v := range sectionIndexAPIData.Policy.WanFirewall.Policy.Sections {
-		sectionIDList[v.Section.Name] = v.Section.ID
-	}
-
-	sectionListFromPlan := make([]WanRulesSectionDataIndex, 0)
-
-	// Convert map to slice for processing
-	sectionDataMapElements := plan.SectionData.Elements()
-	for _, sectionValue := range sectionDataMapElements {
-		sectionObject := sectionValue.(types.Object)
-		var sectionSourceRuleIndex WanRulesSectionItemIndex
-		diags = append(diags, sectionObject.As(ctx, &sectionSourceRuleIndex, basetypes.ObjectAsOptions{})...)
-
-		sectionDataTmp := WanRulesSectionDataIndex{
-			SectionIndex: sectionSourceRuleIndex.SectionIndex.ValueInt64(),
-			SectionName:  sectionSourceRuleIndex.SectionName.ValueString(),
-		}
-		sectionListFromPlan = append(sectionListFromPlan, sectionDataTmp)
-	}
+	sectionListFromPlan := convertMoveWanRulesAndSectionsValues(ctx, plan, &diags, sectionIDList, sectionIndexAPIData)
 
 	// Sort sections by SectionIndex to ensure proper ordering
 	sort.Slice(sectionListFromPlan, func(i, j int) bool {
@@ -233,29 +199,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 	// create the sections from the list provided following the section ID provided in firstSectionId
 	for _, workingSectionName := range sectionListFromPlan {
-		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
-			ID: sectionIDList[workingSectionName.SectionName],
-		}
-
-		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionID to the SectionToStartAfterID otherwise set to id of first section for next in list
-		if currentSectionID == "" {
-			if plan.SectionToStartAfterID.ValueString() != "" {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterID.ValueStringPointer(),
-					Position: "AFTER_SECTION",
-				}
-			} else {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Position: "LAST_IN_POLICY",
-				}
-			}
-		} else {
-			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionID,
-				Position: "AFTER_SECTION",
-			}
-		}
+		policyMoveSectionInputInt := convertMoveWanRulesAndSectionsValues3(plan, sectionIDList, &currentSectionID, workingSectionName)
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
 			"sectionToStartAfterId":          plan.SectionToStartAfterID.ValueString(),
 			"moveFrom":                       workingSectionName.SectionName,
@@ -268,7 +212,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		var sectionMoveAPIData *cato_go_sdk.PolicyWanFirewallMoveSection
 		moveErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyWanFirewallMoveSection", func() error {
 			var callErr error
-			sectionMoveAPIData, callErr = r.wanBulkPolicy().PolicyWanFirewallMoveSection(
+			sectionMoveAPIData, callErr = r.resourceAPI().PolicyWanFirewallMoveSection(
 				ctx, policyMoveSectionInputInt, r.client.AccountId)
 			return wanFirewallMoveSectionError(sectionMoveAPIData, callErr)
 		})
@@ -283,19 +227,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"response": utils.InterfaceToJSONString(sectionMoveAPIData),
 		})
 
-		sectionIndexStateData, diagsSection := types.ObjectValue(
-			WanSectionIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":            types.StringValue(sectionIDList[workingSectionName.SectionName]),
-				"section_name":  types.StringValue(workingSectionName.SectionName),
-				"section_index": types.Int64Value(workingSectionName.SectionIndex),
-			},
-		)
-		diags = append(diags, diagsSection...)
-
-		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
-
-		currentSectionID = sectionIDList[workingSectionName.SectionName]
+		convertMoveWanRulesAndSectionsValues4(&diags, sectionIDList, &currentSectionID, sectionObjectMap, workingSectionName)
 	}
 
 	// now that the sections are ordered properly, move the rules to the correct locations
@@ -306,18 +238,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		// Convert map to slice for processing
 		ruleDataMapElements := plan.RuleData.Elements()
 		for _, ruleValue := range ruleDataMapElements {
-			ruleObject := ruleValue.(types.Object)
-			var planSourceRuleIndex WanRulesRuleItemIndex
-			diags = append(diags, ruleObject.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
-
-			rulenDataTmp := WanRulesRuleDataIndex{
-				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
-				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
-				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
-				Description:    planSourceRuleIndex.Description.ValueString(),
-				Enabled:        planSourceRuleIndex.Enabled.ValueBool(),
-			}
-			ruleListFromPlan = append(ruleListFromPlan, rulenDataTmp)
+			rulenDataTmp := convertMoveWanRulesAndSectionsValues5(ctx, &diags, &ruleListFromPlan, ruleValue)
 			tflog.Warn(ctx, "Read.rulenDataTmp.response", map[string]interface{}{
 				"rulenDataTmp": utils.InterfaceToJSONString(rulenDataTmp),
 			})
@@ -336,7 +257,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIDData, err := r.wanBulkPolicy().PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
+		ruleNameIDData, err := r.resourceAPI().PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.PolicyWanFirewallRulesIndex.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(ruleNameIDData),
 		})
@@ -362,7 +283,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"ruleNameIDMap": utils.InterfaceToJSONString(ruleNameIDMap),
 		})
 
-		sectionIdxAfter, err := r.wanBulkPolicy().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+		sectionIdxAfter, err := r.resourceAPI().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
 		if err != nil {
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyWanFirewallSectionsIndex error",
@@ -418,10 +339,10 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 
 		var reorderOut *cato_go_sdk.PolicyWanFirewallReorderPolicy
 		reorderErr := policy.WithAcctestPolicyRevisionCleanupRetryOnce(ctx, "PolicyWanFirewallReorderPolicy", func() error {
-			return policy.DiscardFirewallAndWANPolicyRevisions(ctx, r.client.Catov2.Client, r.client.AccountId)
+			return r.resourceAPI().DiscardPolicyRevisions(ctx)
 		}, func() error {
 			var callErr error
-			reorderOut, callErr = r.wanBulkPolicy().PolicyWanFirewallReorderPolicy(
+			reorderOut, callErr = r.resourceAPI().PolicyWanFirewallReorderPolicy(
 				ctx,
 				&cato_models.WanFirewallPolicyMutationInput{},
 				reorderIn,
@@ -455,7 +376,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 	}
 
 	pubErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyWanFirewallPublishPolicyRevision", func() error {
-		_, errPub := r.wanBulkPolicy().PolicyWanFirewallPublishPolicyRevision(
+		_, errPub := r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(
 			ctx,
 			&cato_models.PolicyPublishRevisionInput{},
 			r.client.AccountId,
@@ -470,66 +391,7 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, pubErr
 	}
 
-	sectionObjectsMap, sectionMapDiags := types.MapValue(
-		WanSectionIndexResourceObjectTypes,
-		sectionObjectMap,
-	)
-	diags = append(diags, sectionMapDiags...)
-
-	ruleObjectsMap, ruleMapDiags := types.MapValue(
-		WanRuleIndexResourceObjectTypes,
-		ruleObjectMap,
-	)
-	diags = append(diags, ruleMapDiags...)
+	sectionObjectsMap, ruleObjectsMap := convertMoveWanRulesAndSectionsValues2(&diags, ruleObjectMap, sectionObjectMap)
 
 	return sectionObjectsMap, ruleObjectsMap, diags, nil
-}
-
-func buildWanRuleIndexStateData(
-	ruleFromPlan WanRulesRuleDataIndex,
-	ruleNameIDMap map[string]string,
-	ruleNameDescriptionMap map[string]string,
-	ruleNameEnabledMap map[string]bool,
-) (basetypes.ObjectValue, diag.Diagnostics) {
-	return types.ObjectValue(
-		WanRuleIndexResourceAttrTypes,
-		map[string]attr.Value{
-			"id":               types.StringValue(ruleNameIDMap[ruleFromPlan.RuleName]),
-			"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
-			"section_name":     types.StringValue(ruleFromPlan.SectionName),
-			"rule_name":        types.StringValue(ruleFromPlan.RuleName),
-			"description":      types.StringValue(ruleNameDescriptionMap[ruleFromPlan.RuleName]),
-			"enabled":          types.BoolValue(ruleNameEnabledMap[ruleFromPlan.RuleName]),
-		},
-	)
-}
-
-func wanFirewallMoveSectionError(resp *cato_go_sdk.PolicyWanFirewallMoveSection, callErr error) error {
-	if callErr != nil {
-		return callErr
-	}
-	if resp == nil || resp.GetPolicy() == nil || resp.GetPolicy().GetWanFirewall() == nil {
-		return nil
-	}
-	ms := resp.GetPolicy().GetWanFirewall().GetMoveSection()
-	if ms == nil {
-		return nil
-	}
-	if errs := ms.GetErrors(); len(errs) > 0 {
-		var b strings.Builder
-		for _, e := range errs {
-			if e == nil {
-				continue
-			}
-			if b.Len() > 0 {
-				b.WriteString("; ")
-			}
-			_, _ = fmt.Fprintf(&b, "%s: %s", utils.GqlOptionalStr(e.GetErrorCode()), utils.GqlOptionalStr(e.GetErrorMessage()))
-		}
-		return fmt.Errorf("WAN firewall moveSection errors: %s", b.String())
-	}
-	if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-		return fmt.Errorf("WAN firewall moveSection status %q", string(*st))
-	}
-	return nil
 }

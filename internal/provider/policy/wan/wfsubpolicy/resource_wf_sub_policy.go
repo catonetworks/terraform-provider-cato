@@ -3,19 +3,16 @@ package wfsubpolicy
 import (
 	"context"
 	"fmt"
-	"maps"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	wan "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan"
+	wfrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -31,16 +28,8 @@ func NewWfSubPolicyResource() resource.Resource {
 type wfSubPolicyResource struct {
 	client        *catoclient.Service
 	subPolyClient WanFirewallSubPolicyClient
-}
 
-func (r *wfSubPolicyResource) getClient() WanFirewallSubPolicyClient {
-	if r.subPolyClient != nil {
-		return r.subPolyClient
-	}
-	if r.client == nil {
-		return nil
-	}
-	return r.client.Catov2
+	apiClient ResourceClient
 }
 
 func (r *wfSubPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -54,20 +43,14 @@ func (r *wfSubPolicyResource) Configure(_ context.Context, req resource.Configur
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *wfSubPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *wfSubPolicyResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *wfSubPolicyResource) publish(ctx context.Context) error {
-	_, err := r.getClient().PolicyWanFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.PolicyPublishRevisionInput{},
-		r.client.AccountId,
-	)
-	return err
-}
-
-//nolint:funlen
 func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan WanFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -77,11 +60,7 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 
 	// The API requires a normal action while creating a scope rule, then returns
 	// the API-owned SUB_POLICY action. Keep that bootstrap value out of config.
-	scopeAttrs := maps.Clone(plan.Scope.Attributes())
-	scopeAttrs["action"] = types.StringValue(string(cato_models.WanFirewallActionEnumAllow))
-	scopeAttrs["name"] = plan.Name
-	scopeAttrs["description"] = plan.Description
-	createScope, diags := types.ObjectValue(wfrule.WanFirewallRuleRuleAttrTypes, scopeAttrs)
+	createScope, diags := convertCreateInput(plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -94,23 +73,14 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	before, err := r.getClient().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+	before, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 		return
 	}
-	existing := wanSubPolicyIDs(before)
+	existing, addInput := convertCreateInput2(plan, hydrated, before)
 
-	addInput := cato_models.WanFirewallAddSubPolicyInput{
-		At: hydrated.Create.At,
-		Policy: &cato_models.WanFirewallAddSubPolicyDataInput{
-			Name:        plan.Name.ValueString(),
-			Description: plan.Description.ValueString(),
-		},
-		Scope: hydrated.Create.Rule,
-	}
-
-	addResp, err := r.getClient().PolicyWanFirewallAddSubPolicy(ctx, addInput, r.client.AccountId)
+	addResp, err := r.resourceAPI().PolicyWanFirewallAddSubPolicy(ctx, addInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallAddSubPolicy error", err.Error())
 		return
@@ -131,28 +101,17 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	after, err := r.getClient().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+	after, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 		return
 	}
-	subID := wanSubPolicyIDByName(after, plan.Name.ValueString(), existing)
-	if subID == "" {
-		resp.Diagnostics.AddError("Sub-Policy Not Found", "Created WAN Firewall sub-policy could not be located after publish.")
+	scope, scopeState := convertCreateInput3(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	scope := wanScopeRule(after, subID)
-	if scope == nil {
-		resp.Diagnostics.AddError("Scope Rule Not Found", fmt.Sprintf("No SUB_POLICY_SCOPE rule found for sub-policy %s.", subID))
-		return
-	}
-
-	plan.ID = types.StringValue(subID)
-	plan.ScopeRuleID = types.StringValue(scope.GetID())
-	scopeState, diags := wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
 	resp.Diagnostics.Append(diags...)
-	scopeState.ID = types.StringValue(scope.GetID())
-	scopeObj, diags := types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	scopeObj := convertCreateInput4(ctx, &diags, scope, &scopeState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -169,7 +128,7 @@ func (r *wfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	body, err := r.getClient().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+	body, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 		return
@@ -188,19 +147,9 @@ func (r *wfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	state.Name = types.StringValue(info.GetName())
-	if info.GetDescription() == "" {
-		state.Description = types.StringNull()
-	} else {
-		state.Description = types.StringValue(info.GetDescription())
-	}
-	state.ScopeRuleID = types.StringValue(scope.GetID())
-
-	scopeRule := wfrule.Rule{Rule: state.Scope, At: state.At}
-	scopeState, diags := wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
+	scopeState, diags := convertReadState(ctx, &state, info, scope)
 	resp.Diagnostics.Append(diags...)
-	scopeState.ID = types.StringValue(scope.GetID())
-	scopeObj, diags := types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	scopeObj := convertReadState2(ctx, scope, &scopeState, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -237,7 +186,7 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	hydrated.Update.Rule.Name = state.Name.ValueStringPointer()
 	hydrated.Update.Rule.Description = state.Description.ValueStringPointer()
 
-	updateResp, err := r.getClient().PolicyWanFirewallUpdateRule(ctx, hydrated.Update, r.client.AccountId)
+	updateResp, err := r.resourceAPI().PolicyWanFirewallUpdateRule(ctx, hydrated.Update, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallUpdateRule error", err.Error())
 		return
@@ -254,7 +203,7 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	body, err := r.getClient().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+	body, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 		return
@@ -266,8 +215,7 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 	scopeState, diags := wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
 	resp.Diagnostics.Append(diags...)
-	scopeState.ID = types.StringValue(scope.GetID())
-	scopeObj, diags := types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	scopeObj := convertUpdateInput(ctx, &diags, scope, &scopeState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -284,8 +232,8 @@ func (r *wfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	removeInput := cato_models.WanFirewallRemoveSubPolicyInput{Ref: wanObjectRefByID(state.ID.ValueString())}
-	removeResp, err := r.getClient().PolicyWanFirewallRemoveSubPolicy(ctx, removeInput, r.client.AccountId)
+	removeInput := convertDeleteInput(state)
+	removeResp, err := r.resourceAPI().PolicyWanFirewallRemoveSubPolicy(ctx, removeInput, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSubPolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removeResp),
 	})
@@ -308,63 +256,4 @@ func (r *wfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 		resp.Diagnostics.AddError("Catov2 API Delete/PolicyWanFirewallPublishPolicyRevision error", err.Error())
 		return
 	}
-}
-
-// wanSubPolicyIDs returns the set of sub-policy ids currently in the snapshot.
-func wanSubPolicyIDs(body *cato_go_sdk.Policy) map[string]struct{} {
-	ids := map[string]struct{}{}
-	if body == nil {
-		return ids
-	}
-	for _, sp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetSubPolicies() {
-		ids[sp.GetPolicy().GetID()] = struct{}{}
-	}
-	return ids
-}
-
-// wanSubPolicyIDByName returns the id of the sub-policy with the given name that
-// is not present in the exclude set.
-func wanSubPolicyIDByName(body *cato_go_sdk.Policy, name string, exclude map[string]struct{}) string {
-	if body == nil {
-		return ""
-	}
-	for _, sp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetSubPolicies() {
-		info := sp.GetPolicy()
-		if info.GetName() != name {
-			continue
-		}
-		if _, skip := exclude[info.GetID()]; skip {
-			continue
-		}
-		return info.GetID()
-	}
-	return ""
-}
-
-// derefStr safely dereferences an optional string pointer.
-func derefStr(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
-// wanScopeRule returns the SUB_POLICY_SCOPE rule owned by the given sub-policy.
-func wanScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule {
-	if body == nil || subID == "" {
-		return nil
-	}
-	for _, rp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetRules() {
-		rt := rp.GetRuleType()
-		sp := rp.GetSubPolicy()
-		if rt != nil && *rt == cato_models.PolicyRuleTypeEnumSubPolicyScope && sp != nil && sp.GetID() == subID {
-			return rp.GetRule()
-		}
-	}
-	return nil
-}
-
-// wanObjectRefByID builds an ObjectRefBy=ID reference input for WAN.
-func wanObjectRefByID(id string) *cato_models.WanFirewallPolicyRefInput {
-	return &cato_models.WanFirewallPolicyRefInput{By: cato_models.ObjectRefByID, Input: id}
 }

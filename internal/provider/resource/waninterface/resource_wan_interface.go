@@ -1,4 +1,3 @@
-//nolint:lll
 package waninterface
 
 import (
@@ -6,14 +5,16 @@ import (
 	"fmt"
 	"strings"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -34,6 +35,8 @@ func NewWanInterfaceResource() resource.Resource {
 
 type wanInterfaceResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *wanInterfaceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -48,7 +51,11 @@ func (r *wanInterfaceResource) Configure(_ context.Context, req resource.Configu
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *wanInterfaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *wanInterfaceResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
@@ -71,23 +78,18 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// setting input
-	input := cato_models.UpdateSocketInterfaceInput{
-		DestType: "CATO",
-		Name:     plan.Name.ValueStringPointer(),
-		Bandwidth: &cato_models.SocketInterfaceBandwidthInput{
-			UpstreamBandwidth:   plan.UpstreamBandwidth.ValueInt64Pointer(),
-			DownstreamBandwidth: plan.DownstreamBandwidth.ValueInt64Pointer(),
-		},
-		Wan: &cato_models.SocketInterfaceWanInput{
-			Role:       cato_models.SocketInterfaceRole(plan.Role.ValueString()),
-			Precedence: cato_models.SocketInterfacePrecedenceEnum(plan.Precedence.ValueString()),
-		},
-	}
+	input := convertCreateInput(plan)
 
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(ctx, plan.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.resourceAPI().SiteUpdateSocketInterface(
+		ctx,
+		plan.SiteID.ValueString(),
+		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
+		input,
+		r.client.AccountId,
+	)
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -99,24 +101,14 @@ func (r *wanInterfaceResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	intID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID.String())
-	siteID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
-	plan.ID = types.StringValue(siteID.ValueString() + ":" + intID.ValueString())
-
-	// Hydrate the state from the API to get the latest values including precedence
-	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString(), true)
-	if hydrateErr != nil {
-		resp.Diagnostics.AddError(
-			"Error hydrating WAN interface state after create",
-			hydrateErr.Error(),
-		)
-		return
-	}
-	if !interfaceExists {
-		resp.Diagnostics.AddError(
-			"WAN Interface Not Found",
-			fmt.Sprintf("WAN interface with ID %q not found after create", intID.ValueString()),
-		)
+	hydratedState := convertCreateInput2(
+		ctx,
+		r,
+		&plan,
+		siteUpdateSocketInterfaceResponse,
+		&resp.Diagnostics,
+	)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -181,23 +173,18 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// setting input
-	input := cato_models.UpdateSocketInterfaceInput{
-		DestType: "CATO",
-		Name:     plan.Name.ValueStringPointer(),
-		Bandwidth: &cato_models.SocketInterfaceBandwidthInput{
-			UpstreamBandwidth:   plan.UpstreamBandwidth.ValueInt64Pointer(),
-			DownstreamBandwidth: plan.DownstreamBandwidth.ValueInt64Pointer(),
-		},
-		Wan: &cato_models.SocketInterfaceWanInput{
-			Role:       cato_models.SocketInterfaceRole(plan.Role.ValueString()),
-			Precedence: cato_models.SocketInterfacePrecedenceEnum(plan.Precedence.ValueString()),
-		},
-	}
+	input := convertUpdateInput(plan)
 
 	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(ctx, plan.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()), input, r.client.AccountId)
+	siteUpdateSocketInterfaceResponse, err := r.resourceAPI().SiteUpdateSocketInterface(
+		ctx,
+		plan.SiteID.ValueString(),
+		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
+		input,
+		r.client.AccountId,
+	)
 	tflog.Debug(ctx, "Update.SiteUpdateSocketInterface.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
@@ -209,24 +196,14 @@ func (r *wanInterfaceResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	intID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID.String())
-	siteID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
-	plan.ID = types.StringValue(siteID.ValueString() + ":" + intID.ValueString())
-
-	// Hydrate the state from the API to get the latest values including precedence
-	hydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString(), true)
-	if hydrateErr != nil {
-		resp.Diagnostics.AddError(
-			"Error hydrating WAN interface state after update",
-			hydrateErr.Error(),
-		)
-		return
-	}
-	if !interfaceExists {
-		resp.Diagnostics.AddError(
-			"WAN Interface Not Found",
-			fmt.Sprintf("WAN interface with ID %q not found after update", intID.ValueString()),
-		)
+	hydratedState := convertUpdateInput2(
+		ctx,
+		r,
+		&plan,
+		siteUpdateSocketInterfaceResponse,
+		&resp.Diagnostics,
+	)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -245,7 +222,19 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	querySiteResult, err := r.client.Catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"), nil, nil, nil, nil, []string{state.SiteID.ValueString()}, nil, nil, nil)
+	querySiteResult, err := r.resourceAPI().EntityLookup(
+		ctx,
+		r.client.AccountId,
+		cato_models.EntityType("site"),
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{state.SiteID.ValueString()},
+		nil,
+		nil,
+		nil,
+	)
 	tflog.Debug(ctx, "Delete.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
 	})
@@ -260,7 +249,7 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
 		// check if there is only one WAN interface & rewrite the input with default one
-		accountSnapshotSite, err := r.client.AccountSnapshot(ctx, []string{state.SiteID.ValueString()}, nil, true)
+		accountSnapshotSite, err := r.resourceAPI().AccountSnapshot(ctx, []string{state.SiteID.ValueString()}, nil, true)
 		tflog.Debug(ctx, "Delete.AccountSnapshot.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(accountSnapshotSite),
 		})
@@ -272,41 +261,18 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 			return
 		}
 
-		var c = 0
-		for _, item := range accountSnapshotSite.AccountSnapshot.Sites[0].InfoSiteSnapshot.Interfaces {
-			if *item.DestType == "CATO" {
-				c++
-			}
-		}
-
-		var input cato_models.UpdateSocketInterfaceInput
-
-		if (c >= 1) && (state.Role == types.StringValue("wan_1")) {
-			bandwidth := int64(10)
-			input = cato_models.UpdateSocketInterfaceInput{
-				DestType: "CATO",
-				Name:     state.InterfaceID.ValueStringPointer(),
-				Bandwidth: &cato_models.SocketInterfaceBandwidthInput{
-					UpstreamBandwidth:   &bandwidth,
-					DownstreamBandwidth: &bandwidth,
-				},
-				Wan: &cato_models.SocketInterfaceWanInput{
-					Role:       cato_models.SocketInterfaceRole("wan_1"),
-					Precedence: cato_models.SocketInterfacePrecedenceEnum("ACTIVE"),
-				},
-			}
-		} else {
-			// Disabled interface to "remove" an interface
-			input = cato_models.UpdateSocketInterfaceInput{
-				Name:     state.InterfaceID.ValueStringPointer(),
-				DestType: "INTERFACE_DISABLED",
-			}
-		}
+		input := convertDeleteValues(state, accountSnapshotSite)
 
 		tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request", map[string]interface{}{
 			"request": utils.InterfaceToJSONString(input),
 		})
-		_, err = r.client.Catov2.SiteUpdateSocketInterface(ctx, state.SiteID.ValueString(), cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()), input, r.client.AccountId)
+		_, err = r.resourceAPI().SiteUpdateSocketInterface(
+			ctx,
+			state.SiteID.ValueString(),
+			cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()),
+			input,
+			r.client.AccountId,
+		)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API SiteUpdateSocketInterface error",
@@ -317,108 +283,76 @@ func (r *wanInterfaceResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
-func normalizedInterfaceIDCandidates(rawID string) []string {
-	id := strings.TrimSpace(rawID)
-	if id == "" {
-		return nil
-	}
+// convertUpdateInput2 converts between the Terraform model and SDK values.
+func convertUpdateInput2(
+	ctx context.Context,
+	r *wanInterfaceResource,
+	priorPlan *WanInterface,
+	siteUpdateSocketInterfaceResponse *cato_go_sdk.SiteUpdateSocketInterface,
+	diagnostics *diag.Diagnostics,
+) (resultHydratedState WanInterface) {
+	plan := *priorPlan
+	defer func() { *priorPlan = plan }()
+	intID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID.String())
+	siteID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
+	plan.ID = types.StringValue(siteID.ValueString() + ":" + intID.ValueString())
 
-	candidatesMap := map[string]struct{}{
-		id: {},
+	// Hydrate the state from the API to get the latest values including precedence
+	resultHydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString(), true)
+	if hydrateErr != nil {
+		diagnostics.AddError(
+			"Error hydrating WAN interface state after update",
+			hydrateErr.Error(),
+		)
+		return resultHydratedState
 	}
-
-	upper := strings.ToUpper(id)
-	if strings.HasPrefix(upper, "INT_") {
-		candidatesMap[strings.TrimPrefix(upper, "INT_")] = struct{}{}
+	if !interfaceExists {
+		diagnostics.AddError(
+			"WAN Interface Not Found",
+			fmt.Sprintf("WAN interface with ID %q not found after update", intID.ValueString()),
+		)
+		return resultHydratedState
 	}
-	if strings.HasPrefix(upper, "WAN") {
-		suffix := strings.TrimPrefix(upper, "WAN")
-		if suffix != "" {
-			candidatesMap[suffix] = struct{}{}
-			candidatesMap["INT_"+suffix] = struct{}{}
-		}
-	}
-
-	// If the raw ID is numeric (e.g., "1"), include common aliases.
-	isNumeric := true
-	for _, ch := range id {
-		if ch < '0' || ch > '9' {
-			isNumeric = false
-			break
-		}
-	}
-	if isNumeric {
-		candidatesMap["INT_"+id] = struct{}{}
-		candidatesMap["WAN"+id] = struct{}{}
-	}
-
-	candidates := make([]string, 0, len(candidatesMap))
-	for candidate := range candidatesMap {
-		candidates = append(candidates, strings.ToUpper(candidate))
-	}
-
-	return candidates
+	return resultHydratedState
 }
 
-func wanInterfaceIDsMatch(resourceInterfaceID string, snapshotInterfaceID string, deviceInterfaceID string) bool {
-	resourceCandidates := normalizedInterfaceIDCandidates(resourceInterfaceID)
-	if len(resourceCandidates) == 0 {
-		return false
-	}
+// convertCreateInput2 converts between the Terraform model and SDK values.
+func convertCreateInput2(
+	ctx context.Context,
+	r *wanInterfaceResource,
+	priorPlan *WanInterface,
+	siteUpdateSocketInterfaceResponse *cato_go_sdk.SiteUpdateSocketInterface,
+	diagnostics *diag.Diagnostics,
+) (resultHydratedState WanInterface) {
+	plan := *priorPlan
+	defer func() { *priorPlan = plan }()
+	intID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID.String())
+	siteID := types.StringValue(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID)
+	plan.ID = types.StringValue(siteID.ValueString() + ":" + intID.ValueString())
 
-	otherCandidatesMap := map[string]struct{}{}
-	for _, candidate := range normalizedInterfaceIDCandidates(snapshotInterfaceID) {
-		otherCandidatesMap[candidate] = struct{}{}
+	// Hydrate the state from the API to get the latest values including precedence
+	resultHydratedState, interfaceExists, hydrateErr := r.hydrateWanInterfaceState(ctx, plan, siteID.ValueString(), intID.ValueString(), true)
+	if hydrateErr != nil {
+		diagnostics.AddError(
+			"Error hydrating WAN interface state after create",
+			hydrateErr.Error(),
+		)
+		return resultHydratedState
 	}
-	for _, candidate := range normalizedInterfaceIDCandidates(deviceInterfaceID) {
-		otherCandidatesMap[candidate] = struct{}{}
+	if !interfaceExists {
+		diagnostics.AddError(
+			"WAN Interface Not Found",
+			fmt.Sprintf("WAN interface with ID %q not found after create", intID.ValueString()),
+		)
+		return resultHydratedState
 	}
-
-	for _, candidate := range resourceCandidates {
-		if _, ok := otherCandidatesMap[candidate]; ok {
-			return true
-		}
-	}
-
-	return false
-}
-
-func precedenceFromNaturalOrder(naturalOrder *int64) types.String {
-	if naturalOrder == nil {
-		return types.StringNull()
-	}
-
-	switch *naturalOrder {
-	case wanInterfaceActiveNaturalOrder:
-		return types.StringValue("ACTIVE")
-	case wanInterfacePassiveNaturalOrder:
-		return types.StringValue("PASSIVE")
-	case wanInterfaceLastResortNaturalOrder:
-		return types.StringValue("LAST_RESORT")
-	default:
-		return types.StringNull()
-	}
-}
-
-func wanRoleFromInterfaceID(interfaceID string) string {
-	switch strings.ToUpper(strings.TrimSpace(interfaceID)) {
-	case "1", "WAN1", "INT_1":
-		return "wan_1"
-	case "2", "WAN2", "INT_2":
-		return "wan_2"
-	case "3", "WAN3", "INT_3":
-		return "wan_3"
-	case "4", "WAN4", "INT_4":
-		return "wan_4"
-	default:
-		return ""
-	}
+	return resultHydratedState
 }
 
 // hydrateWanInterfaceState fetches the current state of a WAN interface from the API
 // and populates the state object with the latest values, including precedence mapping
 //
-//nolint:gocyclo
+
 func (r *wanInterfaceResource) hydrateWanInterfaceState(
 	ctx context.Context,
 	state WanInterface,
@@ -427,7 +361,7 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(
 	forceRefresh bool,
 ) (WanInterface, bool, error) {
 	// Get accountSnapshot data to check if site exists and has interfaces
-	siteAccountSnapshotData, err := r.client.AccountSnapshot(ctx, []string{siteID}, nil, forceRefresh)
+	siteAccountSnapshotData, err := r.resourceAPI().AccountSnapshot(ctx, []string{siteID}, nil, forceRefresh)
 	tflog.Debug(ctx, "hydrateWanInterfaceState.AccountSnapshot.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteAccountSnapshotData),
 	})
@@ -456,24 +390,7 @@ func (r *wanInterfaceResource) hydrateWanInterfaceState(
 		return state, false, nil
 	}
 
-	foundInterface := site.InfoSiteSnapshot.Interfaces[foundInterfaceIndex]
-
-	// Populate basic interface information
-	if strings.HasPrefix(foundInterface.ID, "WAN") ||
-		strings.HasPrefix(foundInterface.ID, "LTE") ||
-		strings.HasPrefix(foundInterface.ID, "USB") {
-		state.InterfaceID = types.StringValue(foundInterface.ID)
-	} else {
-		state.InterfaceID = types.StringValue("INT_" + foundInterface.ID)
-	}
-	state.SiteID = types.StringValue(siteID)
-	state.ID = types.StringValue(siteID + ":" + state.InterfaceID.ValueString())
-	state.Name = types.StringValue(*foundInterface.Name)
-	state.UpstreamBandwidth = types.Int64Value(*foundInterface.UpstreamBandwidth)
-	state.DownstreamBandwidth = types.Int64Value(*foundInterface.DownstreamBandwidth)
-	if derivedRole := wanRoleFromInterfaceID(foundInterface.ID); derivedRole != "" {
-		state.Role = types.StringValue(derivedRole)
-	}
+	foundInterface := convertHydrateWanInterfaceStateValues(&state, siteID, site, foundInterfaceIndex)
 
 	// Map precedence from naturalOrder in devices.interfaces
 	// naturalOrder: 1 = ACTIVE, 2 = PASSIVE, 3 = LAST_RESORT

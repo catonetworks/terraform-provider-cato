@@ -2,18 +2,16 @@ package admin
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json"
 	"regexp"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -30,6 +28,8 @@ func NewAdminResource() resource.Resource {
 
 type adminResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *adminResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -44,12 +44,15 @@ func (r *adminResource) Configure(_ context.Context, req resource.ConfigureReque
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *adminResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *adminResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-//nolint:gocyclo,funlen
 func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan Admin
 	diags := req.Plan.Get(ctx, &plan)
@@ -58,98 +61,15 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	curAccountID := r.client.AccountId
-	if !plan.AccountID.IsNull() && !plan.AccountID.IsUnknown() {
-		curAccountID = plan.AccountID.ValueString()
-	}
-	input := cato_models.AddAdminInput{}
-
-	// Set required fields
-	if !plan.AccountID.IsNull() && !plan.AccountID.IsUnknown() {
-		curAccountID = plan.AccountID.ValueString()
-	}
-
-	if !plan.FirstName.IsNull() && !plan.FirstName.IsUnknown() {
-		input.FirstName = plan.FirstName.ValueString()
-	}
-
-	if !plan.LastName.IsNull() && !plan.LastName.IsUnknown() {
-		input.LastName = plan.LastName.ValueString()
-	}
-
-	if !plan.Email.IsNull() && !plan.Email.IsUnknown() {
-		input.Email = plan.Email.ValueStringPointer()
-	}
-
-	// Set optional fields
-	if !plan.PasswordNeverExpires.IsNull() && !plan.PasswordNeverExpires.IsUnknown() {
-		input.PasswordNeverExpires = plan.PasswordNeverExpires.ValueBool()
-	}
-
-	// Handle managed roles
-	if !plan.ManagedRoles.IsNull() && !plan.ManagedRoles.IsUnknown() {
-		var managedRoles []ManagedRole
-		diags := plan.ManagedRoles.ElementsAs(ctx, &managedRoles, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		managedRolesInput := make([]*cato_models.UpdateAdminRoleInput, 0, len(managedRoles))
-		for _, role := range managedRoles {
-			if !role.ID.IsNull() && !role.ID.IsUnknown() {
-				managedRolesInput = append(managedRolesInput, &cato_models.UpdateAdminRoleInput{
-					Role: &cato_models.UpdateAccountRoleInput{
-						ID:   role.ID.ValueString(),
-						Name: role.Name.ValueStringPointer(),
-					},
-				})
-			}
-		}
-		if len(managedRolesInput) > 0 {
-			input.ManagedRoles = managedRolesInput
-		}
-	}
-
-	// Handle reseller roles
-	if !plan.ResellerRoles.IsNull() && !plan.ResellerRoles.IsUnknown() {
-		var resellerRoles []ResellerRole
-		diags := plan.ResellerRoles.ElementsAs(ctx, &resellerRoles, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		resellerRolesInput := make([]*cato_models.UpdateAdminRoleInput, 0, len(resellerRoles))
-		for _, role := range resellerRoles {
-			if !role.ID.IsNull() && !role.ID.IsUnknown() {
-				roleInput := &cato_models.UpdateAdminRoleInput{
-					Role: &cato_models.UpdateAccountRoleInput{
-						ID:   role.ID.ValueString(),
-						Name: role.Name.ValueStringPointer(),
-					},
-				}
-
-				// Handle allowed accounts if specified
-				if !role.AllowedAccounts.IsNull() && !role.AllowedAccounts.IsUnknown() {
-					var allowedAccounts []string
-					diags := role.AllowedAccounts.ElementsAs(ctx, &allowedAccounts, false)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-					roleInput.AllowedAccounts = allowedAccounts
-				}
-
-				resellerRolesInput = append(resellerRolesInput, roleInput)
-			}
-		}
-		if len(resellerRolesInput) > 0 {
-			input.ResellerRoles = resellerRolesInput
-		}
-	}
-	mfaEnabled := true
-	input.MfaEnabled = &mfaEnabled // Always true for admin users
+	curAccountID, input := convertCreateInput(
+		ctx,
+		r,
+		plan,
+		&resp.Diagnostics,
+	)
+	if resp.Diagnostics.HasError() {
+		return
+	} // Always true for admin users
 
 	// Log the request
 	tflog.Info(ctx, "Create.admin")
@@ -158,7 +78,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	})
 
 	// Call the API
-	addAdminResult, err := r.client.Catov2.AdminAddAdmin(ctx, input, curAccountID)
+	addAdminResult, err := r.resourceAPI().AdminAddAdmin(ctx, input, curAccountID)
 	tflog.Debug(ctx, "Create.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addAdminResult),
 	})
@@ -194,11 +114,10 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	})
 
 	// Update the state with the admin ID
-	plan.ID = types.StringValue(curAccountID + ":" + adminID)
-	plan.AdminID = types.StringValue(adminID)
+	convertCreateInput2(&plan, curAccountID, adminID)
 
 	// Read the admin data to populate computed fields
-	readAdminResult, err := r.client.Catov2.Admin(ctx, curAccountID, adminID)
+	readAdminResult, err := r.resourceAPI().Admin(ctx, curAccountID, adminID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Cato API Admin error",
@@ -207,113 +126,9 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	if readAdminResult.GetAdmin() == nil {
-		resp.Diagnostics.AddError(
-			"Cato API Admin error",
-			"Failed to read admin after creation - no admin data returned",
-		)
+	convertCreateInput3(ctx, &plan, curAccountID, readAdminResult, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	adminData := readAdminResult.GetAdmin()
-
-	// Update computed fields from the API response
-	plan.MFAEnabled = types.BoolValue(true)
-	plan.AccountID = types.StringValue(curAccountID)
-
-	// Handle managed roles with computed names
-	if !plan.ManagedRoles.IsNull() && !plan.ManagedRoles.IsUnknown() {
-		var planManagedRoles []ManagedRole
-		diags := plan.ManagedRoles.ElementsAs(ctx, &planManagedRoles, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Get the managed roles from the API response
-		if managedRoles := adminData.GetManagedRoles(); managedRoles != nil {
-			updatedManagedRoles := make([]ManagedRole, 0)
-			for _, planRole := range planManagedRoles {
-				// Find the corresponding role in the API response
-				for _, apiRole := range managedRoles {
-					if roleData := apiRole.GetRole(); roleData != nil && roleData.GetID() == planRole.ID.ValueString() {
-						updatedManagedRoles = append(updatedManagedRoles, ManagedRole{
-							ID:   types.StringValue(roleData.GetID()),
-							Name: types.StringValue(roleData.GetName()),
-						})
-						break
-					}
-				}
-			}
-			if len(updatedManagedRoles) > 0 {
-				managedRolesValue, diags := types.SetValueFrom(ctx, types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"id":   types.StringType,
-						"name": types.StringType,
-					},
-				}, updatedManagedRoles)
-				resp.Diagnostics.Append(diags...)
-				if resp.Diagnostics.HasError() {
-					return
-				}
-				plan.ManagedRoles = managedRolesValue
-			}
-		}
-	}
-
-	// Handle reseller roles with computed names
-	if !plan.ResellerRoles.IsNull() && !plan.ResellerRoles.IsUnknown() {
-		var planResellerRoles []ResellerRole
-		diags := plan.ResellerRoles.ElementsAs(ctx, &planResellerRoles, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Get the reseller roles from the API response
-		if resellerRoles := adminData.GetResellerRoles(); resellerRoles != nil {
-			updatedResellerRoles := make([]ResellerRole, 0)
-			for _, planRole := range planResellerRoles {
-				// Find the corresponding role in the API response
-				for _, apiRole := range resellerRoles {
-					if roleData := apiRole.GetRole(); roleData != nil && roleData.GetID() == planRole.ID.ValueString() {
-						resellerRole := ResellerRole{
-							ID:   types.StringValue(roleData.GetID()),
-							Name: types.StringValue(roleData.GetName()),
-						}
-
-						// Handle allowed accounts
-						if allowedAccounts := apiRole.GetAllowedAccounts(); allowedAccounts != nil {
-							allowedAccountsValue, diags := types.SetValueFrom(ctx, types.StringType, allowedAccounts)
-							resp.Diagnostics.Append(diags...)
-							if resp.Diagnostics.HasError() {
-								return
-							}
-							resellerRole.AllowedAccounts = allowedAccountsValue
-						} else {
-							resellerRole.AllowedAccounts = types.SetNull(types.StringType)
-						}
-
-						updatedResellerRoles = append(updatedResellerRoles, resellerRole)
-						break
-					}
-				}
-			}
-			if len(updatedResellerRoles) > 0 {
-				resellerRolesValue, diags := types.SetValueFrom(ctx, types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"id":               types.StringType,
-						"name":             types.StringType,
-						"allowed_accounts": types.SetType{ElemType: types.StringType},
-					},
-				}, updatedResellerRoles)
-				resp.Diagnostics.Append(diags...)
-				if resp.Diagnostics.HasError() {
-					return
-				}
-				plan.ResellerRoles = resellerRolesValue
-			}
-		}
 	}
 
 	// Set the state
@@ -324,7 +139,7 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 }
 
-//nolint:gocyclo,funlen
+//nolint:gocyclo
 func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state Admin
 	diags := req.State.Get(ctx, &state)
@@ -358,7 +173,7 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	})
 
 	// Call the API to read the admin
-	readAdminResult, err := r.client.Catov2.Admins(ctx, curAccountID, nil, nil, nil, nil, []string{curAdminID})
+	readAdminResult, err := r.resourceAPI().Admins(ctx, curAccountID, nil, nil, nil, nil, []string{curAdminID})
 	tflog.Debug(ctx, "Read.Admins.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(readAdminResult),
 	})
@@ -394,114 +209,16 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		})
 
 		// Update the state with data from the API response
-		state.ID = types.StringValue(curAccountID + ":" + curAdminID)
-		state.Email = types.StringValue(*adminData.Email)
-		state.FirstName = types.StringValue(*adminData.FirstName)
-		state.LastName = types.StringValue(*adminData.LastName)
-
-		state.PasswordNeverExpires = types.BoolValue(*adminData.PasswordNeverExpires)
-		state.MFAEnabled = types.BoolValue(true)
-		state.AccountID = types.StringValue(curAccountID)
-		state.AdminID = types.StringValue(curAdminID)
+		convertReadValues(&state, curAccountID, curAdminID, adminData)
 	} else {
 		resp.Diagnostics.AddError("Admin not found", "The admin with the given ID does not exist.")
 		return
 	}
 
 	// Handle managed roles
-	if managedRoles := adminData.ManagedRoles; managedRoles != nil {
-		managedRolesList := make([]ManagedRole, 0)
-		for _, role := range managedRoles {
-			if roleData := role.Role; roleData != nil {
-				managedRolesList = append(managedRolesList, ManagedRole{
-					ID:   types.StringValue(roleData.ID),
-					Name: types.StringValue(roleData.Name),
-				})
-			}
-		}
-		if len(managedRolesList) > 0 {
-			managedRolesValue, diags := types.SetValueFrom(ctx, types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"id":   types.StringType,
-					"name": types.StringType,
-				},
-			}, managedRolesList)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			state.ManagedRoles = managedRolesValue
-		} else {
-			state.ManagedRoles = types.SetNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"id":   types.StringType,
-					"name": types.StringType,
-				},
-			})
-		}
-	} else {
-		state.ManagedRoles = types.SetNull(types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"id":   types.StringType,
-				"name": types.StringType,
-			},
-		})
-	}
-
-	// Handle reseller roles
-	if resellerRoles := adminData.ResellerRoles; resellerRoles != nil {
-		resellerRolesList := make([]ResellerRole, 0)
-		for _, role := range resellerRoles {
-			if roleData := role.Role; roleData != nil {
-				resellerRole := ResellerRole{
-					ID:   types.StringValue(roleData.ID),
-					Name: types.StringValue(roleData.Name),
-				}
-				// Handle allowed accounts
-				if allowedAccounts := role.AllowedAccounts; allowedAccounts != nil {
-					allowedAccountsValue, diags := types.SetValueFrom(ctx, types.StringType, allowedAccounts)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-					resellerRole.AllowedAccounts = allowedAccountsValue
-				} else {
-					resellerRole.AllowedAccounts = types.SetNull(types.StringType)
-				}
-
-				resellerRolesList = append(resellerRolesList, resellerRole)
-			}
-		}
-		if len(resellerRolesList) > 0 {
-			resellerRolesValue, diags := types.SetValueFrom(ctx, types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"id":               types.StringType,
-					"name":             types.StringType,
-					"allowed_accounts": types.SetType{ElemType: types.StringType},
-				},
-			}, resellerRolesList)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			state.ResellerRoles = resellerRolesValue
-		} else {
-			state.ResellerRoles = types.SetNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"id":               types.StringType,
-					"name":             types.StringType,
-					"allowed_accounts": types.SetType{ElemType: types.StringType},
-				},
-			})
-		}
-	} else {
-		state.ResellerRoles = types.SetNull(types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"id":               types.StringType,
-				"name":             types.StringType,
-				"allowed_accounts": types.SetType{ElemType: types.StringType},
-			},
-		})
+	convertReadState(ctx, &state, adminData, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Set the updated state
@@ -512,7 +229,6 @@ func (r *adminResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 }
 
-//nolint:gocyclo,funlen
 func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan Admin
 	diags := req.Plan.Get(ctx, &plan)
@@ -553,97 +269,10 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Check if any immutable fields have changed
-	if !plan.Email.Equal(state.Email) {
-		resp.Diagnostics.AddError(
-			"Invalid Configuration",
-			"Admin email cannot be changed after creation. Current: "+state.Email.ValueString()+", Requested: "+plan.Email.ValueString(),
-		)
+	input := convertUpdateInput(ctx, plan, state, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	// Build the update input
-	input := cato_models.UpdateAdminInput{}
-
-	// Set optional fields that can be updated
-	if !plan.FirstName.IsNull() && !plan.FirstName.IsUnknown() {
-		firstName := plan.FirstName.ValueString()
-		input.FirstName = &firstName
-	}
-
-	if !plan.LastName.IsNull() && !plan.LastName.IsUnknown() {
-		lastName := plan.LastName.ValueString()
-		input.LastName = &lastName
-	}
-
-	if !plan.PasswordNeverExpires.IsNull() && !plan.PasswordNeverExpires.IsUnknown() {
-		passwordNeverExpires := plan.PasswordNeverExpires.ValueBool()
-		input.PasswordNeverExpires = &passwordNeverExpires
-	}
-
-	// Handle managed roles
-	if !plan.ManagedRoles.IsNull() && !plan.ManagedRoles.IsUnknown() {
-		var managedRoles []ManagedRole
-		diags := plan.ManagedRoles.ElementsAs(ctx, &managedRoles, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		managedRolesInput := make([]*cato_models.UpdateAdminRoleInput, 0, len(managedRoles))
-		for _, role := range managedRoles {
-			if !role.ID.IsNull() && !role.ID.IsUnknown() {
-				managedRolesInput = append(managedRolesInput, &cato_models.UpdateAdminRoleInput{
-					Role: &cato_models.UpdateAccountRoleInput{
-						ID:   role.ID.ValueString(),
-						Name: role.Name.ValueStringPointer(),
-					},
-				})
-			}
-		}
-		if len(managedRolesInput) > 0 {
-			input.ManagedRoles = managedRolesInput
-		}
-	}
-
-	// Handle reseller roles
-	if !plan.ResellerRoles.IsNull() && !plan.ResellerRoles.IsUnknown() {
-		var resellerRoles []ResellerRole
-		diags := plan.ResellerRoles.ElementsAs(ctx, &resellerRoles, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		resellerRolesInput := make([]*cato_models.UpdateAdminRoleInput, 0, len(resellerRoles))
-		for _, role := range resellerRoles {
-			if !role.ID.IsNull() && !role.ID.IsUnknown() {
-				roleInput := &cato_models.UpdateAdminRoleInput{
-					Role: &cato_models.UpdateAccountRoleInput{
-						ID:   role.ID.ValueString(),
-						Name: role.Name.ValueStringPointer(),
-					},
-				}
-
-				// Handle allowed accounts if specified
-				if !role.AllowedAccounts.IsNull() && !role.AllowedAccounts.IsUnknown() {
-					var allowedAccounts []string
-					diags := role.AllowedAccounts.ElementsAs(ctx, &allowedAccounts, false)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-					roleInput.AllowedAccounts = allowedAccounts
-				}
-
-				resellerRolesInput = append(resellerRolesInput, roleInput)
-			}
-		}
-		if len(resellerRolesInput) > 0 {
-			input.ResellerRoles = resellerRolesInput
-		}
-	}
-	mfaEnabled := true
-	input.MfaEnabled = &mfaEnabled // Always true for admin users
+	} // Always true for admin users
 
 	// Log the request
 	tflog.Info(ctx, "Update.admin")
@@ -652,7 +281,7 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Call the API
-	updateAdminResult, err := r.client.Catov2.AdminUpdateAdmin(ctx, curAdminID, input, curAccountID)
+	updateAdminResult, err := r.resourceAPI().AdminUpdateAdmin(ctx, curAdminID, input, curAccountID)
 	tflog.Debug(ctx, "Update.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateAdminResult),
 	})
@@ -679,9 +308,7 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Update the state with the admin ID (should be the same)
-	plan.ID = types.StringValue(curAccountID + ":" + curAdminID)
-	plan.MFAEnabled = types.BoolValue(true)
-	plan.AccountID = types.StringValue(curAccountID)
+	convertUpdateInput2(&plan, curAccountID, curAdminID)
 
 	// Set the state
 	diags = resp.State.Set(ctx, plan)
@@ -730,7 +357,7 @@ func (r *adminResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	})
 
 	// Call the API
-	removeAdminResult, err := r.client.Catov2.AdminRemoveAdmin(ctx, curAdminID, curAccountID)
+	removeAdminResult, err := r.resourceAPI().AdminRemoveAdmin(ctx, curAdminID, curAccountID)
 	tflog.Debug(ctx, "Delete.Admin.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removeAdminResult),
 	})

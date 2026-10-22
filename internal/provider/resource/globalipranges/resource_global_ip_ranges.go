@@ -6,15 +6,14 @@ import (
 	"slices"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	attr "github.com/hashicorp/terraform-plugin-framework/attr"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -29,6 +28,8 @@ func NewGlobalIPRangesResource() resource.Resource {
 
 type globalIPRangesResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *globalIPRangesResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -43,7 +44,11 @@ func (r *globalIPRangesResource) Configure(_ context.Context, req resource.Confi
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *globalIPRangesResource) ImportState(ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *globalIPRangesResource) ImportState(
+	ctx context.Context,
+	_ resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	if state := r.hydrate(ctx, &resp.Diagnostics); state != nil {
 		resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 	}
@@ -74,8 +79,7 @@ func (r *globalIPRangesResource) Create(ctx context.Context, req resource.Create
 	// prepare new state (with IDs from API response)
 	globalIPRanges := make([]attr.Value, 0, len(newRanges))
 	for _, tfRange := range newRanges {
-		rangeObj, objDiags := types.ObjectValueFrom(ctx, tf.GlobalIPRangeTypes, tfRange)
-		diags.Append(objDiags...)
+		rangeObj := convertCreateValues(ctx, diags, tfRange)
 		if diags.HasError() {
 			return
 		}
@@ -115,13 +119,18 @@ func (r *globalIPRangesResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// prepare a plan based on state and config, this will determine which ranges need to be created, updated or deleted
-	if utils.CheckErr(&resp.Diagnostics, state.Ranges.ElementsAs(ctx, &stateRanges, false)) {
+	planDetails := convertUpdateInput(
+		ctx,
+		r,
+		cfg,
+		state,
+		&cfgRanges,
+		&stateRanges,
+		&resp.Diagnostics,
+	)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	if utils.CheckErr(&resp.Diagnostics, cfg.Ranges.ElementsAs(ctx, &cfgRanges, false)) {
-		return
-	}
-	_, planDetails := r.computePlan(ctx, stateRanges, cfgRanges, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -150,8 +159,7 @@ func (r *globalIPRangesResource) Update(ctx context.Context, req resource.Update
 
 	globalIPRanges := make([]attr.Value, 0, len(newRanges))
 	for _, tfRange := range newRanges {
-		rangeObj, objDiags := types.ObjectValueFrom(ctx, tf.GlobalIPRangeTypes, tfRange)
-		diags.Append(objDiags...)
+		rangeObj := convertUpdateValues(ctx, diags, tfRange)
 		if diags.HasError() {
 			return
 		}
@@ -179,11 +187,16 @@ func (r *globalIPRangesResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	if utils.CheckErr(&resp.Diagnostics, state.Ranges.ElementsAs(ctx, &stateRanges, false)) {
+	convertDeleteInput(
+		ctx,
+		r,
+		state,
+		&stateRanges,
+		&resp.Diagnostics,
+	)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	r.deleteRanges(ctx, stateRanges, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -191,7 +204,7 @@ func (r *globalIPRangesResource) Delete(ctx context.Context, req resource.Delete
 
 // hydrate is used in Read and Import to get the current state of global IP ranges from the API and convert it to the TF model
 func (r *globalIPRangesResource) hydrate(ctx context.Context, diags *diag.Diagnostics) *tf.GlobalIPRangesModel {
-	result, err := r.client.Catov2.ObjectGlobalIPRangeList(ctx, r.client.AccountId, nil)
+	result, err := r.resourceAPI().ObjectGlobalIPRangeList(ctx, r.client.AccountId, nil)
 	if err != nil {
 		diags.AddError("Error fetching global IP ranges", err.Error())
 		return nil
@@ -204,22 +217,14 @@ func (r *globalIPRangesResource) hydrate(ctx context.Context, diags *diag.Diagno
 
 	globalIPRanges := make([]attr.Value, 0, len(items))
 	for _, item := range items {
-		tfRange := tf.GlobalIPRange{
-			Description: types.StringPointerValue(item.GetDescription()),
-			ID:          types.StringValue(item.GetID()),
-			IPRange:     types.StringValue(item.GetIPRange()),
-			Name:        types.StringValue(item.GetName()),
-		}
-		rangeObj, objDiags := types.ObjectValueFrom(ctx, tf.GlobalIPRangeTypes, tfRange)
-		diags.Append(objDiags...)
+		rangeObj := convertHydrateValues2(ctx, diags, item)
 		if diags.HasError() {
 			return nil
 		}
 		globalIPRanges = append(globalIPRanges, rangeObj)
 	}
 
-	globalIPRangesSet, setDiags := types.SetValue(types.ObjectType{AttrTypes: tf.GlobalIPRangeTypes}, globalIPRanges)
-	diags.Append(setDiags...)
+	globalIPRangesSet := convertHydrateValues(diags, globalIPRanges)
 	if diags.HasError() {
 		return nil
 	}
@@ -227,72 +232,22 @@ func (r *globalIPRangesResource) hydrate(ctx context.Context, diags *diag.Diagno
 	return &tf.GlobalIPRangesModel{Ranges: globalIPRangesSet}
 }
 
-// prepareCreateInput converts the list of ranges to be created to the input format required by the Create API
-func (r *globalIPRangesResource) prepareCreateInput(ranges []tf.GlobalIPRange) []*cato_models.CreateGlobalIPRangeInput {
-	input := make([]*cato_models.CreateGlobalIPRangeInput, 0, len(ranges))
-	for _, globalIPRange := range ranges {
-		inputItem := cato_models.CreateGlobalIPRangeInput{
-			IPRange: globalIPRange.IPRange.ValueString(),
-			Name:    globalIPRange.Name.ValueString(),
-		}
-		if utils.HasValue(globalIPRange.Description) {
-			inputItem.Description = globalIPRange.Description.ValueStringPointer()
-		}
-		input = append(input, &inputItem)
-	}
-	return input
-}
+// convertDeleteInput converts between the Terraform model and SDK values.
+func convertDeleteInput(
+	ctx context.Context,
+	r *globalIPRangesResource,
+	state *tf.GlobalIPRangesModel,
+	originalStateRanges *[]tf.GlobalIPRange,
+	diagnostics *diag.Diagnostics,
+) {
+	stateRanges := *originalStateRanges
+	defer func() { *originalStateRanges = stateRanges }()
 
-// prepareUpdateInput converts the list of ranges to be updated to the input format required by the Update API
-func (r *globalIPRangesResource) prepareUpdateInput(ranges []tf.GlobalIPRange) []*cato_models.UpdateGlobalIPRangeInput {
-	input := make([]*cato_models.UpdateGlobalIPRangeInput, 0, len(ranges))
-	for _, globalIPRange := range ranges {
-		inputItem := cato_models.UpdateGlobalIPRangeInput{
-			ID:      globalIPRange.ID.ValueString(),
-			IPRange: globalIPRange.IPRange.ValueStringPointer(),
-			Name:    globalIPRange.Name.ValueStringPointer(),
-		}
-		if utils.HasValue(globalIPRange.Description) {
-			inputItem.Description = globalIPRange.Description.ValueStringPointer()
-		}
-		input = append(input, &inputItem)
-	}
-	return input
-}
-
-// prepareDeleteInput converts the list of ranges to be deleted to the input format required by the Delete API
-func (r *globalIPRangesResource) prepareDeleteInput(ranges []tf.GlobalIPRange) []*cato_models.GlobalIPRangeRefInput {
-	input := make([]*cato_models.GlobalIPRangeRefInput, 0, len(ranges))
-	for _, globalIPRange := range ranges {
-		inputItem := cato_models.GlobalIPRangeRefInput{
-			By:    cato_models.ObjectRefByID,
-			Input: globalIPRange.ID.ValueString(),
-		}
-		input = append(input, &inputItem)
-	}
-	return input
-}
-
-// createNewRanges prepares the input andcalls the Create API
-func (r *globalIPRangesResource) createNewRanges(ctx context.Context, toCreate []tf.GlobalIPRange, diags *diag.Diagnostics,
-) []tf.GlobalIPRange {
-	if len(toCreate) == 0 {
-		return nil
+	if utils.CheckErr(diagnostics, state.Ranges.ElementsAs(ctx, &stateRanges, false)) {
+		return
 	}
 
-	input := r.prepareCreateInput(toCreate)
-	return r.callCreateRangesAPI(ctx, input, diags)
-}
-
-// updateRanges prepares the input and calls the Update API
-func (r *globalIPRangesResource) updateRanges(ctx context.Context, toUpdate []tf.GlobalIPRange, diags *diag.Diagnostics,
-) []tf.GlobalIPRange {
-	if len(toUpdate) == 0 {
-		return nil
-	}
-
-	input := r.prepareUpdateInput(toUpdate)
-	return r.callUpdateRangesAPI(ctx, input, diags)
+	r.deleteRanges(ctx, stateRanges, diagnostics)
 }
 
 // deleteRanges prepares the input and calls the Delete API
@@ -306,61 +261,24 @@ func (r *globalIPRangesResource) deleteRanges(ctx context.Context, toDelete []tf
 	r.callDeleteRangesAPI(ctx, input, diags)
 }
 
-// callCreateRangesAPI calls the Create API and converts the response to the TF model
-func (r *globalIPRangesResource) callCreateRangesAPI(ctx context.Context, input []*cato_models.CreateGlobalIPRangeInput,
-	diags *diag.Diagnostics,
-) (createdRanges []tf.GlobalIPRange) {
-	result, err := r.client.Catov2.ObjectCreateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
-	if err != nil {
-		diags.AddError("Error creating global IP ranges", err.Error())
+// updateRanges prepares the input and calls the Update API
+func (r *globalIPRangesResource) updateRanges(ctx context.Context, toUpdate []tf.GlobalIPRange, diags *diag.Diagnostics,
+) []tf.GlobalIPRange {
+	if len(toUpdate) == 0 {
 		return nil
 	}
 
-	items := result.GetObject().GetCreateGlobalIPRangeBulk().GetGlobalIPRange()
-	createdRanges = make([]tf.GlobalIPRange, 0, len(items))
-	for _, item := range items {
-		tfRange := tf.GlobalIPRange{
-			Description: types.StringPointerValue(item.GetDescription()),
-			ID:          types.StringValue(item.GetID()),
-			IPRange:     types.StringValue(item.GetIPRange()),
-			Name:        types.StringValue(item.GetName()),
-		}
-		createdRanges = append(createdRanges, tfRange)
-	}
-	return createdRanges
+	input := r.prepareUpdateInput(toUpdate)
+	return r.callUpdateRangesAPI(ctx, input, diags)
 }
 
-// callUpdateRangesAPI calls the Update API and converts the response to the TF model
-func (r *globalIPRangesResource) callUpdateRangesAPI(ctx context.Context, input []*cato_models.UpdateGlobalIPRangeInput,
-	diags *diag.Diagnostics,
-) (updatedRanges []tf.GlobalIPRange) {
-	result, err := r.client.Catov2.ObjectUpdateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
-	if err != nil {
-		diags.AddError("Error updating global IP ranges", err.Error())
+// createNewRanges prepares the input andcalls the Create API
+func (r *globalIPRangesResource) createNewRanges(ctx context.Context, toCreate []tf.GlobalIPRange, diags *diag.Diagnostics,
+) []tf.GlobalIPRange {
+	if len(toCreate) == 0 {
 		return nil
 	}
 
-	items := result.GetObject().GetUpdateGlobalIPRangeBulk().GetGlobalIPRange()
-	updatedRanges = make([]tf.GlobalIPRange, 0, len(items))
-	for _, item := range items {
-		tfRange := tf.GlobalIPRange{
-			Description: types.StringPointerValue(item.GetDescription()),
-			ID:          types.StringValue(item.GetID()),
-			IPRange:     types.StringValue(item.GetIPRange()),
-			Name:        types.StringValue(item.GetName()),
-		}
-		updatedRanges = append(updatedRanges, tfRange)
-	}
-	return updatedRanges
-}
-
-// callDeleteRangesAPI calls the Delete API
-func (r *globalIPRangesResource) callDeleteRangesAPI(ctx context.Context, input []*cato_models.GlobalIPRangeRefInput,
-	diags *diag.Diagnostics,
-) {
-	_, err := r.client.Catov2.ObjectDeleteGlobalIPRangeBulk(ctx, r.client.AccountId, input)
-	if err != nil {
-		diags.AddError("Error deleting global IP ranges", err.Error())
-		return
-	}
+	input := r.prepareCreateInput(toCreate)
+	return r.callCreateRangesAPI(ctx, input, diags)
 }

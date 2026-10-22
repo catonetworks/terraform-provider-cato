@@ -6,17 +6,13 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -31,6 +27,8 @@ func NewWanNetworkRuleResource() resource.Resource {
 
 type wanNetworkRuleResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *wanNetworkRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -44,11 +42,15 @@ func (r *wanNetworkRuleResource) Configure(_ context.Context, req resource.Confi
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *wanNetworkRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *wanNetworkRuleResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
-//nolint:gocyclo,funlen
+//nolint:funlen
 func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan Rule
 	diags := req.Plan.Get(ctx, &plan)
@@ -67,7 +69,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 		"OUTPUT": utils.InterfaceToJSONString(input.create),
 	})
 
-	createRuleResponse, err := r.client.Catov2.PolicyWanNetworkAddRule(ctx, input.create, r.client.AccountId)
+	createRuleResponse, err := r.resourceAPI().PolicyWanNetworkAddRule(ctx, input.create, r.client.AccountId)
 
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_createRuleResponse", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
@@ -94,7 +96,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 
 	// Publish policy revision (align with WAN FW behavior)
 	tflog.Info(ctx, "publishing new rule")
-	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -104,7 +106,7 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().WanNetworkPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API WanNetworkPolicy error",
@@ -135,23 +137,11 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 	// Hydrate ruleInput from api response
 	ruleInputRead, hydrateDiags := hydrateWanNetworkRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
-	ruleInputRead.ID = types.StringValue(currentRule.ID)
+	convertCreateInput(currentRule, &ruleInputRead)
 	tflog.Info(ctx, "ruleInputRead - "+fmt.Sprintf("%v", ruleInputRead))
 
 	// Handle exceptions correlation manually to preserve plan structure
-	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := PolicyPolicyWanNetworkPolicyRulesRule{}
-		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
-		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
-			// Correlate exceptions between plan and hydrated response
-			correlatedExceptions := wan.CorrelateWanExceptions(ctx, planRule.Exceptions, ruleInputRead.Exceptions)
-			if correlatedExceptions != nil {
-				ruleInputRead.Exceptions = *correlatedExceptions
-			}
-		}
-	}
-
-	ruleObject, diags := types.ObjectValueFrom(ctx, WanNetworkRuleRuleAttrTypes, ruleInputRead)
+	ruleObject := convertCreateInput2(ctx, plan, &diags, &ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -166,7 +156,6 @@ func (r *wanNetworkRuleResource) Create(ctx context.Context, req resource.Create
 	}
 }
 
-//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state Rule
 	diags := req.State.Get(ctx, &state)
@@ -176,7 +165,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	// Query WAN Network policy
-	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().WanNetworkPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API WanNetworkPolicy error",
@@ -188,8 +177,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	// Extract rule ID from state
 	var ruleID string
 	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		rule := PolicyPolicyWanNetworkPolicyRulesRule{}
-		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
+		rule := convertReadValues(ctx, state, &diags)
 		if diags.HasError() {
 			// If conversion fails, try to extract just the ID from the state
 			tflog.Debug(ctx, "Failed to convert full state to struct, attempting to extract ID only")
@@ -250,17 +238,7 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	// Handle exceptions correlation manually to preserve state structure
-	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		stateRule := PolicyPolicyWanNetworkPolicyRulesRule{}
-		diags = state.Rule.As(ctx, &stateRule, basetypes.ObjectAsOptions{})
-		if !diags.HasError() && !stateRule.Exceptions.IsNull() && !stateRule.Exceptions.IsUnknown() {
-			// Correlate exceptions between state and hydrated response
-			correlatedExceptions := wan.CorrelateWanExceptions(ctx, stateRule.Exceptions, ruleInput.Exceptions)
-			if correlatedExceptions != nil {
-				ruleInput.Exceptions = *correlatedExceptions
-			}
-		}
-	}
+	convertReadState(ctx, state, &diags, &ruleInput)
 
 	// Set the rule attribute in state
 	diags = resp.State.SetAttribute(ctx, path.Root("rule"), ruleInput)
@@ -271,34 +249,12 @@ func (r *wanNetworkRuleResource) Read(ctx context.Context, req resource.ReadRequ
 
 	// Hard code LAST_IN_POLICY position as the API does not return any value
 	// This supports the use case of bulk rule import/export
-	positionValue := "LAST_IN_POLICY"
-	refValue := types.StringNull()
-
-	if !state.At.IsNull() && !state.At.IsUnknown() {
-		statePosInput := policyrule.Position{}
-		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if !diags.HasError() && !statePosInput.Position.IsNull() && !statePosInput.Position.IsUnknown() {
-			positionValue = statePosInput.Position.ValueString()
-			if !statePosInput.Ref.IsNull() && !statePosInput.Ref.IsUnknown() {
-				refValue = statePosInput.Ref
-			}
-		}
-	}
-
-	curAtObj, diagstmp := types.ObjectValue(
-		policyrule.PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue(positionValue),
-			"ref":      refValue,
-		},
-	)
+	curAtObj, diagstmp := convertReadState2(ctx, state, &diags, &resp.Diagnostics)
 	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
 	resp.Diagnostics.Append(diags...)
 	resp.Diagnostics.Append(diagstmp...)
 }
 
-//nolint:gocyclo,funlen
 func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan Rule
 	diags := req.Plan.Get(ctx, &plan)
@@ -314,28 +270,16 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Extract rule ID from plan
-	var ruleID string
-	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		rule := PolicyPolicyWanNetworkPolicyRulesRule{}
-		diags = plan.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		ruleID = rule.ID.ValueString()
-	}
-
-	// Prepare update input with rule ID
-	updateInput := cato_models.WanNetworkUpdateRuleInput{
-		ID:   ruleID,
-		Rule: input.update.Rule,
+	updateInput := convertUpdateInput(ctx, plan, &diags, input, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_NW_input.update", map[string]interface{}{
 		"OUTPUT": utils.InterfaceToJSONString(updateInput),
 	})
 
-	updateRuleResponse, err := r.client.Catov2.PolicyWanNetworkUpdateRule(ctx, updateInput, r.client.AccountId)
+	updateRuleResponse, err := r.resourceAPI().PolicyWanNetworkUpdateRule(ctx, updateInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkUpdateRule error",
@@ -360,7 +304,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 
 	// Publish policy revision after update
 	tflog.Info(ctx, "publishing updated rule")
-	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -370,7 +314,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Read rule and hydrate response to state
-	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().WanNetworkPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API WanNetworkPolicy error",
@@ -395,22 +339,7 @@ func (r *wanNetworkRuleResource) Update(ctx context.Context, req resource.Update
 	// Hydrate ruleInput from api response
 	ruleInputRead, hydrateDiags := hydrateWanNetworkRuleState(ctx, plan, currentRule)
 	resp.Diagnostics.Append(hydrateDiags...)
-	ruleInputRead.ID = types.StringValue(currentRule.ID)
-
-	// Handle exceptions correlation manually to preserve plan structure
-	if !plan.Rule.IsNull() && !plan.Rule.IsUnknown() {
-		planRule := PolicyPolicyWanNetworkPolicyRulesRule{}
-		diags = plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{})
-		if !diags.HasError() && !planRule.Exceptions.IsNull() && !planRule.Exceptions.IsUnknown() {
-			// Correlate exceptions between plan and hydrated response
-			correlatedExceptions := wan.CorrelateWanExceptions(ctx, planRule.Exceptions, ruleInputRead.Exceptions)
-			if correlatedExceptions != nil {
-				ruleInputRead.Exceptions = *correlatedExceptions
-			}
-		}
-	}
-
-	ruleObject, diags := types.ObjectValueFrom(ctx, WanNetworkRuleRuleAttrTypes, ruleInputRead)
+	ruleObject := convertUpdateInput2(ctx, plan, &diags, currentRule, &ruleInputRead)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -429,23 +358,12 @@ func (r *wanNetworkRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	// Extract rule ID from state
-	var ruleID string
-	if !state.Rule.IsNull() && !state.Rule.IsUnknown() {
-		rule := PolicyPolicyWanNetworkPolicyRulesRule{}
-		diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		ruleID = rule.ID.ValueString()
+	removeInput := convertDeleteInput(ctx, state, &diags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	// Prepare remove input
-	removeInput := cato_models.WanNetworkRemoveRuleInput{
-		ID: ruleID,
-	}
-
-	deleteRuleResponse, err := r.client.Catov2.PolicyWanNetworkRemoveRule(ctx, removeInput, r.client.AccountId)
+	deleteRuleResponse, err := r.resourceAPI().PolicyWanNetworkRemoveRule(ctx, removeInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkRemoveRule error",
@@ -466,7 +384,7 @@ func (r *wanNetworkRuleResource) Delete(ctx context.Context, req resource.Delete
 
 	// Publish policy revision after update
 	tflog.Info(ctx, "publishing updated rule")
-	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
