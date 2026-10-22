@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -181,7 +180,7 @@ func (r *wanFwSectionResource) Read(ctx context.Context, req resource.ReadReques
 
 	// The API does not return section position. Preserve configuration state to
 	// avoid drift, defaulting imports without position state to LAST_IN_POLICY.
-	curAtObj, diagstmp := convert.DefaultSectionPosition(ctx, state.At)
+	curAtObj, diagstmp := policyrule.DefaultSectionPosition(ctx, state.At)
 	state.At = curAtObj
 	resp.Diagnostics.Append(diagstmp...)
 	if resp.Diagnostics.HasError() {
