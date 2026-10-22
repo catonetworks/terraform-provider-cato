@@ -23,7 +23,7 @@ func TestAccInternetFw_AppCategoriesDuplicateReferences(t *testing.T) {
 	mockSrv.Run()
 	name := acc.GetRandName("ifw_categories")
 	config := func(categories string) string {
-		return fmt.Sprintf(`
+		return acc.ProviderCfg() + fmt.Sprintf(`
 resource "cato_if_rule" "categories" {
   at = { position = "LAST_IN_POLICY" }
   rule = {
