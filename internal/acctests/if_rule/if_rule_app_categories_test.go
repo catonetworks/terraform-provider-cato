@@ -30,6 +30,7 @@ resource "cato_if_rule" "categories" {
     name = %q
     enabled = true
     action = "BLOCK"
+    source = {}
     destination = { app_category = [%s] }
     tracking = { event = { enabled = true } }
   }
