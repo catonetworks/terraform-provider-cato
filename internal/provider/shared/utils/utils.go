@@ -215,3 +215,12 @@ func NormalizePolicyRecurringClock(s string) string {
 	}
 	return s
 }
+
+// ToStrings returns string slice
+func ToStrings[T ~string](enums []T) []string {
+	result := make([]string, len(enums))
+	for i, enum := range enums {
+		result[i] = string(enum)
+	}
+	return result
+}
