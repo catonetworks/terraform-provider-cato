@@ -8,10 +8,11 @@
 # Preserve the ZtnaAlwaysOnAddRuleInput tree; computed rule fields come from
 # ZtnaAlwaysOnRuleMutationPayload.rule.rule (also returned by policy.rules[].rule).
 # Required modes follow GraphQL non-null markers, including fields with defaults.
+# Enum attributes are always required, following tf-resource section 1.2.5.
 # ObjectRefBy/String reference inputs use id/name with computed_optional modes
 # and the idName hint, as specified by the References special case.
 # SDK v1.1.0 omits section.subPolicyId from generated CRUD selections; excluded pending SDK support.
-# Sets are proposed for unordered matching criteria, pending user approval.
+# Sets represent unordered matching criteria, as approved by the user.
 Attributes:
   - Name: at
     Description: Position of the new rule in the policy
@@ -20,7 +21,7 @@ Attributes:
       - Name: position
         Description: Insertion position (AFTER_RULE, BEFORE_RULE, FIRST_IN_POLICY, FIRST_IN_SECTION, LAST_IN_POLICY, or LAST_IN_SECTION)
         Type: string
-        Mode: optional
+        Mode: required
         Hints:
           - enum=PolicyRulePositionEnum
       - Name: ref
@@ -53,7 +54,7 @@ Attributes:
       - Name: anti_tamper_mode
         Description: Level of protection against tampering (OFF, MONITOR, or PROTECT; API default is OFF)
         Type: string
-        Mode: optional
+        Mode: required
         Hints:
           - enum=AntiTamperModeEnum
 

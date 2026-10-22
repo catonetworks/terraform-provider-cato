@@ -290,9 +290,8 @@ Sections:
         Statement:
           If schema_description attribute Hints contains `enum={enum-name}`, the Schema attribute
           must define a validator for the enum
-          `validators.StringValidator[cato_models.{enum-name}]("{attribute-name}", cato_models.All{enum-name})`
-          e.g. `validators.StringValidator[cato_models.ZtnaAlwaysOnRuleActionEnum]("action",
-          cato_models.AllZtnaAlwaysOnRuleActionEnum)`
+          `stringvalidator.OneOf(utils.ToStrings(cato_models.All{enum-name})...)`
+          e.g. `stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...)`
         Rationale: SDK-based enum validation
 
       - ID: TFSCHEMA-011
@@ -300,6 +299,14 @@ Sections:
         Level: MUST
         Statement:
           If schema_description attribute Name=`id`, Type=`string`, Mode=`computed`,
+          add PlanModifier stringplanmodifier.UseStateForUnknown() to the Schema attribute
+        Rationale: IDs are immutable
+
+      - ID: TFSCHEMA-012
+        Slug: tfschema-attribute-description
+        Level: MUST
+        Statement:
+          If schema_description attribute Description value must be used as description in the Schema attribute.
           add PlanModifier stringplanmodifier.UseStateForUnknown() to the Schema attribute
         Rationale: IDs are immutable
 

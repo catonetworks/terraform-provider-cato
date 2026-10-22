@@ -15,7 +15,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 // alwaysOnRuleResource currently defines the schema; CRUD will be added separately.
@@ -33,21 +33,19 @@ func (r *alwaysOnRuleResource) Schema(_ context.Context, _ resource.SchemaReques
 
 func schemaAlwaysOnRulePosition() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Description: "Position of the new rule in the policy.",
+		Description: "Position of the new rule in the policy",
 		Optional:    true,
 		Attributes: map[string]schema.Attribute{
 			"position": schema.StringAttribute{
-				Description: "Insertion position relative to a policy, section, or another rule. Empty means unspecified.",
-				Optional:    true,
-				Computed:    true,
-				Validators: []validator.String{stringvalidator.Any(
-					stringvalidator.OneOf(""),
-					validators.StringValidator[cato_models.PolicyRulePositionEnum]("position", cato_models.AllPolicyRulePositionEnum),
-				)},
-				PlanModifiers: []planmodifier.String{planmodifiers.NullStringModifier()},
+				Description: "Insertion position (AFTER_RULE, BEFORE_RULE, FIRST_IN_POLICY, FIRST_IN_SECTION, " +
+					"LAST_IN_POLICY, or LAST_IN_SECTION)",
+				Required: true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...),
+				},
 			},
 			"ref": schema.StringAttribute{
-				Description:   "ID of the rule or section relative to which the new rule is positioned.",
+				Description:   "ID of the rule or section relative to which the new rule is positioned",
 				Optional:      true,
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{planmodifiers.NullStringModifier()},
@@ -58,63 +56,63 @@ func schemaAlwaysOnRulePosition() schema.SingleNestedAttribute {
 
 func schemaAlwaysOnRule() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Description: "Parameters for the Always On policy rule.",
+		Description: "Parameters for the Always On policy rule",
 		Required:    true,
 		Attributes: map[string]schema.Attribute{
 			"action": schema.StringAttribute{
-				Description: "Action applied when the rule matches: ENFORCE or IGNORE.",
+				Description: "Action applied when the rule matches (ENFORCE or IGNORE; API default is ENFORCE)",
 				Required:    true,
 				Validators: []validator.String{
-					validators.StringValidator[cato_models.ZtnaAlwaysOnRuleActionEnum]("action", cato_models.AllZtnaAlwaysOnRuleActionEnum),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllZtnaAlwaysOnRuleActionEnum)...),
 				},
 			},
 			"allow_fail_open": schema.BoolAttribute{
-				Description: "Allow direct internet access until a connection to the PoP is established.",
+				Description: "Allow direct internet access until a connection to the PoP is established (API default is false)",
 				Required:    true,
 			},
 			"allow_user_bypass": schema.BoolAttribute{
-				Description: "Allow users to bypass Always On.",
+				Description: "Allow users to bypass Always On (API default is false)",
 				Required:    true,
 			},
 			"anti_tamper_mode": schema.StringAttribute{
-				Description: "Level of protection against tampering: OFF, MONITOR, or PROTECT. Empty means unspecified (API default: OFF).",
-				Optional:    true,
-				Computed:    true,
-				Validators: []validator.String{stringvalidator.Any(
-					stringvalidator.OneOf(""),
-					validators.StringValidator[cato_models.AntiTamperModeEnum]("anti_tamper_mode", cato_models.AllAntiTamperModeEnum),
-				)},
-				PlanModifiers: []planmodifier.String{planmodifiers.NullStringModifier()},
+				Description: "Level of protection against tampering (OFF, MONITOR, or PROTECT; API default is OFF)",
+				Required:    true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllAntiTamperModeEnum)...),
+				},
 			},
 			"bypass_duration": schemaAlwaysOnRuleBypassDuration(),
 			"description": schema.StringAttribute{
-				Description: "Rule description.",
+				Description: "Rule description (API default is an empty string)",
 				Required:    true,
 			},
-			"device_posture_profile": schemaAlwaysOnRuleReferences("Device posture profile"),
+			"device_posture_profile": schemaAlwaysOnRuleReferences("Device posture profile",
+				"Device posture profiles matched with logical OR; combined with other criteria using logical AND "+
+					"(API default is an empty collection)"),
 			"enabled": schema.BoolAttribute{
-				Description: "Whether the rule is enabled.",
+				Description: "Whether the rule is enabled",
 				Required:    true,
 			},
 			"id": schema.StringAttribute{
-				Description:   "Always On policy rule ID.",
+				Description:   "Always On policy rule ID",
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"index": schema.Int64Attribute{
-				Description: "Position or priority of the rule in the policy.",
+				Description: "Position or priority of the rule in the policy",
 				Computed:    true,
 			},
 			"name": schema.StringAttribute{
-				Description: "Rule name.",
+				Description: "Rule name",
 				Required:    true,
 			},
 			"platform": schema.SetAttribute{
-				Description: "Operating systems matched with logical OR; combined with other criteria using logical AND.",
+				Description: "Operating systems matched with logical OR (ANDROID, CHROMEOS, EMBEDDED, IOS, LINUX, MACOS, or WINDOWS); " +
+					"combined with other criteria using logical AND (API default is an empty collection)",
 				Required:    true,
 				ElementType: types.StringType,
 				Validators: []validator.Set{setvalidator.ValueStringsAre(
-					validators.StringValidator[cato_models.OperatingSystem]("platform", cato_models.AllOperatingSystem),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllOperatingSystem)...),
 				)},
 			},
 			"section": schemaAlwaysOnRuleSection(),
@@ -125,18 +123,18 @@ func schemaAlwaysOnRule() schema.SingleNestedAttribute {
 
 func schemaAlwaysOnRuleBypassDuration() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Description: "Duration of the disconnection allowed when bypassing Always On.",
+		Description: "Duration of the disconnection allowed when bypassing Always On",
 		Required:    true,
 		Attributes: map[string]schema.Attribute{
 			"time": schema.Int64Attribute{
-				Description: "Bypass duration value.",
+				Description: "Bypass duration value",
 				Required:    true,
 			},
 			"unit": schema.StringAttribute{
-				Description: "Bypass duration unit: HOURS or MINUTES.",
+				Description: "Bypass duration unit (HOURS or MINUTES; API default is MINUTES)",
 				Required:    true,
 				Validators: []validator.String{
-					validators.StringValidator[cato_models.ZtnaAlwaysOnTimeUnit]("unit", cato_models.AllZtnaAlwaysOnTimeUnit),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllZtnaAlwaysOnTimeUnit)...),
 				},
 			},
 		},
@@ -145,16 +143,16 @@ func schemaAlwaysOnRuleBypassDuration() schema.SingleNestedAttribute {
 
 func schemaAlwaysOnRuleSection() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Description: "Policy section containing the rule.",
+		Description: "Policy section containing the rule",
 		Computed:    true,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description:   "Policy section ID.",
+				Description:   "Policy section ID",
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				Description: "Policy section name.",
+				Description: "Policy section name",
 				Computed:    true,
 			},
 		},
@@ -163,21 +161,24 @@ func schemaAlwaysOnRuleSection() schema.SingleNestedAttribute {
 
 func schemaAlwaysOnRuleSource() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Description: "Source users and user groups matched with logical OR within each criterion and logical AND between criteria.",
-		Required:    true,
+		Description: "Source users and user groups matched with logical OR within each criterion and logical AND between criteria " +
+			"(API default contains empty user and users_group collections)",
+		Required: true,
 		Attributes: map[string]schema.Attribute{
-			"user":        schemaAlwaysOnRuleReferences("User"),
-			"users_group": schemaAlwaysOnRuleReferences("User group"),
+			"user": schemaAlwaysOnRuleReferences("User",
+				"Individual users defined for the account (API default is an empty collection)"),
+			"users_group": schemaAlwaysOnRuleReferences("User group",
+				"User groups defined for the account (API default is an empty collection)"),
 		},
 	}
 }
 
-func schemaAlwaysOnRuleReferences(description string) schema.SetNestedAttribute {
+func schemaAlwaysOnRuleReferences(prefix, description string) schema.SetNestedAttribute {
 	return schema.SetNestedAttribute{
-		Description: description + " references matched with logical OR; combined with other criteria using logical AND.",
+		Description: description,
 		Required:    true,
 		NestedObject: schema.NestedAttributeObject{
-			Attributes:    idname.SchemaNameID(description),
+			Attributes:    idname.SchemaNameID(prefix),
 			PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 		},
 	}
