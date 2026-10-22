@@ -4,6 +4,7 @@ import (
 	"context"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	diag "github.com/hashicorp/terraform-plugin-framework/diag"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -49,4 +50,13 @@ func convertHydratePrivAccessPolicyStateValues(
 		ID:      types.StringValue("0"), // there is just 1 default policy, the ID is used in automated tests
 	}
 	return resultState
+}
+
+// privateAccessPolicyInput converts the desired enabled flag into the SDK state.
+func privateAccessPolicyInput(isEnabled bool) cato_models.PrivateAccessPolicyUpdateInput {
+	polEnabled := cato_models.PolicyToggleStateDisabled
+	if isEnabled {
+		polEnabled = cato_models.PolicyToggleStateEnabled
+	}
+	return cato_models.PrivateAccessPolicyUpdateInput{State: &polEnabled}
 }

@@ -510,3 +510,31 @@ func convertPrepareNetworkRangeInputValues(
 	}
 	return resultInput
 }
+
+// prepareNetworkRangeInput constructs the API input for SiteUpdateNetworkRange() from the Terraform plan data.
+// It may add error(s) to the diagnostics if the input data is invalid.
+func prepareNetworkRangeInput(
+	ctx context.Context,
+	client dhcp.SdkClienter,
+	cfg, plan *SocketSite,
+	isHA bool,
+	diags *diag.Diagnostics,
+) *cato_models.UpdateNetworkRangeInput {
+	var (
+		cfgNativeRange  NativeRange
+		planNativeRange NativeRange
+	)
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &planNativeRange, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	configTranslatedSubnet := types.StringNull()
+	if cfg != nil && utils.HasValue(cfg.NativeRange) {
+		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
+			return nil
+		}
+		configTranslatedSubnet = cfgNativeRange.TranslatedSubnet
+	}
+	input := convertPrepareNetworkRangeInputValues(ctx, client, isHA, diags, planNativeRange, configTranslatedSubnet)
+
+	return input
+}

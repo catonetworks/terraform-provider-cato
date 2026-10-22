@@ -7,18 +7,12 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	attr "github.com/hashicorp/terraform-plugin-framework/attr"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	activeperiod "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/activeperiod"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -446,35 +440,5 @@ func (r *InternetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 			err.Error(),
 		)
 		return
-	}
-}
-
-func NewMinimalInternetFwRuleModel(ruleID string) InternetFirewallRule {
-	ruleAttrs := map[string]attr.Value{
-		"id":                convert.NullableString(ruleID),
-		"name":              types.StringValue("test-ifw-rule"),
-		"description":       types.StringNull(),
-		"enabled":           types.BoolValue(true),
-		"source":            emptyIfwSourceObject(),
-		"connection_origin": types.StringNull(),
-		"active_period":     types.ObjectNull(activeperiod.ActivePeriodAttrTypes),
-		"country":           types.SetNull(idname.RefObjectType),
-		"device":            types.SetNull(idname.RefObjectType),
-		"device_attributes": types.ObjectNull(IfwDeviceAttrAttrTypes),
-		"device_os":         types.ListNull(types.StringType),
-		"destination":       emptyIfwDestinationObject(),
-		"service":           emptyIfwServiceObject(),
-		"action":            types.StringValue("ALLOW"),
-		"tracking":          minimalTrackingObject(),
-		"schedule":          types.ObjectNull(policyschedule.ScheduleAttrTypes),
-		"exceptions":        types.SetNull(IfwExceptionObjectType),
-	}
-
-	return InternetFirewallRule{
-		Rule: types.ObjectValueMust(InternetFirewallRuleRuleAttrTypes, ruleAttrs),
-		At: types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		}),
 	}
 }

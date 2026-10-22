@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -41,32 +42,118 @@ func TestRegisteredResourceLayers(t *testing.T) {
 			files, err := filepath.Glob(filepath.Join(packageDir, "*.go"))
 			require.NoError(t, err)
 			for _, filename := range files {
-				if strings.HasSuffix(filename, "_test.go") || strings.HasPrefix(filepath.Base(filename), "client_") {
+				if strings.HasSuffix(filename, "_test.go") {
 					continue
 				}
 				require.False(t, strings.HasPrefix(filepath.Base(filename), "hydrate_"), "move hydration into converters or resource orchestration: %s", filename)
 				file, err := parser.ParseFile(token.NewFileSet(), filename, nil, 0)
 				require.NoError(t, err)
-				ast.Inspect(file, func(n ast.Node) bool {
-					call, ok := n.(*ast.CallExpr)
-					if !ok {
-						return true
-					}
-					ast.Inspect(call.Fun, func(n ast.Node) bool {
-						selector, ok := n.(*ast.SelectorExpr)
-						if !ok {
-							return true
-						}
-						require.NotEqual(t, "Catov2", selector.Sel.Name, "SDK calls belong in client_%s.go: %s", name, filename)
-						require.NotEqual(t, "V2", selector.Sel.Name, "SDK access belongs in client_%s.go: %s", name, filename)
-						if strings.HasPrefix(filepath.Base(filename), "converters_") {
-							require.NotEqual(t, "resourceAPI", selector.Sel.Name, "converters should not fetch or mutate remote objects: %s", filename)
-						}
-						return true
-					})
-					return true
-				})
+				for _, violation := range resourceLayerViolations(filepath.Base(filename), file) {
+					t.Errorf("%s: %s", filename, violation)
+				}
 			}
+		})
+	}
+}
+
+// Check responsibilities independently of function names or import aliases.
+func resourceLayerViolations(filename string, file *ast.File) []string {
+	client := strings.HasPrefix(filename, "client_")
+	converter := strings.HasPrefix(filename, "converters_")
+	aliases, violations := resourceLayerImports(file, client, converter)
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		ast.Inspect(call.Fun, func(n ast.Node) bool {
+			selector, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			if !client && (selector.Sel.Name == "Catov2" || selector.Sel.Name == "V2") {
+				violations = append(violations, "SDK access belongs in the client file")
+			}
+			if converter && selector.Sel.Name == "resourceAPI" {
+				violations = append(violations, "converters must not fetch or mutate remote objects")
+			}
+			if !client {
+				return true
+			}
+			if qualifier, ok := selector.X.(*ast.Ident); ok {
+				switch aliases[qualifier.Name] {
+				case "github.com/hashicorp/terraform-plugin-framework/types",
+					"github.com/hashicorp/terraform-plugin-framework/types/basetypes":
+					violations = append(violations, "Terraform value construction belongs in converters")
+				}
+			}
+			switch selector.Sel.Name {
+			case "As", "ElementsAs", "ValueString", "ValueStringPointer", "ValueBool", "ValueBoolPointer",
+				"ValueInt64", "ValueInt64Pointer", "ValueFloat64", "ValueFloat64Pointer", "IsNull", "IsUnknown":
+				violations = append(violations, "Terraform value decoding belongs outside the client file")
+			}
+			return true
+		})
+		return true
+	})
+	return violations
+}
+
+func resourceLayerImports(file *ast.File, client, converter bool) (aliases map[string]string, violations []string) {
+	aliases = make(map[string]string)
+	for _, spec := range file.Imports {
+		importPath, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			continue
+		}
+		alias := filepath.Base(importPath)
+		if spec.Name != nil {
+			alias = spec.Name.Name
+		}
+		aliases[alias] = importPath
+		if (client || converter) && importPath == "testing" {
+			violations = append(violations, "test helpers belong outside client and converter files")
+		}
+		if client && importPath == "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel" {
+			violations = append(violations, "client interfaces should use SDK inputs and responses rather than Terraform models")
+		}
+	}
+	return aliases, violations
+}
+
+func TestResourceLayerViolations(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, filename, source string
+		wantViolation          bool
+	}{
+		{"SDK response conversion despite Client suffix", "client_rule.go", `package example
+            import values "github.com/hashicorp/terraform-plugin-framework/types"
+            func hydrateFromClient() { _ = values.StringValue("rule") }`, true},
+		{"inline Terraform decoding", "client_rule.go", `package example
+            func update(plan Model) { _ = plan.Name.ValueString() }`, true},
+		{"SDK forwarding", "client_rule.go", `package example
+            func update() { sdk.Update(ctx, input) }`, false},
+		{"Terraform model in client", "client_rule.go", `package example
+            import tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
+            func update() tf.GlobalIPRange { return tf.GlobalIPRange{} }`, true},
+		{"conversion", "converters_rule.go", `package example
+            import values "github.com/hashicorp/terraform-plugin-framework/types"
+            func hydrateFromClient() { _ = values.StringValue("rule") }`, false},
+		{"API in converter", "converters_rule.go", `package example
+            func hydrate() { r.resourceAPI().Read(ctx) }`, true},
+		{"SDK access in resource", "resource_rule.go", `package example
+            func read() { r.client.Catov2.Read(ctx) }`, true},
+		{"test helpers in converter", "converters_rule.go", `package example
+            import "testing"
+            func schema(t *testing.T) { t.Helper() }`, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			file, err := parser.ParseFile(token.NewFileSet(), tc.filename, tc.source, 0)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantViolation, len(resourceLayerViolations(tc.filename, file)) > 0)
 		})
 	}
 }

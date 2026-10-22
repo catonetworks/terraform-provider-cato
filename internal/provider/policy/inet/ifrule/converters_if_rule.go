@@ -3,15 +3,12 @@ package ifrule
 import (
 	"context"
 	"fmt"
-	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
 	attr "github.com/hashicorp/terraform-plugin-framework/attr"
 	diag "github.com/hashicorp/terraform-plugin-framework/diag"
-	resource "github.com/hashicorp/terraform-plugin-framework/resource"
-	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
@@ -2633,143 +2630,6 @@ func useStateExceptionDeviceAttributes(ctx context.Context, state InternetFirewa
 	}
 
 	return types.ObjectNull(IfwDeviceAttrAttrTypes)
-}
-
-func emptyIfwSourceObject() types.Object {
-	return types.ObjectValueMust(IfwSourceAttrTypes, map[string]attr.Value{
-		"ip":                  types.ListNull(types.StringType),
-		"host":                types.SetNull(idname.RefObjectType),
-		"site":                types.SetNull(idname.RefObjectType),
-		"subnet":              types.ListNull(types.StringType),
-		"ip_range":            types.ListNull(iprange.RangeObjectType),
-		"global_ip_range":     types.SetNull(idname.RefObjectType),
-		"network_interface":   types.SetNull(idname.RefObjectType),
-		"site_network_subnet": types.SetNull(idname.RefObjectType),
-		"floating_subnet":     types.SetNull(idname.RefObjectType),
-		"user":                types.SetNull(idname.RefObjectType),
-		"users_group":         types.SetNull(idname.RefObjectType),
-		"group":               types.SetNull(idname.RefObjectType),
-		"system_group":        types.SetNull(idname.RefObjectType),
-	})
-}
-
-func emptyIfwDestinationObject() types.Object {
-	return types.ObjectValueMust(IfwDestAttrTypes, map[string]attr.Value{
-		"application":              types.SetNull(idname.RefObjectType),
-		"custom_app":               types.SetNull(idname.RefObjectType),
-		"app_category":             types.SetNull(idname.RefObjectType),
-		"custom_category":          types.SetNull(idname.RefObjectType),
-		"sanctioned_apps_category": types.SetNull(idname.RefObjectType),
-		"country":                  types.SetNull(idname.RefObjectType),
-		"domain":                   types.ListNull(types.StringType),
-		"fqdn":                     types.ListNull(types.StringType),
-		"ip":                       types.ListNull(types.StringType),
-		"subnet":                   types.ListNull(types.StringType),
-		"ip_range":                 types.ListNull(iprange.RangeObjectType),
-		"global_ip_range":          types.SetNull(idname.RefObjectType),
-		"remote_asn":               types.ListNull(types.StringType),
-	})
-}
-
-func emptyIfwServiceObject() types.Object {
-	return types.ObjectValueMust(IfwServiceAttrTypes, map[string]attr.Value{
-		"standard": types.SetNull(idname.RefObjectType),
-		"custom":   types.ListNull(customservice.CustomServiceObjectType),
-	})
-}
-
-func minimalTrackingObject() types.Object {
-	return types.ObjectValueMust(policyrule.TrackingAttrTypes, map[string]attr.Value{
-		"event": types.ObjectValueMust(policyrule.TrackingEventAttrTypes, map[string]attr.Value{
-			"enabled": types.BoolValue(false),
-		}),
-		"alert": types.ObjectNull(policyrule.TrackingAlertAttrTypes),
-	})
-}
-
-func EmptyInternetFirewallPolicyResponse() *cato_go_sdk.Policy {
-	return &cato_go_sdk.Policy{
-		Policy: cato_go_sdk.Policy_Policy{
-			InternetFirewall: &cato_go_sdk.Policy_Policy_InternetFirewall{
-				Policy: cato_go_sdk.Policy_Policy_InternetFirewall_Policy{
-					Rules: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules{},
-				},
-			},
-		},
-	}
-}
-
-func SuccessfulUpdateRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFirewallUpdateRule {
-	return &cato_go_sdk.PolicyInternetFirewallUpdateRule{
-		Policy: cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy{
-			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy_InternetFirewall{
-				UpdateRule: cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy_InternetFirewall_UpdateRule{
-					Status: "SUCCESS",
-					Rule: &cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy_InternetFirewall_UpdateRule_Rule{
-						Rule: cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy_InternetFirewall_UpdateRule_Rule_Rule{
-							ID: ruleID,
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func MinimalAPIRule(name string, index int64) cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule {
-	return cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{
-		ID:               "rule-123",
-		Name:             name,
-		Index:            index,
-		Enabled:          true,
-		Action:           cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule_Rule_Rule{}.Action,
-		ConnectionOrigin: cato_go_sdk.PolicyInternetFirewallUpdateRule_Policy_InternetFirewall_UpdateRule_Rule_Rule{}.ConnectionOrigin,
-	}
-}
-
-func GetInternetFwRuleSchema(ctx context.Context, t *testing.T) schema.Schema {
-	t.Helper()
-
-	r := &InternetFwRuleResource{}
-	resp := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, resp)
-
-	return resp.Schema
-}
-
-func SuccessfulAddRuleResponse(ruleID string) *cato_go_sdk.PolicyInternetFirewallAddRule {
-	return &cato_go_sdk.PolicyInternetFirewallAddRule{
-		Policy: cato_go_sdk.PolicyInternetFirewallAddRule_Policy{
-			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall{
-				AddRule: cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule{
-					Status: "SUCCESS",
-					Rule: &cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule_Rule{
-						Rule: cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule_Rule_Rule{
-							ID: ruleID,
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func InternetFirewallPolicyResponseWithRule(
-	rule cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule,
-) *cato_go_sdk.Policy {
-	return &cato_go_sdk.Policy{
-		Policy: cato_go_sdk.Policy_Policy{
-			InternetFirewall: &cato_go_sdk.Policy_Policy_InternetFirewall{
-				Policy: cato_go_sdk.Policy_Policy_InternetFirewall_Policy{
-					Rules: []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules{
-						{
-							Rule: rule,
-						},
-					},
-				},
-			},
-		},
-	}
 }
 
 // convertCreateInput3 converts between the Terraform model and SDK values.

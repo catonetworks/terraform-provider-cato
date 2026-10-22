@@ -131,3 +131,35 @@ func convertHydrateValues2(
 	diags.Append(objDiags...)
 	return resultRangeObj
 }
+
+// globalIPRangesFromCreateResponse converts SDK range records into Terraform values.
+func globalIPRangesFromCreateResponse(result *cato_go_sdk.ObjectCreateGlobalIPRangeBulk) []tf.GlobalIPRange {
+	items := result.GetObject().GetCreateGlobalIPRangeBulk().GetGlobalIPRange()
+	createdRanges := make([]tf.GlobalIPRange, 0, len(items))
+	for _, item := range items {
+		tfRange := tf.GlobalIPRange{
+			Description: types.StringPointerValue(item.GetDescription()),
+			ID:          types.StringValue(item.GetID()),
+			IPRange:     types.StringValue(item.GetIPRange()),
+			Name:        types.StringValue(item.GetName()),
+		}
+		createdRanges = append(createdRanges, tfRange)
+	}
+	return createdRanges
+}
+
+// globalIPRangesFromUpdateResponse converts SDK range records into Terraform values.
+func globalIPRangesFromUpdateResponse(result *cato_go_sdk.ObjectUpdateGlobalIPRangeBulk) []tf.GlobalIPRange {
+	items := result.GetObject().GetUpdateGlobalIPRangeBulk().GetGlobalIPRange()
+	updatedRanges := make([]tf.GlobalIPRange, 0, len(items))
+	for _, item := range items {
+		tfRange := tf.GlobalIPRange{
+			Description: types.StringPointerValue(item.GetDescription()),
+			ID:          types.StringValue(item.GetID()),
+			IPRange:     types.StringValue(item.GetIPRange()),
+			Name:        types.StringValue(item.GetName()),
+		}
+		updatedRanges = append(updatedRanges, tfRange)
+	}
+	return updatedRanges
+}

@@ -2,65 +2,11 @@ package acrule
 
 import (
 	"context"
-	"fmt"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	diag "github.com/hashicorp/terraform-plugin-framework/diag"
-	types "github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-// hydrateApplicationControlRuleStateFromClient maps an Application Control policy rule into Terraform nested objects.
-func hydrateApplicationControlRuleStateFromClient(
-	ctx context.Context,
-	r *cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule,
-) (ApplicationControlRuleRulePlan, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	out := ApplicationControlRuleRulePlan{}
-	if r == nil {
-		return out, diags
-	}
-
-	out.ID = types.StringValue(r.GetID())
-	out.Name = types.StringValue(r.GetName())
-	if d := r.GetDescription(); d != "" {
-		out.Description = types.StringValue(d)
-	} else {
-		out.Description = types.StringNull()
-	}
-	out.Enabled = types.BoolValue(r.GetEnabled())
-	out.RuleType = types.StringValue(string(r.RuleType))
-
-	out.ApplicationRule = types.ObjectNull(applicationControlTypedRuleAttrTypes)
-	out.DataRule = types.ObjectNull(applicationControlTypedRuleAttrTypes)
-	out.FileRule = types.ObjectNull(applicationControlTypedRuleAttrTypes)
-
-	switch r.RuleType {
-	case cato_models.ApplicationControlRuleTypeApplication:
-		if ar := r.GetApplicationRule(); ar != nil {
-			obj, d := applicationControlTypedRuleStateFromApplicationRule(ctx, ar)
-			diags.Append(d...)
-			out.ApplicationRule = obj
-		}
-	case cato_models.ApplicationControlRuleTypeData:
-		if dr := r.GetDataRule(); dr != nil {
-			obj, d := applicationControlTypedRuleStateFromDataRule(ctx, dr)
-			diags.Append(d...)
-			out.DataRule = obj
-		}
-	case cato_models.ApplicationControlRuleTypeFile:
-		if fr := r.GetFileRule(); fr != nil {
-			obj, d := applicationControlTypedRuleStateFromFileRule(ctx, fr)
-			diags.Append(d...)
-			out.FileRule = obj
-		}
-	default:
-		diags.AddError("application control rule", fmt.Sprintf("unsupported rule_type %q", r.RuleType))
-	}
-
-	return out, diags
-}
 
 // ResourceClient contains only the SDK operations used by this resource.
 type ResourceClient interface {

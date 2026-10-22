@@ -7,57 +7,20 @@ import (
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	diag "github.com/hashicorp/terraform-plugin-framework/diag"
-	types "github.com/hashicorp/terraform-plugin-framework/types"
-
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 )
 
-// callCreateRangesAPI calls the Create API and converts the response to the TF model
-func (r *globalIPRangesResource) callCreateRangesAPI(ctx context.Context, input []*cato_models.CreateGlobalIPRangeInput,
-	diags *diag.Diagnostics,
-) (createdRanges []tf.GlobalIPRange) {
-	result, err := r.resourceAPI().ObjectCreateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
-	if err != nil {
-		diags.AddError("Error creating global IP ranges", err.Error())
-		return nil
-	}
-
-	items := result.GetObject().GetCreateGlobalIPRangeBulk().GetGlobalIPRange()
-	createdRanges = make([]tf.GlobalIPRange, 0, len(items))
-	for _, item := range items {
-		tfRange := tf.GlobalIPRange{
-			Description: types.StringPointerValue(item.GetDescription()),
-			ID:          types.StringValue(item.GetID()),
-			IPRange:     types.StringValue(item.GetIPRange()),
-			Name:        types.StringValue(item.GetName()),
-		}
-		createdRanges = append(createdRanges, tfRange)
-	}
-	return createdRanges
+// callCreateRangesAPI forwards the SDK request without converting Terraform values.
+func (r *globalIPRangesResource) callCreateRangesAPI(
+	ctx context.Context, input []*cato_models.CreateGlobalIPRangeInput,
+) (*cato_go_sdk.ObjectCreateGlobalIPRangeBulk, error) {
+	return r.resourceAPI().ObjectCreateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
 }
 
-// callUpdateRangesAPI calls the Update API and converts the response to the TF model
-func (r *globalIPRangesResource) callUpdateRangesAPI(ctx context.Context, input []*cato_models.UpdateGlobalIPRangeInput,
-	diags *diag.Diagnostics,
-) (updatedRanges []tf.GlobalIPRange) {
-	result, err := r.resourceAPI().ObjectUpdateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
-	if err != nil {
-		diags.AddError("Error updating global IP ranges", err.Error())
-		return nil
-	}
-
-	items := result.GetObject().GetUpdateGlobalIPRangeBulk().GetGlobalIPRange()
-	updatedRanges = make([]tf.GlobalIPRange, 0, len(items))
-	for _, item := range items {
-		tfRange := tf.GlobalIPRange{
-			Description: types.StringPointerValue(item.GetDescription()),
-			ID:          types.StringValue(item.GetID()),
-			IPRange:     types.StringValue(item.GetIPRange()),
-			Name:        types.StringValue(item.GetName()),
-		}
-		updatedRanges = append(updatedRanges, tfRange)
-	}
-	return updatedRanges
+// callUpdateRangesAPI forwards the SDK request without converting Terraform values.
+func (r *globalIPRangesResource) callUpdateRangesAPI(
+	ctx context.Context, input []*cato_models.UpdateGlobalIPRangeInput,
+) (*cato_go_sdk.ObjectUpdateGlobalIPRangeBulk, error) {
+	return r.resourceAPI().ObjectUpdateGlobalIPRangeBulk(ctx, r.client.AccountId, input)
 }
 
 // callDeleteRangesAPI calls the Delete API

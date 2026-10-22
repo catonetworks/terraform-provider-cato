@@ -71,7 +71,12 @@ func (r *globalIPRangesResource) Create(ctx context.Context, req resource.Create
 
 	// call create API
 	input := r.prepareCreateInput(ranges)
-	newRanges := r.callCreateRangesAPI(ctx, input, &resp.Diagnostics)
+	result, err := r.callCreateRangesAPI(ctx, input)
+	if err != nil {
+		resp.Diagnostics.AddError("Error creating global IP ranges", err.Error())
+		return
+	}
+	newRanges := globalIPRangesFromCreateResponse(result)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -269,7 +274,12 @@ func (r *globalIPRangesResource) updateRanges(ctx context.Context, toUpdate []tf
 	}
 
 	input := r.prepareUpdateInput(toUpdate)
-	return r.callUpdateRangesAPI(ctx, input, diags)
+	result, err := r.callUpdateRangesAPI(ctx, input)
+	if err != nil {
+		diags.AddError("Error updating global IP ranges", err.Error())
+		return nil
+	}
+	return globalIPRangesFromUpdateResponse(result)
 }
 
 // createNewRanges prepares the input andcalls the Create API
@@ -280,5 +290,10 @@ func (r *globalIPRangesResource) createNewRanges(ctx context.Context, toCreate [
 	}
 
 	input := r.prepareCreateInput(toCreate)
-	return r.callCreateRangesAPI(ctx, input, diags)
+	result, err := r.callCreateRangesAPI(ctx, input)
+	if err != nil {
+		diags.AddError("Error creating global IP ranges", err.Error())
+		return nil
+	}
+	return globalIPRangesFromCreateResponse(result)
 }
