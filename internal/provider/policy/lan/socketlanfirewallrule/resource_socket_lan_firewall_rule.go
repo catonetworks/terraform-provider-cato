@@ -6,16 +6,12 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -30,13 +26,23 @@ func NewSocketLanFirewallRuleResource() resource.Resource {
 
 type socketLanFirewallRuleResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *socketLanFirewallRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *socketLanFirewallRuleResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_socket_lan_firewall_rule"
 }
 
-func (r *socketLanFirewallRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *socketLanFirewallRuleResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -52,7 +58,11 @@ func (r *socketLanFirewallRuleResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
-func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *socketLanFirewallRuleResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan SocketLanFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -71,7 +81,7 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 		"request": utils.InterfaceToJSONString(apiInput.create),
 	})
 
-	policyChange, err := r.client.Catov2.PolicySocketLanFirewallAddRule(ctx, r.client.AccountId, nil, apiInput.create)
+	policyChange, err := r.resourceAPI().PolicySocketLanFirewallAddRule(ctx, r.client.AccountId, nil, apiInput.create)
 	tflog.Debug(ctx, "Create.PolicySocketLanFirewallAddRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -98,7 +108,7 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 	// Publish the changes
 	tflog.Info(ctx, "Create.publishing-rule")
 	publishInput := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
+	_, err = r.resourceAPI().PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPublishPolicyRevision error",
@@ -108,7 +118,7 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 	}
 
 	// Read back the rule to populate state
-	queryResult, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	queryResult, err := r.resourceAPI().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPolicy error",
@@ -118,32 +128,10 @@ func (r *socketLanFirewallRuleResource) Create(ctx context.Context, req resource
 	}
 
 	// Find the created firewall rule
-	var currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule
-	for _, ruleWrapper := range queryResult.Policy.SocketLan.Policy.Rules {
-		for _, fwWrapper := range ruleWrapper.Rule.Firewall {
-			if fwWrapper.Rule.ID == ruleID {
-				currentRule = &fwWrapper.Rule
-				break
-			}
-		}
-		if currentRule != nil {
-			break
-		}
-	}
-
-	if currentRule == nil {
-		resp.Diagnostics.AddError(
-			"Rule not found",
-			fmt.Sprintf("Could not find created firewall rule with ID %s", ruleID),
-		)
+	ruleObj, diagstmp := convertCreateInput2(ctx, plan, ruleID, queryResult, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// Hydrate state from API response
-	ruleState := hydrateSocketLanFirewallRuleState(ctx, plan, currentRule)
-
-	// Build the rule object
-	ruleObj, diagstmp := types.ObjectValueFrom(ctx, SocketLanFirewallRuleRuleAttrTypes, ruleState)
 	resp.Diagnostics.Append(diagstmp...)
 
 	// Set the state
@@ -161,8 +149,7 @@ func (r *socketLanFirewallRuleResource) Read(ctx context.Context, req resource.R
 	}
 
 	// Get the rule ID from state
-	var ruleData SocketLanFirewallRuleData
-	diags = state.Rule.As(ctx, &ruleData, basetypes.ObjectAsOptions{})
+	ruleData := convertReadState(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -171,7 +158,7 @@ func (r *socketLanFirewallRuleResource) Read(ctx context.Context, req resource.R
 	ruleID := ruleData.ID.ValueString()
 
 	// Query the API
-	queryResult, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	queryResult, err := r.resourceAPI().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	tflog.Debug(ctx, "Read.PolicySocketLanPolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(queryResult),
 	})
@@ -206,34 +193,21 @@ func (r *socketLanFirewallRuleResource) Read(ctx context.Context, req resource.R
 	}
 
 	// Hydrate state from API response
-	ruleState := hydrateSocketLanFirewallRuleState(ctx, state, currentRule)
-
-	// Build the rule object
-	ruleObj, diagstmp := types.ObjectValueFrom(ctx, SocketLanFirewallRuleRuleAttrTypes, ruleState)
+	ruleObj, diagstmp := convertReadState2(ctx, state, currentRule)
 	resp.Diagnostics.Append(diagstmp...)
 
 	// Hard code position to avoid drift
-	curAtObj := state.At
-	if !utils.HasValue(state.At) {
-		curAtObj, diagstmp = types.ObjectValue(
-			policyrule.PositionAttrTypes,
-			map[string]attr.Value{
-				"position": types.StringValue("LAST_IN_RULE"),
-				"ref":      types.StringNull(),
-			},
-		)
-		resp.Diagnostics.Append(diagstmp...)
-	}
-
-	state.Rule = ruleObj
-	state.At = curAtObj
+	convertReadState3(&state, ruleObj, &diagstmp, &resp.Diagnostics)
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 }
 
-//nolint:funlen
-func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *socketLanFirewallRuleResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan SocketLanFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -242,8 +216,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	}
 
 	// Get the rule ID from plan
-	var ruleData SocketLanFirewallRuleData
-	diags = plan.Rule.As(ctx, &ruleData, basetypes.ObjectAsOptions{})
+	ruleData := convertUpdateInput(ctx, plan, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -259,25 +232,15 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	}
 
 	// Set the rule ID for update
-	apiInput.update.ID = ruleID
-
-	// Move rule if position changed
-	var positionInput policyrule.Position
-	diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
+	positionInput := convertUpdateInput2(ctx, plan, &diags, ruleID, &apiInput)
 	resp.Diagnostics.Append(diags...)
 
-	moveInput := cato_models.PolicyMoveSubRuleInput{
-		ID: ruleID,
-		To: &cato_models.PolicySubRulePositionInput{
-			Position: cato_models.PolicySubRulePositionEnum(positionInput.Position.ValueString()),
-			Ref:      positionInput.Ref.ValueString(),
-		},
-	}
+	moveInput := convertUpdateInput3(ruleID, positionInput)
 
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallMoveRule.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(moveInput),
 	})
-	moveResult, err := r.client.Catov2.PolicySocketLanFirewallMoveRule(ctx, r.client.AccountId, nil, moveInput)
+	moveResult, err := r.resourceAPI().PolicySocketLanFirewallMoveRule(ctx, r.client.AccountId, nil, moveInput)
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallMoveRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveResult),
 	})
@@ -293,7 +256,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallUpdateRule.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(apiInput.update),
 	})
-	updateResult, err := r.client.Catov2.PolicySocketLanFirewallUpdateRule(ctx, r.client.AccountId, nil, apiInput.update)
+	updateResult, err := r.resourceAPI().PolicySocketLanFirewallUpdateRule(ctx, r.client.AccountId, nil, apiInput.update)
 	tflog.Debug(ctx, "Update.PolicySocketLanFirewallUpdateRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateResult),
 	})
@@ -318,7 +281,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	// Publish the changes
 	tflog.Info(ctx, "Update.publishing-rule")
 	publishInput := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
+	_, err = r.resourceAPI().PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPublishPolicyRevision error",
@@ -328,7 +291,7 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	}
 
 	// Read back and update state
-	queryResult, err := r.client.Catov2.PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	queryResult, err := r.resourceAPI().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPolicy error",
@@ -337,32 +300,10 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 		return
 	}
 
-	var currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule
-	for _, ruleWrapper := range queryResult.Policy.SocketLan.Policy.Rules {
-		for _, fwWrapper := range ruleWrapper.Rule.Firewall {
-			if fwWrapper.Rule.ID == ruleID {
-				currentRule = &fwWrapper.Rule
-				break
-			}
-		}
-		if currentRule != nil {
-			break
-		}
-	}
-
-	if currentRule == nil {
-		resp.Diagnostics.AddError(
-			"Rule not found",
-			fmt.Sprintf("Could not find firewall rule with ID %s after update", ruleID),
-		)
+	ruleObj, diagstmp := convertUpdateInput5(ctx, plan, ruleID, queryResult, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// Hydrate state from API response
-	ruleState := hydrateSocketLanFirewallRuleState(ctx, plan, currentRule)
-
-	// Build the rule object
-	ruleObj, diagstmp := types.ObjectValueFrom(ctx, SocketLanFirewallRuleRuleAttrTypes, ruleState)
 	resp.Diagnostics.Append(diagstmp...)
 
 	plan.Rule = ruleObj
@@ -370,7 +311,11 @@ func (r *socketLanFirewallRuleResource) Update(ctx context.Context, req resource
 	resp.Diagnostics.Append(diags...)
 }
 
-func (r *socketLanFirewallRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *socketLanFirewallRuleResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
 	var state SocketLanFirewallRule
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -379,23 +324,18 @@ func (r *socketLanFirewallRuleResource) Delete(ctx context.Context, req resource
 	}
 
 	// Get the rule ID from state
-	var ruleData SocketLanFirewallRuleData
-	diags = state.Rule.As(ctx, &ruleData, basetypes.ObjectAsOptions{})
+	ruleData := convertDeleteInput(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	ruleID := ruleData.ID.ValueString()
-
-	removeInput := cato_models.SocketLanFirewallRemoveRuleInput{
-		ID: ruleID,
-	}
+	removeInput := convertDeleteInput2(ruleData)
 
 	tflog.Debug(ctx, "Delete.PolicySocketLanFirewallRemoveRule.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeInput),
 	})
-	removeResult, err := r.client.Catov2.PolicySocketLanFirewallRemoveRule(ctx, r.client.AccountId, nil, removeInput)
+	removeResult, err := r.resourceAPI().PolicySocketLanFirewallRemoveRule(ctx, r.client.AccountId, nil, removeInput)
 	tflog.Debug(ctx, "Delete.PolicySocketLanFirewallRemoveRule.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removeResult),
 	})
@@ -411,7 +351,7 @@ func (r *socketLanFirewallRuleResource) Delete(ctx context.Context, req resource
 	// Publish the changes
 	tflog.Info(ctx, "Delete.publishing-rule")
 	publishInput := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.client.Catov2.PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
+	_, err = r.resourceAPI().PolicySocketLanPublishPolicyRevision(ctx, nil, publishInput, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicySocketLanPublishPolicyRevision error",

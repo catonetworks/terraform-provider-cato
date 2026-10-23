@@ -5,17 +5,12 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -30,13 +25,23 @@ func NewWanNetworkSectionResource() resource.Resource {
 
 type wanNetworkSectionResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *wanNetworkSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *wanNetworkSectionResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_wnw_section"
 }
 
-func (r *wanNetworkSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *wanNetworkSectionResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -44,7 +49,11 @@ func (r *wanNetworkSectionResource) Configure(_ context.Context, req resource.Co
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *wanNetworkSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *wanNetworkSectionResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
@@ -57,32 +66,12 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	input := cato_models.PolicyAddSectionInput{}
-
-	// setting at
-	if !plan.At.IsNull() {
-		input.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		input.At.Ref = positionInput.Ref.ValueStringPointer()
-	}
-
-	// setting section
-	if !plan.Section.IsNull() {
-		input.Section = &cato_models.PolicyAddSectionInfoInput{}
-		sectionInput := idname.Ref{}
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		input.Section.Name = sectionInput.Name.ValueString()
-	}
+	input := convertCreateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Create.PolicyWanNetworkAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.Catov2.PolicyWanNetworkAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.resourceAPI().PolicyWanNetworkAddSection(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicyWanNetworkAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -100,7 +89,7 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 
 	// publishing new section
 	tflog.Info(ctx, "publishing new section")
-	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -109,7 +98,7 @@ func (r *wanNetworkSectionResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	plan.ID = types.StringValue(policyChange.GetPolicy().GetWanNetwork().GetAddSection().Section.GetSection().ID)
+	convertCreateInput2(&plan, policyChange)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -132,7 +121,7 @@ func (r *wanNetworkSectionResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	body, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().WanNetworkPolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.PolicyWanNetwork.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -146,46 +135,16 @@ func (r *wanNetworkSectionResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	// retrieve section ID
-	section := idname.Ref{}
-	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	section := convertReadState(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	sectionList := body.GetPolicy().WanNetwork.Policy.GetSections()
-	sectionExist := false
-	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.ID.ValueString() {
-			continue
-		}
-		sectionExist = true
-		state.ID = types.StringValue(sectionListItem.GetSection().ID)
-		curSectionObj, diagstmp := types.ObjectValue(
-			idname.RefAttrTypes,
-			map[string]attr.Value{
-				"id":   types.StringValue(sectionListItem.GetSection().ID),
-				"name": types.StringValue(sectionListItem.GetSection().GetName()),
-			},
-		)
-		resp.Diagnostics.Append(diagstmp...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.Section = curSectionObj
+	sectionExist, diagstmp := convertReadState2(&state, body, section, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-
-	// Hard coding LAST_IN_POLICY position as the API does not return any value and
-	// hardcoding position supports the use case of bulk rule import/export
-	// getting around state changes for the position field
-	curAtObj, diagstmp := types.ObjectValue(
-		policyrule.PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		},
-	)
-	state.At = curAtObj
 	resp.Diagnostics.Append(diagstmp...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -205,7 +164,6 @@ func (r *wanNetworkSectionResource) Read(ctx context.Context, req resource.ReadR
 	}
 }
 
-//nolint:funlen
 func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanNetworkSection
 	diags := req.Plan.Get(ctx, &plan)
@@ -214,36 +172,12 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	inputUpdateSection := cato_models.PolicyUpdateSectionInput{}
-	inputMoveSection := cato_models.PolicyMoveSectionInput{}
-
-	// setting section
-	if !plan.Section.IsNull() {
-		inputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
-		sectionInput := idname.Ref{}
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.ID.ValueString()
-	}
-
-	// setting at
-	if !plan.At.IsNull() {
-		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		inputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
-		inputMoveSection.ID = inputUpdateSection.ID
-	}
+	inputUpdateSection, inputMoveSection := convertUpdateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Update.PolicyWanNetworkMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.Catov2.PolicyWanNetworkMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	moveSection, err := r.resourceAPI().PolicyWanNetworkMoveSection(ctx, inputMoveSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanNetworkMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
@@ -269,7 +203,7 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 	tflog.Debug(ctx, "Update.PolicyWanNetworkUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.Catov2.PolicyWanNetworkUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	updateSection, err := r.resourceAPI().PolicyWanNetworkUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyWanNetworkUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
@@ -294,7 +228,7 @@ func (r *wanNetworkSectionResource) Update(ctx context.Context, req resource.Upd
 
 	// publishing updated section
 	tflog.Info(ctx, "publishing updated section")
-	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -319,21 +253,18 @@ func (r *wanNetworkSectionResource) Delete(ctx context.Context, req resource.Del
 	}
 
 	// retrieve section ID
-	section := idname.Ref{}
-	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	section := convertDeleteInput(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.ID.ValueString(),
-	}
+	removeSection := convertDeleteInput2(section)
 
 	tflog.Debug(ctx, "Delete.PolicyWanNetworkRemoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeSection),
 	})
-	policyWanNetworkRemoveSectionResponse, err := r.client.Catov2.PolicyWanNetworkRemoveSection(ctx, removeSection, r.client.AccountId)
+	policyWanNetworkRemoveSectionResponse, err := r.resourceAPI().PolicyWanNetworkRemoveSection(ctx, removeSection, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicyWanNetworkRemoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyWanNetworkRemoveSectionResponse),
 	})
@@ -345,7 +276,7 @@ func (r *wanNetworkSectionResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyWanNetworkPublishPolicyRevision error",

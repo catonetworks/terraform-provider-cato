@@ -2,20 +2,13 @@ package bgppeer
 
 import (
 	"context"
-	"strconv"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/catonetworks/cato-go-sdk/scalars"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -30,6 +23,8 @@ func NewBgpPeerResource() resource.Resource {
 
 type bgpPeerResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *bgpPeerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -44,11 +39,14 @@ func (r *bgpPeerResource) Configure(_ context.Context, req resource.ConfigureReq
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *bgpPeerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *bgpPeerResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-//nolint:gocyclo,funlen
 func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan BgpPeer
 	diags := req.Plan.Get(ctx, &plan)
@@ -57,95 +55,12 @@ func (r *bgpPeerResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	input := cato_models.AddBgpPeerInput{
-		Name:          plan.Name.ValueString(),
-		PeerAsn:       scalars.Asn32(plan.PeerAsn.String()),
-		CatoAsn:       scalars.Asn16(plan.CatoAsn.String()),
-		PeerIP:        plan.PeerIP.ValueString(),
-		DefaultAction: cato_models.BgpDefaultAction(plan.DefaultAction.ValueString()),
-		Site: &cato_models.SiteRefInput{
-			By:    cato_models.ObjectRefByID,
-			Input: plan.SiteID.ValueString(),
-		},
-	}
-
-	// Optional fields
-	if !plan.AdvertiseAllRoutes.IsNull() {
-		input.AdvertiseAllRoutes = plan.AdvertiseAllRoutes.ValueBool()
-	}
-	if !plan.AdvertiseDefaultRoute.IsNull() {
-		input.AdvertiseDefaultRoute = plan.AdvertiseDefaultRoute.ValueBool()
-	}
-	if !plan.AdvertiseSummaryRoutes.IsNull() {
-		input.AdvertiseSummaryRoutes = plan.AdvertiseSummaryRoutes.ValueBool()
-	}
-	if !plan.PerformNat.IsNull() {
-		input.PerformNat = plan.PerformNat.ValueBool()
-	}
-	if !plan.Md5AuthKey.IsNull() {
-		input.Md5AuthKey = plan.Md5AuthKey.ValueStringPointer()
-	}
-	if !plan.Metric.IsNull() {
-		input.Metric = plan.Metric.ValueInt64()
-	}
-	if !plan.HoldTime.IsNull() {
-		input.HoldTime = plan.HoldTime.ValueInt64()
-	}
-	if !plan.KeepaliveInterval.IsNull() {
-		input.KeepaliveInterval = plan.KeepaliveInterval.ValueInt64()
-	}
-	if !plan.BfdEnabled.IsNull() {
-		input.BfdEnabled = plan.BfdEnabled.ValueBool()
-		if !plan.BfdSettings.IsNull() {
-			var bfdSettingsInput cato_models.BfdSettingsInput
-			bfdSettings := BfdSettingsInput{}
-			diags = plan.BfdSettings.As(ctx, &bfdSettings, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-			bfdSettingsInput.TransmitInterval = bfdSettings.TransmitInterval.ValueInt64()
-			bfdSettingsInput.ReceiveInterval = bfdSettings.ReceiveInterval.ValueInt64()
-			bfdSettingsInput.Multiplier = bfdSettings.Multiplier.ValueInt64()
-			input.BfdSettings = &bfdSettingsInput
-		}
-	}
-	if !plan.SummaryRoute.IsNull() {
-		input.SummaryRoute = make([]*cato_models.BgpSummaryRouteInput, 0)
-		summaryRoutes := make([]BgpSummaryRouteInput, 0, len(plan.SummaryRoute.Elements()))
-		diags = plan.SummaryRoute.ElementsAs(ctx, &summaryRoutes, false)
-		resp.Diagnostics.Append(diags...)
-
-		for _, summaryRoute := range summaryRoutes {
-			var summaryRouteInput cato_models.BgpSummaryRouteInput
-			summaryRouteInput.Route = summaryRoute.Route.ValueString()
-			summaryRouteInput.Community = make([]*cato_models.BgpCommunityInput, 0)
-			communities := make([]BgpCommunityInput, 0, len(summaryRoute.Community.Elements()))
-			diags = summaryRoute.Community.ElementsAs(ctx, &communities, false)
-			resp.Diagnostics.Append(diags...)
-
-			for _, community := range communities {
-				summaryRouteInput.Community = append(summaryRouteInput.Community, &cato_models.BgpCommunityInput{
-					From: scalars.Asn16(strconv.FormatInt(community.From.ValueInt64(), 10)),
-					To:   scalars.Asn16(strconv.FormatInt(community.To.ValueInt64(), 10)),
-				})
-			}
-
-			input.SummaryRoute = append(input.SummaryRoute, &summaryRouteInput)
-		}
-	}
-	if !plan.Tracking.IsNull() {
-		var trackingInput cato_models.BgpTrackingInput
-		tracking := BgpTrackingInput{}
-		diags = plan.Tracking.As(ctx, &tracking, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		trackingInput.Enabled = tracking.Enabled.ValueBool()
-		trackingInput.AlertFrequency = cato_models.PolicyRuleTrackingFrequencyEnum(tracking.AlertFrequency.ValueString())
-		trackingInput.SubscriptionID = tracking.SubscriptionID.ValueString()
-		input.Tracking = &trackingInput
-	}
+	input := convertCreateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Create.SiteAddBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	addBgpPeerPayload, err := r.client.Catov2.SiteAddBgpPeer(ctx, input, r.client.AccountId)
+	addBgpPeerPayload, err := r.resourceAPI().SiteAddBgpPeer(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addBgpPeerPayload),
 	})
@@ -176,14 +91,11 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	bgpPeerRefInput := cato_models.BgpPeerRefInput{
-		By:    cato_models.ObjectRefByID,
-		Input: state.ID.ValueString(),
-	}
+	bgpPeerRefInput := convertReadState(state)
 	tflog.Debug(ctx, "Read.SiteBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(bgpPeerRefInput),
 	})
-	result, err := r.client.Catov2.SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
+	result, err := r.resourceAPI().SiteBgpPeer(ctx, bgpPeerRefInput, r.client.AccountId)
 	tflog.Debug(ctx, "Read.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -212,7 +124,6 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 }
 
-//nolint:gocyclo,funlen
 func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan BgpPeer
 	diags := req.Plan.Get(ctx, &plan)
@@ -221,103 +132,12 @@ func (r *bgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	input := cato_models.UpdateBgpPeerInput{
-		ID: plan.ID.ValueString(),
-	}
-
-	if !plan.Name.IsNull() {
-		input.Name = plan.Name.ValueStringPointer()
-	}
-	if !plan.PeerAsn.IsNull() {
-		peerAsn := scalars.Asn32(strconv.FormatInt(plan.PeerAsn.ValueInt64(), 10))
-		input.PeerAsn = &peerAsn
-	}
-	if !plan.CatoAsn.IsNull() {
-		catoAsn := scalars.Asn16(strconv.FormatInt(plan.CatoAsn.ValueInt64(), 10))
-		input.CatoAsn = &catoAsn
-	}
-	if !plan.PeerIP.IsNull() {
-		input.PeerIP = plan.PeerIP.ValueStringPointer()
-	}
-	if !plan.DefaultAction.IsNull() {
-		input.DefaultAction = (*cato_models.BgpDefaultAction)(plan.DefaultAction.ValueStringPointer())
-	}
-	if !plan.AdvertiseAllRoutes.IsNull() {
-		input.AdvertiseAllRoutes = plan.AdvertiseAllRoutes.ValueBoolPointer()
-	}
-	if !plan.AdvertiseDefaultRoute.IsNull() {
-		input.AdvertiseDefaultRoute = plan.AdvertiseDefaultRoute.ValueBoolPointer()
-	}
-	if !plan.AdvertiseSummaryRoutes.IsNull() {
-		input.AdvertiseSummaryRoutes = plan.AdvertiseSummaryRoutes.ValueBoolPointer()
-	}
-	if !plan.PerformNat.IsNull() {
-		input.PerformNat = plan.PerformNat.ValueBoolPointer()
-	}
-	if !plan.Md5AuthKey.IsNull() {
-		input.Md5AuthKey = plan.Md5AuthKey.ValueStringPointer()
-	}
-	if !plan.Metric.IsNull() {
-		input.Metric = plan.Metric.ValueInt64Pointer()
-	}
-	if !plan.HoldTime.IsNull() {
-		input.HoldTime = plan.HoldTime.ValueInt64Pointer()
-	}
-	if !plan.KeepaliveInterval.IsNull() {
-		input.KeepaliveInterval = plan.KeepaliveInterval.ValueInt64Pointer()
-	}
-	if !plan.BfdEnabled.IsNull() {
-		input.BfdEnabled = plan.BfdEnabled.ValueBoolPointer()
-		if !plan.BfdSettings.IsNull() {
-			var bfdSettingsInput cato_models.BfdSettingsInput
-			bfdSettings := BfdSettingsInput{}
-			diags = plan.BfdSettings.As(ctx, &bfdSettings, basetypes.ObjectAsOptions{})
-			resp.Diagnostics.Append(diags...)
-			bfdSettingsInput.TransmitInterval = bfdSettings.TransmitInterval.ValueInt64()
-			bfdSettingsInput.ReceiveInterval = bfdSettings.ReceiveInterval.ValueInt64()
-			bfdSettingsInput.Multiplier = bfdSettings.Multiplier.ValueInt64()
-			input.BfdSettings = &bfdSettingsInput
-		}
-	}
-	if !plan.SummaryRoute.IsNull() {
-		input.SummaryRoute = make([]*cato_models.BgpSummaryRouteInput, 0)
-		summaryRoutes := make([]BgpSummaryRouteInput, 0, len(plan.SummaryRoute.Elements()))
-		diags = plan.SummaryRoute.ElementsAs(ctx, &summaryRoutes, false)
-		resp.Diagnostics.Append(diags...)
-
-		for _, summaryRoute := range summaryRoutes {
-			var summaryRouteInput cato_models.BgpSummaryRouteInput
-			summaryRouteInput.Route = summaryRoute.Route.ValueString()
-			summaryRouteInput.Community = make([]*cato_models.BgpCommunityInput, 0)
-			communities := make([]BgpCommunityInput, 0, len(summaryRoute.Community.Elements()))
-			diags = summaryRoute.Community.ElementsAs(ctx, &communities, false)
-			resp.Diagnostics.Append(diags...)
-
-			for _, community := range communities {
-				summaryRouteInput.Community = append(summaryRouteInput.Community, &cato_models.BgpCommunityInput{
-					From: scalars.Asn16(strconv.FormatInt(community.From.ValueInt64(), 10)),
-					To:   scalars.Asn16(strconv.FormatInt(community.To.ValueInt64(), 10)),
-				})
-			}
-
-			input.SummaryRoute = append(input.SummaryRoute, &summaryRouteInput)
-		}
-	}
-	if !plan.Tracking.IsNull() {
-		var trackingInput cato_models.BgpTrackingInput
-		tracking := BgpTrackingInput{}
-		diags = plan.Tracking.As(ctx, &tracking, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		trackingInput.Enabled = tracking.Enabled.ValueBool()
-		trackingInput.AlertFrequency = cato_models.PolicyRuleTrackingFrequencyEnum(tracking.AlertFrequency.ValueString())
-		trackingInput.SubscriptionID = tracking.SubscriptionID.ValueString()
-		input.Tracking = &trackingInput
-	}
+	input := convertUpdateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Update.SiteUpdateBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	SiteUpdateBgpPeerResponse, err := r.client.Catov2.SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
+	SiteUpdateBgpPeerResponse, err := r.resourceAPI().SiteUpdateBgpPeer(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Update.SiteAddBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(SiteUpdateBgpPeerResponse),
 	})
@@ -344,12 +164,12 @@ func (r *bgpPeerResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	removeBgpPeerInput := cato_models.RemoveBgpPeerInput{ID: state.ID.ValueString()}
+	removeBgpPeerInput := convertDeleteInput(state)
 
 	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeBgpPeerInput),
 	})
-	SiteRemoveBgpPeerResponse, err := r.client.Catov2.SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
+	SiteRemoveBgpPeerResponse, err := r.resourceAPI().SiteRemoveBgpPeer(ctx, removeBgpPeerInput, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.SiteUpdateBgpPeer.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(SiteRemoveBgpPeerResponse),
 	})
@@ -359,141 +179,5 @@ func (r *bgpPeerResource) Delete(ctx context.Context, req resource.DeleteRequest
 			err.Error(),
 		)
 		return
-	}
-}
-
-// BGP Peer Utils Functions
-
-func convertSummaryRoutes(input []*cato_go_sdk.Site_Site_BgpPeer_SummaryRoute) types.List {
-	var summaryRoutes []attr.Value
-	for _, summaryRoute := range input {
-		var communities []attr.Value
-		for _, community := range summaryRoute.Community {
-			from, _ := strconv.ParseInt(string(community.From), 10, 64)
-			to, _ := strconv.ParseInt(string(community.To), 10, 64)
-			communityInput, _ := types.ObjectValue(
-				map[string]attr.Type{
-					"from": types.Int64Type,
-					"to":   types.Int64Type,
-				},
-				map[string]attr.Value{
-					"from": types.Int64Value(from),
-					"to":   types.Int64Value(to),
-				},
-			)
-			communities = append(communities, communityInput)
-		}
-
-		communityList, _ := types.ListValue(types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"from": types.Int64Type,
-				"to":   types.Int64Type,
-			},
-		}, communities)
-
-		summaryRouteInput, _ := types.ObjectValue(
-			map[string]attr.Type{
-				"route": types.StringType,
-				"community": types.ListType{ElemType: types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"from": types.Int64Type,
-						"to":   types.Int64Type,
-					},
-				}},
-			},
-			map[string]attr.Value{
-				"route":     types.StringValue(summaryRoute.Route),
-				"community": communityList,
-			},
-		)
-		summaryRoutes = append(summaryRoutes, summaryRouteInput)
-	}
-
-	listVal, _ := types.ListValue(types.ObjectType{
-		AttrTypes: map[string]attr.Type{
-			"route": types.StringType,
-			"community": types.ListType{ElemType: types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"from": types.Int64Type,
-					"to":   types.Int64Type,
-				},
-			}},
-		},
-	}, summaryRoutes)
-
-	return listVal
-}
-
-func convertBfdSettings(input *cato_go_sdk.Site_Site_BgpPeer_BfdSettingsBgpPeer) types.Object {
-	if input == nil {
-		return types.ObjectNull(map[string]attr.Type{
-			"transmit_interval": types.Int64Type,
-			"receive_interval":  types.Int64Type,
-			"multiplier":        types.Int64Type,
-		})
-	}
-
-	bfdSettings, _ := types.ObjectValue(
-		map[string]attr.Type{
-			"transmit_interval": types.Int64Type,
-			"receive_interval":  types.Int64Type,
-			"multiplier":        types.Int64Type,
-		},
-		map[string]attr.Value{
-			"transmit_interval": types.Int64Value(input.TransmitInterval),
-			"receive_interval":  types.Int64Value(input.ReceiveInterval),
-			"multiplier":        types.Int64Value(input.Multiplier),
-		},
-	)
-	return bfdSettings
-}
-
-func convertTracking(input *cato_go_sdk.Site_Site_BgpPeer_TrackingBgpPeer) types.Object {
-	if input == nil {
-		return types.ObjectNull(map[string]attr.Type{
-			"enabled":         types.BoolType,
-			"alert_frequency": types.StringType,
-			"subscription_id": types.StringType,
-		})
-	}
-
-	tracking, _ := types.ObjectValue(
-		map[string]attr.Type{
-			"enabled":         types.BoolType,
-			"alert_frequency": types.StringType,
-			"subscription_id": types.StringType,
-		},
-		map[string]attr.Value{
-			"enabled":         types.BoolValue(input.Enabled),
-			"alert_frequency": types.StringValue(input.AlertFrequency.String()),
-			"subscription_id": types.StringValue(*input.SubscriptionID),
-		},
-	)
-	return tracking
-}
-
-func ConvertToBgpPeer(input cato_go_sdk.Site_Site_BgpPeer) BgpPeer {
-	peerAsnInt64, _ := strconv.ParseInt(string(input.PeerAsn), 10, 64)
-	catoAsnInt64, _ := strconv.ParseInt(string(input.CatoAsn), 10, 64)
-	return BgpPeer{
-		ID:                     types.StringValue(input.ID),
-		SiteID:                 types.StringValue(input.Site.ID),
-		Name:                   types.StringValue(input.Name),
-		PeerAsn:                types.Int64Value(peerAsnInt64),
-		CatoAsn:                types.Int64Value(catoAsnInt64), // Convert Asn16 to int64
-		PeerIP:                 types.StringValue(input.PeerIP),
-		AdvertiseDefaultRoute:  types.BoolValue(input.AdvertiseDefaultRoute),
-		AdvertiseAllRoutes:     types.BoolValue(input.AdvertiseAllRoutes),
-		AdvertiseSummaryRoutes: types.BoolValue(input.AdvertiseSummaryRoutes),
-		SummaryRoute:           convertSummaryRoutes(input.SummaryRoute),
-		DefaultAction:          types.StringValue(string(input.DefaultAction)), // Assuming BgpDefaultAction is string
-		PerformNat:             types.BoolValue(input.PerformNat),
-		Md5AuthKey:             utils.ConvertOptionalString(input.Md5AuthKey),
-		Metric:                 types.Int64Value(input.Metric),
-		HoldTime:               types.Int64Value(input.HoldTime),
-		KeepaliveInterval:      types.Int64Value(input.KeepaliveInterval),
-		BfdEnabled:             types.BoolValue(input.BfdEnabled),
-		BfdSettings:            convertBfdSettings(input.BfdSettingsBgpPeer),
-		Tracking:               convertTracking(input.TrackingBgpPeer),
 	}
 }

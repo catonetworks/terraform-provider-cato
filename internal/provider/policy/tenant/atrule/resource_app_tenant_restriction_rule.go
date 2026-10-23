@@ -1,4 +1,3 @@
-//nolint:lll
 package atrule
 
 import (
@@ -7,17 +6,15 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	tenant "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -32,25 +29,43 @@ func NewAppTenantRestrictionRuleResource() resource.Resource {
 
 type appTenantRestrictionRuleResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *appTenantRestrictionRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *appTenantRestrictionRuleResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_app_tenant_restriction_rule"
 }
 
-func (r *appTenantRestrictionRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *appTenantRestrictionRuleResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *appTenantRestrictionRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *appTenantRestrictionRuleResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
 //nolint:gocyclo,funlen
-func (r *appTenantRestrictionRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *appTenantRestrictionRuleResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan AppTenantRestrictionRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -64,7 +79,7 @@ func (r *appTenantRestrictionRuleResource) Create(ctx context.Context, req resou
 	}
 
 	tflog.Debug(ctx, "Create.PolicyAppTenantRestrictionAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	res, err := r.client.Catov2.PolicyAppTenantRestrictionAddRule(ctx, input, r.client.AccountId)
+	res, err := r.resourceAPI().PolicyAppTenantRestrictionAddRule(ctx, input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionAddRule error", err.Error())
 		return
@@ -85,12 +100,12 @@ func (r *appTenantRestrictionRuleResource) Create(ctx context.Context, req resou
 		return
 	}
 
-	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -121,19 +136,18 @@ func (r *appTenantRestrictionRuleResource) Create(ctx context.Context, req resou
 
 	// Preserve plan headers — the API never returns sensitive header values.
 	var planRule AppTenantRestrictionRuleRulePlan
-	resp.Diagnostics.Append(plan.Rule.As(ctx, &planRule, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
-	if !planRule.Headers.IsNull() && !planRule.Headers.IsUnknown() {
-		rulePlan.Headers = planRule.Headers
-	}
-
-	ruleObj, odiags := types.ObjectValueFrom(ctx, AppTenantRestrictionRuleRuleAttrTypes, rulePlan)
+	resp.Diagnostics.Append(plan.Rule.As(
+		ctx,
+		&planRule,
+		basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true},
+	)...)
+	ruleObj, odiags := convertCreateInput(ctx, &rulePlan, planRule)
 	resp.Diagnostics.Append(odiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	plan.ID = types.StringValue(newID)
-	plan.Rule = ruleObj
+	convertCreateInput2(&plan, newID, ruleObj)
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
@@ -144,7 +158,7 @@ func (r *appTenantRestrictionRuleResource) Read(ctx context.Context, req resourc
 		return
 	}
 
-	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -178,56 +192,37 @@ func (r *appTenantRestrictionRuleResource) Read(ctx context.Context, req resourc
 	resp.Diagnostics.Append(hdiags...)
 
 	// Preserve headers from state — the API never returns sensitive header values.
-	if !rulePlan.Headers.IsNull() && !rulePlan.Headers.IsUnknown() {
-		hydrated.Headers = rulePlan.Headers
-	}
-
-	ruleObj, odiags := types.ObjectValueFrom(ctx, AppTenantRestrictionRuleRuleAttrTypes, hydrated)
+	ruleObj, odiags := convertReadState(ctx, rulePlan, &hydrated)
 	resp.Diagnostics.Append(odiags...)
 
 	// Preserve the 'at' block from state — the API does not return placement
 	// information, so we keep whatever was previously configured. On import the
 	// state has no 'at', so we fall back to the safe default LAST_IN_POLICY.
-	if state.At.IsNull() || state.At.IsUnknown() {
-		atObj, d := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		})
-		resp.Diagnostics.Append(d...)
-		state.At = atObj
-	}
-
-	state.ID = types.StringValue(cur.GetID())
-	state.Rule = ruleObj
+	convertReadState2(&state, cur, ruleObj, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
 //nolint:gocyclo,funlen
-func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *appTenantRestrictionRuleResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan AppTenantRestrictionRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	move := cato_models.PolicyMoveRuleInput{}
-	atAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
-	if !plan.At.IsNull() {
-		pos := policyrule.Position{}
-		resp.Diagnostics.Append(plan.At.As(ctx, &pos, atAsOpts)...)
-		move.To = &cato_models.PolicyRulePositionInput{
-			Position: (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer()),
-			Ref:      pos.Ref.ValueStringPointer(),
-		}
-	}
-	rule := AppTenantRestrictionRuleRulePlan{}
+	var rule AppTenantRestrictionRuleRulePlan
+	move, atAsOpts := convertUpdateInput(ctx, plan, &resp.Diagnostics)
 	resp.Diagnostics.Append(plan.Rule.As(ctx, &rule, atAsOpts)...)
 	move.ID = rule.ID.ValueString()
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	moveRes, err := r.client.Catov2.PolicyAppTenantRestrictionMoveRule(ctx, move, r.client.AccountId)
+	moveRes, err := r.resourceAPI().PolicyAppTenantRestrictionMoveRule(ctx, move, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionMoveRule error", err.Error())
 		return
@@ -248,7 +243,7 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 		return
 	}
 
-	updRes, err := r.client.Catov2.PolicyAppTenantRestrictionUpdateRule(ctx, upd, r.client.AccountId)
+	updRes, err := r.resourceAPI().PolicyAppTenantRestrictionUpdateRule(ctx, upd, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionUpdateRule error", err.Error())
 		return
@@ -263,12 +258,12 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 		}
 	}
 
-	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -290,11 +285,7 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 	resp.Diagnostics.Append(hdiags...)
 
 	// Preserve plan headers — the API never returns sensitive header values.
-	if !rule.Headers.IsNull() && !rule.Headers.IsUnknown() {
-		rulePlan.Headers = rule.Headers
-	}
-
-	ruleObj, odiags := types.ObjectValueFrom(ctx, AppTenantRestrictionRuleRuleAttrTypes, rulePlan)
+	ruleObj, odiags := convertUpdateInput2(ctx, rule, &rulePlan)
 	resp.Diagnostics.Append(odiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -305,24 +296,21 @@ func (r *appTenantRestrictionRuleResource) Update(ctx context.Context, req resou
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	atObj, adiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-		"position": pos.Position,
-		"ref":      pos.Ref,
-	})
+	atObj, adiags := convertUpdateInput3(pos)
 	resp.Diagnostics.Append(adiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	st := AppTenantRestrictionRule{
-		ID:   types.StringValue(rule.ID.ValueString()),
-		At:   atObj,
-		Rule: ruleObj,
-	}
+	st := convertUpdateInput4(rule, ruleObj, atObj)
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *appTenantRestrictionRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *appTenantRestrictionRuleResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
 	var state AppTenantRestrictionRule
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -333,12 +321,12 @@ func (r *appTenantRestrictionRuleResource) Delete(ctx context.Context, req resou
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	rm := cato_models.AppTenantRestrictionRemoveRuleInput{ID: rule.ID.ValueString()}
-	if _, err := r.client.Catov2.PolicyAppTenantRestrictionRemoveRule(ctx, rm, r.client.AccountId); err != nil {
+	rm := convertDeleteInput(rule)
+	if _, err := r.resourceAPI().PolicyAppTenantRestrictionRemoveRule(ctx, rm, r.client.AccountId); err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionRemoveRule error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

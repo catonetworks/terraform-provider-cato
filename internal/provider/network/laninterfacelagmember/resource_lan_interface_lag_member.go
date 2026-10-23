@@ -2,20 +2,19 @@ package laninterfacelagmember
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json"
 	"fmt"
 	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/spf13/cast"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
+	cast "github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketinterface"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	socketinterface "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/socketinterface"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -29,16 +28,27 @@ func NewLanInterfaceLagMemberResource() resource.Resource {
 
 type lanInterfaceLagMemberResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 const lanLagMemberIDParts = 2
+
 const lanInterfaceRequiredMessage = "At least one LAN interface must be defined"
 
-func (r *lanInterfaceLagMemberResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *lanInterfaceLagMemberResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_lan_interface_lag_member"
 }
 
-func (r *lanInterfaceLagMemberResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *lanInterfaceLagMemberResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -55,7 +65,11 @@ func (r *lanInterfaceLagMemberResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *lanInterfaceLagMemberResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *lanInterfaceLagMemberResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan LagMember
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -63,15 +77,11 @@ func (r *lanInterfaceLagMemberResource) Create(ctx context.Context, req resource
 		return
 	}
 
-	destType := plan.DestType.ValueString()
-	input := cato_models.UpdateSocketInterfaceInput{
-		DestType: cato_models.SocketInterfaceDestType(destType),
-		Name:     plan.Name.ValueStringPointer(),
-	}
+	input := convertCreateInput(plan)
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterfaceLanLagMember.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(
+	siteUpdateSocketInterfaceResponse, err := r.resourceAPI().SiteUpdateSocketInterface(
 		ctx,
 		plan.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
@@ -85,11 +95,7 @@ func (r *lanInterfaceLagMemberResource) Create(ctx context.Context, req resource
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterfaceLanLagMember.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
-	plan.ID = types.StringValue(
-		siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID +
-			":" +
-			string(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID),
-	)
+	convertCreateInput2(&plan, siteUpdateSocketInterfaceResponse)
 
 	// Use the new hydration function to populate the state
 	plan, err = r.hydrateLanInterfaceLagMemberState(ctx, plan)
@@ -135,7 +141,11 @@ func (r *lanInterfaceLagMemberResource) Read(ctx context.Context, req resource.R
 	}
 }
 
-func (r *lanInterfaceLagMemberResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *lanInterfaceLagMemberResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan LagMember
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -143,15 +153,11 @@ func (r *lanInterfaceLagMemberResource) Update(ctx context.Context, req resource
 		return
 	}
 
-	destType := plan.DestType.ValueString()
-	input := cato_models.UpdateSocketInterfaceInput{
-		DestType: cato_models.SocketInterfaceDestType(destType),
-		Name:     plan.Name.ValueStringPointer(),
-	}
+	input := convertUpdateInput(plan)
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterfaceLanLag.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(
+	siteUpdateSocketInterfaceResponse, err := r.resourceAPI().SiteUpdateSocketInterface(
 		ctx,
 		plan.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(plan.InterfaceID.ValueString()),
@@ -165,11 +171,7 @@ func (r *lanInterfaceLagMemberResource) Update(ctx context.Context, req resource
 	tflog.Debug(ctx, "Create.SiteUpdateSocketInterfaceLanLag.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteUpdateSocketInterfaceResponse),
 	})
-	plan.ID = types.StringValue(
-		siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SiteID +
-			":" +
-			string(siteUpdateSocketInterfaceResponse.Site.UpdateSocketInterface.SocketInterfaceID),
-	)
+	convertUpdateInput2(&plan, siteUpdateSocketInterfaceResponse)
 
 	// Use the new hydration function to populate the state
 	plan, err = r.hydrateLanInterfaceLagMemberState(ctx, plan)
@@ -189,7 +191,11 @@ func (r *lanInterfaceLagMemberResource) Update(ctx context.Context, req resource
 	}
 }
 
-func (r *lanInterfaceLagMemberResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *lanInterfaceLagMemberResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
 	var state LagMember
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -198,15 +204,12 @@ func (r *lanInterfaceLagMemberResource) Delete(ctx context.Context, req resource
 	}
 
 	// Disabled interface to "remove" an interface
-	input := cato_models.UpdateSocketInterfaceInput{
-		Name:     state.InterfaceID.ValueStringPointer(),
-		DestType: "INTERFACE_DISABLED",
-	}
+	input := convertDeleteInput(state)
 
 	tflog.Debug(ctx, "Delete.SiteUpdateSocketInterface.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	siteUpdateSocketInterfaceResponse, err := r.client.Catov2.SiteUpdateSocketInterface(
+	siteUpdateSocketInterfaceResponse, err := r.resourceAPI().SiteUpdateSocketInterface(
 		ctx,
 		state.SiteID.ValueString(),
 		cato_models.SocketInterfaceIDEnum(state.InterfaceID.ValueString()),
@@ -267,7 +270,7 @@ func (r *lanInterfaceLagMemberResource) hydrateLanInterfaceLagMemberState(
 	})
 
 	// Get the site's accountSnapshot to find the LAG master
-	siteAccountSnapshotAPIData, err := r.client.Catov2.AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
+	siteAccountSnapshotAPIData, err := r.resourceAPI().AccountSnapshot(ctx, []string{siteID}, nil, &r.client.AccountId)
 	tflog.Debug(ctx, "Read.AccountSnapshot.response for LAG member", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(siteAccountSnapshotAPIData),
 	})
@@ -299,11 +302,7 @@ func (r *lanInterfaceLagMemberResource) hydrateLanInterfaceLagMemberState(
 						"curInterfaceID":   curInterfaceID,
 						"curInterfaceName": iface.Name,
 					})
-					input.Name = types.StringPointerValue(iface.Name)
-					input.SiteID = types.StringPointerValue(&siteID)
-					input.InterfaceID = types.StringPointerValue(&interfaceID)
-					input.DestType = types.StringValue(socketinterface.LanLagMemberDestType)
-					lagMemberFound = true
+					convertHydrateLanInterfaceLagMemberStateValues(&input, &siteID, &interfaceID, &lagMemberFound, iface)
 					break
 				}
 			}

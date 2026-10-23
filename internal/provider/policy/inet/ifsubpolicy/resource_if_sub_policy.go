@@ -3,18 +3,15 @@ package ifsubpolicy
 import (
 	"context"
 	"fmt"
-	"maps"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	ifrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -30,16 +27,8 @@ func NewIfSubPolicyResource() resource.Resource {
 type ifSubPolicyResource struct {
 	client        *catoclient.Service
 	subPolyClient InternetFirewallSubPolicyClient
-}
 
-func (r *ifSubPolicyResource) getClient() InternetFirewallSubPolicyClient {
-	if r.subPolyClient != nil {
-		return r.subPolyClient
-	}
-	if r.client == nil {
-		return nil
-	}
-	return r.client.Catov2
+	apiClient ResourceClient
 }
 
 func (r *ifSubPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -53,21 +42,14 @@ func (r *ifSubPolicyResource) Configure(_ context.Context, req resource.Configur
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *ifSubPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *ifSubPolicyResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ifSubPolicyResource) publish(ctx context.Context) error {
-	_, err := r.getClient().PolicyInternetFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
-		&cato_models.PolicyPublishRevisionInput{},
-		r.client.AccountId,
-	)
-	return err
-}
-
-//nolint:funlen
 func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InternetFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -77,11 +59,7 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 
 	// The API requires a normal action while creating a scope rule, then returns
 	// the API-owned SUB_POLICY action. Keep that bootstrap value out of config.
-	scopeAttrs := maps.Clone(plan.Scope.Attributes())
-	scopeAttrs["action"] = types.StringValue(string(cato_models.InternetFirewallActionEnumAllow))
-	scopeAttrs["name"] = plan.Name
-	scopeAttrs["description"] = plan.Description
-	createScope, diags := types.ObjectValue(ifrule.InternetFirewallRuleRuleAttrTypes, scopeAttrs)
+	createScope, diags := convertCreateInput(plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -96,23 +74,14 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Snapshot existing sub-policy ids to identify the new one after creation.
-	before, err := r.getClient().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+	before, err := r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
 		return
 	}
-	existing := ifwSubPolicyIDs(before)
+	existing, addInput := convertCreateInput2(plan, hydrated, before)
 
-	addInput := cato_models.InternetFirewallAddSubPolicyInput{
-		At: hydrated.Create.At,
-		Policy: &cato_models.InternetFirewallAddSubPolicyDataInput{
-			Name:        plan.Name.ValueString(),
-			Description: plan.Description.ValueString(),
-		},
-		Scope: hydrated.Create.Rule,
-	}
-
-	addResp, err := r.getClient().PolicyInternetFirewallAddSubPolicy(
+	addResp, err := r.resourceAPI().PolicyInternetFirewallAddSubPolicy(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		addInput,
@@ -139,27 +108,15 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Locate the new sub-policy + its scope rule.
-	after, err := r.getClient().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+	after, err := r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
 		return
 	}
-	subID := ifwSubPolicyIDByName(after, plan.Name.ValueString(), existing)
-	if subID == "" {
-		resp.Diagnostics.AddError("Sub-Policy Not Found", "Created Internet Firewall sub-policy could not be located after publish.")
+	scopeObj := internetFirewallSubPolicyStateFromPolicy(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	scope := ifwScopeRule(after, subID)
-	if scope == nil {
-		resp.Diagnostics.AddError("Scope Rule Not Found", fmt.Sprintf("No SUB_POLICY_SCOPE rule found for sub-policy %s.", subID))
-		return
-	}
-
-	plan.ID = types.StringValue(subID)
-	plan.ScopeRuleID = types.StringValue(scope.GetID())
-	scopeState := ifrule.HydrateIfwRuleState(ctx, scopeRule, scope)
-	scopeState.ID = types.StringValue(scope.GetID())
-	scopeObj, diags := types.ObjectValueFrom(ctx, ifrule.InternetFirewallRuleRuleAttrTypes, scopeState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -176,7 +133,7 @@ func (r *ifSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	body, err := r.getClient().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
 		return
@@ -195,18 +152,7 @@ func (r *ifSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	state.Name = types.StringValue(info.GetName())
-	if info.GetDescription() == "" {
-		state.Description = types.StringNull()
-	} else {
-		state.Description = types.StringValue(info.GetDescription())
-	}
-	state.ScopeRuleID = types.StringValue(scope.GetID())
-
-	scopeRule := ifrule.InternetFirewallRule{Rule: state.Scope, At: state.At}
-	scopeState := ifrule.HydrateIfwRuleState(ctx, scopeRule, scope)
-	scopeState.ID = types.StringValue(scope.GetID())
-	scopeObj, diags := types.ObjectValueFrom(ctx, ifrule.InternetFirewallRuleRuleAttrTypes, scopeState)
+	scopeObj, diags := convertReadState(ctx, &state, info, scope)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -244,7 +190,7 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	hydrated.Update.Rule.Name = state.Name.ValueStringPointer()
 	hydrated.Update.Rule.Description = state.Description.ValueStringPointer()
 
-	updateResp, err := r.getClient().PolicyInternetFirewallUpdateRule(
+	updateResp, err := r.resourceAPI().PolicyInternetFirewallUpdateRule(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		hydrated.Update,
@@ -270,19 +216,15 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	// Re-read scope for consistent state.
-	body, err := r.getClient().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
 		return
 	}
-	scope := ifwScopeRule(body, plan.ID.ValueString())
-	if scope == nil {
-		resp.Diagnostics.AddError("Scope Rule Not Found", "Sub-policy scope rule not found after update.")
+	scopeObj := convertUpdateInput(ctx, plan, scopeRule, &diags, body, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	scopeState := ifrule.HydrateIfwRuleState(ctx, scopeRule, scope)
-	scopeState.ID = types.StringValue(scope.GetID())
-	scopeObj, diags := types.ObjectValueFrom(ctx, ifrule.InternetFirewallRuleRuleAttrTypes, scopeState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -299,8 +241,8 @@ func (r *ifSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	removeInput := cato_models.InternetFirewallRemoveSubPolicyInput{Ref: objectRefByID(state.ID.ValueString())}
-	removeResp, err := r.getClient().PolicyInternetFirewallRemoveSubPolicy(
+	removeInput := convertDeleteInput(state)
+	removeResp, err := r.resourceAPI().PolicyInternetFirewallRemoveSubPolicy(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		removeInput,
@@ -330,67 +272,16 @@ func (r *ifSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 }
 
-// derefStr safely dereferences an optional string pointer.
-func derefStr(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
-// ifwScopeRule returns the SUB_POLICY_SCOPE rule owned by the given sub-policy,
-// or nil when not found.
-func ifwScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule {
-	if body == nil || subID == "" {
-		return nil
-	}
-	for _, rp := range body.GetPolicy().GetInternetFirewall().GetPolicy().GetRules() {
-		rt := rp.GetRuleType()
-		sp := rp.GetSubPolicy()
-		if rt != nil && *rt == subPolicyScopeRuleType && sp != nil && sp.GetID() == subID {
-			return rp.GetRule()
-		}
-	}
-	return nil
-}
-
 // subPolicyScopeRuleType is the ruleType value the API assigns to the scope rule
 // that a sub-policy is created with.
 const subPolicyScopeRuleType = cato_models.PolicyRuleTypeEnumSubPolicyScope
 
-// ifwSubPolicyIDByName returns the id of the sub-policy with the given name that
-// is not present in the exclude set. It is used to identify a freshly created
-// sub-policy by diffing the sub-policy list before and after creation.
-func ifwSubPolicyIDByName(body *cato_go_sdk.Policy, name string, exclude map[string]struct{}) string {
-	if body == nil {
-		return ""
-	}
-	for _, sp := range body.GetPolicy().GetInternetFirewall().GetPolicy().GetSubPolicies() {
-		info := sp.GetPolicy()
-		if info.GetName() != name {
-			continue
-		}
-		if _, skip := exclude[info.GetID()]; skip {
-			continue
-		}
-		return info.GetID()
-	}
-	return ""
-}
-
-// ifwSubPolicyIDs returns the set of sub-policy ids currently in the snapshot.
-func ifwSubPolicyIDs(body *cato_go_sdk.Policy) map[string]struct{} {
-	ids := map[string]struct{}{}
-	if body == nil {
-		return ids
-	}
-	for _, sp := range body.GetPolicy().GetInternetFirewall().GetPolicy().GetSubPolicies() {
-		ids[sp.GetPolicy().GetID()] = struct{}{}
-	}
-	return ids
-}
-
-// objectRefByID builds an ObjectRefBy=ID reference input.
-func objectRefByID(id string) *cato_models.InternetFirewallPolicyRefInput {
-	return &cato_models.InternetFirewallPolicyRefInput{By: cato_models.ObjectRefByID, Input: id}
+func (r *ifSubPolicyResource) publish(ctx context.Context) error {
+	_, err := r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		&cato_models.PolicyPublishRevisionInput{},
+		r.client.AccountId,
+	)
+	return err
 }

@@ -1,4 +1,3 @@
-//nolint:lll
 package acrule
 
 import (
@@ -7,35 +6,16 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	applicationcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
-
-func applicationControlRuleRuleObjectFromPlan(p ApplicationControlRuleRulePlan) (types.Object, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	o, d := types.ObjectValue(ApplicationControlRuleRuleAttrTypes, map[string]attr.Value{
-		"id":               p.ID,
-		"name":             p.Name,
-		"description":      p.Description,
-		"enabled":          p.Enabled,
-		"rule_type":        p.RuleType,
-		"application_rule": p.ApplicationRule,
-		"data_rule":        p.DataRule,
-		"file_rule":        p.FileRule,
-	})
-	diags.Append(d...)
-	return o, diags
-}
 
 var (
 	_ resource.Resource                = &applicationControlRuleResource{}
@@ -49,25 +29,43 @@ func NewApplicationControlRuleResource() resource.Resource {
 
 type applicationControlRuleResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *applicationControlRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *applicationControlRuleResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_application_control_rule"
 }
 
-func (r *applicationControlRuleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *applicationControlRuleResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *applicationControlRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *applicationControlRuleResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
 //nolint:gocyclo,funlen
-func (r *applicationControlRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *applicationControlRuleResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan ApplicationControlRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -81,7 +79,7 @@ func (r *applicationControlRuleResource) Create(ctx context.Context, req resourc
 	}
 
 	tflog.Debug(ctx, "Create.PolicyApplicationControlAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	res, err := r.client.Catov2.PolicyApplicationControlAddRule(ctx, input, r.client.AccountId)
+	res, err := r.resourceAPI().PolicyApplicationControlAddRule(ctx, input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlAddRule error", err.Error())
 		return
@@ -102,12 +100,12 @@ func (r *applicationControlRuleResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	resp.Diagnostics.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().ApplicationControlPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API ApplicationControlPolicy error", err.Error())
 		return
@@ -147,20 +145,13 @@ func (r *applicationControlRuleResource) Create(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	atObj, adiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-		"position": pos.Position,
-		"ref":      pos.Ref,
-	})
+	atObj, adiags := convertCreateInput(pos)
 	resp.Diagnostics.Append(adiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	st := ApplicationControlRule{
-		ID:   types.StringValue(newID),
-		At:   atObj,
-		Rule: ruleObj,
-	}
+	st := convertCreateInput2(newID, ruleObj, atObj)
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
@@ -171,7 +162,7 @@ func (r *applicationControlRuleResource) Read(ctx context.Context, req resource.
 		return
 	}
 
-	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().ApplicationControlPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API ApplicationControlPolicy error", err.Error())
 		return
@@ -208,46 +199,31 @@ func (r *applicationControlRuleResource) Read(ctx context.Context, req resource.
 
 	// Preserve 'at' from state — the API does not return placement info.
 	// Default to LAST_IN_POLICY only when state has no 'at' (e.g. after import).
-	if state.At.IsNull() || state.At.IsUnknown() {
-		atObj, d := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		})
-		resp.Diagnostics.Append(d...)
-		state.At = atObj
-	}
-
-	state.ID = types.StringValue(cur.GetID())
-	state.Rule = ruleObj
+	convertReadState(&state, cur, ruleObj, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
 //nolint:gocyclo,funlen
-func (r *applicationControlRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *applicationControlRuleResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan ApplicationControlRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	move := cato_models.PolicyMoveRuleInput{}
-	atAsOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
-	if !plan.At.IsNull() {
-		pos := policyrule.Position{}
-		resp.Diagnostics.Append(plan.At.As(ctx, &pos, atAsOpts)...)
-		move.To = &cato_models.PolicyRulePositionInput{
-			Position: (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer()),
-			Ref:      pos.Ref.ValueStringPointer(),
-		}
-	}
-	rule := ApplicationControlRuleRulePlan{}
+	var rule ApplicationControlRuleRulePlan
+	move, atAsOpts := convertUpdateInput(ctx, plan, &resp.Diagnostics)
 	resp.Diagnostics.Append(plan.Rule.As(ctx, &rule, atAsOpts)...)
 	move.ID = rule.ID.ValueString()
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	moveRes, err := r.client.Catov2.PolicyApplicationControlMoveRule(ctx, move, r.client.AccountId)
+	moveRes, err := r.resourceAPI().PolicyApplicationControlMoveRule(ctx, move, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlMoveRule error", err.Error())
 		return
@@ -268,7 +244,7 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	updRes, err := r.client.Catov2.PolicyApplicationControlUpdateRule(ctx, upd, r.client.AccountId)
+	updRes, err := r.resourceAPI().PolicyApplicationControlUpdateRule(ctx, upd, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlUpdateRule error", err.Error())
 		return
@@ -283,12 +259,12 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 		}
 	}
 
-	resp.Diagnostics.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().ApplicationControlPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API ApplicationControlPolicy error", err.Error())
 		return
@@ -319,24 +295,21 @@ func (r *applicationControlRuleResource) Update(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	atObj, adiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-		"position": pos.Position,
-		"ref":      pos.Ref,
-	})
+	atObj, adiags := convertUpdateInput2(pos)
 	resp.Diagnostics.Append(adiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	st := ApplicationControlRule{
-		ID:   types.StringValue(rule.ID.ValueString()),
-		At:   atObj,
-		Rule: ruleObj,
-	}
+	st := convertUpdateInput3(rule, ruleObj, atObj)
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *applicationControlRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *applicationControlRuleResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
 	var state ApplicationControlRule
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -347,12 +320,12 @@ func (r *applicationControlRuleResource) Delete(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	rm := cato_models.ApplicationControlRemoveRuleInput{ID: rule.ID.ValueString()}
-	if _, err := r.client.Catov2.PolicyApplicationControlRemoveRule(ctx, rm, r.client.AccountId); err != nil {
+	rm := convertDeleteInput(rule)
+	if _, err := r.resourceAPI().PolicyApplicationControlRemoveRule(ctx, rm, r.client.AccountId); err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyApplicationControlRemoveRule error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

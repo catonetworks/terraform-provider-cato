@@ -3,13 +3,21 @@ package ipsecsite
 import (
 	"context"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	attr "github.com/hashicorp/terraform-plugin-framework/attr"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	tfmodel "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
 )
 
 // hydrateAddIpsecIkeV2Site converts the Terraform plan into an SDK input for site creation.
-func hydrateAddIpsecIkeV2Site(ctx context.Context, plan SiteIpsecIkeV2) (cato_models.AddIpsecIkeV2SiteInput, diag.Diagnostics) {
+func hydrateAddIpsecIkeV2Site(
+	ctx context.Context,
+	plan SiteIpsecIkeV2,
+) (cato_models.AddIpsecIkeV2SiteInput, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 	input := cato_models.AddIpsecIkeV2SiteInput{}
 
@@ -38,7 +46,10 @@ func hydrateAddIpsecIkeV2Site(ctx context.Context, plan SiteIpsecIkeV2) (cato_mo
 // hydrateAddIpsecIkeV2SiteTunnels takes the plan and returns both Add and Update inputs for tunnels
 //
 //nolint:funlen
-func hydrateAddIpsecIkeV2SiteTunnels(ctx context.Context, plan SiteIpsecIkeV2) (hydrateIpsecTunnelsAPITypes, diag.Diagnostics) {
+func hydrateAddIpsecIkeV2SiteTunnels(
+	ctx context.Context,
+	plan SiteIpsecIkeV2,
+) (hydrateIpsecTunnelsAPITypes, diag.Diagnostics) {
 	diags := []diag.Diagnostic{}
 	result := hydrateIpsecTunnelsAPITypes{
 		add:    cato_models.AddIpsecIkeV2SiteTunnelsInput{},
@@ -412,4 +423,229 @@ func prepareIpsecNetworkRangeUpdate(plan, state SiteIpsecIkeV2) (*cato_models.Up
 	return &cato_models.UpdateNetworkRangeInput{
 		Subnet: plan.NativeNetworkRange.ValueStringPointer(),
 	}, true
+}
+
+const nativeRangeName = "Native Range"
+
+// convertCreateInput converts between the Terraform model and SDK values.
+func convertCreateInput(ipsecSite *cato_go_sdk.SiteAddIpsecIkeV2Site) (resultEntityParent cato_models.EntityInput) {
+	resultEntityParent = cato_models.EntityInput{
+		ID:   ipsecSite.Site.AddIpsecIkeV2Site.GetSiteID(),
+		Type: cato_models.EntityType("site"),
+	}
+	return resultEntityParent
+}
+
+// convertUpdateInput converts between the Terraform model and SDK values.
+func convertUpdateInput(
+	ctx context.Context,
+	plan SiteIpsecIkeV2,
+	priorDiags *diag.Diagnostics,
+	state SiteIpsecIkeV2,
+	diagnostics *diag.Diagnostics,
+) (
+	resultInputSiteGeneral cato_models.UpdateSiteGeneralDetailsInput,
+	resultInputUpdateNetworkRange *cato_models.UpdateNetworkRangeInput,
+	resultUpdateNetworkRange bool,
+) {
+	diags := *priorDiags
+	defer func() { *priorDiags = diags }()
+	resultInputSiteGeneral = cato_models.UpdateSiteGeneralDetailsInput{
+		SiteLocation: &cato_models.UpdateSiteLocationInput{},
+	}
+
+	resultInputUpdateNetworkRange, resultUpdateNetworkRange = prepareIpsecNetworkRangeUpdate(plan, state)
+
+	// setting input site location
+	if !plan.SiteLocation.IsNull() {
+		resultInputSiteGeneral.SiteLocation = &cato_models.UpdateSiteLocationInput{}
+		siteLocationInput := tfmodel.SiteLocation{}
+		diags = plan.SiteLocation.As(ctx, &siteLocationInput, basetypes.ObjectAsOptions{})
+		diagnostics.Append(diags...)
+
+		resultInputSiteGeneral.SiteLocation.Address = siteLocationInput.Address.ValueStringPointer()
+		resultInputSiteGeneral.SiteLocation.CountryCode = siteLocationInput.CountryCode.ValueStringPointer()
+		resultInputSiteGeneral.SiteLocation.StateCode = siteLocationInput.StateCode.ValueStringPointer()
+		resultInputSiteGeneral.SiteLocation.Timezone = siteLocationInput.Timezone.ValueStringPointer()
+	}
+
+	resultInputSiteGeneral.Name = plan.Name.ValueStringPointer()
+	resultInputSiteGeneral.SiteType = (*cato_models.SiteType)(plan.SiteType.ValueStringPointer())
+	resultInputSiteGeneral.Description = plan.Description.ValueStringPointer()
+	return resultInputSiteGeneral, resultInputUpdateNetworkRange, resultUpdateNetworkRange
+}
+
+// convertUpdateInput2 converts between the Terraform model and SDK values.
+func convertUpdateInput2(
+	ctx context.Context,
+	plan SiteIpsecIkeV2,
+	priorDiags *diag.Diagnostics,
+) (resultPlanIPSec AddIpsecIkeV2SiteTunnelsInput) {
+	diags := *priorDiags
+	defer func() { *priorDiags = diags }()
+	resultPlanIPSec = AddIpsecIkeV2SiteTunnelsInput{}
+	diags = plan.IPSec.As(ctx, &resultPlanIPSec, basetypes.ObjectAsOptions{})
+	return resultPlanIPSec
+}
+
+// convertHydrateIpsecSiteStateValues converts between the Terraform model and SDK values.
+func convertHydrateIpsecSiteStateValues(
+	state *SiteIpsecIkeV2,
+	siteID string,
+	siteEntity *cato_go_sdk.EntityLookup_EntityLookup_Items,
+	siteAccountSnapshotAPIData *cato_go_sdk.AccountSnapshot,
+) (
+	resultThisSite *cato_go_sdk.AccountSnapshot_AccountSnapshot_Sites,
+	resultSiteEntityInput *cato_models.EntityInput,
+) {
+	resultThisSite = siteAccountSnapshotAPIData.GetAccountSnapshot().GetSites()[0]
+
+	// Set basic site information
+	state.ID = types.StringValue(siteEntity.Entity.GetID())
+
+	if siteEntity.Entity.Name != nil {
+		state.Name = types.StringValue(*siteEntity.Entity.Name)
+	}
+
+	if siteType, ok := siteEntity.GetHelperFields()["type"]; ok && siteType != nil {
+		state.SiteType = types.StringValue(siteType.(string))
+	}
+
+	if description, ok := siteEntity.GetHelperFields()["description"]; ok && description != nil {
+		descStr := description.(string)
+		if descStr != "" {
+			state.Description = types.StringValue(descStr)
+		} else {
+			state.Description = types.StringNull()
+		}
+	}
+
+	// Get native network range ID and interface ID
+	resultSiteEntityInput = &cato_models.EntityInput{Type: "site", ID: siteID}
+	return resultThisSite, resultSiteEntityInput
+}
+
+// convertHydrateIpsecSiteStateValues2 converts between the Terraform model and SDK values.
+func convertHydrateIpsecSiteStateValues2(
+	ctx context.Context,
+	state SiteIpsecIkeV2,
+	siteID string,
+) (resultIpsecObj basetypes.ObjectValue, resultDiags diag.Diagnostics) {
+	ipsecAttrs := map[string]attr.Value{
+		"site_id":             types.StringValue(siteID),
+		"primary":             types.ObjectNull(IpsecTunnelsResourceAttrTypes),
+		"secondary":           types.ObjectNull(IpsecTunnelsResourceAttrTypes),
+		"connection_mode":     types.StringNull(),
+		"identification_type": types.StringNull(),
+		"init_message":        types.ObjectNull(IpsecMessageResourceAttrTypes),
+		"auth_message":        types.ObjectNull(IpsecMessageResourceAttrTypes),
+		"network_ranges":      types.ListNull(types.StringType),
+	}
+
+	// Preserve all IPSec fields from state (not returned by AccountSnapshot API)
+	if !state.IPSec.IsNull() {
+		var currentIpsec AddIpsecIkeV2SiteTunnelsInput
+		state.IPSec.As(ctx, &currentIpsec, basetypes.ObjectAsOptions{})
+
+		// Preserve primary tunnels
+		if !currentIpsec.Primary.IsNull() {
+			ipsecAttrs["primary"] = currentIpsec.Primary
+		}
+
+		// Preserve secondary tunnels
+		if !currentIpsec.Secondary.IsNull() {
+			ipsecAttrs["secondary"] = currentIpsec.Secondary
+		}
+
+		// Preserve connection mode
+		if !currentIpsec.ConnectionMode.IsNull() {
+			ipsecAttrs["connection_mode"] = currentIpsec.ConnectionMode
+		}
+
+		// Preserve identification type
+		if !currentIpsec.IdentificationType.IsNull() {
+			ipsecAttrs["identification_type"] = currentIpsec.IdentificationType
+		}
+
+		// Preserve init message
+		if !currentIpsec.InitMessage.IsNull() {
+			ipsecAttrs["init_message"] = currentIpsec.InitMessage
+		}
+
+		// Preserve auth message
+		if !currentIpsec.AuthMessage.IsNull() {
+			ipsecAttrs["auth_message"] = currentIpsec.AuthMessage
+		}
+
+		// Preserve network ranges
+		if !currentIpsec.NetworkRanges.IsNull() {
+			ipsecAttrs["network_ranges"] = currentIpsec.NetworkRanges
+		}
+	}
+
+	// Create IPSec object
+	resultIpsecObj, resultDiags = types.ObjectValue(IpsecResourceAttrTypes, ipsecAttrs)
+	return resultIpsecObj, resultDiags
+}
+
+// convertHydrateIpsecSiteStateValues3 converts between the Terraform model and SDK values.
+func convertHydrateIpsecSiteStateValues3(state *SiteIpsecIkeV2, item *cato_go_sdk.EntityLookup_EntityLookup_Items) {
+	state.NativeNetworkRangeID = types.StringValue(item.Entity.ID)
+	if subnet, ok := item.HelperFields["subnet"]; ok && subnet != nil {
+		state.NativeNetworkRange = types.StringValue(subnet.(string))
+	}
+}
+
+// convertHydrateIpsecSiteStateValues4 converts between the Terraform model and SDK values.
+func convertHydrateIpsecSiteStateValues4(state *SiteIpsecIkeV2, curIint *cato_go_sdk.EntityLookup_EntityLookup_Items) {
+	state.InterfaceID = types.StringValue(curIint.Entity.ID)
+}
+
+// convertHydrateIpsecSiteStateValues5 converts between the Terraform model and SDK values.
+func convertHydrateIpsecSiteStateValues5(
+	ctx context.Context,
+	state SiteIpsecIkeV2,
+	thisSite *cato_go_sdk.AccountSnapshot_AccountSnapshot_Sites,
+) (resultSiteLocationObj basetypes.ObjectValue, resultDiags diag.Diagnostics) {
+	siteLocationAttrs := map[string]attr.Value{
+		"country_code": types.StringNull(),
+		"state_code":   types.StringNull(),
+		"timezone":     types.StringNull(),
+		"address":      types.StringNull(),
+		"city":         types.StringNull(),
+	}
+
+	if thisSite.InfoSiteSnapshot.CountryCode != nil && *thisSite.InfoSiteSnapshot.CountryCode != "" {
+		siteLocationAttrs["country_code"] = types.StringValue(*thisSite.InfoSiteSnapshot.CountryCode)
+	}
+	if thisSite.InfoSiteSnapshot.CountryStateName != nil && *thisSite.InfoSiteSnapshot.CountryStateName != "" {
+		// Map state name back to state code if needed - for now just use the state code from config
+		// The AccountSnapshot returns the full state name, not the code
+		// We'll preserve whatever is in the current state
+		if !state.SiteLocation.IsNull() {
+			var currentLocation tfmodel.SiteLocation
+			state.SiteLocation.As(ctx, &currentLocation, basetypes.ObjectAsOptions{})
+			if !currentLocation.StateCode.IsNull() {
+				siteLocationAttrs["state_code"] = currentLocation.StateCode
+			}
+		}
+	}
+	// Note: AccountSnapshot doesn't have timezone, address separately
+	// We preserve from state if they exist
+	if !state.SiteLocation.IsNull() {
+		var currentLocation tfmodel.SiteLocation
+		state.SiteLocation.As(ctx, &currentLocation, basetypes.ObjectAsOptions{})
+		if !currentLocation.Timezone.IsNull() {
+			siteLocationAttrs["timezone"] = currentLocation.Timezone
+		}
+		if !currentLocation.Address.IsNull() {
+			siteLocationAttrs["address"] = currentLocation.Address
+		}
+	}
+	if thisSite.InfoSiteSnapshot.CityName != nil && *thisSite.InfoSiteSnapshot.CityName != "" {
+		siteLocationAttrs["city"] = types.StringValue(*thisSite.InfoSiteSnapshot.CityName)
+	}
+
+	resultSiteLocationObj, resultDiags = types.ObjectValue(tfmodel.SiteLocationResourceAttrTypes, siteLocationAttrs)
+	return resultSiteLocationObj, resultDiags
 }

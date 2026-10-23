@@ -1,4 +1,3 @@
-//nolint:lll
 package atsection
 
 import (
@@ -6,18 +5,15 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	tenant "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -32,50 +28,55 @@ func NewAppTenantRestrictionSectionResource() resource.Resource {
 
 type appTenantRestrictionSectionResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *appTenantRestrictionSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *appTenantRestrictionSectionResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_app_tenant_restriction_section"
 }
 
-func (r *appTenantRestrictionSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *appTenantRestrictionSectionResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *appTenantRestrictionSectionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *appTenantRestrictionSectionResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
-func (r *appTenantRestrictionSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *appTenantRestrictionSectionResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan AppTenantRestrictionSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	input := cato_models.PolicyAddSectionInput{}
-	if !plan.At.IsNull() {
-		input.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		resp.Diagnostics.Append(plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
-		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		input.At.Ref = positionInput.Ref.ValueStringPointer()
-	}
-	if !plan.Section.IsNull() {
-		input.Section = &cato_models.PolicyAddSectionInfoInput{}
-		sectionInput := idname.Ref{}
-		resp.Diagnostics.Append(plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})...)
-		input.Section.Name = sectionInput.Name.ValueString()
-	}
+	input := convertCreateInput(ctx, plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	tflog.Debug(ctx, "Create.PolicyAppTenantRestrictionAddSection", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	policyChange, err := r.client.Catov2.PolicyAppTenantRestrictionAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.resourceAPI().PolicyAppTenantRestrictionAddSection(ctx, input, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionAddSection error", err.Error())
 		return
@@ -96,25 +97,28 @@ func (r *appTenantRestrictionSectionResource) Create(ctx context.Context, req re
 		return
 	}
 
-	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	sid := add.GetSection().GetSection().GetID()
-	plan.ID = types.StringValue(sid)
+	sid := convertCreateInput2(&plan, add)
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 	resp.State.SetAttribute(ctx, path.Root("section").AtName("id"), sid)
 }
 
-func (r *appTenantRestrictionSectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *appTenantRestrictionSectionResource) Read(
+	ctx context.Context,
+	req resource.ReadRequest,
+	resp *resource.ReadResponse,
+) {
 	var state AppTenantRestrictionSection
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	body, err := r.client.Catov2.AppTenantRestrictionPolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().AppTenantRestrictionPolicy(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API AppTenantRestrictionPolicy error", err.Error())
 		return
@@ -132,35 +136,7 @@ func (r *appTenantRestrictionSectionResource) Read(ctx context.Context, req reso
 		resp.State.RemoveResource(ctx)
 		return
 	}
-	found := false
-	for _, item := range pol.GetSections() {
-		if item == nil || item.GetSection() == nil {
-			continue
-		}
-		if item.GetSection().GetID() != section.ID.ValueString() {
-			continue
-		}
-		found = true
-		state.ID = types.StringValue(item.GetSection().GetID())
-		cur, d := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-			"id":   types.StringValue(item.GetSection().GetID()),
-			"name": types.StringValue(item.GetSection().GetName()),
-		})
-		resp.Diagnostics.Append(d...)
-		state.Section = cur
-		break
-	}
-
-	// Preserve the at block from existing state; the API does not return positioning
-	// info on read. Only default to LAST_IN_POLICY when state has nothing (e.g. import).
-	if state.At.IsNull() || state.At.IsUnknown() {
-		atObj, d := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		})
-		resp.Diagnostics.Append(d...)
-		state.At = atObj
-	}
+	found := convertReadState(&state, section, pol, &resp.Diagnostics)
 
 	if !found {
 		tflog.Warn(ctx, "app tenant restriction section not found, removing from state")
@@ -171,37 +147,23 @@ func (r *appTenantRestrictionSectionResource) Read(ctx context.Context, req reso
 }
 
 //nolint:gocyclo
-func (r *appTenantRestrictionSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *appTenantRestrictionSectionResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan AppTenantRestrictionSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	inputUpdate := cato_models.PolicyUpdateSectionInput{}
-	inputMove := cato_models.PolicyMoveSectionInput{}
-	if !plan.Section.IsNull() {
-		sectionInput := idname.Ref{}
-		resp.Diagnostics.Append(plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})...)
-		inputUpdate.ID = sectionInput.ID.ValueString()
-		inputUpdate.Section = &cato_models.PolicyUpdateSectionInfoInput{
-			Name: sectionInput.Name.ValueStringPointer(),
-		}
-	}
-	if !plan.At.IsNull() {
-		positionInput := policyrule.Position{}
-		resp.Diagnostics.Append(plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})...)
-		inputMove.To = &cato_models.PolicySectionPositionInput{
-			Position: cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString()),
-			Ref:      positionInput.Ref.ValueStringPointer(),
-		}
-		inputMove.ID = inputUpdate.ID
-	}
+	inputUpdate, inputMove := convertUpdateInput(ctx, plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	moveSection, err := r.client.Catov2.PolicyAppTenantRestrictionMoveSection(ctx, inputMove, r.client.AccountId)
+	moveSection, err := r.resourceAPI().PolicyAppTenantRestrictionMoveSection(ctx, inputMove, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionMoveSection error", err.Error())
 		return
@@ -216,7 +178,7 @@ func (r *appTenantRestrictionSectionResource) Update(ctx context.Context, req re
 		}
 	}
 
-	updateSection, err := r.client.Catov2.PolicyAppTenantRestrictionUpdateSection(ctx, inputUpdate, r.client.AccountId)
+	updateSection, err := r.resourceAPI().PolicyAppTenantRestrictionUpdateSection(ctx, inputUpdate, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionUpdateSection error", err.Error())
 		return
@@ -231,14 +193,18 @@ func (r *appTenantRestrictionSectionResource) Update(ctx context.Context, req re
 		}
 	}
 
-	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (r *appTenantRestrictionSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *appTenantRestrictionSectionResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
 	var state AppTenantRestrictionSection
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -249,12 +215,12 @@ func (r *appTenantRestrictionSectionResource) Delete(ctx context.Context, req re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	remove := cato_models.PolicyRemoveSectionInput{ID: section.ID.ValueString()}
-	if _, err := r.client.Catov2.PolicyAppTenantRestrictionRemoveSection(ctx, remove, r.client.AccountId); err != nil {
+	remove := convertDeleteInput(section)
+	if _, err := r.resourceAPI().PolicyAppTenantRestrictionRemoveSection(ctx, remove, r.client.AccountId); err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyAppTenantRestrictionRemoveSection error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.client)...)
+	resp.Diagnostics.Append(tenant.PublishAppTenantRestrictionPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

@@ -10,14 +10,19 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
 - The top-level Terraform model for a resource is defined in `model_*.go` with
   strongly-typed fields. Nested objects are mapped via framework attribute types
   (`attrTypes` maps / `ObjectAsOptions`), not plain Go structs - exception here are well defined shared types, e.g. Member in `shared/groupmembers/model_group_member.go`.
-- Read, Create, and Update implementations share state-mapping logic. For complex resources  extracted into `hydrate_<name>_state.go` (API response → Terraform state) and `hydrate_<name>_api.go` (Terraform state → API input). Simple resources may map API responses through resource-local helpers.
+- `resource_<name>.go` owns Terraform lifecycle orchestration, diagnostics, and state persistence.
+- `converters_<name>.go` owns Terraform model ↔ SDK input/response conversion, including nested values and null/unknown handling.
+- `client_<name>.go` owns the resource's narrow `ResourceClient` interface and SDK forwarding adapter. Resources accept an injected `apiClient`; normal execution uses the configured provider SDK. Keep SDK access, API lookup helpers, and retries behind this boundary.
+- Keep publish lifecycle decisions and policy-publication diagnostics in resource files; client adapters forward the SDK requests.
+- Converters must propagate diagnostics through a pointer or an explicit return value; callers must retain them in the Terraform response.
+- Keep shared conversions and policy-family helpers in their existing shared packages; pass narrow client interfaces through shared helpers that perform API calls. Preserve account scoping, caching, retries, and request shapes.
 
 ## Structure
 - `main.go` — provider entry point, wires `internal/provider.New(version)`.
 - `internal/provider/` — provider config and registration, with one resource per
   package under the existing domain folders (`account/`, `access/`, `network/`,
   `policy/`, and `resource/`). Keep each resource implementation, model, schema,
-  hydration helpers, and tests together in its package. Tests belong beside the
+  converters, client adapters, and tests together in its package. Tests belong beside the
   implementation they exercise; split files that test multiple resources.
   - Data sources and their models belong in `<domain>/data_sources/<name>/`,
     separate from resource implementation packages.
@@ -31,7 +36,8 @@ Terraform Plugin Framework and the Cato Go SDK from `github.com/catonetworks/cat
   - `datasource_*_test.go` — data source for resource implementations
   - `model_*.go` — Terraform model types
   - `schema_*.go` — resource Schema methods, schema builders, and attribute type maps
-  - `hydrate_*_api.go` / `hydrate_*_state.go` — shared conversion helpers
+  - `converters_<resource>.go` — Terraform model ↔ SDK conversion helpers
+  - `client_<resource>.go` — narrow mockable API interface, SDK adapter, and API helpers
   - `validators_<resource>.go` — all resource-specific validators and plan modifier implementations in one file
   - `validators_<resource>_test.go` — tests for those validators and plan modifiers
   - `validators/` — reusable validators and validation helpers; filenames have no `validators_` prefix
@@ -129,8 +135,8 @@ Violating this order will cause `make lint` to fail.
 1. `internal/provider/<domain>/<name>/model_<name>.go` — define the Terraform model.
    Put the resource `Schema` method and schema builders in `schema_<name>.go` in the same package.
 2. `internal/provider/<domain>/<name>/resource_<name>.go` — implement `Create`, `Read`, `Update`, `Delete`, `ImportState`.
-3. `internal/provider/<domain>/<name>/hydrate_<name>_api.go` — Terraform state → API input conversion (if non-trivial).
-4. `internal/provider/<domain>/<name>/hydrate_<name>_state.go` — API response → Terraform state conversion (if non-trivial).
+3. `internal/provider/<domain>/<name>/converters_<name>.go` — Terraform state → API input conversion (if non-trivial).
+4. `internal/provider/<domain>/<name>/client_<name>.go` — define the narrow API interface and SDK adapter; keep response-to-state conversion in `converters_<name>.go`.
 5. Register in `internal/provider/provider.go` under `Resources()`.
 6. Add `examples/resources/cato_<name>/resource.tf` — complete example using all available parameters; comment out optional ones.
 7. Add `templates/resources/<name>.md.tmpl` if custom docs are needed; otherwise `tfplugindocs` generates them automatically.

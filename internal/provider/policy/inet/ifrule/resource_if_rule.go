@@ -7,16 +7,13 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -28,22 +25,12 @@ var (
 type InternetFwRuleResource struct {
 	Client    *catoclient.Service
 	IfwClient InternetFirewallPolicyClient
+
+	apiClient ResourceClient
 }
 
 func NewInternetFwRuleResource() resource.Resource {
 	return &InternetFwRuleResource{}
-}
-
-func (r *InternetFwRuleResource) getIfwClient() InternetFirewallPolicyClient {
-	if r.IfwClient != nil {
-		return r.IfwClient
-	}
-
-	if r.Client == nil {
-		return nil
-	}
-
-	return r.Client.Catov2
 }
 
 func (r *InternetFwRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -58,7 +45,11 @@ func (r *InternetFwRuleResource) Configure(_ context.Context, req resource.Confi
 	r.Client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *InternetFwRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *InternetFwRuleResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Accept either "<rule-id>" (main-policy rule) or "<sub-policy-id>/<rule-id>"
 	// (sub-policy rule).
 	if subID, ruleID, ok := strings.Cut(req.ID, "/"); ok {
@@ -97,23 +88,14 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 	// position from config would otherwise land the rule in the main policy.
 	if !plan.SubPolicyID.IsNull() && !plan.SubPolicyID.IsUnknown() {
 		subID := plan.SubPolicyID.ValueString()
-		anchorBody, err := r.getIfwClient().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.Client.AccountId)
+		anchorBody, err := r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.Client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
 			return
 		}
-		cleanupID := ifwSubPolicyCleanupRuleID(anchorBody, subID)
-		if cleanupID == "" {
-			resp.Diagnostics.AddError(
-				"Sub-policy not found",
-				fmt.Sprintf("could not locate cleanup rule for sub_policy_id %q; verify the sub-policy exists", subID),
-			)
+		convertCreateValues(&input, subID, anchorBody, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
 			return
-		}
-		beforeRule := cato_models.PolicyRulePositionEnumBeforeRule
-		input.Create.At = &cato_models.PolicyRulePositionInput{
-			Position: &beforeRule,
-			Ref:      &cleanupID,
 		}
 	}
 
@@ -122,7 +104,7 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 	})
 
 	// Creating new rule
-	createRuleResponse, err := r.getIfwClient().PolicyInternetFirewallAddRule(ctx, input.Create, r.Client.AccountId)
+	createRuleResponse, err := r.resourceAPI().PolicyInternetFirewallAddRule(ctx, input.Create, r.Client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewallAddRule error",
@@ -149,7 +131,7 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 	// Publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
+	_, err = r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		publishDataIfEnabled,
@@ -165,7 +147,7 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 
 	// Read rule and hydrate response to state
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.getIfwClient().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
+	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
@@ -189,10 +171,7 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 	})
 
 	// Hydrate ruleInput from api response
-	ruleInputRead := HydrateIfwRuleState(ctx, plan, currentRule)
-	ruleInputRead.ID = types.StringValue(currentRule.ID)
-
-	ruleObject, diags := types.ObjectValueFrom(ctx, InternetFirewallRuleRuleAttrTypes, ruleInputRead)
+	ruleObject := internetFirewallRuleObjectFromResponse(ctx, plan, &diags, currentRule)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -208,7 +187,6 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 	resp.Diagnostics.Append(diags...)
 }
 
-//nolint:gocyclo,funlen
 func (r *InternetFwRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state InternetFirewallRule
 	diags := req.State.Get(ctx, &state)
@@ -218,7 +196,7 @@ func (r *InternetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.getIfwClient().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
+	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
@@ -228,8 +206,7 @@ func (r *InternetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	// Retrieve rule ID
-	rule := PolicyPolicyInternetFirewallPolicyRulesRule{}
-	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
+	rule := convertReadState2(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -241,11 +218,7 @@ func (r *InternetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	currentSubPolicyID := types.StringNull()
 	for _, ruleListItem := range ruleList {
 		if ruleListItem.GetRule().ID == rule.ID.ValueString() {
-			ruleExist = true
-			currentRule = ruleListItem.GetRule()
-			if sp := ruleListItem.GetSubPolicy(); sp != nil && sp.GetID() != "" {
-				currentSubPolicyID = types.StringValue(sp.GetID())
-			}
+			convertReadValues(&ruleExist, &currentRule, &currentSubPolicyID, ruleListItem)
 
 			// Need to refresh STATE
 			resp.State.SetAttribute(
@@ -279,28 +252,7 @@ func (r *InternetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	// Hard coding LAST_IN_POLICY position as the API does not return any value and
 	// hardcoding position supports the use case of bulk rule import/export
 	// getting around state changes for the position field
-	positionValue := string(cato_models.PolicySectionPositionEnumLastInPolicy)
-	refValue := types.StringNull()
-
-	if !state.At.IsNull() && !state.At.IsUnknown() {
-		statePosInput := policyrule.Position{}
-		diags = state.At.As(ctx, &statePosInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if !diags.HasError() && !statePosInput.Position.IsNull() && !statePosInput.Position.IsUnknown() {
-			positionValue = statePosInput.Position.ValueString()
-			if !statePosInput.Ref.IsNull() && !statePosInput.Ref.IsUnknown() {
-				refValue = statePosInput.Ref
-			}
-		}
-	}
-
-	curAtObj, diagstmp := types.ObjectValue(
-		policyrule.PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue(positionValue),
-			"ref":      refValue,
-		},
-	)
+	curAtObj, diagstmp := convertReadState3(ctx, state, &diags, &resp.Diagnostics)
 	diags = resp.State.SetAttribute(ctx, path.Root("at"), curAtObj)
 	resp.Diagnostics.Append(diags...)
 	resp.Diagnostics.Append(diagstmp...)
@@ -309,7 +261,7 @@ func (r *InternetFwRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 }
 
-//nolint:gocyclo,funlen
+//nolint:funlen
 func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan InternetFirewallRule
 	diags := req.Plan.Get(ctx, &plan)
@@ -325,22 +277,7 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// setting input for moving rule
-	inputMoveRule := cato_models.PolicyMoveRuleInput{}
-
-	// Setting at (to move rule)
-	if !plan.At.IsNull() {
-		inputMoveRule.To = &cato_models.PolicyRulePositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputMoveRule.To.Position = (*cato_models.PolicyRulePositionEnum)(positionInput.Position.ValueStringPointer())
-		inputMoveRule.To.Ref = positionInput.Ref.ValueStringPointer()
-	}
-
-	// // setting rule
-	ruleInput := PolicyPolicyInternetFirewallPolicyRulesRule{}
-	diags = plan.Rule.As(ctx, &ruleInput, basetypes.ObjectAsOptions{})
+	inputMoveRule, ruleInput := convertUpdateInput(ctx, plan, &diags, &resp.Diagnostics)
 	resp.Diagnostics.Append(diags...)
 
 	// settings other rule attributes
@@ -348,7 +285,7 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 	input.Update.ID = *ruleInput.ID.ValueStringPointer()
 
 	// Move rule
-	moveRule, err := r.getIfwClient().PolicyInternetFirewallMoveRule(
+	moveRule, err := r.resourceAPI().PolicyInternetFirewallMoveRule(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		inputMoveRule,
@@ -378,7 +315,7 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 	})
 
 	// Update new rule
-	updateRuleResponse, err := r.getIfwClient().PolicyInternetFirewallUpdateRule(
+	updateRuleResponse, err := r.resourceAPI().PolicyInternetFirewallUpdateRule(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		input.Update,
@@ -406,7 +343,7 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 	// Publishing new rule
 	tflog.Info(ctx, "publishing new rule")
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
+	_, err = r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		publishDataIfEnabled,
@@ -422,7 +359,7 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 
 	// Read rule and hydrate response to state
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.getIfwClient().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
+	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
@@ -445,10 +382,7 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 	})
 
 	// Hydrate ruleInput from api response
-	ruleInputRead := HydrateIfwRuleState(ctx, plan, currentRule)
-	ruleInputRead.ID = types.StringValue(currentRule.ID)
-
-	ruleObject, diags := types.ObjectValueFrom(ctx, InternetFirewallRuleRuleAttrTypes, ruleInputRead)
+	ruleObject := convertUpdateInput4(ctx, plan, &diags, currentRule)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -472,23 +406,19 @@ func (r *InternetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	// Retrieve rule ID
-	rule := PolicyPolicyInternetFirewallPolicyRulesRule{}
-	diags = state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})
+	rule := convertDeleteInput(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	removeMutations := &cato_models.InternetFirewallPolicyMutationInput{}
-	removeRule := cato_models.InternetFirewallRemoveRuleInput{
-		ID: rule.ID.ValueString(),
-	}
+	removeMutations, removeRule := convertDeleteInput2(rule)
 	tflog.Debug(ctx, "internet_fw_policy delete", map[string]interface{}{
 		"query": utils.InterfaceToJSONString(removeMutations),
 		"input": utils.InterfaceToJSONString(removeRule),
 	})
 
-	_, err := r.getIfwClient().PolicyInternetFirewallRemoveRule(ctx, removeMutations, removeRule, r.Client.AccountId)
+	_, err := r.resourceAPI().PolicyInternetFirewallRemoveRule(ctx, removeMutations, removeRule, r.Client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to connect or request the Catov2 API",
@@ -498,7 +428,7 @@ func (r *InternetFwRuleResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	publishDataIfEnabled := &cato_models.PolicyPublishRevisionInput{}
-	_, err = r.getIfwClient().PolicyInternetFirewallPublishPolicyRevision(
+	_, err = r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
 		ctx,
 		&cato_models.InternetFirewallPolicyMutationInput{},
 		publishDataIfEnabled,

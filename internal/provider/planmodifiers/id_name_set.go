@@ -2,6 +2,7 @@ package planmodifiers
 
 import (
 	"context"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -36,13 +37,24 @@ func (m idNameSetModifier) PlanModifySet(ctx context.Context, req planmodifier.S
 		return
 	}
 	elements := make([]attr.Value, 0, len(req.ConfigValue.Elements()))
+	hasUnknown := false
 	for _, element := range req.ConfigValue.Elements() {
 		value, diags, known := idNameReferenceValue(element.(types.Object), req.StateValue)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() || !known {
 			return
 		}
-		elements = append(elements, value)
+		hasUnknown = hasUnknown || idNameReferenceHasUnknown(value)
+		// A configured name and ID can resolve to the same state reference.
+		if !slices.ContainsFunc(elements, value.Equal) {
+			elements = append(elements, value)
+		}
+	}
+	// Keep the original unknown elements when a new reference is unresolved.
+	// Collapsing aliases in a partially unknown set would narrow its possible
+	// cardinality below the configured count and produce an invalid plan.
+	if hasUnknown && len(elements) < len(req.ConfigValue.Elements()) {
+		return
 	}
 
 	value, diags := types.SetValue(req.PlanValue.ElementType(ctx), elements)
@@ -50,6 +62,11 @@ func (m idNameSetModifier) PlanModifySet(ctx context.Context, req planmodifier.S
 	if !resp.Diagnostics.HasError() {
 		resp.PlanValue = value
 	}
+}
+
+func idNameReferenceHasUnknown(value types.Object) bool {
+	attrs := value.Attributes()
+	return attrs["name"].IsUnknown() || attrs["id"].IsUnknown()
 }
 
 func idNameReferenceValue(configured types.Object, state types.Set) (types.Object, diag.Diagnostics, bool) {
