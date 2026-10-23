@@ -169,7 +169,9 @@ func TestRoleCreateRetainsStateWhenReplicaFails(t *testing.T) {
 	plan := rolePlan(t, r)
 	resp := resource.CreateResponse{State: tfsdk.State{Schema: plan.Schema}}
 	r.Create(context.Background(), resource.CreateRequest{Plan: plan}, &resp)
-	require.True(t, resp.Diagnostics.HasError())
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	require.Equal(t, 1, resp.Diagnostics.WarningsCount())
+	require.Contains(t, resp.Diagnostics[0].Detail(), "replica unavailable")
 	var state Model
 	require.False(t, resp.State.Get(context.Background(), &state).HasError())
 	require.Equal(t, "123:r", state.ID.ValueString())
@@ -184,4 +186,30 @@ func TestRoleReplicaConvergence(t *testing.T) {
 	client.EXPECT().RbacRoleManagementReadRole(mock.Anything, "123", "r").Return(visible, nil).Once()
 	err := waitForRole(context.Background(), client, "123", &iam.RoleRecord{ID: "r", Name: "viewer", Permissions: []iam.PermissionRecord{}})
 	require.NoError(t, err)
+}
+
+func TestRoleUpdateRetainsStateWhenReplicaFails(t *testing.T) {
+	ctx := context.Background()
+	client := mocks.NewRoleResourceClient(t)
+	read := &sdk.RbacRoleManagementReadRole{}
+	updated := &sdk.RbacRoleManagementUpdateRole{}
+	role := `{"id":"r","name":"viewer","description":"updated","permission":[],"applicableAccountType":[]}`
+	require.NoError(t, json.Unmarshal([]byte(`{"rbac":{"__typename":"RBACQueries","roleManagement":{"__typename":"RoleManagementQueries","role":`+role+`}}}`), read))
+	require.NoError(t, json.Unmarshal([]byte(`{"rbac":{"roleManagement":{"updateRole":{"role":`+role+`}}}}`), updated))
+	client.EXPECT().RbacRoleManagementReadRole(mock.Anything, "123", "r").Return(read, nil).Once()
+	client.EXPECT().RbacRoleManagementUpdateRole(mock.Anything, "123", mock.Anything).Return(updated, nil).Once()
+	client.EXPECT().RbacRoleManagementReadRole(mock.Anything, "123", "r").Return(nil, errors.New("replica unavailable")).Once()
+	r := &roleResource{client: &catoclient.Service{AccountId: "123"}, apiClient: client}
+	plan := rolePlan(t, r)
+	require.False(t, plan.SetAttribute(ctx, path.Root("description"), "updated").HasError())
+	state := tfsdk.State(plan)
+	require.False(t, state.SetAttribute(ctx, path.Root("id"), "123:r").HasError())
+	resp := resource.UpdateResponse{State: state}
+	r.Update(ctx, resource.UpdateRequest{Plan: plan, State: state}, &resp)
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	require.Equal(t, 1, resp.Diagnostics.WarningsCount())
+	var value Model
+	require.False(t, resp.State.Get(ctx, &value).HasError())
+	require.Equal(t, "123:r", value.ID.ValueString())
+	require.Equal(t, "updated", value.Description.ValueString())
 }
