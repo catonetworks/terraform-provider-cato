@@ -33,3 +33,5 @@ report temporary role-management unavailability or `errorType: UNAVAILABLE`.
 Before retrying, it reads the role: confirmed absence completes deletion;
 lookup failures, validation/authorization errors, and deadline expiration retain
 diagnostics. Failed delete responses alone never remove the role from state.
+If the retry request reaches the deadline, its diagnostic also retains the last
+backend unavailability error and trace ID. A timeout is not evidence of deletion.

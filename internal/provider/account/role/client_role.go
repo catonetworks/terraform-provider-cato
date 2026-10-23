@@ -80,14 +80,21 @@ func waitForRole(ctx context.Context, client ResourceClient, account string, exp
 func deleteRoleWithRetry(ctx context.Context, client ResourceClient, account, id string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, roleConsistencyTimeout)
 	defer cancel()
+	var unavailableErr error
 	for {
 		response, err := client.RbacRoleManagementDeleteRole(ctx, account, m.RoleManagementDeleteRoleInput{ID: id})
 		if err == nil {
 			return response.GetRbac().GetRoleManagement().GetDeleteRole().GetID() == id, nil
 		}
+		if ctx.Err() != nil {
+			// A canceled retry must not hide the backend failure (and trace ID)
+			// that made retrying necessary.
+			return false, fmt.Errorf("waiting to delete role: %w", errors.Join(ctx.Err(), err, unavailableErr))
+		}
 		if !roleDeleteUnavailable(err) {
 			return false, err
 		}
+		unavailableErr = err
 		timer := time.NewTimer(roleConsistencyInterval)
 		select {
 		case <-ctx.Done():
