@@ -14,9 +14,8 @@ resource; principal changes replace assignments. Imports use composite account I
 
 Resource: `cato_role`. Operations: createRole, role/readRole, updateRole, deleteRole under rbac.roleManagement.
 
-All SDK calls use generated operations. The provider pins SDK commit
-`5ff6a5aac4132a1e3aa4c0a420e7d5c2c6c81918`; replace the pseudo-version with a
-released tag before merge. Role list `paging.from` is an offset; assignment
+All SDK calls use generated operations from released SDK `v1.1.2`
+(commit `dc2a6a05a3b895c3de2ee65c0f70168714dda77c`). Role list `paging.from` is an offset; assignment
 list `paging.from` is a page number. Incomplete responses produce diagnostics,
 not missing-object state removal. No policy publication is required.
 
@@ -24,7 +23,7 @@ IAM role writes delegate to CC2, while reads query the replica. Create and Updat
 retain the acknowledged mutation response in state, then poll the read API for
 up to 30 seconds at 250ms intervals for mutable fields to converge. Mutation
 requests are never retried by this consistency loop. Poll failures report a
-diagnostic while preserving the acknowledged ID/state. Ordinary refresh still
+warning while preserving the acknowledged ID/state, avoiding Terraform taint after a successful write. Ordinary refresh still
 removes a genuinely absent role.
 
 Role deletion retries for up to 30 seconds only for HTTP-200 GraphQL
