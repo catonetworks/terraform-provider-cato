@@ -16,7 +16,7 @@ func TestAccRole(t *testing.T) {
 	acc.SkipByEnv(t)
 	name := "tfacc-role-" + acctest.RandString(8)
 	config := func(description string) string {
-		return fmt.Sprintf(`
+		return acc.ProviderCfg() + fmt.Sprintf(`
 resource "cato_role" "test" {
  name = %q
  description = %q

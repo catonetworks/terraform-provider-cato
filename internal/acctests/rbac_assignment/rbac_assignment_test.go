@@ -22,7 +22,7 @@ func TestAccRBACAssignment(t *testing.T) {
 	}
 	name := "tfacc-assignment-" + acctest.RandString(8)
 	config := func(description string) string {
-		return fmt.Sprintf(`
+		return acc.ProviderCfg() + fmt.Sprintf(`
 resource "cato_role" "test" {
  name = %q
  permissions = [{resource = "Sites", action = "VIEW"}]
