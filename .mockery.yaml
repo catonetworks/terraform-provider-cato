@@ -59,3 +59,22 @@ packages:
         config:
           filename: GlobalIPRangesResourceClient.go
           structname: GlobalIPRangesResourceClient
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/account/role:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: RoleResourceClient.go
+          structname: RoleResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/account/rbacassignment:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: RBACAssignmentResourceClient.go
+          structname: RBACAssignmentResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iam:
+    interfaces:
+      RoleReader:
+        config:
+          filename: IAMRoleReader.go
+          structname: IAMRoleReader
