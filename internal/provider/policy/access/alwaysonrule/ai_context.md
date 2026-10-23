@@ -52,7 +52,9 @@ Create calls addRule once in the default draft revision (nil policy mutation
 input), checks transport errors, payload errors, mutation status and the rule ID,
 then hydrates state from the returned rule. It preserves at from the plan and
 does not publish. Empty matching criteria are sent as JSON arrays. References
-resolve by known non-empty ID first, then name; empty references produce diagnostics.
+use idname.PrepareIDNameSet per CONV-007. The shared helper resolves by known
+non-empty ID first, then name; empty references produce diagnostics. The helper
+always returns a non-nil slice, including for empty/null/unknown sets and errors.
 Nullable antiTamperMode output uses the API default OFF.
 
 The resource is registered in provider.go. Read, Update and Delete are scaffolded

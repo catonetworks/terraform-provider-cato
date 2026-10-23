@@ -42,11 +42,11 @@ func buildAlwaysOnRuleInput(ctx context.Context, plan AlwaysOnRule, diags *diag.
 			Description:          rule.Description.ValueString(),
 			Enabled:              rule.Enabled.ValueBool(),
 			Name:                 rule.Name.ValueString(),
-			DevicePostureProfile: buildAlwaysOnReferences[cato_models.DeviceProfileRefInput](ctx, rule.DevicePostureProfile, diags),
+			DevicePostureProfile: idname.PrepareIDNameSet[cato_models.DeviceProfileRefInput](ctx, rule.DevicePostureProfile, diags),
 			Platform:             convert.PrepareStrings[cato_models.OperatingSystem](ctx, rule.Platform, diags),
 			Source: &cato_models.ZtnaAlwaysOnSourceInput{
-				User:       buildAlwaysOnReferences[cato_models.UserRefInput](ctx, source.User, diags),
-				UsersGroup: buildAlwaysOnReferences[cato_models.UsersGroupRefInput](ctx, source.UsersGroup, diags),
+				User:       idname.PrepareIDNameSet[cato_models.UserRefInput](ctx, source.User, diags),
+				UsersGroup: idname.PrepareIDNameSet[cato_models.UsersGroupRefInput](ctx, source.UsersGroup, diags),
 			},
 		},
 	}
@@ -63,27 +63,6 @@ func buildAlwaysOnRuleInput(ctx context.Context, plan AlwaysOnRule, diags *diag.
 		}
 	}
 	return input
-}
-
-// buildAlwaysOnReferences resolves references by ID first, then by name, and preserves empty arrays.
-func buildAlwaysOnReferences[T ~struct {
-	By    cato_models.ObjectRefBy `json:"by"`
-	Input string                  `json:"input"`
-}](ctx context.Context, set types.Set, diags *diag.Diagnostics) []*T {
-	var refs []idname.Ref
-	diags.Append(set.ElementsAs(ctx, &refs, false)...)
-	inputs := make([]*T, 0, len(refs))
-	for _, ref := range refs {
-		switch {
-		case utils.HasValue(ref.ID) && ref.ID.ValueString() != "":
-			inputs = append(inputs, &T{By: cato_models.ObjectRefByID, Input: ref.ID.ValueString()})
-		case utils.HasValue(ref.Name) && ref.Name.ValueString() != "":
-			inputs = append(inputs, &T{By: cato_models.ObjectRefByName, Input: ref.Name.ValueString()})
-		default:
-			diags.AddError("Invalid Always On rule reference", "Each reference must contain a known, non-empty ID or name.")
-		}
-	}
-	return inputs
 }
 
 func parseAlwaysOnRule(ctx context.Context,

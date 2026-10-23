@@ -56,39 +56,6 @@ func TestBuildAlwaysOnPositionAndEmptyArrays(t *testing.T) {
 	}
 }
 
-func TestBuildAlwaysOnReferences(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct {
-		name              string
-		id, referenceName types.String
-		by                cato_models.ObjectRefBy
-		input             string
-		wantError         bool
-	}{
-		{"ID preferred", types.StringValue("user-1"), types.StringValue("Alice"), cato_models.ObjectRefByID, "user-1", false},
-		{"unknown ID", types.StringUnknown(), types.StringValue("Alice"), cato_models.ObjectRefByName, "Alice", false},
-		{"null ID", types.StringNull(), types.StringValue("Alice"), cato_models.ObjectRefByName, "Alice", false},
-		{"empty ID", types.StringValue(""), types.StringValue("Alice"), cato_models.ObjectRefByName, "Alice", false},
-		{"unknown name", types.StringValue("user-1"), types.StringUnknown(), cato_models.ObjectRefByID, "user-1", false},
-		{"missing reference", types.StringNull(), types.StringNull(), "", "", true},
-		{"unknown reference", types.StringUnknown(), types.StringUnknown(), "", "", true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			ref := types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{
-				"id": tc.id, "name": tc.referenceName,
-			})
-			set := types.SetValueMust(idname.RefObjectType, []attr.Value{ref})
-			var diags diag.Diagnostics
-			input := buildAlwaysOnReferences[cato_models.UserRefInput](context.Background(), set, &diags)
-			require.Equal(t, tc.wantError, diags.HasError(), "%v", diags)
-			if !tc.wantError {
-				require.Equal(t, []*cato_models.UserRefInput{{By: tc.by, Input: tc.input}}, input)
-			}
-		})
-	}
-}
-
 func TestBuildAlwaysOnRuleAllReferenceCollections(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

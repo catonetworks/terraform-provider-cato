@@ -113,15 +113,17 @@ func PrepareIDName[T idRefInputs](ctx context.Context, tfObj types.Object, diags
 	return &T{By: refBy, Input: refInput}
 }
 
+// PrepareIDNameSet always returns a non-nil slice, including for null/unknown sets and conversion errors.
 func PrepareIDNameSet[T idRefInputs](ctx context.Context, tfSet types.Set, diags *diag.Diagnostics) (sdkList []*T) {
 	if !utils.HasValue(tfSet) {
-		return nil
+		return []*T{}
 	}
 
+	sdkList = make([]*T, 0, len(tfSet.Elements()))
 	for _, idName := range tfSet.Elements() {
 		refBy, refInput, isSet := prepareIDName(ctx, idName.(types.Object), diags)
 		if diags.HasError() {
-			return nil
+			return []*T{}
 		}
 		if isSet {
 			sdkList = append(sdkList, &T{By: refBy, Input: refInput})
@@ -135,7 +137,11 @@ func PrepareIDNameSet[T idRefInputs](ctx context.Context, tfSet types.Set, diags
 func prepareIDName(ctx context.Context, idName types.Object, diags *diag.Diagnostics,
 ) (by cato_models.ObjectRefBy, input string, isSet bool) {
 	var tfIDName Ref
-	if !utils.HasValue(idName) {
+	if idName.IsNull() {
+		return by, input, false
+	}
+	if idName.IsUnknown() {
+		diags.AddError("Invalid ID/name reference", "Each reference must contain a known, non-empty ID or name.")
 		return by, input, false
 	}
 	if utils.CheckErr(diags, idName.As(ctx, &tfIDName, basetypes.ObjectAsOptions{})) {
@@ -143,14 +149,15 @@ func prepareIDName(ctx context.Context, idName types.Object, diags *diag.Diagnos
 	}
 
 	// ref by ID
-	if !tfIDName.ID.IsUnknown() {
+	if utils.HasValue(tfIDName.ID) && tfIDName.ID.ValueString() != "" {
 		return cato_models.ObjectRefByID, tfIDName.ID.ValueString(), true
 	}
 
 	// ref by Name
-	if !tfIDName.Name.IsUnknown() {
+	if utils.HasValue(tfIDName.Name) && tfIDName.Name.ValueString() != "" {
 		return cato_models.ObjectRefByName, tfIDName.Name.ValueString(), true
 	}
 
+	diags.AddError("Invalid ID/name reference", "Each reference must contain a known, non-empty ID or name.")
 	return by, input, false
 }
