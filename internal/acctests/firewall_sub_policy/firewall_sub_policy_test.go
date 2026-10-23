@@ -153,6 +153,7 @@ func TestAccLfSubPolicy(t *testing.T) {
 					resource.TestCheckResourceAttr(subPolicy, "scope.enabled", "true"),
 					resource.TestCheckResourceAttr(subPolicy, "scope.direction", "BOTH"),
 					resource.TestCheckResourceAttr(subPolicy, "scope.source.ip.0", "10.203.0.1"),
+					checkLfEmptyReferenceSets(subPolicy),
 					resource.TestCheckResourceAttrSet(subPolicy, "scope.id"),
 					resource.TestCheckResourceAttr(subPolicy, "scope.name", name),
 					resource.TestCheckResourceAttr(subPolicy, "scope.description", "LAN sub-policy acceptance test"),
@@ -169,6 +170,7 @@ func TestAccLfSubPolicy(t *testing.T) {
 				Config: lfSubPolicyConfig(name, "10.203.0.3"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(subPolicy, "scope.source.ip.0", "10.203.0.3"),
+					checkLfEmptyReferenceSets(subPolicy),
 					checkResourceAttrUnchanged(subPolicy, "id", &originalID),
 				),
 			},
@@ -181,6 +183,21 @@ func TestAccLfSubPolicy(t *testing.T) {
 			},
 		},
 	})
+}
+
+func checkLfEmptyReferenceSets(resourceName string) resource.TestCheckFunc {
+	checks := []resource.TestCheckFunc{
+		resource.TestCheckResourceAttr(resourceName, "scope.site.site.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "scope.site.group.#", "0"),
+	}
+	for _, direction := range []string{"source", "destination"} {
+		for _, selector := range []string{
+			"floating_subnet", "global_ip_range", "group", "host", "network_interface", "site_network_subnet", "system_group",
+		} {
+			checks = append(checks, resource.TestCheckResourceAttr(resourceName, "scope."+direction+"."+selector+".#", "0"))
+		}
+	}
+	return resource.ComposeAggregateTestCheckFunc(checks...)
 }
 
 func captureResourceAttr(resourceName, key string, target *string) resource.TestCheckFunc {

@@ -1,3 +1,5 @@
+# Omitted optional ID/name reference sets default to [] when their parent object is configured.
+# The applications set remains required.
 locals {
   // list of private access policy rules, presumably read from an external JSON file
   json_file_contents_example = <<EOF

@@ -13,6 +13,8 @@ The `cato_private_access_rule` resource contains the configuration parameters fo
 ## Example Usage
 
 ```terraform
+# Omitted optional ID/name reference sets default to [] when their parent object is configured.
+# The applications set remains required.
 locals {
   // list of private access policy rules, presumably read from an external JSON file
   json_file_contents_example = <<EOF
@@ -147,9 +149,9 @@ resource "cato_private_access_rule_bulk" "this" {
 
 - `active_period` (Attributes) Time period during which the rule is active (see [below for nested schema](#nestedatt--active_period))
 - `connection_origins` (Set of String) Origin of the connection
-- `countries` (Attributes Set) List of countries (see [below for nested schema](#nestedatt--countries))
+- `countries` (Attributes Set) List of countries. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--countries))
 - `description` (String) Rule description
-- `devices` (Attributes Set) List of devices (see [below for nested schema](#nestedatt--devices))
+- `devices` (Attributes Set) List of devices. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--devices))
 - `platforms` (Set of String) Platforms, operating systems
 - `schedule` (Attributes) Schedule (see [below for nested schema](#nestedatt--schedule))
 - `tracking` (Attributes) Rule tracking (see [below for nested schema](#nestedatt--tracking))
@@ -173,8 +175,8 @@ Optional:
 
 Optional:
 
-- `user_groups` (Attributes Set) User groups (see [below for nested schema](#nestedatt--source--user_groups))
-- `users` (Attributes Set) Users (see [below for nested schema](#nestedatt--source--users))
+- `user_groups` (Attributes Set) User groups. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--source--user_groups))
+- `users` (Attributes Set) Users. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--source--users))
 
 <a id="nestedatt--source--user_groups"></a>
 ### Nested Schema for `source.user_groups`
@@ -274,9 +276,9 @@ Required:
 
 Optional:
 
-- `mailing_list` (Attributes Set) Mailing list name or id (see [below for nested schema](#nestedatt--tracking--alert--mailing_list))
-- `subscription_group` (Attributes Set) Subscription group name or id (see [below for nested schema](#nestedatt--tracking--alert--subscription_group))
-- `webhook` (Attributes Set) Webhook name or id (see [below for nested schema](#nestedatt--tracking--alert--webhook))
+- `mailing_list` (Attributes Set) Mailing list name or id. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--tracking--alert--mailing_list))
+- `subscription_group` (Attributes Set) Subscription group name or id. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--tracking--alert--subscription_group))
+- `webhook` (Attributes Set) Webhook name or id. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--tracking--alert--webhook))
 
 <a id="nestedatt--tracking--alert--mailing_list"></a>
 ### Nested Schema for `tracking.alert.mailing_list`

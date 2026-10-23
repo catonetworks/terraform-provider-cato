@@ -2,6 +2,7 @@ package lfsubpolicy
 
 import (
 	"context"
+	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -10,7 +11,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/socketlannetworkrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 // Schema defines the Terraform schema for a LAN Firewall sub-policy.
@@ -91,5 +94,26 @@ func (r *lfSubPolicyResource) policyScopeSchema() schema.SingleNestedAttribute {
 	nat.Attributes["nat_type"] = natType
 	scopeAttr.Attributes["nat"] = nat
 
-	return scopeAttr
+	return schemaScopeReferenceDefaults(scopeAttr)
+}
+
+// schemaScopeReferenceDefaults aligns the sub-policy plan with its empty API reference collections.
+func schemaScopeReferenceDefaults(scope schema.SingleNestedAttribute) schema.SingleNestedAttribute {
+	for _, field := range []string{"site", "source", "destination"} {
+		nested := scope.Attributes[field].(schema.SingleNestedAttribute)
+		for name, attribute := range nested.Attributes {
+			references, ok := attribute.(schema.SetNestedAttribute)
+			if !ok {
+				continue
+			}
+			references.Description = strings.TrimSuffix(references.Description, ".") + ". Defaults to an empty set when omitted."
+			references.PlanModifiers = append(
+				[]planmodifier.Set{planmodifiers.NullSetModifier(idname.RefObjectType)},
+				references.PlanModifiers...,
+			)
+			nested.Attributes[name] = references
+		}
+		scope.Attributes[field] = nested
+	}
+	return scope
 }
