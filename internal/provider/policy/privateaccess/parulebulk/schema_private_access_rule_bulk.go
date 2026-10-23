@@ -9,8 +9,7 @@ import (
 
 func (r *privAccessRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages ordering and publishing private access policy rules. " +
-			"Configured rules are placed first in the requested order; other rules retain their relative order.",
+		Description: "Manages ordering and publishng private access policy rules.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "ID of the bulk, always set to 0",
