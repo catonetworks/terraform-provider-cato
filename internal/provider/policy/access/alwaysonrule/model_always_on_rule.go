@@ -12,26 +12,26 @@ import (
 // The at object reuses policyrule.Position for GraphQL PolicyRulePositionInput.
 type AlwaysOnRule struct {
 	At   types.Object `tfsdk:"at"`   // policyrule.Position
-	Rule types.Object `tfsdk:"rule"` // AlwaysOnRuleData
+	Rule types.Object `tfsdk:"rule"` // Data
 }
 
 // AlwaysOnRuleAttrTypes defines the top-level resource attribute types.
 var AlwaysOnRuleAttrTypes = map[string]attr.Type{
 	"at":   policyrule.PositionObjectType,
-	"rule": AlwaysOnRuleDataObjectType,
+	"rule": DataObjectType,
 }
 
 // AlwaysOnRuleObjectType defines the Terraform object type for AlwaysOnRule.
 var AlwaysOnRuleObjectType = types.ObjectType{AttrTypes: AlwaysOnRuleAttrTypes}
 
-// AlwaysOnRuleData represents the nested rule configuration and computed state.
+// Data represents the nested rule configuration and computed state.
 // Device posture profiles reuse the shared idname.Ref model for API object references.
-type AlwaysOnRuleData struct {
+type Data struct {
 	Action               types.String `tfsdk:"action"`
 	AllowFailOpen        types.Bool   `tfsdk:"allow_fail_open"`
 	AllowUserBypass      types.Bool   `tfsdk:"allow_user_bypass"`
 	AntiTamperMode       types.String `tfsdk:"anti_tamper_mode"`
-	BypassDuration       types.Object `tfsdk:"bypass_duration"` // AlwaysOnRuleBypassDuration
+	BypassDuration       types.Object `tfsdk:"bypass_duration"` // BypassDuration
 	Description          types.String `tfsdk:"description"`
 	DevicePostureProfile types.Set    `tfsdk:"device_posture_profile"` // []idname.Ref
 	Enabled              types.Bool   `tfsdk:"enabled"`
@@ -39,17 +39,17 @@ type AlwaysOnRuleData struct {
 	Index                types.Int64  `tfsdk:"index"`
 	Name                 types.String `tfsdk:"name"`
 	Platform             types.Set    `tfsdk:"platform"` // []types.String
-	Section              types.Object `tfsdk:"section"`  // AlwaysOnRuleSection
-	Source               types.Object `tfsdk:"source"`   // AlwaysOnRuleSource
+	Section              types.Object `tfsdk:"section"`  // Section
+	Source               types.Object `tfsdk:"source"`   // Source
 }
 
-// AlwaysOnRuleDataAttrTypes defines the nested rule attribute types.
-var AlwaysOnRuleDataAttrTypes = map[string]attr.Type{
+// DataAttrTypes defines the nested rule attribute types.
+var DataAttrTypes = map[string]attr.Type{
 	"action":                 types.StringType,
 	"allow_fail_open":        types.BoolType,
 	"allow_user_bypass":      types.BoolType,
 	"anti_tamper_mode":       types.StringType,
-	"bypass_duration":        AlwaysOnRuleBypassDurationObjectType,
+	"bypass_duration":        BypassDurationObjectType,
 	"description":            types.StringType,
 	"device_posture_profile": types.SetType{ElemType: idname.RefObjectType},
 	"enabled":                types.BoolType,
@@ -57,56 +57,56 @@ var AlwaysOnRuleDataAttrTypes = map[string]attr.Type{
 	"index":                  types.Int64Type,
 	"name":                   types.StringType,
 	"platform":               types.SetType{ElemType: types.StringType},
-	"section":                AlwaysOnRuleSectionObjectType,
-	"source":                 AlwaysOnRuleSourceObjectType,
+	"section":                SectionObjectType,
+	"source":                 SourceObjectType,
 }
 
-// AlwaysOnRuleDataObjectType defines the Terraform object type for AlwaysOnRuleData.
-var AlwaysOnRuleDataObjectType = types.ObjectType{AttrTypes: AlwaysOnRuleDataAttrTypes}
+// DataObjectType defines the Terraform object type for Data.
+var DataObjectType = types.ObjectType{AttrTypes: DataAttrTypes}
 
-// AlwaysOnRuleBypassDuration represents the disconnection allowed when bypassing Always On.
-type AlwaysOnRuleBypassDuration struct {
+// BypassDuration represents the disconnection allowed when bypassing Always On.
+type BypassDuration struct {
 	Time types.Int64  `tfsdk:"time"`
 	Unit types.String `tfsdk:"unit"`
 }
 
-// AlwaysOnRuleBypassDurationAttrTypes defines the bypass duration attribute types.
-var AlwaysOnRuleBypassDurationAttrTypes = map[string]attr.Type{
+// BypassDurationAttrTypes defines the bypass duration attribute types.
+var BypassDurationAttrTypes = map[string]attr.Type{
 	"time": types.Int64Type,
 	"unit": types.StringType,
 }
 
-// AlwaysOnRuleBypassDurationObjectType defines the Terraform object type for AlwaysOnRuleBypassDuration.
-var AlwaysOnRuleBypassDurationObjectType = types.ObjectType{AttrTypes: AlwaysOnRuleBypassDurationAttrTypes}
+// BypassDurationObjectType defines the Terraform object type for BypassDuration.
+var BypassDurationObjectType = types.ObjectType{AttrTypes: BypassDurationAttrTypes}
 
-// AlwaysOnRuleSection represents the policy section returned for the rule.
+// Section represents the policy section returned for the rule.
 // It maps GraphQL PolicySectionInfo, which is distinct from an ID/name object reference.
-type AlwaysOnRuleSection struct {
+type Section struct {
 	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
 
-// AlwaysOnRuleSectionAttrTypes defines the policy section attribute types.
-var AlwaysOnRuleSectionAttrTypes = map[string]attr.Type{
+// SectionAttrTypes defines the policy section attribute types.
+var SectionAttrTypes = map[string]attr.Type{
 	"id":   types.StringType,
 	"name": types.StringType,
 }
 
-// AlwaysOnRuleSectionObjectType defines the Terraform object type for AlwaysOnRuleSection.
-var AlwaysOnRuleSectionObjectType = types.ObjectType{AttrTypes: AlwaysOnRuleSectionAttrTypes}
+// SectionObjectType defines the Terraform object type for Section.
+var SectionObjectType = types.ObjectType{AttrTypes: SectionAttrTypes}
 
-// AlwaysOnRuleSource represents the users and user groups matched by the rule.
+// Source represents the users and user groups matched by the rule.
 // Both collections reuse the shared idname.Ref model for API object references.
-type AlwaysOnRuleSource struct {
+type Source struct {
 	User       types.Set `tfsdk:"user"`        // []idname.Ref
 	UsersGroup types.Set `tfsdk:"users_group"` // []idname.Ref
 }
 
-// AlwaysOnRuleSourceAttrTypes defines the source matching criteria attribute types.
-var AlwaysOnRuleSourceAttrTypes = map[string]attr.Type{
+// SourceAttrTypes defines the source matching criteria attribute types.
+var SourceAttrTypes = map[string]attr.Type{
 	"user":        types.SetType{ElemType: idname.RefObjectType},
 	"users_group": types.SetType{ElemType: idname.RefObjectType},
 }
 
-// AlwaysOnRuleSourceObjectType defines the Terraform object type for AlwaysOnRuleSource.
-var AlwaysOnRuleSourceObjectType = types.ObjectType{AttrTypes: AlwaysOnRuleSourceAttrTypes}
+// SourceObjectType defines the Terraform object type for Source.
+var SourceObjectType = types.ObjectType{AttrTypes: SourceAttrTypes}
