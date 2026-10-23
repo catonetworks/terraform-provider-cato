@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -31,7 +32,10 @@ func ParseNameIDList[T any](ctx context.Context, items []T, attrName string) typ
 	for i, item := range items {
 		obj := ParseNameID(ctx, item, attrName)
 		if !obj.IsNull() && !obj.IsUnknown() { // Include only non-null/unknown values, adjust as needed
-			nameIDValues = append(nameIDValues, obj)
+			// API lists may repeat references; Terraform sets require unique values.
+			if !slices.ContainsFunc(nameIDValues, obj.Equal) {
+				nameIDValues = append(nameIDValues, obj)
+			}
 		} else {
 			tflog.Debug(ctx, "ParseNameIDList() - skipping null/unknown item at index "+fmt.Sprintf("%d", i))
 		}
@@ -66,7 +70,10 @@ func ParseNameIDListOrEmptySet[T any](ctx context.Context, items []T, attrName s
 	for i, item := range items {
 		obj := ParseNameID(ctx, item, attrName)
 		if !obj.IsNull() && !obj.IsUnknown() { // Include only non-null/unknown values, adjust as needed
-			nameIDValues = append(nameIDValues, obj)
+			// API lists may repeat references; Terraform sets require unique values.
+			if !slices.ContainsFunc(nameIDValues, obj.Equal) {
+				nameIDValues = append(nameIDValues, obj)
+			}
 		} else {
 			tflog.Debug(ctx, "ParseNameIDList() - skipping null/unknown item at index "+fmt.Sprintf("%d", i))
 		}
