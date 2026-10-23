@@ -5,17 +5,12 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -30,13 +25,23 @@ func NewTLSInspectionSectionResource() resource.Resource {
 
 type tlsInspectionSectionResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *tlsInspectionSectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *tlsInspectionSectionResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_tls_section"
 }
 
-func (r *tlsInspectionSectionResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *tlsInspectionSectionResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -53,7 +58,11 @@ func (r *tlsInspectionSectionResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
-func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *tlsInspectionSectionResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan InspectionSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -61,32 +70,12 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	input := cato_models.PolicyAddSectionInput{}
-
-	// setting at
-	if !plan.At.IsNull() {
-		input.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		input.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		input.At.Ref = positionInput.Ref.ValueStringPointer()
-	}
-
-	// setting section
-	if !plan.Section.IsNull() {
-		input.Section = &cato_models.PolicyAddSectionInfoInput{}
-		sectionInput := idname.Ref{}
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		input.Section.Name = sectionInput.Name.ValueString()
-	}
+	input := convertCreateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Create.PolicyTLSInspectAddSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	policyChange, err := r.client.Catov2.PolicyTLSInspectAddSection(ctx, input, r.client.AccountId)
+	policyChange, err := r.resourceAPI().PolicyTLSInspectAddSection(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.PolicyTLSInspectAddSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyChange),
 	})
@@ -104,7 +93,7 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 
 	// publishing new section
 	tflog.Info(ctx, "publishing new section")
-	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",
@@ -113,7 +102,7 @@ func (r *tlsInspectionSectionResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	plan.ID = types.StringValue(policyChange.GetPolicy().GetTLSInspect().GetAddSection().Section.GetSection().ID)
+	convertCreateInput2(&plan, policyChange)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -136,7 +125,7 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	body, err := r.client.Catov2.Tlsinspectpolicy(ctx, r.client.AccountId)
+	body, err := r.resourceAPI().Tlsinspectpolicy(ctx, r.client.AccountId)
 	tflog.Debug(ctx, "Read.Tlsinspectpolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -150,47 +139,16 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 	}
 
 	// retrieve section ID
-	section := idname.Ref{}
-	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	section := convertReadState(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	sectionList := body.GetPolicy().TLSInspect.Policy.GetSections()
-	sectionExist := false
-	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.ID.ValueString() {
-			continue
-		}
-
-		sectionExist = true
-		state.ID = types.StringValue(sectionListItem.GetSection().ID)
-		curSectionObj, diagstmp := types.ObjectValue(
-			idname.RefAttrTypes,
-			map[string]attr.Value{
-				"id":   types.StringValue(sectionListItem.GetSection().ID),
-				"name": types.StringValue(sectionListItem.GetSection().GetName()),
-			},
-		)
-		resp.Diagnostics.Append(diagstmp...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.Section = curSectionObj
+	sectionExist, diagstmp := convertReadState2(&state, body, section, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-
-	// Hard coding LAST_IN_POLICY position as the API does not return any value and
-	// hardcoding position supports the use case of bulk rule import/export
-	// getting around state changes for the position field
-	curAtObj, diagstmp := types.ObjectValue(
-		policyrule.PositionAttrTypes,
-		map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		},
-	)
-	state.At = curAtObj
 	resp.Diagnostics.Append(diagstmp...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -210,8 +168,11 @@ func (r *tlsInspectionSectionResource) Read(ctx context.Context, req resource.Re
 	}
 }
 
-//nolint:funlen
-func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *tlsInspectionSectionResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan InspectionSection
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -219,36 +180,12 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	inputUpdateSection := cato_models.PolicyUpdateSectionInput{}
-	inputMoveSection := cato_models.PolicyMoveSectionInput{}
-
-	// setting section
-	if !plan.Section.IsNull() {
-		inputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
-		sectionInput := idname.Ref{}
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		inputUpdateSection.ID = sectionInput.ID.ValueString()
-	}
-
-	// setting at
-	if !plan.At.IsNull() {
-		inputMoveSection.To = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-
-		inputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		inputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
-		inputMoveSection.ID = inputUpdateSection.ID
-	}
+	inputUpdateSection, inputMoveSection := convertUpdateInput(ctx, plan, &diags, &resp.Diagnostics)
 
 	tflog.Debug(ctx, "Update.PolicyTLSInspectMoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputMoveSection),
 	})
-	moveSection, err := r.client.Catov2.PolicyTLSInspectMoveSection(ctx, inputMoveSection, r.client.AccountId)
+	moveSection, err := r.resourceAPI().PolicyTLSInspectMoveSection(ctx, inputMoveSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyTLSInspectMoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(moveSection),
 	})
@@ -274,7 +211,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 	tflog.Debug(ctx, "Update.PolicyTLSInspectUpdateSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(inputUpdateSection),
 	})
-	updateSection, err := r.client.Catov2.PolicyTLSInspectUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
+	updateSection, err := r.resourceAPI().PolicyTLSInspectUpdateSection(ctx, inputUpdateSection, r.client.AccountId)
 	tflog.Debug(ctx, "Update.PolicyTLSInspectUpdateSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateSection),
 	})
@@ -299,7 +236,7 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 
 	// publishing updated section
 	tflog.Info(ctx, "publishing updated section")
-	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyTLSInspectPublishPolicyRevision error",
@@ -315,7 +252,11 @@ func (r *tlsInspectionSectionResource) Update(ctx context.Context, req resource.
 	}
 }
 
-func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *tlsInspectionSectionResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
 	var state InspectionSection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -324,21 +265,18 @@ func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.
 	}
 
 	// retrieve section ID
-	section := idname.Ref{}
-	diags = state.Section.As(ctx, &section, basetypes.ObjectAsOptions{})
+	section := convertDeleteInput(ctx, state, &diags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	removeSection := cato_models.PolicyRemoveSectionInput{
-		ID: section.ID.ValueString(),
-	}
+	removeSection := convertDeleteInput2(section)
 
 	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(removeSection),
 	})
-	policyTLSInspectRemoveSectionResponse, err := r.client.Catov2.PolicyTLSInspectRemoveSection(ctx, removeSection, r.client.AccountId)
+	policyTLSInspectRemoveSectionResponse, err := r.resourceAPI().PolicyTLSInspectRemoveSection(ctx, removeSection, r.client.AccountId)
 	tflog.Debug(ctx, "Delete.PolicyTLSInspectRemoveSection.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(policyTLSInspectRemoveSectionResponse),
 	})
@@ -350,7 +288,7 @@ func (r *tlsInspectionSectionResource) Delete(ctx context.Context, req resource.
 		return
 	}
 
-	_, err = r.client.Catov2.PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyTLSInspectPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Delete/PolicyTLSInspectPublishPolicyRevision error",

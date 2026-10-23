@@ -1,4 +1,3 @@
-//nolint:lll
 package wnwindex
 
 import (
@@ -7,16 +6,15 @@ import (
 	"sort"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/spf13/cast"
+	attr "github.com/hashicorp/terraform-plugin-framework/attr"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
+	cast "github.com/spf13/cast"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -31,13 +29,23 @@ func NewWanNetworkRulesIndexResource() resource.Resource {
 
 type wanNetworkRulesIndexResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *wanNetworkRulesIndexResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *wanNetworkRulesIndexResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_bulk_wnw_move_rule"
 }
 
-func (r *wanNetworkRulesIndexResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *wanNetworkRulesIndexResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -45,12 +53,11 @@ func (r *wanNetworkRulesIndexResource) Configure(_ context.Context, req resource
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-// func (r *wanNetworkRulesIndexResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-// 	// Retrieve import ID and save to id attribute
-// 	// resource.ImportStatePassthroughID(ctx, path.Root("ID"), req, resp)
-// }
-
-func (r *wanNetworkRulesIndexResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *wanNetworkRulesIndexResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan WanNetworkRulesIndex
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -97,7 +104,11 @@ func (r *wanNetworkRulesIndexResource) Read(ctx context.Context, req resource.Re
 	}
 }
 
-func (r *wanNetworkRulesIndexResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *wanNetworkRulesIndexResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan WanNetworkRulesIndex
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -124,7 +135,11 @@ func (r *wanNetworkRulesIndexResource) Update(ctx context.Context, req resource.
 	}
 }
 
-func (r *wanNetworkRulesIndexResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *wanNetworkRulesIndexResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
 	var state WanNetworkRulesIndex
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -144,7 +159,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 	ruleObjectMap := make(map[string]attr.Value)
 
 	if plan.SectionToStartAfterID.ValueString() != "" {
-		result, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+		result, err := r.resourceAPI().WanNetworkPolicy(ctx, r.client.AccountId)
 		tflog.Debug(ctx, "Read.WanNetworkPolicy.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -174,7 +189,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 
 	// maps section_name -> section_id
 	sectionIDList := make(map[string]string)
-	sectionIndexAPIData, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+	sectionIndexAPIData, err := r.resourceAPI().WanNetworkPolicy(ctx, r.client.AccountId)
 	tflog.Warn(ctx, "Read.WanNetworkPolicyInCreate.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(sectionIndexAPIData),
 	})
@@ -187,25 +202,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 	}
 
 	// for easier processing, a map of section name to ID is created
-	for _, v := range sectionIndexAPIData.Policy.WanNetwork.Policy.Sections {
-		sectionIDList[v.Section.Name] = v.Section.ID
-	}
-
-	sectionListFromPlan := make([]WanNetworkRulesSectionDataIndex, 0)
-
-	// Convert map to slice for processing
-	sectionDataMapElements := plan.SectionData.Elements()
-	for _, sectionValue := range sectionDataMapElements {
-		sectionObject := sectionValue.(types.Object)
-		var sectionSourceRuleIndex WanNetworkRulesSectionItemIndex
-		diags = append(diags, sectionObject.As(ctx, &sectionSourceRuleIndex, basetypes.ObjectAsOptions{})...)
-
-		sectionDataTmp := WanNetworkRulesSectionDataIndex{
-			SectionIndex: sectionSourceRuleIndex.SectionIndex.ValueInt64(),
-			SectionName:  sectionSourceRuleIndex.SectionName.ValueString(),
-		}
-		sectionListFromPlan = append(sectionListFromPlan, sectionDataTmp)
-	}
+	sectionListFromPlan := convertMoveWanNetworkRulesAndSectionsValues(ctx, plan, &diags, sectionIDList, sectionIndexAPIData)
 
 	// Sort sections by SectionIndex to ensure proper ordering
 	sort.Slice(sectionListFromPlan, func(i, j int) bool {
@@ -222,30 +219,13 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 
 	// create the sections from the list provided following the section ID provided in firstSectionId
 	for _, workingSectionName := range sectionListFromPlan {
-		listOfSectionNames = append(listOfSectionNames, workingSectionName.SectionName)
-		policyMoveSectionInputInt := cato_models.PolicyMoveSectionInput{
-			ID: sectionIDList[workingSectionName.SectionName],
-		}
-
-		// For the first element, check for sectionToStartAfterId, if not, start at last LAST_IN_POLICY
-		// initializing currentSectionId to the SectionToStartAfterID otherwise set to id of first section for next in list
-		if currentSectionID == "" {
-			if plan.SectionToStartAfterID.ValueString() != "" {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Ref:      plan.SectionToStartAfterID.ValueStringPointer(),
-					Position: "AFTER_SECTION",
-				}
-			} else {
-				policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-					Position: "LAST_IN_POLICY",
-				}
-			}
-		} else {
-			policyMoveSectionInputInt.To = &cato_models.PolicySectionPositionInput{
-				Ref:      &currentSectionID,
-				Position: "AFTER_SECTION",
-			}
-		}
+		policyMoveSectionInputInt := convertMoveWanNetworkRulesAndSectionsValues3(
+			plan,
+			&listOfSectionNames,
+			sectionIDList,
+			&currentSectionID,
+			workingSectionName,
+		)
 		tflog.Warn(ctx, "Write.policyMoveSectionInputInt.response", map[string]interface{}{
 			"sectionToStartAfterId":          plan.SectionToStartAfterID.ValueString(),
 			"moveFrom":                       workingSectionName.SectionName,
@@ -255,7 +235,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 			"sectionIdList[workingSectionName.SectionName]": sectionIDList[workingSectionName.SectionName],
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
-		sectionMoveAPIData, err := r.client.Catov2.PolicyWanNetworkMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
+		sectionMoveAPIData, err := r.resourceAPI().PolicyWanNetworkMoveSection(ctx, policyMoveSectionInputInt, r.client.AccountId)
 		// Check for API errors safely with nil checks
 		if sectionMoveAPIData != nil && sectionMoveAPIData.GetPolicy() != nil &&
 			sectionMoveAPIData.GetPolicy().WanNetwork != nil &&
@@ -283,19 +263,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 		}
 
-		sectionIndexStateData, diagsSection := types.ObjectValue(
-			WanNetworkSectionIndexResourceAttrTypes,
-			map[string]attr.Value{
-				"id":            types.StringValue(sectionIDList[workingSectionName.SectionName]),
-				"section_name":  types.StringValue(workingSectionName.SectionName),
-				"section_index": types.Int64Value(workingSectionName.SectionIndex),
-			},
-		)
-		diags = append(diags, diagsSection...)
-
-		sectionObjectMap[workingSectionName.SectionName] = sectionIndexStateData
-
-		currentSectionID = sectionIDList[workingSectionName.SectionName]
+		convertMoveWanNetworkRulesAndSectionsValues4(&diags, sectionIDList, &currentSectionID, sectionObjectMap, workingSectionName)
 	}
 
 	// now that the sections are ordered properly, move the rules to the correct locations
@@ -306,18 +274,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 		// Convert map to slice for processing
 		ruleDataMapElements := plan.RuleData.Elements()
 		for _, ruleValue := range ruleDataMapElements {
-			ruleObject := ruleValue.(types.Object)
-			var planSourceRuleIndex WanNetworkRulesRuleItemIndex
-			diags = append(diags, ruleObject.As(ctx, &planSourceRuleIndex, basetypes.ObjectAsOptions{})...)
-
-			rulenDataTmp := WanNetworkRulesRuleDataIndex{
-				IndexInSection: planSourceRuleIndex.IndexInSection.ValueInt64(),
-				RuleName:       planSourceRuleIndex.RuleName.ValueString(),
-				SectionName:    planSourceRuleIndex.SectionName.ValueString(),
-				Description:    planSourceRuleIndex.Description.ValueString(),
-				Enabled:        planSourceRuleIndex.Enabled.ValueBool(),
-			}
-			ruleListFromPlan = append(ruleListFromPlan, rulenDataTmp)
+			rulenDataTmp := convertMoveWanNetworkRulesAndSectionsValues6(ctx, &diags, &ruleListFromPlan, ruleValue)
 			tflog.Warn(ctx, "Read.rulenDataTmp.response", map[string]interface{}{
 				"rulenDataTmp": utils.InterfaceToJSONString(rulenDataTmp),
 			})
@@ -336,7 +293,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIDData, err := r.client.Catov2.WanNetworkPolicy(ctx, r.client.AccountId)
+		ruleNameIDData, err := r.resourceAPI().WanNetworkPolicy(ctx, r.client.AccountId)
 		tflog.Warn(ctx, "Read.WanNetworkPolicy.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(ruleNameIDData),
 		})
@@ -415,11 +372,8 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 					})
 				}
 
-				moveRuleConfig := cato_models.PolicyMoveRuleInput{
-					ID: ruleNameIDMap[mapRuleIndexToRuleName[int64(x)]],
-					To: toPosition,
-				}
-				ruleMoveAPIData, err := r.client.Catov2.PolicyWanNetworkMoveRule(ctx, moveRuleConfig, r.client.AccountId)
+				moveRuleConfig := convertMoveWanNetworkRulesAndSectionsValues8(ruleNameIDMap, mapRuleIndexToRuleName, x, toPosition)
+				ruleMoveAPIData, err := r.resourceAPI().PolicyWanNetworkMoveRule(ctx, moveRuleConfig, r.client.AccountId)
 				tflog.Warn(ctx, "Write.PolicyWanNetworkMoveRule.response", map[string]interface{}{
 					"ruleNameIdMap":             utils.InterfaceToJSONString(ruleNameIDMap),
 					"mapRuleIndexToSectionName": utils.InterfaceToJSONString(mapRuleIndexToRuleName),
@@ -437,25 +391,10 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 		}
 
 		// Now create the rule objects map with proper IDs from the API
-		for _, ruleFromPlan := range ruleListFromPlan {
-			ruleID := ruleNameIDMap[ruleFromPlan.RuleName]
-			ruleIndexStateData, diagsSection := types.ObjectValue(
-				WanNetworkRuleIndexResourceAttrTypes,
-				map[string]attr.Value{
-					"id":               types.StringValue(ruleID),
-					"index_in_section": types.Int64Value(ruleFromPlan.IndexInSection),
-					"section_name":     types.StringValue(ruleFromPlan.SectionName),
-					"rule_name":        types.StringValue(ruleFromPlan.RuleName),
-					"description":      types.StringValue(ruleFromPlan.Description),
-					"enabled":          types.BoolValue(ruleFromPlan.Enabled),
-				},
-			)
-			diags = append(diags, diagsSection...)
-			ruleObjectMap[ruleFromPlan.RuleName] = ruleIndexStateData
-		}
+		convertMoveWanNetworkRulesAndSectionsValues5(&diags, ruleObjectMap, ruleListFromPlan, ruleNameIDMap)
 	}
 
-	_, err = r.client.Catov2.PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
+	_, err = r.resourceAPI().PolicyWanNetworkPublishPolicyRevision(ctx, r.client.AccountId)
 	if err != nil {
 		diags = append(diags, diag.NewErrorDiagnostic(
 			"Catov2 API PolicyWanNetworkPublishPolicyRevision error",
@@ -464,19 +403,7 @@ func (r *wanNetworkRulesIndexResource) moveWanNetworkRulesAndSections(
 		return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 	}
 
-	var sectionMapDiags diag.Diagnostics
-	sectionObjectsMap, sectionMapDiags = types.MapValue(
-		WanNetworkSectionIndexResourceObjectTypes,
-		sectionObjectMap,
-	)
-	diags = append(diags, sectionMapDiags...)
-
-	var ruleMapDiags diag.Diagnostics
-	ruleObjectsMap, ruleMapDiags = types.MapValue(
-		WanNetworkRuleIndexResourceObjectTypes,
-		ruleObjectMap,
-	)
-	diags = append(diags, ruleMapDiags...)
+	convertMoveWanNetworkRulesAndSectionsValues2(&sectionObjectsMap, &ruleObjectsMap, &diags, ruleObjectMap, sectionObjectMap)
 
 	return sectionObjectsMap, ruleObjectsMap, diags, nil
 }

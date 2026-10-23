@@ -4,25 +4,20 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
 
-	"github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/pops"
-	tf "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/tfmodel"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	dhcp "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/dhcp"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 const (
@@ -52,32 +47,11 @@ func NewSocketSiteResource() resource.Resource {
 type socketSiteResource struct {
 	client           *catoclient.Service
 	socketSiteClient Client
-}
 
-type Client interface {
-	SiteAddSocketSite(ctx context.Context, addSocketSiteInput cato_models.AddSocketSiteInput, accountID string,
-		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteAddSocketSite, error)
-	SiteSocketConfiguration(ctx context.Context, input cato_models.SiteSocketConfigurationInput, accountID string,
-		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteSocketConfiguration, error)
-	SiteRemoveSite(ctx context.Context, siteID string, accountID string,
-		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteRemoveSite, error)
-	SiteUpdateHa(ctx context.Context, accountID string, siteID string, updateHaInput cato_models.UpdateHaInput,
-		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteUpdateHa, error)
+	apiClient ResourceClient
 }
 
 var numberRE = regexp.MustCompile(`^\d+$`)
-
-func (r *socketSiteResource) getSocketSiteClient() Client {
-	if r.socketSiteClient != nil {
-		return r.socketSiteClient
-	}
-
-	if r.client == nil {
-		return nil
-	}
-
-	return r.client.Catov2
-}
 
 func (r *socketSiteResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_socket_site"
@@ -91,7 +65,11 @@ func (r *socketSiteResource) Configure(_ context.Context, req resource.Configure
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *socketSiteResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *socketSiteResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
@@ -185,8 +163,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 
 	// if the site is still not visible, keep minimal state to avoid losing created resource
 	if !siteExists {
-		fallbackState := cfg
-		fallbackState.ID = types.StringValue(siteID)
+		fallbackState := convertCreateValues(cfg, siteID)
 		tflog.Warn(ctx, "site not found after create; preserving minimal state until next refresh")
 		diags = resp.State.Set(ctx, &fallbackState)
 		resp.Diagnostics.Append(diags...)
@@ -267,11 +244,19 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Move interface to another index if needed
-	if utils.CheckErr(&diags, state.NativeRange.As(ctx, &stateNativeRange, basetypes.ObjectAsOptions{})) {
+	convertUpdateInput(
+		ctx,
+		r,
+		&plan,
+		state,
+		&stateNativeRange,
+		&diags,
+		siteID,
+		&resp.Diagnostics,
+	)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	currentInterfaceIndex := cato_models.SocketInterfaceIDEnum(stateNativeRange.InterfaceIndex.ValueString())
-	r.assignInterfaceIndex(ctx, currentInterfaceIndex, &plan, siteID, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -311,7 +296,7 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	querySiteResult, err := r.client.Catov2.EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"),
+	querySiteResult, err := r.resourceAPI().EntityLookup(ctx, r.client.AccountId, cato_models.EntityType("site"),
 		nil, nil, nil, nil, []string{state.ID.ValueString()}, nil, nil, nil)
 	tflog.Debug(ctx, "Create.EntityLookup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(querySiteResult),
@@ -326,7 +311,7 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	// check if site exist before removing
 	if len(querySiteResult.EntityLookup.GetItems()) == 1 {
-		err := removeSocketSiteWithRetry(ctx, r.client.Catov2, state.ID.ValueString(), r.client.AccountId)
+		err := removeSocketSiteWithRetry(ctx, r.resourceAPI(), state.ID.ValueString(), r.client.AccountId)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Catov2 API SiteRemoveSite error",
@@ -337,496 +322,101 @@ func (r *socketSiteResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 }
 
-func removeSocketSiteWithRetry(ctx context.Context, clientX *catoclient.ProviderSDKClient, siteID, accountID string) error {
-	const (
-		maxAttempts = 12
-		retryWait   = 5 * time.Second
-	)
-
-	var err error
-	for attempt := 0; attempt < maxAttempts; attempt++ {
-		_, err = clientX.SiteRemoveSite(ctx, siteID, accountID)
-		if err == nil {
-			return nil
-		}
-		if !strings.Contains(err.Error(), "currently in use") || attempt == maxAttempts-1 {
-			return err
-		}
-
-		timer := time.NewTimer(retryWait)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return ctx.Err()
-		case <-timer.C:
-		}
-	}
-
-	return err
-}
-
-// hydrateSocketSiteState populates the SocketSite state with data from API responses
-func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *SocketSite, state SocketSite,
-	siteID string, diags *diag.Diagnostics,
-) (newState SocketSite, siteExists bool) {
-	// Fetch site general details for basic and location data.
-	siteDetails, err := r.client.Catov2.SiteGeneralDetails(ctx,
-		cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}, r.client.AccountId)
-	if err != nil {
-		diags.AddError(fmt.Sprintf("failed to fetch SiteGeneralDetails for site '%s'", siteID), err.Error())
-		return state, false
-	}
-	if siteDetails == nil || siteDetails.GetSite().GetSiteGeneralDetails() == nil {
-		return state, false
-	}
-	siteGeneralDetails := siteDetails.GetSite().GetSiteGeneralDetails()
-
-	// Fetch socket-specific data without the expensive AccountSnapshot query.
-	siteSocketConfiguration := r.fetchSocketConfiguration(ctx, siteID, diags)
-	if diags.HasError() {
-		return state, true
-	}
-
-	// Fetch site native range and interface details
-	networkRange := r.findNativeRange(ctx, siteID, diags)
-	if diags.HasError() {
-		return state, true
-	}
-
-	// Fetch network interface details
-	defaultInterface := r.findDefaultInterface(ctx, siteID, state.NativeRange, diags)
-	if diags.HasError() {
-		return state, true
-	}
-
-	newState = SocketSite{
-		ID:             types.StringValue(siteID),
-		Name:           types.StringValue(siteGeneralDetails.GetSite().GetName()),
-		ConnectionType: connectionTypeFromSocketConfiguration(siteSocketConfiguration),
-		SiteType:       types.StringPointerValue((*string)(siteGeneralDetails.GetSiteType())),
-		Description:    convert.StringPointerValue(siteGeneralDetails.GetDescription(), state.Description),
-		IsCloudRouter:  state.IsCloudRouter,
-		NativeRange:    r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
-		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
-		Sockets:        r.parseSockets(ctx, siteSocketConfiguration, diags),
-	}
-	if diags.HasError() {
-		return state, true
-	}
-
-	return newState, true
-}
-
-func (r *socketSiteResource) fetchSocketConfiguration(ctx context.Context, siteID string,
-	diags *diag.Diagnostics,
-) *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration {
-	socketConfiguration, err := r.getSocketSiteClient().SiteSocketConfiguration(ctx,
-		cato_models.SiteSocketConfigurationInput{
-			Site: &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID},
-		},
-		r.client.AccountId,
-	)
-	if err != nil {
-		diags.AddError(fmt.Sprintf("failed to fetch SiteSocketConfiguration for site '%s'", siteID), err.Error())
-		return nil
-	}
-	if socketConfiguration == nil || socketConfiguration.GetSite().GetSiteSocketConfiguration() == nil {
-		diags.AddError(fmt.Sprintf("socket configuration for site '%s' was not returned", siteID), "")
-		return nil
-	}
-	return socketConfiguration.GetSite().GetSiteSocketConfiguration()
-}
-
-// connectionTypeFromSocketConfiguration translates the socket model into the resource's connection type.
-func connectionTypeFromSocketConfiguration(
-	socketConfiguration *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration,
-) types.String {
-	if socketConfiguration == nil {
-		return types.StringNull()
-	}
-	model := socketConfiguration.GetPrimarySocketConfiguration().GetSocketInfo().GetModel()
-	if model == nil {
-		return types.StringNull()
-	}
-
-	connectionTypes := map[cato_models.SocketModel]cato_models.SiteConnectionTypeEnum{
-		cato_models.SocketModelAWS:      cato_models.SiteConnectionTypeEnumSocketAWS1500,
-		cato_models.SocketModelAzure:    cato_models.SiteConnectionTypeEnumSocketAz1500,
-		cato_models.SocketModelEsx:      cato_models.SiteConnectionTypeEnumSocketEsx1500,
-		cato_models.SocketModelGCP:      cato_models.SiteConnectionTypeEnumSocketGCP1500,
-		cato_models.SocketModelX1500:    cato_models.SiteConnectionTypeEnumSocketX1500,
-		cato_models.SocketModelX1600:    cato_models.SiteConnectionTypeEnumSocketX1600,
-		cato_models.SocketModelX1600Lte: cato_models.SiteConnectionTypeEnumSocketX1600Lte,
-		cato_models.SocketModelX1700:    cato_models.SiteConnectionTypeEnumSocketX1700,
-	}
-	connectionType, ok := connectionTypes[*model]
-	if !ok {
-		return types.StringNull()
-	}
-	return types.StringValue(string(connectionType))
-}
-
-// parseSiteLocation converts API site location data to the types.Object or tf.SiteLocation
-func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetails *cato_go_sdk.SiteGeneralDetails,
-	siteLocation types.Object, diags *diag.Diagnostics,
-) types.Object {
-	var objDiags diag.Diagnostics
-	var planLocation tf.SiteLocation
-
-	if siteGenDetails == nil || siteGenDetails.Site.SiteGeneralDetails == nil {
-		return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
-	}
-	siteLoc := siteGenDetails.Site.SiteGeneralDetails.SiteLocation
-
-	// Prepare site location object
-	state := siteLoc.GetStateCode()
-	if state != nil && *state == "" {
-		state = nil
-	}
-	tfLocation := tf.SiteLocation{
-		CountryCode: types.StringValue(siteLoc.GetCountryCode()),
-		StateCode:   types.StringPointerValue(state),
-		Timezone:    types.StringValue(siteLoc.GetTimezone()),
-		Address:     types.StringPointerValue(siteLoc.GetAddress()),
-		City:        types.StringPointerValue(siteLoc.GetCityName()),
-	}
-
-	// API sometimes returns empty string and sometimes null for city - use what is in the plan in that case
-	city := siteLoc.GetCityName()
-	if ((city == nil) || (*city == "")) && utils.HasValue(siteLocation) {
-		if utils.CheckErr(diags, siteLocation.As(ctx, &planLocation, basetypes.ObjectAsOptions{})) {
-			return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
-		}
-		if planLocation.City.IsNull() || (utils.HasValue(planLocation.City) && (planLocation.City.ValueString() == "")) {
-			tfLocation.City = planLocation.City
-		}
-	}
-
-	locObj, objDiags := types.ObjectValueFrom(ctx, tf.SiteLocationResourceAttrTypes, tfLocation)
-	diags.Append(objDiags...)
-	if diags.HasError() {
-		return types.ObjectNull(pops.PreferredPopLocationModelTypes)
-	}
-
-	return locObj
-}
-
-// parseSockets converts API site socket data to the types.Set of Socket
-func (r *socketSiteResource) parseSockets(ctx context.Context,
-	socketConfiguration *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration,
-	diags *diag.Diagnostics,
-) types.Set {
-	var objDiags diag.Diagnostics
-	setNull := types.SetNull(types.ObjectType{AttrTypes: SocketTypes})
-
-	if socketConfiguration == nil {
-		return setNull
-	}
-
-	primary := socketConfiguration.GetPrimarySocketConfiguration()
-	socketObjects := make([]types.Object, 0, 2)
-	socketObjects = appendSocketConfiguration(ctx, socketObjects, primary.GetSerial(),
-		primary.GetSocketInfo().GetIsPrimary(), primary.GetSocketInfo().GetPlatform(), diags)
-
-	if secondary := socketConfiguration.GetSecondarySocketConfiguration(); secondary != nil {
-		socketObjects = appendSocketConfiguration(ctx, socketObjects, secondary.GetSerial(),
-			secondary.GetSocketInfo().GetIsPrimary(), secondary.GetSocketInfo().GetPlatform(), diags)
-	}
-	if diags.HasError() {
-		return setNull
-	}
-
-	// convert slice to types.Set
-	tfSocketSet, objDiags := types.SetValueFrom(ctx, types.ObjectType{AttrTypes: SocketTypes}, socketObjects)
-	diags.Append(objDiags...)
-	if diags.HasError() {
-		return setNull
-	}
-
-	return tfSocketSet
-}
-
-func appendSocketConfiguration(ctx context.Context, sockets []types.Object, serial *string, isPrimary bool,
-	platform *string, diags *diag.Diagnostics,
-) []types.Object {
-	tfSocketObj, objDiags := types.ObjectValueFrom(ctx, SocketTypes, Socket{
-		ID:           types.StringNull(), // SiteSocketConfiguration does not expose the socket entity ID.
-		SerialNumber: types.StringPointerValue(serial),
-		IsPrimary:    types.BoolValue(isPrimary),
-		Platform:     types.StringPointerValue(platform),
-	})
-	diags.Append(objDiags...)
-	if diags.HasError() {
-		return sockets
-	}
-	return append(sockets, tfSocketObj)
-}
-
-// isDhcpSettingsExplicit returns true when dhcp_settings was explicitly set in config or state
-// (i.e. the object is non-null), even if the value is ACCOUNT_DEFAULT.
-// Returns false when dhcp_settings is null (user never configured it).
-func (r *socketSiteResource) isDhcpSettingsExplicit(ctx context.Context, cfg *SocketSite,
-	stateNativeRange types.Object, diags *diag.Diagnostics,
-) bool {
-	if cfg != nil {
-		var cfgNativeRange NativeRange
-		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
-			return false
-		}
-		return utils.HasValue(cfgNativeRange.DhcpSettings) || cfgNativeRange.DhcpSettings.IsUnknown()
-	}
-	// cfg is nil → Read(); check state
-	if !utils.HasValue(stateNativeRange) {
-		return false
-	}
-	var tfStateNativeRange NativeRange
-	if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
-		return false
-	}
-	return !tfStateNativeRange.DhcpSettings.IsNull()
-}
-
-// checkDhcpSettingsDefault checks DHCP settings config or state,
-// If config is provided,
-// return true if it is not defined or if dhcp_type is set to ACCOUNT_DEFAULT, false otherwise
-// If config is not provided (nil), check the state with the same logic to determine if DHCP settings are default
-//
-// Reason: API does not return ACCOUNT_DEFAULT, but some other value based on CMA account configuration
-func (r *socketSiteResource) checkDhcpSettingsDefault(ctx context.Context, cfg *SocketSite,
-	stateNativeRange types.Object, diags *diag.Diagnostics,
-) (isDhcpSettingsDefault bool) {
-	if cfg != nil {
-		var cfgNativeRange NativeRange
-		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &cfgNativeRange, basetypes.ObjectAsOptions{})) {
-			return false
-		}
-		if cfgNativeRange.DhcpSettings.IsNull() {
-			return true
-		}
-
-		var cfgDhcpSettings dhcp.Settings
-		if utils.CheckErr(diags, cfgNativeRange.DhcpSettings.As(ctx, &cfgDhcpSettings, basetypes.ObjectAsOptions{})) {
-			return false
-		}
-		if utils.HasValue(cfgDhcpSettings.DhcpType) &&
-			(cfgDhcpSettings.DhcpType.ValueString() == string(cato_models.DhcpTypeAccountDefault)) {
-			return true
-		}
-		return false
-	}
-
-	// cfg is nil -> called from Read(); check the state
-	if !utils.HasValue(stateNativeRange) {
-		return false
-	}
-	var tfStateNativeRange NativeRange
-	if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
-		return false
-	}
-	if tfStateNativeRange.DhcpSettings.IsNull() {
-		return true
-	}
-	var stateDhcpSettings dhcp.Settings
-	if utils.CheckErr(diags, tfStateNativeRange.DhcpSettings.As(ctx, &stateDhcpSettings, basetypes.ObjectAsOptions{})) {
-		return false
-	}
-	if utils.HasValue(stateDhcpSettings.DhcpType) &&
-		(stateDhcpSettings.DhcpType.ValueString() == string(cato_models.DhcpTypeAccountDefault)) {
-		return true
-	}
-	return false
-}
-
-// parseNativeRange converts API native range data to the types.Object or NativeRange
-// parseDhcpSettingsObj resolves the dhcp_settings object for a native range.
-// Three cases:
-//  1. User configured a specific type (not ACCOUNT_DEFAULT) → parse from API response.
-//  2. User explicitly set dhcp_type = ACCOUNT_DEFAULT → store the default sentinel object.
-//  3. User did not configure dhcp_settings at all → keep null to match the plan.
-func (r *socketSiteResource) parseDhcpSettingsObj(
+// convertUpdateInput converts between the Terraform model and SDK values.
+func convertUpdateInput(
 	ctx context.Context,
-	cfg *SocketSite,
-	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
-	stateNativeRange types.Object,
-	diags *diag.Diagnostics,
-) types.Object {
-	isDhcpDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
-	if networkRange.DhcpSettings != nil && !isDhcpDefault {
-		return dhcp.ParseSettings(ctx, r.client,
-			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
-				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
-				DhcpType:              networkRange.DhcpSettings.DhcpType,
-				IPRange:               networkRange.DhcpSettings.IPRange,
-				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
-			},
-			diags)
-	}
-	if isDhcpDefault && r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags) {
-		return dhcp.SettingsDefault(ctx, diags)
-	}
-	return types.ObjectNull(dhcp.SettingsAttrTypes)
-}
-
-func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *SocketSite,
-	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
-	nativeInterface *nativeInterfaceDetails, stateNativeRange types.Object, diags *diag.Diagnostics,
-) types.Object {
-	var objDiags diag.Diagnostics
-	var tfStateNativeRange NativeRange
-
-	if networkRange == nil {
-		return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
-	}
-
-	dhcpSettingsObj := r.parseDhcpSettingsObj(ctx, cfg, networkRange, stateNativeRange, diags)
-	if diags.HasError() {
-		return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
-	}
-
-	if nativeInterface == nil {
-		nativeInterface = &nativeInterfaceDetails{}
-	}
-
-	// decode status NativeRange
-	if utils.HasValue(stateNativeRange) {
-		if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
-			return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
-		}
-	}
-
-	// try to get LagMinLinks from state; not available in API; TODO: add to API
-	lagMinLinks := types.Int64Null()
-	if utils.HasValue(stateNativeRange) {
-		lagMinLinks = tfStateNativeRange.LagMinLinks
-	}
-
-	// Fix interface index - API sometimes returns 'INT_5', sometimes just 5
-	fixedIfaceIndex := nativeInterface.interfaceIndex
-	if fixedIfaceIndex != nil && numberRE.MatchString(*fixedIfaceIndex) {
-		fixedIfaceIndex = new("INT_" + *fixedIfaceIndex)
-	}
-
-	localIP := types.StringPointerValue(networkRange.LocalIP)
-	if networkRange.LocalIP == nil { // In HA scenario the API does not return local IP
-		if networkRange.PrimaryManagementIP != nil { // AWS: use primary management IP as local IP
-			localIP = types.StringPointerValue(networkRange.PrimaryManagementIP)
-		} else if utils.HasValue(stateNativeRange) { // try state local IP
-			localIP = tfStateNativeRange.LocalIP
-		}
-	}
-
-	// Prepare native range object
-	tfNativeRange := NativeRange{
-		InterfaceIndex:              types.StringPointerValue(fixedIfaceIndex),
-		InterfaceID:                 types.StringPointerValue(nativeInterface.interfaceID),
-		InterfaceName:               types.StringPointerValue(nativeInterface.interfaceName),
-		NativeNetworkLanInterfaceID: types.StringPointerValue(nativeInterface.interfaceID),
-
-		NativeNetworkRange:    types.StringValue(networkRange.Subnet),
-		NativeNetworkRangeID:  types.StringValue(networkRange.NetworkRangeID),
-		RangeName:             types.StringValue(networkRange.Name),
-		RangeID:               types.StringValue(networkRange.NetworkRangeID),
-		LocalIP:               localIP,
-		PrimaryManagementIP:   types.StringPointerValue(networkRange.PrimaryManagementIP),
-		SecondaryManagementIP: types.StringPointerValue(networkRange.SecondaryManagementIP),
-		TranslatedSubnet:      types.StringPointerValue(networkRange.TranslatedSubnet),
-		Gateway:               types.StringPointerValue(networkRange.Gateway),
-		RangeType:             types.StringValue(strings.ToUpper(string(networkRange.RangeType))),
-		DhcpSettings:          dhcpSettingsObj,
-		Vlan:                  types.Int64PointerValue(networkRange.Vlan),
-		MdnsReflector:         types.BoolValue(networkRange.MdnsReflector),
-		LagMinLinks:           lagMinLinks,
-		InterfaceDestType:     types.StringPointerValue(nativeInterface.destType),
-	}
-
-	netRangeObj, objDiags := types.ObjectValueFrom(ctx, SiteNativeRangeResourceAttrTypes, tfNativeRange)
-	diags.Append(objDiags...)
-	if diags.HasError() {
-		return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
-	}
-
-	return netRangeObj
-}
-
-// createBasicSocketSite creates a socket site and returns the new site ID.
-// It does NOT update native range or interface details.
-func (r *socketSiteResource) createBasicSocketSite(ctx context.Context, plan *SocketSite, diags *diag.Diagnostics) (siteID string) {
-	socketSiteInput := prepareSocketSiteInput(ctx, plan, diags)
-	if diags.HasError() {
-		return ""
-	}
-	socketSite, err := r.getSocketSiteClient().SiteAddSocketSite(ctx, *socketSiteInput, r.client.AccountId)
-	if err != nil {
-		diags.AddError("Catov2 API SiteAddSocketSite error", err.Error())
-		return ""
-	}
-	siteID = socketSite.Site.AddSocketSite.GetSiteID()
-	if siteID == "" {
-		diags.AddError("Catov2 API SiteAddSocketSite error", "empty site ID returned from API")
-		return ""
-	}
-	return siteID
-}
-
-func (r *socketSiteResource) updateCloudRouter(ctx context.Context, plan *SocketSite, siteID string, diags *diag.Diagnostics) {
-	if !utils.HasValue(plan.IsCloudRouter) {
-		return
-	}
-
-	input := prepareUpdateHaInput(plan)
-	_, err := r.getSocketSiteClient().SiteUpdateHa(ctx, r.client.AccountId, siteID, input)
-	if err != nil {
-		diags.AddError("Catov2 API SiteUpdateHa error", err.Error())
-	}
-}
-
-func (r *socketSiteResource) cleanupCreatedSocketSite(ctx context.Context, siteID string, diags *diag.Diagnostics) {
-	_, err := r.getSocketSiteClient().SiteRemoveSite(ctx, siteID, r.client.AccountId)
-	if err != nil {
-		diags.AddError("Catov2 API SiteRemoveSite cleanup error", err.Error())
-	}
-}
-
-func (r *socketSiteResource) configureCloudRouterAfterCreate(ctx context.Context, plan *SocketSite, siteID string,
-	diags *diag.Diagnostics,
+	r *socketSiteResource,
+	originalPlan *SocketSite,
+	state SocketSite,
+	originalStateNativeRange *NativeRange,
+	originalDiags *diag.Diagnostics,
+	siteID string,
+	diagnostics *diag.Diagnostics,
 ) {
-	r.updateCloudRouter(ctx, plan, siteID, diags)
+	plan := *originalPlan
+	defer func() { *originalPlan = plan }()
+
+	stateNativeRange := *originalStateNativeRange
+	defer func() { *originalStateNativeRange = stateNativeRange }()
+
+	diags := *originalDiags
+	defer func() { *originalDiags = diags }()
+
+	if utils.CheckErr(&diags, state.NativeRange.As(ctx, &stateNativeRange, basetypes.ObjectAsOptions{})) {
+		return
+	}
+	currentInterfaceIndex := cato_models.SocketInterfaceIDEnum(stateNativeRange.InterfaceIndex.ValueString())
+	r.assignInterfaceIndex(ctx, currentInterfaceIndex, &plan, siteID, diagnostics)
+}
+
+// updateSocketInterface updates the socket interface details.
+func (r *socketSiteResource) updateSocketInterface(ctx context.Context, cfg, plan *SocketSite, siteID string,
+	isHA bool, diags *diag.Diagnostics,
+) {
+	if isHA && plan.ConnectionType.ValueString() == string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
+		return // update does not work on GCP HA
+	}
+
+	socketIfaceInput, interfaceID := prepareSocketInterfaceInput(ctx, cfg, plan, isHA, diags)
 	if diags.HasError() {
-		r.cleanupCreatedSocketSite(ctx, siteID, diags)
+		return
+	}
+
+	// Update socket interface
+	_, err := r.resourceAPI().SiteUpdateSocketInterface(ctx, siteID, interfaceID, *socketIfaceInput, r.client.AccountId)
+	if err != nil {
+		diags.AddError("Catov2 API SiteUpdateSocketInterface error", err.Error())
 	}
 }
 
-// updateBasicSocketSite updates a socket site
-// It does NOT update native range or interface details.
-func (r *socketSiteResource) updateBasicSocketSite(ctx context.Context, plan *SocketSite, diags *diag.Diagnostics) {
-	input := prepareUpdateSocketSiteGeneralDetailsInput(ctx, plan, diags)
+// updateNativeRange updates the native network range details by calling SiteUpdateNetworkRange API.
+func (r *socketSiteResource) updateNetworkRange(ctx context.Context, cfg, plan *SocketSite, networkRangeID string,
+	isHA bool, diags *diag.Diagnostics,
+) {
+	networkRangeInput := prepareNetworkRangeInput(ctx, r.dhcpClient(), cfg, plan, isHA, diags)
 	if diags.HasError() {
 		return
 	}
 
-	_, err := r.client.Catov2.SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), input, r.client.AccountId)
+	// Update native network range
+	_, err := r.resourceAPI().SiteUpdateNetworkRange(ctx, networkRangeID, *networkRangeInput, r.client.AccountId)
 	if err != nil {
-		diags.AddError("Catov2 API SiteUpdateSiteGeneralDetails error", err.Error())
-		return
+		diags.AddError("Catov2 API SiteUpdateNetworkRange error", err.Error())
 	}
 }
 
-// findNativeRange looks up the native network range for the given site ID and returns its details.
-func (r *socketSiteResource) findNativeRange(ctx context.Context, siteID string, diags *diag.Diagnostics,
-) (networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items) {
-	input := cato_models.NetworkRangeListInput{Site: &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}}
-	queryNetworkRangeResult, err := r.client.Catov2.NetworkRangeList(ctx, r.client.AccountId, input)
-	if err != nil {
-		diags.AddError("Catov2 API NetworkRangeList error", err.Error())
+// assignInterfaceIndex attempts to assign the desired interface index for the native range by calling SiteExchangeSocketPorts API.
+func (r *socketSiteResource) assignInterfaceIndex(ctx context.Context, currentInterfaceIndex cato_models.SocketInterfaceIDEnum,
+	plan *SocketSite, siteID string, diags *diag.Diagnostics,
+) {
+	var tfNativeRange NativeRange
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
 		return
 	}
-	for _, netRange := range queryNetworkRangeResult.GetSite().GetNetworkRangeList().GetItems() {
-		if netRange.RangeType == cato_models.SubnetTypeNative {
-			return netRange
-		}
+	if !utils.HasValue(tfNativeRange.InterfaceIndex) {
+		return
 	}
-	diags.AddError("Native network range not found", fmt.Sprintf("no native network range found for site ID %s", siteID))
-	return nil
+
+	desiredInterfaceIndex := cato_models.SocketInterfaceIDEnum(tfNativeRange.InterfaceIndex.ValueString())
+
+	if desiredInterfaceIndex == currentInterfaceIndex {
+		return // No need to move the interface if the desired index is the default
+	}
+
+	exchangeInput := cato_models.ExchangeSocketPortsInput{
+		Site:            &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID},
+		FirstInterface:  &cato_models.SocketInterfaceRefInput{InterfaceID: currentInterfaceIndex},
+		SecondInterface: &cato_models.SocketInterfaceRefInput{InterfaceID: desiredInterfaceIndex},
+	}
+
+	siteExchangeSocketPortsResponse, err := r.resourceAPI().SiteExchangeSocketPorts(ctx, r.client.AccountId, exchangeInput)
+	if err != nil {
+		diags.AddError("Catov2 API SiteExchangeSocketPorts error", err.Error())
+		return
+	}
+	tflog.Debug(ctx, "attemptReassignNativeRangeIndex.tmpSiteUpdateSocketInterface.tmp.response", map[string]interface{}{
+		"response": utils.InterfaceToJSONString(siteExchangeSocketPortsResponse),
+	})
 }
 
 // findDefaultInterface looks up the default network interface for the given site ID and returns its details.
@@ -846,8 +436,8 @@ func (r *socketSiteResource) findDefaultInterface(ctx context.Context, siteID st
 	}
 
 	// Retrieve default interface range attributes
-	siteEntity := &cato_models.EntityInput{Type: cato_models.EntityTypeSite, ID: siteID}
-	result, err := r.client.Catov2.EntityLookup(ctx, r.client.AccountId,
+	siteEntity := convertFindDefaultInterfaceValues(siteID)
+	result, err := r.resourceAPI().EntityLookup(ctx, r.client.AccountId,
 		cato_models.EntityTypeNetworkInterface, new(int64(0)), nil, siteEntity, nil, nil, nil, nil, nil)
 	if err != nil {
 		diags.AddError("Catov2 API EntityLookup 'networkInterface' error", err.Error())
@@ -893,80 +483,222 @@ func (r *socketSiteResource) findDefaultInterface(ctx context.Context, siteID st
 	return ifaceDetails
 }
 
-// assignInterfaceIndex attempts to assign the desired interface index for the native range by calling SiteExchangeSocketPorts API.
-func (r *socketSiteResource) assignInterfaceIndex(ctx context.Context, currentInterfaceIndex cato_models.SocketInterfaceIDEnum,
-	plan *SocketSite, siteID string, diags *diag.Diagnostics,
-) {
-	var tfNativeRange NativeRange
-	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &tfNativeRange, basetypes.ObjectAsOptions{})) {
-		return
-	}
-	if !utils.HasValue(tfNativeRange.InterfaceIndex) {
-		return
-	}
-
-	desiredInterfaceIndex := cato_models.SocketInterfaceIDEnum(tfNativeRange.InterfaceIndex.ValueString())
-
-	if desiredInterfaceIndex == currentInterfaceIndex {
-		return // No need to move the interface if the desired index is the default
-	}
-
-	exchangeInput := cato_models.ExchangeSocketPortsInput{
-		Site:            &cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID},
-		FirstInterface:  &cato_models.SocketInterfaceRefInput{InterfaceID: currentInterfaceIndex},
-		SecondInterface: &cato_models.SocketInterfaceRefInput{InterfaceID: desiredInterfaceIndex},
-	}
-
-	siteExchangeSocketPortsResponse, err := r.client.Catov2.SiteExchangeSocketPorts(ctx, r.client.AccountId, exchangeInput)
+// findNativeRange looks up the native network range for the given site ID and returns its details.
+func (r *socketSiteResource) findNativeRange(ctx context.Context, siteID string, diags *diag.Diagnostics,
+) (networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items) {
+	input := convertFindNativeRangeValues(siteID)
+	queryNetworkRangeResult, err := r.resourceAPI().NetworkRangeList(ctx, r.client.AccountId, input)
 	if err != nil {
-		diags.AddError("Catov2 API SiteExchangeSocketPorts error", err.Error())
+		diags.AddError("Catov2 API NetworkRangeList error", err.Error())
 		return
 	}
-	tflog.Debug(ctx, "attemptReassignNativeRangeIndex.tmpSiteUpdateSocketInterface.tmp.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(siteExchangeSocketPortsResponse),
-	})
+	for _, netRange := range queryNetworkRangeResult.GetSite().GetNetworkRangeList().GetItems() {
+		if netRange.RangeType == cato_models.SubnetTypeNative {
+			return netRange
+		}
+	}
+	diags.AddError("Native network range not found", fmt.Sprintf("no native network range found for site ID %s", siteID))
+	return nil
 }
 
-// updateNativeRange updates the native network range details by calling SiteUpdateNetworkRange API.
-func (r *socketSiteResource) updateNetworkRange(ctx context.Context, cfg, plan *SocketSite, networkRangeID string,
-	isHA bool, diags *diag.Diagnostics,
-) {
-	networkRangeInput := prepareNetworkRangeInput(ctx, r.client, cfg, plan, isHA, diags)
+// updateBasicSocketSite updates a socket site
+// It does NOT update native range or interface details.
+func (r *socketSiteResource) updateBasicSocketSite(ctx context.Context, plan *SocketSite, diags *diag.Diagnostics) {
+	input := prepareUpdateSocketSiteGeneralDetailsInput(ctx, plan, diags)
 	if diags.HasError() {
 		return
 	}
 
-	// Update native network range
-	_, err := r.client.Catov2.SiteUpdateNetworkRange(ctx, networkRangeID, *networkRangeInput, r.client.AccountId)
+	_, err := r.resourceAPI().SiteUpdateSiteGeneralDetails(ctx, plan.ID.ValueString(), input, r.client.AccountId)
 	if err != nil {
-		diags.AddError("Catov2 API SiteUpdateNetworkRange error", err.Error())
+		diags.AddError("Catov2 API SiteUpdateSiteGeneralDetails error", err.Error())
+		return
 	}
 }
 
-// updateSocketInterface updates the socket interface details.
-func (r *socketSiteResource) updateSocketInterface(ctx context.Context, cfg, plan *SocketSite, siteID string,
-	isHA bool, diags *diag.Diagnostics,
+func (r *socketSiteResource) configureCloudRouterAfterCreate(ctx context.Context, plan *SocketSite, siteID string,
+	diags *diag.Diagnostics,
 ) {
-	if isHA && plan.ConnectionType.ValueString() == string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
-		return // update does not work on GCP HA
-	}
-
-	socketIfaceInput, interfaceID := prepareSocketInterfaceInput(ctx, cfg, plan, isHA, diags)
+	r.updateCloudRouter(ctx, plan, siteID, diags)
 	if diags.HasError() {
+		r.cleanupCreatedSocketSite(ctx, siteID, diags)
+	}
+}
+
+func (r *socketSiteResource) cleanupCreatedSocketSite(ctx context.Context, siteID string, diags *diag.Diagnostics) {
+	_, err := r.resourceAPI().SiteRemoveSite(ctx, siteID, r.client.AccountId)
+	if err != nil {
+		diags.AddError("Catov2 API SiteRemoveSite cleanup error", err.Error())
+	}
+}
+
+func (r *socketSiteResource) updateCloudRouter(
+	ctx context.Context,
+	plan *SocketSite,
+	siteID string,
+	diags *diag.Diagnostics,
+) {
+	if !utils.HasValue(plan.IsCloudRouter) {
 		return
 	}
 
-	// Update socket interface
-	_, err := r.client.Catov2.SiteUpdateSocketInterface(ctx, siteID, interfaceID, *socketIfaceInput, r.client.AccountId)
+	input := prepareUpdateHaInput(plan)
+	_, err := r.resourceAPI().SiteUpdateHa(ctx, r.client.AccountId, siteID, input)
 	if err != nil {
-		diags.AddError("Catov2 API SiteUpdateSocketInterface error", err.Error())
+		diags.AddError("Catov2 API SiteUpdateHa error", err.Error())
 	}
 }
 
-// isHA determines if the site is in HA scenario based on the number of sockets
-func (r *socketSiteResource) isHA(state *SocketSite) bool {
-	if state == nil || !utils.HasValue(state.Sockets) {
-		return false
+// createBasicSocketSite creates a socket site and returns the new site ID.
+// It does NOT update native range or interface details.
+func (r *socketSiteResource) createBasicSocketSite(
+	ctx context.Context,
+	plan *SocketSite,
+	diags *diag.Diagnostics,
+) (siteID string) {
+	socketSiteInput := prepareSocketSiteInput(ctx, plan, diags)
+	if diags.HasError() {
+		return ""
 	}
-	return len(state.Sockets.Elements()) > 1
+	socketSite, err := r.resourceAPI().SiteAddSocketSite(ctx, *socketSiteInput, r.client.AccountId)
+	if err != nil {
+		diags.AddError("Catov2 API SiteAddSocketSite error", err.Error())
+		return ""
+	}
+	siteID = socketSite.Site.AddSocketSite.GetSiteID()
+	if siteID == "" {
+		diags.AddError("Catov2 API SiteAddSocketSite error", "empty site ID returned from API")
+		return ""
+	}
+	return siteID
+}
+
+func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *SocketSite,
+	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
+	nativeInterface *nativeInterfaceDetails, stateNativeRange types.Object, diags *diag.Diagnostics,
+) types.Object {
+	var objDiags diag.Diagnostics
+	var tfStateNativeRange NativeRange
+
+	if networkRange == nil {
+		return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
+	}
+
+	dhcpSettingsObj := r.parseDhcpSettingsObj(ctx, cfg, networkRange, stateNativeRange, diags)
+	if diags.HasError() {
+		return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
+	}
+
+	if nativeInterface == nil {
+		nativeInterface = &nativeInterfaceDetails{}
+	}
+
+	// decode status NativeRange
+	if utils.HasValue(stateNativeRange) {
+		if utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
+			return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
+		}
+	}
+
+	// try to get LagMinLinks from state; not available in API; TODO: add to API
+	netRangeObj := convertParseNativeRangeValues(
+		ctx,
+		networkRange,
+		nativeInterface,
+		stateNativeRange,
+		diags,
+		&objDiags,
+		tfStateNativeRange,
+		dhcpSettingsObj,
+	)
+	if diags.HasError() {
+		return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
+	}
+
+	return netRangeObj
+}
+
+// parseNativeRange converts API native range data to the types.Object or NativeRange
+// parseDhcpSettingsObj resolves the dhcp_settings object for a native range.
+// Three cases:
+//  1. User configured a specific type (not ACCOUNT_DEFAULT) → parse from API response.
+//  2. User explicitly set dhcp_type = ACCOUNT_DEFAULT → store the default sentinel object.
+//  3. User did not configure dhcp_settings at all → keep null to match the plan.
+func (r *socketSiteResource) parseDhcpSettingsObj(
+	ctx context.Context,
+	cfg *SocketSite,
+	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
+	stateNativeRange types.Object,
+	diags *diag.Diagnostics,
+) types.Object {
+	isDhcpDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
+	if networkRange.DhcpSettings != nil && !isDhcpDefault {
+		return dhcp.ParseSettings(ctx, r.dhcpClient(),
+			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
+				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
+				DhcpType:              networkRange.DhcpSettings.DhcpType,
+				IPRange:               networkRange.DhcpSettings.IPRange,
+				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
+			},
+			diags)
+	}
+	if isDhcpDefault && r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags) {
+		return dhcp.SettingsDefault(ctx, diags)
+	}
+	return types.ObjectNull(dhcp.SettingsAttrTypes)
+}
+
+// hydrateSocketSiteState populates the SocketSite state with data from API responses
+func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *SocketSite, state SocketSite,
+	siteID string, diags *diag.Diagnostics,
+) (newState SocketSite, siteExists bool) {
+	// Fetch site general details for basic and location data.
+	siteDetails, err := r.resourceAPI().SiteGeneralDetails(ctx,
+		cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}, r.client.AccountId)
+	if err != nil {
+		diags.AddError(fmt.Sprintf("failed to fetch SiteGeneralDetails for site '%s'", siteID), err.Error())
+		return state, false
+	}
+	if siteDetails == nil || siteDetails.GetSite().GetSiteGeneralDetails() == nil {
+		return state, false
+	}
+	siteGeneralDetails := siteDetails.GetSite().GetSiteGeneralDetails()
+
+	// Fetch socket-specific data without the expensive AccountSnapshot query.
+	siteSocketConfiguration := r.fetchSocketConfiguration(ctx, siteID, diags)
+	if diags.HasError() {
+		return state, true
+	}
+
+	// Fetch site native range and interface details
+	networkRange := r.findNativeRange(ctx, siteID, diags)
+	if diags.HasError() {
+		return state, true
+	}
+
+	// Fetch network interface details
+	defaultInterface := r.findDefaultInterface(ctx, siteID, state.NativeRange, diags)
+	if diags.HasError() {
+		return state, true
+	}
+
+	convertHydrateSocketSiteStateValues(
+		ctx,
+		r,
+		cfg,
+		state,
+		siteID,
+		diags,
+		&newState,
+		siteDetails,
+		siteGeneralDetails,
+		siteSocketConfiguration,
+		networkRange,
+		defaultInterface,
+	)
+	if diags.HasError() {
+		return state, true
+	}
+
+	return newState, true
 }

@@ -3,19 +3,19 @@ package applicationcontrol
 import (
 	"context"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
 const errPolicyRevisionNotFound = "PolicyRevisionNotFound"
 
 // PublishApplicationControlPolicyRevision publishes the Application Control draft when one exists.
 // If there is no draft, the API returns FAILURE with PolicyRevisionNotFound — that is treated as success.
-func PublishApplicationControlPolicyRevision(ctx context.Context, c *catoclient.Service) diag.Diagnostics {
+func PublishApplicationControlPolicyRevision(ctx context.Context, client PublishClient, accountID string) diag.Diagnostics {
 	var diags diag.Diagnostics
-	res, err := c.Catov2.PolicyApplicationControlPublishPolicyRevision(ctx, c.AccountId)
+	res, err := client.PolicyApplicationControlPublishPolicyRevision(ctx, accountID)
 	if err != nil {
 		diags.AddError("PolicyApplicationControlPublishPolicyRevision", err.Error())
 		return diags
@@ -46,4 +46,13 @@ func PublishApplicationControlPolicyRevision(ctx context.Context, c *catoclient.
 		diags.AddError("PolicyApplicationControlPublishPolicyRevision", string(*pub.GetStatus()))
 		return diags
 	}
+}
+
+// PublishClient isolates the SDK operation used to publish this policy family.
+type PublishClient interface {
+	PolicyApplicationControlPublishPolicyRevision(
+		ctx context.Context,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyApplicationControlPublishPolicyRevision, error)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -15,7 +16,17 @@ import (
 )
 
 type SdkClienter interface {
-	V2() *cato_go_sdk.Client // return SDK Client v2
+	EntityLookupMinimal(
+		ctx context.Context,
+		accountID string,
+		typeArg cato_models.EntityType,
+		limit *int64,
+		from *int64,
+		parent *cato_models.EntityInput,
+		sort []*cato_models.SortInput,
+		filters []*cato_models.LookupFilterInput,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.EntityLookup, error)
 	AccountID() string
 }
 
@@ -97,7 +108,7 @@ func getDhcpRelayGroupID(ctx context.Context, client SdkClienter, relayGroupName
 func lookupDhcpRelayGroupID(ctx context.Context, client SdkClienter, diags *diag.Diagnostics,
 ) *cato_go_sdk.EntityLookup {
 	// Lookup and validate the DHCP relay group exists
-	dhcpRelayGroupResult, err := client.V2().EntityLookupMinimal(ctx, client.AccountID(), cato_models.EntityTypeDhcpRelayGroup,
+	dhcpRelayGroupResult, err := client.EntityLookupMinimal(ctx, client.AccountID(), cato_models.EntityTypeDhcpRelayGroup,
 		nil, nil, nil, nil, nil)
 	if err != nil {
 		diags.AddError("Failed to lookup DHCP relay group", fmt.Sprintf("An error was encountered when looking up DHCP relay group: %v", err))
@@ -189,7 +200,7 @@ func GetRelayGroupName(ctx context.Context, client SdkClienter, relayGroupID str
 func LookupRelayGroupID(ctx context.Context, client SdkClienter, diags *diag.Diagnostics,
 ) *cato_go_sdk.EntityLookup {
 	// Lookup and validate the DHCP relay group exists
-	dhcpRelayGroupResult, err := client.V2().EntityLookupMinimal(ctx, client.AccountID(), cato_models.EntityTypeDhcpRelayGroup,
+	dhcpRelayGroupResult, err := client.EntityLookupMinimal(ctx, client.AccountID(), cato_models.EntityTypeDhcpRelayGroup,
 		nil, nil, nil, nil, nil)
 	if err != nil {
 		diags.AddError("Failed to lookup DHCP relay group", fmt.Sprintf("An error was encountered when looking up DHCP relay group: %v", err))

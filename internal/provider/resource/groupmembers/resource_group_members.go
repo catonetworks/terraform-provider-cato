@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/groupmembers"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	groupmembers "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/groupmembers"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -27,6 +26,8 @@ func NewGroupMembersResource() resource.Resource {
 
 type groupMembersResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *groupMembersResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -41,12 +42,15 @@ func (r *groupMembersResource) Configure(_ context.Context, req resource.Configu
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *groupMembersResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *groupMembersResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-//nolint:gocyclo
 func (r *groupMembersResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan Members
 	diags := req.Plan.Get(ctx, &plan)
@@ -66,63 +70,15 @@ func (r *groupMembersResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	// Set the group ID in state
-	plan.ID = types.StringValue(groupID)
-
-	// Convert members from Terraform set to SDK input
-	var members []*cato_models.GroupMemberRefTypedInput
-	if !plan.Members.IsNull() && !plan.Members.IsUnknown() {
-		var membersList []groupmembers.Member
-		diags = plan.Members.ElementsAs(ctx, &membersList, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		for _, member := range membersList {
-			// Determine whether to use ID or NAME based on which field is provided
-			var by cato_models.ObjectRefBy
-			var input string
-
-			switch {
-			case !member.ID.IsNull() && !member.ID.IsUnknown() && member.ID.ValueString() != "":
-				// Use ID if provided
-				by = cato_models.ObjectRefByID
-				input = member.ID.ValueString()
-			case !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "":
-				// Fall back to NAME if ID not provided
-				by = cato_models.ObjectRefByName
-				input = member.Name.ValueString()
-			default:
-				resp.Diagnostics.AddError(
-					"Invalid member configuration",
-					"Each member must specify either 'id' or 'name'",
-				)
-				return
-			}
-
-			members = append(members, &cato_models.GroupMemberRefTypedInput{
-				By:    by,
-				Input: input,
-				Type:  cato_models.GroupMemberRefType(member.Type.ValueString()),
-			})
-		}
-	}
-
-	// setting input
-	groupRef := &cato_models.GroupRefInput{
-		By:    cato_models.ObjectRefByID,
-		Input: plan.ID.ValueString(),
-	}
-
-	input := cato_models.UpdateGroupInput{
-		Group:        groupRef,
-		MembersToAdd: members,
+	input := convertCreateInput(ctx, &plan, &diags, groupID, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	tflog.Debug(ctx, "groupMembersCreate.GroupsUpdateGroup.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	result, err := r.client.Catov2.GroupsUpdateGroup(ctx, input, r.client.AccountId)
+	result, err := r.resourceAPI().GroupsUpdateGroup(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "groupMembersCreate.GroupsUpdateGroup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -151,7 +107,6 @@ func (r *groupMembersResource) Create(ctx context.Context, req resource.CreateRe
 	}
 }
 
-//nolint:gocyclo,funlen
 func (r *groupMembersResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan Members
 	diags := req.Plan.Get(ctx, &plan)
@@ -178,101 +133,9 @@ func (r *groupMembersResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// Update the group ID in state
-	plan.ID = types.StringValue(groupID)
-
-	// Get current state members
-	var stateMembersList []groupmembers.Member
-	if !state.Members.IsNull() && !state.Members.IsUnknown() {
-		diags = state.Members.ElementsAs(ctx, &stateMembersList, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	// Get planned members
-	var planMembersList []groupmembers.Member
-	if !plan.Members.IsNull() && !plan.Members.IsUnknown() {
-		diags = plan.Members.ElementsAs(ctx, &planMembersList, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	// Create maps to track members by unique key (type:id or type:name)
-	stateMembersMap := make(map[string]groupmembers.Member)
-	for _, member := range stateMembersList {
-		key := fmt.Sprintf("%s:%s:%s", member.Type.ValueString(), member.ID.ValueString(), member.Name.ValueString())
-		stateMembersMap[key] = member
-	}
-
-	planMembersMap := make(map[string]groupmembers.Member)
-	for _, member := range planMembersList {
-		key := fmt.Sprintf("%s:%s:%s", member.Type.ValueString(), member.ID.ValueString(), member.Name.ValueString())
-		planMembersMap[key] = member
-	}
-
-	// Determine members to add (in plan but not in state)
-	var membersToAdd []*cato_models.GroupMemberRefTypedInput
-	for key, member := range planMembersMap {
-		if _, exists := stateMembersMap[key]; !exists {
-			// Determine whether to use ID or NAME
-			var by cato_models.ObjectRefBy
-			var input string
-
-			switch {
-			case !member.ID.IsNull() && !member.ID.IsUnknown() && member.ID.ValueString() != "":
-				by = cato_models.ObjectRefByID
-				input = member.ID.ValueString()
-			case !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "":
-				by = cato_models.ObjectRefByName
-				input = member.Name.ValueString()
-			default:
-				resp.Diagnostics.AddError(
-					"Invalid member configuration",
-					"Each member must specify either 'id' or 'name'",
-				)
-				return
-			}
-
-			membersToAdd = append(membersToAdd, &cato_models.GroupMemberRefTypedInput{
-				By:    by,
-				Input: input,
-				Type:  cato_models.GroupMemberRefType(member.Type.ValueString()),
-			})
-		}
-	}
-
-	// Determine members to remove (in state but not in plan)
-	var membersToRemove []*cato_models.GroupMemberRefTypedInput
-	for key, member := range stateMembersMap {
-		if _, exists := planMembersMap[key]; !exists {
-			// Determine whether to use ID or NAME
-			var by cato_models.ObjectRefBy
-			var input string
-
-			switch {
-			case !member.ID.IsNull() && !member.ID.IsUnknown() && member.ID.ValueString() != "":
-				by = cato_models.ObjectRefByID
-				input = member.ID.ValueString()
-			case !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "":
-				by = cato_models.ObjectRefByName
-				input = member.Name.ValueString()
-			default:
-				resp.Diagnostics.AddError(
-					"Invalid member configuration",
-					"Each member must specify either 'id' or 'name'",
-				)
-				return
-			}
-
-			membersToRemove = append(membersToRemove, &cato_models.GroupMemberRefTypedInput{
-				By:    by,
-				Input: input,
-				Type:  cato_models.GroupMemberRefType(member.Type.ValueString()),
-			})
-		}
+	membersToAdd, membersToRemove := convertUpdateInput(ctx, &plan, &diags, state, groupID, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Only update if there are changes
@@ -292,21 +155,12 @@ func (r *groupMembersResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// Setting input with MembersToAdd and MembersToRemove
-	groupRef := &cato_models.GroupRefInput{
-		By:    cato_models.ObjectRefByID,
-		Input: plan.ID.ValueString(),
-	}
-
-	input := cato_models.UpdateGroupInput{
-		Group:           groupRef,
-		MembersToAdd:    membersToAdd,
-		MembersToRemove: membersToRemove,
-	}
+	input := convertUpdateInput2(plan, membersToAdd, membersToRemove)
 
 	tflog.Debug(ctx, "groupMembersUpdate.GroupsUpdateGroup.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	result, err := r.client.Catov2.GroupsUpdateGroup(ctx, input, r.client.AccountId)
+	result, err := r.resourceAPI().GroupsUpdateGroup(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "GroupsCreateGroup.GroupsUpdateGroup.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(result),
 	})
@@ -376,59 +230,19 @@ func (r *groupMembersResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 
 	// Get all members from state to remove
-	var membersToRemove []*cato_models.GroupMemberRefTypedInput
-	if !state.Members.IsNull() && !state.Members.IsUnknown() {
-		var membersList []groupmembers.Member
-		diags = state.Members.ElementsAs(ctx, &membersList, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		for _, member := range membersList {
-			// Determine whether to use ID or NAME
-			var by cato_models.ObjectRefBy
-			var input string
-
-			switch {
-			case !member.ID.IsNull() && !member.ID.IsUnknown() && member.ID.ValueString() != "":
-				by = cato_models.ObjectRefByID
-				input = member.ID.ValueString()
-			case !member.Name.IsNull() && !member.Name.IsUnknown() && member.Name.ValueString() != "":
-				by = cato_models.ObjectRefByName
-				input = member.Name.ValueString()
-			default:
-				resp.Diagnostics.AddError(
-					"Invalid member configuration",
-					"Each member must specify either 'id' or 'name'",
-				)
-				return
-			}
-
-			membersToRemove = append(membersToRemove, &cato_models.GroupMemberRefTypedInput{
-				By:    by,
-				Input: input,
-				Type:  cato_models.GroupMemberRefType(member.Type.ValueString()),
-			})
-		}
+	membersToRemove := convertDeleteInput(ctx, state, &diags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Remove all members from the group
 	if len(membersToRemove) > 0 {
-		groupRef := &cato_models.GroupRefInput{
-			By:    cato_models.ObjectRefByID,
-			Input: state.ID.ValueString(),
-		}
-
-		input := cato_models.UpdateGroupInput{
-			Group:           groupRef,
-			MembersToRemove: membersToRemove,
-		}
+		input := convertDeleteValues(state, membersToRemove)
 
 		tflog.Debug(ctx, "groupMembersDelete.GroupsUpdateGroup.request", map[string]interface{}{
 			"request": utils.InterfaceToJSONString(input),
 		})
-		result, err := r.client.Catov2.GroupsUpdateGroup(ctx, input, r.client.AccountId)
+		result, err := r.resourceAPI().GroupsUpdateGroup(ctx, input, r.client.AccountId)
 		tflog.Debug(ctx, "groupMembersDelete.GroupsUpdateGroup.response", map[string]interface{}{
 			"response": utils.InterfaceToJSONString(result),
 		})
@@ -453,26 +267,9 @@ func (r *groupMembersResource) hydrateGroupMembersState(
 	groupName string,
 	planMembers types.Set,
 ) (Members, error) {
-	var state Members
-	state.ID = types.StringValue(groupID)
-	state.GroupName = types.StringValue(groupName)
+	state, groupRef, groupMembersListInput := convertHydrateGroupMembersStateValues(groupID, groupName)
 
-	// Read group members using GroupsMembers
-	groupRef := cato_models.GroupRefInput{
-		By:    cato_models.ObjectRefByID,
-		Input: groupID,
-	}
-
-	groupMembersListInput := cato_models.GroupMembersListInput{
-		Filter: []*cato_models.GroupMembersListFilterInput{},
-		Paging: &cato_models.PagingInput{
-			Limit: 1000,
-			From:  0,
-		},
-		Sort: &cato_models.GroupMembersListSortInput{},
-	}
-
-	membersResult, err := r.client.Catov2.GroupsMembers(ctx, groupRef, groupMembersListInput, r.client.AccountId)
+	membersResult, err := r.resourceAPI().GroupsMembers(ctx, groupRef, groupMembersListInput, r.client.AccountId)
 	tflog.Debug(ctx, "hydrateGroupMembersState.GroupsMembers.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(membersResult),
 	})
@@ -490,7 +287,7 @@ func (r *groupMembersResource) hydrateGroupMembersState(
 	// Get plan members to create a filter
 	var planMembersList []groupmembers.Member
 	if !planMembers.IsNull() && !planMembers.IsUnknown() {
-		diags := planMembers.ElementsAs(ctx, &planMembersList, false)
+		diags := convertHydrateGroupMembersStateValues2(ctx, planMembers, &planMembersList)
 		if diags.HasError() {
 			return state, fmt.Errorf("failed to parse plan members")
 		}
@@ -549,47 +346,4 @@ func (r *groupMembersResource) hydrateGroupMembersState(
 	state.Members = groupmembers.ParseGroupMemberList(ctx, filteredMembers, "group_members.members")
 
 	return state, nil
-}
-
-// getGroupByName fetches a group ID by name
-func (r *groupMembersResource) getGroupByName(ctx context.Context, groupName string) (string, error) {
-	var groupID string
-
-	// Read group metadata using GroupsList
-	groupListInput := &cato_models.GroupListInput{
-		Paging: &cato_models.PagingInput{
-			Limit: 1000,
-			From:  0,
-		},
-		Sort: &cato_models.GroupListSortInput{},
-	}
-
-	groupListResult, err := r.client.Catov2.GroupsList(ctx, groupListInput, r.client.AccountId)
-	tflog.Debug(ctx, "getGroupByName.GroupsList.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(groupListResult),
-	})
-	if err != nil {
-		return groupID, fmt.Errorf("GroupsList API error: %w", err)
-	}
-
-	// Check if the group was found
-	if groupListResult.Groups.GroupList == nil || len(groupListResult.Groups.GroupList.Items) == 0 {
-		return groupID, fmt.Errorf("no groups found in account")
-	}
-
-	groupPresent := false
-
-	for _, groupItem := range groupListResult.Groups.GroupList.Items {
-		if groupItem.Name == groupName {
-			groupPresent = true
-			groupID = groupItem.ID
-			break
-		}
-	}
-
-	if !groupPresent {
-		return groupID, fmt.Errorf("group not found: %s", groupName)
-	}
-
-	return groupID, nil
 }

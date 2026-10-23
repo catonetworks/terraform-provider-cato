@@ -816,3 +816,13 @@ func TestInternetFwRuleImportStateCompositeInvalid(t *testing.T) {
 		t.Fatal("expected diagnostics for malformed composite import id")
 	}
 }
+
+func GetInternetFwRuleSchema(ctx context.Context, t *testing.T) schema.Schema {
+	t.Helper()
+
+	r := &InternetFwRuleResource{}
+	resp := &resource.SchemaResponse{}
+	r.Schema(ctx, resource.SchemaRequest{}, resp)
+
+	return resp.Schema
+}

@@ -4,14 +4,13 @@ import (
 	"context"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	applicationcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
 var (
@@ -26,13 +25,23 @@ func NewApplicationControlPolicyResource() resource.Resource {
 
 type applicationControlPolicyResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
-func (r *applicationControlPolicyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *applicationControlPolicyResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_application_control_policy"
 }
 
-func (r *applicationControlPolicyResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *applicationControlPolicyResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -47,37 +56,11 @@ func (r *applicationControlPolicyResource) ImportState(
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("data_control_enabled"), string(cato_models.PolicyToggleStateDisabled))...)
 }
 
-func (r *applicationControlPolicyResource) readState(ctx context.Context) (ApplicationControlPolicyModel, error) {
-	out := ApplicationControlPolicyModel{ID: types.StringValue("application_control")}
-	body, err := r.client.Catov2.ApplicationControlPolicy(ctx, r.client.AccountId)
-	if err != nil {
-		return out, err
-	}
-	pol := body.GetPolicy().GetApplicationControl().GetPolicy()
-	if pol == nil {
-		return out, nil
-	}
-	out.Enabled = types.BoolValue(pol.Enabled)
-	if pol.GetAdditionalAttributes() != nil && pol.GetAdditionalAttributes().GetDataControlEnabled() != nil {
-		out.DataControlEnabled = types.StringValue(string(*pol.GetAdditionalAttributes().GetDataControlEnabled()))
-	} else {
-		out.DataControlEnabled = types.StringNull()
-	}
-	if pol.GetAudit() != nil {
-		out.PublishedTime = types.StringValue(pol.GetAudit().GetPublishedTime())
-		out.PublishedBy = types.StringValue(pol.GetAudit().GetPublishedBy())
-	}
-	if pol.GetRevision() != nil {
-		out.RevisionID = types.StringValue(pol.GetRevision().GetID())
-		out.RevisionName = types.StringValue(pol.GetRevision().GetName())
-	} else {
-		out.RevisionID = types.StringNull()
-		out.RevisionName = types.StringNull()
-	}
-	return out, nil
-}
-
-func (r *applicationControlPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *applicationControlPolicyResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
 	var plan ApplicationControlPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -101,7 +84,11 @@ func (r *applicationControlPolicyResource) Read(ctx context.Context, _ resource.
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *applicationControlPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *applicationControlPolicyResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
 	var plan ApplicationControlPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -120,20 +107,13 @@ func (r *applicationControlPolicyResource) Delete(ctx context.Context, _ resourc
 	tflog.Warn(ctx, "cato_application_control_policy delete is a no-op; policy always exists")
 }
 
-func (r *applicationControlPolicyResource) updatePolicy(ctx context.Context, plan ApplicationControlPolicyModel) diag.Diagnostics {
+func (r *applicationControlPolicyResource) updatePolicy(
+	ctx context.Context,
+	plan ApplicationControlPolicyModel,
+) diag.Diagnostics {
 	var diags diag.Diagnostics
-	dc := cato_models.PolicyToggleState(plan.DataControlEnabled.ValueString())
-	st := cato_models.PolicyToggleStateDisabled
-	if plan.Enabled.ValueBool() {
-		st = cato_models.PolicyToggleStateEnabled
-	}
-	in := cato_models.ApplicationControlPolicyUpdateInput{
-		State: &st,
-		AdditionalAttributes: &cato_models.ApplicationControlConfigInput{
-			DataControlEnabled: dc,
-		},
-	}
-	res, err := r.client.Catov2.PolicyApplicationControlUpdatePolicy(ctx, in, r.client.AccountId)
+	in := convertUpdatePolicyValues(plan)
+	res, err := r.resourceAPI().PolicyApplicationControlUpdatePolicy(ctx, in, r.client.AccountId)
 	if err != nil {
 		diags.AddError("PolicyApplicationControlUpdatePolicy", err.Error())
 		return diags
@@ -147,6 +127,20 @@ func (r *applicationControlPolicyResource) updatePolicy(ctx context.Context, pla
 		}
 		return diags
 	}
-	diags.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.client)...)
+	diags.Append(applicationcontrol.PublishApplicationControlPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	return diags
+}
+
+func (r *applicationControlPolicyResource) readState(ctx context.Context) (ApplicationControlPolicyModel, error) {
+	out := convertReadStateValues()
+	body, err := r.resourceAPI().ApplicationControlPolicy(ctx, r.client.AccountId)
+	if err != nil {
+		return out, err
+	}
+	pol := body.GetPolicy().GetApplicationControl().GetPolicy()
+	if pol == nil {
+		return out, nil
+	}
+	convertReadStateValues2(&out, pol)
+	return out, nil
 }

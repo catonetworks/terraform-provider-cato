@@ -2,16 +2,14 @@ package account
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
@@ -26,6 +24,8 @@ func NewAccountResource() resource.Resource {
 
 type accountResource struct {
 	client *catoclient.Service
+
+	apiClient ResourceClient
 }
 
 func (r *accountResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -40,12 +40,15 @@ func (r *accountResource) Configure(_ context.Context, req resource.ConfigureReq
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *accountResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *accountResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-//nolint:gocyclo
 func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan Account
 	diags := req.Plan.Get(ctx, &plan)
@@ -54,35 +57,14 @@ func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	input := cato_models.AddAccountInput{}
-
-	if !plan.Description.IsNull() || !plan.Description.IsUnknown() {
-		input.Description = plan.Description.ValueStringPointer()
-	}
-
-	if !plan.Name.IsNull() || !plan.Name.IsUnknown() {
-		input.Name = plan.Name.ValueString()
-	}
-
-	if !plan.Tenancy.IsNull() || !plan.Tenancy.IsUnknown() {
-		tenancyStr := plan.Tenancy.ValueString()
-		input.Tenancy = cato_models.AccountTenancy(tenancyStr)
-	}
-
-	if !plan.Timezone.IsNull() || !plan.Timezone.IsUnknown() {
-		input.Timezone = plan.Timezone.ValueString()
-	}
-
-	if !plan.Type.IsNull() || !plan.Type.IsUnknown() {
-		input.Type = cato_models.AccountProfileType(plan.Type.ValueString())
-	}
+	input := convertCreateInput(plan)
 
 	// publishing new section
 	tflog.Info(ctx, "Create.account")
 	tflog.Debug(ctx, "Create.Account.request", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	addAccountResult, err := r.client.Catov2.AccountManagementAddAccount(ctx, input, r.client.AccountId)
+	addAccountResult, err := r.resourceAPI().AccountManagementAddAccount(ctx, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.Account.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(addAccountResult),
 	})
@@ -111,17 +93,7 @@ func (r *accountResource) Create(ctx context.Context, req resource.CreateRequest
 	})
 
 	// Update the state with the complete account information from the create response
-	plan.ID = types.StringValue(createdAccount.ID)
-	plan.Name = types.StringValue(createdAccount.Name)
-	plan.Tenancy = types.StringValue(string(createdAccount.Tenancy))
-	plan.Timezone = types.StringValue(createdAccount.TimeZone)
-	plan.Type = types.StringValue(string(createdAccount.Type))
-
-	if createdAccount.Description != nil {
-		plan.Description = types.StringValue(*createdAccount.Description)
-	} else {
-		plan.Description = types.StringNull()
-	}
+	convertCreateInput2(&plan, createdAccount)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -138,7 +110,7 @@ func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	readAccountResponse, err := r.client.Catov2.AccountManagement(ctx, state.ID.ValueString())
+	readAccountResponse, err := r.resourceAPI().AccountManagement(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API Account error",
@@ -150,17 +122,7 @@ func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, re
 		"response": utils.InterfaceToJSONString(readAccountResponse),
 	})
 
-	if readAccountResponse.AccountManagement.Account.Description != nil {
-		state.Description = types.StringValue(*readAccountResponse.AccountManagement.Account.Description)
-	} else {
-		state.Description = types.StringNull()
-	}
-
-	state.Name = types.StringValue(readAccountResponse.AccountManagement.Account.Name)
-	state.Tenancy = types.StringValue(string(readAccountResponse.AccountManagement.Account.Tenancy))
-	state.Timezone = types.StringValue(readAccountResponse.AccountManagement.Account.TimeZone)
-	state.ID = types.StringValue(readAccountResponse.AccountManagement.Account.ID)
-	state.Type = types.StringValue(string(readAccountResponse.AccountManagement.Account.Type))
+	convertReadState(&state, readAccountResponse)
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -169,7 +131,6 @@ func (r *accountResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 }
 
-//nolint:funlen
 func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan Account
 	diags := req.Plan.Get(ctx, &plan)
@@ -226,18 +187,14 @@ func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	input := cato_models.UpdateAccountInput{}
-
-	if !plan.Description.IsNull() || !plan.Description.IsUnknown() {
-		input.Description = plan.Description.ValueStringPointer()
-	}
+	input := convertUpdateInput(plan)
 
 	// publishing new section
 	tflog.Info(ctx, "Update.account")
 	tflog.Debug(ctx, "Update.Account.request", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(input),
 	})
-	updateAccountResult, err := r.client.Catov2.AccountManagementUpdateAccount(ctx, input, plan.ID.ValueString())
+	updateAccountResult, err := r.resourceAPI().AccountManagementUpdateAccount(ctx, input, plan.ID.ValueString())
 	tflog.Debug(ctx, "Update.Account.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(updateAccountResult),
 	})
@@ -266,17 +223,7 @@ func (r *accountResource) Update(ctx context.Context, req resource.UpdateRequest
 	})
 
 	// Update the state with the complete account information from the update response
-	plan.ID = types.StringValue(updatedAccount.ID)
-	plan.Name = types.StringValue(updatedAccount.Name)
-	plan.Tenancy = types.StringValue(string(updatedAccount.Tenancy))
-	plan.Timezone = types.StringValue(updatedAccount.TimeZone)
-	plan.Type = types.StringValue(string(updatedAccount.Type))
-
-	if updatedAccount.Description != nil {
-		plan.Description = types.StringValue(*updatedAccount.Description)
-	} else {
-		plan.Description = types.StringNull()
-	}
+	convertUpdateInput2(&plan, updatedAccount)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -295,7 +242,7 @@ func (r *accountResource) Delete(ctx context.Context, req resource.DeleteRequest
 	tflog.Debug(ctx, "Delete.AccountManagementRemoveAccount.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(state.ID),
 	})
-	removedAccountResult, err := r.client.Catov2.AccountManagementRemoveAccount(ctx, state.ID.ValueString(), r.client.AccountId)
+	removedAccountResult, err := r.resourceAPI().AccountManagementRemoveAccount(ctx, state.ID.ValueString(), r.client.AccountId)
 	tflog.Debug(ctx, "Delete.AccountManagementRemoveAccount.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removedAccountResult),
 	})
