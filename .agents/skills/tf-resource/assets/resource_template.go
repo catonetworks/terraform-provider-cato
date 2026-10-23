@@ -35,7 +35,6 @@ type <camelCaseResourceName> struct {
 	mockClient Client
 }
 
-type Client interface { }
 
 func (r *<camelCaseResourceName>) getClient() Client {
 	if r.mockClient != nil {

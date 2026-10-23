@@ -19,12 +19,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-// alwaysOnRuleResource currently defines the schema; CRUD will be added separately.
-type alwaysOnRuleResource struct{}
-
 func (r *alwaysOnRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The cato_always_on_rule resource configures an Always On policy rule in the Cato platform.",
+		Description: "The cato_always_on_rule resource creates an Always On policy rule in the Cato platform. " +
+			"Read, update, and delete are not implemented yet. Changes are saved to the draft policy without publishing.",
 		Attributes: map[string]schema.Attribute{
 			"at":   policyrule.SchemaPosition(),
 			"rule": schemaAlwaysOnRule(),

@@ -13,6 +13,7 @@
 # and the idName hint, as specified by the References special case.
 # SDK v1.1.0 omits section.subPolicyId from generated CRUD selections; excluded pending SDK support.
 # Sets represent unordered matching criteria, as approved by the user.
+# Create writes the default draft policy; publishing is outside this resource's current scope.
 Attributes:
   - Name: at
     Description: Position of the new rule in the policy
@@ -27,7 +28,9 @@ Attributes:
       - Name: ref
         Description: ID of the rule or section relative to which the new rule is positioned
         Type: string
-        Mode: optional
+        Mode: optional_computed
+        Hints:
+          - modifyPlan
     Mode: optional
 
   - Name: rule

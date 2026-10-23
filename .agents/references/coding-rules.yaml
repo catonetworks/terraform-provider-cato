@@ -236,7 +236,7 @@ Sections:
         Slug: tfschema-optional-string-attr
         Level: MUST
         Statement: |
-          If schema_description attribute Mode is `optional` and Type is `string`, the Schema must:
+          If schema_description attribute Mode is `optional_computed` and Type is `string`, the Schema must:
             - use flags: Optional=true, Computed=true
             - use PlanModifier: NullStringModifier that always plans an empty string if the value is not configured.
         Rationale: To avoid inconsistencies and null/empty string ambiguity, always use empty string in the state.
@@ -245,7 +245,7 @@ Sections:
         Slug: tfschema-optional-bool-attr
         Level: MUST
         Statement: |
-          If schema_description attribute Mode is `optional` and Type is `boolean`, the Schema must:
+          If schema_description attribute Mode is `optional_computed` and Type is `bool`, the Schema must:
             - use flags: Optional=true, Computed=true
             - use PlanModifier: NullBoolModifier that always plans false value if the value is not configured.
         Rationale: To avoid inconsistencies and null/false ambiguity, always use false value in the state.
@@ -254,7 +254,7 @@ Sections:
         Slug: tfschema-optional-collection-attr
         Level: MUST
         Statement: |
-          If schema_description attribute Mode is `optional` and Type is one of `set,map,list`, the Schema must:
+          If schema_description attribute Mode is `optional_computed` and Type is one of `set,map,list`, the Schema must:
             - use flags: Optional=true, Computed=true
             - use PlanModifier: NullSetModifier for Set, NullMapModifier for Map, or NullListModifier for List,
               that always plans empty value if the value is not configured.
@@ -403,10 +403,54 @@ Sections:
         Slug: conv-parsing-optional-attributes
         Level: MUST
         Statement: |
-          A parser that processes optional attribute from the API response must set the attribute value
+          A parser that processes attribute with `modifyPlan` Hint,
+          it must set the attribute value
           to the default empty state, if the API returns nil or empty value.
           The PlanModifier defined in the Schema planned for this result (see rules TFSCHEMA-002,TFSCHEMA-003,TFSCHEMA-004).
             - string: types.StringValue() // ""
+            - bool: types.BoolValue() // false
             - set: types.SetValue() // []
             - list: types.ListValue() // []
         Rationale: Consistent null/empty value handling
+
+      - ID: CONV-005
+        Slug: conv-builder-simple-required
+        Level: MUST
+        Statement: |
+          For simple attributes with Type in (string, bool, int*, float*) and Mode = required, convert the value
+          using terraform-plugin-framework `Value*()` methods (e.g. ValueString, ValueBool)
+        Rationale: Required attributes always have value
+
+      - ID: CONV-006
+        Slug: conv-builder-simple-optional
+        Level: MUST
+        Statement:
+          For simple attributes with Type in (string, bool, int*, float*), Mode in (optional, optional_computed),
+          convert the value
+          using terraform-plugin-framework `Value*Pointer()` methods (e.g. ValueStringPointer, ValueBoolPointer)
+        Rationale: pass null to API
+
+      - ID: CONV-007
+        Slug: conv-builder-id-name
+        Level: MUST
+        Statement: |
+          If the attribute Hints contains 'idName', convert the value using `Prepare*` functions from the `idname` package.
+          Example:
+          ```go
+          // single idName reference
+          idname.PrepareIDName[cato_models.PopLocationRefInput](ctx, tfLocation.Primary, diags)
+          // set of idName references
+          idname.PrepareIDNameSet[cato_models.CountryRefInput](ctx, countries, diags)
+          ```
+        Rationale: pass null to API
+
+      - ID: CONV-008
+        Slug: conv-builder-shared-func
+        Level: MUST
+        Statement: |
+          If a generic conversion exists in the `convert` package, it must be used, rather than creating a new one.
+          For example converting types.Set or types.List into a slice of strings or integers,
+          the convert package contains builder functions like: PrepareStrings, PrepareStringList, PrepareInt64List, etc.
+          For parsing API structs into terraform type system the package contains parsers like: ParseStringerList,
+          ParseStringList, ParseInt64List, etc.
+        Rationale: Using generic solutions

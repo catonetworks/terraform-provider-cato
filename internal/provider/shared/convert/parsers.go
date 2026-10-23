@@ -261,3 +261,12 @@ func NullableString(value string) types.String {
 
 	return types.StringValue(value)
 }
+
+// ParseOptionalString returns StringValue("") if the string is nil, its real value otherwise.
+// It is intended to be used with NullStringModifier plan modifier that defaults to empty string.
+func ParseOptionalString(s *string) types.String {
+	if s == nil {
+		return types.StringValue("")
+	}
+	return types.StringValue(*s)
+}

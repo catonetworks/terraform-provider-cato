@@ -6,6 +6,12 @@ structname: "{{.InterfaceName}}"
 force-file-write: true
 formatter: gofmt
 packages:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule:
+    interfaces:
+      Client:
+        config:
+          filename: AlwaysOnRuleClient.go
+          structname: AlwaysOnRuleClient
   github.com/catonetworks/terraform-provider-cato/internal/provider:
     interfaces:
       InternetFirewallBulkPolicyClient:

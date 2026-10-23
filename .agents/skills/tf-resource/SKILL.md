@@ -107,14 +107,15 @@ one of computed,required,optional,optional_computed.
 
 - if the attribute is not in the input, and is only returned, set the mode to 'computed'
 - if the Graphql attribute is required in the input (marked with '!') set the mode to 'required'
-- if the attribute type is enum,  set the mode to 'required'
+- if the attribute is not required in the input, and input is graphql enum type, set the mode to 'required'
 - if the attribute is not required in the input, and its type is 'list', 'map', or 'set',  set the mode to 'optional_computed'
-- if the attribute is not required in the input, and its type is not 'list', 'map', or 'set',  set the mode to 'optional'
+- if the attribute is not required in the input, and type is string, and input is not enum, set the mode to 'optional_computed'
+- if the attribute is not required in the input, and type is bool, set the mode to 'optional_computed'
+- if the attribute is not required in the input, and its type is not 'list', 'map', 'set' or 'string',  set the mode to 'optional'
 
 #### 1.2.6 Attribute Hint
 - if the attribute is of type 'nested' and the sub-attributes are called 'id' and 'name' (both string), add a 'idName' to the set of hints
-- if the attribute type is 'list', 'map', or 'set', and its mode is 'optional_computed', add 'modifyPlan' to the set of hints
-
+- if the attribute type is 'list', 'map', 'set', 'string', or 'bool' and its mode is 'optional_computed', add 'modifyPlan' to the set of hints
 
 
 ## 2 Provider Implementation
@@ -132,7 +133,16 @@ The Go types and variables must match the schema_description and the Schema from
 Use the coding-rules `MODEL-*`.
 
 
-### 2.3 Resource file
+### 2.3 Client file
+Create or update the client file named 'client_{resource-name}.go' where the resource name is the snail_case resource name without the "cato_" prefix.
+The file shall contain interface definition of the Cato Client 
+```go
+type Client interface {
+   // methods of cato_go_sdk.Client used in the current package
+ }
+```
+
+### 2.4 Resource file
 Create or update the resource file named 'resource_{resource-name}.go' where the resource name is the snail_case resource name without the "cato_" prefix.
 Use the `assets/resource_template.go` for the scaffolding, replace the placeholders `<...>` with the appropriate value.
 The resource file shall contain the NewXXX function and the following methods:
@@ -146,16 +156,16 @@ The resource file shall contain the NewXXX function and the following methods:
   - Delete
 Other helper functions, converters must be in a converters file.
 
-#### 2.3.1 Method getClient
+#### 2.4.1 Method getClient
 The `getClient` method must be made based on resource_template.go template.
 
-#### 2.3.2 Method Metadata
+#### 2.4.2 Method Metadata
 The `Metadata` method must be made based on resource_template.go template.
 
-#### 2.3.3 Method Configure
+#### 2.4.3 Method Configure
 The `Configure` method must be made based on resource_template.go template.
 
-#### 2.3.4 Method ImportState
+#### 2.4.4 Method ImportState
 If the resource-related API supports fetching by ID and the resource has the `id` attribute,
 use the `ImportStatePassthroughID` helper function to provide information to the framework,
 no other code is needed in the method body.
@@ -166,7 +176,7 @@ The `ImportStatePassthroughID` requires the ID path to be specified, for example
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 ```
 
-#### 2.3.5 Method Create
+#### 2.4.5 Method Create
 The `Create` method should have the following structure:
 - get a plan
 - call the API
@@ -181,16 +191,54 @@ else there should be calls to helper methods, each helper implementing its 'call
 
 Getting a plan example:
 ```go
-var plan Model
+var plan ExampleResource
 diags := req.Plan.Get(ctx, &plan)
 resp.Diagnostics.Append(diags...)
 if resp.Diagnostics.HasError() {
-	return
+   return
+}
+resourceName := plan.xxxxxxx.ValueString() // for debugging purposes
+```
+#### 2.4.5.1 Calling the API
+To call API, use the following pattern 
+```go
+errMsg := fmt.Sprintf("failed to create ... %s", resourceName)
+result, err := r.getClient().ExampleMethod(ctx, ....)
+if err != nil {
+   resp.Diagnostics.AddError(errMsg, err.Error())
+   return
+}
+```
+If the Create API returns the resource ID, validate it has been returned, e.g.
+```go
+newID := result.GetXXX().GetXXXX().GetID()
+if newID == "" {
+   resp.Diagnostics.AddError(errMsg, "API did not return resource ID")
+   return
 }
 ```
 
-### 2.4 Converter file
+### 2.5 Converter file
 Create or update the converter file named 'converters_{resource-name}.go' where the resource name is the snail_case resource name without the "cato_" prefix.
+Use the `CONV-*` rules for the converters.
 There are two major groups of converters:
 - input builders: convert TF type system (typically plan) into a plain Go structures (typically SDK types defined in cato_models package)
 - parsers: convert API responses into TF type system
+
+#### 2.5.1 Input builders
+The core of the input builder function should look like this:
+```go
+input := cato_models.ExampleInput{
+  ExampleBoolField:  plan.ExampleBool.ValueBool(),
+  ExampleStrings:    convert.PrepareStringList[string](ctx, plan.ExampleStrings, diags),
+}
+```
+
+#### 2.5.2 Parsers
+The core of the parser function should look like this:
+```go
+state = &ExampleResource{
+  ExampleStringField:   types.StringValue(string(valueFromAPI)),
+  ExampleComplexField:  r.parseExampleMethod(ctx, valueFromAPI, &diags),
+  ExampleRefField:      idname.ParseIDNameSet(ctx, valueFromAPI, &diags),
+```

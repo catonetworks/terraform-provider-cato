@@ -10,6 +10,7 @@ import (
 
 // AlwaysOnRule is the Terraform model for cato_always_on_rule.
 // The at object reuses policyrule.Position for GraphQL PolicyRulePositionInput.
+// Placement is retained from the plan because addRule does not return this input.
 type AlwaysOnRule struct {
 	At   types.Object `tfsdk:"at"`   // policyrule.Position
 	Rule types.Object `tfsdk:"rule"` // AlwaysOnRuleData
