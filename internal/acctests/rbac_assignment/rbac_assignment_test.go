@@ -18,7 +18,7 @@ func TestAccRBACAssignment(t *testing.T) {
 	acc.SkipByEnv(t)
 	user := os.Getenv("TFACC_RBAC_USER_ID")
 	if user == "" {
-		t.Skip("set TFACC_RBAC_USER_ID to an existing disposable admin-user principal")
+		t.Skip("set TFACC_RBAC_USER_ID to an existing disposable user principal")
 	}
 	name := "tfacc-assignment-" + acctest.RandString(8)
 	config := func(description string) string {

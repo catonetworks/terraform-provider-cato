@@ -59,7 +59,9 @@ func lookupAssignment(ctx context.Context, client ResourceClient, account, id st
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
+		// The IAM service dereferences filter even when no criteria are supplied.
 		response, err := client.RbacRbacAssignmentList(ctx, account, m.RBACAssignmentListInput{
+			Filter: &m.RBACAssignmentFilterInput{},
 			Paging: &m.PagingInput{From: pageNumber, Limit: iam.PageSize},
 			Sort:   &m.RBACAssignmentSortInput{CreationDate: &m.SortOrderInput{Direction: m.SortOrderAsc}},
 		})

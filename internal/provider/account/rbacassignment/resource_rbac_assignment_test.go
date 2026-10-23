@@ -56,6 +56,7 @@ func TestAssignmentCRUD(t *testing.T) {
 			require.Equal(t, `"a"`, string(body.Variables.Input["rbacAssignmentId"]))
 			payload = `"updateRbacAssignment":{"assignment":` + assignment + `}`
 		case strings.Contains(body.Query, "rbacRbacAssignmentList"):
+			require.JSONEq(t, `{}`, string(body.Variables.Input["filter"]))
 			items, total := assignment, "1"
 			if missing {
 				items, total = "", "0"
