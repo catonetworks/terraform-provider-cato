@@ -1,0 +1,25 @@
+Attributes:
+  - Name: account_id
+    Description: Account override; defaults to the provider account.
+    Type: string
+    Mode: optional_computed
+  - Name: id
+    Description: Query account identifier.
+    Type: string
+    Mode: computed
+  - Name: resources
+    Description: Available permission resources.
+    Type: set
+    ItemType: nested
+    Mode: computed
+    Attributes:
+      - Name: resource
+        Description: Permission resource identifier.
+        Type: string
+        Mode: computed
+      - Name: supported_actions
+        Description: Grantable VIEW and EDIT actions.
+        Type: set
+        ItemType: string
+        Mode: computed
+        Hints: [enum=RoleManagementGrantAction]

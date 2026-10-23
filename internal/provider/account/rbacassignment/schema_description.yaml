@@ -1,0 +1,70 @@
+Attributes:
+  - Name: account_id
+    Description: Account override; defaults to provider account.
+    Type: string
+    Mode: optional_computed
+  - Name: allow_all_sites
+    Description: Effective all-sites grant.
+    Type: string
+    Mode: computed
+  - Name: allow_all_users
+    Description: Effective all-users grant.
+    Type: string
+    Mode: computed
+  - Name: allow_viewing_unobfuscated_data
+    Description: Omission preserves stored preference on update.
+    Type: bool
+    Mode: optional
+  - Name: allowed_entities
+    Description: Complete entity scope.
+    Type: set
+    Mode: required
+    ItemType: nested
+    Attributes:
+      - Name: action
+        Description: Action.
+        Type: string
+        Mode: required
+        Hints: [enum=RBACAction]
+      - Name: id
+        Description: Id.
+        Type: string
+        Mode: required
+      - Name: type
+        Description: Type.
+        Type: string
+        Mode: required
+        Hints: [enum=AuthorizedEntityType]
+  - Name: assignment_id
+    Description: API assignment ID.
+    Type: string
+    Mode: computed
+  - Name: assignment_type
+    Description: ADMIN_USER or GROUP.
+    Type: string
+    Mode: computed
+  - Name: data_obfuscation_status
+    Description: Effective obfuscation status.
+    Type: string
+    Mode: computed
+  - Name: description
+    Description: Description; omission clears it.
+    Type: string
+    Mode: optional_computed
+  - Name: group_id
+    Description: Users-group principal; mutually exclusive with user_id.
+    Type: string
+    Mode: optional
+  - Name: id
+    Description: Composite Terraform identifier.
+    Type: string
+    Mode: computed
+  - Name: role_ids
+    Description: Complete nonempty role ID set.
+    Type: set
+    Mode: required
+    ItemType: string
+  - Name: user_id
+    Description: User principal; mutually exclusive with group_id.
+    Type: string
+    Mode: optional

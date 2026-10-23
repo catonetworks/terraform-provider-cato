@@ -1,0 +1,49 @@
+Attributes:
+  - Name: account_id
+    Description: Account override; defaults to provider account.
+    Type: string
+    Mode: optional_computed
+  - Name: applicable_account_type
+    Description: Destination account types.
+    Type: set
+    Mode: computed
+    ItemType: string
+  - Name: description
+    Description: Role description.
+    Type: string
+    Mode: computed
+  - Name: id
+    Description: Composite Terraform identifier.
+    Type: string
+    Mode: computed
+  - Name: is_used_on_external_access
+    Description: Whether external access uses the role.
+    Type: bool
+    Mode: computed
+  - Name: name
+    Description: Role name.
+    Type: string
+    Mode: computed
+  - Name: permissions
+    Description: Complete resource/action grants.
+    Type: set
+    Mode: computed
+    ItemType: nested
+    Attributes:
+      - Name: action
+        Description: Action.
+        Type: string
+        Mode: computed
+        Hints: [enum=RoleManagementGrantAction]
+      - Name: resource
+        Description: Resource.
+        Type: string
+        Mode: computed
+  - Name: predefined
+    Description: Whether the role is predefined.
+    Type: bool
+    Mode: computed
+  - Name: role_id
+    Description: API role ID.
+    Type: string
+    Mode: required

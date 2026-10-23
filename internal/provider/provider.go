@@ -24,7 +24,12 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/account"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/admin"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/licensinginfo"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/permissioncatalog"
+	roleds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/role"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/roles"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/license"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/rbacassignment"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
@@ -498,6 +503,9 @@ func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoclient.Service)
 func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		accountsnapshotsite.NewAccountSnapshotSiteDataSource,
+		roleds.NewDataSource,
+		roles.NewDataSource,
+		permissioncatalog.NewDataSource,
 		allocatedip.Source,
 		dhcprelaygroup.DataSource,
 		groupdata.DataSource,
@@ -518,6 +526,8 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		account.NewAccountResource,
+		role.NewResource,
+		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
