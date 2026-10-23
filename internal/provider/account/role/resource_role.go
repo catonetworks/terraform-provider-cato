@@ -76,7 +76,7 @@ func (r *roleResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 	if !resp.Diagnostics.HasError() {
 		if err := waitForRole(ctx, r.resourceAPI(), account, value); err != nil {
-			resp.Diagnostics.AddError("Role created; read replica not synchronized", err.Error())
+			resp.Diagnostics.AddWarning("Role created; read replica not synchronized", err.Error())
 		}
 	}
 }
@@ -160,7 +160,7 @@ func (r *roleResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	}
 	if !resp.Diagnostics.HasError() {
 		if err := waitForRole(ctx, r.resourceAPI(), account, value); err != nil {
-			resp.Diagnostics.AddError("Role updated; read replica not synchronized", err.Error())
+			resp.Diagnostics.AddWarning("Role updated; read replica not synchronized", err.Error())
 		}
 	}
 }
