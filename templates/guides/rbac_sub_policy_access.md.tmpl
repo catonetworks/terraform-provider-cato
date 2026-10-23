@@ -1,0 +1,74 @@
+---
+subcategory: ""
+page_title: "Connect RBAC Roles to Firewall Sub-Policies"
+description: |-
+  Assign user or group roles scoped to WAN and Internet Firewall sub-policies.
+---
+
+# Connect RBAC Roles to Firewall Sub-Policies
+
+Use `cato_rbac_assignment` to connect a principal, a role, and the sub-policies
+that the principal may access:
+
+- `cato_role.permissions` defines capabilities, using resource names such as
+  `WanFirewall` and `InternetFirewall` and actions such as `VIEW` or `EDIT`.
+- `cato_rbac_assignment.role_ids` references the role's `role_id`.
+- `cato_rbac_assignment.allowed_entities` references sub-policy IDs, with types
+  `WAN_FIREWALL_POLICY` or `INTERNET_FIREWALL_POLICY` and the intended action.
+- A firewall rule's `sub_policy_id` attaches the rule to its sub-policy.
+
+The role contains the permission definitions. The assignment carries the
+connection to the sub-policies. Terraform references establish creation and
+destruction dependencies automatically.
+
+## Prerequisites
+
+Use an existing user in the same account, or replace `user_id` with `group_id`
+to assign a users group. A user ID identifies a user, rather than a legacy
+admin principal. The provider does not create the user in this example.
+
+Set `CATO_TOKEN`, `TF_VAR_account_id`, and `TF_VAR_user_id` in your environment.
+The API token must be authorized to manage roles, assignments, and both firewall
+policy families. Discover available permission resource names and actions with
+`cato_permission_catalog` when adapting the role.
+
+## Complete configuration
+
+The example creates two disabled sub-policies and disabled rules scoped to a
+documentation IP address. It grants the selected user `VIEW` access to both
+sub-policies. Adapt the scope and enable the policies and rules when ready to
+use them.
+
+{{ tffile "examples/resources/cato_rbac_assignment/resource.tf" }}
+
+## Apply and check drift
+
+```shell
+terraform init
+terraform plan -out=rbac.tfplan
+terraform apply rbac.tfplan
+terraform plan -detailed-exitcode
+```
+
+After apply, a clean plan exits with `0`. A plan that detects changes exits
+with `2`; errors exit with `1`. If a role's permissions or an assignment's roles
+or policy grants are changed outside Terraform, review the next plan and apply
+it to restore the configuration.
+
+Permissions, role IDs, and entity scopes are unordered sets. Reordering entries
+should produce no changes. Updates replace the configured collections, so
+removing a grant removes it on apply. Removing a role or assignment description
+clears it.
+
+For edit access, configure `EDIT` in both the role permission and the corresponding
+policy entity grant. These examples describe provisioning and scoping; validate
+the selected user's effective access separately before relying on it.
+
+## Cleanup
+
+```shell
+terraform destroy
+```
+
+This removes the example's assignments, role, rules, and sub-policies. The
+existing user or group remains.
