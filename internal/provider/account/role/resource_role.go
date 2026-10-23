@@ -188,12 +188,12 @@ func (r *roleResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		resp.Diagnostics.AddError("Cannot delete role", err.Error())
 		return
 	}
-	response, err := r.resourceAPI().RbacRoleManagementDeleteRole(ctx, account, m.RoleManagementDeleteRoleInput{ID: id})
+	deleted, err := deleteRoleWithRetry(ctx, r.resourceAPI(), account, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Delete role failed", err.Error())
 		return
 	}
-	if response.GetRbac().GetRoleManagement().GetDeleteRole().GetID() != id {
+	if !deleted {
 		resp.Diagnostics.AddError("Invalid role response", "API did not confirm deletion of the requested role.")
 	}
 }

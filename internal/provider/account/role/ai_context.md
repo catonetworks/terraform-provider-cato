@@ -26,3 +26,10 @@ up to 30 seconds at 250ms intervals for mutable fields to converge. Mutation
 requests are never retried by this consistency loop. Poll failures report a
 diagnostic while preserving the acknowledged ID/state. Ordinary refresh still
 removes a genuinely absent role.
+
+Role deletion retries for up to 30 seconds only for HTTP-200 GraphQL
+`DOWNSTREAM_SERVICE_ERROR` errors on `rbac.roleManagement.deleteRole` that
+report temporary role-management unavailability or `errorType: UNAVAILABLE`.
+Before retrying, it reads the role: confirmed absence completes deletion;
+lookup failures, validation/authorization errors, and deadline expiration retain
+diagnostics. Failed delete responses alone never remove the role from state.
