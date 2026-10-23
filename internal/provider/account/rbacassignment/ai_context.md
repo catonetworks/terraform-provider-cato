@@ -14,9 +14,8 @@ resource; principal changes replace assignments. Imports use composite account I
 
 Resource: `cato_rbac_assignment`. Operations: addRbacAssignments, rbacAssignmentList, updateRbacAssignment, removeRbacAssignment under rbac.
 
-All SDK calls use generated operations. The provider pins SDK commit
-`5ff6a5aac4132a1e3aa4c0a420e7d5c2c6c81918`; replace the pseudo-version with a
-released tag before merge. Role list `paging.from` is an offset; assignment
+All SDK calls use generated operations from released SDK `v1.1.2`
+(commit `dc2a6a05a3b895c3de2ee65c0f70168714dda77c`). Role list `paging.from` is an offset; assignment
 list `paging.from` is a page number. Incomplete responses produce diagnostics,
 not missing-object state removal. No policy publication is required.
 
@@ -34,3 +33,11 @@ dereferences the filter. Omitting it produces an HTTP-200 GraphQL error.
 The assignment acceptance suite creates a unique user through the generated
 user API and removes it with `t.Cleanup` after Terraform destroy. It uses an
 `example.invalid` address and requires no pre-existing user or CI user-ID setting.
+
+The public `RBACAssignmentFilterInput` has no assignment-ID field. Its public
+filters are search, creationDate, lastModifiedDate, and type; admin is private.
+Lookup therefore scans account-scoped pages with an explicit empty filter. If
+the total changes between pages, restart from page zero up to three attempts.
+Persistent churn produces an error and retains state rather than reporting an
+assignment absent after rows may have shifted across page boundaries. Duplicate
+IDs, malformed metadata, cross-account results, and API failures still fail closed.
