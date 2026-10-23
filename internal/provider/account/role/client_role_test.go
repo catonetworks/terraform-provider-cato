@@ -13,9 +13,11 @@ import (
 )
 
 func TestDeleteRoleRetry(t *testing.T) {
-	for _, scenario := range []string{"retry", "unavailable status", "already deleted", "business error", "unrelated error", "canceled"} {
+	for _, scenario := range []string{"retry", "unavailable status", "already deleted", "business error", "unrelated error", "canceled", "canceled during retry"} {
 		t.Run(scenario, func(t *testing.T) {
 			deletes, reads := 0, 0
+			var cancelRetry context.CancelFunc
+			release := make(chan struct{})
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					OperationName string                     `json:"operationName"`
@@ -39,6 +41,11 @@ func TestDeleteRoleRetry(t *testing.T) {
 				require.JSONEq(t, `{"id":"r"}`, string(body.Variables["roleManagementDeleteRoleInput"]))
 				deletes++
 				if deletes > 1 {
+					if scenario == "canceled during retry" {
+						cancelRetry()
+						<-release
+						return
+					}
 					_, _ = w.Write([]byte(`{"data":{"rbac":{"roleManagement":{"deleteRole":{"id":"r"}}}}}`))
 					return
 				}
@@ -49,14 +56,17 @@ func TestDeleteRoleRetry(t *testing.T) {
 				if scenario == "unrelated error" {
 					detail = "Role is assigned to admins"
 				}
-				response := map[string]any{"errors": []any{map[string]any{"message": detail, "path": []string{"rbac", "roleManagement", "deleteRole"}, "extensions": map[string]any{"code": code, "full": detail}}}}
+				response := map[string]any{"errors": []any{map[string]any{"message": detail, "path": []string{"rbac", "roleManagement", "deleteRole"}, "extensions": map[string]any{"code": code, "full": detail, "trace_id": "fixture-trace"}}}}
 				if scenario == "unavailable status" {
 					response["errors"].([]any)[0].(map[string]any)["extensions"].(map[string]any)["errorType"] = "UNAVAILABLE"
 					response["errors"].([]any)[0].(map[string]any)["extensions"].(map[string]any)["full"] = "Service unavailable"
 				}
 				require.NoError(t, json.NewEncoder(w).Encode(response))
 			}))
-			defer server.Close()
+			defer func() {
+				close(release)
+				server.Close()
+			}()
 			client, err := sdk.New(server.URL, "fixture-key", "123", server.Client(), nil)
 			require.NoError(t, err)
 			ctx := context.Background()
@@ -64,6 +74,10 @@ func TestDeleteRoleRetry(t *testing.T) {
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithTimeout(ctx, 50*time.Millisecond)
 				defer cancel()
+			}
+			if scenario == "canceled during retry" {
+				ctx, cancelRetry = context.WithCancel(ctx)
+				defer cancelRetry()
 			}
 			deleted, err := deleteRoleWithRetry(ctx, client, "123", "r")
 			switch scenario {
@@ -81,6 +95,12 @@ func TestDeleteRoleRetry(t *testing.T) {
 				require.ErrorIs(t, err, context.DeadlineExceeded)
 				require.False(t, deleted)
 				require.Equal(t, 1, deletes)
+			case "canceled during retry":
+				require.ErrorIs(t, err, context.Canceled)
+				require.ErrorContains(t, err, "Role management is temporarily unavailable")
+				require.ErrorContains(t, err, "fixture-trace")
+				require.False(t, deleted)
+				require.Equal(t, 2, deletes)
 			default:
 				require.Error(t, err)
 				require.False(t, deleted)
