@@ -1,0 +1,34 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Connect roles to sub-policies
+
+A role defines permissions, such as `WanFirewall: VIEW`. An assignment connects
+one user or users group to that role through `role_ids`, and scopes access to
+sub-policies through `allowed_entities`. Use `cato_role.viewer.role_id` for the
+role reference and the sub-policy resource's `id` for each entity reference.
+Rules belong to a sub-policy through `sub_policy_id`.
+
+The following example connects a user to both WAN and Internet Firewall
+sub-policies. See the [sub-policy access guide](../guides/rbac_sub_policy_access)
+for configuration, update, and drift-check instructions.
+
+## Example Usage
+
+{{ tffile "examples/resources/cato_rbac_assignment/resource.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+Import using `ACCOUNT_ID:ASSIGNMENT_ID`:
+
+{{ codefile "shell" "examples/resources/cato_rbac_assignment/import.sh" }}

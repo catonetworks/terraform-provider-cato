@@ -1,0 +1,135 @@
+Attributes:
+  - Name: account_id
+    Description: Account override; defaults to the provider account.
+    Type: string
+    Mode: optional_computed
+  - Name: filter
+    Description: Optional ID, name and predefined-status filters.
+    Type: nested
+    Mode: optional
+    Attributes:
+      - Name: id
+        Description: ID equality and membership operators (eq, neq, in, nin).
+        Type: nested
+        Mode: optional
+        Attributes:
+          - Name: eq
+            Description: API eq operator.
+            Type: string
+            Mode: optional
+          - Name: in
+            Description: API in operator.
+            Type: set
+            Mode: optional
+            ItemType: string
+          - Name: neq
+            Description: API neq operator.
+            Type: string
+            Mode: optional
+          - Name: nin
+            Description: API nin operator.
+            Type: set
+            Mode: optional
+            ItemType: string
+      - Name: name
+        Description: Name equality and membership operators (eq, neq, in, nin).
+        Type: nested
+        Mode: optional
+        Attributes:
+          - Name: eq
+            Description: API eq operator.
+            Type: string
+            Mode: optional
+          - Name: in
+            Description: API in operator.
+            Type: set
+            Mode: optional
+            ItemType: string
+          - Name: neq
+            Description: API neq operator.
+            Type: string
+            Mode: optional
+          - Name: nin
+            Description: API nin operator.
+            Type: set
+            Mode: optional
+            ItemType: string
+      - Name: predefined
+        Description: Boolean eq and neq operators.
+        Type: nested
+        Mode: optional
+        Attributes:
+          - Name: eq
+            Description: Equal to predefined status.
+            Type: bool
+            Mode: optional
+          - Name: neq
+            Description: Not equal to predefined status.
+            Type: bool
+            Mode: optional
+  - Name: id
+    Description: Query account identifier.
+    Type: string
+    Mode: computed
+  - Name: items
+    Description: Complete role projections in API sort order; see the role data-source description.
+    Type: list
+    ItemType: nested
+    Mode: computed
+    Attributes:
+      - Name: account_id
+        Description: Account override; defaults to provider account.
+        Type: string
+        Mode: computed
+      - Name: applicable_account_type
+        Description: Destination account types.
+        Type: set
+        Mode: computed
+        ItemType: string
+      - Name: description
+        Description: Role description.
+        Type: string
+        Mode: computed
+      - Name: id
+        Description: Composite Terraform identifier.
+        Type: string
+        Mode: computed
+      - Name: is_used_on_external_access
+        Description: Whether external access uses the role.
+        Type: bool
+        Mode: computed
+      - Name: name
+        Description: Role name.
+        Type: string
+        Mode: computed
+      - Name: permissions
+        Description: Complete resource/action grants.
+        Type: set
+        Mode: computed
+        ItemType: nested
+        Attributes:
+          - Name: action
+            Description: Action.
+            Type: string
+            Mode: computed
+            Hints: [enum=RoleManagementGrantAction]
+          - Name: resource
+            Description: Resource.
+            Type: string
+            Mode: computed
+      - Name: predefined
+        Description: Whether the role is predefined.
+        Type: bool
+        Mode: computed
+      - Name: role_id
+        Description: API role ID.
+        Type: string
+        Mode: computed
+  - Name: sort_direction
+    Description: Name sort direction, ASC by default.
+    Type: string
+    Mode: optional_computed
+  - Name: total
+    Description: Number of returned roles.
+    Type: int64
+    Mode: computed

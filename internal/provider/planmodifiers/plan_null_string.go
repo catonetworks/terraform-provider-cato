@@ -7,11 +7,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func NullStringModifier() *nullStringModifier { return &nullStringModifier{} }
+// NullStringModifier plans an unconfigured string as an empty string.
+func NullStringModifier() planmodifier.String { return &nullStringModifier{} }
 
 type nullStringModifier struct{}
 
-func (m *nullStringModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+func (m *nullStringModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
 	// Do nothing if there is an unknown configuration value, otherwise interpolation gets messed up.
 	// If the entire plan is null, the resource is planned for destruction.
 	if req.ConfigValue.IsUnknown() || req.Plan.Raw.IsNull() {

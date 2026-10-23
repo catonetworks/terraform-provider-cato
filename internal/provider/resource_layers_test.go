@@ -99,16 +99,27 @@ func resourceLayerViolations(filename string, file *ast.File, packageFiles ...*a
 					violations = append(violations, "Terraform value construction belongs in converters")
 				}
 			}
-			switch selector.Sel.Name {
-			case "As", "ElementsAs", "ValueString", "ValueStringPointer", "ValueBool", "ValueBoolPointer",
-				"ValueInt64", "ValueInt64Pointer", "ValueFloat64", "ValueFloat64Pointer", "IsNull", "IsUnknown":
+			if clientDecodesTerraformValue(selector, aliases) {
 				violations = append(violations, "Terraform value decoding belongs outside the client file")
 			}
+
 			return true
 		})
 		return true
 	})
 	return violations
+}
+
+func clientDecodesTerraformValue(selector *ast.SelectorExpr, aliases map[string]string) bool {
+	if qualifier, ok := selector.X.(*ast.Ident); ok && aliases[qualifier.Name] == "errors" && selector.Sel.Name == "As" {
+		return false
+	}
+	switch selector.Sel.Name {
+	case "As", "ElementsAs", "ValueString", "ValueStringPointer", "ValueBool", "ValueBoolPointer",
+		"ValueInt64", "ValueInt64Pointer", "ValueFloat64", "ValueFloat64Pointer", "IsNull", "IsUnknown":
+		return true
+	}
+	return false
 }
 
 func resourceLayerImports(file *ast.File, client, converter bool) (aliases map[string]string, violations []string) {
@@ -142,6 +153,11 @@ func TestResourceLayerViolations(t *testing.T) {
 		{"SDK response conversion despite Client suffix", "client_rule.go", `package example
             import values "github.com/hashicorp/terraform-plugin-framework/types"
             func hydrateFromClient() { _ = values.StringValue("rule") }`, true},
+		{"standard error inspection", "client_rule.go", `package example
+            import inspect "errors"
+            func unavailable(err error) bool { var response *APIError; return inspect.As(err, &response) }`, false},
+		{"Terraform object decoding", "client_rule.go", `package example
+            func decode(value Object) { value.As(ctx, &model, options) }`, true},
 		{"inline Terraform decoding", "client_rule.go", `package example
             func update(plan Model) { _ = plan.Name.ValueString() }`, true},
 		{"SDK forwarding", "client_rule.go", `package example

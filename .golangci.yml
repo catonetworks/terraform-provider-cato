@@ -121,7 +121,13 @@ linters:
       - linters:
           - revive
         text: 'exported: .*stutters'
-        path: 'internal/provider/(network/(data_sources/networkinterfaces|networkrange)|policy/(applicationcontrol|inet/data_sources/ifrulesections|lan/(socketlanfirewallrule|socketlannetworkrule)|privateaccess|wan/data_sources/wfrulesections)|shared/applicationcontrol)/'
+        path: 'internal/provider/(network/(data_sources/networkinterfaces|networkrange)|policy/(access/alwaysonrule|applicationcontrol|inet/data_sources/ifrulesections|lan/(socketlanfirewallrule|socketlannetworkrule)|privateaccess|wan/data_sources/wfrulesections)|shared/applicationcontrol)/'
+      # Inherited, unregistered Always On schema scaffold. Keep its existing
+      # unused symbols out of the RBAC scope until its CRUD is implemented.
+      - linters:
+          - unused
+        path: 'internal/provider/policy/access/alwaysonrule/schema_always_on_rule\.go$'
+        text: '^(type alwaysOnRuleResource|func (\(\*alwaysOnRuleResource\)\.Schema|schemaAlwaysOnRule(BypassDuration|Section|Source|References)?)) is unused$'
       - path: (.+)\.go$
         text: exported (var|type|method|function|const) (.+) should have comment (.+)
       - linters:
