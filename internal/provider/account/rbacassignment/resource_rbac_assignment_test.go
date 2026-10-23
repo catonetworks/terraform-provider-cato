@@ -3,12 +3,14 @@ package rbacassignment
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	sdk "github.com/catonetworks/cato-go-sdk"
+	m "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iam"
 )
 
 func assignmentPlan(t *testing.T, r *assignmentResource) tfsdk.Plan {
@@ -115,7 +118,11 @@ func TestAssignmentPagination(t *testing.T) {
 					} `json:"variables"`
 				}
 				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-				require.Equal(t, int64(calls), body.Variables.Input.Paging.From)
+				expectedPage := calls
+				if scenario == "changed total" {
+					expectedPage = calls % 2
+				}
+				require.Equal(t, int64(expectedPage), body.Variables.Input.Paging.From)
 				calls++
 				id, account, total := "other", "123", "2"
 				if calls > 1 {
@@ -127,8 +134,11 @@ func TestAssignmentPagination(t *testing.T) {
 				if scenario == "cross account" {
 					account = "456"
 				}
-				if scenario == "changed total" && calls > 1 {
-					total = "3"
+				if scenario == "changed total" {
+					id = "other"
+					if calls%2 == 0 {
+						id, total = "second", "3"
+					}
 				}
 				item := `{"id":"` + id + `","account":{"id":"` + account + `"}}`
 				if scenario == "empty" {
@@ -155,9 +165,49 @@ func TestAssignmentPagination(t *testing.T) {
 				require.Equal(t, 2, calls)
 			} else {
 				require.Error(t, err)
+				if scenario == "changed total" {
+					require.Equal(t, 6, calls)
+					r := &assignmentResource{client: &catoclient.Service{AccountId: "123", Catov2: catoclient.NewProviderSDKClient(client)}}
+					state := tfsdk.State(assignmentPlan(t, r))
+					require.False(t, state.SetAttribute(context.Background(), path.Root("id"), "123:target").HasError())
+					read := resource.ReadResponse{State: state}
+					r.Read(context.Background(), resource.ReadRequest{State: state}, &read)
+					require.True(t, read.Diagnostics.HasError())
+					require.False(t, read.State.Raw.IsNull(), "concurrent changes must not remove an assignment from state")
+					require.Equal(t, 12, calls)
+				}
 			}
 		})
 	}
+}
+
+func TestAssignmentPaginationRestartsAfterConcurrentDeletion(t *testing.T) {
+	client := mocks.NewRBACAssignmentResourceClient(t)
+	page := func(items string, total int) *sdk.RbacRbacAssignmentList {
+		response := &sdk.RbacRbacAssignmentList{}
+		require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(`{"rbac":{"rbacAssignmentList":{"items":[%s],"paging":{"__typename":"PageInfo","total":%d}}}}`, items, total)), response))
+		return response
+	}
+	items := make([]string, iam.PageSize)
+	for i := range items {
+		items[i] = fmt.Sprintf(`{"id":"other-%d","account":{"id":"123"}}`, i)
+	}
+	firstPage := strings.Join(items, ",")
+	// Deleting an earlier row shifts the target from page one to page zero.
+	items[len(items)-1] = `{"id":"target","account":{"id":"123"}}`
+	for i, response := range []*sdk.RbacRbacAssignmentList{
+		page(firstPage, 101),
+		page(``, 100),
+		page(strings.Join(items, ","), 100),
+	} {
+		from := int64(i % 2)
+		client.EXPECT().RbacRbacAssignmentList(mock.Anything, "123", mock.MatchedBy(func(input m.RBACAssignmentListInput) bool {
+			return input.Filter != nil && input.Paging != nil && input.Paging.From == from && input.Paging.Limit == iam.PageSize
+		})).Return(response, nil).Once()
+	}
+	value, err := lookupAssignment(context.Background(), client, "123", "target")
+	require.NoError(t, err)
+	require.Equal(t, "target", value.ID)
 }
 
 func TestAssignmentValidationStopsBeforeAPI(t *testing.T) {

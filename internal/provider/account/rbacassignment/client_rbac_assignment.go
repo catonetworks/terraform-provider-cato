@@ -53,11 +53,25 @@ func lookupAssignment(ctx context.Context, client ResourceClient, account, id st
 	if client == nil {
 		return nil, fmt.Errorf("configure the provider before reading assignments")
 	}
+	// There is no public assignment-ID filter. Restart offset pagination when
+	// concurrent mutations change its total, rather than interpreting skipped rows
+	// as a missing assignment. Bound retries so a busy account fails safely.
+	const maxAttempts = 3
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		value, changed, err := scanAssignments(ctx, client, account, id)
+		if err != nil || !changed {
+			return value, err
+		}
+	}
+	return nil, fmt.Errorf("assignment list changed during pagination after %d attempts; retry the operation", maxAttempts)
+}
+
+func scanAssignments(ctx context.Context, client ResourceClient, account, id string) (*assignmentRecord, bool, error) {
 	seen := map[string]bool{}
 	total := int64(-1)
 	for pageNumber := int64(0); ; pageNumber++ {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		// The IAM service dereferences filter even when no criteria are supplied.
 		response, err := client.RbacRbacAssignmentList(ctx, account, m.RBACAssignmentListInput{
@@ -66,31 +80,34 @@ func lookupAssignment(ctx context.Context, client ResourceClient, account, id st
 			Sort:   &m.RBACAssignmentSortInput{CreationDate: &m.SortOrderInput{Direction: m.SortOrderAsc}},
 		})
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		page := response.GetRbac().GetRbacAssignmentList()
 		if page == nil {
-			return nil, fmt.Errorf("API returned no assignment page")
+			return nil, false, fmt.Errorf("API returned no assignment page")
 		}
-		if err := iam.ValidatePage(page.Paging.Typename, page.Items != nil, page.Paging.Total, total); err != nil {
-			return nil, err
+		if err := iam.ValidatePage(page.Paging.Typename, page.Items != nil, page.Paging.Total, -1); err != nil {
+			return nil, false, err
+		}
+		if total >= 0 && total != page.Paging.Total {
+			return nil, true, nil
 		}
 		total = page.Paging.Total
 		found, err := findInPage(page.Items, seen, account, id)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if int64(len(seen)) > total {
-			return nil, fmt.Errorf("assignment page exceeds reported total")
+			return nil, false, fmt.Errorf("assignment page exceeds reported total")
 		}
 		if found != nil {
-			return found, nil
+			return found, false, nil
 		}
 		if int64(len(seen)) == total {
-			return nil, nil
+			return nil, false, nil
 		}
 		if len(page.Items) == 0 {
-			return nil, fmt.Errorf("assignment pagination made no progress")
+			return nil, false, fmt.Errorf("assignment pagination made no progress")
 		}
 	}
 }
