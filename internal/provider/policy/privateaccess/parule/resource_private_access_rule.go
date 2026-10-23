@@ -116,7 +116,7 @@ func (r *privAccessRuleResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	// Hydrate state from API
-	hydratedState, diags, hydrateErr := r.hydratePrivAccessRuleState(ctx, state.ID.ValueString())
+	hydratedState, diags, hydrateErr := r.hydratePrivAccessRuleState(ctx, state.ID.ValueString(), false)
 	if hydrateErr != nil {
 		if errors.Is(hydrateErr, ErrPrivateAcccessRuleNotFound) {
 			tflog.Warn(ctx, fmt.Sprintf("Private access rule %s not found, resource removed", state.ID.ValueString()))
@@ -198,7 +198,7 @@ func (r *privAccessRuleResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Hydrate state from API
-	hydratedState, diags, hydrateErr := r.hydratePrivAccessRuleState(ctx, id)
+	hydratedState, diags, hydrateErr := r.hydratePrivAccessRuleState(ctx, id, false)
 	if hydrateErr != nil {
 		resp.Diagnostics.Append(diags...)
 		resp.Diagnostics.AddError("Error hydrating private access policy rule state", hydrateErr.Error())
@@ -327,7 +327,7 @@ func convertCreateInput2(
 	plan.ID = types.StringValue(ruleID)
 
 	// Hydrate state from API
-	resultHydratedState, diags, hydrateErr := r.hydratePrivAccessRuleState(ctx, ruleID)
+	resultHydratedState, diags, hydrateErr := r.hydratePrivAccessRuleState(ctx, ruleID, true)
 	if hydrateErr != nil {
 		diagnostics.AddError("Error hydrating privateAccessRule state", hydrateErr.Error())
 		diagnostics.Append(diags...)
@@ -341,37 +341,16 @@ func convertCreateInput2(
 func (r *privAccessRuleResource) hydratePrivAccessRuleState(
 	ctx context.Context,
 	ruleID string,
+	waitForCreation bool,
 ) (*RuleModel, diag.Diagnostics, error) {
 	var diags diag.Diagnostics
 
-	// Call Cato API to get the policy
-	result, err := r.resourceAPI().PolicyReadPrivateAccessPolicy(ctx, r.client.AccountId)
-	tflog.Debug(ctx, "PolicyReadPrivateAccessPolicy", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
+	polRule, err := lookupPrivateAccessRule(ctx, r.resourceAPI(), r.client.AccountId, ruleID, waitForCreation)
 	if err != nil {
-		return nil, nil, err
+		return nil, diags, err
 	}
-
 	var state *RuleModel
-
-	// Map API response to PrivAccessPolicyModel
-	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
-	for _, polRule := range policy.Rules {
-		if polRule.Rule.ID != ruleID {
-			continue
-		}
-		convertHydratePrivAccessRuleStateValues(
-			ctx,
-			r,
-			&diags,
-			&state,
-			polRule,
-		)
-		break
-	}
-
-	if state == nil {
-		return nil, diags, ErrPrivateAcccessRuleNotFound
-	}
+	convertHydratePrivAccessRuleStateValues(ctx, r, &diags, &state, polRule)
 	if diags.HasError() {
 		return nil, diags, apperror.ErrAPIResponseParse
 	}

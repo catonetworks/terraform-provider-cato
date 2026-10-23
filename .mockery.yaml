@@ -59,3 +59,10 @@ packages:
         config:
           filename: GlobalIPRangesResourceClient.go
           structname: GlobalIPRangesResourceClient
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: PrivateAccessBulkResourceClient.go
+          structname: PrivateAccessBulkResourceClient
