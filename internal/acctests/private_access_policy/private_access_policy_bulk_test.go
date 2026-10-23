@@ -40,6 +40,7 @@ func TestAccPrivAccessPolicyBulk(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(resRule1),
 					acc.PrintAttributes(resBulk),
+					resource.TestCheckResourceAttr("cato_private_access_rule.unlisted", "name", "acctest_bulk_unlisted"),
 					resource.TestCheckResourceAttr(resRule1, "description", "rule 1"),
 					resource.TestCheckResourceAttr(resRule2, "description", "rule 2"),
 
@@ -172,6 +173,14 @@ func (p privAccessPolicyBulkCfg) getTfConfig(index int) string {
 var privAccessPolicyBulkTFs = []string{`
     {{ $app := .AppName }}
     {{ $user := .UserName }}
+    // This rule is intentionally excluded from bulk ordering and must survive it.
+    resource "cato_private_access_rule" "unlisted" {
+      action = "BLOCK"
+      applications = [{ name = "{{ $app }}" }]
+      enabled = true
+      name = "acctest_bulk_unlisted"
+      source = { users = [{ name = "{{ $user }}" }] }
+    }
     {{ range .Rules }}
 	resource "cato_private_access_rule" "{{ .Name }}" {
 	  action = "BLOCK"
@@ -184,7 +193,7 @@ var privAccessPolicyBulkTFs = []string{`
 	{{ end }}
 
 	resource "cato_private_access_rule_bulk" "this" {
-	  depends_on = [{{- range $i, $r := .Rules -}}{{ if $i }}, {{ end }}cato_private_access_rule.{{ $r.Name }}{{- end -}}]
+	  depends_on = [cato_private_access_rule.unlisted, {{- range $i, $r := .Rules -}}{{ if $i }}, {{ end }}cato_private_access_rule.{{ $r.Name }}{{- end -}}]
 	  rule_data = {
 	    {{ range $i, $r := .Rules }}
 	    "{{ $r.Name }}" = {

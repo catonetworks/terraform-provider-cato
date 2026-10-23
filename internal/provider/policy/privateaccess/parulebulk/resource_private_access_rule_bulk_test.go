@@ -2,10 +2,19 @@ package parulebulk
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 
+	sdk "github.com/catonetworks/cato-go-sdk"
+	m "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
 func TestMove(t *testing.T) {
@@ -52,4 +61,33 @@ func getTestRules() []*PrivateAccessBulkRule {
 		{ID: types.StringValue("r3"), Name: types.StringValue("Rule3")},
 		{ID: types.StringValue("r4"), Name: types.StringValue("Rule4")},
 	}
+}
+
+func TestBulkHydrationWithUnmanagedRules(t *testing.T) {
+	ctx := context.Background()
+	var response sdk.PolicyReadPrivateAccessPolicy
+	require.NoError(t, json.Unmarshal([]byte(`{"policy":{"privateAccess":{"policy":{"rules":[{"rule":{"id":"external-id","name":"external","index":0}},{"rule":{"id":"managed-id","name":"managed","index":1}}]}}}}`), &response))
+	client := mocks.NewPrivateAccessBulkResourceClient(t)
+	client.EXPECT().PolicyReadPrivateAccessPolicy(mock.Anything, "account-123").Return(&response, nil).Twice()
+	r := &privAccessRuleBulkResource{client: &catoclient.Service{AccountId: "account-123"}, apiClient: client}
+	rule := types.ObjectValueMust(PrivateAccessBulkRuleTypes, map[string]attr.Value{"id": types.StringUnknown(), "name": types.StringValue("managed"), "index": types.Int64Value(0)})
+	plan := &PrivateAccessRuleBulkModel{RuleData: types.MapValueMust(types.ObjectType{AttrTypes: PrivateAccessBulkRuleTypes}, map[string]attr.Value{"managed": rule})}
+	state, rules, diags, err := r.hydratePrivAccessRuleBulkState(ctx, plan)
+	require.NoError(t, err)
+	require.False(t, diags.HasError())
+	require.Len(t, state.RuleData.Elements(), 1)
+	require.Len(t, rules, 2)
+	require.Less(t, rules["managed"].Index.ValueInt64(), rules["external"].Index.ValueInt64())
+	var moved sdk.PolicyPrivateAccessMoveRule
+	require.NoError(t, json.Unmarshal([]byte(`{"policy":{"privateAccess":{"moveRule":{"status":"SUCCESS"}}}}`), &moved))
+	client.EXPECT().PolicyPrivateAccessMoveRule(mock.Anything, "account-123", mock.MatchedBy(func(input m.PolicyMoveRuleInput) bool {
+		return input.ID == "managed-id" && input.To != nil && input.To.Position != nil && *input.To.Position == m.PolicyRulePositionEnumFirstInPolicy
+	})).Return(&moved, nil).Once()
+	require.False(t, r.moveRules(ctx, rules).HasError())
+	response.Policy.PrivateAccess.Policy.Rules = response.Policy.PrivateAccess.Policy.Rules[:1]
+	state, rules, diags, err = r.hydratePrivAccessRuleBulkState(ctx, plan)
+	require.Nil(t, state)
+	require.Nil(t, rules)
+	require.False(t, diags.HasError())
+	require.ErrorContains(t, err, "managed")
 }

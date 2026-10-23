@@ -1,7 +1,10 @@
 package parulebulk
 
 import (
+	"cmp"
 	"context"
+	"fmt"
+	"slices"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -109,4 +112,32 @@ func privateAccessRuleObjectFromModel(
 	resultRuleObj, objDiags := types.ObjectValueFrom(ctx, PrivateAccessBulkRuleTypes, tfRule)
 	diags.Append(objDiags...)
 	return resultRuleObj
+}
+
+// includeUnmanagedRules preserves other policy rules in the ordering algorithm,
+// while requiring every configured rule to be present in the hydrated state.
+func includeUnmanagedRules(
+	stateRules map[string]PrivateAccessBulkRule,
+	apiRulesTf map[string]types.Object,
+	apiRulesGo map[string]*PrivateAccessBulkRule,
+	unmanaged []*PrivateAccessBulkRule,
+) error {
+	unmanagedIndex := int64(len(stateRules))
+	for _, rule := range stateRules {
+		if rule.Index.ValueInt64() >= unmanagedIndex {
+			unmanagedIndex = rule.Index.ValueInt64() + 1
+		}
+	}
+	for name := range stateRules {
+		if _, ok := apiRulesTf[name]; !ok {
+			return fmt.Errorf("configured private access rule %q not found", name)
+		}
+	}
+	slices.SortFunc(unmanaged, func(a, b *PrivateAccessBulkRule) int { return cmp.Compare(a.CMAIndex, b.CMAIndex) })
+	for i, rule := range unmanaged {
+		rule.Index = types.Int64Value(unmanagedIndex + int64(i))
+		apiRulesGo[rule.Name.ValueString()] = rule
+	}
+
+	return nil
 }
