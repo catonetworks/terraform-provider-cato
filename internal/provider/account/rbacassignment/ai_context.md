@@ -30,3 +30,7 @@ API reports DISABLED. Reject legacy ADMIN mutations as the backend does.
 
 Assignment reads send `filter: {}` even without criteria because the IAM service
 dereferences the filter. Omitting it produces an HTTP-200 GraphQL error.
+
+The assignment acceptance suite creates a unique user through the generated
+user API and removes it with `t.Cleanup` after Terraform destroy. It uses an
+`example.invalid` address and requires no pre-existing user or CI user-ID setting.

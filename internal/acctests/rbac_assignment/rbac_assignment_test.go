@@ -13,14 +13,15 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-// TestAccRBACAssignment requires an existing test user and never creates principals.
+// TestAccRBACAssignment owns a dedicated user for each run.
 func TestAccRBACAssignment(t *testing.T) {
 	acc.SkipByEnv(t)
-	user := os.Getenv("TFACC_RBAC_USER_ID")
-	if user == "" {
-		t.Skip("set TFACC_RBAC_USER_ID to an existing disposable user principal")
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("set TF_ACC to run live acceptance tests")
 	}
+	acc.CheckCMAVars(t)()
 	name := "tfacc-assignment-" + acctest.RandString(8)
+	user := createAssignmentTestUser(t, acc.GetClient(t), acc.CatoAccountID, name)
 	config := func(description string) string {
 		return acc.ProviderCfg() + fmt.Sprintf(`
 resource "cato_role" "test" {
