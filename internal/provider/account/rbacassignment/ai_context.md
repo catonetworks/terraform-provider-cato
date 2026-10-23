@@ -27,3 +27,6 @@ to false would overwrite a stored permission. Effective all-sites/all-users gran
 are computed from SYSTEMGROUP scope. Send NONE in their API shortcut inputs to
 avoid maintaining a second representation. Preserve hidden preferences when the
 API reports DISABLED. Reject legacy ADMIN mutations as the backend does.
+
+Assignment reads send `filter: {}` even without criteria because the IAM service
+dereferences the filter. Omitting it produces an HTTP-200 GraphQL error.
