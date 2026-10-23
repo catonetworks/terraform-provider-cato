@@ -46,7 +46,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"countries": schema.SetNestedAttribute{
-				Description: "List of countries. Defaults to an empty set when omitted.",
+				Description: "List of countries.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -65,7 +65,7 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"devices": schema.SetNestedAttribute{
-				Description: "List of devices. Defaults to an empty set when omitted.",
+				Description: "List of devices.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -130,7 +130,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Validators:  []validator.String{validators.PolicyTrackingFrequency{}},
 					},
 					"mailing_list": schema.SetNestedAttribute{
-						Description:   "Mailing list name or id. Defaults to an empty set when omitted.",
+						Description:   "Mailing list name or id.",
 						Optional:      true,
 						Computed:      true,
 						PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(idname.RefObjectType)},
@@ -140,7 +140,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						},
 					},
 					"subscription_group": schema.SetNestedAttribute{
-						Description:   "Subscription group name or id. Defaults to an empty set when omitted.",
+						Description:   "Subscription group name or id.",
 						Optional:      true,
 						Computed:      true,
 						PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(idname.RefObjectType)},
@@ -150,7 +150,7 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						},
 					},
 					"webhook": schema.SetNestedAttribute{
-						Description:   "Webhook name or id. Defaults to an empty set when omitted.",
+						Description:   "Webhook name or id.",
 						Optional:      true,
 						Computed:      true,
 						PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(idname.RefObjectType)},
@@ -297,7 +297,7 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 		Required:    true,
 		Attributes: map[string]schema.Attribute{
 			"users": schema.SetNestedAttribute{
-				Description: "Users. Defaults to an empty set when omitted.",
+				Description: "Users.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -310,7 +310,7 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 				},
 			},
 			"user_groups": schema.SetNestedAttribute{
-				Description: "User groups. Defaults to an empty set when omitted.",
+				Description: "User groups.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
