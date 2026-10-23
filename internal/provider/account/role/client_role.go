@@ -2,7 +2,9 @@ package role
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
@@ -71,4 +73,51 @@ func waitForRole(ctx context.Context, client ResourceClient, account string, exp
 		case <-timer.C:
 		}
 	}
+}
+
+// deleteRoleWithRetry tolerates temporary IAM/CC2 outages without retrying create
+// operations. Before repeating deletion, confirm the role still exists.
+func deleteRoleWithRetry(ctx context.Context, client ResourceClient, account, id string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, roleConsistencyTimeout)
+	defer cancel()
+	for {
+		response, err := client.RbacRoleManagementDeleteRole(ctx, account, m.RoleManagementDeleteRoleInput{ID: id})
+		if err == nil {
+			return response.GetRbac().GetRoleManagement().GetDeleteRole().GetID() == id, nil
+		}
+		if !roleDeleteUnavailable(err) {
+			return false, err
+		}
+		timer := time.NewTimer(roleConsistencyInterval)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return false, fmt.Errorf("waiting to delete role: %w", errors.Join(ctx.Err(), err))
+		case <-timer.C:
+		}
+		role, readErr := iam.LookupRole(ctx, client, account, id)
+		if readErr != nil {
+			return false, errors.Join(err, readErr)
+		}
+		if role == nil {
+			return true, nil
+		}
+	}
+}
+
+func roleDeleteUnavailable(err error) bool {
+	var response *clientv2.ErrorResponse
+	if !errors.As(err, &response) || response.GqlErrors == nil || len(*response.GqlErrors) == 0 {
+		return false
+	}
+	for _, item := range *response.GqlErrors {
+		if item == nil || item.Path.String() != "rbac.roleManagement.deleteRole" || item.Extensions["code"] != "DOWNSTREAM_SERVICE_ERROR" {
+			return false
+		}
+		detail, _ := item.Extensions["full"].(string)
+		if item.Extensions["errorType"] != "UNAVAILABLE" && !strings.Contains(detail, "Role management is temporarily unavailable") {
+			return false
+		}
+	}
+	return true
 }
