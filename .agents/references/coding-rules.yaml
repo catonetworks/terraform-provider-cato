@@ -1,0 +1,412 @@
+#
+Sections:
+  - Name: "Codebase structure"
+    Context: Defines location of the files in the provider codebase.
+    Rules:
+      - ID: STRUCT-000
+        Slug: resource-specific-file-placement
+        Level: MUST
+        Statement: Golang files related to a specific resource
+          are placed under `./internal/provider/{domain}/{resource}/` (e.g. `./internal/provider/network/netrange/`).
+          The files include Terraform resource and data-source code, related type definitions, validators, plan modifiers, and
+          unit tests.
+        Rationale:
+          Go packages provide clear boundaries that simplify code reviews and prevent introduction
+          of accidental unrelated changes.
+
+      - ID: STRUCT-001
+        Slug: shared-file-placement
+        Level: MUST
+        Statement: Golang files that are shared by multiple resources
+          are placed under `./internal/provider/shared/{package-name}/` (e.g. `./internal/provider/shared/dhcp/`).
+          The files may be either defining a shared object shared by multiple resources (e.g. dhcp),
+          or generic utilities, parsers, etc.
+        Rationale: The 'shared' folder make it explicit that multiple resources can be affected.
+
+      - ID: STRUCT-002
+        Slug: example-placement
+        Level: MUST
+        Statement:
+          Resource examples are located in examples/resources/{resource-name}/resource.tf (e.g. `./examples/resources/cato_if_rule/resource.tf`).
+          Data-source examples are located in examples/data-sources/{data-source-name}/data-source.tf (e.g. `./examples/data-sources/cato_group/data-source.tf`).
+        Rationale: Standardized place used also by documentation generator.
+
+      - ID: STRUCT-003
+        Slug: acceptance-test-placement
+        Level: MUST
+        Statement: Acceptance test files are located in internal/acctests/{resource-name}/ (e.g. `./internal/acctests/group/group_test.go`).
+        Rationale: The 'acctests' directory contains the whole test suite.
+
+  - Name: "File names"
+    Context: File or directory naming conventions
+    Rules:
+      - ID: FILE-NAME-000
+        Slug: file-name-lowercase
+        Level: MUST
+        Statement: file names are lower case with underscores, (e.g. `resource_network_range.go`)
+        Rationale: Avoid problems on POSIX filesystems.
+
+      - ID: FILE-NAME-001
+        Slug: file-name-datasource
+        Level: MUST
+        Statement: data-source files are prefixed with `datasource_` (e.g. `datasource_network_range.go`)
+        Rationale: Standardized naming convention simplifies code base maintenance.
+
+      - ID: FILE-NAME-002
+        Slug: file-name-resource
+        Level: MUST
+        Statement: resource files are prefixed with `resource_` (e.g. `resource_network_range.go`)
+        Rationale: Standardized naming convention simplifies code base maintenance.
+
+      - ID: FILE-NAME-003
+        Slug: file-name-model
+        Level: MUST
+        Statement: terraform type definition files (used for terraform state or plan) are prefixed with `model_` (e.g. `model_network_range.go`)
+        Rationale: Standardized naming convention simplifies code base maintenance.
+
+      - ID: FILE-NAME-004
+        Slug: file-name-validator
+        Level: MUST
+        Statement: validator files are prefixed with `validator_` (e.g. `validator_network_range.go`)
+        Rationale: Standardized naming convention simplifies code base maintenance.
+
+      - ID: FILE-NAME-005
+        Slug: file-name-plan-modifier
+        Level: MUST
+        Statement: plan modifier files are prefixed with `plan_` (e.g. `plan_dhcp_settings.go`)
+        Rationale: Standardized naming convention simplifies code base maintenance.
+
+      - ID: FILE-NAME-006
+        Slug: file-name-schema
+        Level: MUST
+        Statement: schema definition files are prefixed with `schema_` (e.g. `schema_network_range.go`)
+        Rationale: Standardized naming convention simplifies code base maintenance.
+
+      - ID: FILE-NAME-007
+        Slug: file-name-converter
+        Level: MUST
+        Statement:
+          converter files (containing code that converts between TF types and SDK types) are prefixed
+          with `converters_` (e.g. `converters_network_range.go`)
+        Rationale: Standardized naming convention simplifies code base maintenance.
+
+      - ID: FILE-NAME-008
+        Slug: file-name-unit-tests
+        Level: MUST
+        Statement: unit test files end with `_test.go` (e.g. `resource_network_range_test.go`)
+        Rationale: Go Test framework conventions.
+
+  - Name: "TF Model"
+    Context: Terraform type system model of the given resource or datasource,
+      it holds the actual state or plan data.
+    Rules:
+      - ID: MODEL-000
+        Slug: model-struct
+        Level: MUST
+        Statement:
+          TF type model (state, plan) must be a struct containing fields with terraform-plugin-framework types
+          (e.g. types.String, types.Object, ...)
+        Rationale: TF Framework needs to be able to work with null and unknown values
+
+      - ID: MODEL-001
+        Slug: model-attributes
+        Level: MUST
+        Statement:
+          TF type model (state, plan) attributes must exactly match the attributes defined in the TF schema,
+          returned by the 'Schema' method of the given resource.
+          If the Schema defines nested fields (e.g. SingleNestedAttribute, SetNestedAttribute, MapNestedAttribute, ListNestedAttribute),
+          the model must define the nested objects as separate go structs.
+        Rationale: TF Framework uses the schema to understand the model.
+
+      - ID: MODEL-002
+        Slug: model-tfsdk
+        Level: MUST
+        Statement:
+          TF type model (state, plan) attributes must declare go tags `tfsdk:"{attribute_name}"` where the attribute_name
+          must match the attribute name defined in the TF schema as returned by the 'Schema' method of the given resource.
+          (e.g. `ID types.String `tfsdk:"id"`)
+        Rationale: TF Framework uses the schema to understand the model.
+
+      - ID: MODEL-003
+        Slug: model-nested-object
+        Level: MUST
+        Statement: |
+          If a nested attribute is used in Schema, the model must define:
+            - a struct type of the nested object or list/set/map element;
+              fields of the struct must use TF type system (types.String, etc.)
+              and have the matching `tfsdk:"{attribute_name}"` tag.
+            - a variable defining attribute types. Its name should end with 'AttrTypes' and the type of 
+              this variable must be `map[string]attr.Type`.
+              The keys of the map must be the attribute names matching the tfsdk tags and Schema attribute names.
+              The values of the map must be related to the type defined in the matching struct attribute
+              (e.g. `types.StringType` for an attribute of `types.String`)
+            - a variable defining the object type; Its name should end with 'ObjectType' and its type
+              should be `types.ObjectType{...}
+
+          Example:
+          ```
+          type ExampleModel struct {
+            Countries   types.Set    `tfsdk:"countries"` //[]Country
+          }
+
+          type Country struct {Name types.String `tfsdk:"name"`}
+          var CountryAttrTypes = map[string]attr.Type{"name": types.StringType}
+          var CountryObjectType = types.ObjectType{AttrTypes: CountryAttrTypes}
+          ```
+
+        Rationale: TF Framework uses the schema to understand the model.
+
+      - ID: MODEL-004
+        Slug: model-comments
+        Level: MUST
+        Statement:
+          All exported types, constants, or variables must have a comment describing the item. The comment must start with the name
+          of the item.
+        Rationale: Linter best practices
+
+      - ID: MODEL-005
+        Slug: model-comments
+        Level: MUST
+        Statement:
+          All exported types, constants, or variables must have a comment describing the item. The comment must start with the name
+          of the item.
+        Rationale: Linter best practices
+
+      - ID: MODEL-006
+        Slug: model-shared-component
+        Level: SHOULD
+        Statement: |
+          If there is a model file in `./internal/provider/shared/{component}/model_{name}.go` that defines
+          of the part of the current model (refers to the same Graphql object), it should be reused.
+
+          For Example policyrule.Position defines the position of the rule in the policy
+          ```go
+          type ExamplePolicyRule struct {
+            At   types.Object `tfsdk:"at"`   // policyrule.Position
+            Rule types.Object `tfsdk:"rule"` // ExamplePolicyRuleData
+          }
+          ```
+        Rationale: Reusability and consistency
+
+  - Name: "Terraform schema design"
+    Context: |
+      Rules for Terraform Schema definition of a resource or datasource.
+      The schema must be returned by the `Schema()` method on a given resource or datasource, when called 
+      by terraform-plugin-framework.
+
+      Example:
+      ```
+      resp.Schema = schema.Schema{
+        Attributes: map[string]schema.Attribute{
+          "example": schema.StringAttribute{
+            Description: "Example",
+            Optional:    true,          // mode flag
+          },
+        },
+      },
+      ```
+    Rules:
+      - ID: TFSCHEMA-000
+        Slug: tfschema-schema-description
+        Level: MUST
+        Statement: |
+          If `schema_description.yaml` is defined for the resource, the Schema (as returned by the Schema method)
+          must reflect the schema_description.
+        Rationale: schema_description.yaml is the source of truth.
+
+      - ID: TFSCHEMA-001
+        Slug: tfschema-modes
+        Level: MUST
+        Statement: |
+          TF Schema attribute must fall into one of the following modes based on the TF schema attribute flags:
+            - required (flags: Required=true)
+            - optional (flags: Optional=true)
+            - computed (flags: Computed=true)
+            - computed_optional (flags: Optional=true, Computed=true)
+          Each schema attribute must use exactly one of the above combinations of Required/Optional/Computed flags
+        Rationale: TF core design
+
+      - ID: TFSCHEMA-002
+        Slug: tfschema-mandatory-attr
+        Level: MUST
+        Statement: If a schema_description attribute Mode is `required`, the Schema must use flags Required=true
+        Rationale: TF ensures that the attribute has a value configured
+
+      - ID: TFSCHEMA-003
+        Slug: tfschema-optional-string-attr
+        Level: MUST
+        Statement: |
+          If schema_description attribute Mode is `optional` and Type is `string`, the Schema must:
+            - use flags: Optional=true, Computed=true
+            - use PlanModifier: NullStringModifier that always plans an empty string if the value is not configured.
+        Rationale: To avoid inconsistencies and null/empty string ambiguity, always use empty string in the state.
+
+      - ID: TFSCHEMA-004
+        Slug: tfschema-optional-bool-attr
+        Level: MUST
+        Statement: |
+          If schema_description attribute Mode is `optional` and Type is `boolean`, the Schema must:
+            - use flags: Optional=true, Computed=true
+            - use PlanModifier: NullBoolModifier that always plans false value if the value is not configured.
+        Rationale: To avoid inconsistencies and null/false ambiguity, always use false value in the state.
+
+      - ID: TFSCHEMA-005
+        Slug: tfschema-optional-collection-attr
+        Level: MUST
+        Statement: |
+          If schema_description attribute Mode is `optional` and Type is one of `set,map,list`, the Schema must:
+            - use flags: Optional=true, Computed=true
+            - use PlanModifier: NullSetModifier for Set, NullMapModifier for Map, or NullListModifier for List,
+              that always plans empty value if the value is not configured.
+        Rationale: To avoid inconsistencies and null/empty ambiguity, always use [] value in the state.
+
+      - ID: TFSCHEMA-006
+        Slug: tfschema-name-id-reference
+        Level: MUST
+        Statement: |
+          If schema_description attribute Hints contains `idName`, the Schema must:
+          (interface ObjectRef in Graphql API):
+            - use function `idname.SchemaNameID()` to define schema attributes id and name
+            - use PlanModifier: idname.Modifier() to handle changes of name or id in the config
+          Example:
+          ```go
+          "primary": schema.SingleNestedAttribute{
+            Description:   "Physical location of the primary Pop",
+            Optional:      true,
+            Attributes:    idname.SchemaNameID("Primary location"),
+            PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+          },
+          ```
+        Rationale: Keep id/name pair consistent, but avoid unnecessary updates
+
+      - ID: TFSCHEMA-007
+        Slug: tfschema-type-mapping
+        Level: MUST
+        Statement: |
+          If schema_description attribute Type must map to the Schema go types:
+          - `string`: schema.StringAttribute
+          - `bool`: schema.BoolAttribute
+          - `float32`: schema.Float32Attribute
+          - `float64`: schema.Float64Attribute
+          - `int32`: schema.Int32Attribute
+          - `int64`: schema.Int64Attribute
+          - `list`: if schema_description ItemType is `nested` use schema.ListNestedAttribute
+             otherwise use schema.ListAttribute.
+             The nested Attributes list in schema_description defines NestedObject attributes or ElementType respectively.
+          - `map`: if schema_description ItemType is `nested` use schema.MapNestedAttribute
+             otherwise use schema.MapAttribute.
+             The nested Attributes list in schema_description defines NestedObject attributes or ElementType respectively.
+          - `set`: if schema_description ItemType is `nested` use schema.SetNestedAttribute
+             otherwise use schema.SetAttribute.
+             The nested Attributes list in schema_description defines NestedObject attributes or ElementType respectively.
+          - `nested`: schema.SingleNestedAttribute
+             The nested Attributes list in schema_description defines the attributes.
+        Rationale: Consistent type mapping
+
+      - ID: TFSCHEMA-008
+        Slug: tfschema-schema-method-length
+        Level: SHOULD
+        Statement: Schema method should not exceed 100 lines of code.
+          If the schema contains nested definitions, extract them to schema helper functions
+        Rationale: Readability
+
+      - ID: TFSCHEMA-009
+        Slug: tfschema-schema-helper-functions
+        Level: MUST
+        Statement: Schema helper function name must starts with 'schema'
+        Rationale: Readability
+
+      - ID: TFSCHEMA-010
+        Slug: tfschema-enum-validators
+        Level: MUST
+        Statement:
+          If schema_description attribute Hints contains `enum={enum-name}`, the Schema attribute
+          must define a validator for the enum
+          `stringvalidator.OneOf(utils.ToStrings(cato_models.All{enum-name})...)`
+          e.g. `stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...)`
+        Rationale: SDK-based enum validation
+
+      - ID: TFSCHEMA-011
+        Slug: tfschema-enum-id-modifier
+        Level: MUST
+        Statement:
+          If schema_description attribute Name=`id`, Type=`string`, Mode=`computed`,
+          add PlanModifier stringplanmodifier.UseStateForUnknown() to the Schema attribute
+        Rationale: IDs are immutable
+
+      - ID: TFSCHEMA-012
+        Slug: tfschema-attribute-description
+        Level: MUST
+        Statement:
+          If schema_description attribute Description value must be used as description in the Schema attribute.
+          add PlanModifier stringplanmodifier.UseStateForUnknown() to the Schema attribute
+        Rationale: IDs are immutable
+
+      - ID: TFSCHEMA-013
+        Slug: schema-shared-component
+        Level: SHOULD
+        Statement: |
+          If there is a model file in `./internal/provider/shared/{component}/schema_{name}.go` that defines
+          of the part of the current schema (refers to the same Graphql object), it should be reused.
+
+          For Example dhcp.SchemaDhcpSettings defines DHCP setting schema for sites and network ranges:
+          ```go
+          map[string]schema.Attribute{
+             "dhcp_settings": dhcp.SchemaDhcpSettings(true),
+          }
+          ```
+        Rationale: Reusability and consistency
+
+  - Name: "Terraform type conversion"
+    Rules:
+      - ID: CONV-000
+        Slug: conv-parser-naming
+        Level: SHOULD
+        Statement:
+          Helper functions that parse API response and convert it into a TF type system (state) are called "parsers".
+          The name of the function should start with "parse".
+        Rationale: Consistent naming conventions
+
+      - ID: CONV-001
+        Slug: conv-builder-naming
+        Level: SHOULD
+        Statement:
+          Helper functions that build API request by converting TF type system (state) into a simple go types used by SDK
+          are called "builders".
+          The name of the function should start with "build".
+        Rationale: Consistent naming conventions
+
+      - ID: CONV-002
+        Slug: conv-parser-params
+        Level: SHOULD
+        Statement: |
+          A parser should use the following parameters:
+            - `ctx context.Context`  // Go context passed by the TF framework (if needed in the function)
+            - parameter containing (a part of) the API response, typically of a type defined in `cato_go_sdk` package
+            - `diags *diag.Diagnostics` // pointer to a TF framework diagnostics slice (if needed in the function)
+          It should return either the whole state model struct, or
+          a part of it using a TF type system value (e.g. types.Object)
+        Rationale: Consistent function patterns
+
+      - ID: CONV-003
+        Slug: conv-builder-params
+        Level: SHOULD
+        Statement: |
+          A builder should use the following parameters:
+            - `ctx context.Context`  // Go context passed by the TF framework (if needed in the function)
+            - parameter containing (a part of) the TF state
+            - `diags *diag.Diagnostics` // pointer to a TF framework diagnostics slice (if needed in the function)
+          It should return a value that can be used for API calls, typically a type defined in cato_models package.
+        Rationale: Consistent function patterns
+
+      - ID: CONV-004
+        Slug: conv-parsing-optional-attributes
+        Level: MUST
+        Statement: |
+          A parser that processes optional attribute from the API response must set the attribute value
+          to the default empty state, if the API returns nil or empty value.
+          The PlanModifier defined in the Schema planned for this result (see rules TFSCHEMA-002,TFSCHEMA-003,TFSCHEMA-004).
+            - string: types.StringValue() // ""
+            - set: types.SetValue() // []
+            - list: types.ListValue() // []
+        Rationale: Consistent null/empty value handling
