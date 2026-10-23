@@ -3,12 +3,12 @@
 page_title: "cato_private_access_rule_bulk Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages ordering and publishing private access policy rules. Configured rules are placed first in the requested order; other rules retain their relative order.
+  Manages ordering and publishng private access policy rules.
 ---
 
 # cato_private_access_rule_bulk (Resource)
 
-Manages ordering and publishing private access policy rules. Configured rules are placed first in the requested order; other rules retain their relative order.
+Manages ordering and publishng private access policy rules.
 
 ## Example Usage
 

@@ -78,10 +78,3 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
-
-  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk:
-    interfaces:
-      ResourceClient:
-        config:
-          filename: PrivateAccessBulkResourceClient.go
-          structname: PrivateAccessBulkResourceClient
