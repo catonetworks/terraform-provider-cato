@@ -75,11 +75,15 @@ func TestLfSubPolicyReferenceSetDefaults(t *testing.T) {
 					if tc.destroy {
 						raw = tftypes.NewValue(tftypes.String, nil)
 					}
+					stateRaw := tftypes.NewValue(tftypes.String, nil)
+					if !tc.state.IsNull() {
+						stateRaw = tftypes.NewValue(tftypes.String, "existing resource")
+					}
 					response := planmodifier.SetResponse{PlanValue: tc.plan}
 					for _, modifier := range setAttribute.PlanModifiers {
 						modifier.PlanModifySet(ctx, planmodifier.SetRequest{
 							Path: attributePath, ConfigValue: tc.config, PlanValue: response.PlanValue,
-							StateValue: tc.state, Plan: tfsdk.Plan{Raw: raw},
+							StateValue: tc.state, Plan: tfsdk.Plan{Raw: raw}, State: tfsdk.State{Raw: stateRaw},
 						}, &response)
 						require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
 					}

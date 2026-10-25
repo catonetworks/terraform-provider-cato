@@ -3,102 +3,221 @@
 package always_on_rule
 
 import (
-	"context"
-	"os"
+	"bytes"
+	"fmt"
 	"testing"
-	"time"
+	"text/template"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
-// TestAccAlwaysOnRuleCreate exercises Create directly until the remaining lifecycle methods exist.
-// Cleanup uses the SDK to remove only the created draft rule, without publishing policy changes.
-func TestAccAlwaysOnRuleCreate(t *testing.T) {
-	if os.Getenv("TF_ACC") != "1" {
-		t.Skip("Set TF_ACC=1 to run against the real API")
-	}
+func TestAccAlwaysOnRule(t *testing.T) {
 	acc.SkipByEnv(t)
-	acc.CheckCMAVars(t)()
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	client := acc.GetClient(t)
-	r := alwaysonrule.NewAlwaysOnRuleResource()
-	configure := resource.ConfigureResponse{}
-	r.(resource.ResourceWithConfigure).Configure(ctx, resource.ConfigureRequest{ProviderData: &catoclient.Service{
-		AccountId: acc.CatoAccountID, Catov2: catoclient.NewProviderSDKClient(client),
-	}}, &configure)
-	require.False(t, configure.Diagnostics.HasError(), "%v", configure.Diagnostics)
-	schema := resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, &schema)
-	require.False(t, schema.Diagnostics.HasError(), "%v", schema.Diagnostics)
-	name := acc.GetRandName("always_on_rule")
-	plan := tfsdk.Plan{Schema: schema.Schema}
-	diags := plan.Set(ctx, alwaysOnModel(t, name))
-	require.False(t, diags.HasError(), "%v", diags)
-	response := resource.CreateResponse{State: tfsdk.State{Schema: schema.Schema}}
-	r.Create(ctx, resource.CreateRequest{Plan: plan}, &response)
-	require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
-	var state alwaysonrule.AlwaysOnRule
-	require.False(t, response.State.Get(ctx, &state).HasError())
-	var rule alwaysonrule.AlwaysOnRuleData
-	require.False(t, state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{}).HasError())
-	id := rule.ID.ValueString()
-	require.NotEmpty(t, id)
-	t.Cleanup(func() {
-		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), time.Minute)
-		defer cleanupCancel()
-		result, err := client.PolicyZtnaAlwaysOnRemoveRule(cleanupCtx, acc.CatoAccountID, nil,
-			cato_models.ZtnaAlwaysOnRemoveRuleInput{ID: id})
-		require.NoError(t, err)
-		payload := result.GetPolicy().GetZtnaAlwaysOn().GetRemoveRule()
-		require.Equal(t, cato_models.PolicyMutationStatusSuccess, *payload.GetStatus())
-		require.Empty(t, payload.GetErrors())
+	mockSrv := accmock.NewMockServer(t, t.Name())
+	defer mockSrv.Close()
+	mockSrv.Run()
+
+	cfg := newAlwaysOnRuleCfg(t)
+	res := "cato_always_on_rule.this"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		PreCheck:                 acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{
+				// Create resource
+				Config: cfg.getTfConfig(0),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttr(res, "rule.action", "ENFORCE"),
+					resource.TestCheckResourceAttr(res, "rule.allow_fail_open", "true"),
+					resource.TestCheckResourceAttr(res, "rule.allow_user_bypass", "true"),
+					resource.TestCheckResourceAttr(res, "rule.anti_tamper_mode", "MONITOR"),
+					resource.TestCheckResourceAttr(res, "rule.bypass_duration.time", "100"),
+					resource.TestCheckResourceAttr(res, "rule.bypass_duration.unit", "MINUTES"),
+					resource.TestCheckResourceAttr(res, "rule.description", cfg.resName+" description"),
+					resource.TestCheckResourceAttr(res, "rule.device_posture_profile.#", "2"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.device_posture_profile.*",
+						map[string]string{"id": cfg.devicePostures[0].ID, "name": cfg.devicePostures[0].Name},
+					),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.device_posture_profile.*",
+						map[string]string{"id": cfg.devicePostures[1].ID, "name": cfg.devicePostures[1].Name},
+					),
+					resource.TestCheckResourceAttr(res, "rule.enabled", "true"),
+					resource.TestCheckResourceAttrSet(res, "rule.id"),
+					resource.TestCheckResourceAttrSet(res, "rule.index"),
+					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName),
+					resource.TestCheckResourceAttr(res, "rule.platform.#", "2"),
+					resource.TestCheckTypeSetElemAttr(res, "rule.platform.*", "ANDROID"),
+					resource.TestCheckTypeSetElemAttr(res, "rule.platform.*", "LINUX"),
+					resource.TestCheckResourceAttr(res, "rule.source.users.#", "2"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.source.users.*",
+						map[string]string{"id": cfg.users[0].ID, "name": cfg.users[0].Name},
+					),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.source.users.*",
+						map[string]string{"id": cfg.users[1].ID, "name": cfg.users[1].Name},
+					),
+					resource.TestCheckResourceAttr(res, "rule.source.user_groups.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.source.user_groups.*",
+						map[string]string{"id": cfg.userGroups[0].ID, "name": cfg.userGroups[0].Name},
+					),
+				),
+			},
+			{
+				// Update the resource
+				Config: cfg.getTfConfig(1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.PrintAttributes(res),
+					resource.TestCheckResourceAttr(res, "at.position", "LAST_IN_POLICY"),
+					resource.TestCheckResourceAttr(res, "rule.action", "IGNORE"),
+					resource.TestCheckResourceAttr(res, "rule.allow_fail_open", "false"),
+					resource.TestCheckResourceAttr(res, "rule.allow_user_bypass", "false"),
+					resource.TestCheckResourceAttr(res, "rule.anti_tamper_mode", "PROTECT"),
+					resource.TestCheckResourceAttr(res, "rule.bypass_duration.time", "2"),
+					resource.TestCheckResourceAttr(res, "rule.bypass_duration.unit", "HOURS"),
+					resource.TestCheckResourceAttr(res, "rule.description", cfg.resName+" description 2"),
+					resource.TestCheckResourceAttr(res, "rule.device_posture_profile.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.device_posture_profile.*",
+						map[string]string{"id": cfg.devicePostures[0].ID, "name": cfg.devicePostures[0].Name},
+					),
+					resource.TestCheckResourceAttr(res, "rule.enabled", "true"),
+					resource.TestCheckResourceAttrSet(res, "rule.id"),
+					resource.TestCheckResourceAttrSet(res, "rule.index"),
+					resource.TestCheckResourceAttr(res, "rule.name", cfg.resName),
+					resource.TestCheckResourceAttr(res, "rule.platform.#", "2"),
+					resource.TestCheckTypeSetElemAttr(res, "rule.platform.*", "MACOS"),
+					resource.TestCheckTypeSetElemAttr(res, "rule.platform.*", "LINUX"),
+					resource.TestCheckResourceAttr(res, "rule.source.users.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.source.users.*",
+						map[string]string{"id": cfg.users[1].ID, "name": cfg.users[1].Name},
+					),
+					resource.TestCheckResourceAttr(res, "rule.source.user_groups.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(res, "rule.source.user_groups.*",
+						map[string]string{"id": cfg.userGroups[1].ID, "name": cfg.userGroups[1].Name},
+					),
+				),
+			},
+		},
 	})
-	require.Equal(t, name, rule.Name.ValueString())
-	require.False(t, rule.Enabled.ValueBool())
-	require.False(t, rule.Section.IsUnknown())
-	// Confirm the generated ID exists in the draft policy returned by the read API.
-	policy, err := client.PolicyZtnaAlwaysOnPolicy(ctx, acc.CatoAccountID, nil)
-	require.NoError(t, err)
-	for _, entry := range policy.GetPolicy().GetZtnaAlwaysOn().GetPolicy().GetRules() {
-		if entry.GetRule().GetID() == id {
-			require.Equal(t, name, entry.GetRule().GetName())
-			return
-		}
-	}
-	t.Fatalf("created rule %q was not returned in the draft policy", id)
 }
 
-func alwaysOnModel(t *testing.T, name string) alwaysonrule.AlwaysOnRule {
-	t.Helper()
-	ctx := context.Background()
-	duration, diags := types.ObjectValueFrom(ctx, alwaysonrule.AlwaysOnRuleBypassDurationAttrTypes,
-		alwaysonrule.AlwaysOnRuleBypassDuration{Time: types.Int64Value(30), Unit: types.StringValue("MINUTES")})
-	require.False(t, diags.HasError())
-	source, diags := types.ObjectValueFrom(ctx, alwaysonrule.AlwaysOnRuleSourceAttrTypes, alwaysonrule.AlwaysOnRuleSource{
-		User: types.SetValueMust(idname.RefObjectType, nil), UsersGroup: types.SetValueMust(idname.RefObjectType, nil),
-	})
-	require.False(t, diags.HasError())
-	rule, diags := types.ObjectValueFrom(ctx, alwaysonrule.AlwaysOnRuleDataAttrTypes, alwaysonrule.AlwaysOnRuleData{
-		Action: types.StringValue("ENFORCE"), AllowFailOpen: types.BoolValue(false), AllowUserBypass: types.BoolValue(false),
-		AntiTamperMode: types.StringValue("OFF"), BypassDuration: duration, Description: types.StringValue("Create acceptance test"),
-		DevicePostureProfile: types.SetValueMust(idname.RefObjectType, nil), Enabled: types.BoolValue(false),
-		ID: types.StringUnknown(), Index: types.Int64Unknown(), Name: types.StringValue(name),
-		Platform: types.SetValueMust(types.StringType, []attr.Value{types.StringValue("WINDOWS")}),
-		Section:  types.ObjectUnknown(alwaysonrule.AlwaysOnRuleSectionAttrTypes), Source: source,
-	})
-	require.False(t, diags.HasError())
-	return alwaysonrule.AlwaysOnRule{At: types.ObjectNull(policyrule.PositionAttrTypes), Rule: rule}
+type alwaysOnRuleCfg struct {
+	resName        string
+	users          []acc.Ref
+	userGroups     []acc.Ref
+	devicePostures []acc.Ref
+	t              *testing.T
+}
+
+func newAlwaysOnRuleCfg(t *testing.T) alwaysOnRuleCfg {
+	return alwaysOnRuleCfg{
+		resName:        acc.GetRandName("always_on_rule"),
+		users:          acc.GetUsers(t),
+		userGroups:     acc.GetUserGroups(t),
+		devicePostures: acc.GetDevicePostures(t),
+		t:              t,
+	}
+}
+
+func (p alwaysOnRuleCfg) getTfConfig(index int) string {
+	p.t.Helper()
+	tmpl, err := template.New("tmpl").Parse(alwaysOnRuleTFs[index])
+	if err != nil {
+		p.t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	data := map[string]any{
+		"Name":           p.resName,
+		"Description":    p.resName + " description",
+		"Users":          p.users,
+		"UserGroups":     p.userGroups,
+		"DevicePostures": p.devicePostures,
+	}
+	if err := tmpl.Execute(&buf, data); err != nil {
+		p.t.Fatal(err)
+	}
+
+	cfg := acc.ProviderCfg() + buf.String()
+	fmt.Println(cfg)
+	return cfg
+}
+
+var alwaysOnRuleTFs = []string{
+	// Create resource
+	`resource "cato_always_on_rule" "this" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			action            = "ENFORCE"
+			allow_fail_open   = true
+			allow_user_bypass = true
+			anti_tamper_mode  = "MONITOR"
+			bypass_duration = {
+				time = 100
+				unit = "MINUTES"
+			}
+			description       = "{{.Name}} description"
+			device_posture_profile = [
+	              { name = "{{ (index .DevicePostures 0).Name }}" },
+	              { name = "{{ (index .DevicePostures 1).Name }}" },
+			]
+			enabled           = true
+	  		name              = "{{.Name}}"
+			platform = [
+				"ANDROID",
+				"LINUX",
+			]
+			source = {
+	            users = [
+	              { name = "{{ (index .Users 0).Name }}" },
+	              { name = "{{ (index .Users 1).Name }}" }
+	            ],
+	            user_groups = [
+	              { name = "{{ (index .UserGroups 0).Name }}" }
+	            ]
+			}
+		}
+	}
+	`,
+
+	// Update resource
+	`resource "cato_always_on_rule" "this" {
+		at = {
+			position = "LAST_IN_POLICY"
+		}
+		rule = {
+			action            = "IGNORE"
+			allow_fail_open   = false
+			allow_user_bypass = false
+			anti_tamper_mode  = "PROTECT"
+			bypass_duration = {
+				time = 2
+				unit = "HOURS"
+			}
+			description       = "{{.Name}} description 2"
+			device_posture_profile = [
+	              { id = "{{ (index .DevicePostures 0).ID }}" },
+			]
+			enabled           = true
+	  		name              = "{{.Name}}"
+			platform = [
+				"MACOS",
+				"LINUX",
+			]
+			source = {
+	            users = [
+	              { name = "{{ (index .Users 1).Name }}" }
+	            ],
+	            user_groups = [
+	              { id = "{{ (index .UserGroups 1).ID }}" }
+	            ]
+			}
+		}
+	}
+	`,
 }

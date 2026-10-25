@@ -41,7 +41,7 @@ func alwaysOnPlanModel(t *testing.T) AlwaysOnRule {
 	})
 	require.False(t, diags.HasError(), "%v", diags)
 	source, diags := types.ObjectValueFrom(ctx, AlwaysOnRuleSourceAttrTypes, AlwaysOnRuleSource{
-		User: types.SetValueMust(idname.RefObjectType, nil), UsersGroup: types.SetValueMust(idname.RefObjectType, nil),
+		Users: types.SetValueMust(idname.RefObjectType, nil), UserGroups: types.SetValueMust(idname.RefObjectType, nil),
 	})
 	require.False(t, diags.HasError(), "%v", diags)
 	rule, diags := types.ObjectValueFrom(ctx, AlwaysOnRuleDataAttrTypes, AlwaysOnRuleData{
@@ -102,7 +102,7 @@ func TestAlwaysOnRuleCreate(t *testing.T) {
 			require.NotNil(t, input.Rule.Source.UsersGroup)
 			return true
 		})).Return(alwaysOnResponse(t), nil).Once()
-	r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, mockClient: client}
+	r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, apiClient: client}
 	plan := alwaysOnPlan(t, alwaysOnPlanModel(t))
 	resp := resource.CreateResponse{State: tfsdk.State{Schema: plan.Schema}}
 	r.Create(ctx, resource.CreateRequest{Plan: plan}, &resp)
@@ -149,7 +149,7 @@ func TestAlwaysOnRuleCreateErrors(t *testing.T) {
 			}
 			client := mocks.NewAlwaysOnRuleClient(t)
 			client.On("PolicyZtnaAlwaysOnAddRule", mock.Anything, "123", mock.Anything, mock.Anything).Return(body, tc.err).Once()
-			r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, mockClient: client}
+			r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, apiClient: client}
 			plan := alwaysOnPlan(t, alwaysOnPlanModel(t))
 			resp := resource.CreateResponse{State: tfsdk.State{Schema: plan.Schema}}
 			r.Create(context.Background(), resource.CreateRequest{Plan: plan}, &resp)
@@ -163,7 +163,7 @@ func TestAlwaysOnRuleCreateErrors(t *testing.T) {
 func TestAlwaysOnRuleCreateInvalidPlan(t *testing.T) {
 	t.Parallel()
 	client := mocks.NewAlwaysOnRuleClient(t)
-	r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, mockClient: client}
+	r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, apiClient: client}
 	model := alwaysOnPlanModel(t)
 	model.Rule = types.ObjectUnknown(AlwaysOnRuleDataAttrTypes)
 	plan := alwaysOnPlan(t, model)
@@ -176,7 +176,7 @@ func TestAlwaysOnRuleCreateInvalidReference(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	client := mocks.NewAlwaysOnRuleClient(t)
-	r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, mockClient: client}
+	r := &alwaysOnRuleResource{client: &catoclient.Service{AccountId: "123"}, apiClient: client}
 	model := alwaysOnPlanModel(t)
 	var rule AlwaysOnRuleData
 	require.False(t, model.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{}).HasError())
@@ -222,7 +222,7 @@ func TestAlwaysOnRuleMetadataConfigureAndImport(t *testing.T) {
 	require.Same(t, service, r.client)
 	require.Nil(t, r.getClient())
 	service.Catov2 = catoclient.NewProviderSDKClient(&cato.Client{})
-	require.Same(t, service.Catov2, r.getClient())
+	require.IsType(t, &sdkClient{}, r.getClient())
 	r.Configure(ctx, resource.ConfigureRequest{ProviderData: "invalid"}, &configure)
 	require.True(t, configure.Diagnostics.HasError())
 	resp := resource.ImportStateResponse{State: tfsdk.State{Schema: alwaysOnSchema(t)}}
@@ -236,20 +236,10 @@ func TestAlwaysOnRuleMetadataConfigureAndImport(t *testing.T) {
 	require.Equal(t, "rule-123", id)
 }
 
-func TestAlwaysOnRuleSchemaAndUnimplementedMethods(t *testing.T) {
+func TestAlwaysOnRuleSchema(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	resourceSchema := alwaysOnSchema(t)
 	diags := resourceSchema.ValidateImplementation(ctx)
 	require.False(t, diags.HasError(), "%v", diags)
-	r := &alwaysOnRuleResource{}
-	read := resource.ReadResponse{}
-	r.Read(ctx, resource.ReadRequest{}, &read)
-	require.True(t, read.Diagnostics.HasError())
-	update := resource.UpdateResponse{}
-	r.Update(ctx, resource.UpdateRequest{}, &update)
-	require.True(t, update.Diagnostics.HasError())
-	deleteResponse := resource.DeleteResponse{}
-	r.Delete(ctx, resource.DeleteRequest{}, &deleteResponse)
-	require.True(t, deleteResponse.Diagnostics.HasError())
 }

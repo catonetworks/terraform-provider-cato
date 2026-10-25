@@ -3,18 +3,18 @@
 page_title: "cato_always_on_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_always_on_rule resource creates an Always On policy rule in the Cato platform. Read, update, and delete are not implemented yet. Changes are saved to the draft policy without publishing.
+  The cato_always_on_rule resource manages an Always On policy rule in the Cato platform. Changes are saved to the draft policy without publishing. Changing at moves the rule; omitting at preserves its current position.
 ---
 
 # cato_always_on_rule (Resource)
 
-The cato_always_on_rule resource creates an Always On policy rule in the Cato platform. Read, update, and delete are not implemented yet. Changes are saved to the draft policy without publishing.
+The cato_always_on_rule resource manages an Always On policy rule in the Cato platform. Changes are saved to the draft policy without publishing. Changing at moves the rule; omitting at preserves its current position.
 
 ## Example Usage
 
 ```terraform
-# Create support is implemented. Read, update, and delete are still under development.
-# The rule is saved in the draft Always On policy; this resource does not publish it.
+# Changes are saved to the draft policy without publishing.
+# Changing at moves the rule. Omit at to preserve its current position on updates.
 
 terraform {
   required_providers {

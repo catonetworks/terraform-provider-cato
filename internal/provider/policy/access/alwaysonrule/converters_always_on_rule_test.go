@@ -69,7 +69,7 @@ func TestBuildAlwaysOnRuleAllReferenceCollections(t *testing.T) {
 	})
 	rule.DevicePostureProfile = refs
 	var diags diag.Diagnostics
-	rule.Source, diags = types.ObjectValueFrom(ctx, AlwaysOnRuleSourceAttrTypes, AlwaysOnRuleSource{User: refs, UsersGroup: refs})
+	rule.Source, diags = types.ObjectValueFrom(ctx, AlwaysOnRuleSourceAttrTypes, AlwaysOnRuleSource{Users: refs, UserGroups: refs})
 	require.False(t, diags.HasError())
 	plan.Rule, diags = types.ObjectValueFrom(ctx, AlwaysOnRuleDataAttrTypes, rule)
 	require.False(t, diags.HasError())
@@ -104,6 +104,29 @@ func TestParseAlwaysOnRuleReferencesAndDefaults(t *testing.T) {
 	require.Equal(t, []idname.Ref{{ID: types.StringValue("profile-1"), Name: types.StringValue("Managed device")}}, profiles)
 	var source AlwaysOnRuleSource
 	require.False(t, state.Source.As(ctx, &source, basetypes.ObjectAsOptions{}).HasError())
-	require.True(t, source.User.Equal(types.SetValueMust(idname.RefObjectType, nil)))
-	require.True(t, source.UsersGroup.Equal(types.SetValueMust(idname.RefObjectType, nil)))
+	require.True(t, source.Users.Equal(types.SetValueMust(idname.RefObjectType, nil)))
+	require.True(t, source.UserGroups.Equal(types.SetValueMust(idname.RefObjectType, nil)))
+}
+
+func TestParseAlwaysOnPolicyRuleDefaults(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	rule := alwaysOnPolicyResponse(t).Policy.ZtnaAlwaysOn.Policy.Rules[1].GetRule()
+	rule.AntiTamperMode = nil
+	rule.Platform = nil
+	rule.DevicePostureProfile = nil
+	rule.Source.User = nil
+	rule.Source.UsersGroup = nil
+	var diags diag.Diagnostics
+	parsed := parseAlwaysOnPolicyRule(ctx, rule, &diags)
+	require.False(t, diags.HasError(), "%v", diags)
+	var state AlwaysOnRuleData
+	require.False(t, parsed.As(ctx, &state, basetypes.ObjectAsOptions{}).HasError())
+	require.Equal(t, "OFF", state.AntiTamperMode.ValueString())
+	require.True(t, state.Platform.Equal(types.SetValueMust(types.StringType, nil)))
+	require.True(t, state.DevicePostureProfile.Equal(types.SetValueMust(idname.RefObjectType, nil)))
+	var source AlwaysOnRuleSource
+	require.False(t, state.Source.As(ctx, &source, basetypes.ObjectAsOptions{}).HasError())
+	require.True(t, source.Users.Equal(types.SetValueMust(idname.RefObjectType, nil)))
+	require.True(t, source.UserGroups.Equal(types.SetValueMust(idname.RefObjectType, nil)))
 }

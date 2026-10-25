@@ -218,12 +218,39 @@ if newID == "" {
 }
 ```
 
+#### 2.4.6 Method Read
+The `Read` method should have the following structure:
+- get the state, extract resource ID to read
+- call the API
+   - prepare input for the READ API call if needed (converter helper function)
+   - call the API; use r.getClient() to get the client object
+   - check for errors
+   - convert the response into terraform type system (converter helper function)
+- update the state
+
+If there is one API call per resource, the 'call API' block will be part of the Read method directly,
+else there should be calls to helper methods, each helper implementing its 'call API' block.
+
+#### 2.4.7 Method Update
+The `Update` method should follow the same pattern as the `Create` method.
+
+#### 2.4.8 Method Delete
+The `Delete` method should have the following structure:
+- get the state, extract resource ID to delete
+- call the API
+   - prepare input for the Delete API call if needed (converter helper function)
+   - call the API; use r.getClient() to get the client object
+   - check for errors
+
+
+
 ### 2.5 Converter file
 Create or update the converter file named 'converters_{resource-name}.go' where the resource name is the snail_case resource name without the "cato_" prefix.
 Use the `CONV-*` rules for the converters.
 There are two major groups of converters:
 - input builders: convert TF type system (typically plan) into a plain Go structures (typically SDK types defined in cato_models package)
 - parsers: convert API responses into TF type system
+
 
 #### 2.5.1 Input builders
 The core of the input builder function should look like this:
@@ -233,6 +260,11 @@ input := cato_models.ExampleInput{
   ExampleStrings:    convert.PrepareStringList[string](ctx, plan.ExampleStrings, diags),
 }
 ```
+Reuse helper builder functions if possible.
+- builders in this package that build inputs for Create or Update API calls
+- builders in shared sub-component package (e.g. `./internal/provider/shared/idname/convert*.go)
+- builders in shared converter package (e.g. `./internal/provider/shared/convert/*.go)
+
 
 #### 2.5.2 Parsers
 The core of the parser function should look like this:
@@ -242,3 +274,8 @@ state = &ExampleResource{
   ExampleComplexField:  r.parseExampleMethod(ctx, valueFromAPI, &diags),
   ExampleRefField:      idname.ParseIDNameSet(ctx, valueFromAPI, &diags),
 ```
+
+Reuse helper parser functions if possible.
+- parsers in this package that transform responses from Create, Read or Update API calls
+- parsers in shared sub-component package (e.g. `./internal/provider/shared/idname/convert*.go)
+- parsers in shared converter package (e.g. `./internal/provider/shared/convert/*.go)

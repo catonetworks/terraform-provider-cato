@@ -1,5 +1,5 @@
-# Create support is implemented. Read, update, and delete are still under development.
-# The rule is saved in the draft Always On policy; this resource does not publish it.
+# Changes are saved to the draft policy without publishing.
+# Changing at moves the rule. Omit at to preserve its current position on updates.
 
 terraform {
   required_providers {

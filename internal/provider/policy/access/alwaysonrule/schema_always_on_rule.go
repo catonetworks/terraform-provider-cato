@@ -21,8 +21,9 @@ import (
 
 func (r *alwaysOnRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The cato_always_on_rule resource creates an Always On policy rule in the Cato platform. " +
-			"Read, update, and delete are not implemented yet. Changes are saved to the draft policy without publishing.",
+		Description: "The cato_always_on_rule resource manages an Always On policy rule in the Cato platform. " +
+			"Changes are saved to the draft policy without publishing. Changing at moves the rule; " +
+			"omitting at preserves its current position.",
 		Attributes: map[string]schema.Attribute{
 			"at":   policyrule.SchemaPosition(),
 			"rule": schemaAlwaysOnRule(),
@@ -138,12 +139,12 @@ func schemaAlwaysOnRuleSection() schema.SingleNestedAttribute {
 func schemaAlwaysOnRuleSource() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		Description: "Source users and user groups matched with logical OR within each criterion and logical AND between criteria " +
-			"(API default contains empty user and users_group collections)",
+			"(API default contains empty user and user_groups collections)",
 		Required: true,
 		Attributes: map[string]schema.Attribute{
-			"user": schemaAlwaysOnRuleReferences("User",
+			"users": schemaAlwaysOnRuleReferences("User",
 				"Individual users defined for the account (API default is an empty collection)"),
-			"users_group": schemaAlwaysOnRuleReferences("User group",
+			"user_groups": schemaAlwaysOnRuleReferences("User group",
 				"User groups defined for the account (API default is an empty collection)"),
 		},
 	}

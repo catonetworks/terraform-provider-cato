@@ -14,6 +14,8 @@
 # SDK v1.1.0 omits section.subPolicyId from generated CRUD selections; excluded pending SDK support.
 # Sets represent unordered matching criteria, as approved by the user.
 # Create writes the default draft policy; publishing is outside this resource's current scope.
+# Read, Update, Move, and Delete also use the default draft revision without publishing.
+# Changes to at use policy.ztnaAlwaysOn.moveRule; omitting at on update preserves position.
 Attributes:
   - Name: at
     Description: Position of the new rule in the policy
@@ -145,7 +147,7 @@ Attributes:
         Description: Source users and user groups matched with logical OR within each criterion and logical AND between criteria (API default contains empty user and users_group collections)
         Type: nested
         Attributes:
-          - Name: user
+          - Name: users
             Description: Individual users defined for the account (API default is an empty collection)
             Type: set
             ItemType: nested
@@ -161,7 +163,7 @@ Attributes:
             Mode: required
             Hints:
               - idName
-          - Name: users_group
+          - Name: user_groups
             Description: User groups defined for the account (API default is an empty collection)
             Type: set
             ItemType: nested

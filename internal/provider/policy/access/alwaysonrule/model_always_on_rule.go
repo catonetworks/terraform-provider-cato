@@ -99,14 +99,14 @@ var AlwaysOnRuleSectionObjectType = types.ObjectType{AttrTypes: AlwaysOnRuleSect
 // AlwaysOnRuleSource represents the users and user groups matched by the rule.
 // Both collections reuse the shared idname.Ref model for API object references.
 type AlwaysOnRuleSource struct {
-	User       types.Set `tfsdk:"user"`        // []idname.Ref
-	UsersGroup types.Set `tfsdk:"users_group"` // []idname.Ref
+	Users      types.Set `tfsdk:"users"`       // []idname.Ref
+	UserGroups types.Set `tfsdk:"user_groups"` // []idname.Ref
 }
 
 // AlwaysOnRuleSourceAttrTypes defines the source matching criteria attribute types.
 var AlwaysOnRuleSourceAttrTypes = map[string]attr.Type{
-	"user":        types.SetType{ElemType: idname.RefObjectType},
-	"users_group": types.SetType{ElemType: idname.RefObjectType},
+	"users":       types.SetType{ElemType: idname.RefObjectType},
+	"user_groups": types.SetType{ElemType: idname.RefObjectType},
 }
 
 // AlwaysOnRuleSourceObjectType defines the Terraform object type for AlwaysOnRuleSource.

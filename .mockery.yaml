@@ -8,7 +8,7 @@ formatter: gofmt
 packages:
   github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule:
     interfaces:
-      Client:
+      ResourceClient:
         config:
           filename: AlwaysOnRuleClient.go
           structname: AlwaysOnRuleClient
