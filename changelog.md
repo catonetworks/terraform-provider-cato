@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Features
+- Added `cato_socket_site_ha` to configure Cloud Router mode after a socket site's secondary vSocket has been registered.
+
 ## 1.2.0 (2026-10-15)
 
 ### Breaking changes
