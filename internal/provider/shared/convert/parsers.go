@@ -3,12 +3,22 @@ package convert
 import (
 	"context"
 	"fmt"
+	"reflect"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type int64er interface{ GetInt64() int64 }
+
+var FromToObjectType = types.ObjectType{AttrTypes: FromToAttrTypes}
+var FromToAttrTypes = map[string]attr.Type{
+	"from": types.StringType,
+	"to":   types.StringType,
+}
 
 func StringPointerForOptionalInput(value types.String) *string {
 	if value.IsNull() || value.IsUnknown() || value.ValueString() == "" {
@@ -136,4 +146,127 @@ func ParseInt64List[T int64er](ctx context.Context, ints []T, diags *diag.Diagno
 	diags.Append(valueDiag...)
 
 	return int64List
+}
+
+func ParseList[T any](ctx context.Context, elemType attr.Type, items []T, attrName string) types.List {
+	tflog.Debug(ctx, "parseList() "+attrName+" - "+fmt.Sprintf("%v", items))
+
+	// Handle empty list - return null (len(nil) == 0 so nil check is redundant)
+	if len(items) == 0 {
+		tflog.Info(ctx, "parseList() - empty list, returning null")
+		return types.ListNull(elemType)
+	}
+
+	tflog.Info(ctx, "parseList() - "+fmt.Sprintf("%v", items))
+
+	// Convert to types.List using ListValueFrom
+	listValue, listDiags := types.ListValueFrom(ctx, elemType, items)
+	if listDiags.HasError() || listValue.IsUnknown() {
+		return types.ListNull(elemType)
+	}
+	return listValue
+}
+
+func ParseFromToList[T any](ctx context.Context, items []T, attrName string) types.List {
+	tflog.Debug(ctx, "convert.ParseFromToList() "+attrName+" - "+fmt.Sprintf("%v", items))
+
+	// Handle empty list - return null (len(nil) == 0 so nil check is redundant)
+	if len(items) == 0 {
+		tflog.Debug(ctx, "convert.ParseFromToList() - empty input list, returning null")
+		return types.ListNull(FromToObjectType)
+	}
+	// Process each item into an attr.Value
+	fromToValues := make([]attr.Value, 0, len(items))
+	for i, item := range items {
+		obj := ParseFromTo(ctx, item, attrName)
+		if !obj.IsNull() && !obj.IsUnknown() { // Include only non-null/unknown values, adjust as needed
+			fromToValues = append(fromToValues, obj)
+		} else {
+			tflog.Debug(ctx, "convert.ParseFromToList() - skipping null/unknown item at index "+fmt.Sprintf("%d", i))
+		}
+	}
+
+	// Convert to types.List using ListValueFrom
+	listValue, _ := types.ListValueFrom(ctx, FromToObjectType, fromToValues)
+	return listValue
+}
+
+func ParseFromTo(ctx context.Context, item interface{}, attrName string) types.Object {
+	tflog.Debug(ctx, "parseFromTo() "+attrName+" - "+fmt.Sprintf("%v", item))
+
+	if item == nil {
+		tflog.Debug(ctx, "parseFromTo() - nil")
+		return types.ObjectNull(FromToAttrTypes)
+	}
+
+	// Get the reflect.Value of the input
+	itemValue := reflect.ValueOf(item)
+
+	// Handle nil or invalid input
+	tflog.Debug(ctx, "parseFromTo() itemValue.Kind()- "+itemValue.Kind().String())
+	if itemValue.Kind() != reflect.Struct {
+		if itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
+			itemValue = itemValue.Elem()
+			// Keep dereferencing until we get to a struct or can't anymore
+			for itemValue.Kind() == reflect.Pointer && !itemValue.IsNil() {
+				itemValue = itemValue.Elem()
+			}
+			if itemValue.Kind() != reflect.Struct {
+				return types.ObjectNull(FromToAttrTypes)
+			}
+		} else {
+			return types.ObjectNull(FromToAttrTypes)
+		}
+	}
+
+	// Handle pointer to struct
+	if itemValue.Kind() == reflect.Pointer {
+		if itemValue.IsNil() {
+			return types.ObjectNull(FromToAttrTypes)
+		}
+		itemValue = itemValue.Elem()
+	}
+
+	// Get Name and ID fields
+	fromField := itemValue.FieldByName("From")
+	toField := itemValue.FieldByName("To")
+	tflog.Info(ctx, "parseFromTo() value", map[string]interface{}{
+		"fromField": fromField,
+		"toField":   toField,
+	})
+
+	if !fromField.IsValid() || !toField.IsValid() {
+		tflog.Debug(ctx, "parseFromTo() fromField.IsValid() - "+fmt.Sprintf("%v", fromField))
+		tflog.Debug(ctx, "parseFromTo() toField.IsValid() - "+fmt.Sprintf("%v", toField))
+		return types.ObjectNull(FromToAttrTypes)
+	}
+
+	// Create object value
+	obj, diagstmp := types.ObjectValue(
+		FromToAttrTypes,
+		map[string]attr.Value{
+			"from": basetypes.NewStringValue(fromField.String()),
+			"to":   basetypes.NewStringValue(toField.String()),
+		},
+	)
+	tflog.Debug(ctx, "parseFromTo() obj - "+obj.String())
+	_ = diagstmp
+	return obj
+}
+
+func NullableString(value string) types.String {
+	if value == "" {
+		return types.StringNull()
+	}
+
+	return types.StringValue(value)
+}
+
+// ParseOptionalString returns StringValue("") if the string is nil, its real value otherwise.
+// It is intended to be used with NullStringModifier plan modifier that defaults to empty string.
+func ParseOptionalString(s *string) types.String {
+	if s == nil {
+		return types.StringValue("")
+	}
+	return types.StringValue(*s)
 }

@@ -117,6 +117,11 @@ linters:
       - linters:
           - revive
         text: 'package-comments: should have a package comment'
+      # Preserve exported names when resource-based package names repeat their prefix.
+      - linters:
+          - revive
+        text: 'exported: .*stutters'
+        path: 'internal/provider/(network/(data_sources/networkinterfaces|networkrange)|policy/(access/alwaysonrule|applicationcontrol|inet/data_sources/ifrulesections|lan/(socketlanfirewallrule|socketlannetworkrule)|privateaccess|wan/data_sources/wfrulesections)|shared/applicationcontrol)/'
       - path: (.+)\.go$
         text: exported (var|type|method|function|const) (.+) should have comment (.+)
       - linters:

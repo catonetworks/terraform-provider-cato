@@ -6,17 +6,13 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperr"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 )
-
-type ObjectRefOutput struct {
-	By    string `json:"By"`
-	Input string `json:"Input"`
-}
 
 // TransformObjectRefInput is used to transform object {id = "1234"} or {name = "entites"}
 // with the following format { by = "ID" input = "1234"} or  { by = "NAME" input = "entities"}.
@@ -114,7 +110,7 @@ type HasValuer interface {
 
 func HasValue(v HasValuer) bool { return (!v.IsUnknown()) && (!v.IsNull()) }
 
-func CheckAPIErrors[T apperr.APIErrors](err error, errors []T, summary string, diags *diag.Diagnostics) bool {
+func CheckAPIErrors[T apperror.APIErrors](err error, errors []T, summary string, diags *diag.Diagnostics) bool {
 	if err != nil {
 		diags.AddError(summary, err.Error())
 		return true
@@ -150,9 +146,81 @@ func NormalizeDateTime(s string) string {
 	return s
 }
 
-func StringFieldIsExplicit(cfgVal, stateVal types.String) bool {
-	if !HasValue(cfgVal) {
-		return false
+func ParseTimeStringWithTZ(timeStr string) (string, error) {
+	t, err := ParseFlexibleTimeString(timeStr)
+	if err != nil {
+		return "", err
 	}
-	return !HasValue(stateVal) || cfgVal.ValueString() != stateVal.ValueString()
+	return t.UTC().Format("2006-01-02T15:04:05+00:00"), nil
+}
+
+func ParseFlexibleTimeString(timeStr string) (time.Time, error) {
+	t, err := time.Parse("2006-01-02T15:04:05", timeStr)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, timeStr)
+		if err != nil {
+			return time.Time{}, err
+		}
+	}
+	return t, nil
+}
+
+func ParseTimeString(timeStr string, preserveWith ...string) (string, error) {
+	t, err := ParseFlexibleTimeString(timeStr)
+	if err != nil {
+		return "", err
+	}
+
+	if len(preserveWith) > 0 && preserveWith[0] != "" {
+		preservedTime, err := ParseFlexibleTimeString(preserveWith[0])
+		if err == nil && preservedTime.UTC().Equal(t.UTC()) {
+			return preserveWith[0], nil
+		}
+	}
+
+	return t.UTC().Format(time.RFC3339), nil
+}
+
+func GqlOptionalStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func Contains(nameToIDMap map[string]struct{}, name string) bool {
+	_, exists := nameToIDMap[name]
+	return exists
+}
+
+// NormalizePolicyTimestampString normalizes API datetime strings (e.g. ...00.000) to RFC3339-style
+// values that match typical Terraform configuration (…00Z).
+func NormalizePolicyTimestampString(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasSuffix(s, ".000") {
+		s = strings.TrimSuffix(s, ".000")
+		if !strings.HasSuffix(s, "Z") {
+			s += "Z"
+		}
+	}
+	return s
+}
+
+// NormalizePolicyRecurringClock maps API values like "08:00:00" to "08:00" so state
+// matches common Terraform configuration and avoids inconsistent-result errors.
+func NormalizePolicyRecurringClock(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) == 8 && strings.Count(s, ":") == 2 && strings.HasSuffix(s, ":00") {
+		return s[:5]
+	}
+	return s
+}
+
+// ToStrings returns string slice
+func ToStrings[T ~string](enums []T) []string {
+	result := make([]string, len(enums))
+	for i, enum := range enums {
+		result[i] = string(enum)
+	}
+	return result
 }

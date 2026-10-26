@@ -14,11 +14,3 @@ type LanInterface struct {
 	TranslatedSubnet types.String `tfsdk:"translated_subnet"`
 	VrrpType         types.String `tfsdk:"vrrp_type"`
 }
-
-type LagMember struct {
-	ID          types.String `tfsdk:"id"`
-	SiteID      types.String `tfsdk:"site_id"`
-	InterfaceID types.String `tfsdk:"interface_id"`
-	Name        types.String `tfsdk:"name"`
-	DestType    types.String `tfsdk:"dest_type"`
-}

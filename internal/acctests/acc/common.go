@@ -490,17 +490,35 @@ func getFromVars(t *testing.T, varName string) []Ref {
 func getFromEntityLookup(t *testing.T, lookupName string) []Ref {
 	const minEntities = 3
 
+	if accmock.ACCMockActive {
+		if lookupName == resLocation {
+			return []Ref{{Name: "Amsterdam", ID: "13"}, {Name: "Ashburn", ID: "12"}}
+		}
+	}
+
 	mu.Lock()
 	defer mu.Unlock()
 	refs := resourceRefs[lookupName]
 	if refs == nil {
 		refs = getEntities(t, lookupName)
 		if len(refs) < minEntities {
-			t.Fatalf("entity lookup faied for '%s', found just %d items", lookupName, len(refs))
+			t.Fatalf("entity lookup failed for '%s', found just %d items", lookupName, len(refs))
 		}
 		resourceRefs[lookupName] = refs
 	}
 	return refs
+}
+
+func GetBWLicenses(t *testing.T) (licenses []string) {
+	if accmock.ACCMockActive {
+		return []string{"L100", "L200"}
+	}
+	if id := os.Getenv("ACC_TEST_BW_LICENSE"); id != "" {
+		return strings.Split(id, ",")
+	}
+
+	t.Fatalf("Failed to find a valid BW license")
+	return nil
 }
 
 func GetUsers(t *testing.T) []Ref              { return getFromEntityLookup(t, resUsers) }

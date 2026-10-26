@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 (2026-10-15)
+
+### Breaking changes
+- None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration.
+
+### Features
+- Added `pooled_bandwidth_allocation` to `cato_app_connector`, so you can allocate bandwidth from pooled licenses when creating a connector and add, resize, or remove allocations on existing connectors.
+
+### Notes
+- Updated the Cato Terraform provider to the latest API schema, including support for App Connector pooled bandwidth licensing. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches.
+
 ## 1.1.0 (2026-10-05)
 
 ### Breaking changes

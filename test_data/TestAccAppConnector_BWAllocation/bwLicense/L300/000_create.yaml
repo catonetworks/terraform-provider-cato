@@ -1,0 +1,23 @@
+# Response to a create request for an app connector Pooled Bandwidth license.
+ResourceID: id-bw300-l300
+GraphQL:
+  StatusCode: 200
+  Delay: 50ms
+  Body:
+    {
+      "data":
+        {
+          "ztnaAppConnector":
+            {
+              "addZtnaAppConnectorBwLicense":
+                {
+                  "pooledBandwidthAllocation":
+                    {
+                      "allocationId": "id-bw300-l300",
+                      "bw": 300,
+                      "licenseId": "L300",
+                    },
+                },
+            },
+        },
+    }

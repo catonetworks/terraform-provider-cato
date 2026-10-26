@@ -5,12 +5,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type Model struct {
+type Ref struct {
 	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
 
-var ModelTypes = map[string]attr.Type{
+var RefAttrTypes = map[string]attr.Type{
 	"id":   types.StringType,
 	"name": types.StringType,
 }
+
+var RefObjectType = types.ObjectType{AttrTypes: RefAttrTypes}
