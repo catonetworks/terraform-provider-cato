@@ -46,14 +46,17 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"countries": schema.SetNestedAttribute{
-				Description: "List of countries",
+				Description: "List of countries.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Country"),
 					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{
+					planmodifiers.NullSetModifier(idname.RefObjectType),
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"description": schema.StringAttribute{
 				Description:   "Rule description",
@@ -62,14 +65,17 @@ func (r *privAccessRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"devices": schema.SetNestedAttribute{
-				Description: "List of devices",
+				Description: "List of devices.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Device"),
 					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{
+					planmodifiers.NullSetModifier(idname.RefObjectType),
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"enabled": schema.BoolAttribute{
 				Description: "TRUE = Rule is enabled FALSE = Rule is disabled",
@@ -124,24 +130,30 @@ func (r *privAccessRuleResource) schemaTracking() schema.SingleNestedAttribute {
 						Validators:  []validator.String{validators.PolicyTrackingFrequency{}},
 					},
 					"mailing_list": schema.SetNestedAttribute{
-						Description: "Mailing list name or id",
-						Optional:    true,
+						Description:   "Mailing list name or id.",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(idname.RefObjectType)},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Mailing list"),
 							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 						},
 					},
 					"subscription_group": schema.SetNestedAttribute{
-						Description: "Subscription group name or id",
-						Optional:    true,
+						Description:   "Subscription group name or id.",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(idname.RefObjectType)},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Subscription group"),
 							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 						},
 					},
 					"webhook": schema.SetNestedAttribute{
-						Description: "Webhook name or id",
-						Optional:    true,
+						Description:   "Webhook name or id.",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.Set{planmodifiers.NullSetModifier(idname.RefObjectType)},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes:    idname.SchemaNameID("Webhook"),
 							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
@@ -285,24 +297,30 @@ func (r *privAccessRuleResource) schemaSource() schema.SingleNestedAttribute {
 		Required:    true,
 		Attributes: map[string]schema.Attribute{
 			"users": schema.SetNestedAttribute{
-				Description: "Users",
+				Description: "Users.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("User"),
 					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{
+					planmodifiers.NullSetModifier(idname.RefObjectType),
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"user_groups": schema.SetNestedAttribute{
-				Description: "User groups",
+				Description: "User groups.",
 				Optional:    true,
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes:    idname.SchemaNameID("Group"),
 					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{
+					planmodifiers.NullSetModifier(idname.RefObjectType),
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 		Validators: []validator.Object{PrivAccPolicySourceValidator{}},

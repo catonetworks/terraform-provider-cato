@@ -10,7 +10,6 @@ import (
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
@@ -99,7 +98,7 @@ func convertReadState3(
 
 	// The API does not return section position. Preserve configuration state to
 	// avoid drift, defaulting imports without position state to LAST_IN_POLICY.
-	curAtObj, resultDiagstmp := convert.DefaultSectionPosition(ctx, state.At)
+	curAtObj, resultDiagstmp := policyrule.DefaultSectionPosition(ctx, state.At)
 	state.At = curAtObj
 	return resultSectionExist, resultDiagstmp
 }

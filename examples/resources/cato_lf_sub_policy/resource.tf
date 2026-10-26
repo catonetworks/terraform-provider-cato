@@ -1,4 +1,5 @@
-// LAN Firewall sub-policy 
+# Omitted site, source, and destination reference sets default to [] within the required scope objects.
+// LAN Firewall sub-policy
 
 resource "cato_lf_sub_policy" "example" {
   name        = "example"

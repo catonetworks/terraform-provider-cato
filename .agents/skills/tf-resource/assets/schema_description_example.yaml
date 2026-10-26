@@ -1,0 +1,33 @@
+Attributes:
+  - Name: id
+    Description: Group ID
+    Type: int64
+    Mode: computed
+
+  - Name: name
+    Description: Group name
+    Type: string
+    Mode: required
+
+  - Name: Domains
+    Description: Set of domains
+    Type: set
+    ItemType: string
+    Mode: optional
+
+  - Name: Subgroups
+    Description: subgroups
+    Type: set
+    ItemType: nested
+    ItemAttributes:
+      - Name: id
+        Description: subgroup id
+        Type: string
+        Mode: required
+      - Name: name
+        Description: subgroup name
+        Type: string
+        Mode: required
+    Mode: optional_computed
+    Hints:
+      - idName

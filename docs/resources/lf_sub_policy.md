@@ -13,7 +13,8 @@ The `cato_lf_sub_policy` resource manages a LAN Firewall sub-policy (a nested po
 ## Example Usage
 
 ```terraform
-// LAN Firewall sub-policy 
+# Omitted site, source, and destination reference sets default to [] within the required scope objects.
+// LAN Firewall sub-policy
 
 resource "cato_lf_sub_policy" "example" {
   name        = "example"
@@ -79,16 +80,16 @@ Read-Only:
 
 Optional:
 
-- `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. (see [below for nested schema](#nestedatt--scope--destination--floating_subnet))
-- `global_ip_range` (Attributes Set) List of global IP ranges (see [below for nested schema](#nestedatt--scope--destination--global_ip_range))
-- `group` (Attributes Set) List of groups (see [below for nested schema](#nestedatt--scope--destination--group))
-- `host` (Attributes Set) List of hosts (see [below for nested schema](#nestedatt--scope--destination--host))
+- `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--destination--floating_subnet))
+- `global_ip_range` (Attributes Set) List of global IP ranges. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--destination--global_ip_range))
+- `group` (Attributes Set) List of groups. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--destination--group))
+- `host` (Attributes Set) List of hosts. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--destination--host))
 - `ip` (List of String) IP addresses
 - `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--scope--destination--ip_range))
-- `network_interface` (Attributes Set) List of network interfaces (see [below for nested schema](#nestedatt--scope--destination--network_interface))
-- `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet (see [below for nested schema](#nestedatt--scope--destination--site_network_subnet))
+- `network_interface` (Attributes Set) List of network interfaces. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--destination--network_interface))
+- `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--destination--site_network_subnet))
 - `subnet` (List of String) Subnets in CIDR notation
-- `system_group` (Attributes Set) List of system groups (see [below for nested schema](#nestedatt--scope--destination--system_group))
+- `system_group` (Attributes Set) List of system groups. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--destination--system_group))
 - `vlan` (List of Number) VLAN IDs
 
 <a id="nestedatt--scope--destination--floating_subnet"></a>
@@ -150,8 +151,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site Natwork Subnet ID
-- `name` (String) Site Natwork Subnet name
+- `id` (String) Site Network Subnet ID
+- `name` (String) Site Network Subnet name
 
 
 <a id="nestedatt--scope--destination--system_group"></a>
@@ -169,8 +170,8 @@ Optional:
 
 Optional:
 
-- `group` (Attributes Set) List of groups (see [below for nested schema](#nestedatt--scope--site--group))
-- `site` (Attributes Set) List of sites (see [below for nested schema](#nestedatt--scope--site--site))
+- `group` (Attributes Set) List of groups. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--site--group))
+- `site` (Attributes Set) List of sites. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--site--site))
 
 <a id="nestedatt--scope--site--group"></a>
 ### Nested Schema for `scope.site.group`
@@ -196,16 +197,16 @@ Optional:
 
 Optional:
 
-- `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. (see [below for nested schema](#nestedatt--scope--source--floating_subnet))
-- `global_ip_range` (Attributes Set) List of global IP ranges (see [below for nested schema](#nestedatt--scope--source--global_ip_range))
-- `group` (Attributes Set) List of groups (see [below for nested schema](#nestedatt--scope--source--group))
-- `host` (Attributes Set) List of hosts (see [below for nested schema](#nestedatt--scope--source--host))
+- `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--source--floating_subnet))
+- `global_ip_range` (Attributes Set) List of global IP ranges. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--source--global_ip_range))
+- `group` (Attributes Set) List of groups. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--source--group))
+- `host` (Attributes Set) List of hosts. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--source--host))
 - `ip` (List of String) IP addresses
 - `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--scope--source--ip_range))
-- `network_interface` (Attributes Set) List of network interfaces (see [below for nested schema](#nestedatt--scope--source--network_interface))
-- `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet (see [below for nested schema](#nestedatt--scope--source--site_network_subnet))
+- `network_interface` (Attributes Set) List of network interfaces. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--source--network_interface))
+- `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--source--site_network_subnet))
 - `subnet` (List of String) Subnets in CIDR notation
-- `system_group` (Attributes Set) List of system groups (see [below for nested schema](#nestedatt--scope--source--system_group))
+- `system_group` (Attributes Set) List of system groups. Defaults to an empty set when omitted. (see [below for nested schema](#nestedatt--scope--source--system_group))
 - `vlan` (List of Number) VLAN IDs
 
 <a id="nestedatt--scope--source--floating_subnet"></a>
@@ -267,8 +268,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site Natwork Subnet ID
-- `name` (String) Site Natwork Subnet name
+- `id` (String) Site Network Subnet ID
+- `name` (String) Site Network Subnet name
 
 
 <a id="nestedatt--scope--source--system_group"></a>

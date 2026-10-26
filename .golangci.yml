@@ -121,7 +121,7 @@ linters:
       - linters:
           - revive
         text: 'exported: .*stutters'
-        path: 'internal/provider/(network/(data_sources/networkinterfaces|networkrange)|policy/(applicationcontrol|inet/data_sources/ifrulesections|lan/(socketlanfirewallrule|socketlannetworkrule)|privateaccess|wan/data_sources/wfrulesections)|shared/applicationcontrol)/'
+        path: 'internal/provider/(network/(data_sources/networkinterfaces|networkrange)|policy/(access/alwaysonrule|applicationcontrol|inet/data_sources/ifrulesections|lan/(socketlanfirewallrule|socketlannetworkrule)|privateaccess|wan/data_sources/wfrulesections)|shared/applicationcontrol)/'
       - path: (.+)\.go$
         text: exported (var|type|method|function|const) (.+) should have comment (.+)
       - linters:
