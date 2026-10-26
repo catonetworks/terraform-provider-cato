@@ -111,7 +111,7 @@ Required:
 - `enabled` (Boolean) Whether the rule is enabled
 - `name` (String) Rule name
 - `platform` (Set of String) Operating systems matched with logical OR (ANDROID, CHROMEOS, EMBEDDED, IOS, LINUX, MACOS, or WINDOWS); combined with other criteria using logical AND (API default is an empty collection)
-- `source` (Attributes) Source users and user groups matched with logical OR within each criterion and logical AND between criteria (API default contains empty user and users_group collections) (see [below for nested schema](#nestedatt--rule--source))
+- `source` (Attributes) Source users and user groups matched with logical OR within each criterion and logical AND between criteria (API default contains empty user and user_groups collections) (see [below for nested schema](#nestedatt--rule--source))
 
 Read-Only:
 
@@ -142,25 +142,25 @@ Optional:
 
 Required:
 
-- `user` (Attributes Set) Individual users defined for the account (API default is an empty collection) (see [below for nested schema](#nestedatt--rule--source--user))
-- `users_group` (Attributes Set) User groups defined for the account (API default is an empty collection) (see [below for nested schema](#nestedatt--rule--source--users_group))
+- `user_groups` (Attributes Set) User groups defined for the account (API default is an empty collection) (see [below for nested schema](#nestedatt--rule--source--user_groups))
+- `users` (Attributes Set) Individual users defined for the account (API default is an empty collection) (see [below for nested schema](#nestedatt--rule--source--users))
 
-<a id="nestedatt--rule--source--user"></a>
-### Nested Schema for `rule.source.user`
-
-Optional:
-
-- `id` (String) User ID
-- `name` (String) User name
-
-
-<a id="nestedatt--rule--source--users_group"></a>
-### Nested Schema for `rule.source.users_group`
+<a id="nestedatt--rule--source--user_groups"></a>
+### Nested Schema for `rule.source.user_groups`
 
 Optional:
 
 - `id` (String) User group ID
 - `name` (String) User group name
+
+
+<a id="nestedatt--rule--source--users"></a>
+### Nested Schema for `rule.source.users`
+
+Optional:
+
+- `id` (String) User ID
+- `name` (String) User name
 
 
 
