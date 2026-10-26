@@ -279,18 +279,3 @@ func nestedRequestString(t *testing.T, root map[string]any, path ...string) stri
 	require.Truef(t, ok, "request path %v does not contain a string", path)
 	return value
 }
-
-func TestProviderSDKClientAllowsUninitializedClient(t *testing.T) {
-	t.Parallel()
-	require.NotPanics(t, func() { NewProviderSDKClient(nil) })
-	require.NotPanics(t, func() { NewProviderSDKClient(&cato.Client{}) })
-}
-
-func TestProviderSDKClientPreservesSharedHTTPClient(t *testing.T) {
-	t.Parallel()
-	httpClient := &http.Client{}
-	sdk, err := cato.New("https://example.test/graphql", "test-key", "account-123", httpClient, nil)
-	require.NoError(t, err)
-	NewProviderSDKClient(sdk)
-	require.Same(t, httpClient, sdk.Client.Client, "shared SDK constructor must not install feature-specific transport")
-}

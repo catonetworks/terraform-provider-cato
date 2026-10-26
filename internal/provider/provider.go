@@ -485,9 +485,7 @@ func buildRetryHTTPClient(retryConfig *retryClientConfig) *http.Client {
 	retryClient.RetryWaitMin = retryConfig.retryWaitMin
 	retryClient.RetryWaitMax = retryConfig.retryWaitMax
 
-	client := retryClient.StandardClient()
-	client.Timeout = 2 * time.Minute
-	return client
+	return retryClient.StandardClient()
 }
 
 func (p *catoProvider) cleanupDrafts(ctx context.Context, d *catoclient.Service) {

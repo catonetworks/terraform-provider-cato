@@ -14,8 +14,6 @@ The current API that the Cato provider is calling requires sequential execution.
 
 At startup, the provider performs a best-effort check for a newer stable version and emits a non-blocking warning when one is available. The check has a two-second default timeout and can be configured with `version_check_timeout_seconds` or `CATO_VERSION_CHECK_TIMEOUT_SECONDS` (for example, `CATO_VERSION_CHECK_TIMEOUT_SECONDS=5 terraform plan`). To opt out, set `version_check_disabled = true` in provider configuration or set any non-empty `CATO_VERSION_CHECK_DISABLED` environment variable value.
 
-Each API request has a two-minute timeout covering the response and any retries/backoff. Earlier Terraform cancellation or deadlines still take precedence.
-
 Use the navigation to the left to read about the available resources.
 
 ## Example Usage
