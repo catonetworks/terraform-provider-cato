@@ -62,7 +62,7 @@ resource "cato_dns_settings" "account" {
 }
 
 resource "cato_dns_site_settings" "site" {
-  site_id          = var.site_id
+  site             = { id = var.site_id }
   primary_server   = var.primary_server
   secondary_server = var.secondary_server
   suffix           = var.suffix
@@ -75,9 +75,11 @@ resource "cato_dns_forwarding_rule" "test" {
 
 resource "cato_dhcp_settings" "account" {
   lease_time     = var.lease_time
-  relay_enabled  = var.relay_enabled
-  relay_timeout  = var.relay_timeout
-  relay_group_id = var.relay_group_id
+  relay = {
+    enabled = var.relay_enabled
+    timeout = var.relay_timeout
+    group = var.relay_group_id == null ? null : { id = var.relay_group_id }
+  }
 }
 
 resource "cato_dhcp_option" "test" {

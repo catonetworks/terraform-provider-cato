@@ -32,7 +32,7 @@ resource "cato_dhcp_option" "example" {
 
 ### Optional
 
-- `description` (String) Optional nonempty description; omit or set null to clear it.
+- `description` (String) Optional description; omit, null, or empty string clears it.
 
 ### Read-Only
 

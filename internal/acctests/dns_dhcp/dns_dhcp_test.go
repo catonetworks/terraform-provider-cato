@@ -18,6 +18,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	nc "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/networkconfig"
 )
 
 const envEnableDNSDHCPCRUD = "TFACC_ENABLE_DNS_DHCP_CRUD"
@@ -60,7 +61,7 @@ func TestAccDNSDHCP(t *testing.T) {
 	}
 	group := "null"
 	if dhcpConfig.Relay.Group != nil {
-		group = hcl(dhcpConfig.Relay.Group.ID)
+		group = "{ id = " + hcl(dhcpConfig.Relay.Group.ID) + " }"
 	}
 	config := func(value string) string {
 		return fmt.Sprintf(`
@@ -77,7 +78,7 @@ resource "cato_dns_settings" "test" {
 }
 resource "cato_dns_site_settings" "test" {
  depends_on = [cato_dns_settings.test]
- site_id = %q
+ site = { id = %q }
  primary_server = %s
  secondary_server = %s
  suffix = %s
@@ -90,9 +91,11 @@ resource "cato_dns_forwarding_rule" "test" {
 resource "cato_dhcp_settings" "test" {
  depends_on = [cato_dns_forwarding_rule.test]
  lease_time = %d
- relay_enabled = %t
- relay_timeout = %s
- relay_group_id = %s
+ relay = {
+  enabled = %t
+  timeout = %s
+  group = %s
+ }
 }
 resource "cato_dhcp_option" "test" {
  depends_on = [cato_dhcp_settings.test]
@@ -132,7 +135,7 @@ func restoreBaseline(t *testing.T, client *catoclient.ProviderSDKClient, dns *ca
 	t.Helper()
 	ctx := context.Background()
 	settings := dns.NetworkConfig.DNS.Settings
-	_, err := catoclient.NewDNSClient(client).UpdateDNSSettings(ctx, acc.CatoAccountID, catoclient.DNSSettingsInput{
+	_, err := nc.NewDNSClient(client).UpdateDNSSettings(ctx, acc.CatoAccountID, nc.DNSSettingsInput{
 		PrimaryServer: settings.PrimaryServer, SecondaryServer: settings.SecondaryServer, Suffix: settings.Suffix,
 		AcceptDNSRequestsOnLanInterfaceIP: settings.AcceptDNSRequestsOnLanInterfaceIP})
 	if err != nil {
@@ -148,7 +151,7 @@ func restoreBaseline(t *testing.T, client *catoclient.ProviderSDKClient, dns *ca
 		t.Errorf("restore DHCP settings: %v", err)
 	}
 	if override := site.NetworkConfig.DNS.SiteSettings; override != nil {
-		_, err = catoclient.NewDNSClient(client).UpdateDNSSiteSettings(ctx, acc.CatoAccountID, siteID, catoclient.DNSSettingsInput{
+		_, err = nc.NewDNSClient(client).UpdateDNSSiteSettings(ctx, acc.CatoAccountID, models.SiteRefInput{By: models.ObjectRefByID, Input: siteID}, nc.DNSSettingsInput{
 			PrimaryServer: override.PrimaryServer, SecondaryServer: override.SecondaryServer, Suffix: override.Suffix})
 	} else {
 		_, err = client.NetworkConfigDNSRemoveSiteSettings(ctx, acc.CatoAccountID, models.NetworkConfigDNSRemoveSiteSettingsInput{

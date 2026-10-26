@@ -3,19 +3,19 @@
 page_title: "cato_dns_site_settings Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages one site's DNS override via networkConfig.dns. Destroy removes override and restores inheritance. Requires NCS_DNS_PUBLIC_API.
+  Manages one site's DNS override via networkConfig.dns. Destroy restores account DNS inheritance.
 ---
 
 # cato_dns_site_settings (Resource)
 
-Manages one site's DNS override via networkConfig.dns. Destroy removes override and restores inheritance. Requires NCS_DNS_PUBLIC_API.
+Manages one site's DNS override via networkConfig.dns. Destroy restores account DNS inheritance.
 
 ## Example Usage
 
 ```terraform
 resource "cato_dns_site_settings" "example" {
-  site_id        = var.site_id
-  primary_server = "192.0.2.53"
+  site = { id = var.site_id } # Alternatively: { name = "Branch" }
+  # primary_server = "192.0.2.53"
   # secondary_server = "192.0.2.54"
   # suffix           = ["example.test"]
 }
@@ -27,17 +27,25 @@ resource "cato_dns_site_settings" "example" {
 
 ### Required
 
-- `site_id` (String) Existing site's numeric ID. Destroy restores account DNS inheritance.
+- `site` (Attributes) Existing site, identified by ID or name. Changing the site replaces its managed override. (see [below for nested schema](#nestedatt--site))
 
 ### Optional
 
 - `primary_server` (String) Primary DNS server. Omission clears it; secondary server and suffixes require a primary.
 - `secondary_server` (String) Secondary DNS server. Omission clears it.
-- `suffix` (List of String) Ordered DNS search suffixes. Omission or an empty list clears all suffixes.
+- `suffix` (List of String) Ordered DNS search suffixes. Omission or an empty list clears the list.
 
 ### Read-Only
 
 - `id` (String) Resource identifier. Collection item IDs are opaque and must be preserved unchanged.
+
+<a id="nestedatt--site"></a>
+### Nested Schema for `site`
+
+Optional:
+
+- `id` (String) Site ID
+- `name` (String) Site name
 
 ## Import
 

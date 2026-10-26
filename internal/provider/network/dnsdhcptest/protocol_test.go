@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -41,7 +40,15 @@ func TestDNSDHCPTerraformLifecycle(t *testing.T) {
 	}
 	steps = append(steps, resource.TestStep{Config: config(true)}, resource.TestStep{Config: config(true), PlanOnly: true})
 	emptyDescriptionConfig := strings.Replace(config(true), "description = null", `description = ""`, 1)
-	steps = append(steps, resource.TestStep{Config: emptyDescriptionConfig, ExpectError: regexp.MustCompile("string length must be at least 1")}, resource.TestStep{Config: config(true)})
+	steps = append(steps, resource.TestStep{Config: emptyDescriptionConfig, PlanOnly: true}, resource.TestStep{Config: config(true)})
+	nameConfig := strings.Replace(config(true), `site = { id = "site-123" }`, `site = { name = "branch" }`, 1)
+	steps = append(steps, resource.TestStep{Config: nameConfig, PlanOnly: true})
+	relayConfig := strings.Replace(nameConfig, `relay = { enabled = false }`, `relay = { enabled = true, timeout = 10, group = { name = cato_dhcp_relay_group.test.name } }`, 1)
+	steps = append(steps, resource.TestStep{Config: relayConfig}, resource.TestStep{Config: relayConfig, PlanOnly: true}, resource.TestStep{Config: nameConfig}, resource.TestStep{Config: nameConfig, PlanOnly: true})
+	preserveConfig := strings.Replace(nameConfig, " lease_time = 3600\n relay = { enabled = false }", "", 1)
+	steps = append(steps, resource.TestStep{Config: preserveConfig, PlanOnly: true}, resource.TestStep{Config: preserveConfig})
+	clearDNSConfig := strings.ReplaceAll(preserveConfig, ` primary_server = "192.0.2.53"`, "")
+	steps = append(steps, resource.TestStep{Config: clearDNSConfig}, resource.TestStep{Config: clearDNSConfig, PlanOnly: true})
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"cato": providerserver.NewProtocol6WithError(provider.New("test")())},
 		Steps:                    steps,
@@ -74,7 +81,7 @@ resource "cato_dns_settings" "test" {
  accept_dns_requests_on_lan_interface_ip = false
 }
 resource "cato_dns_site_settings" "test" {
- site_id = "site-123"
+ site = { id = "site-123" }
  primary_server = "192.0.2.53"
  secondary_server = %s
  suffix = %s
@@ -85,7 +92,7 @@ resource "cato_dns_forwarding_rule" "test" {
 }
 resource "cato_dhcp_settings" "test" {
  lease_time = 3600
- relay_enabled = false
+ relay = { enabled = false }
 }
 resource "cato_dhcp_option" "test" {
  tag = 224
@@ -121,6 +128,13 @@ func (b *backend) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if request.OperationName == "siteGeneralDetails" {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"site": map[string]any{"siteGeneralDetails": map[string]any{"site": map[string]any{"id": "site-123", "name": "branch"}}}}}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 	domain := "dns"
@@ -169,6 +183,10 @@ func (b *backend) mutate(domain, leaf, action string, input map[string]any) any 
 		for k, v := range input {
 			if k == "relay" {
 				for rk, rv := range v.(map[string]any) {
+					if rk == "group" {
+						group := b.objects["dhcp.relayGroup"]
+						rv = map[string]any{"id": group["id"], "name": group["name"]}
+					}
 					current[k].(map[string]any)[rk] = rv
 				}
 			} else {

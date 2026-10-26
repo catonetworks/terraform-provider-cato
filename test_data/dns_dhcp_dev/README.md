@@ -89,6 +89,11 @@ Do not select test relay group if original account group is absent: API cannot c
 selection back to null. Keep new relay group standalone unless original group can
 be restored explicitly. Do not manage same singleton/item from another Terraform state.
 
+Resource references follow the API shape: `site = { id = var.site_id }` (or `name`),
+and `relay = { enabled = false, timeout = 10, group = { id = "..." } }` (or group `name`).
+Fixture variables remain flat for baseline capture. Relay server order matters: CC2
+uses the first address for older sockets. Keep lists in the intended priority order.
+
 ## Apply, verify, update and import
 
 ```sh

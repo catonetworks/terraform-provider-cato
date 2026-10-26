@@ -78,3 +78,39 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssettings:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DNSSettingsResourceClient.go
+          structname: DNSSettingsResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssitesettings:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DNSSiteSettingsResourceClient.go
+          structname: DNSSiteSettingsResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnsforwardingrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DNSForwardingRuleResourceClient.go
+          structname: DNSForwardingRuleResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpsettings:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DHCPSettingsResourceClient.go
+          structname: DHCPSettingsResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpoption:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DHCPOptionResourceClient.go
+          structname: DHCPOptionResourceClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcprelaygroup:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DHCPRelayGroupResourceClient.go
+          structname: DHCPRelayGroupResourceClient
