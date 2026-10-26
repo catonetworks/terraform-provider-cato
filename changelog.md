@@ -2,11 +2,8 @@
 
 ## Unreleased
 
-### Changed
-- Private Access bulk ordering now places configured rules before unlisted policy rules. Unlisted rules retain their relative order and stay outside Terraform state. This can change the priority of rules managed elsewhere.
-
 ### Bug fixes
-- Retry temporarily missing Private Access rules after creation without delaying ordinary refresh of deleted rules.
+- Retry a temporarily missing Private Access rule immediately after a successful create. Ordinary refresh still recognizes a deleted rule immediately.
 
 ## 1.2.0 (2026-10-15)
 

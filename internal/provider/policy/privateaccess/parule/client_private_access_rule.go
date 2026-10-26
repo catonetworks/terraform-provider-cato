@@ -105,8 +105,11 @@ func lookupPrivateAccessRule(
 	accountID, ruleID string,
 	waitForCreation bool,
 ) (*cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	if waitForCreation {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+	}
 	for {
 		result, err := client.PolicyReadPrivateAccessPolicy(ctx, accountID)
 		if err != nil {

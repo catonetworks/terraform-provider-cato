@@ -298,20 +298,17 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 	apiRulesTf := make(map[string]types.Object)
 	apiRulesGo := make(map[string]*PrivateAccessBulkRule)
 	policy := result.GetPolicy().GetPrivateAccess().GetPolicy()
-	if result == nil || result.Policy.PrivateAccess == nil {
-		return nil, nil, nil, fmt.Errorf("private access policy not returned")
+	if len(policy.Rules) != len(stateRules) {
+		return nil, nil, nil, fmt.Errorf(
+			"rules returned by API (count=%d) do not match the PrivateAccessRuleBulkModel state (count=%d)",
+			len(policy.Rules),
+			len(stateRules),
+		)
 	}
-	// Include unconfigured rules only in the move algorithm, after configured rules.
-	// Their relative order is preserved and they are never added to Terraform state.
-	unmanaged := make([]*PrivateAccessBulkRule, 0)
 	for _, polRule := range policy.Rules {
-		if polRule == nil {
-			return nil, nil, nil, fmt.Errorf("nil private access rule returned")
-		}
 		apiRule, tfRule, stateRule, ok := privateAccessRuleFromResponse(stateRules, polRule)
 		if !ok {
-			unmanaged = append(unmanaged, tfRule)
-			continue
+			return nil, nil, nil, fmt.Errorf("rule '%s' from API is not found in the PrivateAccessRuleBulkModel state", apiRule.Name)
 		}
 		ruleObj := privateAccessRuleObjectFromModel(ctx, &diags, tfRule, stateRule)
 		if diags.HasError() {
@@ -319,10 +316,6 @@ func (r *privAccessRuleBulkResource) hydratePrivAccessRuleBulkState(
 		}
 		apiRulesTf[apiRule.Name] = ruleObj
 		apiRulesGo[apiRule.Name] = tfRule
-	}
-
-	if err := includeUnmanagedRules(stateRules, apiRulesTf, apiRulesGo, unmanaged); err != nil {
-		return nil, nil, nil, err
 	}
 
 	// Prepate the tf state - ruleData map from enriched apiRules
