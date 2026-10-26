@@ -2,6 +2,8 @@ package parule
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -94,3 +96,45 @@ func (c *sdkClient) PolicyReadPrivateAccessPolicy(
 type sdkClient struct{ resource *privAccessRuleResource }
 
 var _ ResourceClient = (*sdkClient)(nil)
+
+// lookupPrivateAccessRule retries only a missing rule immediately after a successful create.
+// Refresh reads remain immediate so externally deleted rules are removed from state.
+func lookupPrivateAccessRule(
+	ctx context.Context,
+	client ResourceClient,
+	accountID, ruleID string,
+	waitForCreation bool,
+) (*cato_go_sdk.PolicyReadPrivateAccessPolicy_Policy_PrivateAccess_Policy_Rules, error) {
+	if waitForCreation {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+	}
+	for {
+		result, err := client.PolicyReadPrivateAccessPolicy(ctx, accountID)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil || result.Policy.PrivateAccess == nil {
+			return nil, fmt.Errorf("private access policy not returned")
+		}
+		for _, rule := range result.Policy.PrivateAccess.Policy.Rules {
+			if rule == nil {
+				return nil, fmt.Errorf("nil private access rule returned")
+			}
+			if rule.Rule.ID == ruleID {
+				return rule, nil
+			}
+		}
+		if !waitForCreation {
+			return nil, ErrPrivateAcccessRuleNotFound
+		}
+		timer := time.NewTimer(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, fmt.Errorf("waiting for created private access rule %s: %w", ruleID, ctx.Err())
+		case <-timer.C:
+		}
+	}
+}

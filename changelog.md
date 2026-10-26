@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Bug fixes
+- Retry a temporarily missing Private Access rule immediately after a successful create. Ordinary refresh still recognizes a deleted rule immediately.
+
 ## 1.2.0 (2026-10-15)
 
 ### Breaking changes
