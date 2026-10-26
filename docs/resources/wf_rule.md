@@ -849,8 +849,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site Natwork Subnet ID
-- `name` (String) Site Natwork Subnet Name
+- `id` (String) Site Network Subnet ID
+- `name` (String) Site Network Subnet Name
 
 
 <a id="nestedatt--rule--destination--system_group"></a>
@@ -968,8 +968,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site Natwork Subnet ID
-- `name` (String) Site Natwork Subnet Name
+- `id` (String) Site Network Subnet ID
+- `name` (String) Site Network Subnet Name
 
 
 <a id="nestedatt--rule--source--system_group"></a>

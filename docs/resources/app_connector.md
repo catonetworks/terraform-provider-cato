@@ -100,7 +100,7 @@ Required:
 
 Optional:
 
-- `primary` (Attributes) Physical location of the pripary Pop (see [below for nested schema](#nestedatt--preferred_pop_location--primary))
+- `primary` (Attributes) Physical location of the primary Pop (see [below for nested schema](#nestedatt--preferred_pop_location--primary))
 - `secondary` (Attributes) Physical location of the secondary Pop (see [below for nested schema](#nestedatt--preferred_pop_location--secondary))
 
 <a id="nestedatt--preferred_pop_location--primary"></a>

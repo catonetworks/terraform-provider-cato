@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.3.0 (2026-10-26)
+
+### Breaking changes
+- None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration.
+
+### Features
+- Added `cato_role` and `cato_rbac_assignment` to manage custom RBAC roles and assign roles to users or user groups, including access scoped to firewall sub-policies. Added the `cato_role`, `cato_roles`, and `cato_permission_catalog` data sources to discover roles and available permissions. See the [sub-policy access guide](docs/guides/rbac_sub_policy_access.md) for configuration examples.
+- Added `cato_always_on_rule` to create, update, reorder, and delete Always On policy rules. Changes are saved to the draft policy; publish the policy separately to activate them.
+
+### Enhancements
+- Extended `cato_lan_interface` interface selection to support WBR and WLAN interfaces.
+
+### Bug fixes
+- Fixed `cato_if_rule` application-category handling so repeated category references returned by Cato do not erase configured categories or cause unnecessary updates, including when categories are selected by overlapping name and ID references.
+- Fixed `cato_private_access_rule` and `cato_lf_sub_policy` requests to send empty optional reference filters correctly, avoiding API errors when applying configurations that omit those filters.
+
+### Security
+- Updated the Cato Terraform provider's bundled Go runtime to address GO-2026-6809 in TLS certificate verification.
+
+### Notes
+- Updated the Cato Terraform provider to the latest API schema, including RBAC role and assignment support. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches.
+- `cato_rbac_assignment` uses undocumented public assignment APIs and does not support managing legacy ADMIN assignments.
+
 ## 1.2.0 (2026-10-15)
 
 ### Breaking changes

@@ -276,7 +276,7 @@ resource "cato_tls_rule" "kitchen_sink" {
 
 ### Required
 
-- `at` (Attributes) Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-PolicyRulePositionInput) (see [below for nested schema](#nestedatt--at))
+- `at` (Attributes) Position of the rule in the policy (https://api.catonetworks.com/documentation/#definition-policyrule.PolicyRulePositionInput) (see [below for nested schema](#nestedatt--at))
 - `rule` (Attributes) Parameters for the rule you are adding (https://api.catonetworks.com/documentation/#definition-InternetFirewallAddRuleDataInput) (see [below for nested schema](#nestedatt--rule))
 
 ### Optional
