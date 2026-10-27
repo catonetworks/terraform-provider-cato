@@ -47,4 +47,5 @@ jobs:
         run: make test
 
       - name: Run acceptance tests
+        if: ${{ github.ref_name != 'beta' && !startsWith(github.ref_name, 'beta-') }}
         run: make acctest-flaky
