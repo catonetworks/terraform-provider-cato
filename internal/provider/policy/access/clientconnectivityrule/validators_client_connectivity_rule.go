@@ -18,6 +18,14 @@ type knownValue struct {
 
 func validateValues(diags *diag.Diagnostics, values ...knownValue) {
 	for _, value := range values {
+		if elements, ok := value.value.(types.Set); ok {
+			for _, element := range elements.Elements() {
+				if element.IsNull() || element.IsUnknown() {
+					diags.AddError("Invalid configuration", value.name+" must not contain null or unknown elements.")
+					break
+				}
+			}
+		}
 		if value.value.IsUnknown() || (value.required && value.value.IsNull()) {
 			diags.AddError("Invalid configuration", value.name+" must contain a known value.")
 		}
