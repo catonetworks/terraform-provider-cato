@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 )
 
 func buildCreateObject(
@@ -87,10 +89,7 @@ func buildPosition(
 	}
 	input := &cato_models.PolicySectionPositionInput{}
 	input.Position = cato_models.PolicySectionPositionEnum(model.Position.ValueString())
-	if !model.Ref.IsNull() {
-		vRef := model.Ref.ValueString()
-		input.Ref = &vRef
-	}
+	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
 	return input
 }
 
