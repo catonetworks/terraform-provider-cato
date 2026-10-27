@@ -393,10 +393,7 @@ func buildPosition(
 	input := &cato_models.PolicyRulePositionInput{}
 	vPosition := cato_models.PolicyRulePositionEnum(model.Position.ValueString())
 	input.Position = &vPosition
-	if !model.Ref.IsNull() {
-		vRef := model.Ref.ValueString()
-		input.Ref = &vRef
-	}
+	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
 	return input
 }
 
