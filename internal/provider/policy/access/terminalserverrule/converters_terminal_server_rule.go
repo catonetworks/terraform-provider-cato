@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
@@ -108,10 +109,7 @@ func buildPosition(
 	input := &cato_models.PolicyRulePositionInput{}
 	vPosition := cato_models.PolicyRulePositionEnum(model.Position.ValueString())
 	input.Position = &vPosition
-	if !model.Ref.IsNull() {
-		vRef := model.Ref.ValueString()
-		input.Ref = &vRef
-	}
+	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
 	return input
 }
 
