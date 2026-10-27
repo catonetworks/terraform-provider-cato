@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -44,4 +45,17 @@ func TestInvalidCriterionElements(t *testing.T) {
 			require.Contains(t, fmt.Sprint(response.Diagnostics), "Invalid configuration")
 		})
 	}
+}
+
+func TestPositionOmitsEmptyReference(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	positionValue := types.ObjectValueMust(atAttrTypes, map[string]attr.Value{
+		"position": types.StringValue("LAST_IN_POLICY"), "ref": types.StringValue(""),
+	})
+	var diagnostics diag.Diagnostics
+	position := buildPosition(ctx, positionValue, &diagnostics)
+	require.False(t, diagnostics.HasError(), "%v", diagnostics)
+	require.NotNil(t, position)
+	require.Nil(t, position.Ref)
 }
