@@ -242,7 +242,7 @@ func (r *policyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if !sectionEmpty(policy, id.ValueString(), &resp.Diagnostics) {
 		return
 	}
-	revision := r.beginRevision(ctx, pending, &resp.Diagnostics)
+	revision := r.beginRevision(ctx, pending, &resp.Diagnostics, id.ValueString())
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -316,7 +316,7 @@ func mutationInput(revision string) *cato_models.ClientConnectivityPolicyMutatio
 	return &cato_models.ClientConnectivityPolicyMutationInput{Revision: &cato_models.PolicyMutationRevisionInput{ID: &revision}}
 }
 
-func (r *policyResource) beginRevision(ctx context.Context, pending string, diags *diag.Diagnostics) string {
+func (r *policyResource) beginRevision(ctx context.Context, pending string, diags *diag.Diagnostics, emptySectionIDs ...string) string {
 	if pending != "" {
 		return pending
 	}
@@ -329,6 +329,21 @@ func (r *policyResource) beginRevision(ctx context.Context, pending string, diag
 	revision := payload.GetPolicy().GetRevision().GetID()
 	if revision == "" {
 		diags.AddError("Invalid API response", "CreatePolicyRevision did not return a revision ID.")
+		return ""
+	}
+	if len(emptySectionIDs) > 0 {
+		if payload.GetPolicy().GetRules() == nil {
+			diags.AddError("Invalid API response", "The policy revision did not return a complete rule list.")
+			r.discard(ctx, revision, diags)
+			return ""
+		}
+		for _, entry := range payload.GetPolicy().GetRules() {
+			if entry.GetRule().GetID() == "" || entry.GetRule().GetSection().GetID() == emptySectionIDs[0] {
+				diags.AddError("Section is not empty", "The revision contains rules in this section or has incomplete rule data.")
+				r.discard(ctx, revision, diags)
+				return ""
+			}
+		}
 	}
 	return revision
 }

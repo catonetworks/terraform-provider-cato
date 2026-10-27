@@ -29,12 +29,13 @@ import (
 )
 
 type testBackend struct {
-	object    map[string]any
-	rules     []any
-	calls     []string
-	variables []map[string]any
-	fail      string
-	malformed bool
+	object          map[string]any
+	rules           []any
+	rulesOnRevision []any
+	calls           []string
+	variables       []map[string]any
+	fail            string
+	malformed       bool
 }
 
 func testResource(t *testing.T, backend *testBackend) *policyResource {
@@ -356,6 +357,19 @@ func TestCreateFailureDiscardsOnlyOwnedRevision(t *testing.T) {
 	require.Equal(t, map[string]any{"id": "revision-1"}, variables["policyDiscardRevisionInput"])
 }
 
+func TestSectionDeletionChecksRevisionSnapshot(t *testing.T) {
+	t.Parallel()
+	backend := testBackendData(t)
+	backend.rulesOnRevision = []any{map[string]any{"rule": map[string]any{"id": "rule-1", "section": map[string]any{"id": "item-1", "name": "Example"}}}}
+	r := testResource(t, backend)
+	state := testState(t, testModel(t))
+	response := resource.DeleteResponse{State: state}
+	r.Delete(context.Background(), resource.DeleteRequest{State: state}, &response)
+	require.True(t, response.Diagnostics.HasError())
+	require.Contains(t, fmt.Sprint(response.Diagnostics), "Section is not empty")
+	require.Equal(t, []string{"policy", "createPolicyRevision", "discardPolicyRevision"}, backend.calls)
+}
+
 func TestSectionDeleteRefusesContainedRules(t *testing.T) {
 	t.Parallel()
 	backend := testBackendData(t)
@@ -383,6 +397,10 @@ func writeBackendResponse(t *testing.T, w http.ResponseWriter, backend *testBack
 	case "policy":
 		payload = policy
 	case "createPolicyRevision":
+		if backend.rulesOnRevision != nil {
+			backend.rules = backend.rulesOnRevision
+			policy["rules"] = backend.rules
+		}
 		policy["revision"] = map[string]any{"id": "revision-1"}
 		payload["policy"] = policy
 	case "addSection", "updateSection", "moveSection":
