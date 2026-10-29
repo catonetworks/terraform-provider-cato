@@ -2,15 +2,15 @@ package ipaddressrangecontainer
 
 import (
 	"context"
-	"math"
 	"net/netip"
-	"net/url"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	containerhelpers "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/container"
 )
 
 const rangeEndpoints = 2
@@ -66,8 +66,8 @@ func memberText(value attr.Value) (string,
 		okT := a["to"].(types.String)
 	if !okF ||
 		!okT ||
-		!knownString(from) ||
-		!knownString(to) {
+		!containerhelpers.KnownString(from) ||
+		!containerhelpers.KnownString(to) {
 		return "",
 			false
 	}
@@ -86,12 +86,12 @@ func validID(id types.String,
 	}
 	return true
 }
-func knownString(s types.String) bool { return !s.IsNull() && !s.IsUnknown() }
+
 func validateModel(ctx context.Context, p resourceModel, d *diag.Diagnostics) {
-	if !knownString(p.Name) ||
+	if !containerhelpers.KnownString(p.Name) ||
 		strings.TrimSpace(p.Name.ValueString()) == "" ||
-		!knownString(p.Description) ||
-		!knownString(p.Mode) {
+		!containerhelpers.KnownString(p.Description) ||
+		!containerhelpers.KnownString(p.Mode) {
 		d.AddError("Invalid container configuration",
 			"Name, description and mode must be known; name must not be empty.")
 		return
@@ -139,11 +139,6 @@ func (r *containerResource) ValidateConfig(ctx context.Context, req resource.Val
 		}
 	}
 }
-func validURL(s string) bool {
-	u, err := url.Parse(s)
-	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Fragment == ""
-}
-func validInterval(v int64) bool { return v > 0 && v <= math.MaxInt32 }
 
 func validateInlineConfig(p resourceModel, d *diag.Diagnostics) {
 	if p.Mode.ValueString() == "INLINE" {

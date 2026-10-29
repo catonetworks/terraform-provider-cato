@@ -12,19 +12,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	containerhelpers "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/container"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 var rangeAttrTypes = map[string]attr.Type{"from": types.StringType, "to": types.StringType}
 var memberType = types.ObjectType{AttrTypes: rangeAttrTypes}
-var refType = types.ObjectType{AttrTypes: idname.RefAttrTypes}
-var notificationsAttrTypes = map[string]attr.Type{"mailing_list": types.SetType{ElemType: refType},
-	"subscription_group": types.SetType{ElemType: refType},
-	"webhook":            types.SetType{ElemType: refType}}
-var syncAttrTypes = map[string]attr.Type{"notifications": types.ObjectType{AttrTypes: notificationsAttrTypes},
-	"time_interval": types.Int64Type,
-	"time_unit":     types.StringType,
-	"url":           types.StringType}
+var refType = containerhelpers.ReferenceType
+var notificationsAttrTypes = containerhelpers.NotificationAttributeTypes
+var syncAttrTypes = containerhelpers.SyncAttributeTypes
 
 func (r *containerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	refs := func(description string) schema.SetNestedAttribute {
@@ -32,7 +28,8 @@ func (r *containerResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			Required:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID(description)}}
 	}
-	resp.Schema = schema.Schema{Description: "Manages an account-scoped IPv4 range container. INLINE owns all members, including an empty " +
+	resp.Schema = schema.Schema{Description: "Manages an account-scoped IPv4 range container. INLINE owns all members, " +
+		"including an empty " +
 		"set. URL owns synchronization settings, not remotely fetched members. Name and mode " +
 		"changes require replacement. Changes are published by the API. Import by exact " +
 		"container ID.",
