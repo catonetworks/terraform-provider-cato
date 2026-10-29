@@ -1,6 +1,6 @@
 # cato_sdp_static_ip_allocation_rule
 
-Status: implemented; local checks and review passed on 2026-10-29. Live validation blocked by test-account configuration.
+Status: implemented and verified on 2026-10-29; local checks, Bugbot review and live acceptance passed.
 
 - Package: `internal/provider/policy/access/sdpstaticipallocationrule/`.
 - Base: `beta`; released Cato Go SDK v1.1.3 (`506577112e8425ee31d8aae08d22d8b3d20ff675`).
@@ -38,5 +38,6 @@ Backend validation requires source.user even for disabled rules; it is required 
 
 - Required local checks passed: sort-imports, test, build, lint, vulnerability scan, documentation generation. Zero reachable vulnerabilities; two module-only advisories.
 - Bugbot found required source.user validation; fixed schema/converters and added null/unknown regression coverage. Re-review clean.
-- Live CRUD attempted on both supplied development accounts: first rejects creation because no static client IP range is configured; second denies policy access. Dedicated test users removed and failed owned revision discarded.
-- Acceptance test requires TFACC_SDP_STATIC_IP from a configured static client range. Full live CRUD/import/movement/no-drift verification remains pending; do not mark this complete until that run passes.
+- After configuring an isolated static client range, targeted live acceptance passed create/read/import/update/movement/no-drift/destroy. Dedicated disabled local user and rule removed.
+- The temporary account pool entry was restored to its prior empty state via CMA, and the dedicated global-range fixture was deleted and verified absent via API.
+- Acceptance requires TFACC_SDP_STATIC_IP from an already configured test-account static client range.
