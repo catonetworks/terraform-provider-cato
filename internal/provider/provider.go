@@ -28,6 +28,7 @@ import (
 	roleds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/roles"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/license"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/mailinglist"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/rbacassignment"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
@@ -528,6 +529,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		account.NewAccountResource,
 		role.NewResource,
+		mailinglist.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
