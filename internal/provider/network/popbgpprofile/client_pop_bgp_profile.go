@@ -2,13 +2,13 @@ package popbgpprofile
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -70,14 +70,5 @@ func (r *bgpProfileResource) find(ctx context.Context, id string) (*profileRecor
 	return item, nil
 }
 func missingProfile(err error) bool {
-	var response *clientv2.ErrorResponse
-	if !errors.As(err, &response) || response.NetworkError != nil || response.GqlErrors == nil || len(*response.GqlErrors) == 0 {
-		return false
-	}
-	for _, item := range *response.GqlErrors {
-		if item == nil || (item.Message != "BGP profile not found" && item.Message != "GQL-User-Error: BGP profile not found") {
-			return false
-		}
-	}
-	return true
+	return apperror.MatchesGraphQLMessages(err, "BGP profile not found", "GQL-User-Error: BGP profile not found")
 }
