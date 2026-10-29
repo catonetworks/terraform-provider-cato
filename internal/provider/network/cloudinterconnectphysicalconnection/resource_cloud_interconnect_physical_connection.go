@@ -147,7 +147,8 @@ func (r *connectionResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 	if *existing.GetEncapsulationMethod() != desired.EncapsulationMethod {
 		resp.Diagnostics.AddError("Encapsulation change requires replacement",
-			"The API restores incompatible previous tags and cannot clear them through its validated scalar. "+
+			"The API restores incompatible previous tags and cannot clear them through "+
+				"its validated scalar. "+
 				"Replace this resource to change encapsulation_method.")
 		return
 	}

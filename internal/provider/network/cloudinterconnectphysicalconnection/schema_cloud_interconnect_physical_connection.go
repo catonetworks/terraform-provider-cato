@@ -32,9 +32,10 @@ func (r *connectionResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			Validators:    []validator.String{stringvalidator.OneOf(utils.ToStrings(m.AllHaRole)...)},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
 		"encapsulation_method": schema.StringAttribute{
-			Description: "Encapsulation method. Changes require explicit replacement because the API cannot clear incompatible previous tags.",
-			Required:    true,
-			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(m.AllTaggingMethod)...)}},
+			Description: "Encapsulation method. Changes require explicit replacement because the API " +
+				"cannot clear incompatible previous tags.",
+			Required:   true,
+			Validators: []validator.String{stringvalidator.OneOf(utils.ToStrings(m.AllTaggingMethod)...)}},
 		"downstream_bw_limit": schema.StringAttribute{Description: "Downstream bandwidth as a canonical non-negative decimal integer.",
 			Required: true},
 		"upstream_bw_limit": schema.StringAttribute{Description: "Upstream bandwidth as a canonical non-negative decimal integer.",
