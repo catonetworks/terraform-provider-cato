@@ -60,7 +60,7 @@ rule = {"allowed_host_ip": {"id": "${range}"}, "description": "${description}", 
 		Steps: []resource.TestStep{
 			{Config: config(name, "initial"), Check: resource.TestCheckResourceAttrSet(resourceName, "rule.id")},
 			{Config: config(name, "initial"), PlanOnly: true, ExpectNonEmptyPlan: false},
-			{ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateIdFunc: func(state *terraform.State) (string, error) {
+			{ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
 				object := state.RootModule().Resources[resourceName]
 				if object == nil || object.Primary == nil {
 					return "", fmt.Errorf("missing resource state")
