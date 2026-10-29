@@ -11,6 +11,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 func buildCreateObject(
@@ -28,20 +29,43 @@ func buildCreateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.action", model.Action, true},
-		knownValue{"rule.country", model.Country, true},
-		knownValue{"rule.coverage", model.Coverage, true},
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.destination", model.Destination, true},
-		knownValue{"rule.dns_exclusion", model.DNSExclusion, false},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.platform", model.Platform, true},
-		knownValue{"rule.routing_priority", model.RoutingPriority, true},
-		knownValue{"rule.source", model.Source, true},
-		knownValue{"rule.source_network", model.SourceNetwork, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.action",
+			Value:    model.Action,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.country",
+			Value:    model.Country,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.coverage",
+			Value:    model.Coverage,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination",
+			Value:    model.Destination,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.dns_exclusion",
+			Value:    model.DNSExclusion,
+			Required: false},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.platform",
+			Value:    model.Platform,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.routing_priority",
+			Value:    model.RoutingPriority,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source",
+			Value:    model.Source,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source_network",
+			Value:    model.SourceNetwork,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -80,12 +104,19 @@ func buildCreateObjectDestination(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.destination.application", model.Application, true},
-		knownValue{"rule.destination.domain", model.Domain, true},
-		knownValue{"rule.destination.fqdn", model.Fqdn, true},
-		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.destination.application",
+			Value:    model.Application,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination.domain",
+			Value:    model.Domain,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination.fqdn",
+			Value:    model.Fqdn,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination.global_ip_range",
+			Value:    model.GlobalIPRange,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -118,9 +149,7 @@ func buildCreateObjectDNSExclusion(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.dns_exclusion.domain", model.Domain, true},
-	)
+	policyshared.ValidateRuleValues(diags, policyshared.KnownValue{Name: "rule.dns_exclusion.domain", Value: model.Domain, Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -147,10 +176,13 @@ func buildCreateObjectSource(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.source.user", model.User, true},
-		knownValue{"rule.source.users_group", model.UsersGroup, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.source.user",
+			Value:    model.User,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source.users_group",
+			Value:    model.UsersGroup,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -175,9 +207,10 @@ func buildCreateObjectSourceNetwork(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.source_network.source_network_type", model.SourceNetworkType, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.source_network.source_network_type",
+			Value:    model.SourceNetworkType,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -201,20 +234,43 @@ func buildUpdateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.action", model.Action, true},
-		knownValue{"rule.country", model.Country, true},
-		knownValue{"rule.coverage", model.Coverage, true},
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.destination", model.Destination, true},
-		knownValue{"rule.dns_exclusion", model.DNSExclusion, false},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.platform", model.Platform, true},
-		knownValue{"rule.routing_priority", model.RoutingPriority, true},
-		knownValue{"rule.source", model.Source, true},
-		knownValue{"rule.source_network", model.SourceNetwork, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.action",
+			Value:    model.Action,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.country",
+			Value:    model.Country,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.coverage",
+			Value:    model.Coverage,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination",
+			Value:    model.Destination,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.dns_exclusion",
+			Value:    model.DNSExclusion,
+			Required: false},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.platform",
+			Value:    model.Platform,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.routing_priority",
+			Value:    model.RoutingPriority,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source",
+			Value:    model.Source,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source_network",
+			Value:    model.SourceNetwork,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -261,12 +317,19 @@ func buildUpdateObjectDestination(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.destination.application", model.Application, true},
-		knownValue{"rule.destination.domain", model.Domain, true},
-		knownValue{"rule.destination.fqdn", model.Fqdn, true},
-		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.destination.application",
+			Value:    model.Application,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination.domain",
+			Value:    model.Domain,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination.fqdn",
+			Value:    model.Fqdn,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.destination.global_ip_range",
+			Value:    model.GlobalIPRange,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -299,9 +362,7 @@ func buildUpdateObjectDNSExclusion(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.dns_exclusion.domain", model.Domain, true},
-	)
+	policyshared.ValidateRuleValues(diags, policyshared.KnownValue{Name: "rule.dns_exclusion.domain", Value: model.Domain, Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -328,10 +389,13 @@ func buildUpdateObjectSource(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.source.user", model.User, true},
-		knownValue{"rule.source.users_group", model.UsersGroup, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.source.user",
+			Value:    model.User,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source.users_group",
+			Value:    model.UsersGroup,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -356,44 +420,16 @@ func buildUpdateObjectSourceNetwork(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.source_network.source_network_type", model.SourceNetworkType, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.source_network.source_network_type",
+			Value:    model.SourceNetworkType,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
 	input := &cato_models.SplitTunnelSourceNetworkUpdateInput{}
 	vSourceNetworkType := cato_models.SplitTunnelSourceNetworkTypeEnum(model.SourceNetworkType.ValueString())
 	input.SourceNetworkType = &vSourceNetworkType
-	return input
-}
-
-func buildPosition(
-	ctx context.Context, value types.Object, diags *diag.Diagnostics,
-) *cato_models.PolicyRulePositionInput {
-	if value.IsNull() {
-		return nil
-	}
-	if value.IsUnknown() {
-		diags.AddError("Unknown configuration", "at must be known before applying.")
-		return nil
-	}
-	var model AtModel
-	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return nil
-	}
-	validateValues(diags,
-		knownValue{"at.position", model.Position, true},
-		knownValue{"at.ref", model.Ref, false},
-	)
-	if diags.HasError() {
-		return nil
-	}
-	input := &cato_models.PolicyRulePositionInput{}
-	vPosition := cato_models.PolicyRulePositionEnum(model.Position.ValueString())
-	input.Position = &vPosition
-	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
 	return input
 }
 
@@ -486,12 +522,7 @@ func parseReadSection(ctx context.Context, value *parseReadSectionResponse, diag
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseReadSourceResponse = cato.PolicySplitTunnelPolicy_Policy_SplitTunnel_Policy_Rules_Rule_Source
@@ -618,12 +649,7 @@ func parseAddSection(ctx context.Context, value *parseAddSectionResponse, diags 
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseAddSourceResponse = cato.PolicySplitTunnelAddRule_Policy_SplitTunnel_AddRule_Rule_Rule_Source
@@ -750,12 +776,7 @@ func parseUpdateSection(ctx context.Context, value *parseUpdateSectionResponse, 
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseUpdateSourceResponse = cato.PolicySplitTunnelUpdateRule_Policy_SplitTunnel_UpdateRule_Rule_Rule_Source
@@ -882,12 +903,7 @@ func parseMoveSection(ctx context.Context, value *parseMoveSectionResponse, diag
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseMoveSourceResponse = cato.PolicySplitTunnelMoveRule_Policy_SplitTunnel_MoveRule_Rule_Rule_Source
