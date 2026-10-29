@@ -78,3 +78,10 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/sitewebproxy/swpsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SiteWebProxySectionClient.go
+          structname: SiteWebProxySectionClient
