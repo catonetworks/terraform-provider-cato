@@ -24,7 +24,8 @@ var locationAttrTypes = map[string]attr.Type{
 
 func (r *cloudSiteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Description: "Manages Cloud Interconnect site metadata. " +
-		"Physical connections are managed separately; deletion is refused while any connection exists. Import using its ID.",
+		"Physical connections are managed separately; deletion is refused while any " +
+		"connection exists. Import using its ID.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Description: "Resource ID", Computed: true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},

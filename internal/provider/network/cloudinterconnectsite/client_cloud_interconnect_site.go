@@ -10,6 +10,7 @@ import (
 	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -203,14 +204,5 @@ func (r *cloudSiteResource) hasPhysicalConnections(ctx context.Context, id strin
 	return false, nil
 }
 func missingConnection(err error) bool {
-	var response *clientv2.ErrorResponse
-	if !errors.As(err, &response) || response.NetworkError != nil || response.GqlErrors == nil || len(*response.GqlErrors) == 0 {
-		return false
-	}
-	for _, item := range *response.GqlErrors {
-		if item == nil || (item.Message != "connection not found" && item.Message != "GQL-User-Error: connection not found") {
-			return false
-		}
-	}
-	return true
+	return apperror.MatchesGraphQLMessages(err, "connection not found", "GQL-User-Error: connection not found")
 }
