@@ -2,6 +2,7 @@ package dnssitesettings
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
@@ -13,6 +14,7 @@ import (
 
 // ResourceClient is the account-scoped API contract for this resource.
 type ResourceClient interface {
+	SiteExists(context.Context, string, string) (bool, error)
 	SiteGeneralDetails(context.Context, cato_models.SiteRefInput, string, ...clientv2.RequestInterceptor) (*cato.SiteGeneralDetails, error)
 	NetworkConfigDNSRemoveSiteSettings(
 		ctx context.Context,
@@ -64,4 +66,63 @@ func lookupSite(ctx context.Context,
 		return nil, fmt.Errorf("site lookup returned a different site")
 	}
 	return &details.Site, nil
+}
+
+func (c *sdkClient) SiteExists(ctx context.Context, accountID, siteID string) (bool, error) {
+	response, err := c.EntityLookup(ctx, accountID, cato_models.EntityTypeSite, nil, nil, nil, nil, []string{siteID}, nil, nil, nil)
+	if err != nil {
+		return false, err
+	}
+	if response == nil || response.EntityLookup.Items == nil || response.EntityLookup.Total == nil {
+		return false, fmt.Errorf("site lookup returned an absent or malformed response")
+	}
+	items := response.EntityLookup.Items
+	total := *response.EntityLookup.Total
+	if len(items) == 0 && total == 0 {
+		return false, nil
+	}
+	if len(items) == 1 && total == 1 && items[0] != nil && items[0].Entity.ID == siteID {
+		return true, nil
+	}
+	return false, fmt.Errorf("site lookup returned unexpected items or total")
+}
+
+// Backend wrappers do not distinguish a deleted site from other failures.
+func confirmParentAbsent(ctx context.Context, client ResourceClient, accountID, siteID, leaf string, operationErr error) (bool, error) {
+	if !isSiteBackendError(operationErr, leaf) {
+		return false, operationErr
+	}
+	exists, err := client.SiteExists(ctx, accountID, siteID)
+	if err != nil {
+		return false, fmt.Errorf("%w; parent-site lookup failed: %v", operationErr, err)
+	}
+	if exists {
+		return false, operationErr
+	}
+	return true, nil
+}
+
+func isSiteBackendError(err error, leaf string) bool {
+	var response *clientv2.ErrorResponse
+	var list *clientv2.GqlErrorList
+	switch {
+	case errors.As(err, &response):
+		if response.NetworkError != nil || response.GqlErrors == nil {
+			return false
+		}
+		list = &clientv2.GqlErrorList{Errors: *response.GqlErrors}
+	case errors.As(err, &list):
+	default:
+		return false
+	}
+	if len(list.Errors) == 0 {
+		return false
+	}
+	for _, item := range list.Errors {
+		code := item.Extensions["code"]
+		if (code != "CC2_ERROR" && code != "DOWNSTREAM_SERVICE_ERROR") || len(item.Path) == 0 || fmt.Sprint(item.Path[len(item.Path)-1]) != leaf {
+			return false
+		}
+	}
+	return true
 }

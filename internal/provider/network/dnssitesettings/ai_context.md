@@ -16,3 +16,5 @@ Resource package: `dnssitesettings`. API-shaped schema approved by contributor.
 - Schema baseline fetched from `https://system.cc.catonetworks.com/api/schema?with_undocumented=true`.
 
 The guide names NullBoolModifier/NullListModifier, which are not implemented in this checkout. Standard framework false/empty static defaults provide the approved equivalent behavior without adding shared infrastructure.
+
+- Deleted parent handling: on structured CC2_ERROR or DOWNSTREAM_SERVICE_ERROR at the DNS leaf, confirm absence using account-scoped entityLookup with the exact site ID. Only an explicit empty list and total zero removes state; lookup/permission/transient/malformed errors retain ownership.

@@ -63,7 +63,12 @@ func (r *siteSettingsResource) Read(ctx context.Context, req resource.ReadReques
 	ref := models.SiteRefInput{By: models.ObjectRefByID, Input: state.ID.ValueString()}
 	result, err := r.resourceAPI().NetworkConfigDNSSiteSettings(ctx, r.client.AccountId, ref)
 	if err != nil {
-		nc.APIError(&resp.Diagnostics, "siteSettings", err)
+		absent, lookupErr := confirmParentAbsent(ctx, r.resourceAPI(), r.client.AccountId, state.ID.ValueString(), "siteSettings", err)
+		if absent {
+			resp.State.RemoveResource(ctx)
+		} else {
+			nc.APIError(&resp.Diagnostics, "siteSettings", lookupErr)
+		}
 		return
 	}
 	if !nc.RequirePayload(result != nil && result.NetworkConfig != nil, &resp.Diagnostics) {
@@ -99,7 +104,10 @@ func (r *siteSettingsResource) Delete(ctx context.Context, req resource.DeleteRe
 	result, err := r.resourceAPI().NetworkConfigDNSRemoveSiteSettings(ctx, r.client.AccountId, input)
 	if err != nil {
 		if !nc.IsNotFound(err, "removeSiteSettings") {
-			nc.APIError(&resp.Diagnostics, "removeSiteSettings", err)
+			absent, lookupErr := confirmParentAbsent(ctx, r.resourceAPI(), r.client.AccountId, state.ID.ValueString(), "removeSiteSettings", err)
+			if !absent {
+				nc.APIError(&resp.Diagnostics, "removeSiteSettings", lookupErr)
+			}
 		}
 		return
 	}

@@ -151,18 +151,30 @@ TF_ACC_TERRAFORM_PATH=/absolute/path/to/terraform \
 python3 -m unittest test_preflight
 ```
 
-Opt-in real test captures/restores account/site settings, creates three unique collection
-items, verifies no-op plans and imports, and updates option value. The automated fixture orders writes with `depends_on`;
-concurrent legacy DNS writes caused a newly created forwarding rule to disappear in
-live testing. Keep `-parallelism=1` for manual apply/destroy. Set
-`TFACC_DNS_DHCP_SERVERS` to comma-separated valid test server IPs and
-`TFACC_DHCP_OPTION_TAG` to an unused option code. Do not run in parallel with manual fixture:
+Opt-in real tests capture and restore account/site settings and complete item collections.
+The six-resource lifecycle updates every resource and verifies API read-back, stable IDs,
+imports and no-op plans. It also checks DNS/description clears, preserved DHCP values
+when fields are omitted, recreation after out-of-band deletion, and explicit destroy
+outcomes: account settings retained, test items/site override removed, unrelated items intact.
+
+Deleted-parent cases create their own disposable IPsec site, delete it outside Terraform,
+and verify refresh/destroy remove stale DNS-override ownership. The API key needs site
+create/delete permission in addition to DNS/DHCP access. The configured existing site is
+never deleted. All tests skip without the explicit opt-in below.
+
+The fixture orders writes with `depends_on`; concurrent legacy DNS writes caused a
+forwarding rule to disappear in earlier testing. Keep `-parallelism=1` for manual runs.
+Set `TFACC_DNS_DHCP_SERVERS` to at least two comma-separated valid test server IPs and
+`TFACC_DHCP_OPTION_TAG` to an unused option code. Relay selection/enable tests use the
+new group only when the original group and timeout can be restored; otherwise account
+DHCP updates still exercise lease time while preserving relay configuration.
+Do not run in parallel with the manual fixture.
 
 ```sh
 unset TF_ACC_MOCK
 TF_ACC=1 TFACC_ENABLE_DNS_DHCP_CRUD=true DISABLE_POLICY_RULE_CLEANUP=true \
-  go test -tags=acctest -count=1 -parallel=1 -p=1 -timeout=20m \
-  ./internal/acctests/dns_dhcp -run '^TestAccDNSDHCP$'
+  go test -tags=acctest -count=1 -parallel=1 -p=1 -timeout=30m \
+  ./internal/acctests/dns_dhcp -run '^TestAccDNSDHCP'
 ```
 
 The suite skips unless `TFACC_ENABLE_DNS_DHCP_CRUD=true`; explicitly enabled runs

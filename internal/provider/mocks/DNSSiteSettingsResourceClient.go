@@ -220,6 +220,78 @@ func (_c *DNSSiteSettingsResourceClient_NetworkConfigDNSSiteSettings_Call) RunAn
 	return _c
 }
 
+// SiteExists provides a mock function for the type DNSSiteSettingsResourceClient
+func (_mock *DNSSiteSettingsResourceClient) SiteExists(context1 context.Context, s string, s1 string) (bool, error) {
+	ret := _mock.Called(context1, s, s1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SiteExists")
+	}
+
+	var r0 bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (bool, error)); ok {
+		return returnFunc(context1, s, s1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
+		r0 = returnFunc(context1, s, s1)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(context1, s, s1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// DNSSiteSettingsResourceClient_SiteExists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SiteExists'
+type DNSSiteSettingsResourceClient_SiteExists_Call struct {
+	*mock.Call
+}
+
+// SiteExists is a helper method to define mock.On call
+//   - context1 context.Context
+//   - s string
+//   - s1 string
+func (_e *DNSSiteSettingsResourceClient_Expecter) SiteExists(context1 interface{}, s interface{}, s1 interface{}) *DNSSiteSettingsResourceClient_SiteExists_Call {
+	return &DNSSiteSettingsResourceClient_SiteExists_Call{Call: _e.mock.On("SiteExists", context1, s, s1)}
+}
+
+func (_c *DNSSiteSettingsResourceClient_SiteExists_Call) Run(run func(context1 context.Context, s string, s1 string)) *DNSSiteSettingsResourceClient_SiteExists_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *DNSSiteSettingsResourceClient_SiteExists_Call) Return(b bool, err error) *DNSSiteSettingsResourceClient_SiteExists_Call {
+	_c.Call.Return(b, err)
+	return _c
+}
+
+func (_c *DNSSiteSettingsResourceClient_SiteExists_Call) RunAndReturn(run func(context1 context.Context, s string, s1 string) (bool, error)) *DNSSiteSettingsResourceClient_SiteExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SiteGeneralDetails provides a mock function for the type DNSSiteSettingsResourceClient
 func (_mock *DNSSiteSettingsResourceClient) SiteGeneralDetails(context1 context.Context, siteRefInput cato_models.SiteRefInput, s string, requestInterceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.SiteGeneralDetails, error) {
 	var tmpRet mock.Arguments

@@ -5,12 +5,10 @@ package dns_dhcp
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	models "github.com/catonetworks/cato-go-sdk/models"
@@ -25,101 +23,29 @@ const envEnableDNSDHCPCRUD = "TFACC_ENABLE_DNS_DHCP_CRUD"
 
 // Opt-in live test: captures/restores account and site settings and creates only its own collection items.
 func TestAccDNSDHCP(t *testing.T) {
-	if os.Getenv(envEnableDNSDHCPCRUD) != "true" {
-		t.Skipf("set %s=true to run DNS/DHCP CRUD acceptance test", envEnableDNSDHCPCRUD)
+	f := newLiveFixture(t)
+	steps := []resource.TestStep{
+		{Config: f.config("initial"), Check: f.check(false)},
+		{Config: f.config("initial"), PlanOnly: true},
 	}
-	siteID, servers, tag := liveInputs(t)
-	sdk, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, nil, nil)
-	if err != nil {
-		t.Fatal(err)
+	for _, name := range liveResources {
+		steps = append(steps, resource.TestStep{ResourceName: "cato_" + name + ".test", ImportState: true, ImportStateVerify: true})
 	}
-	client := catoclient.NewProviderSDKClient(sdk)
-	ctx := context.Background()
-	dns, err := sdk.NetworkConfigDNSSettings(ctx, acc.CatoAccountID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	dhcp, err := sdk.NetworkConfigDhcpSettings(ctx, acc.CatoAccountID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	site, err := sdk.NetworkConfigDNSSiteSettings(ctx, acc.CatoAccountID, models.SiteRefInput{By: models.ObjectRefByID, Input: siteID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if dns.NetworkConfig == nil || dns.NetworkConfig.DNS.Settings == nil || dhcp.NetworkConfig == nil || dhcp.NetworkConfig.Dhcp.Settings == nil || site.NetworkConfig == nil {
-		t.Fatal("Missing baseline settings")
-	}
-	t.Cleanup(func() { restoreBaseline(t, client, dns, dhcp, site, siteID) })
-	name := fmt.Sprintf("acctest-dns-dhcp-%d", time.Now().UnixNano())
-	dnsConfig := dns.NetworkConfig.DNS.Settings
-	dhcpConfig := dhcp.NetworkConfig.Dhcp.Settings
-	primary, secondary, suffix := hcl(dnsConfig.PrimaryServer), hcl(dnsConfig.SecondaryServer), hcl(dnsConfig.Suffix)
-	sitePrimary, siteSecondary, siteSuffix := primary, secondary, suffix
-	if original := site.NetworkConfig.DNS.SiteSettings; original != nil {
-		sitePrimary, siteSecondary, siteSuffix = hcl(original.PrimaryServer), hcl(original.SecondaryServer), hcl(original.Suffix)
-	}
-	group := "null"
-	if dhcpConfig.Relay.Group != nil {
-		group = "{ id = " + hcl(dhcpConfig.Relay.Group.ID) + " }"
-	}
-	config := func(value string) string {
-		return fmt.Sprintf(`
-provider "cato" {
- account_id = %q
- retry_max = 0
- version_check_disabled = true
-}
-resource "cato_dns_settings" "test" {
- primary_server = %s
- secondary_server = %s
- suffix = %s
- accept_dns_requests_on_lan_interface_ip = %t
-}
-resource "cato_dns_site_settings" "test" {
- depends_on = [cato_dns_settings.test]
- site = { id = %q }
- primary_server = %s
- secondary_server = %s
- suffix = %s
-}
-resource "cato_dns_forwarding_rule" "test" {
- depends_on = [cato_dns_site_settings.test]
- domain = %q
- server = %s
-}
-resource "cato_dhcp_settings" "test" {
- depends_on = [cato_dns_forwarding_rule.test]
- lease_time = %d
- relay = {
-  enabled = %t
-  timeout = %s
-  group = %s
- }
-}
-resource "cato_dhcp_option" "test" {
- depends_on = [cato_dhcp_settings.test]
- tag = %d
- type = "ASCII"
- value = %q
- description = %q
-}
-resource "cato_dhcp_relay_group" "test" {
- depends_on = [cato_dhcp_option.test]
- name = %q
- server = %s
-}
-`, acc.CatoAccountID, primary, secondary, suffix, dnsConfig.AcceptDNSRequestsOnLanInterfaceIP,
-			siteID, sitePrimary, siteSecondary, siteSuffix, name+".test", hcl(servers),
-			dhcpConfig.LeaseTime, dhcpConfig.Relay.Enabled, hcl(dhcpConfig.Relay.Timeout), group,
-			tag, value, name, name, hcl(servers))
-	}
-	steps := []resource.TestStep{{Config: config("initial")}, {Config: config("initial"), PlanOnly: true}}
-	for _, res := range []string{"dns_settings", "dns_site_settings", "dns_forwarding_rule", "dhcp_settings", "dhcp_option", "dhcp_relay_group"} {
-		steps = append(steps, resource.TestStep{ResourceName: "cato_" + res + ".test", ImportState: true, ImportStateVerify: true})
-	}
-	steps = append(steps, resource.TestStep{Config: config("updated")}, resource.TestStep{Config: config("updated"), PlanOnly: true})
-	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories, Steps: steps})
+	steps = append(steps,
+		resource.TestStep{Config: f.config("updated"), Check: f.check(false)},
+		resource.TestStep{Config: f.config("updated"), PlanOnly: true},
+		resource.TestStep{Config: f.config("by_name"), PlanOnly: true},
+		resource.TestStep{Config: f.config("omitted"), Check: f.check(false)},
+		resource.TestStep{Config: f.config("omitted"), PlanOnly: true},
+		resource.TestStep{Config: f.config("updated"), PreConfig: f.deleteOwnedItems, Check: f.check(true)},
+		resource.TestStep{Config: f.config("updated"), PlanOnly: true},
+		resource.TestStep{Config: f.config("cleared"), Check: f.check(false)},
+		resource.TestStep{Config: f.config("cleared"), PlanOnly: true},
+		resource.TestStep{Config: f.config("empty_description"), PlanOnly: true},
+		resource.TestStep{Config: f.config("retained"), Check: f.check(false)},
+		resource.TestStep{Config: f.config("retained"), PlanOnly: true},
+	)
+	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories, Steps: steps, CheckDestroy: f.checkDestroy})
 }
 
 func hcl(value any) string {
