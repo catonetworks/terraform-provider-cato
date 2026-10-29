@@ -2,6 +2,7 @@ package terminalserverrule
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Yamashou/gqlgenc/clientv2"
@@ -205,12 +206,17 @@ type policyResponse = cato.PolicyTerminalServerPolicy_Policy_TerminalServer_Poli
 type objectResponse = cato.PolicyTerminalServerPolicy_Policy_TerminalServer_Policy_Rules_Rule
 
 func (r *policyResource) readPolicy(ctx context.Context, revision string) (*policyResponse, error) {
-	var input *cato_models.TerminalServerPolicyInput
+	revisionType := cato_models.PolicyRevisionTypePublic
+	input := &cato_models.TerminalServerPolicyInput{Revision: &cato_models.PolicyRevisionInput{Type: &revisionType}}
 	if revision != "" {
-		input = &cato_models.TerminalServerPolicyInput{Revision: &cato_models.PolicyRevisionInput{ID: &revision}}
+		revisionType = cato_models.PolicyRevisionTypePrivate
+		input.Revision.ID = &revision
 	}
 	result, err := r.getClient().PolicyTerminalServerPolicy(ctx, r.client.AccountId, input)
 	if err != nil {
+		if revisionMissing(err) {
+			return nil, fmt.Errorf("%w: %v", errMissingRevision, err)
+		}
 		return nil, err
 	}
 	policy := result.GetPolicy().GetTerminalServer().GetPolicy()
@@ -233,4 +239,20 @@ func findObject(policy *policyResponse, id string) *objectResponse {
 		}
 	}
 	return nil
+}
+
+var errMissingRevision = errors.New("policy revision no longer exists")
+
+// Match the policy API's structured error, never unrelated transport failures.
+func revisionMissing(err error) bool {
+	var response *clientv2.ErrorResponse
+	if !errors.As(err, &response) || response.GqlErrors == nil {
+		return false
+	}
+	for _, item := range *response.GqlErrors {
+		if item.Extensions["errorCode"] == "PolicyRevisionNotFound" || item.Message == "Revision was not found" {
+			return true
+		}
+	}
+	return false
 }
