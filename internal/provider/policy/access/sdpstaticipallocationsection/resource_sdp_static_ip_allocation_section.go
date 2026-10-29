@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"strconv"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -70,7 +70,7 @@ func (r *policyResource) configured(diags *diag.Diagnostics) bool {
 }
 
 func (r *policyResource) ready(id types.String, diags *diag.Diagnostics) bool {
-	return !diags.HasError() && validID(id, diags) && r.configured(diags)
+	return !diags.HasError() && policyshared.ValidID(id, diags) && r.configured(diags)
 }
 
 // Create retains identity before publishing so a failed publication can be recovered.
@@ -80,9 +80,9 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	object := buildCreateObject(ctx, plan.Section, &resp.Diagnostics)
-	at := buildPosition(ctx, plan.At, &resp.Diagnostics)
-	validatePosition(at, &resp.Diagnostics)
+	object := policyshared.BuildSectionCreate(ctx, plan.Section, &resp.Diagnostics)
+	at := policyshared.BuildSectionPosition(ctx, plan.At, &resp.Diagnostics)
+	policyshared.ValidateSectionPosition(at, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() || !r.configured(&resp.Diagnostics) {
 		return
 	}
@@ -98,7 +98,7 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 	}()
 	if resp.Private != nil {
-		rememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
+		policyshared.RememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
 	}
 	result, err := r.getClient().PolicySdpStaticIPAllocationAddSection(ctx, r.client.AccountId, mutationInput(revision),
 		cato_models.PolicyAddSectionInput{At: at, Section: object})
@@ -106,7 +106,7 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to create section", &resp.Diagnostics) {
 		return
 	}
-	if !checkStatus(payload.GetStatus(), &resp.Diagnostics) {
+	if !policyshared.CheckStatus(payload.GetStatus(), &resp.Diagnostics) {
 		return
 	}
 	returned := payload.GetSection().GetSection()
@@ -125,7 +125,7 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 	retained = true
 	if r.publishOrReconcile(ctx, revision, returned.GetID(), plan.Section, &resp.Diagnostics, at) && resp.Private != nil {
-		rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
+		policyshared.RememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
 }
 
@@ -146,7 +146,7 @@ func (r *policyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if object == nil {
 		// A failed create may exist only in its owned draft. Keep its identity for destroy.
 		if req.Private != nil {
-			revision := pendingRevision(ctx, req.Private, &resp.Diagnostics)
+			revision := policyshared.PendingRevision(ctx, req.Private, &resp.Diagnostics)
 			if resp.Diagnostics.HasError() {
 				return
 			}
@@ -178,12 +178,12 @@ func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	var id types.String
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &id)...)
-	if resp.Diagnostics.HasError() || !validID(id, &resp.Diagnostics) {
+	if resp.Diagnostics.HasError() || !policyshared.ValidID(id, &resp.Diagnostics) {
 		return
 	}
-	object := buildUpdateObject(ctx, plan.Section, &resp.Diagnostics)
-	at := buildPosition(ctx, plan.At, &resp.Diagnostics)
-	validatePosition(at, &resp.Diagnostics)
+	object := policyshared.BuildSectionUpdate(ctx, plan.Section, &resp.Diagnostics)
+	at := policyshared.BuildSectionPosition(ctx, plan.At, &resp.Diagnostics)
+	policyshared.ValidateSectionPosition(at, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() || !r.configured(&resp.Diagnostics) {
 		return
 	}
@@ -213,7 +213,7 @@ func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 	if resp.Private != nil {
-		rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
+		policyshared.RememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
@@ -226,7 +226,7 @@ func (r *policyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 	pending := ""
 	if req.Private != nil {
-		pending = pendingRevision(ctx, req.Private, &resp.Diagnostics)
+		pending = policyshared.PendingRevision(ctx, req.Private, &resp.Diagnostics)
 	}
 	if resp.Diagnostics.HasError() {
 		return
@@ -261,21 +261,21 @@ func (r *policyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		}
 	}()
 	if resp.Private != nil {
-		rememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
+		policyshared.RememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
 	}
 	if !r.removeObject(ctx, id.ValueString(), revision, &resp.Diagnostics) {
 		return
 	}
 	retained = true
 	if r.publishOrReconcile(ctx, revision, id.ValueString(), types.ObjectNull(sectionAttrTypes), &resp.Diagnostics) && resp.Private != nil {
-		rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
+		policyshared.RememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
 }
 
 func (r *policyResource) updateRevision(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) string {
 	pending := ""
 	if req.Private != nil {
-		pending = pendingRevision(ctx, req.Private, &resp.Diagnostics)
+		pending = policyshared.PendingRevision(ctx, req.Private, &resp.Diagnostics)
 	}
 	if resp.Diagnostics.HasError() {
 		return ""
@@ -285,7 +285,7 @@ func (r *policyResource) updateRevision(ctx context.Context, req resource.Update
 		return ""
 	}
 	if resp.Private != nil {
-		rememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
+		policyshared.RememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
 	}
 	return revision
 }
@@ -299,7 +299,7 @@ func (r *policyResource) updateObject(ctx context.Context, id string, object *ca
 	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to update section", diags) {
 		return types.ObjectNull(sectionAttrTypes)
 	}
-	if !checkStatus(payload.GetStatus(), diags) {
+	if !policyshared.CheckStatus(payload.GetStatus(), diags) {
 		return types.ObjectNull(sectionAttrTypes)
 	}
 	returned := payload.GetSection().GetSection()
@@ -316,7 +316,12 @@ func (r *policyResource) move(ctx context.Context, id string, at *cato_models.Po
 	result, err := r.getClient().PolicySdpStaticIPAllocationMoveSection(ctx, r.client.AccountId, mutationInput(revision),
 		cato_models.PolicyMoveSectionInput{ID: id, To: at})
 	payload := result.GetPolicy().GetSdpStaticIPAllocation().GetMoveSection()
-	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to move section", diags) || !checkStatus(payload.GetStatus(), diags) {
+	if utils.CheckAPIErrors(err,
+		payload.GetErrors(),
+		"Failed to move section",
+		diags) ||
+		!policyshared.CheckStatus(payload.GetStatus(),
+			diags) {
 		return types.ObjectNull(sectionAttrTypes)
 	}
 	object := payload.GetSection().GetSection()
@@ -338,7 +343,12 @@ func (r *policyResource) beginRevision(ctx context.Context, pending string, diag
 	result, err := r.getClient().PolicySdpStaticIPAllocationCreatePolicyRevision(ctx, r.client.AccountId, nil,
 		cato_models.PolicyCreateRevisionInput{Name: "terraform-" + rand.Text(), Description: "Managed by Terraform"})
 	payload := result.GetPolicy().GetSdpStaticIPAllocation().GetCreatePolicyRevision()
-	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to create policy revision", diags) || !checkStatus(payload.GetStatus(), diags) {
+	if utils.CheckAPIErrors(err,
+		payload.GetErrors(),
+		"Failed to create policy revision",
+		diags) ||
+		!policyshared.CheckStatus(payload.GetStatus(),
+			diags) {
 		return ""
 	}
 	revision := payload.GetPolicy().GetRevision().GetID()
@@ -371,14 +381,14 @@ func (r *policyResource) publish(ctx context.Context, revision string, diags *di
 	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to publish policy revision "+revision, diags) {
 		return false
 	}
-	return checkStatus(payload.GetStatus(), diags)
+	return policyshared.CheckStatus(payload.GetStatus(), diags)
 }
 
 func (r *policyResource) discard(ctx context.Context, revision string, diags *diag.Diagnostics) bool {
 	result, err := r.getClient().PolicySdpStaticIPAllocationDiscardPolicyRevision(ctx, r.client.AccountId, mutationInput(revision),
 		&cato_models.PolicyDiscardRevisionInput{ID: &revision})
 	payload := result.GetPolicy().GetSdpStaticIPAllocation().GetDiscardPolicyRevision()
-	if revisionMissing(err) {
+	if policyshared.RevisionMissing(err) {
 		return true
 	}
 	for _, item := range payload.GetErrors() {
@@ -389,42 +399,7 @@ func (r *policyResource) discard(ctx context.Context, revision string, diags *di
 	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to discard the resource's policy revision "+revision, diags) {
 		return false
 	}
-	return checkStatus(payload.GetStatus(), diags)
-}
-
-func checkStatus(status *cato_models.PolicyMutationStatus, diags *diag.Diagnostics) bool {
-	if status == nil || *status != cato_models.PolicyMutationStatusSuccess {
-		diags.AddError("Policy mutation failed", "API did not return SUCCESS.")
-		return false
-	}
-	return true
-}
-
-// revisionState is satisfied by Terraform's private state without exposing internal framework types.
-type revisionState interface {
-	GetKey(context.Context, string) ([]byte, diag.Diagnostics)
-	SetKey(context.Context, string, []byte) diag.Diagnostics
-}
-
-func rememberRevision(ctx context.Context, store revisionState, revision string, diags *diag.Diagnostics) {
-	var data []byte
-	if revision != "" {
-		data = []byte(strconv.Quote(revision))
-	}
-	diags.Append(store.SetKey(ctx, "pending_revision", data)...)
-}
-
-func pendingRevision(ctx context.Context, store revisionState, diags *diag.Diagnostics) string {
-	data, d := store.GetKey(ctx, "pending_revision")
-	diags.Append(d...)
-	if len(data) == 0 || diags.HasError() {
-		return ""
-	}
-	revision, err := strconv.Unquote(string(data))
-	if err != nil {
-		diags.AddError("Invalid private state", "Cannot decode the pending policy revision ID.")
-	}
-	return revision
+	return policyshared.CheckStatus(payload.GetStatus(), diags)
 }
 
 func (r *policyResource) removeObject(ctx context.Context, id, revision string, diags *diag.Diagnostics) bool {
@@ -434,7 +409,7 @@ func (r *policyResource) removeObject(ctx context.Context, id, revision string, 
 	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to delete section", diags) {
 		return false
 	}
-	return checkStatus(payload.GetStatus(), diags)
+	return policyshared.CheckStatus(payload.GetStatus(), diags)
 }
 
 func sectionEmpty(policy *policyResponse, id string, diags *diag.Diagnostics) bool {
