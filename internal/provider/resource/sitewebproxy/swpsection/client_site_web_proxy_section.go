@@ -10,6 +10,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 // ResourceClient contains only the SDK operations used by this resource.
@@ -238,7 +239,7 @@ func (r *policyResource) readPolicy(ctx context.Context, revision string) (*poli
 	}
 	result, err := r.getClient().PolicySiteWebProxyPolicy(ctx, r.client.AccountId, input)
 	if err != nil {
-		if revisionMissing(err) {
+		if policyshared.RevisionMissing(err) {
 			return nil, fmt.Errorf("%w: %v", errMissingRevision, err)
 		}
 		return nil, err
@@ -266,20 +267,6 @@ func findObject(policy *policyResponse, id string) *objectResponse {
 }
 
 var errMissingRevision = errors.New("policy revision no longer exists")
-
-// Match the policy API's structured error, never unrelated transport failures.
-func revisionMissing(err error) bool {
-	var response *clientv2.ErrorResponse
-	if !errors.As(err, &response) || response.GqlErrors == nil {
-		return false
-	}
-	for _, item := range *response.GqlErrors {
-		if item.Extensions["errorCode"] == "PolicyRevisionNotFound" || item.Message == "Revision was not found" {
-			return true
-		}
-	}
-	return false
-}
 
 // Keep SDK variable contracts and transport, selecting only owned resource data.
 const policySiteWebProxyDiscardPolicyRevisionDocument = `mutation policySiteWebProxyDiscardPolicyRevision (
