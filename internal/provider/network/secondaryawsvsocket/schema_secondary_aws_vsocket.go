@@ -15,7 +15,8 @@ import (
 
 func (r *socketResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Description: "Manages the secondary AWS vSocket configuration on an existing compatible AWS site. " +
-		"Does not provision AWS infrastructure. Route table changes update the site's shared route table configuration. " +
+		"Does not provision AWS infrastructure. Route table changes update the " +
+		"site's shared route table configuration. " +
 		"Import using the secondary socket ID.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Description: "Secondary socket ID",
