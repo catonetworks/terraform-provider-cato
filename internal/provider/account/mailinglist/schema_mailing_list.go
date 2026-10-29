@@ -34,7 +34,8 @@ func (r *mailingListResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"admin": schema.SetNestedAttribute{
 				Description: "Administrator IDs with computed display names. Name-only references are unsupported. " +
-					"Removing this attribute clears administrators; at least one address or administrator is required.",
+					"Removing this attribute clears administrators; at least one address or " +
+					"administrator is required.",
 				Optional: true, Computed: true,
 				NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Administrator")},
 				PlanModifiers: []planmodifier.Set{

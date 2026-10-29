@@ -2,13 +2,13 @@ package mailinglist
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -110,15 +110,6 @@ func (r *mailingListResource) find(ctx context.Context, id string) (*cato.Notifi
 }
 
 func missingList(err error, account, id string) bool {
-	var response *clientv2.ErrorResponse
-	if !errors.As(err, &response) || response.NetworkError != nil || response.GqlErrors == nil || len(*response.GqlErrors) == 0 {
-		return false
-	}
 	expected := fmt.Sprintf("GQL-User-Error: Account ID [%s] subscription [%s] not found", account, id)
-	for _, e := range *response.GqlErrors {
-		if e == nil || e.Message != expected {
-			return false
-		}
-	}
-	return true
+	return apperror.MatchesGraphQLMessages(err, expected)
 }
