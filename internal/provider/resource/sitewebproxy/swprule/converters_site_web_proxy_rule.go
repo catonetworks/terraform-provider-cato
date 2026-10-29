@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 func buildCreateObject(
@@ -29,17 +29,34 @@ func buildCreateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.allowed_destination_protocol", model.AllowedDestinationProtocol, true},
-		knownValue{"rule.associated_site", model.AssociatedSite, true},
-		knownValue{"rule.authentication_config", model.AuthenticationConfig, true},
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.fqdn", model.Fqdn, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.port", model.Port, true},
-		knownValue{"rule.should_associate_with_all_sites", model.ShouldAssociateWithAllSites, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.allowed_destination_protocol",
+			Value:    model.AllowedDestinationProtocol,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.associated_site",
+			Value:    model.AssociatedSite,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.authentication_config",
+			Value:    model.AuthenticationConfig,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.fqdn",
+			Value:    model.Fqdn,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.port",
+			Value:    model.Port,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.should_associate_with_all_sites",
+			Value:    model.ShouldAssociateWithAllSites,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -76,10 +93,13 @@ func buildCreateObjectAuthenticationConfig(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.authentication_config.kerberos_config", model.KerberosConfig, false},
-		knownValue{"rule.authentication_config.method", model.Method, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.authentication_config.kerberos_config",
+			Value:    model.KerberosConfig,
+			Required: false},
+		policyshared.KnownValue{Name: "rule.authentication_config.method",
+			Value:    model.Method,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -105,10 +125,13 @@ func buildCreateObjectAuthenticationConfigKerberosConfig(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.authentication_config.kerberos_config.encrypted_keytab", model.EncryptedKeytab, false},
-		knownValue{"rule.authentication_config.kerberos_config.is_enabled", model.IsEnabled, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.authentication_config.kerberos_config.encrypted_keytab",
+			Value:    model.EncryptedKeytab,
+			Required: false},
+		policyshared.KnownValue{Name: "rule.authentication_config.kerberos_config.is_enabled",
+			Value:    model.IsEnabled,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -136,17 +159,34 @@ func buildUpdateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.allowed_destination_protocol", model.AllowedDestinationProtocol, true},
-		knownValue{"rule.associated_site", model.AssociatedSite, true},
-		knownValue{"rule.authentication_config", model.AuthenticationConfig, true},
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.fqdn", model.Fqdn, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.port", model.Port, true},
-		knownValue{"rule.should_associate_with_all_sites", model.ShouldAssociateWithAllSites, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.allowed_destination_protocol",
+			Value:    model.AllowedDestinationProtocol,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.associated_site",
+			Value:    model.AssociatedSite,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.authentication_config",
+			Value:    model.AuthenticationConfig,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.fqdn",
+			Value:    model.Fqdn,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.port",
+			Value:    model.Port,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.should_associate_with_all_sites",
+			Value:    model.ShouldAssociateWithAllSites,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -189,10 +229,13 @@ func buildUpdateObjectAuthenticationConfig(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.authentication_config.kerberos_config", model.KerberosConfig, false},
-		knownValue{"rule.authentication_config.method", model.Method, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.authentication_config.kerberos_config",
+			Value:    model.KerberosConfig,
+			Required: false},
+		policyshared.KnownValue{Name: "rule.authentication_config.method",
+			Value:    model.Method,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -225,10 +268,13 @@ func buildUpdateObjectAuthenticationConfigKerberosConfig(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.authentication_config.kerberos_config.encrypted_keytab", model.EncryptedKeytab, false},
-		knownValue{"rule.authentication_config.kerberos_config.is_enabled", model.IsEnabled, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.authentication_config.kerberos_config.encrypted_keytab",
+			Value:    model.EncryptedKeytab,
+			Required: false},
+		policyshared.KnownValue{Name: "rule.authentication_config.kerberos_config.is_enabled",
+			Value:    model.IsEnabled,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -239,35 +285,6 @@ func buildUpdateObjectAuthenticationConfigKerberosConfig(
 	}
 	vIsEnabled := model.IsEnabled.ValueBool()
 	input.IsEnabled = &vIsEnabled
-	return input
-}
-
-func buildPosition(
-	ctx context.Context, value types.Object, diags *diag.Diagnostics,
-) *cato_models.PolicyRulePositionInput {
-	if value.IsNull() {
-		return nil
-	}
-	if value.IsUnknown() {
-		diags.AddError("Unknown configuration", "at must be known before applying.")
-		return nil
-	}
-	var model AtModel
-	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return nil
-	}
-	validateValues(diags,
-		knownValue{"at.position", model.Position, true},
-		knownValue{"at.ref", model.Ref, false},
-	)
-	if diags.HasError() {
-		return nil
-	}
-	input := &cato_models.PolicyRulePositionInput{}
-	vPosition := cato_models.PolicyRulePositionEnum(model.Position.ValueString())
-	input.Position = &vPosition
-	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
 	return input
 }
 
@@ -356,12 +373,7 @@ func parseReadSection(ctx context.Context, value *readSection, diags *diag.Diagn
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type add = cato.PolicySiteWebProxyAddRule_Policy_SiteWebProxy_AddRule_Rule_Rule
@@ -447,12 +459,7 @@ func parseAddSection(ctx context.Context, value *addSection, diags *diag.Diagnos
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type update = cato.PolicySiteWebProxyUpdateRule_Policy_SiteWebProxy_UpdateRule_Rule_Rule
@@ -540,12 +547,7 @@ func parseUpdateSection(ctx context.Context, value *updateSection, diags *diag.D
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type move = cato.PolicySiteWebProxyMoveRule_Policy_SiteWebProxy_MoveRule_Rule_Rule
@@ -633,12 +635,7 @@ func parseMoveSection(ctx context.Context, value *moveSection, diags *diag.Diagn
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 // API defaults are equivalent to an omitted optional block. Nondefault remote values remain visible as drift.
