@@ -29,6 +29,8 @@ import (
 )
 
 type testBackend struct {
+	loseDraft           bool
+	publishedSections   []any
 	publicObject        map[string]any
 	snapshot            bool
 	revisionExists      bool
@@ -61,6 +63,9 @@ func testResource(t *testing.T, backend *testBackend) *policyResource {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if backend.fail == operation {
+			if operation == "publishPolicyRevision" && backend.loseDraft {
+				backend.revisionExists = false
+			}
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": "denied"}}}))
 			return
 		}
@@ -558,6 +563,9 @@ func writeReadBackend(t *testing.T, w http.ResponseWriter, backend *testBackend,
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": "PolicyRevisionNotFound", "extensions": map[string]any{"errorCode": "PolicyRevisionNotFound"}}}}))
 		return
 	}
+	if revision["type"] == "PUBLIC" && backend.publishedSections != nil {
+		policy["sections"] = backend.publishedSections
+	}
 	require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"policy": map[string]any{"clientConnectivity": map[string]any{"policy": policy}}}}))
 }
 
@@ -606,5 +614,52 @@ func updateBackendName(backend *testBackend, variables map[string]any) {
 				backend.object["name"] = name
 			}
 		}
+	}
+}
+
+func TestMissingRevisionDoesNotAcknowledgeUnpublishedMove(t *testing.T) {
+	ctx := context.Background()
+	backend := testBackendData(t)
+	backend.fail = "publishPolicyRevision"
+	backend.loseDraft = true
+	backend.publishedSections = []any{map[string]any{"section": backend.object}, map[string]any{"section": map[string]any{"id": "anchor", "name": "Anchor"}}}
+	r := testResource(t, backend)
+	model := testModel(t)
+	state := testState(t, model)
+	model.At = types.ObjectValueMust(atAttrTypes, map[string]attr.Value{"position": types.StringValue("AFTER_SECTION"), "ref": types.StringValue("anchor")})
+	response := resource.UpdateResponse{State: state}
+	initializePrivate(&response)
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: testPlan(t, model)}, &response)
+	require.True(t, response.Diagnostics.HasError(), "unchanged published section identity cannot prove a move committed")
+	require.True(t, response.State.Raw.Equal(state.Raw), "an unpublished move must retain prior placement")
+}
+func TestLostPublicationResponseVerifiesSectionOrder(t *testing.T) {
+	for _, position := range []string{"BEFORE_SECTION", "AFTER_SECTION", "LAST_IN_POLICY"} {
+		t.Run(position, func(t *testing.T) {
+			ctx := context.Background()
+			backend := testBackendData(t)
+			backend.losePublishResponse = true
+			target := map[string]any{"section": backend.object}
+			anchor := map[string]any{"section": map[string]any{"id": "anchor", "name": "Anchor"}}
+			backend.publishedSections = []any{anchor, target}
+			if position == "BEFORE_SECTION" {
+				backend.publishedSections = []any{target, anchor}
+			}
+			r := testResource(t, backend)
+			model := testModel(t)
+			state := testState(t, model)
+			ref := types.StringValue("anchor")
+			if position == "LAST_IN_POLICY" {
+				ref = types.StringNull()
+			}
+			model.At = types.ObjectValueMust(atAttrTypes, map[string]attr.Value{"position": types.StringValue(position), "ref": ref})
+			response := resource.UpdateResponse{State: state}
+			initializePrivate(&response)
+			r.Update(ctx, resource.UpdateRequest{State: state, Plan: testPlan(t, model)}, &response)
+			require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
+			var actual resourceModel
+			require.False(t, response.State.Get(ctx, &actual).HasError())
+			require.True(t, actual.At.Equal(model.At))
+		})
 	}
 }

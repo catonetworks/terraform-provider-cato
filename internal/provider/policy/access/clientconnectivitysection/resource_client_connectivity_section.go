@@ -124,7 +124,7 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	retained = true
-	if r.publishOrReconcile(ctx, revision, returned.GetID(), plan.Section, &resp.Diagnostics) && resp.Private != nil {
+	if r.publishOrReconcile(ctx, revision, returned.GetID(), plan.Section, &resp.Diagnostics, at) && resp.Private != nil {
 		rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
 }
@@ -209,7 +209,7 @@ func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 	}
 	retained = true
-	if !r.publishOrReconcile(ctx, revision, id.ValueString(), plan.Section, &resp.Diagnostics) {
+	if !r.publishOrReconcile(ctx, revision, id.ValueString(), plan.Section, &resp.Diagnostics, at) {
 		return
 	}
 	if resp.Private != nil {
@@ -449,7 +449,10 @@ func sectionEmpty(policy *policyResponse, id string, diags *diag.Diagnostics) bo
 
 // A publication can commit even when its response is lost. Reconcile only after
 // the owned revision is confirmed gone, and only against published state.
-func (r *policyResource) publishOrReconcile(ctx context.Context, revision, id string, expected types.Object, diags *diag.Diagnostics) bool {
+func (r *policyResource) publishOrReconcile(
+	ctx context.Context, revision, id string, expected types.Object, diags *diag.Diagnostics,
+	positions ...*cato_models.PolicySectionPositionInput,
+) bool {
 	var publication diag.Diagnostics
 	if r.publish(ctx, revision, &publication) {
 		return true
@@ -465,7 +468,7 @@ func (r *policyResource) publishOrReconcile(ctx context.Context, revision, id st
 			if !expected.IsNull() && object != nil {
 				var conversion diag.Diagnostics
 				actual := parseRead(ctx, object, &conversion)
-				if !conversion.HasError() && actual.Equal(expected) {
+				if !conversion.HasError() && actual.Equal(expected) && publicationPositionMatches(policy, id, positions) {
 					return true
 				}
 			}
@@ -473,4 +476,42 @@ func (r *policyResource) publishOrReconcile(ctx context.Context, revision, id st
 	}
 	diags.Append(publication...)
 	return false
+}
+
+// Section identity does not encode ordering. Require published ordering evidence
+// before acknowledging a move whose publication response was lost.
+func publicationPositionMatches(policy *policyResponse, id string, positions []*cato_models.PolicySectionPositionInput) bool {
+	if len(positions) == 0 || positions[0] == nil {
+		return true
+	}
+	at := positions[0]
+	index := publishedSectionIndex(policy, id)
+	if index < 0 {
+		return false
+	}
+	ref := ""
+	if at.Ref != nil {
+		ref = *at.Ref
+	}
+	refIndex := publishedSectionIndex(policy, ref)
+	switch at.Position {
+	case cato_models.PolicySectionPositionEnumLastInPolicy:
+		// A nonempty ref denotes another scope; this projection cannot establish it.
+		return ref == "" && index == len(policy.GetSections())-1
+	case cato_models.PolicySectionPositionEnumBeforeSection:
+		return refIndex >= 0 && index+1 == refIndex
+	case cato_models.PolicySectionPositionEnumAfterSection:
+		return refIndex >= 0 && index == refIndex+1
+	default:
+		return false
+	}
+}
+
+func publishedSectionIndex(policy *policyResponse, id string) int {
+	for index, item := range policy.GetSections() {
+		if item.GetSection().GetID() == id {
+			return index
+		}
+	}
+	return -1
 }
