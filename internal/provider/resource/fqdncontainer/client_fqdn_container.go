@@ -113,10 +113,10 @@ func (c *sdkClient) CreateURL(ctx context.Context, account string, in m.CreateFq
 			} `json:"fqdn" graphql:"fqdn"`
 		} `json:"container" graphql:"container"`
 	}
-	doc := `mutation containerFqdnCreateFromURL($accountId:ID!,$createFqdnContainerFromURLInput:CreateFqdnContainerFromURLInput!){
+	doc := `mutation containerFqdnCreateFromURL($accountId:ID!,$createFqdnContainerFromUrlInput:CreateFqdnContainerFromUrlInput!){
 container(accountId:$accountId){
 fqdn{
-createFromURL(input:$createFqdnContainerFromURLInput){
+createFromURL(input:$createFqdnContainerFromUrlInput){
 container{
 ` + metadataFields + `}}}}}`
 	err := c.client.V2().Client.Post(ctx,
@@ -124,7 +124,7 @@ container{
 		doc,
 		&result,
 		map[string]interface{}{"accountId": account,
-			"createFqdnContainerFromURLInput": in})
+			"createFqdnContainerFromUrlInput": in})
 	return result.Container.Fqdn.Result.Container,
 		err
 }
@@ -165,10 +165,10 @@ func (c *sdkClient) UpdateURL(ctx context.Context, account string, in m.UpdateFq
 			} `json:"fqdn" graphql:"fqdn"`
 		} `json:"container" graphql:"container"`
 	}
-	doc := `mutation containerFqdnUpdateFromURL($accountId:ID!,$updateFqdnContainerFromURLInput:UpdateFqdnContainerFromURLInput!){
+	doc := `mutation containerFqdnUpdateFromURL($accountId:ID!,$updateFqdnContainerFromUrlInput:UpdateFqdnContainerFromUrlInput!){
 container(accountId:$accountId){
 fqdn{
-updateFromURL(input:$updateFqdnContainerFromURLInput){
+updateFromURL(input:$updateFqdnContainerFromUrlInput){
 container{
 ` + metadataFields + `}}}}}`
 	err := c.client.V2().Client.Post(ctx,
@@ -176,7 +176,7 @@ container{
 		doc,
 		&result,
 		map[string]interface{}{"accountId": account,
-			"updateFqdnContainerFromURLInput": in})
+			"updateFqdnContainerFromUrlInput": in})
 	return result.Container.Fqdn.Result.Container,
 		err
 }

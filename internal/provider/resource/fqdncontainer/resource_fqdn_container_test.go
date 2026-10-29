@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/parser"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
@@ -77,6 +79,7 @@ func setup(t *testing.T, b *backend) *containerResource {
 		}
 		require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
 		op, v := body.OperationName, body.Variables
+		verifyQuery(t, op, body.Query)
 		b.calls = append(b.calls, op)
 		require.Equal(t, "account-123", v["accountId"])
 		require.NotContains(t, body.Query, "audit")
@@ -125,7 +128,7 @@ func setup(t *testing.T, b *backend) *containerResource {
 			}
 			if fromURL {
 				action = strings.TrimSuffix(action, "List") + "URL"
-				inputName = strings.TrimSuffix(inputName, "ListInput") + "URLInput"
+				inputName = strings.TrimSuffix(inputName, "ListInput") + "UrlInput"
 			}
 			in, ok := v[inputName].(map[string]any)
 			require.True(t, ok, "%v", v)
@@ -343,4 +346,27 @@ func TestConfigurationAndMockInjection(t *testing.T) {
 	r.Read(ctx, resource.ReadRequest{State: state}, &read)
 	require.False(t, read.Diagnostics.HasError())
 	require.True(t, read.State.Raw.IsNull())
+}
+
+func verifyQuery(t *testing.T, op, query string) {
+	t.Helper()
+	documents := map[string]string{
+		"containerFqdnCreateFromList": cato.ContainerFqdnCreateFromListDocument,
+		"containerFqdnCreateFromURL":  cato.ContainerFqdnCreateFromURLDocument,
+		"containerFqdnUpdateFromList": cato.ContainerFqdnUpdateFromListDocument,
+		"containerFqdnUpdateFromURL":  cato.ContainerFqdnUpdateFromURLDocument,
+		"containerFqdnDownloadFile":   cato.ContainerFqdnDownloadFileDocument,
+		"containerList":               cato.ContainerListDocument, "containerDelete": cato.ContainerDeleteDocument}
+	want, ok := documents[op]
+	require.True(t, ok)
+	actual, err := parser.ParseQuery(&ast.Source{Input: query})
+	require.NoError(t, err)
+	expected, err := parser.ParseQuery(&ast.Source{Input: want})
+	require.NoError(t, err)
+	av, ev := actual.Operations[0].VariableDefinitions, expected.Operations[0].VariableDefinitions
+	require.Len(t, av, len(ev))
+	for i, v := range ev {
+		require.Equal(t, v.Variable, av[i].Variable)
+		require.Equal(t, v.Type.String(), av[i].Type.String())
+	}
 }
