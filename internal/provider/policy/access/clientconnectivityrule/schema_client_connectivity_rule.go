@@ -15,12 +15,14 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *policyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a client connectivity rule. Changes are automatically published. Omitting at on update " +
+		Description: "Manages a client connectivity rule. Changes are automatically published. " +
+			"Omitting at on update " +
 			"preserves placement.",
 		Attributes: schemaResource(),
 	}
@@ -31,29 +33,14 @@ func schemaResource() map[string]schema.Attribute {
 		"at": schema.SingleNestedAttribute{
 			Description: "Position of the rule in the policy",
 			Optional:    true,
-			Attributes:  schemaResourceAt(),
+			Attributes: policyshared.RulePositionAttributes("Position relative to a policy, a section or another rule",
+				"The identifier of the object (e.g. a rule, a section) relative to which "+
+					"the position of the added rule is defined"),
 		},
 		"rule": schema.SingleNestedAttribute{
 			Description: "Parameters for the rule you are adding",
 			Required:    true,
 			Attributes:  schemaResourceRule(),
-		},
-	}
-}
-
-func schemaResourceAt() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		"position": schema.StringAttribute{
-			Description: "Position relative to a policy, a section or another rule",
-			Required:    true,
-			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...)},
-		},
-		"ref": schema.StringAttribute{
-			Description: "The identifier of the object (e.g. a rule, a section) relative to which the position of the added " +
-				"rule is defined",
-			Optional:      true,
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{planmodifiers.NullStringModifier()},
 		},
 	}
 }
@@ -71,7 +58,8 @@ func schemaResourceRule() map[string]schema.Attribute {
 			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllClientConnectivityConfidenceLevelEnum)...)},
 		},
 		"connection_origin": schema.SetAttribute{
-			Description: "Connection origin matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' " +
+			Description: "Connection origin matching criteria. Logical 'OR' is applied within the " +
+				"criteria set. Logical 'AND' " +
 				"is applied between criteria sets.",
 			Required:    true,
 			ElementType: types.StringType,
@@ -82,7 +70,8 @@ func schemaResourceRule() map[string]schema.Attribute {
 			},
 		},
 		"country": schema.SetNestedAttribute{
-			Description: "Country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ " +
+			Description: "Country traffic matching criteria. Logical ‘OR’ is applied within the " +
+				"criteria set. Logical ‘AND’ " +
 				"is applied between criteria sets.",
 			Required: true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Country"),
@@ -94,7 +83,8 @@ func schemaResourceRule() map[string]schema.Attribute {
 			Required:    true,
 		},
 		"device": schema.SetNestedAttribute{
-			Description: "Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical " +
+			Description: "Device Profile traffic matching criteria. Logical ‘OR’ is applied within " +
+				"the criteria set. Logical " +
 				"‘AND’ is applied between criteria sets.",
 			Required: true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Device"),
@@ -120,7 +110,8 @@ func schemaResourceRule() map[string]schema.Attribute {
 			Validators:  []validator.String{stringvalidator.LengthAtLeast(1)},
 		},
 		"platform": schema.SetAttribute{
-			Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the " +
+			Description: "Source device Operating System traffic matching criteria. Logical ‘OR’ is " +
+				"applied within the " +
 				"criteria set. Logical ‘AND’ is applied between criteria sets.",
 			Required:    true,
 			ElementType: types.StringType,
@@ -133,10 +124,11 @@ func schemaResourceRule() map[string]schema.Attribute {
 		"section": schema.SingleNestedAttribute{
 			Description: "Policy section containing the rule",
 			Computed:    true,
-			Attributes:  schemaResourceRuleSection(),
+			Attributes:  policyshared.RuleSectionAttributes(),
 		},
 		"source": schema.SingleNestedAttribute{
-			Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is " +
+			Description: "Source traffic matching criteria. Logical ‘OR’ is applied within the " +
+				"criteria set. Logical ‘AND’ is " +
 				"applied between criteria sets.",
 			Required:   true,
 			Attributes: schemaResourceRuleSource(),
@@ -145,20 +137,6 @@ func schemaResourceRule() map[string]schema.Attribute {
 			Description:  "Public ISP IP Range matching criteria.",
 			Required:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleSourceRange()},
-		},
-	}
-}
-
-func schemaResourceRuleSection() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		"id": schema.StringAttribute{
-			Description:   "Section ID",
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-		},
-		"name": schema.StringAttribute{
-			Description: "Section name",
-			Computed:    true,
 		},
 	}
 }

@@ -26,6 +26,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 type testBackend struct {
@@ -232,13 +233,13 @@ func TestPendingRevisionRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	store := &testPrivateState{}
 	var diagnostics diag.Diagnostics
-	rememberRevision(ctx, store, "revision-1", &diagnostics)
-	require.Equal(t, "revision-1", pendingRevision(ctx, store, &diagnostics))
+	policyshared.RememberRevision(ctx, store, "revision-1", &diagnostics)
+	require.Equal(t, "revision-1", policyshared.PendingRevision(ctx, store, &diagnostics))
 	require.False(t, diagnostics.HasError())
-	rememberRevision(ctx, store, "", &diagnostics)
-	require.Empty(t, pendingRevision(ctx, store, &diagnostics))
+	policyshared.RememberRevision(ctx, store, "", &diagnostics)
+	require.Empty(t, policyshared.PendingRevision(ctx, store, &diagnostics))
 	store.value = []byte("invalid")
-	require.Empty(t, pendingRevision(ctx, store, &diagnostics))
+	require.Empty(t, policyshared.PendingRevision(ctx, store, &diagnostics))
 	require.True(t, diagnostics.HasError())
 }
 
@@ -313,12 +314,12 @@ func TestPublicationRecovery(t *testing.T) {
 	r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, testModel(t))}, &create)
 	require.True(t, create.Diagnostics.HasError())
 	var diagnostics diag.Diagnostics
-	require.Equal(t, "revision-1", pendingRevision(ctx, create.Private, &diagnostics))
+	require.Equal(t, "revision-1", policyshared.PendingRevision(ctx, create.Private, &diagnostics))
 	backend.fail = ""
 	read := resource.ReadResponse{State: create.State, Private: create.Private}
 	r.Read(ctx, resource.ReadRequest{State: create.State, Private: create.Private}, &read)
 	require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
-	require.Equal(t, "revision-1", pendingRevision(ctx, read.Private, &diagnostics))
+	require.Equal(t, "revision-1", policyshared.PendingRevision(ctx, read.Private, &diagnostics))
 	require.Equal(t, []string{"createPolicyRevision", "addRule", "publishPolicyRevision", "policy", "policy"}, backend.calls)
 }
 
@@ -341,7 +342,7 @@ func TestDeletePublicationRecovery(t *testing.T) {
 	require.Equal(t, 2, operationCount(backend.calls, "createPolicyRevision"))
 	require.Equal(t, 2, operationCount(backend.calls, "removeRule"))
 	var diagnostics diag.Diagnostics
-	require.Empty(t, pendingRevision(ctx, retry.Private, &diagnostics))
+	require.Empty(t, policyshared.PendingRevision(ctx, retry.Private, &diagnostics))
 }
 
 func TestCreateFailureDiscardsOnlyOwnedRevision(t *testing.T) {
@@ -582,7 +583,7 @@ func TestDestroyWithStaleRevision(t *testing.T) {
 	response := resource.DeleteResponse{State: state}
 	initializePrivate(&response)
 	var diagnostics diag.Diagnostics
-	rememberRevision(ctx, response.Private, "revision-1", &diagnostics)
+	policyshared.RememberRevision(ctx, response.Private, "revision-1", &diagnostics)
 	r.Delete(ctx, resource.DeleteRequest{State: state, Private: response.Private}, &response)
 	require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
 	require.Equal(t, 1, operationCount(backend.calls, "removeRule"))
