@@ -17,7 +17,8 @@ import (
 func (r *subscriptionGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages one subscription group and its complete mailing-list and integration membership. " +
-			"Import using its ID. This resource does not configure event producers or send test notifications.",
+			"Import using its ID. This resource does not configure event producers or " +
+			"send test notifications.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Description: "Resource ID", Computed: true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
