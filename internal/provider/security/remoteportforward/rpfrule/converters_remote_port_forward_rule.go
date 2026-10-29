@@ -13,6 +13,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 func buildCreateObject(
@@ -30,19 +31,40 @@ func buildCreateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.external_ip", model.ExternalIP, true},
-		knownValue{"rule.external_port_range", model.ExternalPortRange, true},
-		knownValue{"rule.forward_icmp", model.ForwardIcmp, true},
-		knownValue{"rule.internal_ip", model.InternalIP, true},
-		knownValue{"rule.internal_port_range", model.InternalPortRange, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.remote_ips", model.RemoteIps, true},
-		knownValue{"rule.restriction_type", model.RestrictionType, true},
-		knownValue{"rule.tracking", model.Tracking, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.external_ip",
+			Value:    model.ExternalIP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.external_port_range",
+			Value:    model.ExternalPortRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.forward_icmp",
+			Value:    model.ForwardIcmp,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.internal_ip",
+			Value:    model.InternalIP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.internal_port_range",
+			Value:    model.InternalPortRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips",
+			Value:    model.RemoteIps,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.restriction_type",
+			Value:    model.RestrictionType,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking",
+			Value:    model.Tracking,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -76,10 +98,13 @@ func buildCreateObjectExternalPortRange(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.external_port_range.from", model.From, true},
-		knownValue{"rule.external_port_range.to", model.To, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.external_port_range.from",
+			Value:    model.From,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.external_port_range.to",
+			Value:    model.To,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -104,10 +129,13 @@ func buildCreateObjectInternalPortRange(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.internal_port_range.from", model.From, true},
-		knownValue{"rule.internal_port_range.to", model.To, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.internal_port_range.from",
+			Value:    model.From,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.internal_port_range.to",
+			Value:    model.To,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -132,12 +160,19 @@ func buildCreateObjectRemoteIps(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.remote_ips.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.remote_ips.ip", model.IP, true},
-		knownValue{"rule.remote_ips.ip_range", model.IPRange, true},
-		knownValue{"rule.remote_ips.subnet", model.Subnet, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.remote_ips.global_ip_range",
+			Value:    model.GlobalIPRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.ip",
+			Value:    model.IP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.ip_range",
+			Value:    model.IPRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.subnet",
+			Value:    model.Subnet,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -173,10 +208,13 @@ func buildCreateObjectRemoteIpsIPRange(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.remote_ips.ip_range.from", model.From, true},
-		knownValue{"rule.remote_ips.ip_range.to", model.To, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.remote_ips.ip_range.from",
+			Value:    model.From,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.ip_range.to",
+			Value:    model.To,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -201,13 +239,22 @@ func buildCreateObjectTracking(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.tracking.enabled", model.Enabled, true},
-		knownValue{"rule.tracking.frequency", model.Frequency, true},
-		knownValue{"rule.tracking.mailing_list", model.MailingList, true},
-		knownValue{"rule.tracking.subscription_group", model.SubscriptionGroup, true},
-		knownValue{"rule.tracking.webhook", model.Webhook, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.tracking.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.frequency",
+			Value:    model.Frequency,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.mailing_list",
+			Value:    model.MailingList,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.subscription_group",
+			Value:    model.SubscriptionGroup,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.webhook",
+			Value:    model.Webhook,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -235,19 +282,40 @@ func buildUpdateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.external_ip", model.ExternalIP, true},
-		knownValue{"rule.external_port_range", model.ExternalPortRange, true},
-		knownValue{"rule.forward_icmp", model.ForwardIcmp, true},
-		knownValue{"rule.internal_ip", model.InternalIP, true},
-		knownValue{"rule.internal_port_range", model.InternalPortRange, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.remote_ips", model.RemoteIps, true},
-		knownValue{"rule.restriction_type", model.RestrictionType, true},
-		knownValue{"rule.tracking", model.Tracking, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.external_ip",
+			Value:    model.ExternalIP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.external_port_range",
+			Value:    model.ExternalPortRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.forward_icmp",
+			Value:    model.ForwardIcmp,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.internal_ip",
+			Value:    model.InternalIP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.internal_port_range",
+			Value:    model.InternalPortRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips",
+			Value:    model.RemoteIps,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.restriction_type",
+			Value:    model.RestrictionType,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking",
+			Value:    model.Tracking,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -287,10 +355,13 @@ func buildUpdateObjectExternalPortRange(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.external_port_range.from", model.From, true},
-		knownValue{"rule.external_port_range.to", model.To, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.external_port_range.from",
+			Value:    model.From,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.external_port_range.to",
+			Value:    model.To,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -317,10 +388,13 @@ func buildUpdateObjectInternalPortRange(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.internal_port_range.from", model.From, true},
-		knownValue{"rule.internal_port_range.to", model.To, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.internal_port_range.from",
+			Value:    model.From,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.internal_port_range.to",
+			Value:    model.To,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -347,12 +421,19 @@ func buildUpdateObjectRemoteIps(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.remote_ips.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.remote_ips.ip", model.IP, true},
-		knownValue{"rule.remote_ips.ip_range", model.IPRange, true},
-		knownValue{"rule.remote_ips.subnet", model.Subnet, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.remote_ips.global_ip_range",
+			Value:    model.GlobalIPRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.ip",
+			Value:    model.IP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.ip_range",
+			Value:    model.IPRange,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.subnet",
+			Value:    model.Subnet,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -388,10 +469,13 @@ func buildUpdateObjectRemoteIpsIPRange(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.remote_ips.ip_range.from", model.From, true},
-		knownValue{"rule.remote_ips.ip_range.to", model.To, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.remote_ips.ip_range.from",
+			Value:    model.From,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.remote_ips.ip_range.to",
+			Value:    model.To,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -416,13 +500,22 @@ func buildUpdateObjectTracking(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.tracking.enabled", model.Enabled, true},
-		knownValue{"rule.tracking.frequency", model.Frequency, true},
-		knownValue{"rule.tracking.mailing_list", model.MailingList, true},
-		knownValue{"rule.tracking.subscription_group", model.SubscriptionGroup, true},
-		knownValue{"rule.tracking.webhook", model.Webhook, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.tracking.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.frequency",
+			Value:    model.Frequency,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.mailing_list",
+			Value:    model.MailingList,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.subscription_group",
+			Value:    model.SubscriptionGroup,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.tracking.webhook",
+			Value:    model.Webhook,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -434,35 +527,6 @@ func buildUpdateObjectTracking(
 	input.MailingList = idname.PrepareIDNameSet[cato_models.SubscriptionMailingListRefInput](ctx, model.MailingList, diags)
 	input.SubscriptionGroup = idname.PrepareIDNameSet[cato_models.SubscriptionGroupRefInput](ctx, model.SubscriptionGroup, diags)
 	input.Webhook = idname.PrepareIDNameSet[cato_models.SubscriptionWebhookRefInput](ctx, model.Webhook, diags)
-	return input
-}
-
-func buildPosition(
-	ctx context.Context, value types.Object, diags *diag.Diagnostics,
-) *cato_models.PolicyRulePositionInput {
-	if value.IsNull() {
-		return nil
-	}
-	if value.IsUnknown() {
-		diags.AddError("Unknown configuration", "at must be known before applying.")
-		return nil
-	}
-	var model AtModel
-	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return nil
-	}
-	validateValues(diags,
-		knownValue{"at.position", model.Position, true},
-		knownValue{"at.ref", model.Ref, false},
-	)
-	if diags.HasError() {
-		return nil
-	}
-	input := &cato_models.PolicyRulePositionInput{}
-	vPosition := cato_models.PolicyRulePositionEnum(model.Position.ValueString())
-	input.Position = &vPosition
-	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
 	return input
 }
 
@@ -587,12 +651,7 @@ func parseReadSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type readTrack = cato.RemotePortFwdPolicy_Policy_RemotePortFwd_Policy_Rules_Rule_Tracking
@@ -745,12 +804,7 @@ func parseAddSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type addTrack = cato.PolicyRemotePortFwdAddRule_Policy_RemotePortFwd_AddRule_Rule_Rule_Tracking
@@ -903,12 +957,7 @@ func parseUpdateSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type updateTrack = cato.PolicyRemotePortFwdUpdateRule_Policy_RemotePortFwd_UpdateRule_Rule_Rule_Tracking
@@ -1061,12 +1110,7 @@ func parseMoveSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type moveTrack = cato.PolicyRemotePortFwdMoveRule_Policy_RemotePortFwd_MoveRule_Rule_Rule_Tracking
