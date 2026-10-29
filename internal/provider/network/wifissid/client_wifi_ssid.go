@@ -13,6 +13,7 @@ import (
 	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -79,7 +80,8 @@ func (c *sdkClient) EntityLookup(ctx context.Context, account string, kind m.Ent
 	return c.client.V2().EntityLookup(ctx, account, kind, limit, from, parent, search, ids, sort, filters, fields, i...)
 }
 
-var errStaleSSID = errors.New("the SSID interface configuration no longer exists; its local row can be removed or reclaimed")
+var errStaleSSID = errors.New("the SSID interface configuration no longer exists; its local row can be " +
+	"removed or reclaimed")
 
 func staleSSID(err error, id string) bool {
 	var api *clientv2.ErrorResponse
@@ -98,17 +100,8 @@ func staleSSID(err error, id string) bool {
 type ssidRecord = cato.SiteWifiSsid_Site_WifiSsid
 
 func missingSSID(err error, id string) bool {
-	var api *clientv2.ErrorResponse
-	if !errors.As(err, &api) || api.NetworkError != nil || api.GqlErrors == nil || len(*api.GqlErrors) == 0 {
-		return false
-	}
 	expected := "Wifi SSID " + id + " not found"
-	for _, e := range *api.GqlErrors {
-		if e == nil || (e.Message != expected && e.Message != "GQL-User-Error: "+expected) {
-			return false
-		}
-	}
-	return true
+	return apperror.MatchesGraphQLMessages(err, expected, "GQL-User-Error: "+expected)
 }
 
 // Never include SDK request bodies or transport errors in diagnostics: writes contain PSKs.
@@ -249,7 +242,8 @@ func interfaceRowsOccupied(items []*cato.EntityLookup_EntityLookup_Items, siteID
 // Mutation errors may echo the PSK in a different encoding; do not forward their text.
 func safeMutationError(err error, passkey string) string {
 	if passkey != "" {
-		return "API mutation failed; detailed SDK errors are omitted because the request contains a passkey."
+		return "API mutation failed; detailed SDK errors are omitted because the request " +
+			"contains a passkey."
 	}
 	return safeAPIError(err, "")
 }

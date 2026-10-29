@@ -23,7 +23,8 @@ import (
 func (r *ssidResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Description: "Manages a Wi-Fi SSID on an unused Wi-Fi interface. " +
 		"Site and interface changes require replacement. " +
-		"PSKs remain sensitive configuration in Terraform state; the API cannot return them or detect external PSK-only drift. " +
+		"PSKs remain sensitive configuration in Terraform state; the API cannot " +
+		"return them or detect external PSK-only drift. " +
 		"Import by SSID ID and supply a PSK before applying changes to a PSK SSID.", Attributes: schemaAttributes()}
 }
 func schemaAttributes() map[string]schema.Attribute {
