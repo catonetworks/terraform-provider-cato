@@ -78,3 +78,9 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+  github.com/catonetworks/terraform-provider-cato/internal/provider/access/user:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: UserClient.go
+          structname: UserClient
