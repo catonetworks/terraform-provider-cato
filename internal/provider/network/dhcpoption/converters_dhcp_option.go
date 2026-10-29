@@ -20,7 +20,7 @@ type optionAPI interface {
 
 func parseOption(_ context.Context, plan *OptionModel, item optionAPI, diags *diag.Diagnostics) {
 	plan.ID = types.StringValue(item.GetID())
-	if !nc.RequirePayload(item.GetType() != nil, diags) {
+	if !nc.RequirePayload(item.GetType() != nil && item.GetType().IsValid(), diags) {
 		return
 	}
 	plan.Tag = types.Int64Value(item.GetTag())
