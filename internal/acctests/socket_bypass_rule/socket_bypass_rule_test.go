@@ -1,0 +1,90 @@
+//go:build acctest
+
+package sbrule
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
+)
+
+func TestAccSocketBypassRule(t *testing.T) {
+	acc.SkipByEnv(t)
+	if os.Getenv("TF_ACC") != "1" {
+		t.Skip("TF_ACC=1 required for live fixtures")
+	}
+	acc.CheckCMAVars(t)()
+
+	config := func(name, description string) string {
+		return acc.ProviderCfg() + strings.NewReplacer("${name}", name, "${description}", description, "${position}", func() string {
+			if description == "updated" {
+				return "FIRST_IN_POLICY"
+			}
+			return "LAST_IN_POLICY"
+		}()).Replace(`resource "cato_socket_bypass_rule" "test" {
+at = { position = "${position}" }
+rule = {
+ action = { port = "AUTOMATIC", event = { enabled = false } }
+ description = "${description}"
+ destination = {
+  application = [], custom_app = [], domain = [], fqdn = [], global_ip_range = []
+  ip = ["192.0.2.241"], ip_range = [], subnet = []
+ }
+ enabled = false
+ exception = []
+ name = "acctest-socket_bypass_rule-${name}"
+ service = { custom = [], simple = [] }
+ site = { group = [], site = [] }
+ source = {
+  floating_subnet = [], global_ip_range = [], group = [], host = []
+  ip = ["192.0.2.240"], ip_range = [], network_interface = []
+  site_network_subnet = [], subnet = [], vlan = []
+ }
+}
+}
+`)
+	}
+	name := acc.GetRandName("socket_bypass_rule")
+	resourceName := "cato_socket_bypass_rule.test"
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
+		CheckDestroy: func(state *terraform.State) error {
+			revisionType := cato_models.PolicyRevisionTypePublic
+			policy, err := acc.GetClient(t).PolicySocketBypassPolicy(context.Background(), acc.CatoAccountID,
+				&cato_models.SocketBypassPolicyInput{Revision: &cato_models.PolicyRevisionInput{Type: &revisionType}})
+			if err != nil {
+				return err
+			}
+			for _, item := range policy.GetPolicy().GetSocketBypass().GetPolicy().GetRules() {
+				for _, object := range state.RootModule().Resources {
+					if object.Type == "cato_socket_bypass_rule" && object.Primary != nil && item.GetRule().GetID() == object.Primary.Attributes["rule.id"] {
+						return fmt.Errorf("test resource still exists after destroy")
+					}
+				}
+			}
+			return nil
+		},
+		PreCheck: acc.CheckCMAVars(t),
+		Steps: []resource.TestStep{
+			{Config: config(name, "initial"), Check: resource.TestCheckResourceAttrSet(resourceName, "rule.id")},
+			{Config: config(name, "initial"), PlanOnly: true, ExpectNonEmptyPlan: false},
+			{ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
+				object := state.RootModule().Resources[resourceName]
+				if object == nil || object.Primary == nil {
+					return "", fmt.Errorf("missing resource state")
+				}
+				return object.Primary.Attributes["rule.id"], nil
+			}, ImportStateVerifyIgnore: []string{"at"}},
+			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckResourceAttr(resourceName, "rule.name", "acctest-socket_bypass_rule-"+name+"-updated")},
+			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false},
+		},
+	})
+}
