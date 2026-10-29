@@ -2,14 +2,14 @@ package fqdncontainer
 
 import (
 	"context"
-	"math"
-	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	containerhelpers "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/container"
 )
 
 var fqdnPattern = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
@@ -26,12 +26,12 @@ func validID(id types.String,
 	}
 	return true
 }
-func knownString(s types.String) bool { return !s.IsNull() && !s.IsUnknown() }
+
 func validateModel(ctx context.Context, p resourceModel, d *diag.Diagnostics) {
-	if !knownString(p.Name) ||
+	if !containerhelpers.KnownString(p.Name) ||
 		strings.TrimSpace(p.Name.ValueString()) == "" ||
-		!knownString(p.Description) ||
-		!knownString(p.Mode) {
+		!containerhelpers.KnownString(p.Description) ||
+		!containerhelpers.KnownString(p.Mode) {
 		d.AddError("Invalid container configuration",
 			"Name, description and mode must be known; name must not be empty.")
 		return
@@ -79,11 +79,6 @@ func (r *containerResource) ValidateConfig(ctx context.Context, req resource.Val
 		}
 	}
 }
-func validURL(s string) bool {
-	u, err := url.Parse(s)
-	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Fragment == ""
-}
-func validInterval(v int64) bool { return v > 0 && v <= math.MaxInt32 }
 
 func validateInlineConfig(p resourceModel, d *diag.Diagnostics) {
 	if p.Mode.ValueString() == "INLINE" {

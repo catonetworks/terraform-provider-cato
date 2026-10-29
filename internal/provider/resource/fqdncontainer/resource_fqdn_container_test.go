@@ -24,6 +24,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	containerhelpers "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/container"
 )
 
 func TestInlineValidation(t *testing.T) {
@@ -262,11 +263,11 @@ func urlModel() resourceModel {
 }
 func TestURLValidation(t *testing.T) {
 	for _, u := range []string{"http://example.com", "https://u:p@example.com", "https://example.com/#x", "https:///x"} {
-		require.False(t, validURL(u))
+		require.False(t, containerhelpers.ValidURL(u))
 	}
-	require.True(t, validURL("https://example.com/file.csv"))
+	require.True(t, containerhelpers.ValidURL("https://example.com/file.csv"))
 	for _, n := range []int64{0, -1, 2147483648} {
-		require.False(t, validInterval(n))
+		require.False(t, containerhelpers.ValidInterval(n))
 	}
 	p := urlModel()
 	var d diag.Diagnostics

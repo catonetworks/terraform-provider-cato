@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -12,17 +11,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	containerhelpers "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/container"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
-var refType = types.ObjectType{AttrTypes: idname.RefAttrTypes}
-var notificationsAttrTypes = map[string]attr.Type{"mailing_list": types.SetType{ElemType: refType},
-	"subscription_group": types.SetType{ElemType: refType},
-	"webhook":            types.SetType{ElemType: refType}}
-var syncAttrTypes = map[string]attr.Type{"notifications": types.ObjectType{AttrTypes: notificationsAttrTypes},
-	"time_interval": types.Int64Type,
-	"time_unit":     types.StringType,
-	"url":           types.StringType}
+var refType = containerhelpers.ReferenceType
+var notificationsAttrTypes = containerhelpers.NotificationAttributeTypes
+var syncAttrTypes = containerhelpers.SyncAttributeTypes
 
 func (r *containerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	refs := func(description string) schema.SetNestedAttribute {
