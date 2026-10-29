@@ -16,12 +16,14 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *policyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a socket bypass rule. Changes are automatically published. Omitting at on update preserves " +
+		Description: "Manages a socket bypass rule. Changes are automatically published. " +
+			"Omitting at on update preserves " +
 			"placement.",
 		Attributes: schemaResource(),
 	}
@@ -32,28 +34,12 @@ func schemaResource() map[string]schema.Attribute {
 		"at": schema.SingleNestedAttribute{
 			Description: "At",
 			Optional:    true,
-			Attributes:  schemaResourceAt(),
+			Attributes:  policyshared.RulePositionAttributes("Position", "Ref"),
 		},
 		"rule": schema.SingleNestedAttribute{
 			Description: "Rule",
 			Required:    true,
 			Attributes:  schemaResourceRule(),
-		},
-	}
-}
-
-func schemaResourceAt() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		"position": schema.StringAttribute{
-			Description: "Position",
-			Required:    true,
-			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...)},
-		},
-		"ref": schema.StringAttribute{
-			Description:   "Ref",
-			Optional:      true,
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{planmodifiers.NullStringModifier()},
 		},
 	}
 }
@@ -100,7 +86,7 @@ func schemaResourceRule() map[string]schema.Attribute {
 		"section": schema.SingleNestedAttribute{
 			Description: "Policy section containing the rule",
 			Computed:    true,
-			Attributes:  schemaResourceRuleSection(),
+			Attributes:  policyshared.RuleSectionAttributes(),
 		},
 		"service": schema.SingleNestedAttribute{
 			Description: "Service",
@@ -458,20 +444,6 @@ func schemaResourceRuleExceptionSourceIPRange() map[string]schema.Attribute {
 		"to": schema.StringAttribute{
 			Description: "To",
 			Required:    true,
-		},
-	}
-}
-
-func schemaResourceRuleSection() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		"id": schema.StringAttribute{
-			Description:   "Section ID",
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-		},
-		"name": schema.StringAttribute{
-			Description: "Section name",
-			Computed:    true,
 		},
 	}
 }

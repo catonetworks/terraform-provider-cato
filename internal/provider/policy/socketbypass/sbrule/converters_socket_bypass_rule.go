@@ -1550,35 +1550,6 @@ func buildUpdateObjectSourceIPRange(
 	return input
 }
 
-func buildPosition(
-	ctx context.Context, value types.Object, diags *diag.Diagnostics,
-) *cato_models.PolicyRulePositionInput {
-	if value.IsNull() {
-		return nil
-	}
-	if value.IsUnknown() {
-		diags.AddError("Unknown configuration", "at must be known before applying.")
-		return nil
-	}
-	var model AtModel
-	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return nil
-	}
-	validateValues(diags,
-		knownValue{"at.position", model.Position, true},
-		knownValue{"at.ref", model.Ref, false},
-	)
-	if diags.HasError() {
-		return nil
-	}
-	input := &cato_models.PolicyRulePositionInput{}
-	vPosition := cato_models.PolicyRulePositionEnum(model.Position.ValueString())
-	input.Position = &vPosition
-	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
-	return input
-}
-
 type read = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule
 
 func parseRead(
@@ -1977,12 +1948,7 @@ func parseReadSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type readSvc = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Service
@@ -2560,12 +2526,7 @@ func parseAddSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type addSvc = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Service
@@ -3143,12 +3104,7 @@ func parseUpdateSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type updateSvc = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Service
@@ -3726,12 +3682,7 @@ func parseMoveSection(
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type moveSvc = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Service
