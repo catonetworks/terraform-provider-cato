@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 func TestPositionOmitsEmptyReference(t *testing.T) {
@@ -22,7 +23,7 @@ func TestPositionOmitsEmptyReference(t *testing.T) {
 		"position": types.StringValue("LAST_IN_POLICY"), "ref": types.StringValue(""),
 	})
 	var diagnostics diag.Diagnostics
-	position := buildPosition(ctx, positionValue, &diagnostics)
+	position := policyshared.BuildRulePosition(ctx, positionValue, &diagnostics)
 	require.False(t, diagnostics.HasError(), "%v", diagnostics)
 	require.NotNil(t, position)
 	require.Nil(t, position.Ref)

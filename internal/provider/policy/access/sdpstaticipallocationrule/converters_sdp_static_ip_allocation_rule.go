@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 func buildCreateObject(
@@ -28,13 +28,22 @@ func buildCreateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.ip", model.IP, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.source", model.Source, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.ip",
+			Value:    model.IP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source",
+			Value:    model.Source,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -62,9 +71,7 @@ func buildCreateObjectSource(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.source.user", model.User, true},
-	)
+	policyshared.ValidateRuleValues(diags, policyshared.KnownValue{Name: "rule.source.user", Value: model.User, Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -88,13 +95,22 @@ func buildUpdateObject(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.ip", model.IP, true},
-		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.source", model.Source, true},
-	)
+	policyshared.ValidateRuleValues(diags,
+		policyshared.KnownValue{Name: "rule.description",
+			Value:    model.Description,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.enabled",
+			Value:    model.Enabled,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.ip",
+			Value:    model.IP,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.name",
+			Value:    model.Name,
+			Required: true},
+		policyshared.KnownValue{Name: "rule.source",
+			Value:    model.Source,
+			Required: true})
 	if diags.HasError() {
 		return nil
 	}
@@ -126,43 +142,12 @@ func buildUpdateObjectSource(
 	if diags.HasError() {
 		return nil
 	}
-	validateValues(diags,
-		knownValue{"rule.source.user", model.User, true},
-	)
+	policyshared.ValidateRuleValues(diags, policyshared.KnownValue{Name: "rule.source.user", Value: model.User, Required: true})
 	if diags.HasError() {
 		return nil
 	}
 	input := &cato_models.SdpStaticIPAllocationSourceUpdateInput{}
 	input.User = idname.PrepareIDName[cato_models.UserRefInput](ctx, model.User, diags)
-	return input
-}
-
-func buildPosition(
-	ctx context.Context, value types.Object, diags *diag.Diagnostics,
-) *cato_models.PolicyRulePositionInput {
-	if value.IsNull() {
-		return nil
-	}
-	if value.IsUnknown() {
-		diags.AddError("Unknown configuration", "at must be known before applying.")
-		return nil
-	}
-	var model AtModel
-	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return nil
-	}
-	validateValues(diags,
-		knownValue{"at.position", model.Position, true},
-		knownValue{"at.ref", model.Ref, false},
-	)
-	if diags.HasError() {
-		return nil
-	}
-	input := &cato_models.PolicyRulePositionInput{}
-	vPosition := cato_models.PolicyRulePositionEnum(model.Position.ValueString())
-	input.Position = &vPosition
-	input.Ref = convert.StringPointerForOptionalInput(model.Ref)
 	return input
 }
 
@@ -194,12 +179,7 @@ func parseReadSection(ctx context.Context, value *parseReadSectionResponse, diag
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseReadSourceResponse = cato.PolicySdpStaticIpAllocationPolicy_Policy_SdpStaticIPAllocation_Policy_Rules_Rule_Source
@@ -248,12 +228,7 @@ func parseAddSection(ctx context.Context, value *parseAddSectionResponse, diags 
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseAddSourceResponse = cato.PolicySdpStaticIpAllocationAddRule_Policy_SdpStaticIPAllocation_AddRule_Rule_Rule_Source
@@ -302,12 +277,7 @@ func parseUpdateSection(ctx context.Context, value *parseUpdateSectionResponse, 
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseUpdateSourceResponse = cato.PolicySdpStaticIpAllocationUpdateRule_Policy_SdpStaticIPAllocation_UpdateRule_Rule_Rule_Source
@@ -356,12 +326,7 @@ func parseMoveSection(ctx context.Context, value *parseMoveSectionResponse, diag
 		diags.AddError("Invalid API response", "Missing rule.section object.")
 		return types.ObjectNull(ruleSectionAttrTypes)
 	}
-	model := RuleSectionModel{}
-	model.ID = types.StringValue(value.ID)
-	model.Name = types.StringValue(value.Name)
-	result, d := types.ObjectValueFrom(ctx, ruleSectionAttrTypes, model)
-	diags.Append(d...)
-	return result
+	return idname.ParseIDName(ctx, *value, diags)
 }
 
 type parseMoveSourceResponse = cato.PolicySdpStaticIpAllocationMoveRule_Policy_SdpStaticIPAllocation_MoveRule_Rule_Rule_Source

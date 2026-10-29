@@ -3,7 +3,6 @@ package sdpstaticipallocationrule
 import (
 	"context"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -13,12 +12,13 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 func (r *policyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a sdp static ip allocation rule. Changes are automatically published. Omitting at on update " +
+		Description: "Manages a sdp static ip allocation rule. Changes are automatically " +
+			"published. Omitting at on update " +
 			"preserves placement.",
 		Attributes: schemaResource(),
 	}
@@ -29,28 +29,12 @@ func schemaResource() map[string]schema.Attribute {
 		"at": schema.SingleNestedAttribute{
 			Description: "At",
 			Optional:    true,
-			Attributes:  schemaResourceAt(),
+			Attributes:  policyshared.RulePositionAttributes("Position", "Ref"),
 		},
 		"rule": schema.SingleNestedAttribute{
 			Description: "Rule",
 			Required:    true,
 			Attributes:  schemaResourceRule(),
-		},
-	}
-}
-
-func schemaResourceAt() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		"position": schema.StringAttribute{
-			Description: "Position",
-			Required:    true,
-			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...)},
-		},
-		"ref": schema.StringAttribute{
-			Description:   "Ref",
-			Optional:      true,
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{planmodifiers.NullStringModifier()},
 		},
 	}
 }
@@ -86,26 +70,12 @@ func schemaResourceRule() map[string]schema.Attribute {
 		"section": schema.SingleNestedAttribute{
 			Description: "Policy section containing the rule",
 			Computed:    true,
-			Attributes:  schemaResourceRuleSection(),
+			Attributes:  policyshared.RuleSectionAttributes(),
 		},
 		"source": schema.SingleNestedAttribute{
 			Description: "Source",
 			Required:    true,
 			Attributes:  schemaResourceRuleSource(),
-		},
-	}
-}
-
-func schemaResourceRuleSection() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		"id": schema.StringAttribute{
-			Description:   "Section ID",
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-		},
-		"name": schema.StringAttribute{
-			Description: "Section name",
-			Computed:    true,
 		},
 	}
 }
