@@ -36,7 +36,8 @@ func buildCreate(ctx context.Context, p resourceModel, d *diag.Diagnostics) m.Ad
 		ports := attrs["port"].(types.Set)
 		ranges := attrs["port_range"].(types.Set)
 		if ports.IsNull() || ranges.IsNull() || attrs["protocol"].IsNull() {
-			d.AddError("Invalid criterion", "Protocol, port and port_range must be explicitly configured; use empty sets for unused collections.")
+			d.AddError("Invalid criterion", "Protocol, port and port_range must be explicitly configured; use empty "+
+				"sets for unused collections.")
 			continue
 		}
 		item := &m.CustomApplicationCriteriaInput{Protocol: m.IPProtocol(attrs["protocol"].(types.String).ValueString()),

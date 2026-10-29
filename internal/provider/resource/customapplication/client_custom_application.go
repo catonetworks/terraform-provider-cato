@@ -2,7 +2,6 @@ package customapplication
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 
@@ -10,6 +9,7 @@ import (
 	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -86,21 +86,12 @@ type appRecord = cato.CustomAppDataCustomApplication_CustomAppData_CustomApplica
 var numericID = regexp.MustCompile(`^\d+$`)
 
 func missingApplication(err error, id, account string) bool {
-	var api *clientv2.ErrorResponse
-	if !errors.As(err, &api) || api.NetworkError != nil || api.GqlErrors == nil || len(*api.GqlErrors) == 0 {
-		return false
-	}
 	lookup := id
 	if numericID.MatchString(id) {
 		lookup = "CustomApp_" + account + "_" + id
 	}
 	expected := "Custom application not found by ID: " + lookup
-	for _, e := range *api.GqlErrors {
-		if e == nil || (e.Message != expected && e.Message != "GQL-User-Error: "+expected) {
-			return false
-		}
-	}
-	return true
+	return apperror.MatchesGraphQLMessages(err, expected, "GQL-User-Error: "+expected)
 }
 func (r *appResource) find(ctx context.Context, id string) (*appRecord, error) {
 	result,
