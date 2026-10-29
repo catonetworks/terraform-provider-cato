@@ -29,11 +29,15 @@ import (
 )
 
 type testBackend struct {
-	object    map[string]any
-	calls     []string
-	variables []map[string]any
-	fail      string
-	malformed bool
+	publicObject        map[string]any
+	snapshot            bool
+	revisionExists      bool
+	losePublishResponse bool
+	object              map[string]any
+	calls               []string
+	variables           []map[string]any
+	fail                string
+	malformed           bool
 }
 
 func testResource(t *testing.T, backend *testBackend) *policyResource {
@@ -62,37 +66,7 @@ func testResource(t *testing.T, backend *testBackend) *policyResource {
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}}))
 			return
 		}
-		policy := map[string]any{"rules": []any{}, "sections": []any{}}
-		if backend.object != nil {
-			policy["rules"] = []any{map[string]any{"rule": backend.object}}
-		}
-		payload := map[string]any{"status": "SUCCESS", "errors": []any{}}
-		switch operation {
-		case "policy":
-			payload = policy
-		case "createPolicyRevision":
-			policy["revision"] = map[string]any{"id": "revision-1"}
-			payload["policy"] = policy
-		case "addRule", "updateRule", "moveRule":
-			for _, input := range request.Variables {
-				values, ok := input.(map[string]any)
-				if !ok {
-					continue
-				}
-				if object, ok := values["rule"].(map[string]any); ok {
-					if name, ok := object["name"]; ok {
-						backend.object["name"] = name
-					}
-				}
-			}
-			payload["rule"] = map[string]any{"rule": backend.object}
-		case "removeRule":
-			backend.object = nil
-		case "publishPolicyRevision":
-			payload["policy"] = policy
-		}
-		body := map[string]any{"data": map[string]any{"policy": map[string]any{"clientConnectivity": map[string]any{operation: payload}}}}
-		require.NoError(t, json.NewEncoder(w).Encode(body))
+		writeBackendResponse(t, w, backend, operation, request.Variables)
 	}))
 	t.Cleanup(server.Close)
 	client, err := cato.New(server.URL, "test-token", "sdk-default-account", nil, nil)
@@ -344,8 +318,8 @@ func TestPublicationRecovery(t *testing.T) {
 	read := resource.ReadResponse{State: create.State, Private: create.Private}
 	r.Read(ctx, resource.ReadRequest{State: create.State, Private: create.Private}, &read)
 	require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
-	require.Empty(t, pendingRevision(ctx, read.Private, &diagnostics))
-	require.Equal(t, []string{"createPolicyRevision", "addRule", "publishPolicyRevision", "publishPolicyRevision", "policy"}, backend.calls)
+	require.Equal(t, "revision-1", pendingRevision(ctx, read.Private, &diagnostics))
+	require.Equal(t, []string{"createPolicyRevision", "addRule", "publishPolicyRevision", "policy", "policy"}, backend.calls)
 }
 
 func TestDeletePublicationRecovery(t *testing.T) {
@@ -364,8 +338,8 @@ func TestDeletePublicationRecovery(t *testing.T) {
 	retry := resource.DeleteResponse{State: state, Private: deletion.Private}
 	r.Delete(ctx, resource.DeleteRequest{State: state, Private: deletion.Private}, &retry)
 	require.False(t, retry.Diagnostics.HasError(), "%v", retry.Diagnostics)
-	require.Equal(t, 1, operationCount(backend.calls, "createPolicyRevision"))
-	require.Equal(t, 1, operationCount(backend.calls, "removeRule"))
+	require.Equal(t, 2, operationCount(backend.calls, "createPolicyRevision"))
+	require.Equal(t, 2, operationCount(backend.calls, "removeRule"))
 	var diagnostics diag.Diagnostics
 	require.Empty(t, pendingRevision(ctx, retry.Private, &diagnostics))
 }
@@ -442,4 +416,208 @@ func operationCount(calls []string, operation string) int {
 		}
 	}
 	return count
+}
+
+func writeBackendResponse(t *testing.T, w http.ResponseWriter, backend *testBackend, operation string, variables map[string]any) {
+	policy := map[string]any{"rules": []any{}, "sections": []any{}}
+	if backend.object != nil {
+		policy["rules"] = []any{map[string]any{"rule": backend.object}}
+	}
+	payload := map[string]any{"status": "SUCCESS", "errors": []any{}}
+	switch operation {
+	case "policy":
+		writeReadBackend(t, w, backend, variables, policy)
+		return
+	case "createPolicyRevision":
+		if !backend.snapshot {
+			backend.publicObject = cloneObject(backend.object)
+			backend.snapshot = true
+		}
+		backend.object = cloneObject(backend.publicObject)
+		backend.revisionExists = true
+		policy["revision"] = map[string]any{"id": "revision-1"}
+		payload["policy"] = policy
+	case "addRule", "updateRule", "moveRule":
+		updateBackendName(backend, variables)
+		payload["rule"] = map[string]any{"rule": backend.object}
+	case "removeRule":
+		backend.object = nil
+	case "discardPolicyRevision":
+		if !backend.revisionExists {
+			payload["status"] = "FAILURE"
+			payload["errors"] = []any{map[string]any{"errorCode": "PolicyRevisionNotFound"}}
+			break
+		}
+		backend.object = cloneObject(backend.publicObject)
+		backend.revisionExists = false
+	case "publishPolicyRevision":
+		backend.publicObject = cloneObject(backend.object)
+		backend.revisionExists = false
+		if backend.losePublishResponse {
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": "connection lost after commit"}}}))
+			return
+		}
+		payload["policy"] = policy
+	}
+	body := map[string]any{"data": map[string]any{"policy": map[string]any{"clientConnectivity": map[string]any{operation: payload}}}}
+	require.NoError(t, json.NewEncoder(w).Encode(body))
+}
+
+func cloneObject(object map[string]any) map[string]any {
+	if object == nil {
+		return nil
+	}
+	cloned := make(map[string]any, len(object))
+	for key, value := range object {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func TestPublicPolicyRequest(t *testing.T) {
+	backend := testBackendData(t)
+	r := testResource(t, backend)
+	_, err := r.readPolicy(context.Background(), "")
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"revision": map[string]any{"type": "PUBLIC"}}, backend.variables[0]["clientConnectivityPolicyInput"])
+	backend.revisionExists = true
+	_, err = r.readPolicy(context.Background(), "revision-1")
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"revision": map[string]any{"id": "revision-1", "type": "PRIVATE"}}, backend.variables[1]["clientConnectivityPolicyInput"])
+}
+
+func TestRevisionNamesAreUnique(t *testing.T) {
+	backend := testBackendData(t)
+	r := testResource(t, backend)
+	var diagnostics diag.Diagnostics
+	r.beginRevision(context.Background(), "", &diagnostics)
+	r.beginRevision(context.Background(), "", &diagnostics)
+	require.False(t, diagnostics.HasError(), "%v", diagnostics)
+	require.NotEqual(t, backend.variables[0]["policyCreateRevisionInput"].(map[string]any)["name"], backend.variables[1]["policyCreateRevisionInput"].(map[string]any)["name"])
+}
+
+func TestLostPublishResponse(t *testing.T) {
+	for _, operation := range []string{"create", "update", "delete"} {
+		t.Run(operation, func(t *testing.T) {
+			ctx := context.Background()
+			backend := testBackendData(t)
+			backend.losePublishResponse = true
+			r := testResource(t, backend)
+			model := testModel(t)
+			state := testState(t, model)
+			switch operation {
+			case "create":
+				response := resource.CreateResponse{State: tfsdk.State{Schema: testSchema(t)}}
+				initializePrivate(&response)
+				r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, model)}, &response)
+				require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
+			case "update":
+				fields := model.Rule.Attributes()
+				fields["name"] = types.StringValue("Updated")
+				model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+				response := resource.UpdateResponse{State: state}
+				initializePrivate(&response)
+				r.Update(ctx, resource.UpdateRequest{Plan: testPlan(t, model), State: state}, &response)
+				require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
+			case "delete":
+				response := resource.DeleteResponse{State: state}
+				initializePrivate(&response)
+				r.Delete(ctx, resource.DeleteRequest{State: state}, &response)
+				require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
+			}
+			require.False(t, backend.revisionExists)
+		})
+	}
+}
+
+func TestFailedMoveDoesNotChangeStateOrPublishOnRead(t *testing.T) {
+	ctx := context.Background()
+	backend := testBackendData(t)
+	backend.fail = "moveRule"
+	r := testResource(t, backend)
+	model := testModel(t)
+	state := testState(t, model)
+	fields := model.Rule.Attributes()
+	fields["name"] = types.StringValue("Unpublished")
+	model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+	model.At = types.ObjectValueMust(atAttrTypes, map[string]attr.Value{"position": types.StringValue("FIRST_IN_POLICY"), "ref": types.StringNull()})
+	response := resource.UpdateResponse{State: state}
+	initializePrivate(&response)
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: testPlan(t, model)}, &response)
+	require.True(t, response.Diagnostics.HasError())
+	require.True(t, response.State.Raw.Equal(state.Raw))
+	require.Equal(t, 0, operationCount(backend.calls, "publishPolicyRevision"))
+	require.False(t, backend.revisionExists)
+	read := resource.ReadResponse{State: state, Private: response.Private}
+	r.Read(ctx, resource.ReadRequest{State: state, Private: response.Private}, &read)
+	require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
+	require.Equal(t, 0, operationCount(backend.calls, "publishPolicyRevision"))
+}
+
+func writeReadBackend(t *testing.T, w http.ResponseWriter, backend *testBackend, variables map[string]any, policy map[string]any) {
+	t.Helper()
+	input, _ := variables["clientConnectivityPolicyInput"].(map[string]any)
+	revision, _ := input["revision"].(map[string]any)
+	if revision["type"] == "PUBLIC" {
+		object := backend.object
+		if backend.snapshot {
+			object = backend.publicObject
+		}
+		policy["rules"] = []any{}
+		if object != nil {
+			policy["rules"] = []any{map[string]any{"rule": object}}
+		}
+	} else if !backend.revisionExists {
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": "PolicyRevisionNotFound", "extensions": map[string]any{"errorCode": "PolicyRevisionNotFound"}}}}))
+		return
+	}
+	require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"policy": map[string]any{"clientConnectivity": map[string]any{"policy": policy}}}}))
+}
+
+func TestDestroyWithStaleRevision(t *testing.T) {
+	ctx := context.Background()
+	backend := testBackendData(t)
+	r := testResource(t, backend)
+	state := testState(t, testModel(t))
+	response := resource.DeleteResponse{State: state}
+	initializePrivate(&response)
+	var diagnostics diag.Diagnostics
+	rememberRevision(ctx, response.Private, "revision-1", &diagnostics)
+	r.Delete(ctx, resource.DeleteRequest{State: state, Private: response.Private}, &response)
+	require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
+	require.Equal(t, 1, operationCount(backend.calls, "removeRule"))
+	require.Nil(t, backend.publicObject)
+}
+
+func TestReadDoesNotPublishPendingDeletion(t *testing.T) {
+	ctx := context.Background()
+	backend := testBackendData(t)
+	backend.fail = "publishPolicyRevision"
+	r := testResource(t, backend)
+	state := testState(t, testModel(t))
+	deletion := resource.DeleteResponse{State: state}
+	initializePrivate(&deletion)
+	r.Delete(ctx, resource.DeleteRequest{State: state}, &deletion)
+	require.True(t, deletion.Diagnostics.HasError())
+	backend.fail = ""
+	read := resource.ReadResponse{State: state, Private: deletion.Private}
+	r.Read(ctx, resource.ReadRequest{State: state, Private: deletion.Private}, &read)
+	require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
+	require.False(t, read.State.Raw.IsNull())
+	require.Equal(t, 1, operationCount(backend.calls, "publishPolicyRevision"))
+	require.NotNil(t, backend.publicObject)
+}
+
+func updateBackendName(backend *testBackend, variables map[string]any) {
+	for _, input := range variables {
+		values, ok := input.(map[string]any)
+		if !ok {
+			continue
+		}
+		if object, ok := values["rule"].(map[string]any); ok {
+			if name, ok := object["name"]; ok {
+				backend.object["name"] = name
+			}
+		}
+	}
 }

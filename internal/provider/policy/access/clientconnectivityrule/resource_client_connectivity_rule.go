@@ -2,6 +2,8 @@ package clientconnectivityrule
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -121,7 +123,7 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	retained = true
-	if r.publish(ctx, revision, &resp.Diagnostics) && resp.Private != nil {
+	if r.publishOrReconcile(ctx, revision, returned.GetID(), plan.Rule, &resp.Diagnostics) && resp.Private != nil {
 		rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
 }
@@ -131,23 +133,8 @@ func (r *policyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	var id types.String
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("rule").AtName("id"), &id)...)
-	if resp.Diagnostics.HasError() || !validID(id, &resp.Diagnostics) || !r.configured(&resp.Diagnostics) {
+	if !r.ready(id, &resp.Diagnostics) {
 		return
-	}
-	// A previous apply already authorized this revision; refresh retries its failed publication.
-	if req.Private != nil {
-		revision := pendingRevision(ctx, req.Private, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if revision != "" {
-			if !r.publish(ctx, revision, &resp.Diagnostics) {
-				return
-			}
-			if resp.Private != nil {
-				rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
-			}
-		}
 	}
 	policy, err := r.readPolicy(ctx, "")
 	if err != nil {
@@ -156,6 +143,23 @@ func (r *policyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 	object := findObject(policy, id.ValueString())
 	if object == nil {
+		// A failed create may exist only in its owned draft. Keep its identity for destroy.
+		if req.Private != nil {
+			revision := pendingRevision(ctx, req.Private, &resp.Diagnostics)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			if revision != "" {
+				draft, draftErr := r.readPolicy(ctx, revision)
+				if draftErr != nil && !errors.Is(draftErr, errMissingRevision) {
+					resp.Diagnostics.AddError("Failed to inspect pending revision", draftErr.Error())
+					return
+				}
+				if draftErr == nil && findObject(draft, id.ValueString()) != nil {
+					return
+				}
+			}
+		}
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -186,40 +190,36 @@ func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	retained := false
+	defer func() {
+		if !retained {
+			r.discard(ctx, revision, &resp.Diagnostics)
+		}
+	}()
 	plan.Rule = r.updateObject(ctx, id.ValueString(), object, revision, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	requestedAt := plan.At
-	plan.At = state.At
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if at != nil && !requestedAt.Equal(state.At) {
+	if at != nil && !plan.At.Equal(state.At) {
 		plan.Rule = r.move(ctx, id.ValueString(), at, revision, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
-	plan.At = requestedAt
-	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
-	if resp.Diagnostics.HasError() {
+	retained = true
+	if !r.publishOrReconcile(ctx, revision, id.ValueString(), plan.Rule, &resp.Diagnostics) {
 		return
 	}
-	if r.publish(ctx, revision, &resp.Diagnostics) && resp.Private != nil {
+	if resp.Private != nil {
 		rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
 func (r *policyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var id types.String
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("rule").AtName("id"), &id)...)
-	if resp.Diagnostics.HasError() || !validID(id, &resp.Diagnostics) || !r.configured(&resp.Diagnostics) {
+	if !r.ready(id, &resp.Diagnostics) {
 		return
 	}
 	pending := ""
@@ -229,13 +229,23 @@ func (r *policyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	policy, err := r.readPolicy(ctx, pending)
+	// Dispose only this resource's unfinished draft before examining published state.
+	if pending != "" {
+		if !r.discard(ctx, pending, &resp.Diagnostics) {
+			return
+		}
+		if resp.Private != nil {
+			rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
+		}
+		pending = ""
+	}
+	policy, err := r.readPolicy(ctx, "")
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to read rule before deletion", err.Error())
 		return
 	}
 	object := findObject(policy, id.ValueString())
-	if object == nil && pending == "" {
+	if object == nil {
 		return
 	}
 
@@ -243,13 +253,20 @@ func (r *policyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	retained := false
+	defer func() {
+		if !retained {
+			r.discard(ctx, revision, &resp.Diagnostics)
+		}
+	}()
 	if resp.Private != nil {
 		rememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
 	}
-	if object != nil && !r.removeObject(ctx, id.ValueString(), revision, &resp.Diagnostics) {
+	if !r.removeObject(ctx, id.ValueString(), revision, &resp.Diagnostics) {
 		return
 	}
-	if r.publish(ctx, revision, &resp.Diagnostics) && resp.Private != nil {
+	retained = true
+	if r.publishOrReconcile(ctx, revision, id.ValueString(), types.ObjectNull(ruleAttrTypes), &resp.Diagnostics) && resp.Private != nil {
 		rememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
 }
@@ -314,11 +331,11 @@ func mutationInput(revision string) *cato_models.ClientConnectivityPolicyMutatio
 }
 
 func (r *policyResource) beginRevision(ctx context.Context, pending string, diags *diag.Diagnostics) string {
-	if pending != "" {
-		return pending
+	if pending != "" && !r.discard(ctx, pending, diags) {
+		return ""
 	}
 	result, err := r.getClient().PolicyClientConnectivityCreatePolicyRevision(ctx, r.client.AccountId, nil,
-		cato_models.PolicyCreateRevisionInput{Name: "Terraform client_connectivity_rule", Description: "Managed by Terraform"})
+		cato_models.PolicyCreateRevisionInput{Name: "terraform-" + rand.Text(), Description: "Managed by Terraform"})
 	payload := result.GetPolicy().GetClientConnectivity().GetCreatePolicyRevision()
 	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to create policy revision", diags) || !checkStatus(payload.GetStatus(), diags) {
 		return ""
@@ -341,14 +358,22 @@ func (r *policyResource) publish(ctx context.Context, revision string, diags *di
 	return checkStatus(payload.GetStatus(), diags)
 }
 
-func (r *policyResource) discard(ctx context.Context, revision string, diags *diag.Diagnostics) {
+func (r *policyResource) discard(ctx context.Context, revision string, diags *diag.Diagnostics) bool {
 	result, err := r.getClient().PolicyClientConnectivityDiscardPolicyRevision(ctx, r.client.AccountId, mutationInput(revision),
 		&cato_models.PolicyDiscardRevisionInput{ID: &revision})
 	payload := result.GetPolicy().GetClientConnectivity().GetDiscardPolicyRevision()
-	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to discard the resource's policy revision "+revision, diags) {
-		return
+	if revisionMissing(err) {
+		return true
 	}
-	checkStatus(payload.GetStatus(), diags)
+	for _, item := range payload.GetErrors() {
+		if code := item.GetErrorCode(); code != nil && *code == "PolicyRevisionNotFound" {
+			return true
+		}
+	}
+	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to discard the resource's policy revision "+revision, diags) {
+		return false
+	}
+	return checkStatus(payload.GetStatus(), diags)
 }
 
 func checkStatus(status *cato_models.PolicyMutationStatus, diags *diag.Diagnostics) bool {
@@ -394,4 +419,36 @@ func (r *policyResource) removeObject(ctx context.Context, id, revision string, 
 		return false
 	}
 	return checkStatus(payload.GetStatus(), diags)
+}
+
+// A publication can commit even when its response is lost. Reconcile only after
+// the owned revision is confirmed gone, and only against published state.
+func (r *policyResource) publishOrReconcile(ctx context.Context, revision, id string, expected types.Object, diags *diag.Diagnostics) bool {
+	var publication diag.Diagnostics
+	if r.publish(ctx, revision, &publication) {
+		return true
+	}
+	_, err := r.readPolicy(ctx, revision)
+	if errors.Is(err, errMissingRevision) {
+		policy, readErr := r.readPolicy(ctx, "")
+		if readErr == nil {
+			object := findObject(policy, id)
+			if expected.IsNull() && object == nil {
+				return true
+			}
+			if !expected.IsNull() && object != nil {
+				var conversion diag.Diagnostics
+				actual := parseRead(ctx, object, &conversion)
+				if !conversion.HasError() && actual.Equal(expected) {
+					return true
+				}
+			}
+		}
+	}
+	diags.Append(publication...)
+	return false
+}
+
+func (r *policyResource) ready(id types.String, diags *diag.Diagnostics) bool {
+	return !diags.HasError() && validID(id, diags) && r.configured(diags)
 }
