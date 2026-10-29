@@ -17,7 +17,8 @@ import (
 
 func (r *socketResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Description: "Manages the secondary GCP vSocket configuration on an existing compatible GCP site. " +
-		"Does not provision GCP infrastructure. The API requires a registered GCP socket for read and update; " +
+		"Does not provision GCP infrastructure. The API requires a registered GCP " +
+		"socket for read and update; " +
 		"new unregistered sockets may be rejected until registration completes. " +
 		"Import using the secondary socket ID.",
 		Attributes: map[string]schema.Attribute{

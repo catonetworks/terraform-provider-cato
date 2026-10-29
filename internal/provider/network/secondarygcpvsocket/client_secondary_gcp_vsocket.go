@@ -2,7 +2,6 @@ package secondarygcpvsocket
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -10,7 +9,9 @@ import (
 	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/vsocket"
 )
 
 // ResourceClient is the account-scoped secondary GCP vSocket contract.
@@ -72,18 +73,9 @@ func (c *sdkClient) AccountSnapshot(
 type socketRecord = cato.SiteSecondaryGcpVSocket_Site_SecondaryGCPVSocket_SocketInfo
 
 func missingSocket(err error, id string) bool {
-	var response *clientv2.ErrorResponse
-	if !errors.As(err, &response) || response.NetworkError != nil || response.GqlErrors == nil || len(*response.GqlErrors) == 0 {
-		return false
-	}
 	message := fmt.Sprintf("Socket with ID: %s not found", id)
 	wireMessage := fmt.Sprintf("404 Not Found: \"SOCKET with id [%s] not found\"", id)
-	for _, item := range *response.GqlErrors {
-		if item == nil || (item.Message != message && item.Message != "GQL-User-Error: "+message && item.Message != wireMessage) {
-			return false
-		}
-	}
-	return true
+	return apperror.MatchesGraphQLMessages(err, message, "GQL-User-Error: "+message, wireMessage)
 }
 func (r *socketResource) find(ctx context.Context, id string) (*socketRecord, error) {
 	result, err := r.getClient().SiteSecondaryGCPVSocket(ctx, r.client.AccountId, m.SecondaryGCPVSocketInput{ID: id})
@@ -119,30 +111,7 @@ func (r *socketResource) resolveEmptySlot(ctx context.Context, ref *m.SiteRefInp
 	return site.GetID(), nil
 }
 func validateEmptySlot(result *cato.AccountSnapshot, account, id string) error {
-	snapshot := result.GetAccountSnapshot()
-	if snapshot == nil || snapshot.GetID() == nil || *snapshot.GetID() != account {
-		return fmt.Errorf("snapshot did not confirm the configured account")
-	}
-	sites := snapshot.GetSites()
-	if len(sites) != 1 || sites[0] == nil || sites[0].GetID() == nil || *sites[0].GetID() != id {
-		return fmt.Errorf("snapshot did not confirm the parent site")
-	}
-	return validatePrimary(sites[0].GetInfoSiteSnapshot())
-}
-func validatePrimary(info *cato.AccountSnapshot_AccountSnapshot_Sites_InfoSiteSnapshot) error {
-	kind := info.GetConnType()
-	if kind == nil || *kind != m.ProtoTypeSocketGCP1500 {
-		return fmt.Errorf("parent must be a compatible GCP vSocket site")
-	}
-	sockets := info.GetSockets()
-	if len(sockets) != 1 || sockets[0] == nil {
-		return fmt.Errorf("site must have only a primary socket; import an existing secondary instead")
-	}
-	socket := sockets[0]
-	if socket.GetID() == nil || *socket.GetID() == "" || socket.GetIsPrimary() == nil || !*socket.GetIsPrimary() {
-		return fmt.Errorf("site must have a known primary socket")
-	}
-	return nil
+	return vsocket.ValidateEmptySlot(result, account, id, "GCP", m.ProtoTypeSocketGCP1500)
 }
 
 const consistencyTimeout = 30 * time.Second
