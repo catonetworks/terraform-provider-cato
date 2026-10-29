@@ -1,0 +1,42 @@
+# Approved API-shaped schema; API-specific omission semantics documented in ai_context.md.
+Attributes:
+- Name: id
+  Description: Account ID.
+  Type: string
+  Mode: computed
+- Name: lease_time
+  Description: DHCP lease duration in seconds, minimum 60. Omission preserves current
+    value.
+  Type: int64
+  Mode: optional_computed
+- Name: relay
+  Description: Relay configuration. Omission preserves current values.
+  Type: nested
+  Mode: optional_computed
+  Attributes:
+  - Name: enabled
+    Description: Enable relay; requires effective group and timeout.
+    Type: bool
+    Mode: optional_computed
+    Hints:
+    - modifyPlan
+  - Name: group
+    Description: Existing relay group; omission preserves selection
+    Type: nested
+    Mode: optional_computed
+    Hints:
+    - idName
+    Attributes:
+    - Name: id
+      Description: Existing relay group; omission preserves selection id
+      Type: string
+      Mode: optional_computed
+    - Name: name
+      Description: Existing relay group; omission preserves selection name
+      Type: string
+      Mode: optional_computed
+  - Name: timeout
+    Description: Timeout 0-90 seconds. Omission preserves current value; API cannot
+      clear it.
+    Type: int64
+    Mode: optional_computed

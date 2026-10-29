@@ -1,0 +1,15 @@
+# Approved API-shaped schema; API-specific omission semantics documented in ai_context.md.
+Attributes:
+- Name: id
+  Description: Opaque item ID.
+  Type: string
+  Mode: computed
+- Name: name
+  Description: Relay group name, unique within account.
+  Type: string
+  Mode: required
+- Name: server
+  Description: DHCP relay server addresses, at least one.
+  Type: list
+  ItemType: string
+  Mode: required

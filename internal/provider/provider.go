@@ -32,11 +32,17 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
+	dhcprelaygroupds "github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/host"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkinterfaces"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/sitelocation"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpoption"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcprelaygroup"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpsettings"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnsforwardingrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssettings"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssitesettings"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterfacelagmember"
@@ -508,7 +514,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		roles.NewDataSource,
 		permissioncatalog.NewDataSource,
 		allocatedip.Source,
-		dhcprelaygroup.DataSource,
+		dhcprelaygroupds.DataSource,
 		groupdata.DataSource,
 		licensinginfo.NewDataSource,
 		networkinterfaces.NetworkInterfacesDataSource,
@@ -527,6 +533,12 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		account.NewAccountResource,
+		dnssettings.NewDNSSettingsResource,
+		dnssitesettings.NewDNSSiteSettingsResource,
+		dnsforwardingrule.NewDNSForwardingRuleResource,
+		dhcpsettings.NewDHCPSettingsResource,
+		dhcpoption.NewDHCPOptionResource,
+		dhcprelaygroup.NewDHCPRelayGroupResource,
 		role.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
