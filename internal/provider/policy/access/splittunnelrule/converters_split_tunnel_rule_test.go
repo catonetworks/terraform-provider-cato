@@ -15,6 +15,7 @@ func TestCreatePreservesOmittedDNSExclusion(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	backend := testBackendData(t)
+	backend.object["dnsExclusion"] = map[string]any{"domain": []any{}}
 	r := testResource(t, backend)
 	model := testModel(t)
 	fields := model.Rule.Attributes()
@@ -46,4 +47,39 @@ func TestImportReadsRemoteDNSExclusion(t *testing.T) {
 	var exclusion types.Object
 	require.False(t, response.State.GetAttribute(ctx, path.Root("rule").AtName("dns_exclusion"), &exclusion).HasError())
 	require.False(t, exclusion.IsNull())
+}
+
+func TestReadDNSDriftRemainsVisible(t *testing.T) {
+	ctx := context.Background()
+	model := testModel(t)
+	fields := model.Rule.Attributes()
+	fields["dns_exclusion"] = types.ObjectNull(ruleDNSExclusionAttrTypes)
+	model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+	state := testState(t, model)
+	r := testResource(t, testBackendData(t))
+	response := resource.ReadResponse{State: state}
+	r.Read(ctx, resource.ReadRequest{State: state}, &response)
+	require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
+	var exclusion types.Object
+	require.False(t, response.State.GetAttribute(ctx, path.Root("rule").AtName("dns_exclusion"), &exclusion).HasError())
+	require.False(t, exclusion.IsNull(), "nonempty external exclusions must remain visible")
+}
+
+func TestImportNormalizesEmptyDNSExclusion(t *testing.T) {
+	ctx := context.Background()
+	backend := testBackendData(t)
+	backend.object["dnsExclusion"] = map[string]any{"domain": []any{}}
+	model := testModel(t)
+	fields := model.Rule.Attributes()
+	fields["name"] = types.StringNull()
+	fields["dns_exclusion"] = types.ObjectNull(ruleDNSExclusionAttrTypes)
+	model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+	state := testState(t, model)
+	response := resource.ReadResponse{State: state}
+	r := testResource(t, backend)
+	r.Read(ctx, resource.ReadRequest{State: state}, &response)
+	require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
+	var exclusion types.Object
+	require.False(t, response.State.GetAttribute(ctx, path.Root("rule").AtName("dns_exclusion"), &exclusion).HasError())
+	require.True(t, exclusion.IsNull(), "empty API defaults must match omitted configuration on import")
 }

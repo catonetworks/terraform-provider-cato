@@ -925,21 +925,24 @@ func parseMoveSourceNetwork(ctx context.Context, value *parseMoveSourceNetworkRe
 	return result
 }
 
-// preserveOptionalObjects retains omission of optional configuration after API defaulting.
-// An imported object has no known name yet, so import still hydrates the full remote configuration.
+// preserveOptionalObjects normalizes an empty API default only when configuration
+// omitted DNS exclusions. Nonempty remote values must remain visible for drift.
 func preserveOptionalObjects(reference, value types.Object) types.Object {
 	if reference.IsNull() || reference.IsUnknown() || value.IsNull() || value.IsUnknown() {
 		return value
 	}
-	original := reference.Attributes()
-	name := original["name"].(types.String)
-	if name.IsNull() || name.IsUnknown() {
+	if !reference.Attributes()["dns_exclusion"].IsNull() {
 		return value
 	}
-	if original["dns_exclusion"].IsNull() {
-		fields := value.Attributes()
-		fields["dns_exclusion"] = types.ObjectNull(ruleDNSExclusionAttrTypes)
-		return types.ObjectValueMust(ruleAttrTypes, fields)
+	fields := value.Attributes()
+	exclusion := fields["dns_exclusion"].(types.Object)
+	if exclusion.IsNull() || exclusion.IsUnknown() {
+		return value
 	}
-	return value
+	domains := exclusion.Attributes()["domain"].(types.Set)
+	if domains.IsNull() || domains.IsUnknown() || len(domains.Elements()) != 0 {
+		return value
+	}
+	fields["dns_exclusion"] = types.ObjectNull(ruleDNSExclusionAttrTypes)
+	return types.ObjectValueMust(ruleAttrTypes, fields)
 }
