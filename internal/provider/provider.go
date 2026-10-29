@@ -43,6 +43,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/networkrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserversection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
@@ -526,11 +527,13 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		terminalserversection.NewResource,
 		account.NewAccountResource,
 		role.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
+
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,
