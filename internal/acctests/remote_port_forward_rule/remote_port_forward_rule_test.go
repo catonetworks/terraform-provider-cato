@@ -5,7 +5,6 @@ package rpfrule
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -21,9 +20,7 @@ import (
 
 func TestAccRemotePortFwdRule(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv("TF_ACC") != "1" {
-		t.Skip("TF_ACC=1 required for live fixtures")
-	}
+	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
 	fixtureIP, fixturePort := selectExternalIP(t)
 	config := func(name, description string) string {
@@ -52,6 +49,23 @@ rule = {
 	}
 	name := acc.GetRandName("remote_port_forward_rule")
 	resourceName := "cato_remote_port_forward_rule.test"
+
+	published := func(state *terraform.State) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		revisionType := cato_models.PolicyRevisionTypePublic
+		policy, err := acc.GetClient(t).RemotePortFwdPolicy(ctx, acc.CatoAccountID,
+			&cato_models.RemotePortFwdPolicyInput{Revision: &cato_models.PolicyRevisionInput{Type: &revisionType}})
+		if err != nil {
+			return err
+		}
+
+		ids := []string{}
+		for _, item := range policy.GetPolicy().GetRemotePortFwd().GetPolicy().GetRules() {
+			ids = append(ids, item.GetRule().GetID())
+		}
+		return acc.CheckPolicyPlacement(state, resourceName, "rule.id", ids)
+	}
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
 		CheckDestroy: func(state *terraform.State) error {
@@ -71,7 +85,7 @@ rule = {
 			return nil
 		},
 		PreCheck: acc.CheckCMAVars(t),
-		Steps: []resource.TestStep{
+		Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(name, "initial"), Check: resource.TestCheckResourceAttrSet(resourceName, "rule.id")},
 			{Config: config(name, "initial"), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
@@ -82,13 +96,21 @@ rule = {
 				return object.Primary.Attributes["rule.id"], nil
 			}, ImportStateVerifyIgnore: []string{"at"}},
 			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckResourceAttr(resourceName, "rule.name", "acctest-remote_port_forward_rule-"+name+"-updated")},
-			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false},
-		},
+			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
+				object := state.RootModule().Resources[resourceName]
+				if object == nil || object.Primary == nil {
+					return "", fmt.Errorf("missing resource state")
+				}
+				return object.Primary.Attributes["rule.id"], nil
+			}, ImportStateVerifyIgnore: []string{"at"}},
+		}, resourceName,
+
+			// Reuse an account-owned allocated IP without changing its allocation. The new
+			// rule stays disabled, uses a free external port, and is the only object deleted.
+			"rule.id", published),
 	})
 }
 
-// Reuse an account-owned allocated IP without changing its allocation. The new
-// rule stays disabled, uses a free external port, and is the only object deleted.
 func selectExternalIP(t *testing.T) (allocationID, externalPort string) {
 	t.Helper()
 	client := acc.GetClient(t)
