@@ -78,3 +78,10 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/pasection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: PrivateAccessSectionClient.go
+          structname: PrivateAccessSectionClient
