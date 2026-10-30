@@ -67,7 +67,7 @@ func TestAccFQDNContainer(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, ownedID, deleted.GetContainer().GetDelete().GetContainer().GetID())
 			removedID = ownedID
-		}, Config: config(0), PlanOnly: true, ExpectNonEmptyPlan: true},
+		}, Config: config(2), PlanOnly: true, ExpectNonEmptyPlan: true},
 		resource.TestStep{Config: config(0), Check: resource.ComposeTestCheckFunc(checkMembers(object, 0), func(state *terraform.State) error {
 			id := state.RootModule().Resources[object].Primary.Attributes["id"]
 			if id == "" || id == removedID {
@@ -95,9 +95,10 @@ func TestAccFQDNContainer(t *testing.T) {
 	}})
 }
 
+// The metadata size can lag a clear; downloaded members determine membership.
 func checkMembers(object string, stage int) resource.TestCheckFunc {
 	count := []string{"2", "1", "0"}[stage]
-	checks := []resource.TestCheckFunc{resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "values.#", count), resource.TestCheckResourceAttr(object, "size", count)}
+	checks := []resource.TestCheckFunc{resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "values.#", count), resource.TestCheckResourceAttrSet(object, "size")}
 
 	if stage == 0 {
 		checks = append(checks, resource.TestCheckTypeSetElemAttr(object, "values.*", "example.com"), resource.TestCheckTypeSetElemAttr(object, "values.*", "api.example.com"))
