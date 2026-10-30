@@ -80,6 +80,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/groupmembers"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/sitewebproxy/swpsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/statichost"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/waninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
@@ -531,6 +532,8 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
+
+		swpsection.NewResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,
