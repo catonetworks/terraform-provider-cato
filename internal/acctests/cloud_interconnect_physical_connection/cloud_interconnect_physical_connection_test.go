@@ -20,6 +20,7 @@ import (
 
 func TestAccCloudInterconnectPhysicalConnection(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	pop := os.Getenv("TFACC_CLOUD_INTERCONNECT_TEST_POP_ID")
 	alternate := os.Getenv("TFACC_CLOUD_INTERCONNECT_ALT_POP_ID")
 	if pop == "" {
@@ -74,6 +75,7 @@ func TestAccCloudInterconnectPhysicalConnection(t *testing.T) {
 	if alternate != "" {
 		steps = append(steps, resource.TestStep{Config: config(2), Check: resource.TestCheckResourceAttr(object, "pop_location.id", alternate)}, resource.TestStep{Config: config(2), PlanOnly: true, ExpectNonEmptyPlan: false})
 	}
+	steps = append(steps, resource.TestStep{ResourceName: object, ImportState: true, ImportStateVerify: true})
 	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories, PreCheck: acc.CheckCMAVars(t), CheckDestroy: func(state *terraform.State) error {
 		for _, item := range state.RootModule().Resources {
 			if item.Type != "cato_cloud_interconnect_physical_connection" || item.Primary == nil {
@@ -88,7 +90,7 @@ func TestAccCloudInterconnectPhysicalConnection(t *testing.T) {
 			}
 		}
 		return nil
-	}, Steps: steps})
+	}, Steps: acc.WithStableResourceID(steps, object, "id")})
 }
 func validateMockPOP(t *testing.T, id string) {
 	t.Helper()
