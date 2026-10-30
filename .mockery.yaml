@@ -78,3 +78,10 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryazurevsocket:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SecondaryAzureVSocketClient.go
+          structname: SecondaryAzureVSocketClient
