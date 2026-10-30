@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"text/template"
 	"time"
@@ -20,9 +19,6 @@ import (
 
 func TestAccAlwaysOnSection(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv("CATO_ACCOUNT_ID") != "62015" {
-		t.Fatal("Always On section acceptance tests require CATO_ACCOUNT_ID=62015")
-	}
 	mockSrv := accmock.NewMockServer(t, t.Name())
 	defer mockSrv.Close()
 	mockSrv.Run()

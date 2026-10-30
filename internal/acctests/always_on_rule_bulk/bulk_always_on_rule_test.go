@@ -3,7 +3,6 @@
 package always_on_rule_bulk
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -14,9 +13,6 @@ import (
 
 func TestAccAlwaysOnRuleBulk(t *testing.T) {
 	acc.SkipByEnv(t)
-	if os.Getenv("CATO_ACCOUNT_ID") != "62015" {
-		t.Fatal("Always On ordering acceptance tests require CATO_ACCOUNT_ID=62015")
-	}
 	mockSrv := accmock.NewMockServer(t, t.Name())
 	defer mockSrv.Close()
 	mockSrv.Run()
