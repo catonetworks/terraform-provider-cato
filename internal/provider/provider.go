@@ -37,6 +37,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkinterfaces"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/sitelocation"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnsserverset"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterfacelagmember"
@@ -528,6 +529,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		account.NewAccountResource,
 		role.NewResource,
+		dnsserverset.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
