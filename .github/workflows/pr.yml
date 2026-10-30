@@ -46,6 +46,9 @@ jobs:
       - name: Run unit tests
         run: make test
 
+      - name: Compile acceptance tests without API calls
+        run: go test -tags=acctest ./internal/acctests/... -run '^$'
+
       - name: Run acceptance tests
         if: ${{ github.ref_name != 'beta' && !startsWith(github.ref_name, 'beta-') }}
         run: make acctest-flaky
