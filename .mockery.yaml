@@ -78,3 +78,9 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssuffixset:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DNSSuffixSetClient.go
+          structname: DNSSuffixSetClient
