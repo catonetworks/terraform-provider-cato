@@ -16,6 +16,7 @@ import (
 
 func TestAccCloudInterconnectSite(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	name := acc.GetRandName("cloud_interconnect_site")
 	config := func(updated, clearDescription bool) string {
 		suffix, location := "", ""
@@ -60,13 +61,13 @@ func TestAccCloudInterconnectSite(t *testing.T) {
 				}
 			}
 			return nil
-		}, Steps: []resource.TestStep{
+		}, Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(false, false), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "site_location.country_code", "GB"))},
 			{Config: config(false, false), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{ResourceName: object, ImportState: true, ImportStateVerify: true},
 			{Config: config(true, false), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr(object, "name", name+"_updated"), resource.TestCheckResourceAttr(object, "site_location.city", "Manchester"))},
 			{Config: config(true, false), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{Config: config(true, true), Check: resource.TestCheckResourceAttr(object, "description", "")},
-			{Config: config(true, true), PlanOnly: true, ExpectNonEmptyPlan: false},
-		}})
+			{Config: config(true, true), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: object, ImportState: true, ImportStateVerify: true},
+		}, object, "id")})
 }
