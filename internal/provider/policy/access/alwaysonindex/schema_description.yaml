@@ -1,0 +1,53 @@
+# Resource: cato_always_on_rule_bulk
+# Package: internal/provider/policy/access/alwaysonindex
+# Source: https://system.cc.catonetworks.com/api/schema?with_undocumented=true
+# Inspected: 2026-10-27
+# Status: approved and implemented.
+# This ordering resource composes move operations,
+# Create/Update: policy.ztnaAlwaysOn.moveSection and moveRule
+# Read: policy.ztnaAlwaysOn.policy
+# Publish: policy.ztnaAlwaysOn.publishPolicyRevision, after successful ordering
+# or when the default private revision reports pending changes from a prior apply.
+# Delete: Terraform state only; preserve policy sections, rules, and their order.
+# Import: same as Read policy.ztnaAlwaysOn.policy
+# section_data map keys are section names; rule_data map keys are rule names.
+# Explicit indexes determine order.
+Attributes:
+  - Name: rule_data
+    Description: Map of Always On rule positions keyed by nonempty rule name. Section names must not be empty, and indexes within each section must form a sequence from 1 to its rule count.
+    Type: map
+    ItemType: nested
+    Mode: optional
+    Attributes:
+      - Name: id
+        Description: Always On rule ID
+        Type: string
+        Mode: computed
+      - Name: index_in_section
+        Description: Position of the rule within its section, starting at 1
+        Type: int64
+        Mode: required
+      - Name: section_name
+        Description: Name of the parent Always On section, matching a section_data map key
+        Type: string
+        Mode: required
+
+  - Name: section_data
+    Description: Map of Always On section positions keyed by nonempty section name. Section indexes must form a sequence from 1 to the number of sections.
+    Type: map
+    ItemType: nested
+    Mode: required
+    Attributes:
+      - Name: id
+        Description: Always On policy section ID
+        Type: string
+        Mode: computed
+      - Name: section_index
+        Description: Position of the section within the policy, starting at 1
+        Type: int64
+        Mode: required
+
+  - Name: changes
+    Description: Number of changes in draft policy
+    Type: int64
+    Mode: computed

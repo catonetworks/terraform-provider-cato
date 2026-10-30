@@ -21,9 +21,7 @@ import (
 
 func (r *alwaysOnRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The cato_always_on_rule resource manages an Always On policy rule in the Cato platform. " +
-			"Changes are saved to the draft policy without publishing. Changing at moves the rule; " +
-			"omitting at preserves its current position.",
+		Description: "The cato_always_on_rule resource manages an Always On policy rule in the Cato platform.",
 		Attributes: map[string]schema.Attribute{
 			"at":   policyrule.SchemaPosition(),
 			"rule": schemaAlwaysOnRule(),
@@ -73,7 +71,7 @@ func schemaAlwaysOnRule() schema.SingleNestedAttribute {
 			"id": schema.StringAttribute{
 				Description:   "Always On policy rule ID",
 				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 			},
 			"index": schema.Int64Attribute{
 				Description: "Position or priority of the rule in the policy",
@@ -86,8 +84,12 @@ func schemaAlwaysOnRule() schema.SingleNestedAttribute {
 			"platform": schema.SetAttribute{
 				Description: "Operating systems matched with logical OR (ANDROID, CHROMEOS, EMBEDDED, IOS, LINUX, MACOS, or WINDOWS); " +
 					"combined with other criteria using logical AND (API default is an empty collection)",
-				Required:    true,
+				Optional:    true,
+				Computed:    true,
 				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.Set{
+					planmodifiers.NullSetModifier(types.StringType),
+				},
 				Validators: []validator.Set{setvalidator.ValueStringsAre(
 					stringvalidator.OneOf(utils.ToStrings(cato_models.AllOperatingSystem)...),
 				)},
@@ -126,7 +128,7 @@ func schemaAlwaysOnRuleSection() schema.SingleNestedAttribute {
 			"id": schema.StringAttribute{
 				Description:   "Policy section ID",
 				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
 				Description: "Policy section name",
@@ -153,7 +155,11 @@ func schemaAlwaysOnRuleSource() schema.SingleNestedAttribute {
 func schemaAlwaysOnRuleReferences(prefix, description string) schema.SetNestedAttribute {
 	return schema.SetNestedAttribute{
 		Description: description,
-		Required:    true,
+		Optional:    true,
+		Computed:    true,
+		PlanModifiers: []planmodifier.Set{
+			planmodifiers.NullSetModifier(idname.RefObjectType),
+		},
 		NestedObject: schema.NestedAttributeObject{
 			Attributes:    idname.SchemaNameID(prefix),
 			PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
