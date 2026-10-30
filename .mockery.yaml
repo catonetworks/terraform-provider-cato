@@ -78,3 +78,10 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/fqdncontainer:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: FQDNContainerClient.go
+          structname: FQDNContainerClient

@@ -77,6 +77,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
 	groupdata "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/group"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/fqdncontainer"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/groupmembers"
@@ -528,6 +529,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		account.NewAccountResource,
 		role.NewResource,
+		fqdncontainer.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
