@@ -5,6 +5,7 @@ package rpfrule
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -23,6 +24,7 @@ func TestAccRemotePortFwdRule(t *testing.T) {
 	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
 	fixtureIP, fixturePort := selectExternalIP(t)
+	_, anchorPort := selectExternalIP(t, fixturePort)
 	config := func(name, description string) string {
 		return acc.ProviderCfg() + strings.NewReplacer("${name}", name, "${description}", description, "${position}", func() string {
 			if description == "updated" {
@@ -48,6 +50,16 @@ rule = {
 `)
 	}
 	name := acc.GetRandName("remote_port_forward_rule")
+	singleRuleConfig := config
+	anchorName := name + "-anchor"
+	config = func(name, description string) string {
+		anchor := strings.Replace(singleRuleConfig(anchorName, "initial"), `"test" {`, `"anchor" {`, 1)
+		anchor = strings.ReplaceAll(anchor, fmt.Sprintf("%q", fixturePort), fmt.Sprintf("%q", anchorPort))
+		target := strings.Replace(singleRuleConfig(name, description), `"test" {`, `"test" {
+ depends_on = [cato_remote_port_forward_rule.anchor]`, 1)
+		anchor = strings.TrimPrefix(anchor, acc.ProviderCfg())
+		return anchor + "\n" + target
+	}
 	resourceName := "cato_remote_port_forward_rule.test"
 
 	published := func(state *terraform.State) error {
@@ -111,7 +123,7 @@ rule = {
 	})
 }
 
-func selectExternalIP(t *testing.T) (allocationID, externalPort string) {
+func selectExternalIP(t *testing.T, excluded ...string) (allocationID, externalPort string) {
 	t.Helper()
 	client := acc.GetClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -135,13 +147,13 @@ func selectExternalIP(t *testing.T) (allocationID, externalPort string) {
 	if err != nil {
 		t.Fatalf("read published policy prerequisites: %v", err)
 	}
-	return id, selectFreePort(t, policy.GetPolicy().GetRemotePortFwd().GetPolicy().GetRules())
+	return id, selectFreePort(t, policy.GetPolicy().GetRemotePortFwd().GetPolicy().GetRules(), excluded...)
 }
 
-func selectFreePort(t *testing.T, rules []*cato.RemotePortFwdPolicy_Policy_RemotePortFwd_Policy_Rules) string {
+func selectFreePort(t *testing.T, rules []*cato.RemotePortFwdPolicy_Policy_RemotePortFwd_Policy_Rules, excluded ...string) string {
 	t.Helper()
 	for port := 54321; port <= 65535; port++ {
-		used := false
+		used := slices.Contains(excluded, strconv.Itoa(port))
 		for _, entry := range rules {
 			interval := entry.GetRule().GetExternalPortRange()
 			if interval.GetFrom() == nil || interval.GetTo() == nil {
