@@ -78,3 +78,10 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: TerminalServerRuleClient.go
+          structname: TerminalServerRuleClient
