@@ -21,6 +21,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/appconnector"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectorgroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/privateapp"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/user"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/account"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/admin"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/licensinginfo"
@@ -530,6 +531,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		role.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
+		user.NewResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
