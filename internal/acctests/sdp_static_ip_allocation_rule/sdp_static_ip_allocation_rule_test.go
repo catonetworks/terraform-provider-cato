@@ -22,10 +22,8 @@ func TestAccSdpStaticIPAllocationRule(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
-	staticIP := os.Getenv("TFACC_SDP_STATIC_IP")
-	if staticIP == "" {
-		t.Skip("TFACC_SDP_STATIC_IP must be an unused IP from a configured test-account static range")
-	}
+	staticIP, anchorIP := staticIPs(t)
+	anchorUser := createTestUser(t)
 	fixtureUser := createTestUser(t)
 	config := func(name, description string) string {
 		return acc.ProviderCfg() + strings.NewReplacer("${name}", name, "${description}", description, "${position}", func() string {
@@ -46,6 +44,16 @@ rule = {
 `)
 	}
 	name := acc.GetRandName("sdp_static_ip_allocation_rule")
+	singleRuleConfig := config
+	anchorName := name + "-anchor"
+	config = func(name, description string) string {
+		anchor := strings.Replace(singleRuleConfig(anchorName, "initial"), `"test" {`, `"anchor" {`, 1)
+		anchor = strings.NewReplacer(fixtureUser, anchorUser, staticIP, anchorIP).Replace(anchor)
+		target := strings.Replace(singleRuleConfig(name, description), `"test" {`, `"test" {
+ depends_on = [cato_sdp_static_ip_allocation_rule.anchor]`, 1)
+		anchor = strings.TrimPrefix(anchor, acc.ProviderCfg())
+		return anchor + "\n" + target
+	}
 	resourceName := "cato_sdp_static_ip_allocation_rule.test"
 
 	published := func(state *terraform.State) error {
@@ -136,4 +144,13 @@ func createTestUser(t *testing.T) string {
 		t.Fatalf("disable isolated user: %v", err)
 	}
 	return id
+}
+
+func staticIPs(t *testing.T) (primary, anchor string) {
+	t.Helper()
+	primary, anchor = os.Getenv("TFACC_SDP_STATIC_IP"), os.Getenv("TFACC_SDP_STATIC_IP_ANCHOR")
+	if primary == "" || anchor == "" || primary == anchor {
+		t.Skip("Two distinct unused static IPs are required: TFACC_SDP_STATIC_IP and TFACC_SDP_STATIC_IP_ANCHOR")
+	}
+	return primary, anchor
 }
