@@ -18,6 +18,7 @@ import (
 
 func TestAccSecondaryAWSVSocket(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	if os.Getenv("TFACC_ALLOW_UNREGISTERED_SECONDARY_SITE") != "1" {
 		t.Skip("Requires ADD_SECONDARY_ON_HA_SITE_CREATION; set TFACC_ALLOW_UNREGISTERED_SECONDARY_SITE=1 on an enabled test account")
 	}
@@ -47,13 +48,13 @@ func TestAccSecondaryAWSVSocket(t *testing.T) {
 }`, siteID, ip, table)
 	}
 	object := "cato_secondary_aws_vsocket.test"
-	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories, PreCheck: acc.CheckCMAVars(t), CheckDestroy: func(state *terraform.State) error { return checkDestroyedSecondary(t, siteID, state) }, Steps: []resource.TestStep{
+	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories, PreCheck: acc.CheckCMAVars(t), CheckDestroy: func(state *terraform.State) error { return checkDestroyedSecondary(t, siteID, state) }, Steps: acc.WithStableResourceID([]resource.TestStep{
 		{Config: config(false), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "site.id", siteID))},
 		{Config: config(false), PlanOnly: true, ExpectNonEmptyPlan: false},
 		{ResourceName: object, ImportState: true, ImportStateVerify: true},
 		{Config: config(true), Check: resource.TestCheckResourceAttr(object, "eni_ip_address", "10.253.250.11")},
-		{Config: config(true), PlanOnly: true, ExpectNonEmptyPlan: false},
-	}})
+		{Config: config(true), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: object, ImportState: true, ImportStateVerify: true},
+	}, object, "id")})
 }
 
 func cleanupOwnedSite(t *testing.T, siteID string) {
