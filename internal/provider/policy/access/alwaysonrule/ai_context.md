@@ -27,12 +27,17 @@ matching ID in policy.rules[].rule.
 
 See schema_description.yaml. Preserve the create input tree: optional `at` and
 required `rule`. Compute rule.id, rule.index, and rule.section from responses.
-Required modes follow GraphQL non-null markers even when GraphQL defines defaults.
-All enum attributes are required per tf-resource section 1.2.5, including
+Required modes follow GraphQL non-null markers even when GraphQL defines defaults,
+except the matching criteria sets. Scalar enum attributes are required per tf-resource section 1.2.5, including
 at.position (when at is configured) and rule.anti_tamper_mode. Enum validation
 uses stringvalidator.OneOf(utils.ToStrings(cato_models.AllEnumName)...), per
 coding rule TFSCHEMA-010.
 Use unordered sets for platforms, device profiles, users, and user groups.
+These four sets are optional_computed with the modifyPlan hint. TFSCHEMA-005
+uses NullSetModifier with the matching element type to plan omitted criteria as
+empty sets, including when removing previously configured criteria. All response
+parsers normalize nil and empty API criteria to known empty sets (CONV-004).
+The source object remains required; `source = {}` matches all users and groups.
 Use id/name references instead of by/input objects, following the skill.
 Enum hints identify actual SDK model types.
 

@@ -1,0 +1,1 @@
+../cato_always_on_rule/resource.tf

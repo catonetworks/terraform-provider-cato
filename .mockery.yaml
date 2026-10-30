@@ -6,6 +6,24 @@ structname: "{{.InterfaceName}}"
 force-file-write: true
 formatter: gofmt
 packages:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonindex:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: BulkAlwaysOnRuleClient.go
+          structname: BulkAlwaysOnRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonpolicy:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AlwaysOnPolicyClient.go
+          structname: AlwaysOnPolicyClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AlwaysOnSectionClient.go
+          structname: AlwaysOnSectionClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule:
     interfaces:
       ResourceClient:

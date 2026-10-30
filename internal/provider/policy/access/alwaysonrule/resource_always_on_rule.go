@@ -34,7 +34,10 @@ func (r *alwaysOnRuleResource) getClient() ResourceClient {
 	if r.apiClient != nil {
 		return r.apiClient
 	}
-	return r.configuredClient()
+	if r.client == nil || r.client.Catov2 == nil {
+		return nil
+	}
+	return r.client.Catov2
 }
 
 func (r *alwaysOnRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

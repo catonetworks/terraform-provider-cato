@@ -36,6 +36,9 @@ func TestRegisteredResourceLayers(t *testing.T) {
 				require.False(t, info.IsDir())
 			}
 			field, ok := typ.FieldByName("apiClient")
+			if !ok {
+				field, ok = typ.FieldByName("mockClient")
+			}
 			require.True(t, ok, "resource needs an injectable client")
 			require.Equal(t, reflect.Interface, field.Type.Kind())
 			require.Positive(t, field.Type.NumMethod(), "client should expose the resource API operations")
