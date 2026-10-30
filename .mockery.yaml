@@ -78,3 +78,9 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectphysicalconnection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: CloudInterconnectPhysicalConnectionClient.go
+          structname: CloudInterconnectPhysicalConnectionClient
