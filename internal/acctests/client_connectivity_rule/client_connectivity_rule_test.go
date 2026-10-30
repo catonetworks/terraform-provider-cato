@@ -34,6 +34,16 @@ rule = {"action": "ALLOW", "confidence_level": "HIGH", "connection_origin": [], 
 `)
 	}
 	name := acc.GetRandName("client_connectivity_rule")
+	singleRuleConfig := config
+	anchorName := name + "-anchor"
+	config = func(name, description string) string {
+		anchor := strings.Replace(singleRuleConfig(anchorName, "initial"), `"test" {`, `"anchor" {`, 1)
+
+		target := strings.Replace(singleRuleConfig(name, description), `"test" {`, `"test" {
+ depends_on = [cato_client_connectivity_rule.anchor]`, 1)
+		anchor = strings.TrimPrefix(anchor, acc.ProviderCfg())
+		return anchor + "\n" + target
+	}
 	resourceName := "cato_client_connectivity_rule.test"
 
 	published := func(state *terraform.State) error {
