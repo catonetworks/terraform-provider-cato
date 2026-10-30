@@ -17,6 +17,7 @@ import (
 
 func TestAccUser(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	name := acc.GetRandName("local_user")
 	config := func(updated, clearOptional bool) string {
 		first, department, job, phone := "Terraform", "Engineering", "Developer", "+15555550123"
@@ -67,14 +68,14 @@ func TestAccUser(t *testing.T) {
 			}
 			return nil
 		},
-		Steps: []resource.TestStep{
+		Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(false, false), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "enabled", "false"), resource.TestCheckResourceAttr(object, "user_import_type", "MANUAL"))},
 			{Config: config(false, false), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{ResourceName: object, ImportState: true, ImportStateVerify: true},
 			{Config: config(true, false), Check: resource.TestCheckResourceAttr(object, "first_name", "Updated")},
 			{Config: config(true, false), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{Config: config(true, true), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr(object, "department", ""), resource.TestCheckResourceAttr(object, "job_title", ""), resource.TestCheckResourceAttr(object, "phone_number", ""))},
-			{Config: config(true, true), PlanOnly: true, ExpectNonEmptyPlan: false},
-		},
+			{Config: config(true, true), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: object, ImportState: true, ImportStateVerify: true},
+		}, object, "id"),
 	})
 }
