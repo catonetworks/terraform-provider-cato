@@ -18,6 +18,7 @@ import (
 
 func TestAccMailingList(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	name := acc.GetRandName("mailing_list")
 	limit := int64(1)
 	admins, err := acc.GetClient(t).Admins(context.Background(), acc.CatoAccountID, &limit, nil, nil, nil, nil)
@@ -63,7 +64,7 @@ func TestAccMailingList(t *testing.T) {
 			}
 		}
 		return nil
-	}, Steps: []resource.TestStep{
+	}, Steps: acc.WithStableResourceID([]resource.TestStep{
 		{Config: config(false, false), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "address.#", "1"))},
 		{Config: config(false, false), PlanOnly: true, ExpectNonEmptyPlan: false},
 		{ResourceName: object, ImportState: true, ImportStateVerify: true},
@@ -72,8 +73,8 @@ func TestAccMailingList(t *testing.T) {
 		{Config: config(true, true), Check: resource.TestCheckResourceAttr(object, "address.#", "0")},
 		{Config: config(true, true), PlanOnly: true, ExpectNonEmptyPlan: false},
 		{Config: config(true, false), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr(object, "admin.#", "0"), resource.TestCheckResourceAttr(object, "address.#", "1"))},
-		{Config: config(true, false), PlanOnly: true, ExpectNonEmptyPlan: false},
-	}})
+		{Config: config(true, false), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: object, ImportState: true, ImportStateVerify: true},
+	}, object, "id")})
 }
 
 func missingFixture(err error, id string) bool {
