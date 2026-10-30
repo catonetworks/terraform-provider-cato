@@ -18,6 +18,7 @@ import (
 
 func TestAccCustomApplication(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	name := acc.GetRandName("custom_app")
 	acc.CheckCMAVars(t)()
 	categoryID := categoryFixture(t)
@@ -66,7 +67,7 @@ func TestAccCustomApplication(t *testing.T) {
 			}
 		}
 		return nil
-	}, Steps: []resource.TestStep{
+	}, Steps: acc.WithStableResourceID([]resource.TestStep{
 		{Config: config(0), Check: resource.TestCheckResourceAttrSet(object, "id")},
 		{Config: config(0), PlanOnly: true, ExpectNonEmptyPlan: false},
 		{ResourceName: object, ImportState: true, ImportStateVerify: true},
@@ -76,10 +77,12 @@ func TestAccCustomApplication(t *testing.T) {
 		{Config: config(2), Check: resource.TestCheckResourceAttr(object, "description", "")},
 		{Config: config(2), PlanOnly: true, ExpectNonEmptyPlan: false},
 		{ResourceName: object, ImportState: true, ImportStateVerify: true},
-	}})
+	}, object,
+
+		// Read only: reuse a static category reference, without changing existing applications.
+		"id")})
 }
 
-// Read only: reuse a static category reference, without changing existing applications.
 func categoryFixture(t *testing.T) string {
 	result, err := acc.GetClient(t).CustomAppDataCustomApplicationList(context.Background(), acc.CatoAccountID,
 		m.CustomApplicationListInput{Paging: &m.PagingInput{From: 0, Limit: 20}})
