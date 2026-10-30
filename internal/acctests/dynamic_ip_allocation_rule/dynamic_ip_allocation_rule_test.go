@@ -20,7 +20,8 @@ func TestAccDynamicIPAllocationRule(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
-	fixtureRange := createTestIPRange(t)
+	fixtureRange := createTestIPRange(t, "10.254.252.0/24")
+	anchorRange := createTestIPRange(t, "10.254.253.0/24")
 	config := func(name, description string) string {
 		return acc.ProviderCfg() + strings.NewReplacer("${name}", name, "${description}", description, "${position}", func() string {
 			if description == "updated" {
@@ -43,6 +44,16 @@ rule = {
 `)
 	}
 	name := acc.GetRandName("dynamic_ip_allocation_rule")
+	singleRuleConfig := config
+	anchorName := name + "-anchor"
+	config = func(name, description string) string {
+		anchor := strings.Replace(singleRuleConfig(anchorName, "initial"), `"test" {`, `"anchor" {`, 1)
+		anchor = strings.ReplaceAll(anchor, fixtureRange, anchorRange)
+		target := strings.Replace(singleRuleConfig(name, description), `"test" {`, `"test" {
+ depends_on = [cato_dynamic_ip_allocation_rule.anchor]`, 1)
+		anchor = strings.TrimPrefix(anchor, acc.ProviderCfg())
+		return anchor + "\n" + target
+	}
 	resourceName := "cato_dynamic_ip_allocation_rule.test"
 
 	published := func(state *terraform.State) error {
@@ -106,13 +117,13 @@ rule = {
 	})
 }
 
-func createTestIPRange(t *testing.T) string {
+func createTestIPRange(t *testing.T, ipRange string) string {
 	t.Helper()
 	client := acc.GetClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	result, err := client.ObjectCreateGlobalIPRangeBulk(ctx, acc.CatoAccountID, []*cato_models.CreateGlobalIPRangeInput{{
-		Name: acc.GetRandName("dynamic_ip_pool"), IPRange: "10.254.252.0/24",
+		Name: acc.GetRandName("dynamic_ip_pool"), IPRange: ipRange,
 	}})
 	if err != nil {
 		t.Fatalf("create isolated IP range: %v", err)
