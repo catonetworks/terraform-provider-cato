@@ -40,6 +40,16 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 `)
 	}
 	name := acc.GetRandName("split_tunnel_rule")
+	singleRuleConfig := config
+	anchorName := name + "-anchor"
+	config = func(name, description string) string {
+		anchor := strings.Replace(singleRuleConfig(anchorName, "initial"), `"test" {`, `"anchor" {`, 1)
+
+		target := strings.Replace(singleRuleConfig(name, description), `"test" {`, `"test" {
+ depends_on = [cato_split_tunnel_rule.anchor]`, 1)
+		anchor = strings.TrimPrefix(anchor, acc.ProviderCfg())
+		return anchor + "\n" + target
+	}
 	resourceName := "cato_split_tunnel_rule.test"
 	var createdID string
 
