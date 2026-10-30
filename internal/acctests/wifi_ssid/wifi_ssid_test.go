@@ -20,6 +20,7 @@ import (
 
 func TestAccWifiSSID(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
 	ctx := context.Background()
 	client := acc.GetClient(t)
@@ -79,15 +80,15 @@ func TestAccWifiSSID(t *testing.T) {
 }`, name+suffix, siteID, band, prefix+".0/24", prefix+".1", dhcp, key)
 	}
 	object := "cato_wifi_ssid.test"
-	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories, PreCheck: acc.CheckCMAVars(t), CheckDestroy: func(state *terraform.State) error { return checkWifiDestroyed(t, state) }, Steps: []resource.TestStep{
+	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories, PreCheck: acc.CheckCMAVars(t), CheckDestroy: func(state *terraform.State) error { return checkWifiDestroyed(t, state) }, Steps: acc.WithStableResourceID([]resource.TestStep{
 		{Config: config(0), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "enabled", "false"))},
 		{Config: config(0), PlanOnly: true, ExpectNonEmptyPlan: false},
 		{ResourceName: object, ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"security.psk"}},
 		{Config: config(1), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr(object, "band", "BAND_5G"), resource.TestCheckResourceAttr(object, "dhcp.dhcp_subnet", prefix+".128/25"))},
 		{Config: config(1), PlanOnly: true, ExpectNonEmptyPlan: false},
 		{Config: config(2), Check: resource.TestCheckResourceAttr(object, "security.psk.passkey", passkey+"u")},
-		{Config: config(2), PlanOnly: true, ExpectNonEmptyPlan: false},
-	}})
+		{Config: config(2), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: object, ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"security.psk"}},
+	}, object, "id")})
 }
 func randomPasskey(t *testing.T) string {
 	t.Helper()
