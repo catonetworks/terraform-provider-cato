@@ -20,6 +20,7 @@ import (
 
 func TestAccSubscriptionGroup(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	name := acc.GetRandName("subscription_group")
 	id1 := mailingFixture(t, name+"_one")
 	id2 := mailingFixture(t, name+"_two")
@@ -54,7 +55,7 @@ func TestAccSubscriptionGroup(t *testing.T) {
 				}
 			}
 			return nil
-		}, Steps: []resource.TestStep{
+		}, Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(false, false), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(object, "id"), resource.TestCheckResourceAttr(object, "mailing_list.#", "1"))},
 			{Config: config(false, false), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{ResourceName: object, ImportState: true, ImportStateVerify: true},
@@ -63,8 +64,8 @@ func TestAccSubscriptionGroup(t *testing.T) {
 			{Config: config(true, true), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr(object, "mailing_list.#", "0"), resource.TestCheckResourceAttr(object, "integration.#", "0"))},
 			{Config: config(true, true), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{Config: config(false, false), Check: resource.TestCheckResourceAttr(object, "mailing_list.#", "1")},
-			{Config: config(false, false), PlanOnly: true, ExpectNonEmptyPlan: false},
-		}})
+			{Config: config(false, false), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: object, ImportState: true, ImportStateVerify: true},
+		}, object, "id")})
 }
 func mailingFixture(t *testing.T, name string) string {
 	t.Helper()
