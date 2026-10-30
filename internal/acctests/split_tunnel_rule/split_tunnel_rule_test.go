@@ -19,6 +19,7 @@ import (
 
 func TestAccSplitTunnelRule(t *testing.T) {
 	acc.SkipByEnv(t)
+	acc.RequireLive(t)
 	fixtureRange := ""
 
 	config := func(name, description string) string {
@@ -41,6 +42,23 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 	name := acc.GetRandName("split_tunnel_rule")
 	resourceName := "cato_split_tunnel_rule.test"
 	var createdID string
+
+	published := func(state *terraform.State) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		revisionType := cato_models.PolicyRevisionTypePublic
+		policy, err := acc.GetClient(t).PolicySplitTunnelPolicy(ctx, acc.CatoAccountID,
+			&cato_models.SplitTunnelPolicyInput{Revision: &cato_models.PolicyRevisionInput{Type: &revisionType}})
+		if err != nil {
+			return err
+		}
+
+		ids := []string{}
+		for _, item := range policy.GetPolicy().GetSplitTunnel().GetPolicy().GetRules() {
+			ids = append(ids, item.GetRule().GetID())
+		}
+		return acc.CheckPolicyPlacement(state, resourceName, "rule.id", ids)
+	}
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
 		CheckDestroy: func(state *terraform.State) error {
@@ -60,7 +78,7 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 			return nil
 		},
 		PreCheck: acc.CheckCMAVars(t),
-		Steps: []resource.TestStep{
+		Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(name, "initial"), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(resourceName, "rule.id"), func(state *terraform.State) error {
 				createdID = state.RootModule().Resources[resourceName].Primary.Attributes["rule.id"]
 				return nil
@@ -81,12 +99,20 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{PreConfig: func() { addExternalDNSExclusion(t, createdID) }, Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: true},
 			{Config: config(name+"-updated", "updated")},
-			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false},
-		},
+			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
+				object := state.RootModule().Resources[resourceName]
+				if object == nil || object.Primary == nil {
+					return "", fmt.Errorf("missing resource state")
+				}
+				return object.Primary.Attributes["rule.id"], nil
+			}, ImportStateVerifyIgnore: []string{"at"}},
+		}, resourceName,
+
+			// Change only the rule created by this test, then let Terraform detect and repair drift.
+			"rule.id", published),
 	})
 }
 
-// Change only the rule created by this test, then let Terraform detect and repair drift.
 func addExternalDNSExclusion(t *testing.T, id string) {
 	t.Helper()
 	if id == "" {
