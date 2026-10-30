@@ -20,7 +20,8 @@ func TestAccTerminalServerRule(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
-	fixtureRange := createTestIPRange(t)
+	fixtureRange := createTestIPRange(t, "192.0.2.241")
+	anchorRange := createTestIPRange(t, "192.0.2.242")
 	config := func(name, description string) string {
 		return acc.ProviderCfg() + strings.NewReplacer("${name}", name, "${description}", description, "${position}", func() string {
 			if description == "updated" {
@@ -34,6 +35,16 @@ rule = {"allowed_host_ip": {"id": "${range}"}, "description": "${description}", 
 `)
 	}
 	name := acc.GetRandName("terminal_server_rule")
+	singleRuleConfig := config
+	anchorName := name + "-anchor"
+	config = func(name, description string) string {
+		anchor := strings.Replace(singleRuleConfig(anchorName, "initial"), `"test" {`, `"anchor" {`, 1)
+		anchor = strings.ReplaceAll(anchor, fixtureRange, anchorRange)
+		target := strings.Replace(singleRuleConfig(name, description), `"test" {`, `"test" {
+ depends_on = [cato_terminal_server_rule.anchor]`, 1)
+		anchor = strings.TrimPrefix(anchor, acc.ProviderCfg())
+		return anchor + "\n" + target
+	}
 	resourceName := "cato_terminal_server_rule.test"
 
 	published := func(state *terraform.State) error {
@@ -97,13 +108,13 @@ rule = {"allowed_host_ip": {"id": "${range}"}, "description": "${description}", 
 	})
 }
 
-func createTestIPRange(t *testing.T) string {
+func createTestIPRange(t *testing.T, ipRange string) string {
 	t.Helper()
 	client := acc.GetClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	result, err := client.ObjectCreateGlobalIPRangeBulk(ctx, acc.CatoAccountID, []*cato_models.CreateGlobalIPRangeInput{{
-		Name: acc.GetRandName("terminal_server_ip"), IPRange: "192.0.2.241",
+		Name: acc.GetRandName("terminal_server_ip"), IPRange: ipRange,
 	}})
 	if err != nil {
 		t.Fatalf("create isolated IP range: %v", err)
