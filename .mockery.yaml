@@ -235,3 +235,9 @@ packages:
         config:
           filename: CustomApplicationClient.go
           structname: CustomApplicationClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/fqdncontainer:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: FQDNContainerClient.go
+          structname: FQDNContainerClient

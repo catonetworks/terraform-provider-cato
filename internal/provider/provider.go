@@ -99,6 +99,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/customapplication"
 	groupdata "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/group"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/fqdncontainer"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/groupmembers"
@@ -563,6 +564,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		wifissid.NewResource,
 		cloudinterconnectphysicalconnection.NewResource,
 		customapplication.NewResource,
+		fqdncontainer.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		user.NewResource,
