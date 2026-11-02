@@ -211,3 +211,9 @@ packages:
         config:
           filename: SecondaryAWSVSocketClient.go
           structname: SecondaryAWSVSocketClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryazurevsocket:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SecondaryAzureVSocketClient.go
+          structname: SecondaryAzureVSocketClient
