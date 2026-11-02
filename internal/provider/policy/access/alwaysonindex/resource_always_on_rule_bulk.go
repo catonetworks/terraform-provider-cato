@@ -7,7 +7,9 @@ import (
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
@@ -69,14 +71,22 @@ func (r *alwaysOnRuleBulkResource) Create(ctx context.Context, req resource.Crea
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	newState.PublishTrigger = config.PublishTrigger
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
-func (r *alwaysOnRuleBulkResource) Read(ctx context.Context, _ resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *alwaysOnRuleBulkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// The trigger is Terraform configuration and cannot be reconstructed from the API.
+	var publishTrigger types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("publish_trigger"), &publishTrigger)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	state := r.readPolicy(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	state.PublishTrigger = publishTrigger
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -97,6 +107,7 @@ func (r *alwaysOnRuleBulkResource) Update(ctx context.Context, req resource.Upda
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	newState.PublishTrigger = config.PublishTrigger
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 

@@ -47,6 +47,7 @@ func parseRulesIndex(ctx context.Context, result *cato.PolicyZtnaAlwaysOnPolicy,
 	}
 	return &RulesIndex{SectionData: sectionData, RuleData: ruleData, Changes: types.Int64Value(changes)}
 }
+
 func parseSections(ctx context.Context, policy *cato.PolicyZtnaAlwaysOnPolicy_Policy_ZtnaAlwaysOn_Policy,
 	diags *diag.Diagnostics) (sections map[string]attr.Value, sectionNames map[string]string) {
 	sections = make(map[string]attr.Value, len(policy.GetSections()))

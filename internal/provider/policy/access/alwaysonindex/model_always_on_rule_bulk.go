@@ -7,9 +7,10 @@ import (
 
 // RulesIndex holds the requested positions of existing Always On policy items.
 type RulesIndex struct {
-	SectionData types.Map   `tfsdk:"section_data"` // [string]Section
-	RuleData    types.Map   `tfsdk:"rule_data"`    // [string]Rule
-	Changes     types.Int64 `tfsdk:"changes"`
+	SectionData    types.Map    `tfsdk:"section_data"` // [string]Section
+	RuleData       types.Map    `tfsdk:"rule_data"`    // [string]Rule
+	Changes        types.Int64  `tfsdk:"changes"`
+	PublishTrigger types.String `tfsdk:"publish_trigger"`
 }
 
 // Section contains the identifier and position of a section_data map item.

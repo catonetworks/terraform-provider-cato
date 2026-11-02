@@ -102,6 +102,9 @@ resource "cato_always_on_rule_bulk" "reorder" {
   depends_on   = [cato_always_on_section.all, cato_always_on_rule.all]
   section_data = local.section_data
   rule_data    = local.reorder_data
+
+  # Publish rule content changes even when section and rule positions stay the same.
+  publish_trigger = sha256(jsonencode(local.always_on_defs))
 }
 
 # --------------------------------------------------------------------------------
@@ -163,6 +166,7 @@ resource "cato_always_on_rule_bulk" "reorder" {
 
 ### Optional
 
+- `publish_trigger` (String) Changing this value triggers ordering and publishing after dependent rules and sections are updated. Use sha256(jsonencode(...)) over the complete rule and section configuration, and depends_on for those resources, to publish content-only changes in the same apply.
 - `rule_data` (Attributes Map) Map of Always On rule positions keyed by rule name (see [below for nested schema](#nestedatt--rule_data))
 
 ### Read-Only

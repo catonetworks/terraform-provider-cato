@@ -87,6 +87,9 @@ resource "cato_always_on_rule_bulk" "reorder" {
   depends_on   = [cato_always_on_section.all, cato_always_on_rule.all]
   section_data = local.section_data
   rule_data    = local.reorder_data
+
+  # Publish rule content changes even when section and rule positions stay the same.
+  publish_trigger = sha256(jsonencode(local.always_on_defs))
 }
 
 # --------------------------------------------------------------------------------

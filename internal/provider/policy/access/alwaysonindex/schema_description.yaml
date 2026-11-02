@@ -8,6 +8,8 @@
 # Read: policy.ztnaAlwaysOn.policy
 # Publish: policy.ztnaAlwaysOn.publishPolicyRevision, after successful ordering
 # or when the default private revision reports pending changes from a prior apply.
+# publish_trigger schedules ordering and publishing for rule/section content changes.
+# Preserve its configured value through Create/Update and its prior state during Read.
 # Delete: Terraform state only; preserve policy sections, rules, and their order.
 # Import: same as Read policy.ztnaAlwaysOn.policy
 # section_data map keys are section names; rule_data map keys are rule names.
@@ -51,3 +53,11 @@ Attributes:
     Description: Number of changes in draft policy
     Type: int64
     Mode: computed
+
+  - Name: publish_trigger
+    Description: >-
+      Changing this value triggers ordering and publishing after dependent rules and sections are updated.
+      Use sha256(jsonencode(...)) over the complete rule and section configuration, and depends_on for those resources,
+      to publish content-only changes in the same apply.
+    Type: string
+    Mode: optional

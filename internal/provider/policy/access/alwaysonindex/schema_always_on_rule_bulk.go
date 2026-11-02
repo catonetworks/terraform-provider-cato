@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 )
 
 func (r *alwaysOnRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -31,6 +33,7 @@ func (r *alwaysOnRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRe
 			"rule_data": schema.MapNestedAttribute{
 				Description: "Map of Always On rule positions keyed by rule name",
 				Optional:    true,
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 					"id": schemaIndexID("Always On rule ID"),
 					"index_in_section": schema.Int64Attribute{
@@ -43,12 +46,19 @@ func (r *alwaysOnRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRe
 						Required:    true,
 					},
 				}},
-				Validators: []validator.Map{ruleDataValidator{}},
+				Validators:    []validator.Map{ruleDataValidator{}},
+				PlanModifiers: []planmodifier.Map{planmodifiers.EmptyMapDefault(RuleObjectType)},
 			},
 			"changes": schema.Int64Attribute{
 				Description:   "Internal flag",
 				Computed:      true,
 				PlanModifiers: []planmodifier.Int64{newModChanges()},
+			},
+			"publish_trigger": schema.StringAttribute{
+				Description: "Changing this value triggers ordering and publishing after dependent rules and sections are updated. " +
+					"Use sha256(jsonencode(...)) over the complete rule and section configuration, and depends_on for those resources, " +
+					"to publish content-only changes in the same apply.",
+				Optional: true,
 			},
 		},
 	}
