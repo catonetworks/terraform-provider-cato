@@ -169,3 +169,9 @@ packages:
         config:
           filename: RemotePortFwdSectionClient.go
           structname: RemotePortFwdSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/security/antimalwarefilehash/amfhrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AntiMalwareFileHashRuleClient.go
+          structname: AntiMalwareFileHashRuleClient

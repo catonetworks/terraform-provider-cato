@@ -97,6 +97,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/waninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/security/remoteportforward/rpfrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/security/remoteportforward/rpfsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/security/antimalwarefilehash/amfhrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -562,6 +563,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		pasection.NewResource,
 		rpfrule.NewResource,
 		rpfsection.NewResource,
+		amfhrule.NewResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,
