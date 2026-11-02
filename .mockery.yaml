@@ -97,3 +97,9 @@ packages:
         config:
           filename: SplitTunnelRuleClient.go
           structname: SplitTunnelRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SplitTunnelSectionClient.go
+          structname: SplitTunnelSectionClient
