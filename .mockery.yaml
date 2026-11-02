@@ -187,3 +187,9 @@ packages:
         config:
           filename: UserClient.go
           structname: UserClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/account/mailinglist:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: MailingListClient.go
+          structname: MailingListClient
