@@ -226,7 +226,10 @@ func parseAlwaysOnRuleData(ctx context.Context, rule alwaysOnRuleFields, state A
 	state.ID = types.StringValue(rule.GetID())
 	state.Index = types.Int64Value(rule.GetIndex())
 	state.Name = types.StringValue(rule.GetName())
-	state.Platform = convert.StringSet(ctx, append([]cato_models.OperatingSystem{}, rule.GetPlatform()...), diags)
+	state.Platform = convert.StringSet(ctx, rule.GetPlatform(), diags)
+	if state.Platform.IsNull() {
+		state.Platform = types.SetValueMust(types.StringType, nil)
+	}
 	value, stateDiags := types.ObjectValueFrom(ctx, AlwaysOnRuleDataAttrTypes, state)
 	diags.Append(stateDiags...)
 	return value

@@ -15,6 +15,9 @@ var (
 	ErrAPIResponseParse = errors.New("failed to parse API response")
 )
 
+// PolicyRevisionNotFound error when publishing policy changes
+const PolicyRevisionNotFound = "PolicyRevisionNotFound"
+
 func AssertErr(message string) error {
 	return &TestError{message: message}
 }
