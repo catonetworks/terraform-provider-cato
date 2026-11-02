@@ -175,3 +175,9 @@ packages:
         config:
           filename: AntiMalwareFileHashRuleClient.go
           structname: AntiMalwareFileHashRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/security/antimalwarefilehash/amfhsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AntiMalwareFileHashSectionClient.go
+          structname: AntiMalwareFileHashSectionClient
