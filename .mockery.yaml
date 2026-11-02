@@ -205,3 +205,9 @@ packages:
         config:
           filename: CloudInterconnectSiteClient.go
           structname: CloudInterconnectSiteClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryawsvsocket:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SecondaryAWSVSocketClient.go
+          structname: SecondaryAWSVSocketClient

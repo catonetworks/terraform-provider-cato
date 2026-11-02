@@ -45,6 +45,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterfacelagmember"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/networkrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryawsvsocket"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivityrule"
@@ -553,6 +554,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		mailinglist.NewResource,
 		subscriptiongroup.NewResource,
 		cloudinterconnectsite.NewResource,
+		secondaryawsvsocket.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		user.NewResource,
