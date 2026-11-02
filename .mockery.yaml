@@ -157,3 +157,9 @@ packages:
         config:
           filename: PrivateAccessSectionClient.go
           structname: PrivateAccessSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/security/remoteportforward/rpfrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: RemotePortFwdRuleClient.go
+          structname: RemotePortFwdRuleClient
