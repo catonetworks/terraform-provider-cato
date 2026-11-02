@@ -5,12 +5,15 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	attr "github.com/hashicorp/terraform-plugin-framework/attr"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
 	ifrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -123,6 +126,72 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	plan.Scope = scopeObj
 
+	// addSubPolicy auto-created the sub-policy's cleanup rule (its only rule at
+	// this point). Capture it, apply any configured cleanup settings, and manage
+	// it as part of this resource — like a socket site's default interface.
+	cleanup := ifwCleanupRule(after, plan.ID.ValueString())
+	if cleanup == nil {
+		resp.Diagnostics.AddError(
+			"Cleanup Rule Not Found",
+			fmt.Sprintf("No API-created cleanup rule found for sub-policy %s.", plan.ID.ValueString()),
+		)
+		return
+	}
+	if !plan.CleanupRule.IsNull() && !plan.CleanupRule.IsUnknown() {
+		cleanupRule := ifrule.InternetFirewallRule{Rule: plan.CleanupRule, At: plan.At}
+		hydratedCleanup, cuDiags := ifrule.HydrateIfwRuleAPI(ctx, cleanupRule)
+		resp.Diagnostics.Append(cuDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		hydratedCleanup.Update.ID = cleanup.GetID()
+		// Keep the API-generated name unless the config customizes it.
+		if !cleanupNameConfigured(plan.CleanupRule) {
+			cleanupName := cleanup.GetName()
+			hydratedCleanup.Update.Rule.Name = &cleanupName
+		}
+		updateResp, err := r.resourceAPI().PolicyInternetFirewallUpdateRule(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			hydratedCleanup.Update,
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallUpdateRule error", err.Error())
+			return
+		}
+		if updateResp.Policy.InternetFirewall.UpdateRule.Status != cato_models.PolicyMutationStatusSuccess {
+			for _, e := range updateResp.Policy.InternetFirewall.UpdateRule.GetErrors() {
+				resp.Diagnostics.AddError(
+					"API Error Updating Sub-Policy Cleanup Rule",
+					cleanupUpdateErrorDetail(derefStr(e.ErrorCode), derefStr(e.ErrorMessage),
+						cleanupConfiguredName(plan.CleanupRule), cleanup.GetID()),
+				)
+			}
+			return
+		}
+		if err := r.publish(ctx); err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallPublishPolicyRevision error", err.Error())
+			return
+		}
+		after, err = r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
+			return
+		}
+		cleanup = ifwCleanupRule(after, plan.ID.ValueString())
+		if cleanup == nil {
+			resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule not found after update.")
+			return
+		}
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &plan, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.CleanupRule = cleanupObj
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
@@ -159,6 +228,36 @@ func (r *ifSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 	state.Scope = scopeObj
 
+	// Cleanup rule: matched by stored id, falling back to the sub-policy's last
+	// rule — the fallback is what populates it on `terraform import`.
+	cleanup := ifwCleanupRule(body, state.ID.ValueString())
+	if cleanup == nil {
+		tflog.Warn(ctx, "internet firewall sub-policy cleanup rule not found, resource removed")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &state, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.CleanupRule = cleanupObj
+
+	// `at` is input-only (the API never returns a position): preserve the stored
+	// value, defaulting a null one (fresh import) to LAST_IN_POLICY — the same
+	// normalization the cato_if_rule Read applies.
+	if state.At.IsNull() || state.At.IsUnknown() {
+		atObj, atDiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
+			"position": types.StringValue(string(cato_models.PolicySectionPositionEnumLastInPolicy)),
+			"ref":      types.StringNull(),
+		})
+		resp.Diagnostics.Append(atDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.At = atObj
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -177,6 +276,7 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	scopeRuleID := state.ScopeRuleID.ValueString()
 	plan.ID = state.ID
 	plan.ScopeRuleID = state.ScopeRuleID
+	plan.CleanupRuleID = state.CleanupRuleID
 
 	// name/description are RequiresReplace, so only the scope can change here.
 	scopeRule := ifrule.InternetFirewallRule{Rule: plan.Scope, At: plan.At}
@@ -210,6 +310,53 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
+	// Apply cleanup rule changes in the same revision, before the single publish.
+	if !plan.CleanupRule.IsNull() && !plan.CleanupRule.IsUnknown() && !plan.CleanupRule.Equal(state.CleanupRule) {
+		cleanupID := state.CleanupRuleID.ValueString()
+		if cleanupID == "" {
+			// Legacy state (pre-cleanup_rule): resolve via the last-rule lookup.
+			body0, err := r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+			if err != nil {
+				resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
+				return
+			}
+			if cr := ifwCleanupRule(body0, plan.ID.ValueString()); cr != nil {
+				cleanupID = cr.GetID()
+			}
+		}
+		if cleanupID == "" {
+			resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule could not be resolved for update.")
+			return
+		}
+		cleanupRule := ifrule.InternetFirewallRule{Rule: plan.CleanupRule, At: plan.At}
+		hydratedCleanup, cuDiags := ifrule.HydrateIfwRuleAPI(ctx, cleanupRule)
+		resp.Diagnostics.Append(cuDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		hydratedCleanup.Update.ID = cleanupID
+		cleanupUpdateResp, err := r.resourceAPI().PolicyInternetFirewallUpdateRule(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			hydratedCleanup.Update,
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallUpdateRule error", err.Error())
+			return
+		}
+		if cleanupUpdateResp.Policy.InternetFirewall.UpdateRule.Status != cato_models.PolicyMutationStatusSuccess {
+			for _, e := range cleanupUpdateResp.Policy.InternetFirewall.UpdateRule.GetErrors() {
+				resp.Diagnostics.AddError(
+					"API Error Updating Sub-Policy Cleanup Rule",
+					cleanupUpdateErrorDetail(derefStr(e.ErrorCode), derefStr(e.ErrorMessage),
+						cleanupConfiguredName(plan.CleanupRule), cleanupID),
+				)
+			}
+			return
+		}
+	}
+
 	if err := r.publish(ctx); err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallPublishPolicyRevision error", err.Error())
 		return
@@ -230,6 +377,18 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 	plan.Scope = scopeObj
+
+	cleanup := ifwCleanupRule(body, plan.ID.ValueString())
+	if cleanup == nil {
+		resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule not found after update.")
+		return
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &plan, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.CleanupRule = cleanupObj
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }

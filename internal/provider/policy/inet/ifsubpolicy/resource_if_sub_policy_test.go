@@ -279,7 +279,9 @@ func newIfSubPolicyModel(id string) InternetFirewallSubPolicy {
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		}),
-		Scope: scope.Rule,
+		Scope:         scope.Rule,
+		CleanupRuleID: types.StringNull(),
+		CleanupRule:   types.ObjectNull(ifrule.InternetFirewallRuleRuleAttrTypes),
 	}
 }
 
@@ -356,6 +358,10 @@ func ifSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *ca
 	scopeRule := ifrule.MinimalAPIRule(scopeName, 0)
 	scopeRule.ID = scopeID
 	scopeRule.Name = scopeName
+	// The API auto-creates a cleanup rule inside every sub-policy; it is the
+	// sub-policy's last rule (highest index).
+	cleanupRule := ifrule.MinimalAPIRule(subName+" - Cleanup Rule", 1)
+	cleanupRule.ID = "cleanup-1"
 	return &cato_go_sdk.Policy{
 		Policy: cato_go_sdk.Policy_Policy{
 			InternetFirewall: &cato_go_sdk.Policy_Policy_InternetFirewall{
@@ -374,6 +380,11 @@ func ifSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *ca
 							SubPolicy: &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_SubPolicy{ID: subID, Name: subName},
 							Rule:      scopeRule,
 						},
+						{
+							RuleType:  cato_models.PolicyRuleTypeEnumPolicyRule,
+							SubPolicy: &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_SubPolicy{ID: subID, Name: subName},
+							Rule:      cleanupRule,
+						},
 					},
 				},
 			},
@@ -382,3 +393,93 @@ func ifSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *ca
 }
 
 var _ = basetypes.ObjectAsOptions{}
+
+// The cleanup identity follows position: whatever rule sits LAST in the
+// sub-policy is the cleanup, even after manual moves/renames in CMA.
+func TestIfwCleanupRuleFollowsLastPosition(t *testing.T) {
+	body := ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name")
+	moved := ifrule.MinimalAPIRule("Moved User Rule", 5)
+	moved.ID = "user-9"
+	body.Policy.InternetFirewall.Policy.Rules = append(
+		body.Policy.InternetFirewall.Policy.Rules,
+		&cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules{
+			RuleType:  cato_models.PolicyRuleTypeEnumPolicyRule,
+			SubPolicy: &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_SubPolicy{ID: "sub-1", Name: "test-sub"},
+			Rule:      moved,
+		},
+	)
+	got := ifwCleanupRule(body, "sub-1")
+	if got == nil || got.ID != "user-9" {
+		t.Fatalf("expected last rule user-9 as cleanup, got %+v", got)
+	}
+	if ifwCleanupRule(body, "") != nil {
+		t.Fatal("expected nil for empty sub id")
+	}
+}
+
+// Read hydrates the cleanup rule and refreshes cleanup_rule_id — the same path
+// that populates the cleanup after `terraform import` (passthrough id + Read).
+func TestIfSubPolicyReadHydratesCleanup(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewInternetFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name"), nil).Once()
+
+	r := &ifSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	state := newIfSubPolicyStateWithID(ctx, t)
+	resp := &resource.ReadResponse{State: state}
+	r.Read(ctx, resource.ReadRequest{State: state}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
+	var got InternetFirewallSubPolicy
+	resp.State.Get(ctx, &got)
+	if got.CleanupRuleID.ValueString() != "cleanup-1" {
+		t.Fatalf("expected cleanup_rule_id cleanup-1, got %q", got.CleanupRuleID.ValueString())
+	}
+	if got.CleanupRule.IsNull() {
+		t.Fatal("expected cleanup_rule hydrated, got null")
+	}
+}
+
+func TestCleanupNameConfigured(t *testing.T) {
+	if cleanupNameConfigured(types.ObjectNull(ifrule.InternetFirewallRuleRuleAttrTypes)) {
+		t.Fatal("null object must not count as configured")
+	}
+	m := ifrule.NewMinimalInternetFwRuleModel("x")
+	attrs := m.Rule.Attributes()
+	attrs["name"] = types.StringValue("Custom Cleanup Name")
+	obj := types.ObjectValueMust(ifrule.InternetFirewallRuleRuleAttrTypes, attrs)
+	if !cleanupNameConfigured(obj) {
+		t.Fatal("explicit name must count as configured")
+	}
+	attrs["name"] = types.StringNull()
+	obj = types.ObjectValueMust(ifrule.InternetFirewallRuleRuleAttrTypes, attrs)
+	if cleanupNameConfigured(obj) {
+		t.Fatal("null name must not count as configured")
+	}
+}
+
+func TestCleanupUpdateErrorDetail(t *testing.T) {
+	plain := cleanupUpdateErrorDetail("someOtherError", "boom", "X - Cleanup Rule", "r-1")
+	if plain != "someOtherError : boom" {
+		t.Fatalf("unexpected plain detail: %q", plain)
+	}
+	moved := cleanupUpdateErrorDetail("ruleNameAlreadyExists", "Rule with the same name already exists", "X - Cleanup Rule", "r-1")
+	for _, want := range []string{"LAST rule", "r-1", `"X - Cleanup Rule"`, "manually moved", "not intended to be moved outside Terraform"} {
+		if !containsStr(moved, want) {
+			t.Fatalf("expected detail to contain %q, got: %s", want, moved)
+		}
+	}
+}
+
+func containsStr(haystack, needle string) bool {
+	return len(haystack) >= len(needle) && (func() bool {
+		for i := 0; i+len(needle) <= len(haystack); i++ {
+			if haystack[i:i+len(needle)] == needle {
+				return true
+			}
+		}
+		return false
+	})()
+}

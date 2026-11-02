@@ -232,6 +232,22 @@ func BuildPolicyReorderInput(
 		return cato_models.PolicyReorderInput{}, err
 	}
 
+	// A planned row naming a section that is not in the policy index would never
+	// be emitted (no matching section) while still excluding its rule from every
+	// other section's tail - silently dropping the rule from the input, which the
+	// API rejects with reorderPolicyMissingRules. Fail with the real cause instead.
+	sectionNames := make(map[string]struct{}, len(sections))
+	for _, s := range sections {
+		sectionNames[s.Name] = struct{}{}
+	}
+	for _, p := range planned {
+		if _, ok := sectionNames[p.SectionName]; !ok {
+			return cato_models.PolicyReorderInput{}, fmt.Errorf(
+				"planned rule %q references section %q which does not exist in the policy",
+				p.RuleName, p.SectionName)
+		}
+	}
+
 	sectionIDs := sectionIDSet(sections)
 	rulesBySectionID, err := indexRulesBySectionID(sectionIDs, rules)
 	if err != nil {

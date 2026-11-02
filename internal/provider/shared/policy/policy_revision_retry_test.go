@@ -95,3 +95,29 @@ func nestedRequestString(t *testing.T, root map[string]any, path ...string) stri
 	require.Truef(t, ok, "request path %v does not contain a string", path)
 	return value
 }
+
+func TestReorderErrLooksLikeStaleSnapshot(t *testing.T) {
+	t.Parallel()
+	if !ReorderErrLooksLikeStaleSnapshot("internet firewall reorderPolicy errors: reorderPolicyMissingRules: Not all rules are included in the reorder input") {
+		t.Fatal("expected missing-rules to match")
+	}
+	if !ReorderErrLooksLikeStaleSnapshot("reorderPolicyMissingSections: x") {
+		t.Fatal("expected missing-sections to match")
+	}
+	if !ReorderErrLooksLikeStaleSnapshot("reorderPolicyAlreadyInSession: A reorder has already been performed in this revision") {
+		t.Fatal("expected already-in-session to match")
+	}
+	if ReorderErrLooksLikeStaleSnapshot("reorderPolicyBlockedByActiveSessions") {
+		t.Fatal("active-sessions must not match stale snapshot")
+	}
+}
+
+func TestTransientAPIErr(t *testing.T) {
+	t.Parallel()
+	if !TransientAPIErr(`{"networkErrors":null,"graphqlErrors":[{"message":"Exception while fetching data (/policy/internetFirewall/policy) : Internal server error","extensions":{"code":"DOWNSTREAM_SERVICE_ERROR"}}]}`) {
+		t.Fatal("expected downstream 500 to match")
+	}
+	if TransientAPIErr("ruleNameAlreadyExists : Rule with the same name already exists") {
+		t.Fatal("business errors must not match")
+	}
+}

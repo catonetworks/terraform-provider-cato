@@ -7,12 +7,14 @@ import (
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -67,6 +69,99 @@ func (r *InternetFwRuleResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
+// adoptExistingRule resolves a ruleNameAlreadyExists collision on Create by
+// locating the live rule with the configured name in the same policy scope
+// (main policy vs. the plan's sub-policy; SUB_POLICY_SCOPE rows excluded) and
+// updating it to match the configuration. It returns the adopted rule id, or a
+// diagnostic when the rule cannot be found or lives in a different scope
+// (updateRule cannot move rules between scopes).
+func (r *InternetFwRuleResource) adoptExistingRule(
+	ctx context.Context,
+	plan InternetFirewallRule,
+	input HydrateIfwAPITypes,
+) (string, diag.Diagnostic) {
+	ruleName := ""
+	if input.Create.Rule != nil {
+		ruleName = input.Create.Rule.Name
+	}
+	planSubPolicyID := ""
+	if !plan.SubPolicyID.IsNull() && !plan.SubPolicyID.IsUnknown() {
+		planSubPolicyID = plan.SubPolicyID.ValueString()
+	}
+
+	var body *cato_go_sdk.Policy
+	readErr := sharedpolicy.WithTransientReadRetry(ctx, "PolicyInternetFirewall adoption lookup", func() error {
+		var callErr error
+		body, callErr = r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.Client.AccountId)
+		return callErr
+	})
+	if readErr != nil {
+		return "", diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewall error", readErr.Error())
+	}
+
+	adoptedID := ""
+	for _, item := range body.GetPolicy().GetInternetFirewall().GetPolicy().GetRules() {
+		if rt := item.GetRuleType(); rt != nil && *rt == cato_models.PolicyRuleTypeEnumSubPolicyScope {
+			continue
+		}
+		if item.GetRule().GetName() != ruleName {
+			continue
+		}
+		itemSubPolicyID := ""
+		if sp := item.GetSubPolicy(); sp != nil {
+			itemSubPolicyID = sp.GetID()
+		}
+		if itemSubPolicyID != planSubPolicyID {
+			return "", diag.NewErrorDiagnostic(
+				"API Error Creating Resource",
+				fmt.Sprintf("ruleNameAlreadyExists : rule %q already exists in a different policy scope "+
+					"(existing sub-policy id %q, configured sub-policy id %q). Rule names are unique across the "+
+					"whole Internet Firewall policy; rename the rule or remove the conflicting one.",
+					ruleName, itemSubPolicyID, planSubPolicyID),
+			)
+		}
+		adoptedID = item.GetRule().GetID()
+		break
+	}
+	if adoptedID == "" {
+		return "", diag.NewErrorDiagnostic(
+			"API Error Creating Resource",
+			fmt.Sprintf("ruleNameAlreadyExists : the API reports rule %q already exists, but it could not be "+
+				"located in the policy for adoption. Retry the apply; if it persists, check for an unpublished "+
+				"revision holding the rule.", ruleName),
+		)
+	}
+
+	input.Update.ID = adoptedID
+	updateResp, err := r.resourceAPI().PolicyInternetFirewallUpdateRule(
+		ctx,
+		&cato_models.InternetFirewallPolicyMutationInput{},
+		input.Update,
+		r.Client.AccountId,
+	)
+	if err != nil {
+		return "", diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewallUpdateRule error", err.Error())
+	}
+	if updateResp.Policy.InternetFirewall.UpdateRule.Status != cato_models.PolicyMutationStatusSuccess {
+		msgs := ""
+		for _, e := range updateResp.Policy.InternetFirewall.UpdateRule.GetErrors() {
+			if msgs != "" {
+				msgs += "; "
+			}
+			code, message := "", ""
+			if e.ErrorCode != nil {
+				code = *e.ErrorCode
+			}
+			if e.ErrorMessage != nil {
+				message = *e.ErrorMessage
+			}
+			msgs += fmt.Sprintf("%s : %s", code, message)
+		}
+		return "", diag.NewErrorDiagnostic("API Error Adopting Existing Rule", msgs)
+	}
+	return adoptedID, nil
+}
+
 //nolint:gocyclo,funlen
 func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InternetFirewallRule
@@ -118,14 +213,46 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 	})
 
 	// check for errors
+	effectiveRuleID := ""
 	if createRuleResponse.Policy.InternetFirewall.AddRule.Status != cato_models.PolicyMutationStatusSuccess {
+		nameCollision := false
 		for _, item := range createRuleResponse.Policy.InternetFirewall.AddRule.GetErrors() {
+			if item.ErrorCode != nil && *item.ErrorCode == "ruleNameAlreadyExists" {
+				nameCollision = true
+				continue
+			}
 			resp.Diagnostics.AddError(
 				"API Error Creating Resource",
 				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
 			)
 		}
-		return
+		if !nameCollision || resp.Diagnostics.HasError() {
+			return
+		}
+		// The rule already exists live — typically orphaned by an interrupted
+		// apply (created + published, then the read-back failed before state was
+		// written). Adopt it: resolve by name in the same policy scope, update
+		// it to match the configuration, and continue with its id so Update and
+		// Delete work natively from state.
+		adoptedID, adoptDiag := r.adoptExistingRule(ctx, plan, input)
+		if adoptDiag != nil {
+			resp.Diagnostics.Append(adoptDiag)
+			return
+		}
+		effectiveRuleID = adoptedID
+		ruleName := ""
+		if input.Create.Rule != nil {
+			ruleName = input.Create.Rule.Name
+		}
+		resp.Diagnostics.AddWarning(
+			"Adopted Existing Rule",
+			fmt.Sprintf("Rule %q (id %s) already existed in the tenant (likely orphaned by an interrupted apply); "+
+				"it was updated to match the configuration and is now managed by this resource. "+
+				"Its current policy position is unchanged (ordering is managed by cato_bulk_if_move_rule).",
+				ruleName, adoptedID),
+		)
+	} else {
+		effectiveRuleID = createRuleResponse.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID
 	}
 
 	// Publishing new rule
@@ -145,22 +272,31 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	// Read rule and hydrate response to state
+	// Read rule and hydrate response to state. The mutation already succeeded
+	// and published at this point — retry transient backend failures instead of
+	// failing the operation, which would desync state from the live rule (a
+	// failed Create leaves the rule orphaned and the next apply collides with
+	// ruleNameAlreadyExists).
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
-	if err != nil {
+	var body *cato_go_sdk.Policy
+	readErr := sharedpolicy.WithTransientReadRetry(ctx, "PolicyInternetFirewall post-mutation read", func() error {
+		var callErr error
+		body, callErr = r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
+		return callErr
+	})
+	if readErr != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
-			err.Error(),
+			readErr.Error(),
 		)
 		return
 	}
 
 	ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
 	currentRule := &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
-	// Get current rule from response by ID
+	// Get current rule from response by ID (created or adopted)
 	for _, ruleListItem := range ruleList {
-		if ruleListItem.GetRule().ID == createRuleResponse.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID {
+		if ruleListItem.GetRule().ID == effectiveRuleID {
 			currentRule = ruleListItem.GetRule()
 			break
 		}
@@ -357,13 +493,22 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	// Read rule and hydrate response to state
+	// Read rule and hydrate response to state. The mutation already succeeded
+	// and published at this point — retry transient backend failures instead of
+	// failing the operation, which would desync state from the live rule (a
+	// failed Create leaves the rule orphaned and the next apply collides with
+	// ruleNameAlreadyExists).
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
-	if err != nil {
+	var body *cato_go_sdk.Policy
+	readErr := sharedpolicy.WithTransientReadRetry(ctx, "PolicyInternetFirewall post-mutation read", func() error {
+		var callErr error
+		body, callErr = r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
+		return callErr
+	})
+	if readErr != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
-			err.Error(),
+			readErr.Error(),
 		)
 		return
 	}

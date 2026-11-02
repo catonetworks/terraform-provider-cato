@@ -161,6 +161,15 @@ func (r *ifwRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
+// discardStaleRevisions returns a cleanup closure that discards unpublished
+// firewall policy revisions (left by interrupted applies or abandoned CMA UI
+// sessions) so a blocked moveSection/reorderPolicy/publish can proceed on retry.
+func (r *ifwRulesIndexResource) discardStaleRevisions(ctx context.Context) func() error {
+	return func() error {
+		return policy.DiscardFirewallAndWANPolicyRevisions(ctx, r.client.Catov2.Client, r.client.AccountId)
+	}
+}
+
 //nolint:gocyclo,funlen,gocritic
 func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	ctx context.Context,
@@ -321,7 +330,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
 		var sectionMoveAPIData *cato_go_sdk.PolicyInternetFirewallMoveSection
-		moveErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyInternetFirewallMoveSection", func() error {
+		moveErr := policy.WithPolicyRevisionCleanupRetry(ctx, "PolicyInternetFirewallMoveSection", r.discardStaleRevisions(ctx), func() error {
 			var callErr error
 			sectionMoveAPIData, callErr = r.resourceAPI().PolicyInternetFirewallMoveSection(
 				ctx, nil, policyMoveSectionInputInt, r.client.AccountId)
@@ -357,35 +366,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 		ruleNameDescriptionMap := make(map[string]string)
 		ruleNameEnabledMap := make(map[string]bool)
 
-		// create map of IFW rule names from the API to their IDs for easy lookup
-		for _, ruleNameIDDataItem := range ruleIndexAPIData.Policy.InternetFirewall.Policy.Rules {
-			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
-			ruleNameDescriptionMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Description
-			ruleNameEnabledMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Enabled
-		}
-
-		tflog.Debug(ctx, "Processing rules in correct order", map[string]interface{}{
-			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
-			"ruleNameIDMap":    utils.InterfaceToJSONString(ruleNameIDMap),
-		})
-
-		sectionIdxAfter, err := r.resourceAPI().PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API PolicyInternetFirewallSectionsIndex error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
-
-		sections := make([]policy.BulkPolicySectionRef, 0, len(sectionIdxAfter.Policy.InternetFirewall.Policy.Sections))
-		for _, item := range sectionIdxAfter.Policy.InternetFirewall.Policy.Sections {
-			sections = append(sections, policy.BulkPolicySectionRef{
-				ID:   item.Section.ID,
-				Name: item.Section.Name,
-			})
-		}
-
 		planned := make([]policy.BulkPlannedRuleIndex, 0, len(ruleListFromPlan))
 		for _, r := range ruleListFromPlan {
 			planned = append(planned, policy.BulkPlannedRuleIndex{
@@ -395,41 +375,107 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			})
 		}
 
-		reorderIn, buildErr := policy.BuildPolicyReorderInput(sections, rules, planned)
-		if buildErr != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Internet firewall policy reorder",
-				buildErr.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, buildErr
-		}
-
-		tflog.Debug(ctx, "PolicyInternetFirewallReorderPolicy request", map[string]interface{}{
-			"policyReorderInput": utils.InterfaceToJSONString(reorderIn),
+		tflog.Debug(ctx, "Processing rules in correct order", map[string]interface{}{
+			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		var reorderOut *cato_go_sdk.PolicyInternetFirewallReorderPolicy
-		reorderErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyInternetFirewallReorderPolicy", func() error {
-			var callErr error
-			reorderOut, callErr = r.resourceAPI().PolicyInternetFirewallReorderPolicy(
-				ctx,
-				&cato_models.InternetFirewallPolicyMutationInput{},
-				reorderIn,
-				r.client.AccountId,
-			)
-			return policy.InternetFirewallReorderError(reorderOut, callErr)
-		})
-		if reorderErr != nil {
+		// The planned placements are static, but the rule/section snapshots are
+		// not: concurrent writers (other applies or module instances sharing the
+		// account) can add or remove rules between our snapshot and the
+		// reorderPolicy call, which the API rejects with
+		// reorderPolicyMissingRules/-Sections. Re-snapshot the policy, rebuild
+		// the input, and retry on that signal instead of failing the apply.
+		const reorderSnapshotMaxAttempts = 4
+		for attempt := 1; ; attempt++ {
+			idxData, err := r.resourceAPI().PolicyInternetFirewallRulesIndex(ctx, r.client.AccountId)
+			if err != nil {
+				diags = append(diags, diag.NewErrorDiagnostic(
+					"Catov2 API PolicyInternetFirewallRulesIndex error",
+					err.Error(),
+				))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+			}
+			rules = rules[:0]
+			clear(ruleNameIDMap)
+			clear(ruleNameDescriptionMap)
+			clear(ruleNameEnabledMap)
+			for _, item := range idxData.Policy.InternetFirewall.Policy.Rules {
+				rules = append(rules, policy.BulkPolicyRuleRow{
+					SectionID:   item.Rule.Section.ID,
+					SectionName: item.Rule.Section.Name,
+					RuleID:      item.Rule.ID,
+					RuleName:    item.Rule.Name,
+					Index:       item.Rule.Index,
+					IsSystem:    policy.ElementHasProperty(item.Properties, cato_models.PolicyElementPropertiesEnumSystem),
+				})
+				ruleNameIDMap[item.Rule.Name] = item.Rule.ID
+				ruleNameDescriptionMap[item.Rule.Name] = item.Rule.Description
+				ruleNameEnabledMap[item.Rule.Name] = item.Rule.Enabled
+			}
+
+			sectionIdxAfter, err := r.resourceAPI().PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
+			if err != nil {
+				diags = append(diags, diag.NewErrorDiagnostic(
+					"Catov2 API PolicyInternetFirewallSectionsIndex error",
+					err.Error(),
+				))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+			}
+			sections := make([]policy.BulkPolicySectionRef, 0, len(sectionIdxAfter.Policy.InternetFirewall.Policy.Sections))
+			for _, item := range sectionIdxAfter.Policy.InternetFirewall.Policy.Sections {
+				sections = append(sections, policy.BulkPolicySectionRef{
+					ID:   item.Section.ID,
+					Name: item.Section.Name,
+				})
+			}
+
+			reorderIn, buildErr := policy.BuildPolicyReorderInput(sections, rules, planned)
+			if buildErr != nil {
+				diags = append(diags, diag.NewErrorDiagnostic(
+					"Internet firewall policy reorder",
+					buildErr.Error(),
+				))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, buildErr
+			}
+
+			tflog.Debug(ctx, "PolicyInternetFirewallReorderPolicy request", map[string]interface{}{
+				"attempt":            attempt,
+				"policyReorderInput": utils.InterfaceToJSONString(reorderIn),
+			})
+
+			var reorderOut *cato_go_sdk.PolicyInternetFirewallReorderPolicy
+			reorderErr := policy.WithPolicyRevisionCleanupRetry(ctx, "PolicyInternetFirewallReorderPolicy", r.discardStaleRevisions(ctx), func() error {
+				var callErr error
+				reorderOut, callErr = r.resourceAPI().PolicyInternetFirewallReorderPolicy(
+					ctx,
+					&cato_models.InternetFirewallPolicyMutationInput{},
+					reorderIn,
+					r.client.AccountId,
+				)
+				return policy.InternetFirewallReorderError(reorderOut, callErr)
+			})
+			if reorderErr == nil {
+				tflog.Debug(ctx, "PolicyInternetFirewallReorderPolicy response", map[string]interface{}{
+					"response": utils.InterfaceToJSONString(reorderOut),
+				})
+				break
+			}
+			if attempt < reorderSnapshotMaxAttempts && policy.ReorderErrLooksLikeStaleSnapshot(reorderErr.Error()) {
+				tflog.Warn(ctx, "reorder input built from stale policy snapshot; re-snapshotting and retrying", map[string]any{
+					"attempt": attempt,
+					"error":   reorderErr.Error(),
+				})
+				if err := policy.SleepReorderSnapshotRetry(ctx, attempt); err != nil {
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				}
+				continue
+			}
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyInternetFirewallReorderPolicy error",
 				reorderErr.Error(),
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, reorderErr
 		}
-
-		tflog.Debug(ctx, "PolicyInternetFirewallReorderPolicy response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(reorderOut),
-		})
 
 		// Build final state using API values for computed fields so they are always known post-apply.
 		for _, ruleFromPlan := range ruleListFromPlan {
@@ -445,7 +491,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	}
 
 	// Publish changes
-	pubErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyInternetFirewallPublishPolicyRevision", func() error {
+	pubErr := policy.WithPolicyRevisionCleanupRetry(ctx, "PolicyInternetFirewallPublishPolicyRevision", r.discardStaleRevisions(ctx), func() error {
 		_, errPub := r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
 			ctx,
 			&cato_models.InternetFirewallPolicyMutationInput{},

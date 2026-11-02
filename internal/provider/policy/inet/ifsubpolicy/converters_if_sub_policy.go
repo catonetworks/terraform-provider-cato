@@ -55,6 +55,99 @@ func ifwScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Po
 	return nil
 }
 
+// ifwCleanupRule returns the sub-policy's cleanup rule: ALWAYS the LAST rule
+// (max rule.index) inside the sub-policy. The API auto-creates the cleanup rule
+// at the bottom; if an admin later moves or renames rules so a different rule
+// sits last, the cleanup identity follows the position — every read/update
+// re-resolves the last rule and refreshes cleanup_rule_id to it. This is also
+// what populates the cleanup on `terraform import`.
+func ifwCleanupRule(
+	body *cato_go_sdk.Policy,
+	subID string,
+) *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule {
+	if body == nil || subID == "" {
+		return nil
+	}
+	var last *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule
+	for _, rp := range body.GetPolicy().GetInternetFirewall().GetPolicy().GetRules() {
+		sp := rp.GetSubPolicy()
+		if sp == nil || sp.GetID() != subID {
+			continue
+		}
+		if rt := rp.GetRuleType(); rt != nil && *rt == subPolicyScopeRuleType {
+			continue
+		}
+		rule := rp.GetRule()
+		if last == nil || rule.GetIndex() > last.GetIndex() {
+			last = rule
+		}
+	}
+	return last
+}
+
+// cleanupNameConfigured reports whether the cleanup_rule object carries a
+// user-supplied (known, non-empty) name — i.e. the config renames the cleanup
+// rule rather than keeping the API-generated "<sub-policy name> - Cleanup Rule".
+func cleanupNameConfigured(cleanupObj types.Object) bool {
+	if cleanupObj.IsNull() || cleanupObj.IsUnknown() {
+		return false
+	}
+	nameAttr, ok := cleanupObj.Attributes()["name"]
+	if !ok || nameAttr.IsNull() || nameAttr.IsUnknown() {
+		return false
+	}
+	name, ok := nameAttr.(types.String)
+	return ok && name.ValueString() != ""
+}
+
+// cleanupUpdateErrorDetail formats a cleanup-rule update failure. The cleanup
+// is identified positionally (the sub-policy's LAST rule), so if an admin moves
+// the cleanup rule in the CMA, the provider targets whatever rule now sits last
+// and renaming it to the configured cleanup name collides with the real cleanup
+// rule elsewhere in the sub-policy. Make that remediation obvious instead of
+// surfacing a bare ruleNameAlreadyExists.
+func cleanupUpdateErrorDetail(errCode, errMessage, configuredName, targetRuleID string) string {
+	detail := fmt.Sprintf("%s : %s", errCode, errMessage)
+	if errCode == "ruleNameAlreadyExists" {
+		detail += fmt.Sprintf(
+			"\n\nThe cleanup rule is identified as the sub-policy's LAST rule (currently rule id %s). "+
+				"A different rule named %q already exists in this sub-policy, which usually means the "+
+				"cleanup rule was manually moved out of the last position in the CMA. "+
+				"Move the cleanup rule back to the bottom of the sub-policy (or re-export the policy JSON) and retry. "+
+				"The cleanup rule is managed by this resource and is not intended to be moved outside Terraform.",
+			targetRuleID, configuredName,
+		)
+	}
+	return detail
+}
+
+// cleanupConfiguredName returns the name carried by the cleanup_rule config
+// object, or "" when unset.
+func cleanupConfiguredName(cleanupObj types.Object) string {
+	if cleanupObj.IsNull() || cleanupObj.IsUnknown() {
+		return ""
+	}
+	if nameAttr, ok := cleanupObj.Attributes()["name"].(types.String); ok && !nameAttr.IsNull() && !nameAttr.IsUnknown() {
+		return nameAttr.ValueString()
+	}
+	return ""
+}
+
+// hydrateCleanupState encodes the cleanup rule into the model, refreshing
+// cleanup_rule_id. The prior cleanup object (state or plan) seeds the hydrator
+// so omitted optional fields stay stable, mirroring the scope handling.
+func hydrateCleanupState(
+	ctx context.Context,
+	model *InternetFirewallSubPolicy,
+	cleanup *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule,
+) (basetypes.ObjectValue, diag.Diagnostics) {
+	model.CleanupRuleID = types.StringValue(cleanup.GetID())
+	cleanupRule := ifrule.InternetFirewallRule{Rule: model.CleanupRule, At: model.At}
+	cleanupState := ifrule.HydrateIfwRuleState(ctx, cleanupRule, cleanup)
+	cleanupState.ID = types.StringValue(cleanup.GetID())
+	return types.ObjectValueFrom(ctx, ifrule.InternetFirewallRuleRuleAttrTypes, cleanupState)
+}
+
 // ifwSubPolicyIDByName returns the id of the sub-policy with the given name that
 // is not present in the exclude set. It is used to identify a freshly created
 // sub-policy by diffing the sub-policy list before and after creation.
@@ -120,6 +213,22 @@ func convertCreateInput2(
 		},
 		Scope: hydrated.Create.Rule,
 	}
+	// scope.tracking is a non-nullable PolicyTrackingInput! in
+	// InternetFirewallAddSubPolicyInput, but the API rejects enabled tracking
+	// settings on a scoping rule — so when the (optional) tracking attribute is
+	// omitted, send the schema's documented disabled default instead of null.
+	if resultAddInput.Scope != nil && resultAddInput.Scope.Tracking == nil {
+		resultAddInput.Scope.Tracking = &cato_models.PolicyTrackingInput{
+			Event: &cato_models.PolicyRuleTrackingEventInput{Enabled: false},
+			Alert: &cato_models.PolicyRuleTrackingAlertInput{
+				Enabled:           false,
+				Frequency:         cato_models.PolicyRuleTrackingFrequencyEnumHourly,
+				MailingList:       []*cato_models.SubscriptionMailingListRefInput{},
+				SubscriptionGroup: []*cato_models.SubscriptionGroupRefInput{},
+				Webhook:           []*cato_models.SubscriptionWebhookRefInput{},
+			},
+		}
+	}
 	return resultExisting, resultAddInput
 }
 
@@ -162,11 +271,10 @@ func convertReadState(
 	scope *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule,
 ) (resultScopeObj basetypes.ObjectValue, resultDiags diag.Diagnostics) {
 	state.Name = types.StringValue(info.GetName())
-	if info.GetDescription() == "" {
-		state.Description = types.StringNull()
-	} else {
-		state.Description = types.StringValue(info.GetDescription())
-	}
+	// description is Required, so config always holds a value ("" when unset);
+	// writing null here on an empty API description would diff against "" and,
+	// with RequiresReplace, force needless replacement on every plan.
+	state.Description = types.StringValue(info.GetDescription())
 	state.ScopeRuleID = types.StringValue(scope.GetID())
 
 	scopeRule := ifrule.InternetFirewallRule{Rule: state.Scope, At: state.At}

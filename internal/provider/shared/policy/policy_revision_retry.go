@@ -40,6 +40,71 @@ func sleepPolicyRevisionRetry(ctx context.Context, failedAttempt int) error {
 	}
 }
 
+// ReorderErrLooksLikeStaleSnapshot reports whether a reorderPolicy failure
+// indicates the attempt raced a concurrent writer (another apply, another
+// module instance sharing the account, or a CMA session) and should be retried
+// after re-snapshotting the policy and rebuilding the reorder input:
+//   - reorderPolicyMissingRules/-Sections: rules or sections were added or
+//     removed between the index fetch and the reorder call.
+//   - reorderPolicyAlreadyInSession: the shared session draft already contains
+//     a reorder from a concurrent move resource that has not published yet; a
+//     draft accepts only one reorder, so wait for that publish and retry in a
+//     fresh draft.
+func ReorderErrLooksLikeStaleSnapshot(msg string) bool {
+	if msg == "" {
+		return false
+	}
+	return strings.Contains(msg, "reorderPolicyMissingRules") ||
+		strings.Contains(msg, "reorderPolicyMissingSections") ||
+		strings.Contains(msg, "reorderPolicyAlreadyInSession")
+}
+
+// SleepReorderSnapshotRetry waits before re-snapshotting a policy for a reorder
+// rebuild, honoring context cancellation.
+func SleepReorderSnapshotRetry(ctx context.Context, failedAttempt int) error {
+	return sleepPolicyRevisionRetry(ctx, failedAttempt)
+}
+
+// TransientAPIErr reports whether an error looks like a transient backend
+// failure (policy-platform 5xx) worth retrying, e.g.
+// "Exception while fetching data ... Internal server error" with code
+// DOWNSTREAM_SERVICE_ERROR.
+func TransientAPIErr(msg string) bool {
+	if msg == "" {
+		return false
+	}
+	return strings.Contains(msg, "Internal server error") ||
+		strings.Contains(msg, "DOWNSTREAM_SERVICE_ERROR")
+}
+
+// WithTransientReadRetry re-runs fn on transient backend failures. Use it for
+// read-backs that follow a successful mutation: failing the whole operation on
+// a flaky read orphans the just-created object (live but absent from state).
+func WithTransientReadRetry(ctx context.Context, opLabel string, fn func() error) error {
+	var last error
+	for attempt := 1; attempt <= policyRevisionConflictMaxAttempts; attempt++ {
+		last = fn()
+		if last == nil {
+			return nil
+		}
+		if !TransientAPIErr(last.Error()) {
+			return last
+		}
+		if attempt == policyRevisionConflictMaxAttempts {
+			break
+		}
+		tflog.Warn(ctx, "transient API error on read; retrying", map[string]any{
+			"operation": opLabel,
+			"attempt":   attempt,
+			"error":     last.Error(),
+		})
+		if err := sleepPolicyRevisionRetry(ctx, attempt); err != nil {
+			return err
+		}
+	}
+	return last
+}
+
 // WithPolicyRevisionConflictRetry re-runs fn when the API reports concurrent policy revisions.
 func WithPolicyRevisionConflictRetry(ctx context.Context, opLabel string, fn func() error) error {
 	var last error
@@ -59,6 +124,43 @@ func WithPolicyRevisionConflictRetry(ctx context.Context, opLabel string, fn fun
 			"attempt":   attempt,
 			"max":       policyRevisionConflictMaxAttempts,
 		})
+		if err := sleepPolicyRevisionRetry(ctx, attempt); err != nil {
+			return err
+		}
+	}
+	return last
+}
+
+// WithPolicyRevisionCleanupRetry re-runs fn when the API reports concurrent policy
+// revisions, running cleanup (discarding stale firewall policy drafts) before every
+// retry. Unlike WithAcctestPolicyRevisionCleanupRetryOnce this applies outside
+// acceptance tests too: stale drafts left behind by interrupted applies or abandoned
+// CMA UI sessions otherwise block reorderPolicy until they expire, and backoff alone
+// (WithPolicyRevisionConflictRetry) cannot clear them.
+func WithPolicyRevisionCleanupRetry(ctx context.Context, opLabel string, cleanup func() error, fn func() error) error {
+	var last error
+	for attempt := 1; attempt <= policyRevisionConflictMaxAttempts; attempt++ {
+		last = fn()
+		if last == nil {
+			return nil
+		}
+		if !policyErrLooksLikeConcurrentRevisionBlock(last.Error()) {
+			return last
+		}
+		if attempt == policyRevisionConflictMaxAttempts {
+			break
+		}
+		tflog.Warn(ctx, "policy mutation blocked by concurrent revisions; discarding stale policy revisions and retrying", map[string]any{
+			"operation": opLabel,
+			"attempt":   attempt,
+			"max":       policyRevisionConflictMaxAttempts,
+		})
+		if cleanupErr := cleanup(); cleanupErr != nil {
+			tflog.Warn(ctx, "policy revision cleanup failed; retrying anyway", map[string]any{
+				"operation": opLabel,
+				"error":     cleanupErr.Error(),
+			})
+		}
 		if err := sleepPolicyRevisionRetry(ctx, attempt); err != nil {
 			return err
 		}

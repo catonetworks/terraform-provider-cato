@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -825,4 +826,109 @@ func GetInternetFwRuleSchema(ctx context.Context, t *testing.T) schema.Schema {
 	r.Schema(ctx, resource.SchemaRequest{}, resp)
 
 	return resp.Schema
+}
+
+func failedAddRuleNameExistsResponse() *cato_go_sdk.PolicyInternetFirewallAddRule {
+	code := "ruleNameAlreadyExists"
+	msg := "Rule with the same name already exists"
+	return &cato_go_sdk.PolicyInternetFirewallAddRule{
+		Policy: cato_go_sdk.PolicyInternetFirewallAddRule_Policy{
+			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall{
+				AddRule: cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule{
+					Status: "FAILURE",
+					Errors: []*cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule_Errors{
+						{ErrorCode: &code, ErrorMessage: &msg},
+					},
+				},
+			},
+		},
+	}
+}
+
+// Create self-heals on ruleNameAlreadyExists: the live orphan is adopted
+// (updated to match config, its id taken into state) instead of failing.
+func TestInternetFwRuleCreateAdoptsExistingOnNameCollision(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewInternetFirewallPolicyClient(t)
+
+	adopted := MinimalAPIRule("test-ifw-rule", 7)
+	adopted.ID = "r-adopt"
+
+	mockClient.EXPECT().
+		PolicyInternetFirewallAddRule(mock.Anything, mock.Anything, "account-123").
+		Return(failedAddRuleNameExistsResponse(), nil).
+		Once()
+	// adoption lookup + post-publish read-back use the same query
+	mockClient.EXPECT().
+		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(InternetFirewallPolicyResponseWithRule(adopted), nil).
+		Twice()
+	mockClient.EXPECT().
+		PolicyInternetFirewallUpdateRule(mock.Anything, mock.Anything, mock.MatchedBy(func(in cato_models.InternetFirewallUpdateRuleInput) bool {
+			return in.ID == "r-adopt"
+		}), "account-123").
+		Return(SuccessfulUpdateRuleResponse("r-adopt"), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, "account-123").
+		Return(nil, nil).
+		Once()
+
+	r := &InternetFwRuleResource{
+		Client:    &catoclient.Service{AccountId: "account-123"},
+		IfwClient: mockClient,
+	}
+	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
+
+	r.Create(ctx, req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
+	warned := false
+	for _, d := range resp.Diagnostics.Warnings() {
+		if d.Summary() == "Adopted Existing Rule" {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Fatal("expected Adopted Existing Rule warning")
+	}
+	assertRuleState(ctx, t, resp.State, "r-adopt", "test-ifw-rule")
+}
+
+// A same-named rule in a different scope (e.g. inside a sub-policy when the
+// plan targets the main policy) cannot be adopted - updateRule cannot move it.
+func TestInternetFwRuleCreateNameCollisionWrongScope(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewInternetFirewallPolicyClient(t)
+
+	other := MinimalAPIRule("test-ifw-rule", 3)
+	other.ID = "r-foreign"
+	body := InternetFirewallPolicyResponseWithRule(other)
+	body.Policy.InternetFirewall.Policy.Rules[0].SubPolicy =
+		&cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_SubPolicy{ID: "sp-9", Name: "Other SP"}
+
+	mockClient.EXPECT().
+		PolicyInternetFirewallAddRule(mock.Anything, mock.Anything, "account-123").
+		Return(failedAddRuleNameExistsResponse(), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(body, nil).
+		Once()
+
+	r := &InternetFwRuleResource{
+		Client:    &catoclient.Service{AccountId: "account-123"},
+		IfwClient: mockClient,
+	}
+	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
+
+	r.Create(ctx, req, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected error for cross-scope name collision")
+	}
 }
