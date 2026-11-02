@@ -229,3 +229,9 @@ packages:
         config:
           filename: CloudInterconnectPhysicalConnectionClient.go
           structname: CloudInterconnectPhysicalConnectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/customapplication:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: CustomApplicationClient.go
+          structname: CustomApplicationClient

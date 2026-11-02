@@ -97,6 +97,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/customapplication"
 	groupdata "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
@@ -561,6 +562,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		secondaryazurevsocket.NewResource,
 		wifissid.NewResource,
 		cloudinterconnectphysicalconnection.NewResource,
+		customapplication.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		user.NewResource,
