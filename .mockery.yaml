@@ -109,3 +109,9 @@ packages:
         config:
           filename: TerminalServerRuleClient.go
           structname: TerminalServerRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserversection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: TerminalServerSectionClient.go
+          structname: TerminalServerSectionClient

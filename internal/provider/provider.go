@@ -48,6 +48,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserversection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
@@ -531,6 +532,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		terminalserversection.NewResource,
 		account.NewAccountResource,
 		role.NewResource,
 		rbacassignment.NewResource,
