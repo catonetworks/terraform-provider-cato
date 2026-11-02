@@ -217,3 +217,9 @@ packages:
         config:
           filename: SecondaryAzureVSocketClient.go
           structname: SecondaryAzureVSocketClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/wifissid:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: WifiSSIDClient.go
+          structname: WifiSSIDClient

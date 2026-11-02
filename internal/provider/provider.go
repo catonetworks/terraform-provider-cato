@@ -48,6 +48,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryawsvsocket"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryazurevsocket"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/wifissid"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivityrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivitysection"
@@ -557,6 +558,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		cloudinterconnectsite.NewResource,
 		secondaryawsvsocket.NewResource,
 		secondaryazurevsocket.NewResource,
+		wifissid.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		user.NewResource,
