@@ -247,3 +247,9 @@ packages:
         config:
           filename: IPAddressRangeContainerClient.go
           structname: IPAddressRangeContainerClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/sitewebproxy/swpsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SiteWebProxySectionClient.go
+          structname: SiteWebProxySectionClient
