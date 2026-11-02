@@ -145,3 +145,9 @@ packages:
         config:
           filename: SocketBypassRuleClient.go
           structname: SocketBypassRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SocketBypassSectionClient.go
+          structname: SocketBypassSectionClient
