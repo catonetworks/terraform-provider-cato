@@ -133,3 +133,9 @@ packages:
         config:
           filename: SdpStaticIPAllocationRuleClient.go
           structname: SdpStaticIPAllocationRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/sdpstaticipallocationsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SdpStaticIPAllocationSectionClient.go
+          structname: SdpStaticIPAllocationSectionClient
