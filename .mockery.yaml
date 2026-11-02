@@ -241,3 +241,9 @@ packages:
         config:
           filename: FQDNContainerClient.go
           structname: FQDNContainerClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/ipaddressrangecontainer:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: IPAddressRangeContainerClient.go
+          structname: IPAddressRangeContainerClient
