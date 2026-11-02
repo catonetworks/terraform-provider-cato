@@ -115,3 +115,9 @@ packages:
         config:
           filename: TerminalServerSectionClient.go
           structname: TerminalServerSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DynamicIPAllocationRuleClient.go
+          structname: DynamicIPAllocationRuleClient
