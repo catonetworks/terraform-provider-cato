@@ -19,6 +19,7 @@ import (
 func TestAccSocketBypassSection(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
+	acc.RequirePolicyAccess(t, "socketBypass")
 	fixtureRange := ""
 
 	config := func(name, description string) string {

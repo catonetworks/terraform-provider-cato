@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
+	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -20,16 +22,13 @@ func TestAccMailingList(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
 	name := acc.GetRandName("mailing_list")
-	limit := int64(1)
-	admins, err := acc.GetClient(t).Admins(context.Background(), acc.CatoAccountID, &limit, nil, nil, nil, nil)
+	fixtureCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	adminID, err := findMailingListAdmin(fixtureCtx, acc.GetClient(t), acc.CatoAccountID)
 	if err != nil {
-		t.Fatal("Cannot read an administrator fixture: ", err)
+		t.Fatal(err)
 	}
-	items := admins.GetAdmins().GetItems()
-	if len(items) == 0 || items[0].GetID() == "" {
-		t.Fatal("An existing administrator is required for membership-clearing coverage")
-	}
-	adminID := items[0].GetID()
+
 	config := func(updated, clearMembers bool) string {
 		suffix, address := "", "terraform@example.invalid"
 		if updated {
@@ -89,4 +88,41 @@ func missingFixture(err error, id string) bool {
 		}
 	}
 	return true
+}
+
+// Service principals are returned by Admins too, but are not notification recipients.
+func eligibleMailingListAdmin(item *cato.Admins_Admins_Items) bool {
+	return item.GetID() != "" && item.GetAdminType() != nil && *item.GetAdminType() == m.AdminTypeLogin
+}
+
+func findMailingListAdmin(ctx context.Context, client *cato.Client, account string) (string, error) {
+	const pageSize int64 = 100
+	seen := make(map[string]bool)
+	for from := int64(0); ; {
+		limit := pageSize
+		result, err := client.Admins(ctx, account, &limit, &from, nil, nil, nil)
+		if err != nil {
+			return "", fmt.Errorf("read mailing-list administrator fixture: %w", err)
+		}
+		page := result.GetAdmins()
+		if page == nil || page.GetItems() == nil {
+			return "", fmt.Errorf("incomplete administrator fixture response")
+		}
+		for _, item := range page.GetItems() {
+			if item.GetID() == "" || seen[item.GetID()] {
+				return "", fmt.Errorf("invalid or repeated administrator fixture identity")
+			}
+			seen[item.GetID()] = true
+			if eligibleMailingListAdmin(item) {
+				return item.GetID(), nil
+			}
+		}
+		from += int64(len(page.GetItems()))
+		if from >= page.GetTotal() {
+			return "", fmt.Errorf("a LOGIN administrator in this account is required for mailing-list membership-clearing coverage")
+		}
+		if len(page.GetItems()) == 0 {
+			return "", fmt.Errorf("administrator fixture pagination ended before declared total")
+		}
+	}
 }

@@ -19,6 +19,7 @@ import (
 func TestAccSocketBypassRule(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
+	acc.RequirePolicyAccess(t, "socketBypass")
 	acc.CheckCMAVars(t)()
 
 	config := func(name, description string) string {

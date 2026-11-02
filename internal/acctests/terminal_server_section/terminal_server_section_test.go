@@ -19,6 +19,7 @@ import (
 func TestAccTerminalServerSection(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
+	acc.RequirePolicyAccess(t, "terminalServer")
 	fixtureRange := ""
 
 	config := func(name, description string) string {

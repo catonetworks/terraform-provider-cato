@@ -52,14 +52,8 @@ run_test() {
 	fi
 }
 
-should_retry() {
-	# Skip reasons can mention known transient errors but do not mean the
-	# package's actual failure is transient.
-	grep -Ev '"Output":".*skipping test' "$1" |
-		grep -Ei '(internal server error|connection (error|refused)|DOWNSTREAM_SERVICE_ERROR|message\\":\\"Internal server\\n")' \
-			> /dev/null && return 0
-	return 1
-}
+source "$(dirname "$0")/acctest_retry.sh"
+
 retry_test() {
 	log="$1"; i=$2; count=$3; tdir=$4; cover_file=$5
 	sleeptime=5
