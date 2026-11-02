@@ -85,3 +85,9 @@ packages:
         config:
           filename: ClientConnectivityRuleClient.go
           structname: ClientConnectivityRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivitysection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: ClientConnectivitySectionClient.go
+          structname: ClientConnectivitySectionClient
