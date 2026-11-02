@@ -3,6 +3,10 @@
 // NOTE: The Cato API has no updateSubPolicy mutation, so changing `name` or
 // `description` forces replacement, which also removes any rules contained in
 // the sub-policy. The scope must set at least one non-ANY match field.
+// Changing `at.position` or `at.ref` moves the sub-policy scope in place and
+// preserves its child rules. Refresh retains the last applied placement;
+// external reordering is not detected. If cato_bulk_if_move_rule manages
+// ordering, keep `at` unchanged and change positions in that resource instead.
 
 // minimal sub-policy
 resource "cato_if_sub_policy" "minimal" {
@@ -18,13 +22,10 @@ resource "cato_if_sub_policy" "minimal" {
     connection_origin = "REMOTE"
     source            = {}
     destination       = {}
-    tracking = {
-      event = {
-        enabled = true
-      }
-    }
   }
 }
+
+// Scope tracking is API-managed; omit it from scope.
 
 // full sub-policy with a scoped source and a nested rule owned by it
 resource "cato_if_sub_policy" "full" {
@@ -45,6 +46,12 @@ resource "cato_if_sub_policy" "full" {
       ]
     }
     destination = {}
+  }
+
+  // Optional: manage the API-created cleanup rule with this sub-policy.
+  cleanup_rule = {
+    action  = "BLOCK"
+    enabled = true
     tracking = {
       event = {
         enabled = true

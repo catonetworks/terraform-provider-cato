@@ -1,0 +1,15 @@
+# Approved API-shaped schema; API-specific omission semantics documented in ai_context.md.
+Attributes:
+- Name: domain
+  Description: Unique forwarding domain.
+  Type: string
+  Mode: required
+- Name: id
+  Description: Opaque item ID.
+  Type: string
+  Mode: computed
+- Name: server
+  Description: "Ordered forwarding server addresses, 1\u20136."
+  Type: list
+  ItemType: string
+  Mode: required

@@ -5,12 +5,16 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	attr "github.com/hashicorp/terraform-plugin-framework/attr"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
 	ifrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -50,6 +54,7 @@ func (r *ifSubPolicyResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+//nolint:gocyclo,funlen // Scope and cleanup mutations each require API error and hydration checks.
 func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InternetFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -92,13 +97,8 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 	addPayload := addResp.GetPolicy().GetInternetFirewall().GetAddSubPolicy()
-	if addPayload.GetStatus() == nil || *addPayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range addPayload.GetErrors() {
-			resp.Diagnostics.AddError(
-				"API Error Creating Sub-Policy",
-				fmt.Sprintf("%s : %s", derefStr(e.ErrorCode), derefStr(e.ErrorMessage)),
-			)
-		}
+	if err := sharedpolicy.MutationResult(addPayload.GetStatus(), addPayload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("API Error Creating Sub-Policy", err.Error())
 		return
 	}
 
@@ -122,6 +122,68 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 	plan.Scope = scopeObj
+
+	// addSubPolicy auto-created the sub-policy's cleanup rule (its only rule at
+	// this point). Capture it, apply any configured cleanup settings, and manage
+	// it as part of this resource — like a socket site's default interface.
+	cleanup := ifwCleanupRule(after, plan.ID.ValueString(), "")
+	if cleanup == nil {
+		resp.Diagnostics.AddError(
+			"Cleanup Rule Not Found",
+			fmt.Sprintf("No API-created cleanup rule found for sub-policy %s.", plan.ID.ValueString()),
+		)
+		return
+	}
+	plan.CleanupRuleID = types.StringValue(cleanup.GetID())
+	if !plan.CleanupRule.IsNull() && !plan.CleanupRule.IsUnknown() {
+		cleanupRule := ifrule.InternetFirewallRule{Rule: plan.CleanupRule, At: plan.At}
+		hydratedCleanup, cuDiags := ifrule.HydrateIfwRuleAPI(ctx, cleanupRule)
+		resp.Diagnostics.Append(cuDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		hydratedCleanup.Update.ID = cleanup.GetID()
+		// Keep the API-generated name unless the config customizes it.
+		if !cleanupNameConfigured(plan.CleanupRule) {
+			cleanupName := cleanup.GetName()
+			hydratedCleanup.Update.Rule.Name = &cleanupName
+		}
+		updateResp, err := r.resourceAPI().PolicyInternetFirewallUpdateRule(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			hydratedCleanup.Update,
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallUpdateRule error", err.Error())
+			return
+		}
+		mutationPayload := updateResp.GetPolicy().GetInternetFirewall().GetUpdateRule()
+		if err := sharedpolicy.MutationResult(mutationPayload.GetStatus(), mutationPayload.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Sub-Policy Rule Mutation Failed", err.Error())
+			return
+		}
+		if err := r.publish(ctx); err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallPublishPolicyRevision error", err.Error())
+			return
+		}
+		after, err = r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
+			return
+		}
+		cleanup = ifwCleanupRule(after, plan.ID.ValueString(), plan.CleanupRuleID.ValueString())
+		if cleanup == nil {
+			resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule not found after update.")
+			return
+		}
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &plan, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.CleanupRule = cleanupObj
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
@@ -147,8 +209,8 @@ func (r *ifSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 	scope := ifwScopeRule(body, state.ID.ValueString())
 	if scope == nil {
-		tflog.Warn(ctx, "internet firewall sub-policy scope rule not found, resource removed")
-		resp.State.RemoveResource(ctx)
+		resp.Diagnostics.AddError("Scope Rule Not Found", "The sub-policy still exists but its scope rule is missing. "+
+			"Reconcile the remote policy before applying changes.")
 		return
 	}
 
@@ -159,9 +221,40 @@ func (r *ifSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 	state.Scope = scopeObj
 
+	// Cleanup rule: matched by stored id, falling back to the sub-policy's last
+	// rule — the fallback is what populates it on `terraform import`.
+	cleanup := ifwCleanupRule(body, state.ID.ValueString(), state.CleanupRuleID.ValueString())
+	if cleanup == nil {
+		resp.Diagnostics.AddError("Cleanup Rule Not Found", "The sub-policy still exists but its recorded cleanup rule is missing. "+
+			"Restore that rule or explicitly reconcile the resource before applying changes.")
+		return
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &state, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.CleanupRule = cleanupObj
+
+	// `at` is input-only (the API never returns a position): preserve the stored
+	// value, defaulting a null one (fresh import) to LAST_IN_POLICY — the same
+	// normalization the cato_if_rule Read applies.
+	if state.At.IsNull() || state.At.IsUnknown() {
+		atObj, atDiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
+			"position": types.StringValue(string(cato_models.PolicySectionPositionEnumLastInPolicy)),
+			"ref":      types.StringNull(),
+		})
+		resp.Diagnostics.Append(atDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.At = atObj
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+//nolint:gocyclo,funlen // Scope and cleanup mutations each require API error and hydration checks.
 func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan InternetFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -177,8 +270,9 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	scopeRuleID := state.ScopeRuleID.ValueString()
 	plan.ID = state.ID
 	plan.ScopeRuleID = state.ScopeRuleID
+	plan.CleanupRuleID = state.CleanupRuleID
 
-	// name/description are RequiresReplace, so only the scope can change here.
+	// Name/description require replacement; scope, cleanup, and placement update in place.
 	scopeRule := ifrule.InternetFirewallRule{Rule: plan.Scope, At: plan.At}
 	hydrated, diags := ifrule.HydrateIfwRuleAPI(ctx, scopeRule)
 	resp.Diagnostics.Append(diags...)
@@ -200,14 +294,72 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallUpdateRule error", err.Error())
 		return
 	}
-	if updateResp.Policy.InternetFirewall.UpdateRule.Status != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range updateResp.Policy.InternetFirewall.UpdateRule.GetErrors() {
-			resp.Diagnostics.AddError(
-				"API Error Updating Sub-Policy Scope",
-				fmt.Sprintf("%s : %s", derefStr(e.ErrorCode), derefStr(e.ErrorMessage)),
-			)
-		}
+	mutationPayload := updateResp.GetPolicy().GetInternetFirewall().GetUpdateRule()
+	if err := sharedpolicy.MutationResult(mutationPayload.GetStatus(), mutationPayload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Sub-Policy Rule Mutation Failed", err.Error())
 		return
+	}
+
+	// Apply cleanup rule changes in the same revision, before the single publish.
+	if !plan.CleanupRule.IsNull() && !plan.CleanupRule.IsUnknown() && !plan.CleanupRule.Equal(state.CleanupRule) {
+		cleanupID := state.CleanupRuleID.ValueString()
+		if cleanupID == "" {
+			// Legacy state (pre-cleanup_rule): resolve via the last-rule lookup.
+			body0, err := r.resourceAPI().PolicyInternetFirewall(ctx, &cato_models.InternetFirewallPolicyInput{}, r.client.AccountId)
+			if err != nil {
+				resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewall error", err.Error())
+				return
+			}
+			if cr := ifwCleanupRule(body0, plan.ID.ValueString(), ""); cr != nil {
+				cleanupID = cr.GetID()
+			}
+		}
+		if cleanupID == "" {
+			resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule could not be resolved for update.")
+			return
+		}
+		cleanupRule := ifrule.InternetFirewallRule{Rule: plan.CleanupRule, At: plan.At}
+		hydratedCleanup, cuDiags := ifrule.HydrateIfwRuleAPI(ctx, cleanupRule)
+		resp.Diagnostics.Append(cuDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		hydratedCleanup.Update.ID = cleanupID
+		cleanupUpdateResp, err := r.resourceAPI().PolicyInternetFirewallUpdateRule(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			hydratedCleanup.Update,
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallUpdateRule error", err.Error())
+			return
+		}
+		mutationPayload := cleanupUpdateResp.GetPolicy().GetInternetFirewall().GetUpdateRule()
+		if err := sharedpolicy.MutationResult(mutationPayload.GetStatus(), mutationPayload.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Sub-Policy Rule Mutation Failed", err.Error())
+			return
+		}
+	}
+
+	// Move the scope rule within the parent policy without replacing the
+	// sub-policy or its children. Preserve external ordering on unrelated updates.
+	if !plan.At.Equal(state.At) {
+		moveResp, err := r.resourceAPI().PolicyInternetFirewallMoveRule(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			cato_models.PolicyMoveRuleInput{ID: scopeRuleID, To: hydrated.Create.At},
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallMoveRule error", err.Error())
+			return
+		}
+		payload := moveResp.GetPolicy().GetInternetFirewall().GetMoveRule()
+		if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Sub-Policy Scope Move Failed", err.Error())
+			return
+		}
 	}
 
 	if err := r.publish(ctx); err != nil {
@@ -230,6 +382,18 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 	plan.Scope = scopeObj
+
+	cleanup := ifwCleanupRule(body, plan.ID.ValueString(), plan.CleanupRuleID.ValueString())
+	if cleanup == nil {
+		resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule not found after update.")
+		return
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &plan, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.CleanupRule = cleanupObj
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
@@ -256,13 +420,8 @@ func (r *ifSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 	removePayload := removeResp.GetPolicy().GetInternetFirewall().GetRemoveSubPolicy()
-	if removePayload.GetStatus() != nil && *removePayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range removePayload.GetErrors() {
-			resp.Diagnostics.AddError(
-				"API Error Removing Sub-Policy",
-				fmt.Sprintf("%s : %s", derefStr(e.ErrorCode), derefStr(e.ErrorMessage)),
-			)
-		}
+	if err := sharedpolicy.MutationResult(removePayload.GetStatus(), removePayload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("API Error Removing Sub-Policy", err.Error())
 		return
 	}
 
@@ -277,11 +436,12 @@ func (r *ifSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 const subPolicyScopeRuleType = cato_models.PolicyRuleTypeEnumSubPolicyScope
 
 func (r *ifSubPolicyResource) publish(ctx context.Context) error {
-	_, err := r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
-		&cato_models.PolicyPublishRevisionInput{},
-		r.client.AccountId,
+	response, err := r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
+		ctx, &cato_models.InternetFirewallPolicyMutationInput{}, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	payload := response.GetPolicy().GetInternetFirewall().GetPublishPolicyRevision()
+	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
 }

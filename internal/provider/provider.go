@@ -37,11 +37,17 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
+	dhcprelaygroupds "github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/host"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkinterfaces"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/sitelocation"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpoption"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcprelaygroup"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpsettings"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnsforwardingrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssettings"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssitesettings"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/ipsecsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterfacelagmember"
@@ -50,7 +56,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryazurevsocket"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/wifissid"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivityrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivitysection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationrule"
@@ -537,7 +546,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		roles.NewDataSource,
 		permissioncatalog.NewDataSource,
 		allocatedip.Source,
-		dhcprelaygroup.DataSource,
+		dhcprelaygroupds.DataSource,
 		groupdata.DataSource,
 		licensinginfo.NewDataSource,
 		networkinterfaces.NetworkInterfacesDataSource,
@@ -557,6 +566,12 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		terminalserversection.NewResource,
 		account.NewAccountResource,
+		dnssettings.NewDNSSettingsResource,
+		dnssitesettings.NewDNSSiteSettingsResource,
+		dnsforwardingrule.NewDNSForwardingRuleResource,
+		dhcpsettings.NewDHCPSettingsResource,
+		dhcpoption.NewDHCPOptionResource,
+		dhcprelaygroup.NewDHCPRelayGroupResource,
 		role.NewResource,
 		mailinglist.NewResource,
 		subscriptiongroup.NewResource,
@@ -590,6 +605,9 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		amfhrule.NewResource,
 		amfhsection.NewResource,
 		swpsection.NewResource,
+		alwaysonindex.NewAlwaysOnRuleBulkResource,
+		alwaysonpolicy.NewAlwaysOnPolicyResource,
+		alwaysonsection.NewAlwaysOnSectionResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,

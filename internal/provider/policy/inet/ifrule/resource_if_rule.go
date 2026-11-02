@@ -13,6 +13,7 @@ import (
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -117,16 +118,28 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 		"OUTPUT": utils.InterfaceToJSONString(createRuleResponse),
 	})
 
-	// check for errors
+	// A name collision does not prove ownership. Require an explicit import
+	// instead of overwriting a rule that may belong to another configuration.
 	if createRuleResponse.Policy.InternetFirewall.AddRule.Status != cato_models.PolicyMutationStatusSuccess {
 		for _, item := range createRuleResponse.Policy.InternetFirewall.AddRule.GetErrors() {
-			resp.Diagnostics.AddError(
-				"API Error Creating Resource",
-				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
-			)
+			code, message := "", ""
+			if item.ErrorCode != nil {
+				code = *item.ErrorCode
+			}
+			if item.ErrorMessage != nil {
+				message = *item.ErrorMessage
+			}
+			if code == "ruleNameAlreadyExists" {
+				message += "; import the existing rule explicitly to manage it with this resource"
+			}
+			resp.Diagnostics.AddError("API Error Creating Resource", fmt.Sprintf("%s : %s", code, message))
+		}
+		if !resp.Diagnostics.HasError() {
+			resp.Diagnostics.AddError("API Error Creating Resource", "Rule creation did not succeed.")
 		}
 		return
 	}
+	effectiveRuleID := createRuleResponse.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID
 
 	// Publishing new rule
 	tflog.Info(ctx, "publishing new rule")
@@ -145,22 +158,31 @@ func (r *InternetFwRuleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	// Read rule and hydrate response to state
+	// Read rule and hydrate response to state. The mutation already succeeded
+	// and published at this point — retry transient backend failures instead of
+	// failing the operation, which would desync state from the live rule (a
+	// failed Create leaves the rule orphaned and the next apply collides with
+	// ruleNameAlreadyExists).
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
-	if err != nil {
+	var body *cato_go_sdk.Policy
+	readErr := sharedpolicy.WithTransientReadRetry(ctx, "PolicyInternetFirewall post-mutation read", func() error {
+		var callErr error
+		body, callErr = r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
+		return callErr
+	})
+	if readErr != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
-			err.Error(),
+			readErr.Error(),
 		)
 		return
 	}
 
 	ruleList := body.GetPolicy().InternetFirewall.Policy.GetRules()
 	currentRule := &cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule{}
-	// Get current rule from response by ID
+	// Get current rule from response by ID (created or adopted)
 	for _, ruleListItem := range ruleList {
-		if ruleListItem.GetRule().ID == createRuleResponse.GetPolicy().GetInternetFirewall().GetAddRule().Rule.GetRule().ID {
+		if ruleListItem.GetRule().ID == effectiveRuleID {
 			currentRule = ruleListItem.GetRule()
 			break
 		}
@@ -357,13 +379,22 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	// Read rule and hydrate response to state
+	// Read rule and hydrate response to state. The mutation already succeeded
+	// and published at this point — retry transient backend failures instead of
+	// failing the operation, which would desync state from the live rule (a
+	// failed Create leaves the rule orphaned and the next apply collides with
+	// ruleNameAlreadyExists).
 	queryIfwPolicy := &cato_models.InternetFirewallPolicyInput{}
-	body, err := r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
-	if err != nil {
+	var body *cato_go_sdk.Policy
+	readErr := sharedpolicy.WithTransientReadRetry(ctx, "PolicyInternetFirewall post-mutation read", func() error {
+		var callErr error
+		body, callErr = r.resourceAPI().PolicyInternetFirewall(ctx, queryIfwPolicy, r.Client.AccountId)
+		return callErr
+	})
+	if readErr != nil {
 		resp.Diagnostics.AddError(
 			"Catov2 API PolicyInternetFirewall error",
-			err.Error(),
+			readErr.Error(),
 		)
 		return
 	}

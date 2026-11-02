@@ -1,0 +1,45 @@
+# Resource: cato_always_on_section
+# Package: internal/provider/policy/access/alwaysonsection
+# Source: https://system.cc.catonetworks.com/api/schema?with_undocumented=true
+# Inspected: 2026-10-27
+# Create: policy.ztnaAlwaysOn.addSection (PolicyAddSectionInput)
+# Read: policy.ztnaAlwaysOn.policy.sections
+# Update: policy.ztnaAlwaysOn.updateSection (PolicyUpdateSectionInput)
+# Move: policy.ztnaAlwaysOn.moveSection (PolicyMoveSectionInput)
+# Delete: policy.ztnaAlwaysOn.removeSection (PolicyRemoveSectionInput)
+# Preserve the create input tree; compute section.id from the response.
+# SDK v1.1.2 omits section.subPolicyId from generated CRUD selections.
+# Changes use the default draft revision without publishing.
+# Schema approved by the user on 2026-10-27.
+Attributes:
+  - Name: at
+    Description: Position of the section in the Always On policy
+    Type: nested
+    Attributes:
+      - Name: position
+        Description: Insertion position (AFTER_SECTION, BEFORE_SECTION, or LAST_IN_POLICY)
+        Type: string
+        Mode: required
+        Hints:
+          - enum=PolicySectionPositionEnum
+      - Name: ref
+        Description: Reference section ID; required for AFTER_SECTION and BEFORE_SECTION
+        Type: string
+        Mode: optional_computed
+        Hints:
+          - modifyPlan
+    Mode: required
+
+  - Name: section
+    Description: Parameters for the Always On policy section
+    Type: nested
+    Attributes:
+      - Name: id
+        Description: Always On policy section ID
+        Type: string
+        Mode: computed
+      - Name: name
+        Description: Always On policy section name
+        Type: string
+        Mode: required
+    Mode: required

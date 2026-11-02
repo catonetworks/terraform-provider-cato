@@ -1,0 +1,1 @@
+terraform import cato_dhcp_relay_group.example OPAQUE_RESOURCE_ID

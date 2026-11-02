@@ -23,6 +23,7 @@ func TestCleanupAccTestResources(t *testing.T) {
 	var errors []error
 	var helpers = []func(t *testing.T) error{
 		deletePrivateAccessRules,
+		deleteAlwaysOnRulesAndSections,
 		deleteSocketLanPolicyResources,
 		deleteSites,
 	}
@@ -249,6 +250,45 @@ func checkSocketLanMutation(operation string, status *cato_models.PolicyMutation
 	}
 	if *status != cato_models.PolicyMutationStatusSuccess {
 		return fmt.Errorf("%s returned mutation status %q", operation, *status)
+	}
+	return nil
+}
+
+func deleteAlwaysOnRulesAndSections(t *testing.T) error {
+	client := GetClient(t)
+	result, err := client.PolicyZtnaAlwaysOnPolicy(ctx, CatoAccountID, nil)
+	if err != nil {
+		return fmt.Errorf("reading Always On policy: %w", err)
+	}
+	policy := result.GetPolicy().GetZtnaAlwaysOn().GetPolicy()
+
+	for _, entry := range policy.GetRules() {
+		rule := entry.GetRule()
+		if !acctestRE.MatchString(rule.GetName()) {
+			continue
+		}
+
+		input := cato_models.ZtnaAlwaysOnRemoveRuleInput{ID: rule.GetID()}
+		if _, err := client.PolicyZtnaAlwaysOnRemoveRule(ctx, CatoAccountID, nil, input); err != nil {
+			return fmt.Errorf("deleting Always On rule %s (%s): %w", rule.GetName(), rule.GetID(), err)
+		}
+	}
+
+	for _, entry := range policy.GetSections() {
+		section := entry.GetSection()
+		if !acctestRE.MatchString(section.GetName()) {
+			continue
+		}
+
+		input := cato_models.PolicyRemoveSectionInput{ID: section.GetID()}
+		if _, err := client.PolicyZtnaAlwaysOnRemoveSection(ctx, CatoAccountID, nil, input); err != nil {
+			return fmt.Errorf("deleting Always On section %s (%s): %w", section.GetName(), section.GetID(), err)
+		}
+	}
+
+	_, err = client.PolicyZtnaAlwaysOnPublishPolicyRevision(ctx, CatoAccountID, nil, nil)
+	if err != nil {
+		return fmt.Errorf("publishing Always On policy: %w", err)
 	}
 	return nil
 }

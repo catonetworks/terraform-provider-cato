@@ -1,0 +1,6 @@
+baseline.json
+*.tfrc
+*.json
+!*.example.json
+*.tfplan
+__pycache__/
