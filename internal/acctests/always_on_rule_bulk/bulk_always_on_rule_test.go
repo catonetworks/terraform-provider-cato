@@ -173,7 +173,14 @@ var alwaysOnTFs = []string{
 
 	# Ordering and publishing
 	resource "cato_always_on_rule_bulk" "reorder" {
-		depends_on   = [cato_always_on_section.acctest_s1, cato_always_on_rule.acctest_r1]
+		depends_on   = [
+			cato_always_on_section.acctest_s1,
+			cato_always_on_section.acctest_s2,
+			cato_always_on_section.acctest_s3,
+			cato_always_on_rule.acctest_r1,
+			cato_always_on_rule.acctest_r2,
+			cato_always_on_rule.acctest_r3,
+		]
 		section_data = {
 			"acctest_s1" = { section_index = 1 }
 			"acctest_s2" = { section_index = 2 }
@@ -290,7 +297,14 @@ var alwaysOnTFs = []string{
 
 	# Ordering and publishing
 	resource "cato_always_on_rule_bulk" "reorder" {
-		depends_on   = [cato_always_on_section.acctest_s1, cato_always_on_rule.acctest_r1]
+		depends_on   = [
+			cato_always_on_section.acctest_s1,
+			cato_always_on_section.acctest_s2,
+			cato_always_on_section.acctest_s4,
+			cato_always_on_rule.acctest_r1,
+			cato_always_on_rule.acctest_r2,
+			cato_always_on_rule.acctest_r4,
+		]
 		section_data = {
 			"acctest_s4" = { section_index = 1 }
 			"acctest_s1" = { section_index = 2 }
