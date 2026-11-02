@@ -181,3 +181,9 @@ packages:
         config:
           filename: AntiMalwareFileHashSectionClient.go
           structname: AntiMalwareFileHashSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/access/user:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: UserClient.go
+          structname: UserClient
