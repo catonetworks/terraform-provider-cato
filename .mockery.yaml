@@ -139,3 +139,9 @@ packages:
         config:
           filename: SdpStaticIPAllocationSectionClient.go
           structname: SdpStaticIPAllocationSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SocketBypassRuleClient.go
+          structname: SocketBypassRuleClient

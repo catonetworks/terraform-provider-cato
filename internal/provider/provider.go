@@ -70,6 +70,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
@@ -552,6 +553,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		dynamicipallocationsection.NewResource,
 		sdpstaticipallocationrule.NewResource,
 		sdpstaticipallocationsection.NewResource,
+		sbrule.NewResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,
