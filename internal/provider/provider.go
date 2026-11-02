@@ -32,6 +32,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/mailinglist"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/rbacassignment"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/subscriptiongroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
@@ -549,6 +550,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		account.NewAccountResource,
 		role.NewResource,
 		mailinglist.NewResource,
+		subscriptiongroup.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		user.NewResource,
