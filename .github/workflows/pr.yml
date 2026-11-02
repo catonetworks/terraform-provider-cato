@@ -43,13 +43,19 @@ jobs:
       - name: Run linter
         run: make lint
 
+      - name: Check acceptance runner scripts
+        run: shellcheck --external-sources test_data/acctest_retry.sh test_data/acctest_retry_test.sh
+
       - name: Run unit tests
         run: make test
 
-      - name: Check acceptance assertions and compile without API calls
-        run: |
-          go test -tags=acctest ./internal/acctests/acc -run '^Test(WithStableResourceID|CheckPolicyPlacement|RequireLiveSkipsBeforeFixtures)$'
-          go test -tags=acctest ./internal/acctests/... -run '^$'
+      - name: Test acceptance helpers without API calls
+        run: >-
+          go test -tags=acctest ./internal/acctests/acc ./internal/acctests/mailing_list
+          -run '^Test(WithStableResourceID|CheckPolicyPlacement|RequireLiveSkipsBeforeFixtures|PolicyAccessDenied|RequirePolicyAccess|CleanupMutationErrors|DiscardWanFirewallPolicyRevision|EligibleMailingListAdmin|FindMailingListAdmin)$'
+
+      - name: Compile acceptance tests without API calls
+        run: go test -tags=acctest ./internal/acctests/... -run '^$'
 
       - name: Run acceptance tests
         if: ${{ github.ref_name != 'beta' && !startsWith(github.ref_name, 'beta-') }}

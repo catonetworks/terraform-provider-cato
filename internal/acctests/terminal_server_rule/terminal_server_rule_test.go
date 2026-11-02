@@ -19,6 +19,7 @@ import (
 func TestAccTerminalServerRule(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
+	acc.RequirePolicyAccess(t, "terminalServer")
 	acc.CheckCMAVars(t)()
 	fixtureRange := createTestIPRange(t, "192.0.2.241")
 	anchorRange := createTestIPRange(t, "192.0.2.242")

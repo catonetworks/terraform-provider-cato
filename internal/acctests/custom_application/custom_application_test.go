@@ -4,16 +4,15 @@ package customapplication
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
-	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	m "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 )
 
 func TestAccCustomApplication(t *testing.T) {
@@ -56,14 +55,8 @@ func TestAccCustomApplication(t *testing.T) {
 				continue
 			}
 			_, err := acc.GetClient(t).CustomAppDataCustomApplication(context.Background(), acc.CatoAccountID, m.CustomApplicationRefInput{By: m.ObjectRefByID, Input: item.Primary.ID})
-			var api *clientv2.ErrorResponse
-			if !errors.As(err, &api) || api.GqlErrors == nil || len(*api.GqlErrors) == 0 {
-				return fmt.Errorf("application absence not confirmed")
-			}
-			for _, e := range *api.GqlErrors {
-				if e == nil || e.Message != "Custom application not found by ID: "+item.Primary.ID {
-					return fmt.Errorf("application absence not confirmed")
-				}
+			if !apperror.MissingCustomApplication(err, item.Primary.ID, acc.CatoAccountID) {
+				return fmt.Errorf("application absence not confirmed: %v", err)
 			}
 		}
 		return nil

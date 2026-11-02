@@ -3,7 +3,6 @@ package customapplication
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato "github.com/catonetworks/cato-go-sdk"
@@ -83,15 +82,8 @@ func (c *sdkClient) CustomAppDataCustomApplication(ctx context.Context,
 
 type appRecord = cato.CustomAppDataCustomApplication_CustomAppData_CustomApplication
 
-var numericID = regexp.MustCompile(`^\d+$`)
-
 func missingApplication(err error, id, account string) bool {
-	lookup := id
-	if numericID.MatchString(id) {
-		lookup = "CustomApp_" + account + "_" + id
-	}
-	expected := "Custom application not found by ID: " + lookup
-	return apperror.MatchesGraphQLMessages(err, expected, "GQL-User-Error: "+expected)
+	return apperror.MissingCustomApplication(err, id, account)
 }
 func (r *appResource) find(ctx context.Context, id string) (*appRecord, error) {
 	result,

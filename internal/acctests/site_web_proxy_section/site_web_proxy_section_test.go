@@ -19,6 +19,7 @@ import (
 func TestAccSiteWebProxySection(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.RequireLive(t)
+	acc.RequirePolicyAccess(t, "siteWebProxy")
 	fixtureRange := ""
 
 	config := func(name, description string) string {

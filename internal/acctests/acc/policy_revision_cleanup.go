@@ -5,6 +5,7 @@ package acc
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	cato "github.com/catonetworks/cato-go-sdk"
@@ -76,8 +77,8 @@ func discardInternetFirewallPolicyRevision(client *cato.Client, revisionID strin
 	if err != nil {
 		return fmt.Errorf("discard internet firewall revision %s: %w", revisionID, err)
 	}
-	if errs := resp.GetPolicy().GetInternetFirewall().GetDiscardPolicyRevision().GetErrors(); len(errs) > 0 {
-		return fmt.Errorf("discard internet firewall revision %s: %v", revisionID, errs)
+	if err := cleanupMutationErrors(resp.GetPolicy().GetInternetFirewall().GetDiscardPolicyRevision().GetErrors()); err != nil {
+		return fmt.Errorf("discard internet firewall revision %s: %w", revisionID, err)
 	}
 	return nil
 }
@@ -93,8 +94,8 @@ func discardWanFirewallPolicyRevision(client *cato.Client, revisionID string) er
 	if err != nil {
 		return fmt.Errorf("discard WAN firewall revision %s: %w", revisionID, err)
 	}
-	if errs := resp.GetPolicy().GetWanFirewall().GetDiscardPolicyRevision().GetErrors(); len(errs) > 0 {
-		return fmt.Errorf("discard WAN firewall revision %s: %v", revisionID, errs)
+	if err := cleanupMutationErrors(resp.GetPolicy().GetWanFirewall().GetDiscardPolicyRevision().GetErrors()); err != nil {
+		return fmt.Errorf("discard WAN firewall revision %s: %w", revisionID, err)
 	}
 	return nil
 }
@@ -111,8 +112,37 @@ func discardWanNetworkPolicyRevision(client *cato.Client, revisionID string) err
 	if err != nil {
 		return fmt.Errorf("discard WAN network revision %s: %w", revisionID, err)
 	}
-	if errs := resp.GetPolicy().GetWanNetwork().GetDiscardPolicyRevision().GetErrors(); len(errs) > 0 {
-		return fmt.Errorf("discard WAN network revision %s: %v", revisionID, errs)
+	if err := cleanupMutationErrors(resp.GetPolicy().GetWanNetwork().GetDiscardPolicyRevision().GetErrors()); err != nil {
+		return fmt.Errorf("discard WAN network revision %s: %w", revisionID, err)
+	}
+	return nil
+}
+
+// A revision may already have been published/discarded between list and cleanup.
+// Keep every other API error visible, including mixed missing/failed responses.
+func cleanupMutationErrors[T interface {
+	GetErrorCode() *string
+	GetErrorMessage() *string
+}](items []T) error {
+	var failures []string
+	for _, item := range items {
+		code, message := "", ""
+		if value := item.GetErrorCode(); value != nil {
+			code = *value
+		}
+		if value := item.GetErrorMessage(); value != nil {
+			message = *value
+		}
+		if code == "PolicyRevisionNotFound" {
+			continue
+		}
+		if code == "" && message == "" {
+			message = "API returned a policy error without details"
+		}
+		failures = append(failures, fmt.Sprintf("%s: %s", code, message))
+	}
+	if len(failures) > 0 {
+		return errors.New(strings.Join(failures, "; "))
 	}
 	return nil
 }
