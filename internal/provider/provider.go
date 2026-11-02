@@ -34,6 +34,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/subscriptiongroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectphysicalconnection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
@@ -559,6 +560,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		secondaryawsvsocket.NewResource,
 		secondaryazurevsocket.NewResource,
 		wifissid.NewResource,
+		cloudinterconnectphysicalconnection.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		user.NewResource,

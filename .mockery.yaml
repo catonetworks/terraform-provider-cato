@@ -223,3 +223,9 @@ packages:
         config:
           filename: WifiSSIDClient.go
           structname: WifiSSIDClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectphysicalconnection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: CloudInterconnectPhysicalConnectionClient.go
+          structname: CloudInterconnectPhysicalConnectionClient
