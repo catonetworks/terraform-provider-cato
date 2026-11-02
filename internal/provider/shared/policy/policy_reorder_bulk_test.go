@@ -278,3 +278,18 @@ func TestWanFirewallBulkPolicyClient_ReorderInvoked(t *testing.T) {
 	_, err := m.PolicyWanFirewallReorderPolicy(ctx, nil, reorderIn, accountID)
 	require.ErrorContains(t, err, "injected")
 }
+
+func TestBuildPolicyReorderInput_plannedUnknownSection(t *testing.T) {
+	t.Parallel()
+	sections := []BulkPolicySectionRef{{ID: "s1", Name: "Sec"}}
+	rules := []BulkPolicyRuleRow{
+		{SectionID: "s1", SectionName: "Sec", RuleID: "r1", RuleName: "Scope Rule", Index: 1},
+	}
+	planned := []BulkPlannedRuleIndex{
+		{SectionName: "Default Outbound Internet", RuleName: "Scope Rule", IndexInSection: 1},
+	}
+
+	_, err := BuildPolicyReorderInput(sections, rules, planned)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `references section "Default Outbound Internet"`)
+}

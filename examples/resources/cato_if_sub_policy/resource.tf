@@ -18,13 +18,10 @@ resource "cato_if_sub_policy" "minimal" {
     connection_origin = "REMOTE"
     source            = {}
     destination       = {}
-    tracking = {
-      event = {
-        enabled = true
-      }
-    }
   }
 }
+
+// Scope tracking is API-managed; omit it from scope.
 
 // full sub-policy with a scoped source and a nested rule owned by it
 resource "cato_if_sub_policy" "full" {
@@ -45,6 +42,12 @@ resource "cato_if_sub_policy" "full" {
       ]
     }
     destination = {}
+  }
+
+  // Optional: manage the API-created cleanup rule with this sub-policy.
+  cleanup_rule = {
+    action  = "BLOCK"
+    enabled = true
     tracking = {
       event = {
         enabled = true

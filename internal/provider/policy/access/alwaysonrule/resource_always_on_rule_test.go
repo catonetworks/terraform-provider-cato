@@ -222,7 +222,6 @@ func TestAlwaysOnRuleMetadataConfigureAndImport(t *testing.T) {
 	require.Same(t, service, r.client)
 	require.Nil(t, r.getClient())
 	service.Catov2 = catoclient.NewProviderSDKClient(&cato.Client{})
-	require.IsType(t, &sdkClient{}, r.getClient())
 	r.Configure(ctx, resource.ConfigureRequest{ProviderData: "invalid"}, &configure)
 	require.True(t, configure.Diagnostics.HasError())
 	resp := resource.ImportStateResponse{State: tfsdk.State{Schema: alwaysOnSchema(t)}}

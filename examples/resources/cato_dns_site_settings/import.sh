@@ -1,0 +1,1 @@
+terraform import cato_dns_site_settings.example SITE_ID

@@ -1,0 +1,41 @@
+# Approved API-shaped schema; API-specific omission semantics documented in ai_context.md.
+Attributes:
+- Name: id
+  Description: Site ID.
+  Type: string
+  Mode: computed
+- Name: primary_server
+  Description: Primary DNS server. Omission clears it; secondary server and suffixes
+    require a primary.
+  Type: string
+  Mode: optional_computed
+  Hints:
+  - modifyPlan
+- Name: secondary_server
+  Description: Secondary DNS server. Omission clears it.
+  Type: string
+  Mode: optional_computed
+  Hints:
+  - modifyPlan
+- Name: site
+  Description: Site reference
+  Type: nested
+  Mode: required
+  Hints:
+  - idName
+  Attributes:
+  - Name: id
+    Description: Site reference id
+    Type: string
+    Mode: optional_computed
+  - Name: name
+    Description: Site reference name
+    Type: string
+    Mode: optional_computed
+- Name: suffix
+  Description: Ordered DNS search suffixes. Omission or an empty list clears the list.
+  Type: list
+  ItemType: string
+  Mode: optional_computed
+  Hints:
+  - modifyPlan

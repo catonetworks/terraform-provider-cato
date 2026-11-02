@@ -1,0 +1,1 @@
+terraform import cato_dns_forwarding_rule.example OPAQUE_RESOURCE_ID

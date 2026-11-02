@@ -1,0 +1,32 @@
+# Approved API-shaped schema; API-specific omission semantics documented in ai_context.md.
+Attributes:
+- Name: accept_dns_requests_on_lan_interface_ip
+  Description: Accept DNS requests sent to Socket LAN interface IP.
+  Type: bool
+  Mode: optional_computed
+  Hints:
+  - modifyPlan
+- Name: id
+  Description: Account ID.
+  Type: string
+  Mode: computed
+- Name: primary_server
+  Description: Primary DNS server. Omission clears it; secondary server and suffixes
+    require a primary.
+  Type: string
+  Mode: optional_computed
+  Hints:
+  - modifyPlan
+- Name: secondary_server
+  Description: Secondary DNS server. Omission clears it.
+  Type: string
+  Mode: optional_computed
+  Hints:
+  - modifyPlan
+- Name: suffix
+  Description: Ordered DNS search suffixes. Omission or an empty list clears the list.
+  Type: list
+  ItemType: string
+  Mode: optional_computed
+  Hints:
+  - modifyPlan

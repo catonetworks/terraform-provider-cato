@@ -3,12 +3,12 @@
 page_title: "cato_if_sub_policy Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_if_sub_policy resource manages an Internet Firewall sub-policy (a nested policy scoped by a SUB_POLICY_SCOPE rule). The Cato API has no updateSubPolicy mutation, so changing name or description forces resource replacement. Documentation for the underlying API can be found at mutation.policy.internetFirewall.addSubPolicy().
+  The cato_if_sub_policy resource manages an Internet Firewall sub-policy (a nested policy scoped by a SUB_POLICY_SCOPE rule) together with the cleanup rule the API auto-creates inside it. The Cato API has no updateSubPolicy mutation, so changing name or description forces resource replacement. Documentation for the underlying API can be found at mutation.policy.internetFirewall.addSubPolicy().
 ---
 
 # cato_if_sub_policy (Resource)
 
-The `cato_if_sub_policy` resource manages an Internet Firewall sub-policy (a nested policy scoped by a SUB_POLICY_SCOPE rule). The Cato API has no updateSubPolicy mutation, so changing `name` or `description` forces resource replacement. Documentation for the underlying API can be found at mutation.policy.internetFirewall.addSubPolicy().
+The `cato_if_sub_policy` resource manages an Internet Firewall sub-policy (a nested policy scoped by a SUB_POLICY_SCOPE rule) together with the cleanup rule the API auto-creates inside it. The Cato API has no updateSubPolicy mutation, so changing `name` or `description` forces resource replacement. Documentation for the underlying API can be found at mutation.policy.internetFirewall.addSubPolicy().
 
 ## Example Usage
 
@@ -33,13 +33,10 @@ resource "cato_if_sub_policy" "minimal" {
     connection_origin = "REMOTE"
     source            = {}
     destination       = {}
-    tracking = {
-      event = {
-        enabled = true
-      }
-    }
   }
 }
+
+// Scope tracking is API-managed; omit it from scope.
 
 // full sub-policy with a scoped source and a nested rule owned by it
 resource "cato_if_sub_policy" "full" {
@@ -60,6 +57,12 @@ resource "cato_if_sub_policy" "full" {
       ]
     }
     destination = {}
+  }
+
+  // Optional: manage the API-created cleanup rule with this sub-policy.
+  cleanup_rule = {
+    action  = "BLOCK"
+    enabled = true
     tracking = {
       event = {
         enabled = true
@@ -103,13 +106,18 @@ resource "cato_if_rule" "in_sub_policy" {
 
 ### Required
 
-- `at` (Attributes) Position of the sub-policy scope within the Internet Firewall policy. (see [below for nested schema](#nestedatt--at))
+- `at` (Attributes) Position of the sub-policy scope within the Internet Firewall policy. Input-only placement used at creation; ongoing ordering is managed by cato_bulk_if_move_rule. (see [below for nested schema](#nestedatt--at))
 - `description` (String) Sub-policy description. Changing this forces replacement (no updateSubPolicy API).
 - `name` (String) Sub-policy name. Changing this forces replacement (no updateSubPolicy API).
 - `scope` (Attributes) Scope of the sub-policy. This is the SUB_POLICY_SCOPE rule that defines when the sub-policy applies. Uses the same parameters as a cato_if_rule rule. (see [below for nested schema](#nestedatt--scope))
 
+### Optional
+
+- `cleanup_rule` (Attributes) The sub-policy's cleanup rule — auto-created by the API with the sub-policy and managed as part of this resource. Omit to keep the API defaults (ALLOW, tracking disabled). Uses the same parameters as a cato_if_rule rule. The discovered cleanup rule ID is preserved across external reorders. (see [below for nested schema](#nestedatt--cleanup_rule))
+
 ### Read-Only
 
+- `cleanup_rule_id` (String) ID of the cleanup rule the API auto-created inside the sub-policy.
 - `id` (String) Sub-policy ID
 - `scope_rule_id` (String) ID of the underlying SUB_POLICY_SCOPE rule.
 
@@ -133,7 +141,6 @@ Required:
 - `destination` (Attributes) Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput) (see [below for nested schema](#nestedatt--scope--destination))
 - `enabled` (Boolean) Attribute to define rule status (enabled or disabled)
 - `source` (Attributes) Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput) (see [below for nested schema](#nestedatt--scope--source))
-- `tracking` (Attributes) Tracking information when the rule is matched, such as events and notifications (see [below for nested schema](#nestedatt--scope--tracking))
 
 Optional:
 
@@ -146,6 +153,7 @@ Optional:
 - `exceptions` (Attributes Set) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--scope--exceptions))
 - `schedule` (Attributes) The time period specifying when the rule is enabled, otherwise it is disabled. (see [below for nested schema](#nestedatt--scope--schedule))
 - `service` (Attributes) Destination service traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--scope--service))
+- `tracking` (Attributes) Tracking is API-managed on SUB_POLICY_SCOPE rules and must be omitted here — the API rejects user-supplied tracking settings on scoping rules. (see [below for nested schema](#nestedatt--scope--tracking))
 
 Read-Only:
 
@@ -362,65 +370,6 @@ Optional:
 
 - `id` (String) User Group ID
 - `name` (String) User Group Name
-
-
-
-<a id="nestedatt--scope--tracking"></a>
-### Nested Schema for `scope.tracking`
-
-Required:
-
-- `event` (Attributes) When enabled, create an event each time the rule is matched (see [below for nested schema](#nestedatt--scope--tracking--event))
-
-Optional:
-
-- `alert` (Attributes) When enabled, send an alert each time the rule is matched (see [below for nested schema](#nestedatt--scope--tracking--alert))
-
-<a id="nestedatt--scope--tracking--event"></a>
-### Nested Schema for `scope.tracking.event`
-
-Optional:
-
-- `enabled` (Boolean)
-
-
-<a id="nestedatt--scope--tracking--alert"></a>
-### Nested Schema for `scope.tracking.alert`
-
-Optional:
-
-- `enabled` (Boolean)
-- `frequency` (String) Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
-- `mailing_list` (Attributes Set) Returns data for the Mailing List that receives the alert (see [below for nested schema](#nestedatt--scope--tracking--alert--mailing_list))
-- `subscription_group` (Attributes Set) Returns data for the Subscription Group that receives the alert (see [below for nested schema](#nestedatt--scope--tracking--alert--subscription_group))
-- `webhook` (Attributes Set) Returns data for the Webhook that receives the alert (see [below for nested schema](#nestedatt--scope--tracking--alert--webhook))
-
-<a id="nestedatt--scope--tracking--alert--mailing_list"></a>
-### Nested Schema for `scope.tracking.alert.mailing_list`
-
-Optional:
-
-- `id` (String) Mailing list ID
-- `name` (String) Mailing list name
-
-
-<a id="nestedatt--scope--tracking--alert--subscription_group"></a>
-### Nested Schema for `scope.tracking.alert.subscription_group`
-
-Optional:
-
-- `id` (String) Subscription group ID
-- `name` (String) Subscription group name
-
-
-<a id="nestedatt--scope--tracking--alert--webhook"></a>
-### Nested Schema for `scope.tracking.alert.webhook`
-
-Optional:
-
-- `id` (String) Webhook ID
-- `name` (String) Webhook name
-
 
 
 
@@ -830,3 +779,770 @@ Optional:
 
 - `id` (String) Service ID
 - `name` (String) Service name
+
+
+
+<a id="nestedatt--scope--tracking"></a>
+### Nested Schema for `scope.tracking`
+
+Required:
+
+- `event` (Attributes) When enabled, create an event each time the rule is matched (see [below for nested schema](#nestedatt--scope--tracking--event))
+
+Optional:
+
+- `alert` (Attributes) When enabled, send an alert each time the rule is matched (see [below for nested schema](#nestedatt--scope--tracking--alert))
+
+<a id="nestedatt--scope--tracking--event"></a>
+### Nested Schema for `scope.tracking.event`
+
+Optional:
+
+- `enabled` (Boolean)
+
+
+<a id="nestedatt--scope--tracking--alert"></a>
+### Nested Schema for `scope.tracking.alert`
+
+Optional:
+
+- `enabled` (Boolean)
+- `frequency` (String) Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
+- `mailing_list` (Attributes Set) Returns data for the Mailing List that receives the alert (see [below for nested schema](#nestedatt--scope--tracking--alert--mailing_list))
+- `subscription_group` (Attributes Set) Returns data for the Subscription Group that receives the alert (see [below for nested schema](#nestedatt--scope--tracking--alert--subscription_group))
+- `webhook` (Attributes Set) Returns data for the Webhook that receives the alert (see [below for nested schema](#nestedatt--scope--tracking--alert--webhook))
+
+<a id="nestedatt--scope--tracking--alert--mailing_list"></a>
+### Nested Schema for `scope.tracking.alert.mailing_list`
+
+Optional:
+
+- `id` (String) Mailing list ID
+- `name` (String) Mailing list name
+
+
+<a id="nestedatt--scope--tracking--alert--subscription_group"></a>
+### Nested Schema for `scope.tracking.alert.subscription_group`
+
+Optional:
+
+- `id` (String) Subscription group ID
+- `name` (String) Subscription group name
+
+
+<a id="nestedatt--scope--tracking--alert--webhook"></a>
+### Nested Schema for `scope.tracking.alert.webhook`
+
+Optional:
+
+- `id` (String) Webhook ID
+- `name` (String) Webhook name
+
+
+
+
+
+<a id="nestedatt--cleanup_rule"></a>
+### Nested Schema for `cleanup_rule`
+
+Required:
+
+- `destination` (Attributes) Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallDestinationInput) (see [below for nested schema](#nestedatt--cleanup_rule--destination))
+- `source` (Attributes) Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (https://api.catonetworks.com/documentation/#definition-InternetFirewallSourceInput) (see [below for nested schema](#nestedatt--cleanup_rule--source))
+
+Optional:
+
+- `action` (String) The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)
+- `active_period` (Attributes) Time period during which the rule is active. Outside this period, the rule is inactive. Times should be in RFC3339 format (e.g., '2024-12-31T23:59:59Z'). (see [below for nested schema](#nestedatt--cleanup_rule--active_period))
+- `connection_origin` (String) Connection origin of the traffic (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
+- `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--cleanup_rule--country))
+- `description` (String) Description of the rule
+- `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--cleanup_rule--device))
+- `device_attributes` (Attributes) Device attributes matching criteria for the rule. (see [below for nested schema](#nestedatt--cleanup_rule--device_attributes))
+- `device_os` (List of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.(https://api.catonetworks.com/documentation/#definition-OperatingSystem)
+- `enabled` (Boolean) Attribute to define rule status (enabled or disabled)
+- `exceptions` (Attributes Set) The set of exceptions for the rule. Exceptions define when the rule will be ignored and the firewall evaluation will continue with the lower priority rules. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions))
+- `name` (String) Cleanup rule name. Defaults to the API-generated "<sub-policy name> - Cleanup Rule"; set to rename the cleanup rule.
+- `schedule` (Attributes) The time period specifying when the rule is enabled, otherwise it is disabled. (see [below for nested schema](#nestedatt--cleanup_rule--schedule))
+- `service` (Attributes) Destination service traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--cleanup_rule--service))
+- `tracking` (Attributes) Tracking for the cleanup rule. Optional — the API default is disabled. (see [below for nested schema](#nestedatt--cleanup_rule--tracking))
+
+Read-Only:
+
+- `id` (String) ID of the rule
+
+<a id="nestedatt--cleanup_rule--destination"></a>
+### Nested Schema for `cleanup_rule.destination`
+
+Optional:
+
+- `app_category` (Attributes Set) Cato category of applications which are dynamically updated by Cato (see [below for nested schema](#nestedatt--cleanup_rule--destination--app_category))
+- `application` (Attributes Set) Applications for the rule (pre-defined) (see [below for nested schema](#nestedatt--cleanup_rule--destination--application))
+- `country` (Attributes Set) Countries (see [below for nested schema](#nestedatt--cleanup_rule--destination--country))
+- `custom_app` (Attributes Set) Custom (user-defined) applications (see [below for nested schema](#nestedatt--cleanup_rule--destination--custom_app))
+- `custom_category` (Attributes Set) Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc. (see [below for nested schema](#nestedatt--cleanup_rule--destination--custom_category))
+- `domain` (List of String) A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.
+- `fqdn` (List of String) An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.
+- `global_ip_range` (Attributes Set) Globally defined IP range, IP and subnet objects. (see [below for nested schema](#nestedatt--cleanup_rule--destination--global_ip_range))
+- `ip` (List of String) IPv4 addresses
+- `ip_range` (Attributes List) A range of IPs. Every IP within the range will be matched (see [below for nested schema](#nestedatt--cleanup_rule--destination--ip_range))
+- `remote_asn` (List of String) Remote Autonomous System Number (ASN)
+- `sanctioned_apps_category` (Attributes Set) Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization. (see [below for nested schema](#nestedatt--cleanup_rule--destination--sanctioned_apps_category))
+- `subnet` (List of String) Network subnets in CIDR notation
+
+<a id="nestedatt--cleanup_rule--destination--app_category"></a>
+### Nested Schema for `cleanup_rule.destination.app_category`
+
+Optional:
+
+- `id` (String) App category ID
+- `name` (String) App category name
+
+
+<a id="nestedatt--cleanup_rule--destination--application"></a>
+### Nested Schema for `cleanup_rule.destination.application`
+
+Optional:
+
+- `id` (String) Application ID
+- `name` (String) Application name
+
+
+<a id="nestedatt--cleanup_rule--destination--country"></a>
+### Nested Schema for `cleanup_rule.destination.country`
+
+Optional:
+
+- `id` (String) Country ID
+- `name` (String) Country name
+
+
+<a id="nestedatt--cleanup_rule--destination--custom_app"></a>
+### Nested Schema for `cleanup_rule.destination.custom_app`
+
+Optional:
+
+- `id` (String) Custom app ID
+- `name` (String) Custom app name
+
+
+<a id="nestedatt--cleanup_rule--destination--custom_category"></a>
+### Nested Schema for `cleanup_rule.destination.custom_category`
+
+Optional:
+
+- `id` (String) Custom category ID
+- `name` (String) Custom category name
+
+
+<a id="nestedatt--cleanup_rule--destination--global_ip_range"></a>
+### Nested Schema for `cleanup_rule.destination.global_ip_range`
+
+Optional:
+
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
+
+
+<a id="nestedatt--cleanup_rule--destination--ip_range"></a>
+### Nested Schema for `cleanup_rule.destination.ip_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+<a id="nestedatt--cleanup_rule--destination--sanctioned_apps_category"></a>
+### Nested Schema for `cleanup_rule.destination.sanctioned_apps_category`
+
+Optional:
+
+- `id` (String) Sanctioned apps category ID
+- `name` (String) Sanctioned apps category name
+
+
+
+<a id="nestedatt--cleanup_rule--source"></a>
+### Nested Schema for `cleanup_rule.source`
+
+Optional:
+
+- `floating_subnet` (Attributes Set) Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP. (see [below for nested schema](#nestedatt--cleanup_rule--source--floating_subnet))
+- `global_ip_range` (Attributes Set) Globally defined IP range, IP and subnet objects (see [below for nested schema](#nestedatt--cleanup_rule--source--global_ip_range))
+- `group` (Attributes Set) Groups defined for your account (see [below for nested schema](#nestedatt--cleanup_rule--source--group))
+- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--cleanup_rule--source--host))
+- `ip` (List of String) Pv4 address list
+- `ip_range` (Attributes List) Multiple separate IP addresses or an IP range (see [below for nested schema](#nestedatt--cleanup_rule--source--ip_range))
+- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--cleanup_rule--source--network_interface))
+- `site` (Attributes Set) Site defined for the account (see [below for nested schema](#nestedatt--cleanup_rule--source--site))
+- `site_network_subnet` (Attributes Set) GlobalRange + InterfaceSubnet (see [below for nested schema](#nestedatt--cleanup_rule--source--site_network_subnet))
+- `subnet` (List of String) Subnets and network ranges defined for the LAN interfaces of a site
+- `system_group` (Attributes Set) Predefined Cato groups (see [below for nested schema](#nestedatt--cleanup_rule--source--system_group))
+- `user` (Attributes Set) Individual users defined for the account (see [below for nested schema](#nestedatt--cleanup_rule--source--user))
+- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--cleanup_rule--source--users_group))
+
+<a id="nestedatt--cleanup_rule--source--floating_subnet"></a>
+### Nested Schema for `cleanup_rule.source.floating_subnet`
+
+Optional:
+
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
+
+
+<a id="nestedatt--cleanup_rule--source--global_ip_range"></a>
+### Nested Schema for `cleanup_rule.source.global_ip_range`
+
+Optional:
+
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
+
+
+<a id="nestedatt--cleanup_rule--source--group"></a>
+### Nested Schema for `cleanup_rule.source.group`
+
+Optional:
+
+- `id` (String) Group ID
+- `name` (String) Group name
+
+
+<a id="nestedatt--cleanup_rule--source--host"></a>
+### Nested Schema for `cleanup_rule.source.host`
+
+Optional:
+
+- `id` (String) Host ID
+- `name` (String) Host name
+
+
+<a id="nestedatt--cleanup_rule--source--ip_range"></a>
+### Nested Schema for `cleanup_rule.source.ip_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+<a id="nestedatt--cleanup_rule--source--network_interface"></a>
+### Nested Schema for `cleanup_rule.source.network_interface`
+
+Optional:
+
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
+
+
+<a id="nestedatt--cleanup_rule--source--site"></a>
+### Nested Schema for `cleanup_rule.source.site`
+
+Optional:
+
+- `id` (String) Site ID
+- `name` (String) Site name
+
+
+<a id="nestedatt--cleanup_rule--source--site_network_subnet"></a>
+### Nested Schema for `cleanup_rule.source.site_network_subnet`
+
+Optional:
+
+- `id` (String) Site network subnet ID
+- `name` (String) Site network subnet name
+
+
+<a id="nestedatt--cleanup_rule--source--system_group"></a>
+### Nested Schema for `cleanup_rule.source.system_group`
+
+Optional:
+
+- `id` (String) System group ID
+- `name` (String) System group name
+
+
+<a id="nestedatt--cleanup_rule--source--user"></a>
+### Nested Schema for `cleanup_rule.source.user`
+
+Optional:
+
+- `id` (String) User ID
+- `name` (String) User name
+
+
+<a id="nestedatt--cleanup_rule--source--users_group"></a>
+### Nested Schema for `cleanup_rule.source.users_group`
+
+Optional:
+
+- `id` (String) User Group ID
+- `name` (String) User Group Name
+
+
+
+<a id="nestedatt--cleanup_rule--active_period"></a>
+### Nested Schema for `cleanup_rule.active_period`
+
+Optional:
+
+- `effective_from` (String) The time the rule becomes active (RFC3339 format, e.g., '2024-01-01T00:00:00Z'). If not specified, the rule is active from creation.
+- `expires_at` (String) The time the rule expires and becomes inactive (RFC3339 format, e.g., '2024-12-31T23:59:59Z'). If not specified, the rule never expires.
+
+Read-Only:
+
+- `use_effective_from` (Boolean) Whether to use the effective_from time. Computed from the presence of effective_from field.
+- `use_expires_at` (Boolean) Whether to use the expires_at time. Computed from the presence of expires_at field.
+
+
+<a id="nestedatt--cleanup_rule--country"></a>
+### Nested Schema for `cleanup_rule.country`
+
+Optional:
+
+- `id` (String) Country ID
+- `name` (String) Country name
+
+
+<a id="nestedatt--cleanup_rule--device"></a>
+### Nested Schema for `cleanup_rule.device`
+
+Optional:
+
+- `id` (String) Device ID
+- `name` (String) Device name
+
+
+<a id="nestedatt--cleanup_rule--device_attributes"></a>
+### Nested Schema for `cleanup_rule.device_attributes`
+
+Optional:
+
+- `category` (List of String) Device category matching criteria for the rule.
+- `manufacturer` (List of String) Device manufacturer matching criteria for the rule.
+- `model` (List of String) Device model matching criteria for the rule.
+- `os` (List of String) Device OS matching criteria for the rule.
+- `os_version` (List of String) Device OS version matching criteria for the rule.
+- `type` (List of String) Device type matching criteria for the rule.
+
+
+<a id="nestedatt--cleanup_rule--exceptions"></a>
+### Nested Schema for `cleanup_rule.exceptions`
+
+Required:
+
+- `destination` (Attributes) Destination service matching criteria for the exception. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination))
+- `service` (Attributes) Destination service traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. This field is required when defining exceptions. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--service))
+
+Optional:
+
+- `connection_origin` (String) Connection origin matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-ConnectionOriginEnum)
+- `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--country))
+- `device` (Attributes Set) Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--device))
+- `device_attributes` (Attributes) Device attributes matching criteria for the exception. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--device_attributes))
+- `device_os` (List of String) Source device OS matching criteria for the exception. (https://api.catonetworks.com/documentation/#definition-OperatingSystem)
+- `name` (String) A unique name of the rule exception.
+- `source` (Attributes) Source traffic matching criteria for the exception. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source))
+
+<a id="nestedatt--cleanup_rule--exceptions--destination"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination`
+
+Optional:
+
+- `app_category` (Attributes Set) Cato category of applications which are dynamically updated by Cato (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--app_category))
+- `application` (Attributes Set) Applications for the rule (pre-defined) (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--application))
+- `country` (Attributes Set) Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--country))
+- `custom_app` (Attributes Set) Custom (user-defined) applications (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--custom_app))
+- `custom_category` (Attributes Set) Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--custom_category))
+- `domain` (List of String) A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.
+- `fqdn` (List of String) An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.
+- `global_ip_range` (Attributes Set) Globally defined IP range, IP and subnet objects. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--global_ip_range))
+- `ip` (List of String) IPv4 addresses
+- `ip_range` (Attributes List) A range of IPs. Every IP within the range will be matched (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--ip_range))
+- `remote_asn` (List of String)
+- `sanctioned_apps_category` (Attributes Set) Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--destination--sanctioned_apps_category))
+- `subnet` (List of String) Network subnets in CIDR notation
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--app_category"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.app_category`
+
+Optional:
+
+- `id` (String) Application Category ID
+- `name` (String) Application Category name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--application"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.application`
+
+Optional:
+
+- `id` (String) Application ID
+- `name` (String) Application name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--country"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.country`
+
+Optional:
+
+- `id` (String) Country ID
+- `name` (String) Country name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--custom_app"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.custom_app`
+
+Optional:
+
+- `id` (String) Custom Application ID
+- `name` (String) Custom Application name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--custom_category"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.custom_category`
+
+Optional:
+
+- `id` (String) Custom Category ID
+- `name` (String) Custom Category name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--global_ip_range"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.global_ip_range`
+
+Optional:
+
+- `id` (String) Global IP Range ID
+- `name` (String) Global IP Range name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--ip_range"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.ip_range`
+
+Required:
+
+- `from` (String) IP Range Name
+- `to` (String) IP Range ID
+
+
+<a id="nestedatt--cleanup_rule--exceptions--destination--sanctioned_apps_category"></a>
+### Nested Schema for `cleanup_rule.exceptions.destination.sanctioned_apps_category`
+
+Optional:
+
+- `id` (String) Sanctioned Apps Category ID
+- `name` (String) Sanctioned Apps Category name
+
+
+
+<a id="nestedatt--cleanup_rule--exceptions--service"></a>
+### Nested Schema for `cleanup_rule.exceptions.service`
+
+Optional:
+
+- `custom` (Attributes List) Custom Service defined by a combination of L4 ports and an IP Protocol (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--service--custom))
+- `standard` (Attributes Set) Standard Service to which this Internet Firewall rule applies (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--service--standard))
+
+<a id="nestedatt--cleanup_rule--exceptions--service--custom"></a>
+### Nested Schema for `cleanup_rule.exceptions.service.custom`
+
+Optional:
+
+- `port` (List of String) List of TCP/UDP port
+- `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--service--custom--port_range))
+- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
+
+<a id="nestedatt--cleanup_rule--exceptions--service--custom--port_range"></a>
+### Nested Schema for `cleanup_rule.exceptions.service.custom.port_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+
+<a id="nestedatt--cleanup_rule--exceptions--service--standard"></a>
+### Nested Schema for `cleanup_rule.exceptions.service.standard`
+
+Optional:
+
+- `id` (String) Service Standard ID
+- `name` (String) Service Standard name
+
+
+
+<a id="nestedatt--cleanup_rule--exceptions--country"></a>
+### Nested Schema for `cleanup_rule.exceptions.country`
+
+Optional:
+
+- `id` (String) Country ID
+- `name` (String) Country name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--device"></a>
+### Nested Schema for `cleanup_rule.exceptions.device`
+
+Optional:
+
+- `id` (String) Device ID
+- `name` (String) Device name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--device_attributes"></a>
+### Nested Schema for `cleanup_rule.exceptions.device_attributes`
+
+Optional:
+
+- `category` (List of String) Device category matching criteria for the exception.
+- `manufacturer` (List of String) Device manufacturer matching criteria for the exception.
+- `model` (List of String) Device model matching criteria for the exception.
+- `os` (List of String) Device OS matching criteria for the exception.
+- `os_version` (List of String) Device OS version matching criteria for the exception.
+- `type` (List of String) Device type matching criteria for the exception.
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source"></a>
+### Nested Schema for `cleanup_rule.exceptions.source`
+
+Optional:
+
+- `floating_subnet` (Attributes Set) Floating Subnet defined for a site (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--floating_subnet))
+- `global_ip_range` (Attributes Set) Global IP Range (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--global_ip_range))
+- `group` (Attributes Set) (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--group))
+- `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--host))
+- `ip` (List of String)
+- `ip_range` (Attributes List) IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--ip_range))
+- `network_interface` (Attributes Set) Network range defined for a site (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--network_interface))
+- `site` (Attributes Set) Sites defined in your account (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--site))
+- `site_network_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--site_network_subnet))
+- `subnet` (List of String) Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
+- `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--system_group))
+- `user` (Attributes Set) User defined for your account (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--user))
+- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--cleanup_rule--exceptions--source--users_group))
+
+<a id="nestedatt--cleanup_rule--exceptions--source--floating_subnet"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.floating_subnet`
+
+Optional:
+
+- `id` (String) Floating Subnet ID
+- `name` (String) Floating Subnet name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--global_ip_range"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.global_ip_range`
+
+Optional:
+
+- `id` (String) Global IP Range ID
+- `name` (String) Global IP Range name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--group"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.group`
+
+Optional:
+
+- `id` (String) Group ID
+- `name` (String) Group name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--host"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.host`
+
+Optional:
+
+- `id` (String) Host ID
+- `name` (String) Host name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--ip_range"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.ip_range`
+
+Required:
+
+- `from` (String) From IP Range Name
+- `to` (String) To IP Range ID
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--network_interface"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.network_interface`
+
+Optional:
+
+- `id` (String) Network Interface ID
+- `name` (String) Network Interface name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--site"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.site`
+
+Optional:
+
+- `id` (String) Site ID
+- `name` (String) Site name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--site_network_subnet"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.site_network_subnet`
+
+Optional:
+
+- `id` (String) Site Network Subnet ID
+- `name` (String) Site Network Subnet name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--system_group"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.system_group`
+
+Optional:
+
+- `id` (String) System Group ID
+- `name` (String) System Group name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--user"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.user`
+
+Optional:
+
+- `id` (String) User ID
+- `name` (String) User name
+
+
+<a id="nestedatt--cleanup_rule--exceptions--source--users_group"></a>
+### Nested Schema for `cleanup_rule.exceptions.source.users_group`
+
+Optional:
+
+- `id` (String) User Group ID
+- `name` (String) User Group Name
+
+
+
+
+<a id="nestedatt--cleanup_rule--schedule"></a>
+### Nested Schema for `cleanup_rule.schedule`
+
+Optional:
+
+- `active_on` (String) Define when the rule is active (https://api.catonetworks.com/documentation/#definition-PolicyActiveOnEnum)
+- `custom_recurring` (Attributes) Input of data for a custom recurring time range that a rule is active (see [below for nested schema](#nestedatt--cleanup_rule--schedule--custom_recurring))
+- `custom_timeframe` (Attributes) Input of data for a custom one-time time range that a rule is active (see [below for nested schema](#nestedatt--cleanup_rule--schedule--custom_timeframe))
+
+<a id="nestedatt--cleanup_rule--schedule--custom_recurring"></a>
+### Nested Schema for `cleanup_rule.schedule.custom_recurring`
+
+Optional:
+
+- `days` (List of String) (https://api.catonetworks.com/documentation/#definition-DayOfWeek)
+- `from` (String)
+- `to` (String)
+
+
+<a id="nestedatt--cleanup_rule--schedule--custom_timeframe"></a>
+### Nested Schema for `cleanup_rule.schedule.custom_timeframe`
+
+Optional:
+
+- `from` (String)
+- `to` (String)
+
+
+
+<a id="nestedatt--cleanup_rule--service"></a>
+### Nested Schema for `cleanup_rule.service`
+
+Optional:
+
+- `custom` (Attributes List) Custom Service defined by a combination of L4 ports and an IP Protocol (see [below for nested schema](#nestedatt--cleanup_rule--service--custom))
+- `standard` (Attributes Set) Standard Service to which this Internet Firewall rule applies (see [below for nested schema](#nestedatt--cleanup_rule--service--standard))
+
+<a id="nestedatt--cleanup_rule--service--custom"></a>
+### Nested Schema for `cleanup_rule.service.custom`
+
+Optional:
+
+- `port` (List of String) List of TCP/UDP port
+- `port_range` (Attributes) TCP/UDP port ranges (see [below for nested schema](#nestedatt--cleanup_rule--service--custom--port_range))
+- `protocol` (String) IP Protocol (https://api.catonetworks.com/documentation/#definition-IpProtocol)
+
+<a id="nestedatt--cleanup_rule--service--custom--port_range"></a>
+### Nested Schema for `cleanup_rule.service.custom.port_range`
+
+Required:
+
+- `from` (String)
+- `to` (String)
+
+
+
+<a id="nestedatt--cleanup_rule--service--standard"></a>
+### Nested Schema for `cleanup_rule.service.standard`
+
+Optional:
+
+- `id` (String) Service ID
+- `name` (String) Service name
+
+
+
+<a id="nestedatt--cleanup_rule--tracking"></a>
+### Nested Schema for `cleanup_rule.tracking`
+
+Required:
+
+- `event` (Attributes) When enabled, create an event each time the rule is matched (see [below for nested schema](#nestedatt--cleanup_rule--tracking--event))
+
+Optional:
+
+- `alert` (Attributes) When enabled, send an alert each time the rule is matched (see [below for nested schema](#nestedatt--cleanup_rule--tracking--alert))
+
+<a id="nestedatt--cleanup_rule--tracking--event"></a>
+### Nested Schema for `cleanup_rule.tracking.event`
+
+Optional:
+
+- `enabled` (Boolean)
+
+
+<a id="nestedatt--cleanup_rule--tracking--alert"></a>
+### Nested Schema for `cleanup_rule.tracking.alert`
+
+Optional:
+
+- `enabled` (Boolean)
+- `frequency` (String) Returns data for the alert frequency (https://api.catonetworks.com/documentation/#definition-PolicyRuleTrackingFrequencyEnum)
+- `mailing_list` (Attributes Set) Returns data for the Mailing List that receives the alert (see [below for nested schema](#nestedatt--cleanup_rule--tracking--alert--mailing_list))
+- `subscription_group` (Attributes Set) Returns data for the Subscription Group that receives the alert (see [below for nested schema](#nestedatt--cleanup_rule--tracking--alert--subscription_group))
+- `webhook` (Attributes Set) Returns data for the Webhook that receives the alert (see [below for nested schema](#nestedatt--cleanup_rule--tracking--alert--webhook))
+
+<a id="nestedatt--cleanup_rule--tracking--alert--mailing_list"></a>
+### Nested Schema for `cleanup_rule.tracking.alert.mailing_list`
+
+Optional:
+
+- `id` (String) Mailing list ID
+- `name` (String) Mailing list name
+
+
+<a id="nestedatt--cleanup_rule--tracking--alert--subscription_group"></a>
+### Nested Schema for `cleanup_rule.tracking.alert.subscription_group`
+
+Optional:
+
+- `id` (String) Subscription group ID
+- `name` (String) Subscription group name
+
+
+<a id="nestedatt--cleanup_rule--tracking--alert--webhook"></a>
+### Nested Schema for `cleanup_rule.tracking.alert.webhook`
+
+Optional:
+
+- `id` (String) Webhook ID
+- `name` (String) Webhook name

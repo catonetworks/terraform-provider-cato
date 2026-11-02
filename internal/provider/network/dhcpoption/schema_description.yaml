@@ -1,0 +1,26 @@
+# Approved API-shaped schema; API-specific omission semantics documented in ai_context.md.
+Attributes:
+- Name: description
+  Description: Option description. Omission, null or empty clears it.
+  Type: string
+  Mode: optional_computed
+  Hints:
+  - modifyPlan
+- Name: id
+  Description: Opaque item ID.
+  Type: string
+  Mode: computed
+- Name: tag
+  Description: DHCP option code.
+  Type: int64
+  Mode: required
+- Name: type
+  Description: DHCP option encoding.
+  Type: string
+  Mode: required
+  Hints:
+  - enum=NetworkConfigDhcpOptionType
+- Name: value
+  Description: Option value formatted according to type.
+  Type: string
+  Mode: required

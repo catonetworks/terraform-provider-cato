@@ -454,3 +454,12 @@ Sections:
           For parsing API structs into terraform type system the package contains parsers like: ParseStringerList,
           ParseStringList, ParseInt64List, etc.
         Rationale: Using generic solutions
+
+      - ID: CONV-009
+        Slug: conv-object-value-from
+        Level: MUST
+        Statement: |
+          When creating a terraform type object, use `types.ObjectValueFrom` function rather than `types.ObjectValue`. 
+          The attributeTypes parameter should be the relevant `*AttrTypes` variable defined in the model file,
+          the attributes parameter should be a variable of type defined in the model file.
+        Rationale: Avoid tftype tags to be used all over the code.
