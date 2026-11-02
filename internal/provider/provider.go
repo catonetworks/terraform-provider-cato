@@ -50,6 +50,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserversection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
@@ -546,6 +547,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		splittunnelsection.NewResource,
 		terminalserverrule.NewResource,
 		dynamicipallocationrule.NewResource,
+		dynamicipallocationsection.NewResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,

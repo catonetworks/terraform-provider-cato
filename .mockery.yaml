@@ -121,3 +121,9 @@ packages:
         config:
           filename: DynamicIPAllocationRuleClient.go
           structname: DynamicIPAllocationRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DynamicIPAllocationSectionClient.go
+          structname: DynamicIPAllocationSectionClient
