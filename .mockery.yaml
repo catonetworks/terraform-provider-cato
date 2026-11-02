@@ -103,3 +103,9 @@ packages:
         config:
           filename: SplitTunnelSectionClient.go
           structname: SplitTunnelSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: TerminalServerRuleClient.go
+          structname: TerminalServerRuleClient

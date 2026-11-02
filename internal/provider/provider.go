@@ -47,6 +47,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivitysection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
@@ -540,6 +541,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		clientconnectivitysection.NewResource,
 		splittunnelrule.NewResource,
 		splittunnelsection.NewResource,
+		terminalserverrule.NewResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,
