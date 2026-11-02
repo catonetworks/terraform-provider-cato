@@ -127,3 +127,9 @@ packages:
         config:
           filename: DynamicIPAllocationSectionClient.go
           structname: DynamicIPAllocationSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/sdpstaticipallocationrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SdpStaticIPAllocationRuleClient.go
+          structname: SdpStaticIPAllocationRuleClient
