@@ -69,7 +69,7 @@ func (r *ifSubPolicyResource) Schema(ctx context.Context, _ resource.SchemaReque
 	cleanupAttr := cleanupSchema.Schema.Attributes["rule"].(schema.SingleNestedAttribute)
 	cleanupAttr.Description = "The sub-policy's cleanup rule — auto-created by the API with the sub-policy " +
 		"and managed as part of this resource. Omit to keep the API defaults (ALLOW, tracking disabled). " +
-		"Uses the same parameters as a cato_if_rule rule."
+		"Uses the same parameters as a cato_if_rule rule. The discovered cleanup rule ID is preserved across external reorders."
 	cleanupAttr.Required = false
 	cleanupAttr.Optional = true
 	cleanupAttr.Computed = true
