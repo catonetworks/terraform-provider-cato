@@ -278,12 +278,14 @@ func lfSubPolicyPlan() LanFirewallSubPolicy {
 		"source":      types.ObjectNull(socketlansource.SocketLanSourceAttrTypes),
 	})
 	return LanFirewallSubPolicy{
-		ID:          types.StringUnknown(),
-		Name:        types.StringValue("sub-policy"),
-		Description: types.StringValue("description"),
-		At:          lfSubPolicyPosition("LAST_IN_POLICY", types.StringNull()),
-		ScopeRuleID: types.StringUnknown(),
-		Scope:       scope,
+		ID:            types.StringUnknown(),
+		Name:          types.StringValue("sub-policy"),
+		Description:   types.StringValue("description"),
+		At:            lfSubPolicyPosition("LAST_IN_POLICY", types.StringNull()),
+		CleanupRuleID: types.StringNull(),
+		CleanupRule:   types.ObjectNull(LanFirewallSubPolicyCleanupRuleTypes),
+		ScopeRuleID:   types.StringUnknown(),
+		Scope:         scope,
 	}
 }
 
