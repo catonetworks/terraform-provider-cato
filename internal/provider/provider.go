@@ -59,6 +59,14 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diaindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diapolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diarule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diasection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifwrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifindex"
@@ -77,6 +85,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiapolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiarule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiasection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/strule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
@@ -607,6 +619,18 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		ssiasection.NewSdpStaticIpAllocationSectionResource,
 		ssiaindex.NewSsiaRulesIndexResource,
 		ssiapolicy.NewSdpStaticIpAllocationPolicyResource,
+		diarule.NewDynamicIpAllocationRuleResource,
+		diasection.NewDynamicIpAllocationSectionResource,
+		diaindex.NewDiaRulesIndexResource,
+		diapolicy.NewDynamicIpAllocationPolicyResource,
+		ccrule.NewClientConnectivityRuleResource,
+		ccsection.NewClientConnectivitySectionResource,
+		ccindex.NewCcRulesIndexResource,
+		ccpolicy.NewClientConnectivityPolicyResource,
+		strule.NewSplitTunnelRuleResource,
+		stsection.NewSplitTunnelSectionResource,
+		stindex.NewStRulesIndexResource,
+		stpolicy.NewSplitTunnelPolicyResource,
 		acrule.NewApplicationControlRuleResource,
 		acindex.NewApcRulesIndexResource,
 		acsection.NewApplicationControlSectionResource,
