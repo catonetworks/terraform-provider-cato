@@ -51,6 +51,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
@@ -69,9 +73,17 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiaindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiapolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiarule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiasection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tsindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tspolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tsrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tssection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsrule"
@@ -583,6 +595,18 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		atindex.NewAtrRulesIndexResource,
 		atsection.NewAppTenantRestrictionSectionResource,
 		acpolicy.NewApplicationControlPolicyResource,
+		tsrule.NewTerminalServerRuleResource,
+		tssection.NewTerminalServerSectionResource,
+		tsindex.NewTsRulesIndexResource,
+		tspolicy.NewTerminalServerPolicyResource,
+		amfhrule.NewAntiMalwareFileHashRuleResource,
+		amfhsection.NewAntiMalwareFileHashSectionResource,
+		amfhindex.NewAmfhRulesIndexResource,
+		amfhpolicy.NewAntiMalwareFileHashPolicyResource,
+		ssiarule.NewSdpStaticIpAllocationRuleResource,
+		ssiasection.NewSdpStaticIpAllocationSectionResource,
+		ssiaindex.NewSsiaRulesIndexResource,
+		ssiapolicy.NewSdpStaticIpAllocationPolicyResource,
 		acrule.NewApplicationControlRuleResource,
 		acindex.NewApcRulesIndexResource,
 		acsection.NewApplicationControlSectionResource,
