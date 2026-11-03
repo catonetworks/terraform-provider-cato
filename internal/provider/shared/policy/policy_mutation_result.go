@@ -38,3 +38,13 @@ func MutationResult[T MutationError](status *cato_models.PolicyMutationStatus, a
 	}
 	return nil
 }
+
+// PublishResult also accepts the explicit no-draft response for a no-op publication.
+func PublishResult[T MutationError](status *cato_models.PolicyMutationStatus, apiErrors []T) error {
+	if status != nil && *status == cato_models.PolicyMutationStatusFailure && len(apiErrors) == 1 {
+		if code := apiErrors[0].GetErrorCode(); code != nil && *code == "PolicyRevisionNotFound" {
+			return nil
+		}
+	}
+	return MutationResult(status, apiErrors)
+}

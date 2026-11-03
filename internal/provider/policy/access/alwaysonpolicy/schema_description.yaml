@@ -5,7 +5,7 @@
 # Update: policy.ztnaAlwaysOn.updatePolicy (ZtnaAlwaysOnPolicyUpdateInput)
 # Read: policy.ztnaAlwaysOn.policy
 # There are no create/delete APIs; the account's Always On policy always exists.
-# Per user instruction, expose only a required enabled boolean.
+# Keep enabled as the only configurable setting; expose audit and draft metadata as computed values.
 # Map enabled=true/false to API state=ENABLED/DISABLED when updating.
 # Initial apply uses updatePolicy; destroy only forgets the resource locally.
 # Create and Update publish the default draft revision, including all pending changes.
@@ -15,3 +15,20 @@ Attributes:
     Description: Whether the Always On policy is enabled
     Type: bool
     Mode: required
+
+  - Name: published_time
+    Description: Time of the last policy publication.
+    Type: string
+    Mode: computed
+  - Name: published_by
+    Description: Administrator who last published the policy.
+    Type: string
+    Mode: computed
+  - Name: revision_id
+    Description: Active draft revision ID, or null when no draft exists.
+    Type: string
+    Mode: computed
+  - Name: revision_name
+    Description: Active draft revision name, or null when no draft exists.
+    Type: string
+    Mode: computed

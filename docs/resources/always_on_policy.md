@@ -15,9 +15,19 @@ Manages whether the account's Always On policy is enabled.
 ```terraform
 # Enable or disable always-on policy
 resource "cato_always_on_policy" "this" {
-  enabled = "true"
+  enabled = true
 }
 
+
+# Audit and active draft information are computed by the existing policy resource.
+output "always_on_policy_metadata" {
+  value = {
+    published_time = cato_always_on_policy.this.published_time
+    published_by   = cato_always_on_policy.this.published_by
+    revision_id    = cato_always_on_policy.this.revision_id
+    revision_name  = cato_always_on_policy.this.revision_name
+  }
+}
 
 # Terraform provider configuration
 terraform {
@@ -56,3 +66,10 @@ provider "cato" {
 ### Required
 
 - `enabled` (Boolean) Whether the Always On policy is enabled
+
+### Read-Only
+
+- `published_by` (String) Administrator who last published the policy.
+- `published_time` (String) Time of the last policy publication.
+- `revision_id` (String) Active draft revision ID, or null when no draft exists.
+- `revision_name` (String) Active draft revision name, or null when no draft exists.

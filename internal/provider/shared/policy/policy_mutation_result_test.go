@@ -37,3 +37,12 @@ func TestMutationResultRequiresExplicitSuccess(t *testing.T) {
 		})
 	}
 }
+
+func TestPublishResultAllowsOnlyExplicitMissingRevision(t *testing.T) {
+	failure, success := cato_models.PolicyMutationStatusFailure, cato_models.PolicyMutationStatusSuccess
+	missing := testMutationError{code: new("PolicyRevisionNotFound")}
+	require.NoError(t, PublishResult(&failure, []testMutationError{missing}))
+	require.Error(t, PublishResult[testMutationError](nil, nil))
+	require.Error(t, PublishResult(&success, []testMutationError{missing}))
+	require.Error(t, PublishResult(&failure, []testMutationError{missing, {code: new("AccessDenied")}}))
+}
