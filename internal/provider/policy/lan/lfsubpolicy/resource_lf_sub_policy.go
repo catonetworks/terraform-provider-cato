@@ -78,13 +78,43 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.resourceAPI().PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
-	subpol := result.GetPolicy().GetSocketLan().GetAddSubPolicy()
-	if utils.CheckAPIErrors(err, subpol.GetErrors(),
-		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &resp.Diagnostics) {
+	preExisting := r.subPolicyIDsByName(ctx, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	policyID := convertCreateInput2(&plan, subpol, &resp.Diagnostics)
+	result, err := r.resourceAPI().PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
+	subpol := result.GetPolicy().GetSocketLan().GetAddSubPolicy()
+	var addDiags diag.Diagnostics
+	var policyID string
+	if !utils.CheckAPIErrors(err, subpol.GetErrors(),
+		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &addDiags) {
+		policyID = convertCreateInput2(&plan, subpol, &addDiags)
+	}
+	recovered := false
+	if policyID == "" {
+		// socketLan.addSubPolicy can violate its own response contract: the
+		// resolver returns null for the non-nullable policy.rules field, which
+		// nulls the whole socketLan payload (policy-platform
+		// DOWNSTREAM_SERVICE_ERROR) even though the sub-policy was created.
+		// Recover by publishing, re-reading the policy, and locating the new
+		// sub-policy by name among those that did not exist before the add.
+		var pubDiags diag.Diagnostics
+		r.publish(ctx, &pubDiags)
+		if !pubDiags.HasError() {
+			policyID = r.findCreatedSubPolicyID(ctx, plan.Name.ValueString(), preExisting, &pubDiags)
+		}
+		if policyID == "" || pubDiags.HasError() {
+			resp.Diagnostics.Append(addDiags...)
+			resp.Diagnostics.Append(pubDiags...)
+			return
+		}
+		recovered = true
+		plan.ID = types.StringValue(policyID)
+		resp.Diagnostics.AddWarning(
+			"Recovered LAN sub-policy from unreadable addSubPolicy response",
+			fmt.Sprintf("policy.socketLan.addSubPolicy returned an unreadable payload for sub-policy '%s'; "+
+				"the created sub-policy (ID %s) was recovered by re-reading the policy.", plan.Name, policyID))
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -93,10 +123,12 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	// publish the changes
-	r.publish(ctx, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
+	// publish the changes (the recovery path has already published)
+	if !recovered {
+		r.publish(ctx, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 	// Hydrate state from API
 	hydratedState, notFound := r.hydrateLfSubPolicy(ctx, policyID, &plan, &resp.Diagnostics)
@@ -204,13 +236,33 @@ func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	// Call Cato API to delete the subpolicy
 	res, err := r.resourceAPI().PolicySocketLanRemoveSubPolicy(ctx, nil, input, r.client.AccountId)
 	remove := res.GetPolicy().GetSocketLan().GetRemoveSubPolicy()
-	if utils.CheckAPIErrors(err, remove.GetErrors(),
-		fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &resp.Diagnostics) {
-		return
+	var removeDiags diag.Diagnostics
+	failedRemove := utils.CheckAPIErrors(err, remove.GetErrors(),
+		fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &removeDiags)
+	if !failedRemove {
+		failedRemove = checkPolicyMutationStatus(remove.GetStatus(),
+			fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &removeDiags)
 	}
-	if checkPolicyMutationStatus(remove.GetStatus(),
-		fmt.Sprintf("failed to delete lan sub-policy '%s'", state.Name.ValueString()), &resp.Diagnostics) {
-		return
+	if failedRemove {
+		// socketLan.removeSubPolicy can succeed while returning an unreadable
+		// payload (the resolver nulls the non-nullable policy.access field,
+		// nulling the whole socketLan payload — policy-platform
+		// DOWNSTREAM_SERVICE_ERROR); a retried call then reports
+		// subPolicyAlreadyRemoved. Confirm removal before failing the delete.
+		alreadyRemoved := false
+		for _, e := range remove.GetErrors() {
+			if code := e.GetErrorCode(); code != nil && *code == "subPolicyAlreadyRemoved" {
+				alreadyRemoved = true
+			}
+		}
+		if !alreadyRemoved && !r.confirmSubPolicyRemoved(ctx, state.ID.ValueString()) {
+			resp.Diagnostics.Append(removeDiags...)
+			return
+		}
+		resp.Diagnostics.AddWarning(
+			"LAN sub-policy removal reported an unreadable response",
+			fmt.Sprintf("policy.socketLan.removeSubPolicy returned an error payload for sub-policy '%s' "+
+				"but the sub-policy was confirmed removed.", state.Name.ValueString()))
 	}
 
 	// publish the changes
@@ -251,6 +303,67 @@ func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+}
+
+// subPolicyIDsByName snapshots the IDs of sub-policies already present, so a
+// create whose response payload is unreadable can still identify the new one.
+func (r *lfSubPolicyResource) subPolicyIDsByName(ctx context.Context, diags *diag.Diagnostics) map[string]bool {
+	result, err := r.resourceAPI().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	if err != nil {
+		diags.AddError("failed to list existing LAN sub-policies", err.Error())
+		return nil
+	}
+	ids := make(map[string]bool)
+	for _, polRule := range result.GetPolicy().GetSocketLan().GetPolicy().GetRules() {
+		if sp := polRule.GetSubPolicy(); sp != nil {
+			ids[sp.GetID()] = true
+		}
+	}
+	return ids
+}
+
+// confirmSubPolicyRemoved publishes the pending revision and re-reads the
+// policy to verify the sub-policy is gone, for removes whose response payload
+// was unreadable despite the mutation succeeding.
+func (r *lfSubPolicyResource) confirmSubPolicyRemoved(ctx context.Context, subPolicyID string) bool {
+	var diags diag.Diagnostics
+	r.publish(ctx, &diags)
+	if diags.HasError() {
+		return false
+	}
+	result, err := r.resourceAPI().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	if err != nil {
+		return false
+	}
+	for _, polRule := range result.GetPolicy().GetSocketLan().GetPolicy().GetRules() {
+		if sp := polRule.GetSubPolicy(); sp != nil && sp.GetID() == subPolicyID {
+			return false
+		}
+	}
+	return true
+}
+
+// findCreatedSubPolicyID re-reads the policy and returns the ID of the
+// sub-policy with the given name that was not present in preExisting.
+func (r *lfSubPolicyResource) findCreatedSubPolicyID(
+	ctx context.Context,
+	name string,
+	preExisting map[string]bool,
+	diags *diag.Diagnostics,
+) string {
+	result, err := r.resourceAPI().PolicySocketLanPolicy(ctx, r.client.AccountId, nil)
+	if err != nil {
+		diags.AddError("failed to re-read LAN policy while recovering sub-policy create", err.Error())
+		return ""
+	}
+	for _, polRule := range result.GetPolicy().GetSocketLan().GetPolicy().GetRules() {
+		sp := polRule.GetSubPolicy()
+		if sp == nil || preExisting[sp.GetID()] || sp.GetName() != name {
+			continue
+		}
+		return sp.GetID()
+	}
+	return ""
 }
 
 // hydrateLfSubPolicy fetches the current state of a lan firewall sub-policy from the API
