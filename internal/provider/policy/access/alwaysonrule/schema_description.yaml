@@ -7,12 +7,14 @@
 # Read: ZtnaAlwaysOnPolicyQueries.policy
 # Preserve the ZtnaAlwaysOnAddRuleInput tree; computed rule fields come from
 # ZtnaAlwaysOnRuleMutationPayload.rule.rule (also returned by policy.rules[].rule).
-# Required modes follow GraphQL non-null markers, including fields with defaults.
-# Enum attributes are always required, following tf-resource section 1.2.5.
+# Required modes follow GraphQL non-null markers, except matching criteria sets.
+# Scalar enum attributes are always required, following tf-resource section 1.2.5.
 # ObjectRefBy/String reference inputs use id/name with computed_optional modes
 # and the idName hint, as specified by the References special case.
 # SDK v1.1.0 omits section.subPolicyId from generated CRUD selections; excluded pending SDK support.
 # Sets represent unordered matching criteria, as approved by the user.
+# Matching criteria sets are optional_computed with modifyPlan (TFSCHEMA-005);
+# omitted criteria plan and parse as empty sets, matching all entities.
 # Create writes the default draft policy; publishing is outside this resource's current scope.
 # Read, Update, Move, and Delete also use the default draft revision without publishing.
 # Changes to at use policy.ztnaAlwaysOn.moveRule; omitting at on update preserves position.
@@ -97,9 +99,10 @@ Attributes:
             Description: Device posture profile name
             Type: string
             Mode: computed_optional
-        Mode: required
+        Mode: optional_computed
         Hints:
           - idName
+          - modifyPlan
 
       - Name: enabled
         Description: Whether the rule is enabled
@@ -125,9 +128,10 @@ Attributes:
         Description: Operating systems matched with logical OR (ANDROID, CHROMEOS, EMBEDDED, IOS, LINUX, MACOS, or WINDOWS); combined with other criteria using logical AND (API default is an empty collection)
         Type: set
         ItemType: string
-        Mode: required
+        Mode: optional_computed
         Hints:
           - enum=OperatingSystem
+          - modifyPlan
 
       - Name: section
         Description: Policy section containing the rule
@@ -144,7 +148,7 @@ Attributes:
         Mode: computed
 
       - Name: source
-        Description: Source users and user groups matched with logical OR within each criterion and logical AND between criteria (API default contains empty user and users_group collections)
+        Description: Source users and user groups matched with logical OR within each criterion and logical AND between criteria (API default contains empty user and user_groups collections)
         Type: nested
         Attributes:
           - Name: users
@@ -160,9 +164,10 @@ Attributes:
                 Description: User name
                 Type: string
                 Mode: computed_optional
-            Mode: required
+            Mode: optional_computed
             Hints:
               - idName
+              - modifyPlan
           - Name: user_groups
             Description: User groups defined for the account (API default is an empty collection)
             Type: set
@@ -176,8 +181,9 @@ Attributes:
                 Description: User group name
                 Type: string
                 Mode: computed_optional
-            Mode: required
+            Mode: optional_computed
             Hints:
               - idName
+              - modifyPlan
         Mode: required
     Mode: required

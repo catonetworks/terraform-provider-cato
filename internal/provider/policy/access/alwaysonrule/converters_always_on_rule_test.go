@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -129,4 +130,81 @@ func TestParseAlwaysOnPolicyRuleDefaults(t *testing.T) {
 	require.False(t, state.Source.As(ctx, &source, basetypes.ObjectAsOptions{}).HasError())
 	require.True(t, source.Users.Equal(types.SetValueMust(idname.RefObjectType, nil)))
 	require.True(t, source.UserGroups.Equal(types.SetValueMust(idname.RefObjectType, nil)))
+}
+
+func TestParseAlwaysOnRuleCollections(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	for _, operation := range []string{"create", "read", "update", "move"} {
+		t.Run(operation, func(t *testing.T) {
+			t.Parallel()
+			for _, collection := range []string{"null", "empty", "populated"} {
+				t.Run(collection, func(t *testing.T) {
+					t.Parallel()
+					var platforms []string
+					var references []map[string]string
+					wantPlatforms := types.SetValueMust(types.StringType, nil)
+					wantReferences := types.SetValueMust(idname.RefObjectType, nil)
+					switch collection {
+					case "empty":
+						platforms = []string{}
+						references = []map[string]string{}
+					case "populated":
+						platforms = []string{"WINDOWS", "MACOS"}
+						references = []map[string]string{{"id": "ref-1", "name": "Example"}}
+						wantPlatforms = types.SetValueMust(types.StringType, []attr.Value{
+							types.StringValue("MACOS"), types.StringValue("WINDOWS"),
+						})
+						ref, diags := types.ObjectValueFrom(ctx, idname.RefAttrTypes, idname.Ref{
+							ID: types.StringValue("ref-1"), Name: types.StringValue("Example"),
+						})
+						require.False(t, diags.HasError(), "%v", diags)
+						wantReferences = types.SetValueMust(idname.RefObjectType, []attr.Value{ref})
+					}
+					body, err := json.Marshal(map[string]any{
+						"action": "ENFORCE", "platform": platforms, "devicePostureProfile": references,
+						"source": map[string]any{"user": references, "usersGroup": references},
+					})
+					require.NoError(t, err)
+					var diags diag.Diagnostics
+					parsed := parseAlwaysOnTestRule(t, operation, body, &diags)
+					require.False(t, diags.HasError(), "%v", diags)
+					var rule AlwaysOnRuleData
+					require.False(t, parsed.As(ctx, &rule, basetypes.ObjectAsOptions{}).HasError())
+					require.True(t, wantPlatforms.Equal(rule.Platform), "expected %s, got %s", wantPlatforms, rule.Platform)
+					require.True(t, wantReferences.Equal(rule.DevicePostureProfile), "expected %s, got %s", wantReferences, rule.DevicePostureProfile)
+					var source AlwaysOnRuleSource
+					require.False(t, rule.Source.As(ctx, &source, basetypes.ObjectAsOptions{}).HasError())
+					require.True(t, wantReferences.Equal(source.Users), "expected %s, got %s", wantReferences, source.Users)
+					require.True(t, wantReferences.Equal(source.UserGroups), "expected %s, got %s", wantReferences, source.UserGroups)
+				})
+			}
+		})
+	}
+}
+
+func parseAlwaysOnTestRule(t *testing.T, operation string, body []byte, diags *diag.Diagnostics) types.Object {
+	t.Helper()
+	ctx := context.Background()
+	switch operation {
+	case "create":
+		var rule cato.PolicyZtnaAlwaysOnAddRule_Policy_ZtnaAlwaysOn_AddRule_Rule_Rule
+		require.NoError(t, json.Unmarshal(body, &rule))
+		return parseAlwaysOnRule(ctx, &rule, diags)
+	case "read":
+		var rule cato.PolicyZtnaAlwaysOnPolicy_Policy_ZtnaAlwaysOn_Policy_Rules_Rule
+		require.NoError(t, json.Unmarshal(body, &rule))
+		return parseAlwaysOnPolicyRule(ctx, &rule, diags)
+	case "update":
+		var rule cato.PolicyZtnaAlwaysOnUpdateRule_Policy_ZtnaAlwaysOn_UpdateRule_Rule_Rule
+		require.NoError(t, json.Unmarshal(body, &rule))
+		return parseUpdatedAlwaysOnRule(ctx, &rule, diags)
+	case "move":
+		var rule cato.PolicyZtnaAlwaysOnMoveRule_Policy_ZtnaAlwaysOn_MoveRule_Rule_Rule
+		require.NoError(t, json.Unmarshal(body, &rule))
+		return parseMovedAlwaysOnRule(ctx, &rule, diags)
+	default:
+		t.Fatalf("unsupported operation %q", operation)
+		return types.ObjectNull(AlwaysOnRuleDataAttrTypes)
+	}
 }
