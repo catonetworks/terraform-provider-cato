@@ -64,6 +64,7 @@ func TestAccBulkPolicyFamilies(t *testing.T) {
 	}
 	for _, family := range families {
 		t.Run(family.prefix, func(t *testing.T) {
+			requirePolicyReadAccess(t, family.prefix)
 			name := acc.GetRandName("bulk_family")
 			extra := family.rule(t)
 			ruleAddress := "cato_" + family.prefix + "_rule.test"
@@ -212,4 +213,18 @@ func globalIPRangeID(t *testing.T) string {
 		t.Skip("account needs an existing global IP range fixture")
 	}
 	return items[0].GetID()
+}
+
+// Some policy families require account entitlements or API-key permissions.
+// Check access before creating any fixtures; all other API failures stay fatal.
+func requirePolicyReadAccess(t *testing.T, family string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := readPublishedPolicy(ctx, t, family); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "insufficient privileges") {
+			t.Skipf("test account lacks read access to %s; use a config with this policy entitlement", family)
+		}
+		t.Fatalf("read %s policy prerequisite: %v", family, err)
+	}
 }
