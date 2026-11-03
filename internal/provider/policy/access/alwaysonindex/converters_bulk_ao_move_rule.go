@@ -7,8 +7,10 @@ import (
 
 // decodeAoOrderingInputs decodes the section_data / rule_data plan maps into
 // the move-sequence planner inputs.
-func decodeAoOrderingInputs(ctx context.Context, plan AoRulesIndex) (map[string]int64, map[string]AoRuleRow, error) {
-	sectionIndexes := map[string]int64{}
+func decodeAoOrderingInputs(
+	ctx context.Context, plan AoRulesIndex,
+) (sectionIndexes map[string]int64, ruleRows map[string]AoRuleRow, err error) {
+	sectionIndexes = map[string]int64{}
 	if !plan.SectionData.IsNull() && !plan.SectionData.IsUnknown() {
 		entries := map[string]AoSectionDataEntry{}
 		if diags := plan.SectionData.ElementsAs(ctx, &entries, false); diags.HasError() {
@@ -18,7 +20,7 @@ func decodeAoOrderingInputs(ctx context.Context, plan AoRulesIndex) (map[string]
 			sectionIndexes[name] = e.SectionIndex.ValueInt64()
 		}
 	}
-	ruleRows := map[string]AoRuleRow{}
+	ruleRows = map[string]AoRuleRow{}
 	if !plan.RuleData.IsNull() && !plan.RuleData.IsUnknown() {
 		entries := map[string]AoRuleDataEntry{}
 		if diags := plan.RuleData.ElementsAs(ctx, &entries, false); diags.HasError() {
