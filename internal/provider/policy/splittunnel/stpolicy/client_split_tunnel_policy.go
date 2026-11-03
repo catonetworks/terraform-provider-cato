@@ -1,0 +1,68 @@
+package stpolicy
+
+import (
+	"context"
+
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+)
+
+// ResourceClient contains only the SDK operations used by this resource.
+type ResourceClient interface {
+	PolicySplitTunnelPolicy(
+		ctx context.Context,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicySplitTunnelPolicy, error)
+	PolicySplitTunnelUpdatePolicy(
+		ctx context.Context,
+		input cato_models.SplitTunnelPolicyUpdateInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicySplitTunnelUpdatePolicy, error)
+	PolicySplitTunnelPublishPolicyRevision(
+		ctx context.Context,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicySplitTunnelPublishPolicyRevision, error)
+}
+
+func (r *splitTunnelPolicyResource) resourceAPI() ResourceClient {
+	if r.apiClient != nil {
+		return r.apiClient
+	}
+	return &sdkClient{resource: r}
+}
+
+func (c *sdkClient) PolicySplitTunnelPolicy(
+	ctx context.Context,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.PolicySplitTunnelPolicy, error) {
+	return c.resource.client.Catov2.PolicySplitTunnelPolicy(ctx, accountID, nil, interceptors...)
+}
+
+func (c *sdkClient) PolicySplitTunnelUpdatePolicy(
+	ctx context.Context,
+	input cato_models.SplitTunnelPolicyUpdateInput,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.PolicySplitTunnelUpdatePolicy, error) {
+	return c.resource.client.Catov2.PolicySplitTunnelUpdatePolicy(ctx, accountID, nil, input, interceptors...)
+}
+
+// sdkClient forwards operations to the configured SDK client.
+type sdkClient struct {
+	resource *splitTunnelPolicyResource
+}
+
+var _ ResourceClient = (*sdkClient)(nil)
+
+func (c *sdkClient) PolicySplitTunnelPublishPolicyRevision(
+	ctx context.Context,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.PolicySplitTunnelPublishPolicyRevision, error) {
+	return c.resource.client.Catov2.PolicySplitTunnelPublishPolicyRevision(ctx, accountID, nil, nil, interceptors...)
+}

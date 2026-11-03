@@ -131,6 +131,43 @@ func WithPolicyRevisionConflictRetry(ctx context.Context, opLabel string, fn fun
 	return last
 }
 
+// WithPolicyRevisionCleanupRetry re-runs fn when the API reports concurrent policy
+// revisions, running cleanup (discarding stale firewall policy drafts) before every
+// retry. Unlike WithAcctestPolicyRevisionCleanupRetryOnce this applies outside
+// acceptance tests too: stale drafts left behind by interrupted applies or abandoned
+// CMA UI sessions otherwise block reorderPolicy until they expire, and backoff alone
+// (WithPolicyRevisionConflictRetry) cannot clear them.
+func WithPolicyRevisionCleanupRetry(ctx context.Context, opLabel string, cleanup func() error, fn func() error) error {
+	var last error
+	for attempt := 1; attempt <= policyRevisionConflictMaxAttempts; attempt++ {
+		last = fn()
+		if last == nil {
+			return nil
+		}
+		if !policyErrLooksLikeConcurrentRevisionBlock(last.Error()) {
+			return last
+		}
+		if attempt == policyRevisionConflictMaxAttempts {
+			break
+		}
+		tflog.Warn(ctx, "policy mutation blocked by concurrent revisions; discarding stale policy revisions and retrying", map[string]any{
+			"operation": opLabel,
+			"attempt":   attempt,
+			"max":       policyRevisionConflictMaxAttempts,
+		})
+		if cleanupErr := cleanup(); cleanupErr != nil {
+			tflog.Warn(ctx, "policy revision cleanup failed; retrying anyway", map[string]any{
+				"operation": opLabel,
+				"error":     cleanupErr.Error(),
+			})
+		}
+		if err := sleepPolicyRevisionRetry(ctx, attempt); err != nil {
+			return err
+		}
+	}
+	return last
+}
+
 // WithAcctestPolicyRevisionCleanupRetryOnce discards policy drafts and retries once
 // when WAN firewall reorder is blocked by active revisions during acceptance tests.
 // Outside acceptance tests it preserves the normal retry-only behavior.

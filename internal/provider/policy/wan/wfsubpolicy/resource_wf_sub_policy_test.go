@@ -11,17 +11,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/activeperiod"
+	wfrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
 
 func TestNewWfSubPolicyResource(t *testing.T) {
@@ -32,7 +30,7 @@ func TestNewWfSubPolicyResource(t *testing.T) {
 	}
 }
 
-func TestWfSubPolicyMetadata(t *testing.T) {
+func TestIfSubPolicyMetadata(t *testing.T) {
 	r := &wfSubPolicyResource{}
 	resp := &resource.MetadataResponse{}
 	r.Metadata(context.Background(), resource.MetadataRequest{ProviderTypeName: "cato"}, resp)
@@ -41,11 +39,25 @@ func TestWfSubPolicyMetadata(t *testing.T) {
 	}
 }
 
-func TestWfSubPolicyImportState(t *testing.T) {
+func TestIfSubPolicyConfigure(t *testing.T) {
+	r := &wfSubPolicyResource{}
+	resp := &resource.ConfigureResponse{}
+	r.Configure(context.Background(), resource.ConfigureRequest{}, resp)
+	if r.client != nil {
+		t.Fatal("expected nil client when provider data nil")
+	}
+	client := &catoclient.Service{AccountId: "123"}
+	r.Configure(context.Background(), resource.ConfigureRequest{ProviderData: client}, resp)
+	if r.client != client {
+		t.Fatal("expected client to be set")
+	}
+}
+
+func TestIfSubPolicyImportState(t *testing.T) {
 	ctx := context.Background()
 	r := &wfSubPolicyResource{}
-	resp := &resource.ImportStateResponse{State: tfsdk.State{Schema: getWfSubPolicySchema(ctx, t)}}
-	resp.State.Set(ctx, newWfSubPolicyModel(""))
+	resp := &resource.ImportStateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	resp.State.Set(ctx, newIfSubPolicyModel(""))
 	r.ImportState(ctx, resource.ImportStateRequest{ID: "sub-123"}, resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
@@ -57,24 +69,57 @@ func TestWfSubPolicyImportState(t *testing.T) {
 	}
 }
 
-func TestWfSubPolicyCreateSuccess(t *testing.T) {
+func TestIfSubPolicyCreateAddError(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(emptyWanFirewallPolicyResponse(), nil).Once()
+		Return(wfrule.EmptyWanFirewallPolicyResponse(), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallAddSubPolicy(mock.Anything, mock.Anything, "account-123").
-		Return(wanAddSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
+		Return(nil, apperror.AssertErr("add failed")).Once()
+
+	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected diagnostics for add error")
+	}
+}
+
+func TestIfSubPolicyCreateAddStatusFailure(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(wfrule.EmptyWanFirewallPolicyResponse(), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewallAddSubPolicy(mock.Anything, mock.Anything, "account-123").
+		Return(ifAddSubPolicyResponse(cato_models.PolicyMutationStatusFailure, "boom"), nil).Once()
+
+	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected diagnostics for failure status")
+	}
+}
+
+func TestIfSubPolicyCreateSuccess(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(wfrule.EmptyWanFirewallPolicyResponse(), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewallAddSubPolicy(mock.Anything, mock.Anything, "account-123").
+		Return(ifAddSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
 		Return(nil, nil).Once()
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(wanSubPolicyResponse("sub-1", "test-sub", "a sub", "scope-1", "scope"), nil).Once()
+		Return(ifSubPolicyResponse("sub-1", "test-sub", "a sub", "scope-1", "scope"), nil).Once()
 
 	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getWfSubPolicySchema(ctx, t)}}
-	r.Create(ctx, resource.CreateRequest{Plan: newWfSubPolicyPlan(ctx, t, "")}, resp)
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
 	}
+
 	var state WanFirewallSubPolicy
 	resp.State.Get(ctx, &state)
 	if state.ID.ValueString() != "sub-1" {
@@ -85,30 +130,34 @@ func TestWfSubPolicyCreateSuccess(t *testing.T) {
 	}
 }
 
-func TestWfSubPolicyCreateAddError(t *testing.T) {
+func TestIfSubPolicyCreateNotFoundAfterPublish(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(emptyWanFirewallPolicyResponse(), nil).Once()
+		Return(wfrule.EmptyWanFirewallPolicyResponse(), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallAddSubPolicy(mock.Anything, mock.Anything, "account-123").
-		Return(nil, apperror.AssertErr("add failed")).Once()
+		Return(ifAddSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
+		Return(nil, nil).Once()
+	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(wfrule.EmptyWanFirewallPolicyResponse(), nil).Once()
 
 	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getWfSubPolicySchema(ctx, t)}}
-	r.Create(ctx, resource.CreateRequest{Plan: newWfSubPolicyPlan(ctx, t, "")}, resp)
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: newIfSubPolicyPlan(ctx, t)}, resp)
 	if !resp.Diagnostics.HasError() {
-		t.Fatal("expected diagnostics for add error")
+		t.Fatal("expected diagnostics when created sub-policy not found")
 	}
 }
 
-func TestWfSubPolicyReadSuccess(t *testing.T) {
+func TestIfSubPolicyReadSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(wanSubPolicyResponse("sub-1", "renamed", "desc", "scope-1", "scope-name"), nil).Once()
+		Return(ifSubPolicyResponse("sub-1", "renamed", "desc", "scope-1", "scope-name"), nil).Once()
 
 	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
-	state := newWfSubPolicyStateWithID(ctx, t)
+	state := newIfSubPolicyStateWithID(ctx, t)
 	resp := &resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, resp)
 	if resp.Diagnostics.HasError() {
@@ -121,14 +170,14 @@ func TestWfSubPolicyReadSuccess(t *testing.T) {
 	}
 }
 
-func TestWfSubPolicyReadRemovesMissing(t *testing.T) {
+func TestIfSubPolicyReadRemovesMissing(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(emptyWanFirewallPolicyResponse(), nil).Once()
+		Return(wfrule.EmptyWanFirewallPolicyResponse(), nil).Once()
 
 	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
-	state := newWfSubPolicyStateWithID(ctx, t)
+	state := newIfSubPolicyStateWithID(ctx, t)
 	resp := &resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, resp)
 	if resp.Diagnostics.HasError() {
@@ -139,31 +188,71 @@ func TestWfSubPolicyReadRemovesMissing(t *testing.T) {
 	}
 }
 
-func TestWfSubPolicyDeleteSuccess(t *testing.T) {
+func TestIfSubPolicyUpdateScopeSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
-	mockClient.EXPECT().PolicyWanFirewallRemoveSubPolicy(mock.Anything, mock.Anything, "account-123").
-		Return(wanRemoveSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewallUpdateRule(mock.Anything, mock.Anything, "account-123").
+		Return(wfrule.SuccessfulUpdateRuleResponse("scope-1"), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
 		Return(nil, nil).Once()
+	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name"), nil).Once()
 
 	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
-	resp := &resource.DeleteResponse{}
-	r.Delete(ctx, resource.DeleteRequest{State: newWfSubPolicyStateWithID(ctx, t)}, resp)
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	req := resource.UpdateRequest{
+		Plan:  newIfSubPolicyPlanWithID(ctx, t, "sub-1", "scope-1"),
+		State: newIfSubPolicyStateWithID(ctx, t),
+	}
+	r.Update(ctx, req, resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
 	}
 }
 
-func TestWfSubPolicyDeleteStatusFailure(t *testing.T) {
+func TestIfSubPolicyUpdateScopeError(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyWanFirewallUpdateRule(mock.Anything, mock.Anything, "account-123").
+		Return(nil, apperror.AssertErr("update failed")).Once()
+
+	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	req := resource.UpdateRequest{
+		Plan:  newIfSubPolicyPlanWithID(ctx, t, "sub-1", "scope-1"),
+		State: newIfSubPolicyStateWithID(ctx, t),
+	}
+	r.Update(ctx, req, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected diagnostics for update error")
+	}
+}
+
+func TestIfSubPolicyDeleteSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyWanFirewallRemoveSubPolicy(mock.Anything, mock.Anything, "account-123").
-		Return(wanRemoveSubPolicyResponse(cato_models.PolicyMutationStatusFailure, "cannot"), nil).Once()
+		Return(ifRemoveSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
+		Return(nil, nil).Once()
 
 	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.DeleteResponse{}
-	r.Delete(ctx, resource.DeleteRequest{State: newWfSubPolicyStateWithID(ctx, t)}, resp)
+	r.Delete(ctx, resource.DeleteRequest{State: newIfSubPolicyStateWithID(ctx, t)}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
+}
+
+func TestIfSubPolicyDeleteStatusFailure(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyWanFirewallRemoveSubPolicy(mock.Anything, mock.Anything, "account-123").
+		Return(ifRemoveSubPolicyResponse(cato_models.PolicyMutationStatusFailure, "cannot"), nil).Once()
+
+	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	resp := &resource.DeleteResponse{}
+	r.Delete(ctx, resource.DeleteRequest{State: newIfSubPolicyStateWithID(ctx, t)}, resp)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected diagnostics for remove failure status")
 	}
@@ -171,7 +260,7 @@ func TestWfSubPolicyDeleteStatusFailure(t *testing.T) {
 
 // ---- helpers ----
 
-func getWfSubPolicySchema(ctx context.Context, t *testing.T) schema.Schema {
+func getIfSubPolicySchema(ctx context.Context, t *testing.T) schema.Schema {
 	t.Helper()
 	r := &wfSubPolicyResource{}
 	resp := &resource.SchemaResponse{}
@@ -179,31 +268,8 @@ func getWfSubPolicySchema(ctx context.Context, t *testing.T) schema.Schema {
 	return resp.Schema
 }
 
-func emptyWanScopeObject(id string) types.Object {
-	return types.ObjectValueMust(wfrule.WanFirewallRuleRuleAttrTypes, map[string]attr.Value{
-		"id":                convert.NullableString(id),
-		"name":              types.StringValue("test-wf-sub-scope"),
-		"description":       types.StringNull(),
-		"enabled":           types.BoolValue(true),
-		"source":            types.ObjectNull(wfrule.WanSourceAttrTypes),
-		"connection_origin": types.StringValue("ANY"),
-		"active_period":     types.ObjectNull(activeperiod.ActivePeriodAttrTypes),
-		"country":           types.SetNull(idname.RefObjectType),
-		"device":            types.SetNull(idname.RefObjectType),
-		"device_attributes": types.ObjectNull(wfrule.WanDeviceAttrAttrTypes),
-		"device_os":         types.ListNull(types.StringType),
-		"application":       types.ObjectNull(wfrule.WanApplicationAttrTypes),
-		"destination":       types.ObjectNull(wfrule.WanDestAttrTypes),
-		"service":           types.ObjectNull(wfrule.WanServiceAttrTypes),
-		"action":            types.StringValue("ALLOW"),
-		"tracking":          types.ObjectNull(policyrule.TrackingAttrTypes),
-		"schedule":          types.ObjectNull(policyschedule.ScheduleAttrTypes),
-		"direction":         types.StringValue("TO"),
-		"exceptions":        types.SetNull(wfrule.WanExceptionObjectType),
-	})
-}
-
-func newWfSubPolicyModel(id string) WanFirewallSubPolicy {
+func newIfSubPolicyModel(id string) WanFirewallSubPolicy {
+	scope := wfrule.NewMinimalWanFwRuleModel(id)
 	return WanFirewallSubPolicy{
 		ID:          convert.NullableString(id),
 		Name:        types.StringValue("test-sub"),
@@ -213,78 +279,89 @@ func newWfSubPolicyModel(id string) WanFirewallSubPolicy {
 			"position": types.StringValue("LAST_IN_POLICY"),
 			"ref":      types.StringNull(),
 		}),
-		Scope: emptyWanScopeObject(id),
+		Scope:         scope.Rule,
+		CleanupRuleID: types.StringNull(),
+		CleanupRule:   types.ObjectNull(wfrule.WanFirewallRuleRuleAttrTypes),
 	}
 }
 
-func newWfSubPolicyPlan(ctx context.Context, t *testing.T, id string) tfsdk.Plan {
+func newIfSubPolicyPlan(ctx context.Context, t *testing.T) tfsdk.Plan {
 	t.Helper()
-	plan := tfsdk.Plan{Schema: getWfSubPolicySchema(ctx, t)}
-	if diags := plan.Set(ctx, newWfSubPolicyModel(id)); diags.HasError() {
+	plan := tfsdk.Plan{Schema: getIfSubPolicySchema(ctx, t)}
+	if diags := plan.Set(ctx, newIfSubPolicyModel("")); diags.HasError() {
 		t.Fatalf("unexpected plan diagnostics: %+v", diags)
 	}
 	return plan
 }
 
-func newWfSubPolicyStateWithID(ctx context.Context, t *testing.T) tfsdk.State {
+func newIfSubPolicyPlanWithID(ctx context.Context, t *testing.T, id, scopeID string) tfsdk.Plan {
 	t.Helper()
-	m := newWfSubPolicyModel("sub-1")
+	m := newIfSubPolicyModel(id)
+	m.ScopeRuleID = types.StringValue(scopeID)
+	plan := tfsdk.Plan{Schema: getIfSubPolicySchema(ctx, t)}
+	if diags := plan.Set(ctx, m); diags.HasError() {
+		t.Fatalf("unexpected plan diagnostics: %+v", diags)
+	}
+	return plan
+}
+
+func newIfSubPolicyStateWithID(ctx context.Context, t *testing.T) tfsdk.State {
+	t.Helper()
+	m := newIfSubPolicyModel("sub-1")
 	m.ScopeRuleID = types.StringValue("scope-1")
-	state := tfsdk.State{Schema: getWfSubPolicySchema(ctx, t)}
+	state := tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}
 	if diags := state.Set(ctx, m); diags.HasError() {
 		t.Fatalf("unexpected state diagnostics: %+v", diags)
 	}
 	return state
 }
 
-func emptyWanFirewallPolicyResponse() *cato_go_sdk.Policy {
-	return &cato_go_sdk.Policy{
-		Policy: cato_go_sdk.Policy_Policy{
-			WanFirewall: &cato_go_sdk.Policy_Policy_WanFirewall{
-				Policy: cato_go_sdk.Policy_Policy_WanFirewall_Policy{
-					Rules: []*cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules{},
+func ifAddSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg string) *cato_go_sdk.PolicyWanFirewallAddSubPolicy {
+	var errs []*cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy_Errors
+	if errMsg != "" {
+		code := "ERR"
+		errs = append(errs, &cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy_Errors{
+			ErrorCode: &code, ErrorMessage: &errMsg,
+		})
+	}
+	return &cato_go_sdk.PolicyWanFirewallAddSubPolicy{
+		Policy: cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy{
+			WanFirewall: &cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall{
+				AddSubPolicy: cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy{
+					Status: status, Errors: errs,
 				},
 			},
 		},
 	}
 }
 
-func wanAddSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg string) *cato_go_sdk.PolicyWanFirewallAddSubPolicy {
-	var errs []*cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy_Errors
-	if errMsg != "" {
-		code := "ERR"
-		errs = append(errs, &cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy_Errors{ErrorCode: &code, ErrorMessage: &errMsg})
-	}
-	return &cato_go_sdk.PolicyWanFirewallAddSubPolicy{
-		Policy: cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy{
-			WanFirewall: &cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall{
-				AddSubPolicy: cato_go_sdk.PolicyWanFirewallAddSubPolicy_Policy_WanFirewall_AddSubPolicy{Status: status, Errors: errs},
-			},
-		},
-	}
-}
-
-func wanRemoveSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg string) *cato_go_sdk.PolicyWanFirewallRemoveSubPolicy {
+func ifRemoveSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg string) *cato_go_sdk.PolicyWanFirewallRemoveSubPolicy {
 	var errs []*cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall_RemoveSubPolicy_Errors
 	if errMsg != "" {
 		code := "ERR"
-		errs = append(errs, &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall_RemoveSubPolicy_Errors{ErrorCode: &code, ErrorMessage: &errMsg})
+		errs = append(errs, &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall_RemoveSubPolicy_Errors{
+			ErrorCode: &code, ErrorMessage: &errMsg,
+		})
 	}
 	return &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy{
 		Policy: cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy{
 			WanFirewall: &cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall{
-				RemoveSubPolicy: cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall_RemoveSubPolicy{Status: status, Errors: errs},
+				RemoveSubPolicy: cato_go_sdk.PolicyWanFirewallRemoveSubPolicy_Policy_WanFirewall_RemoveSubPolicy{
+					Status: status, Errors: errs,
+				},
 			},
 		},
 	}
 }
 
-func wanSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *cato_go_sdk.Policy {
-	scopeRule := cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule{
-		ID:      scopeID,
-		Name:    scopeName,
-		Enabled: true,
-	}
+func ifSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *cato_go_sdk.Policy {
+	scopeRule := wfrule.MinimalAPIRule(scopeName, 0)
+	scopeRule.ID = scopeID
+	scopeRule.Name = scopeName
+	// The API auto-creates a cleanup rule inside every sub-policy; it is the
+	// sub-policy's last rule (highest index).
+	cleanupRule := wfrule.MinimalAPIRule(subName+" - Cleanup Rule", 1)
+	cleanupRule.ID = "cleanup-1"
 	return &cato_go_sdk.Policy{
 		Policy: cato_go_sdk.Policy_Policy{
 			WanFirewall: &cato_go_sdk.Policy_Policy_WanFirewall{
@@ -303,9 +380,106 @@ func wanSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *c
 							SubPolicy: &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_SubPolicy{ID: subID, Name: subName},
 							Rule:      scopeRule,
 						},
+						{
+							RuleType:  cato_models.PolicyRuleTypeEnumPolicyRule,
+							SubPolicy: &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_SubPolicy{ID: subID, Name: subName},
+							Rule:      cleanupRule,
+						},
 					},
 				},
 			},
 		},
 	}
+}
+
+var _ = basetypes.ObjectAsOptions{}
+
+// The cleanup identity follows position: whatever rule sits LAST in the
+// sub-policy is the cleanup, even after manual moves/renames in CMA.
+func TestWanCleanupRuleFollowsLastPosition(t *testing.T) {
+	body := ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name")
+	moved := wfrule.MinimalAPIRule("Moved User Rule", 5)
+	moved.ID = "user-9"
+	body.Policy.WanFirewall.Policy.Rules = append(
+		body.Policy.WanFirewall.Policy.Rules,
+		&cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules{
+			RuleType:  cato_models.PolicyRuleTypeEnumPolicyRule,
+			SubPolicy: &cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_SubPolicy{ID: "sub-1", Name: "test-sub"},
+			Rule:      moved,
+		},
+	)
+	got := wanCleanupRule(body, "sub-1")
+	if got == nil || got.ID != "user-9" {
+		t.Fatalf("expected last rule user-9 as cleanup, got %+v", got)
+	}
+	if wanCleanupRule(body, "") != nil {
+		t.Fatal("expected nil for empty sub id")
+	}
+}
+
+// Read hydrates the cleanup rule and refreshes cleanup_rule_id — the same path
+// that populates the cleanup after `terraform import` (passthrough id + Read).
+func TestIfSubPolicyReadHydratesCleanup(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name"), nil).Once()
+
+	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	state := newIfSubPolicyStateWithID(ctx, t)
+	resp := &resource.ReadResponse{State: state}
+	r.Read(ctx, resource.ReadRequest{State: state}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
+	var got WanFirewallSubPolicy
+	resp.State.Get(ctx, &got)
+	if got.CleanupRuleID.ValueString() != "cleanup-1" {
+		t.Fatalf("expected cleanup_rule_id cleanup-1, got %q", got.CleanupRuleID.ValueString())
+	}
+	if got.CleanupRule.IsNull() {
+		t.Fatal("expected cleanup_rule hydrated, got null")
+	}
+}
+
+func TestCleanupNameConfigured(t *testing.T) {
+	if cleanupNameConfigured(types.ObjectNull(wfrule.WanFirewallRuleRuleAttrTypes)) {
+		t.Fatal("null object must not count as configured")
+	}
+	m := wfrule.NewMinimalWanFwRuleModel("x")
+	attrs := m.Rule.Attributes()
+	attrs["name"] = types.StringValue("Custom Cleanup Name")
+	obj := types.ObjectValueMust(wfrule.WanFirewallRuleRuleAttrTypes, attrs)
+	if !cleanupNameConfigured(obj) {
+		t.Fatal("explicit name must count as configured")
+	}
+	attrs["name"] = types.StringNull()
+	obj = types.ObjectValueMust(wfrule.WanFirewallRuleRuleAttrTypes, attrs)
+	if cleanupNameConfigured(obj) {
+		t.Fatal("null name must not count as configured")
+	}
+}
+
+func TestCleanupUpdateErrorDetail(t *testing.T) {
+	plain := cleanupUpdateErrorDetail("someOtherError", "boom", "X - Cleanup Rule", "r-1")
+	if plain != "someOtherError : boom" {
+		t.Fatalf("unexpected plain detail: %q", plain)
+	}
+	moved := cleanupUpdateErrorDetail("ruleNameAlreadyExists", "Rule with the same name already exists", "X - Cleanup Rule", "r-1")
+	for _, want := range []string{"LAST rule", "r-1", `"X - Cleanup Rule"`, "manually moved", "not intended to be moved outside Terraform"} {
+		if !containsStr(moved, want) {
+			t.Fatalf("expected detail to contain %q, got: %s", want, moved)
+		}
+	}
+}
+
+func containsStr(haystack, needle string) bool {
+	return len(haystack) >= len(needle) && (func() bool {
+		for i := 0; i+len(needle) <= len(haystack); i++ {
+			if haystack[i:i+len(needle)] == needle {
+				return true
+			}
+		}
+		return false
+	})()
 }
