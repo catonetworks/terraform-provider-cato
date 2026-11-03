@@ -3,6 +3,7 @@ package policy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,6 +18,19 @@ func TestPolicyErrLooksLikeConcurrentRevisionBlock(t *testing.T) {
 	require.True(t, policyErrLooksLikeConcurrentRevisionBlock("Cannot reorder policy while other active revisions exist"))
 	require.False(t, policyErrLooksLikeConcurrentRevisionBlock(""))
 	require.False(t, policyErrLooksLikeConcurrentRevisionBlock("some other API failure"))
+}
+
+func TestPolicyRevisionConflictRetryHonorsCancellation(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	err := WithPolicyRevisionConflictRetry(ctx, "reorder", func() error {
+		calls++
+		cancel()
+		return errors.New("reorderPolicyBlockedByActiveSessions")
+	})
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, calls)
 }
 
 func TestDiscardPolicyRevisionTargetsExplicitRevision(t *testing.T) {

@@ -586,6 +586,8 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		role.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
+		alwaysonindex.NewAlwaysOnRuleBulkResource,
+		alwaysonpolicy.NewAlwaysOnPolicyResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
 		alwaysonsection.NewAlwaysOnSectionResource,
 		alwaysonindex.NewAoRulesIndexResource,

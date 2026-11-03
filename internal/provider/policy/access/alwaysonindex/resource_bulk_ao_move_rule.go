@@ -37,7 +37,7 @@ func NewAoRulesIndexResource() resource.Resource {
 type aoRulesIndexResource struct {
 	client *catoclient.Service
 
-	apiClient ResourceClient
+	apiClient AoMoveResourceClient
 }
 
 // AoRulesIndex is the Terraform model.

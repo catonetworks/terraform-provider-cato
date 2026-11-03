@@ -3,166 +3,80 @@ package alwaysonsection
 import (
 	"context"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	attr "github.com/hashicorp/terraform-plugin-framework/attr"
-	diag "github.com/hashicorp/terraform-plugin-framework/diag"
-	types "github.com/hashicorp/terraform-plugin-framework/types"
-	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
-// convertCreateInput converts between the Terraform model and SDK values.
-func convertCreateInput(
-	ctx context.Context,
-	plan AlwaysOnSection,
-	priorDiags *diag.Diagnostics,
-	diagnostics *diag.Diagnostics,
-) (resultInput cato_models.PolicyAddSectionInput) {
-	diags := *priorDiags
-	defer func() { *priorDiags = diags }()
-	resultInput = cato_models.PolicyAddSectionInput{}
-
-	if !plan.At.IsNull() {
-		resultInput.At = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		diagnostics.Append(diags...)
-
-		resultInput.At.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		resultInput.At.Ref = positionInput.Ref.ValueStringPointer()
+func buildSectionInput(ctx context.Context, plan Section, diags *diag.Diagnostics) cato_models.PolicyAddSectionInput {
+	var section SectionData
+	diags.Append(plan.Section.As(ctx, &section, basetypes.ObjectAsOptions{})...)
+	if !utils.HasValue(section.Name) {
+		diags.AddError("Invalid Always On section", "The section name must be known before applying the resource.")
 	}
-
-	if !plan.Section.IsNull() {
-		resultInput.Section = &cato_models.PolicyAddSectionInfoInput{}
-		var sectionInput idname.Ref
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		diagnostics.Append(diags...)
-
-		resultInput.Section.Name = sectionInput.Name.ValueString()
+	return cato_models.PolicyAddSectionInput{
+		At:      buildSectionPosition(ctx, plan.At, diags),
+		Section: &cato_models.PolicyAddSectionInfoInput{Name: section.Name.ValueString()},
 	}
-	return resultInput
 }
 
-// populateAlwaysOnSectionID sets the created section ID from the mutation response.
-func populateAlwaysOnSectionID(plan *AlwaysOnSection, policyChange *cato_go_sdk.PolicyZtnaAlwaysOnAddSection) {
-	plan.ID = types.StringValue(policyChange.GetPolicy().GetZtnaAlwaysOn().GetAddSection().Section.GetSection().ID)
+func buildSectionPosition(ctx context.Context, at types.Object, diags *diag.Diagnostics) *cato_models.PolicySectionPositionInput {
+	var position policyrule.Position
+	diags.Append(at.As(ctx, &position, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	enum := cato_models.PolicySectionPositionEnum(position.Position.ValueString())
+	if !utils.HasValue(position.Position) || !enum.IsValid() || position.Ref.IsUnknown() {
+		diags.AddError("Invalid section position", "The section position and reference must be known and use a supported position.")
+		return nil
+	}
+	input := &cato_models.PolicySectionPositionInput{Position: enum}
+	if position.Ref.ValueString() != "" {
+		input.Ref = position.Ref.ValueStringPointer()
+	}
+	if enum != cato_models.PolicySectionPositionEnumLastInPolicy && input.Ref == nil {
+		diags.AddError("Invalid section reference", "A non-empty ref is required for AFTER_SECTION and BEFORE_SECTION.")
+	}
+	return input
 }
 
-// convertReadState extracts the section ref from state.
-func convertReadState(ctx context.Context, state AlwaysOnSection, priorDiags *diag.Diagnostics) (resultSection idname.Ref) {
-	diags := *priorDiags
-	defer func() { *priorDiags = diags }()
-	diags = state.Section.As(ctx, &resultSection, basetypes.ObjectAsOptions{})
-	return resultSection
+func sectionID(ctx context.Context, model Section, diags *diag.Diagnostics) string {
+	var section SectionData
+	diags.Append(model.Section.As(ctx, &section, basetypes.ObjectAsOptions{})...)
+	if !utils.HasValue(section.ID) || section.ID.ValueString() == "" {
+		diags.AddError("Invalid Always On section ID", "A known, non-empty section ID is required in state.")
+	}
+	return section.ID.ValueString()
 }
 
-// convertReadState2 locates the section in the policy snapshot and refreshes state.
-func convertReadState2(
-	state *AlwaysOnSection,
-	body *cato_go_sdk.PolicyZtnaAlwaysOnPolicy,
-	section idname.Ref,
-	diagnostics *diag.Diagnostics,
-) (resultSectionExist bool) {
-	sectionList := body.GetPolicy().GetZtnaAlwaysOn().GetPolicy().GetSections()
-	resultSectionExist = false
-	for _, sectionListItem := range sectionList {
-		if sectionListItem.GetSection().ID != section.ID.ValueString() {
-			continue
-		}
-
-		resultSectionExist = true
-		state.ID = types.StringValue(sectionListItem.GetSection().ID)
-		curSectionObj, diagstmp := types.ObjectValue(
-			idname.RefAttrTypes,
-			map[string]attr.Value{
-				"id":   types.StringValue(sectionListItem.GetSection().ID),
-				"name": types.StringValue(sectionListItem.GetSection().GetName()),
-			},
-		)
-		diagnostics.Append(diagstmp...)
-		if diagnostics.HasError() {
-			return resultSectionExist
-		}
-		state.Section = curSectionObj
-	}
-
-	// `at` is input-only (the API does not return a position): preserve the
-	// stored value, defaulting a null one (fresh import) to LAST_IN_POLICY.
-	curAtObj := state.At
-	if !utils.HasValue(state.At) {
-		var diagstmp diag.Diagnostics
-		curAtObj, diagstmp = types.ObjectValue(
-			policyrule.PositionAttrTypes,
-			map[string]attr.Value{
-				"position": types.StringValue("LAST_IN_POLICY"),
-				"ref":      types.StringNull(),
-			},
-		)
-		diagnostics.Append(diagstmp...)
-	}
-	state.At = curAtObj
-	return resultSectionExist
+type sectionInfo interface {
+	GetID() string
+	GetName() string
 }
 
-// convertUpdateInput converts between the Terraform model and SDK values.
-func convertUpdateInput(
-	ctx context.Context,
-	plan AlwaysOnSection,
-	priorDiags *diag.Diagnostics,
-	diagnostics *diag.Diagnostics,
-) (
-	resultInputUpdateSection cato_models.PolicyUpdateSectionInput,
-	resultInputMoveSection cato_models.PolicyMoveSectionInput,
-) {
-	diags := *priorDiags
-	defer func() { *priorDiags = diags }()
-	resultInputUpdateSection = cato_models.PolicyUpdateSectionInput{}
-	resultInputMoveSection = cato_models.PolicyMoveSectionInput{}
-
-	if !plan.Section.IsNull() {
-		resultInputUpdateSection.Section = &cato_models.PolicyUpdateSectionInfoInput{}
-		var sectionInput idname.Ref
-		diags = plan.Section.As(ctx, &sectionInput, basetypes.ObjectAsOptions{})
-		diagnostics.Append(diags...)
-
-		resultInputUpdateSection.Section.Name = sectionInput.Name.ValueStringPointer()
-		resultInputUpdateSection.ID = sectionInput.ID.ValueString()
-	}
-
-	if !plan.At.IsNull() {
-		resultInputMoveSection.To = &cato_models.PolicySectionPositionInput{}
-		positionInput := policyrule.Position{}
-		diags = plan.At.As(ctx, &positionInput, basetypes.ObjectAsOptions{})
-		diagnostics.Append(diags...)
-
-		resultInputMoveSection.To.Position = cato_models.PolicySectionPositionEnum(positionInput.Position.ValueString())
-		resultInputMoveSection.To.Ref = positionInput.Ref.ValueStringPointer()
-		resultInputMoveSection.ID = resultInputUpdateSection.ID
-	}
-	return resultInputUpdateSection, resultInputMoveSection
+func parseSection(ctx context.Context, info sectionInfo, diags *diag.Diagnostics) types.Object {
+	value, d := types.ObjectValueFrom(ctx, SectionDataAttrTypes, SectionData{
+		ID: types.StringValue(info.GetID()), Name: types.StringValue(info.GetName()),
+	})
+	diags.Append(d...)
+	return value
 }
 
-// convertDeleteInput extracts the section ref from state.
-func convertDeleteInput(
-	ctx context.Context,
-	state AlwaysOnSection,
-	priorDiags *diag.Diagnostics,
-) (resultSection idname.Ref) {
-	diags := *priorDiags
-	defer func() { *priorDiags = diags }()
-
-	diags = state.Section.As(ctx, &resultSection, basetypes.ObjectAsOptions{})
-	return resultSection
-}
-
-// convertDeleteInput2 builds the remove input.
-func convertDeleteInput2(section idname.Ref) (resultRemoveSection cato_models.PolicyRemoveSectionInput) {
-	resultRemoveSection = cato_models.PolicyRemoveSectionInput{
-		ID: section.ID.ValueString(),
+func parseSectionPosition(ctx context.Context, position *cato_models.PolicySectionPositionInput,
+	diags *diag.Diagnostics,
+) types.Object {
+	ref := ""
+	if position.Ref != nil {
+		ref = *position.Ref
 	}
-	return resultRemoveSection
+	value, d := types.ObjectValueFrom(ctx, policyrule.PositionAttrTypes, policyrule.Position{
+		Position: types.StringValue(string(position.Position)), Ref: types.StringValue(ref),
+	})
+	diags.Append(d...)
+	return value
 }

@@ -8,8 +8,8 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
 
-// ResourceClient contains only the SDK operations used by this resource.
-type ResourceClient interface {
+// ZtnaPolicyResourceClient contains only the SDK operations used by this resource.
+type ZtnaPolicyResourceClient interface {
 	PolicyZtnaAlwaysOnPolicy(
 		ctx context.Context,
 		accountID string,
@@ -28,7 +28,7 @@ type ResourceClient interface {
 	) (*cato_go_sdk.PolicyZtnaAlwaysOnPublishPolicyRevision, error)
 }
 
-func (r *ztnaAlwaysOnPolicyResource) resourceAPI() ResourceClient {
+func (r *ztnaAlwaysOnPolicyResource) resourceAPI() ZtnaPolicyResourceClient {
 	if r.apiClient != nil {
 		return r.apiClient
 	}
@@ -41,7 +41,7 @@ type sdkClient struct {
 	resource *ztnaAlwaysOnPolicyResource
 }
 
-var _ ResourceClient = (*sdkClient)(nil)
+var _ ZtnaPolicyResourceClient = (*sdkClient)(nil)
 
 func (c *sdkClient) PolicyZtnaAlwaysOnPolicy(
 	ctx context.Context,

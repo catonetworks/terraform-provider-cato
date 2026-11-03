@@ -26,7 +26,7 @@ func NewZtnaAlwaysOnPolicyResource() resource.Resource {
 type ztnaAlwaysOnPolicyResource struct {
 	client *catoclient.Service
 
-	apiClient ResourceClient
+	apiClient ZtnaPolicyResourceClient
 }
 
 func (r *ztnaAlwaysOnPolicyResource) Metadata(
