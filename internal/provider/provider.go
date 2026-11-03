@@ -48,7 +48,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterfacelagmember"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/networkrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
@@ -66,6 +69,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
@@ -543,6 +547,8 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
+		alwaysonsection.NewAlwaysOnSectionResource,
+		alwaysonindex.NewAoRulesIndexResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
 		ifrule.NewInternetFwRuleResource,
@@ -574,9 +580,11 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		parule.NewPrivAccessRuleResource,
 		parulebulk.NewPrivAccessRuleBulkResource,
 		atrule.NewAppTenantRestrictionRuleResource,
+		atindex.NewAtrRulesIndexResource,
 		atsection.NewAppTenantRestrictionSectionResource,
 		acpolicy.NewApplicationControlPolicyResource,
 		acrule.NewApplicationControlRuleResource,
+		acindex.NewApcRulesIndexResource,
 		acsection.NewApplicationControlSectionResource,
 		lansection.NewSocketLanSectionResource,
 		socketlannetworkrule.NewSocketLanNetworkRuleResource,
