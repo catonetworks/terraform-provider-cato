@@ -32,6 +32,13 @@ type InternetFirewallSubPolicyClient interface {
 		accountID string,
 		interceptors ...clientv2.RequestInterceptor,
 	) (*cato_go_sdk.PolicyInternetFirewallRemoveSubPolicy, error)
+	PolicyInternetFirewallMoveRule(
+		ctx context.Context,
+		internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
+		policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error)
 	PolicyInternetFirewallUpdateRule(
 		ctx context.Context,
 		internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
@@ -87,6 +94,13 @@ type ResourceClient interface {
 		accountID string,
 		interceptors ...clientv2.RequestInterceptor,
 	) (*cato_go_sdk.PolicyInternetFirewallRemoveSubPolicy, error)
+	PolicyInternetFirewallMoveRule(
+		ctx context.Context,
+		internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
+		policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error)
 	PolicyInternetFirewallUpdateRule(
 		ctx context.Context,
 		internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
@@ -155,6 +169,22 @@ func (c *sdkClient) PolicyInternetFirewallRemoveSubPolicy(
 		ctx,
 		internetFirewallPolicyMutationInput,
 		internetFirewallRemoveSubPolicyInput,
+		accountID,
+		interceptors...,
+	)
+}
+
+func (c *sdkClient) PolicyInternetFirewallMoveRule(
+	ctx context.Context,
+	internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
+	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error) {
+	return c.resource.getClient().PolicyInternetFirewallMoveRule(
+		ctx,
+		internetFirewallPolicyMutationInput,
+		policyMoveRuleInput,
 		accountID,
 		interceptors...,
 	)

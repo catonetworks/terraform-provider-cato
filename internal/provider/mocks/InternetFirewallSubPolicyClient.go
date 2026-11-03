@@ -447,6 +447,40 @@ func (_mock *InternetFirewallSubPolicyClient) PolicyInternetFirewallUpdateRule(c
 	return r0, r1
 }
 
+// PolicyInternetFirewallMoveRule provides a mock function for the type InternetFirewallSubPolicyClient
+func (_mock *InternetFirewallSubPolicyClient) PolicyInternetFirewallMoveRule(ctx context.Context, internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error) {
+	var tmpRet mock.Arguments
+	if len(interceptors) > 0 {
+		tmpRet = _mock.Called(ctx, internetFirewallPolicyMutationInput, policyMoveRuleInput, accountID, interceptors)
+	} else {
+		tmpRet = _mock.Called(ctx, internetFirewallPolicyMutationInput, policyMoveRuleInput, accountID)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for PolicyInternetFirewallMoveRule")
+	}
+
+	var r0 *cato_go_sdk.PolicyInternetFirewallMoveRule
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *cato_models.InternetFirewallPolicyMutationInput, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error)); ok {
+		return returnFunc(ctx, internetFirewallPolicyMutationInput, policyMoveRuleInput, accountID, interceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *cato_models.InternetFirewallPolicyMutationInput, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicyInternetFirewallMoveRule); ok {
+		r0 = returnFunc(ctx, internetFirewallPolicyMutationInput, policyMoveRuleInput, accountID, interceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.PolicyInternetFirewallMoveRule)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *cato_models.InternetFirewallPolicyMutationInput, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, internetFirewallPolicyMutationInput, policyMoveRuleInput, accountID, interceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
 // InternetFirewallSubPolicyClient_PolicyInternetFirewallUpdateRule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicyInternetFirewallUpdateRule'
 type InternetFirewallSubPolicyClient_PolicyInternetFirewallUpdateRule_Call struct {
 	*mock.Call
@@ -504,6 +538,67 @@ func (_c *InternetFirewallSubPolicyClient_PolicyInternetFirewallUpdateRule_Call)
 }
 
 func (_c *InternetFirewallSubPolicyClient_PolicyInternetFirewallUpdateRule_Call) RunAndReturn(run func(ctx context.Context, internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput, internetFirewallUpdateRuleInput cato_models.InternetFirewallUpdateRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyInternetFirewallUpdateRule, error)) *InternetFirewallSubPolicyClient_PolicyInternetFirewallUpdateRule_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicyInternetFirewallMoveRule'
+type InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call struct {
+	*mock.Call
+}
+
+// PolicyInternetFirewallMoveRule is a helper method to define mock.On call
+//   - ctx context.Context
+//   - internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput
+//   - policyMoveRuleInput cato_models.PolicyMoveRuleInput
+//   - accountID string
+//   - interceptors ...clientv2.RequestInterceptor
+func (_e *InternetFirewallSubPolicyClient_Expecter) PolicyInternetFirewallMoveRule(ctx interface{}, internetFirewallPolicyMutationInput interface{}, policyMoveRuleInput interface{}, accountID interface{}, interceptors ...interface{}) *InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call {
+	return &InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call{Call: _e.mock.On("PolicyInternetFirewallMoveRule",
+		append([]interface{}{ctx, internetFirewallPolicyMutationInput, policyMoveRuleInput, accountID}, interceptors...)...)}
+}
+
+func (_c *InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call) Run(run func(ctx context.Context, internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *cato_models.InternetFirewallPolicyMutationInput
+		if args[1] != nil {
+			arg1 = args[1].(*cato_models.InternetFirewallPolicyMutationInput)
+		}
+		var arg2 cato_models.PolicyMoveRuleInput
+		if args[2] != nil {
+			arg2 = args[2].(cato_models.PolicyMoveRuleInput)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
+		}
+		arg4 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4...,
+		)
+	})
+	return _c
+}
+
+func (_c *InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call) Return(policyInternetFirewallUpdateRule *cato_go_sdk.PolicyInternetFirewallMoveRule, err error) *InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call {
+	_c.Call.Return(policyInternetFirewallUpdateRule, err)
+	return _c
+}
+
+func (_c *InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call) RunAndReturn(run func(ctx context.Context, internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error)) *InternetFirewallSubPolicyClient_PolicyInternetFirewallMoveRule_Call {
 	_c.Call.Return(run)
 	return _c
 }

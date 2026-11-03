@@ -39,6 +39,12 @@ type WanFirewallSubPolicyClient interface {
 		accountID string,
 		interceptors ...clientv2.RequestInterceptor,
 	) (*cato_go_sdk.PolicyWanFirewallRemoveSubPolicy, error)
+	PolicyWanFirewallMoveRule(
+		ctx context.Context,
+		policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyWanFirewallMoveRule, error)
 	PolicyWanFirewallUpdateRule(
 		ctx context.Context,
 		wanFirewallUpdateRuleInput cato_models.WanFirewallUpdateRuleInput,
@@ -79,6 +85,12 @@ type ResourceClient interface {
 		accountID string,
 		interceptors ...clientv2.RequestInterceptor,
 	) (*cato_go_sdk.PolicyWanFirewallRemoveSubPolicy, error)
+	PolicyWanFirewallMoveRule(
+		ctx context.Context,
+		policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyWanFirewallMoveRule, error)
 	PolicyWanFirewallUpdateRule(
 		ctx context.Context,
 		wanFirewallUpdateRuleInput cato_models.WanFirewallUpdateRuleInput,
@@ -128,6 +140,15 @@ func (c *sdkClient) PolicyWanFirewallRemoveSubPolicy(
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato_go_sdk.PolicyWanFirewallRemoveSubPolicy, error) {
 	return c.resource.getClient().PolicyWanFirewallRemoveSubPolicy(ctx, wanFirewallRemoveSubPolicyInput, accountID, interceptors...)
+}
+
+func (c *sdkClient) PolicyWanFirewallMoveRule(
+	ctx context.Context,
+	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.PolicyWanFirewallMoveRule, error) {
+	return c.resource.getClient().PolicyWanFirewallMoveRule(ctx, policyMoveRuleInput, accountID, interceptors...)
 }
 
 func (c *sdkClient) PolicyWanFirewallUpdateRule(
