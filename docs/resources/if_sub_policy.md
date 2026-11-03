@@ -113,7 +113,7 @@ resource "cato_if_rule" "in_sub_policy" {
 
 ### Optional
 
-- `cleanup_rule` (Attributes) The sub-policy's cleanup rule — auto-created by the API with the sub-policy and managed as part of this resource. Omit to keep the API defaults (ALLOW, tracking disabled). Uses the same parameters as a cato_if_rule rule. (see [below for nested schema](#nestedatt--cleanup_rule))
+- `cleanup_rule` (Attributes) The sub-policy's cleanup rule — auto-created by the API with the sub-policy and managed as part of this resource. Omit to keep the API defaults (ALLOW, tracking disabled). Uses the same parameters as a cato_if_rule rule. The discovered cleanup rule ID is preserved across external reorders. (see [below for nested schema](#nestedatt--cleanup_rule))
 
 ### Read-Only
 
