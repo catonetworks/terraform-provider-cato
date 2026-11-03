@@ -22,7 +22,7 @@ func convertUpdatePolicyValues(
 
 // convertReadStateValues converts between the Terraform model and SDK values.
 func convertReadStateValues() (resultOut RemotePortFwdPolicyModel) {
-	resultOut = RemotePortFwdPolicyModel{ID: types.StringValue("remote_port_fwd")}
+	resultOut = RemotePortFwdPolicyModel{ID: types.StringValue("remote_port_forward")}
 	return resultOut
 }
 

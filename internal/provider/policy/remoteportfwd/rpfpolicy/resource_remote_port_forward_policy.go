@@ -34,7 +34,7 @@ func (r *remotePortFwdPolicyResource) Metadata(
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
 ) {
-	resp.TypeName = req.ProviderTypeName + "_remote_port_fwd_policy"
+	resp.TypeName = req.ProviderTypeName + "_remote_port_forward_policy"
 }
 
 func (r *remotePortFwdPolicyResource) Configure(
@@ -51,7 +51,7 @@ func (r *remotePortFwdPolicyResource) Configure(
 func (r *remotePortFwdPolicyResource) ImportState(
 	ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse,
 ) {
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "remote_port_fwd")...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "remote_port_forward")...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("enabled"), false)...)
 }
 
@@ -103,7 +103,7 @@ func (r *remotePortFwdPolicyResource) Update(
 }
 
 func (r *remotePortFwdPolicyResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
-	tflog.Warn(ctx, "cato_remote_port_fwd_policy delete is a no-op; policy always exists")
+	tflog.Warn(ctx, "cato_remote_port_forward_policy delete is a no-op; policy always exists")
 }
 
 func (r *remotePortFwdPolicyResource) updatePolicy(
