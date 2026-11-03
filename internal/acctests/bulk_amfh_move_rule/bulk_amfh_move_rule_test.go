@@ -22,6 +22,7 @@ import (
 // swapped ordering is applied on update.
 func TestAccBulkAmfhMoveRule(t *testing.T) {
 	acc.SkipByEnv(t)
+	t.Setenv("DISABLE_POLICY_RULE_CLEANUP", "true")
 	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
 	fixtureHash := fmt.Sprintf("%X", sha256.Sum256([]byte(acc.GetRandName("mover_hash"))))
@@ -52,6 +53,9 @@ func TestAccBulkAmfhMoveRule(t *testing.T) {
 `)
 	}
 
+	serialize := func(block, ruleResource string) string {
+		return strings.Replace(block, "depends_on = [", "depends_on = ["+ruleResource+".a, ", 1)
+	}
 	config := func(aFirst bool) string {
 		idxA, idxB := "1", "2"
 		if !aFirst {
@@ -61,7 +65,7 @@ func TestAccBulkAmfhMoveRule(t *testing.T) {
  at = { position = "LAST_IN_POLICY" }
  section = { name = "` + sectionName + `" }
 }
-` + ruleBlock("a", ruleA, true) + ruleBlock("b", ruleB, false) + `
+` + ruleBlock("a", ruleA, true) + serialize(ruleBlock("b", ruleB, false), "cato_anti_malware_file_hash_rule") + `
 resource "cato_bulk_amfh_move_rule" "all" {
  depends_on = [cato_anti_malware_file_hash_rule.a, cato_anti_malware_file_hash_rule.b]
  section_data = { "` + sectionName + `" = { section_index = 1 } }

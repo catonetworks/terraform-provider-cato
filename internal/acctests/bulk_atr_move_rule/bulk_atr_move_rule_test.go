@@ -21,6 +21,7 @@ import (
 // swapped ordering is applied on update.
 func TestAccBulkAtrMoveRule(t *testing.T) {
 	acc.SkipByEnv(t)
+	t.Setenv("DISABLE_POLICY_RULE_CLEANUP", "true")
 	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
 
@@ -39,6 +40,7 @@ func TestAccBulkAtrMoveRule(t *testing.T) {
  at = { position = "LAST_IN_SECTION", ref = cato_app_tenant_restriction_section.s.id }
  rule = {
    action = "BYPASS"
+   application = { id = "microsoft_office_login" }
    description = "mover acctest"
    enabled = false
    name = "${rule_name}"
@@ -48,6 +50,9 @@ func TestAccBulkAtrMoveRule(t *testing.T) {
 `)
 	}
 
+	serialize := func(block, ruleResource string) string {
+		return strings.Replace(block, "depends_on = [", "depends_on = ["+ruleResource+".a, ", 1)
+	}
 	config := func(aFirst bool) string {
 		idxA, idxB := "1", "2"
 		if !aFirst {
@@ -57,7 +62,7 @@ func TestAccBulkAtrMoveRule(t *testing.T) {
  at = { position = "LAST_IN_POLICY" }
  section = { name = "` + sectionName + `" }
 }
-` + ruleBlock("a", ruleA, true) + ruleBlock("b", ruleB, false) + `
+` + ruleBlock("a", ruleA, true) + serialize(ruleBlock("b", ruleB, false), "cato_app_tenant_restriction_rule") + `
 resource "cato_bulk_atr_move_rule" "all" {
  depends_on = [cato_app_tenant_restriction_rule.a, cato_app_tenant_restriction_rule.b]
  section_data = { "` + sectionName + `" = { section_index = 1 } }

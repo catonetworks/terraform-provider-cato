@@ -21,6 +21,7 @@ import (
 // swapped ordering is applied on update.
 func TestAccBulkStMoveRule(t *testing.T) {
 	acc.SkipByEnv(t)
+	t.Setenv("DISABLE_POLICY_RULE_CLEANUP", "true")
 	acc.RequireLive(t)
 	acc.CheckCMAVars(t)()
 
@@ -39,10 +40,14 @@ func TestAccBulkStMoveRule(t *testing.T) {
  at = { position = "LAST_IN_SECTION", ref = cato_split_tunnel_section.s.id }
  rule = {
    action = "EXCLUDE"
+   country = []
+   coverage = "ALL"
    description = "mover acctest"
    destination = { application = [], domain = ["${domain}"], fqdn = [], global_ip_range = [] }
+   dns_exclusion = { domain = [] }
    enabled = false
    name = "${rule_name}"
+   platform = ["WINDOWS"]
    routing_priority = "LAN"
    source = { user = [], users_group = [] }
    source_network = { source_network_type = "ANY" }
@@ -51,6 +56,9 @@ func TestAccBulkStMoveRule(t *testing.T) {
 `)
 	}
 
+	serialize := func(block, ruleResource string) string {
+		return strings.Replace(block, "depends_on = [", "depends_on = ["+ruleResource+".a, ", 1)
+	}
 	config := func(aFirst bool) string {
 		idxA, idxB := "1", "2"
 		if !aFirst {
@@ -60,7 +68,7 @@ func TestAccBulkStMoveRule(t *testing.T) {
  at = { position = "LAST_IN_POLICY" }
  section = { name = "` + sectionName + `" }
 }
-` + ruleBlock("a", ruleA, true) + ruleBlock("b", ruleB, false) + `
+` + ruleBlock("a", ruleA, true) + serialize(ruleBlock("b", ruleB, false), "cato_split_tunnel_rule") + `
 resource "cato_bulk_st_move_rule" "all" {
  depends_on = [cato_split_tunnel_rule.a, cato_split_tunnel_rule.b]
  section_data = { "` + sectionName + `" = { section_index = 1 } }
