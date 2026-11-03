@@ -1,4 +1,4 @@
-// Package atindex implements cato_bulk_cc_move_rule: bulk ordering and
+// Package ccindex implements cato_bulk_cc_move_rule: bulk ordering and
 // publishing for the Client Connectivity policy. The policy is flat (sections +
 // rules, no sub-policies) and the API has no reorderPolicy mutation, so
 // ordering is applied as a deterministic sequence of MoveSection/MoveRule
@@ -9,13 +9,13 @@ import (
 	"context"
 	"fmt"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
@@ -187,7 +187,7 @@ func (r *ccRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 				}
 				ms := moveResp.GetPolicy().GetClientConnectivity().GetMoveSection()
 				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("Client Connectivity moveSection status %q", string(*st))
+					return fmt.Errorf("client connectivity moveSection status %q", string(*st))
 				}
 				continue
 			}
@@ -212,7 +212,7 @@ func (r *ccRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 			}
 			mr := moveResp.GetPolicy().GetClientConnectivity().GetMoveRule()
 			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("Client Connectivity moveRule status %q", string(*st))
+				return fmt.Errorf("client connectivity moveRule status %q", string(*st))
 			}
 		}
 	}
@@ -237,7 +237,7 @@ func (r *ccRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 				}
 				msg += fmt.Sprintf("%s : %s", code, m)
 			}
-			return fmt.Errorf("Client Connectivity publishPolicyRevision errors: %s", msg)
+			return fmt.Errorf("client connectivity publishPolicyRevision errors: %s", msg)
 		}
 		return nil
 	})

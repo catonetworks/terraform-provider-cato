@@ -11,8 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-//nolint:funlen
-func (r *sdpStaticIpAllocationRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *sdpStaticIPAllocationRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a rule in the Cato SDP static IP allocation policy. " +
 			"Underlying GraphQL is marked @beta; behavior and fields may change.",

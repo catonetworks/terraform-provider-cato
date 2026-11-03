@@ -18,22 +18,22 @@ import (
 )
 
 var (
-	_ resource.Resource                = &sdpStaticIpAllocationRuleResource{}
-	_ resource.ResourceWithConfigure   = &sdpStaticIpAllocationRuleResource{}
-	_ resource.ResourceWithImportState = &sdpStaticIpAllocationRuleResource{}
+	_ resource.Resource                = &sdpStaticIPAllocationRuleResource{}
+	_ resource.ResourceWithConfigure   = &sdpStaticIPAllocationRuleResource{}
+	_ resource.ResourceWithImportState = &sdpStaticIPAllocationRuleResource{}
 )
 
-func NewSdpStaticIpAllocationRuleResource() resource.Resource {
-	return &sdpStaticIpAllocationRuleResource{}
+func NewSdpStaticIPAllocationRuleResource() resource.Resource {
+	return &sdpStaticIPAllocationRuleResource{}
 }
 
-type sdpStaticIpAllocationRuleResource struct {
+type sdpStaticIPAllocationRuleResource struct {
 	client *catoclient.Service
 
 	apiClient ResourceClient
 }
 
-func (r *sdpStaticIpAllocationRuleResource) Metadata(
+func (r *sdpStaticIPAllocationRuleResource) Metadata(
 	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
@@ -41,7 +41,7 @@ func (r *sdpStaticIpAllocationRuleResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_sdp_static_ip_allocation_rule"
 }
 
-func (r *sdpStaticIpAllocationRuleResource) Configure(
+func (r *sdpStaticIPAllocationRuleResource) Configure(
 	_ context.Context,
 	req resource.ConfigureRequest,
 	_ *resource.ConfigureResponse,
@@ -52,7 +52,7 @@ func (r *sdpStaticIpAllocationRuleResource) Configure(
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *sdpStaticIpAllocationRuleResource) ImportState(
+func (r *sdpStaticIPAllocationRuleResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
@@ -61,18 +61,18 @@ func (r *sdpStaticIpAllocationRuleResource) ImportState(
 }
 
 //nolint:gocyclo,funlen
-func (r *sdpStaticIpAllocationRuleResource) Create(
+func (r *sdpStaticIPAllocationRuleResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
-	var plan SdpStaticIpAllocationRule
+	var plan SdpStaticIPAllocationRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	input, diags := hydrateSdpStaticIpAllocationAddRuleInput(ctx, plan)
+	input, diags := hydrateSdpStaticIPAllocationAddRuleInput(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -100,7 +100,7 @@ func (r *sdpStaticIpAllocationRuleResource) Create(
 		return
 	}
 
-	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -131,11 +131,11 @@ func (r *sdpStaticIpAllocationRuleResource) Create(
 		return
 	}
 
-	rulePlan, hdiags := hydrateSdpStaticIpAllocationRuleStateFromClient(ctx, cur)
+	rulePlan, hdiags := hydrateSdpStaticIPAllocationRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
 
 	// Merge plan-only attributes the API does not echo back.
-	var planRule SdpStaticIpAllocationRuleRulePlan
+	var planRule SdpStaticIPAllocationRuleRulePlan
 	resp.Diagnostics.Append(plan.Rule.As(
 		ctx,
 		&planRule,
@@ -151,8 +151,8 @@ func (r *sdpStaticIpAllocationRuleResource) Create(
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (r *sdpStaticIpAllocationRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state SdpStaticIpAllocationRule
+func (r *sdpStaticIPAllocationRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state SdpStaticIPAllocationRule
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -164,7 +164,7 @@ func (r *sdpStaticIpAllocationRuleResource) Read(ctx context.Context, req resour
 		return
 	}
 
-	rulePlan := SdpStaticIpAllocationRuleRulePlan{}
+	rulePlan := SdpStaticIPAllocationRuleRulePlan{}
 	resp.Diagnostics.Append(state.Rule.As(ctx, &rulePlan, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -188,7 +188,7 @@ func (r *sdpStaticIpAllocationRuleResource) Read(ctx context.Context, req resour
 		return
 	}
 
-	hydrated, hdiags := hydrateSdpStaticIpAllocationRuleStateFromClient(ctx, cur)
+	hydrated, hdiags := hydrateSdpStaticIPAllocationRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
 
 	// Merge state-only attributes the API does not echo back.
@@ -203,18 +203,18 @@ func (r *sdpStaticIpAllocationRuleResource) Read(ctx context.Context, req resour
 }
 
 //nolint:gocyclo,funlen
-func (r *sdpStaticIpAllocationRuleResource) Update(
+func (r *sdpStaticIPAllocationRuleResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
-	var plan SdpStaticIpAllocationRule
+	var plan SdpStaticIPAllocationRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var rule SdpStaticIpAllocationRuleRulePlan
+	var rule SdpStaticIPAllocationRuleRulePlan
 	move, atAsOpts := convertUpdateInput(ctx, plan, &resp.Diagnostics)
 	resp.Diagnostics.Append(plan.Rule.As(ctx, &rule, atAsOpts)...)
 	move.ID = rule.ID.ValueString()
@@ -237,7 +237,7 @@ func (r *sdpStaticIpAllocationRuleResource) Update(
 		}
 	}
 
-	upd, diags := hydrateSdpStaticIpAllocationUpdateRuleInput(ctx, plan)
+	upd, diags := hydrateSdpStaticIPAllocationUpdateRuleInput(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -258,7 +258,7 @@ func (r *sdpStaticIpAllocationRuleResource) Update(
 		}
 	}
 
-	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -281,7 +281,7 @@ func (r *sdpStaticIpAllocationRuleResource) Update(
 		return
 	}
 
-	rulePlan, hdiags := hydrateSdpStaticIpAllocationRuleStateFromClient(ctx, cur)
+	rulePlan, hdiags := hydrateSdpStaticIPAllocationRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
 
 	// Merge plan-only attributes the API does not echo back.
@@ -306,17 +306,17 @@ func (r *sdpStaticIpAllocationRuleResource) Update(
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *sdpStaticIpAllocationRuleResource) Delete(
+func (r *sdpStaticIPAllocationRuleResource) Delete(
 	ctx context.Context,
 	req resource.DeleteRequest,
 	resp *resource.DeleteResponse,
 ) {
-	var state SdpStaticIpAllocationRule
+	var state SdpStaticIPAllocationRule
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	rule := SdpStaticIpAllocationRuleRulePlan{}
+	rule := SdpStaticIPAllocationRuleRulePlan{}
 	resp.Diagnostics.Append(state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -326,7 +326,7 @@ func (r *sdpStaticIpAllocationRuleResource) Delete(
 		resp.Diagnostics.AddError("Cato API PolicySdpStaticIPAllocationRemoveRule error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

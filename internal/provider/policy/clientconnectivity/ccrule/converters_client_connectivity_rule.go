@@ -287,7 +287,7 @@ func convertDeleteInput(rule ClientConnectivityRuleRulePlan) (resultRm cato_mode
 
 // hydrateClientConnectivityRuleStateFromClient maps a policy read rule into Terraform nested objects.
 //
-//nolint:gocyclo
+//nolint:gocyclo,funlen // Hydrate all rule fields together.
 func hydrateClientConnectivityRuleStateFromClient(
 	ctx context.Context,
 	r *cato_go_sdk.PolicyClientConnectivityPolicy_Policy_ClientConnectivity_Policy_Rules_Rule,

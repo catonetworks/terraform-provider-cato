@@ -11,7 +11,7 @@ func TestBuildAoMoveSequence(t *testing.T) {
 		"B1":    {IndexInSection: 1, SectionName: "B Section"},
 		"Loose": {IndexInSection: 1, SectionName: "Z Unmanaged"},
 	}
-	ops := BuildAoMoveSequence(sections, rules)
+	ops := buildAoMoveSequence(sections, rules)
 	var got []string
 	for _, op := range ops {
 		kind := "rule"
@@ -36,7 +36,7 @@ func TestBuildAoMoveSequence(t *testing.T) {
 
 func TestBuildAoMoveSequenceEmpty(t *testing.T) {
 	t.Parallel()
-	if ops := BuildAoMoveSequence(nil, nil); len(ops) != 0 {
+	if ops := buildAoMoveSequence(nil, nil); len(ops) != 0 {
 		t.Fatalf("expected no ops, got %v", ops)
 	}
 }

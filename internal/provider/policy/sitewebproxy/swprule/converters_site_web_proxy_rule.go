@@ -135,7 +135,9 @@ func hydrateSiteWebProxyUpdateRuleInput(
 	}
 	if !rule.AllowedDestinationProtocol.IsNull() && !rule.AllowedDestinationProtocol.IsUnknown() &&
 		rule.AllowedDestinationProtocol.ValueString() != "" {
-		upd.Rule.AllowedDestinationProtocol = (*cato_models.SiteWebProxyAllowedDestinationProtocol)(rule.AllowedDestinationProtocol.ValueStringPointer())
+		upd.Rule.AllowedDestinationProtocol = (*cato_models.SiteWebProxyAllowedDestinationProtocol)(
+			rule.AllowedDestinationProtocol.ValueStringPointer(),
+		)
 	}
 	if s := refinput.FromSet(ctx, rule.AssociatedSite, &diags, "site", refinput.Site); s != nil {
 		upd.Rule.AssociatedSite = s

@@ -18,22 +18,22 @@ import (
 )
 
 var (
-	_ resource.Resource                = &dynamicIpAllocationRuleResource{}
-	_ resource.ResourceWithConfigure   = &dynamicIpAllocationRuleResource{}
-	_ resource.ResourceWithImportState = &dynamicIpAllocationRuleResource{}
+	_ resource.Resource                = &dynamicIPAllocationRuleResource{}
+	_ resource.ResourceWithConfigure   = &dynamicIPAllocationRuleResource{}
+	_ resource.ResourceWithImportState = &dynamicIPAllocationRuleResource{}
 )
 
-func NewDynamicIpAllocationRuleResource() resource.Resource {
-	return &dynamicIpAllocationRuleResource{}
+func NewDynamicIPAllocationRuleResource() resource.Resource {
+	return &dynamicIPAllocationRuleResource{}
 }
 
-type dynamicIpAllocationRuleResource struct {
+type dynamicIPAllocationRuleResource struct {
 	client *catoclient.Service
 
 	apiClient ResourceClient
 }
 
-func (r *dynamicIpAllocationRuleResource) Metadata(
+func (r *dynamicIPAllocationRuleResource) Metadata(
 	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
@@ -41,7 +41,7 @@ func (r *dynamicIpAllocationRuleResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_dynamic_ip_allocation_rule"
 }
 
-func (r *dynamicIpAllocationRuleResource) Configure(
+func (r *dynamicIPAllocationRuleResource) Configure(
 	_ context.Context,
 	req resource.ConfigureRequest,
 	_ *resource.ConfigureResponse,
@@ -52,7 +52,7 @@ func (r *dynamicIpAllocationRuleResource) Configure(
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *dynamicIpAllocationRuleResource) ImportState(
+func (r *dynamicIPAllocationRuleResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
@@ -61,18 +61,18 @@ func (r *dynamicIpAllocationRuleResource) ImportState(
 }
 
 //nolint:gocyclo,funlen
-func (r *dynamicIpAllocationRuleResource) Create(
+func (r *dynamicIPAllocationRuleResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
-	var plan DynamicIpAllocationRule
+	var plan DynamicIPAllocationRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	input, diags := hydrateDynamicIpAllocationAddRuleInput(ctx, plan)
+	input, diags := hydrateDynamicIPAllocationAddRuleInput(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -100,7 +100,7 @@ func (r *dynamicIpAllocationRuleResource) Create(
 		return
 	}
 
-	resp.Diagnostics.Append(dynamicip.PublishDynamicIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(dynamicip.PublishDynamicIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -131,11 +131,11 @@ func (r *dynamicIpAllocationRuleResource) Create(
 		return
 	}
 
-	rulePlan, hdiags := hydrateDynamicIpAllocationRuleStateFromClient(ctx, cur)
+	rulePlan, hdiags := hydrateDynamicIPAllocationRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
 
 	// Merge plan-only attributes the API does not echo back.
-	var planRule DynamicIpAllocationRuleRulePlan
+	var planRule DynamicIPAllocationRuleRulePlan
 	resp.Diagnostics.Append(plan.Rule.As(
 		ctx,
 		&planRule,
@@ -151,8 +151,8 @@ func (r *dynamicIpAllocationRuleResource) Create(
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (r *dynamicIpAllocationRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state DynamicIpAllocationRule
+func (r *dynamicIPAllocationRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state DynamicIPAllocationRule
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -164,7 +164,7 @@ func (r *dynamicIpAllocationRuleResource) Read(ctx context.Context, req resource
 		return
 	}
 
-	rulePlan := DynamicIpAllocationRuleRulePlan{}
+	rulePlan := DynamicIPAllocationRuleRulePlan{}
 	resp.Diagnostics.Append(state.Rule.As(ctx, &rulePlan, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -188,7 +188,7 @@ func (r *dynamicIpAllocationRuleResource) Read(ctx context.Context, req resource
 		return
 	}
 
-	hydrated, hdiags := hydrateDynamicIpAllocationRuleStateFromClient(ctx, cur)
+	hydrated, hdiags := hydrateDynamicIPAllocationRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
 
 	// Merge state-only attributes the API does not echo back.
@@ -203,18 +203,18 @@ func (r *dynamicIpAllocationRuleResource) Read(ctx context.Context, req resource
 }
 
 //nolint:gocyclo,funlen
-func (r *dynamicIpAllocationRuleResource) Update(
+func (r *dynamicIPAllocationRuleResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
-	var plan DynamicIpAllocationRule
+	var plan DynamicIPAllocationRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var rule DynamicIpAllocationRuleRulePlan
+	var rule DynamicIPAllocationRuleRulePlan
 	move, atAsOpts := convertUpdateInput(ctx, plan, &resp.Diagnostics)
 	resp.Diagnostics.Append(plan.Rule.As(ctx, &rule, atAsOpts)...)
 	move.ID = rule.ID.ValueString()
@@ -237,7 +237,7 @@ func (r *dynamicIpAllocationRuleResource) Update(
 		}
 	}
 
-	upd, diags := hydrateDynamicIpAllocationUpdateRuleInput(ctx, plan)
+	upd, diags := hydrateDynamicIPAllocationUpdateRuleInput(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -258,7 +258,7 @@ func (r *dynamicIpAllocationRuleResource) Update(
 		}
 	}
 
-	resp.Diagnostics.Append(dynamicip.PublishDynamicIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(dynamicip.PublishDynamicIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -281,7 +281,7 @@ func (r *dynamicIpAllocationRuleResource) Update(
 		return
 	}
 
-	rulePlan, hdiags := hydrateDynamicIpAllocationRuleStateFromClient(ctx, cur)
+	rulePlan, hdiags := hydrateDynamicIPAllocationRuleStateFromClient(ctx, cur)
 	resp.Diagnostics.Append(hdiags...)
 
 	// Merge plan-only attributes the API does not echo back.
@@ -306,17 +306,17 @@ func (r *dynamicIpAllocationRuleResource) Update(
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *dynamicIpAllocationRuleResource) Delete(
+func (r *dynamicIPAllocationRuleResource) Delete(
 	ctx context.Context,
 	req resource.DeleteRequest,
 	resp *resource.DeleteResponse,
 ) {
-	var state DynamicIpAllocationRule
+	var state DynamicIPAllocationRule
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	rule := DynamicIpAllocationRuleRulePlan{}
+	rule := DynamicIPAllocationRuleRulePlan{}
 	resp.Diagnostics.Append(state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -326,7 +326,7 @@ func (r *dynamicIpAllocationRuleResource) Delete(
 		resp.Diagnostics.AddError("Cato API PolicyDynamicIPAllocationRemoveRule error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(dynamicip.PublishDynamicIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(dynamicip.PublishDynamicIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

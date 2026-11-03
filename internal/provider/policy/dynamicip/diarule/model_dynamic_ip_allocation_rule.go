@@ -8,19 +8,19 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
-// DynamicIpAllocationRangeAttrTypes is the allocation range selector.
-var DynamicIpAllocationRangeAttrTypes = map[string]attr.Type{
+// DynamicIPAllocationRangeAttrTypes is the allocation range selector.
+var DynamicIPAllocationRangeAttrTypes = map[string]attr.Type{
 	"global_ip_range": idname.RefObjectType,
 }
 
-// DynamicIpAllocationSourceAttrTypes is the user/users-group source selector.
-var DynamicIpAllocationSourceAttrTypes = map[string]attr.Type{
+// DynamicIPAllocationSourceAttrTypes is the user/users-group source selector.
+var DynamicIPAllocationSourceAttrTypes = map[string]attr.Type{
 	"user":        types.SetType{ElemType: idname.RefObjectType},
 	"users_group": types.SetType{ElemType: idname.RefObjectType},
 }
 
-// DynamicIpAllocationRuleRuleAttrTypes defines the nested `rule` object for dynamic IP allocation rules.
-var DynamicIpAllocationRuleRuleAttrTypes = map[string]attr.Type{
+// DynamicIPAllocationRuleRuleAttrTypes defines the nested `rule` object for dynamic IP allocation rules.
+var DynamicIPAllocationRuleRuleAttrTypes = map[string]attr.Type{
 	"id":                     types.StringType,
 	"name":                   types.StringType,
 	"description":            types.StringType,
@@ -28,26 +28,26 @@ var DynamicIpAllocationRuleRuleAttrTypes = map[string]attr.Type{
 	"country":                types.SetType{ElemType: idname.RefObjectType},
 	"device_posture_profile": types.SetType{ElemType: idname.RefObjectType},
 	"platform":               types.ListType{ElemType: types.StringType},
-	"range":                  types.ObjectType{AttrTypes: DynamicIpAllocationRangeAttrTypes},
-	"source":                 types.ObjectType{AttrTypes: DynamicIpAllocationSourceAttrTypes},
+	"range":                  types.ObjectType{AttrTypes: DynamicIPAllocationRangeAttrTypes},
+	"source":                 types.ObjectType{AttrTypes: DynamicIPAllocationSourceAttrTypes},
 }
 
-// DynamicIpAllocationRuleAttrTypes is the top-level resource attribute map.
-var DynamicIpAllocationRuleAttrTypes = map[string]attr.Type{
+// DynamicIPAllocationRuleAttrTypes is the top-level resource attribute map.
+var DynamicIPAllocationRuleAttrTypes = map[string]attr.Type{
 	"id":   types.StringType,
 	"at":   policyrule.PositionObjectType,
-	"rule": types.ObjectType{AttrTypes: DynamicIpAllocationRuleRuleAttrTypes},
+	"rule": types.ObjectType{AttrTypes: DynamicIPAllocationRuleRuleAttrTypes},
 }
 
-// DynamicIpAllocationRule is the Terraform model for cato_dynamic_ip_allocation_rule.
-type DynamicIpAllocationRule struct {
+// DynamicIPAllocationRule is the Terraform model for cato_dynamic_ip_allocation_rule.
+type DynamicIPAllocationRule struct {
 	ID   types.String `tfsdk:"id"`
 	At   types.Object `tfsdk:"at"`
 	Rule types.Object `tfsdk:"rule"`
 }
 
-// DynamicIpAllocationRuleRulePlan maps the nested rule block (ObjectAs).
-type DynamicIpAllocationRuleRulePlan struct {
+// DynamicIPAllocationRuleRulePlan maps the nested rule block (ObjectAs).
+type DynamicIPAllocationRuleRulePlan struct {
 	ID                   types.String `tfsdk:"id"`
 	Name                 types.String `tfsdk:"name"`
 	Description          types.String `tfsdk:"description"`
@@ -59,13 +59,13 @@ type DynamicIpAllocationRuleRulePlan struct {
 	Source               types.Object `tfsdk:"source"`
 }
 
-// DynamicIpAllocationRangePlan maps the range selector.
-type DynamicIpAllocationRangePlan struct {
+// DynamicIPAllocationRangePlan maps the range selector.
+type DynamicIPAllocationRangePlan struct {
 	GlobalIPRange types.Object `tfsdk:"global_ip_range"`
 }
 
-// DynamicIpAllocationSourcePlan maps the source selector.
-type DynamicIpAllocationSourcePlan struct {
+// DynamicIPAllocationSourcePlan maps the source selector.
+type DynamicIPAllocationSourcePlan struct {
 	User       types.Set `tfsdk:"user"`
 	UsersGroup types.Set `tfsdk:"users_group"`
 }

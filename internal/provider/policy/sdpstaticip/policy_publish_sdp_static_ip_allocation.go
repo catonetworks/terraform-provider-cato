@@ -9,9 +9,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
-// PublishSdpStaticIpAllocationPolicyRevision publishes the SDP static IP allocation draft when one exists.
+// PublishSdpStaticIPAllocationPolicyRevision publishes the SDP static IP allocation draft when one exists.
 // If there is no draft, the API returns FAILURE with PolicyRevisionNotFound — that is treated as success.
-func PublishSdpStaticIpAllocationPolicyRevision(ctx context.Context, client PublishClient, accountID string) diag.Diagnostics {
+func PublishSdpStaticIPAllocationPolicyRevision(ctx context.Context, client PublishClient, accountID string) diag.Diagnostics {
 	var diags diag.Diagnostics
 	res, err := client.PolicySdpStaticIPAllocationPublishPolicyRevision(ctx, accountID)
 	if err != nil {

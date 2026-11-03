@@ -17,7 +17,7 @@ import (
 // convertCreateInput converts between the Terraform model and SDK values.
 func convertCreateInput(
 	ctx context.Context,
-	plan SdpStaticIpAllocationSection,
+	plan SdpStaticIPAllocationSection,
 	diagnostics *diag.Diagnostics,
 ) (resultInput cato_models.PolicyAddSectionInput) {
 	resultInput = cato_models.PolicyAddSectionInput{}
@@ -39,7 +39,7 @@ func convertCreateInput(
 
 // convertCreateInput2 converts between the Terraform model and SDK values.
 func convertCreateInput2(
-	plan *SdpStaticIpAllocationSection,
+	plan *SdpStaticIPAllocationSection,
 	add *cato_go_sdk.PolicySdpStaticIpAllocationAddSection_Policy_SdpStaticIPAllocation_AddSection,
 ) (resultSid string) {
 	resultSid = add.GetSection().GetSection().GetID()
@@ -49,7 +49,7 @@ func convertCreateInput2(
 
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(
-	state *SdpStaticIpAllocationSection,
+	state *SdpStaticIPAllocationSection,
 	section idname.Ref,
 	pol *cato_go_sdk.PolicySdpStaticIpAllocationPolicy_Policy_SdpStaticIPAllocation_Policy,
 	diagnostics *diag.Diagnostics,
@@ -89,7 +89,7 @@ func convertReadState(
 // convertUpdateInput converts between the Terraform model and SDK values.
 func convertUpdateInput(
 	ctx context.Context,
-	plan SdpStaticIpAllocationSection,
+	plan SdpStaticIPAllocationSection,
 	diagnostics *diag.Diagnostics,
 ) (
 	resultInputUpdate cato_models.PolicyUpdateSectionInput,

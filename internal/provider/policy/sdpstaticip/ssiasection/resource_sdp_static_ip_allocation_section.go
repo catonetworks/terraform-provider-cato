@@ -17,22 +17,22 @@ import (
 )
 
 var (
-	_ resource.Resource                = &sdpStaticIpAllocationSectionResource{}
-	_ resource.ResourceWithConfigure   = &sdpStaticIpAllocationSectionResource{}
-	_ resource.ResourceWithImportState = &sdpStaticIpAllocationSectionResource{}
+	_ resource.Resource                = &sdpStaticIPAllocationSectionResource{}
+	_ resource.ResourceWithConfigure   = &sdpStaticIPAllocationSectionResource{}
+	_ resource.ResourceWithImportState = &sdpStaticIPAllocationSectionResource{}
 )
 
-func NewSdpStaticIpAllocationSectionResource() resource.Resource {
-	return &sdpStaticIpAllocationSectionResource{}
+func NewSdpStaticIPAllocationSectionResource() resource.Resource {
+	return &sdpStaticIPAllocationSectionResource{}
 }
 
-type sdpStaticIpAllocationSectionResource struct {
+type sdpStaticIPAllocationSectionResource struct {
 	client *catoclient.Service
 
 	apiClient ResourceClient
 }
 
-func (r *sdpStaticIpAllocationSectionResource) Metadata(
+func (r *sdpStaticIPAllocationSectionResource) Metadata(
 	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
@@ -40,7 +40,7 @@ func (r *sdpStaticIpAllocationSectionResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_sdp_static_ip_allocation_section"
 }
 
-func (r *sdpStaticIpAllocationSectionResource) Configure(
+func (r *sdpStaticIPAllocationSectionResource) Configure(
 	_ context.Context,
 	req resource.ConfigureRequest,
 	_ *resource.ConfigureResponse,
@@ -51,7 +51,7 @@ func (r *sdpStaticIpAllocationSectionResource) Configure(
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *sdpStaticIpAllocationSectionResource) ImportState(
+func (r *sdpStaticIPAllocationSectionResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
@@ -59,12 +59,12 @@ func (r *sdpStaticIpAllocationSectionResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
-func (r *sdpStaticIpAllocationSectionResource) Create(
+func (r *sdpStaticIPAllocationSectionResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
-	var plan SdpStaticIpAllocationSection
+	var plan SdpStaticIPAllocationSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -97,7 +97,7 @@ func (r *sdpStaticIpAllocationSectionResource) Create(
 		return
 	}
 
-	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -107,12 +107,12 @@ func (r *sdpStaticIpAllocationSectionResource) Create(
 	resp.State.SetAttribute(ctx, path.Root("section").AtName("id"), sid)
 }
 
-func (r *sdpStaticIpAllocationSectionResource) Read(
+func (r *sdpStaticIPAllocationSectionResource) Read(
 	ctx context.Context,
 	req resource.ReadRequest,
 	resp *resource.ReadResponse,
 ) {
-	var state SdpStaticIpAllocationSection
+	var state SdpStaticIPAllocationSection
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -147,12 +147,12 @@ func (r *sdpStaticIpAllocationSectionResource) Read(
 }
 
 //nolint:gocyclo
-func (r *sdpStaticIpAllocationSectionResource) Update(
+func (r *sdpStaticIPAllocationSectionResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
-	var plan SdpStaticIpAllocationSection
+	var plan SdpStaticIPAllocationSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -193,19 +193,19 @@ func (r *sdpStaticIpAllocationSectionResource) Update(
 		}
 	}
 
-	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (r *sdpStaticIpAllocationSectionResource) Delete(
+func (r *sdpStaticIPAllocationSectionResource) Delete(
 	ctx context.Context,
 	req resource.DeleteRequest,
 	resp *resource.DeleteResponse,
 ) {
-	var state SdpStaticIpAllocationSection
+	var state SdpStaticIPAllocationSection
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -220,7 +220,7 @@ func (r *sdpStaticIpAllocationSectionResource) Delete(
 		resp.Diagnostics.AddError("Cato API PolicySdpStaticIPAllocationRemoveSection error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

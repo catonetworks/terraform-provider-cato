@@ -2,8 +2,8 @@ package ssiapolicy
 
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
-// SdpStaticIpAllocationPolicyModel holds account-level SDP Static IP Allocation policy toggles.
-type SdpStaticIpAllocationPolicyModel struct {
+// SdpStaticIPAllocationPolicyModel holds account-level SDP Static IP Allocation policy toggles.
+type SdpStaticIPAllocationPolicyModel struct {
 	ID            types.String `tfsdk:"id"`
 	Enabled       types.Bool   `tfsdk:"enabled"`
 	PublishedTime types.String `tfsdk:"published_time"`

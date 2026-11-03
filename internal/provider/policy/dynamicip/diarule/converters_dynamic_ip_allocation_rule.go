@@ -35,7 +35,7 @@ func diaRangeInput(
 	if rangeObj.IsNull() || rangeObj.IsUnknown() {
 		return nil
 	}
-	rng := DynamicIpAllocationRangePlan{}
+	rng := DynamicIPAllocationRangePlan{}
 	diags.Append(rangeObj.As(ctx, &rng, diaAsOpts)...)
 	if diags.HasError() {
 		return nil
@@ -59,7 +59,7 @@ func diaSourceInput(
 	if sourceObj.IsNull() || sourceObj.IsUnknown() {
 		return out
 	}
-	src := DynamicIpAllocationSourcePlan{}
+	src := DynamicIPAllocationSourcePlan{}
 	diags.Append(sourceObj.As(ctx, &src, diaAsOpts)...)
 	if diags.HasError() {
 		return out
@@ -73,9 +73,9 @@ func diaSourceInput(
 	return out
 }
 
-func hydrateDynamicIpAllocationAddRuleInput(
+func hydrateDynamicIPAllocationAddRuleInput(
 	ctx context.Context,
-	plan DynamicIpAllocationRule,
+	plan DynamicIPAllocationRule,
 ) (cato_models.DynamicIPAllocationAddRuleInput, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := cato_models.DynamicIPAllocationAddRuleInput{}
@@ -88,7 +88,7 @@ func hydrateDynamicIpAllocationAddRuleInput(
 		out.At.Ref = pos.Ref.ValueStringPointer()
 	}
 
-	rule := DynamicIpAllocationRuleRulePlan{}
+	rule := DynamicIPAllocationRuleRulePlan{}
 	diags.Append(plan.Rule.As(ctx, &rule, diaAsOpts)...)
 	if diags.HasError() {
 		return out, diags
@@ -115,13 +115,13 @@ func hydrateDynamicIpAllocationAddRuleInput(
 	return out, diags
 }
 
-func hydrateDynamicIpAllocationUpdateRuleInput(
+func hydrateDynamicIPAllocationUpdateRuleInput(
 	ctx context.Context,
-	plan DynamicIpAllocationRule,
+	plan DynamicIPAllocationRule,
 ) (cato_models.DynamicIPAllocationUpdateRuleInput, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	rule := DynamicIpAllocationRuleRulePlan{}
+	rule := DynamicIPAllocationRuleRulePlan{}
 	diags.Append(plan.Rule.As(ctx, &rule, diaAsOpts)...)
 	if diags.HasError() {
 		return cato_models.DynamicIPAllocationUpdateRuleInput{}, diags
@@ -159,17 +159,17 @@ func hydrateDynamicIpAllocationUpdateRuleInput(
 // convertCreateInput converts between the Terraform model and SDK values.
 func convertCreateInput(
 	ctx context.Context,
-	priorRulePlan *DynamicIpAllocationRuleRulePlan,
-	_ DynamicIpAllocationRuleRulePlan,
+	priorRulePlan *DynamicIPAllocationRuleRulePlan,
+	_ DynamicIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIpAllocationRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIPAllocationRuleRuleAttrTypes, rulePlan)
 	return resultRuleObj, resultOdiags
 }
 
 // convertCreateInput2 converts between the Terraform model and SDK values.
-func convertCreateInput2(plan *DynamicIpAllocationRule, newID string, ruleObj basetypes.ObjectValue) {
+func convertCreateInput2(plan *DynamicIPAllocationRule, newID string, ruleObj basetypes.ObjectValue) {
 	plan.ID = types.StringValue(newID)
 	plan.Rule = ruleObj
 }
@@ -177,18 +177,18 @@ func convertCreateInput2(plan *DynamicIpAllocationRule, newID string, ruleObj ba
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(
 	ctx context.Context,
-	_ DynamicIpAllocationRuleRulePlan,
-	priorHydrated *DynamicIpAllocationRuleRulePlan,
+	_ DynamicIPAllocationRuleRulePlan,
+	priorHydrated *DynamicIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	hydrated := *priorHydrated
 	defer func() { *priorHydrated = hydrated }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIpAllocationRuleRuleAttrTypes, hydrated)
+	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIPAllocationRuleRuleAttrTypes, hydrated)
 	return resultRuleObj, resultOdiags
 }
 
 // convertReadState2 converts between the Terraform model and SDK values.
 func convertReadState2(
-	state *DynamicIpAllocationRule,
+	state *DynamicIPAllocationRule,
 	cur *cato_go_sdk.PolicyDynamicIpAllocationPolicy_Policy_DynamicIPAllocation_Policy_Rules_Rule,
 	ruleObj basetypes.ObjectValue,
 	diagnostics *diag.Diagnostics,
@@ -209,7 +209,7 @@ func convertReadState2(
 // convertUpdateInput converts between the Terraform model and SDK values.
 func convertUpdateInput(
 	ctx context.Context,
-	plan DynamicIpAllocationRule,
+	plan DynamicIPAllocationRule,
 	diagnostics *diag.Diagnostics,
 ) (
 	resultMove cato_models.PolicyMoveRuleInput,
@@ -231,12 +231,12 @@ func convertUpdateInput(
 // convertUpdateInput2 converts between the Terraform model and SDK values.
 func convertUpdateInput2(
 	ctx context.Context,
-	_ DynamicIpAllocationRuleRulePlan,
-	priorRulePlan *DynamicIpAllocationRuleRulePlan,
+	_ DynamicIPAllocationRuleRulePlan,
+	priorRulePlan *DynamicIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIpAllocationRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIPAllocationRuleRuleAttrTypes, rulePlan)
 	return resultRuleObj, resultOdiags
 }
 
@@ -251,11 +251,11 @@ func convertUpdateInput3(pos policyrule.Position) (resultAtObj basetypes.ObjectV
 
 // convertUpdateInput4 converts between the Terraform model and SDK values.
 func convertUpdateInput4(
-	rule DynamicIpAllocationRuleRulePlan,
+	rule DynamicIPAllocationRuleRulePlan,
 	ruleObj basetypes.ObjectValue,
 	atObj basetypes.ObjectValue,
-) (resultSt DynamicIpAllocationRule) {
-	resultSt = DynamicIpAllocationRule{
+) (resultSt DynamicIPAllocationRule) {
+	resultSt = DynamicIPAllocationRule{
 		ID:   types.StringValue(rule.ID.ValueString()),
 		At:   atObj,
 		Rule: ruleObj,
@@ -264,18 +264,18 @@ func convertUpdateInput4(
 }
 
 // convertDeleteInput converts between the Terraform model and SDK values.
-func convertDeleteInput(rule DynamicIpAllocationRuleRulePlan) (resultRm cato_models.DynamicIPAllocationRemoveRuleInput) {
+func convertDeleteInput(rule DynamicIPAllocationRuleRulePlan) (resultRm cato_models.DynamicIPAllocationRemoveRuleInput) {
 	resultRm = cato_models.DynamicIPAllocationRemoveRuleInput{ID: rule.ID.ValueString()}
 	return resultRm
 }
 
-// hydrateDynamicIpAllocationRuleStateFromClient maps a policy read rule into Terraform nested objects.
-func hydrateDynamicIpAllocationRuleStateFromClient(
+// hydrateDynamicIPAllocationRuleStateFromClient maps a policy read rule into Terraform nested objects.
+func hydrateDynamicIPAllocationRuleStateFromClient(
 	ctx context.Context,
 	r *cato_go_sdk.PolicyDynamicIpAllocationPolicy_Policy_DynamicIPAllocation_Policy_Rules_Rule,
-) (DynamicIpAllocationRuleRulePlan, diag.Diagnostics) {
+) (DynamicIPAllocationRuleRulePlan, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	out := DynamicIpAllocationRuleRulePlan{}
+	out := DynamicIPAllocationRuleRulePlan{}
 	if r == nil {
 		return out, diags
 	}
@@ -283,8 +283,8 @@ func hydrateDynamicIpAllocationRuleStateFromClient(
 	out.Country = types.SetNull(idname.RefObjectType)
 	out.DevicePostureProfile = types.SetNull(idname.RefObjectType)
 	out.Platform = types.ListNull(types.StringType)
-	out.Range = types.ObjectNull(DynamicIpAllocationRangeAttrTypes)
-	out.Source = types.ObjectNull(DynamicIpAllocationSourceAttrTypes)
+	out.Range = types.ObjectNull(DynamicIPAllocationRangeAttrTypes)
+	out.Source = types.ObjectNull(DynamicIPAllocationSourceAttrTypes)
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())
@@ -319,7 +319,7 @@ func hydrateDynamicIpAllocationRuleStateFromClient(
 			diags.Append(d...)
 			girObj = o
 		}
-		rngObj, d := types.ObjectValue(DynamicIpAllocationRangeAttrTypes, map[string]attr.Value{
+		rngObj, d := types.ObjectValue(DynamicIPAllocationRangeAttrTypes, map[string]attr.Value{
 			"global_ip_range": girObj,
 		})
 		diags.Append(d...)
@@ -327,7 +327,7 @@ func hydrateDynamicIpAllocationRuleStateFromClient(
 	}
 
 	if src := r.GetSource(); src != nil {
-		srcObj, d := types.ObjectValue(DynamicIpAllocationSourceAttrTypes, map[string]attr.Value{
+		srcObj, d := types.ObjectValue(DynamicIPAllocationSourceAttrTypes, map[string]attr.Value{
 			"user":        oldidname.ParseNameIDList(ctx, src.GetUser(), "rule.source.user"),
 			"users_group": oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),
 		})

@@ -8,7 +8,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
 
-// SdpStaticIpAllocation policy family wrappers (draft-targeted: nil mutation inputs).
+// SdpStaticIPAllocation policy family wrappers (draft-targeted: nil mutation inputs).
 
 func (c *ProviderSDKClient) PolicySdpStaticIPAllocationPolicy(
 	ctx context.Context,

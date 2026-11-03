@@ -8,37 +8,37 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 )
 
-// SdpStaticIpAllocationSourceAttrTypes is the single-user source selector.
-var SdpStaticIpAllocationSourceAttrTypes = map[string]attr.Type{
+// SdpStaticIPAllocationSourceAttrTypes is the single-user source selector.
+var SdpStaticIPAllocationSourceAttrTypes = map[string]attr.Type{
 	"user": idname.RefObjectType,
 }
 
-// SdpStaticIpAllocationRuleRuleAttrTypes defines the nested `rule` object for SDP static IP allocation rules.
-var SdpStaticIpAllocationRuleRuleAttrTypes = map[string]attr.Type{
+// SdpStaticIPAllocationRuleRuleAttrTypes defines the nested `rule` object for SDP static IP allocation rules.
+var SdpStaticIPAllocationRuleRuleAttrTypes = map[string]attr.Type{
 	"id":          types.StringType,
 	"name":        types.StringType,
 	"description": types.StringType,
 	"enabled":     types.BoolType,
 	"ip":          types.StringType,
-	"source":      types.ObjectType{AttrTypes: SdpStaticIpAllocationSourceAttrTypes},
+	"source":      types.ObjectType{AttrTypes: SdpStaticIPAllocationSourceAttrTypes},
 }
 
-// SdpStaticIpAllocationRuleAttrTypes is the top-level resource attribute map.
-var SdpStaticIpAllocationRuleAttrTypes = map[string]attr.Type{
+// SdpStaticIPAllocationRuleAttrTypes is the top-level resource attribute map.
+var SdpStaticIPAllocationRuleAttrTypes = map[string]attr.Type{
 	"id":   types.StringType,
 	"at":   policyrule.PositionObjectType,
-	"rule": types.ObjectType{AttrTypes: SdpStaticIpAllocationRuleRuleAttrTypes},
+	"rule": types.ObjectType{AttrTypes: SdpStaticIPAllocationRuleRuleAttrTypes},
 }
 
-// SdpStaticIpAllocationRule is the Terraform model for cato_sdp_static_ip_allocation_rule.
-type SdpStaticIpAllocationRule struct {
+// SdpStaticIPAllocationRule is the Terraform model for cato_sdp_static_ip_allocation_rule.
+type SdpStaticIPAllocationRule struct {
 	ID   types.String `tfsdk:"id"`
 	At   types.Object `tfsdk:"at"`
 	Rule types.Object `tfsdk:"rule"`
 }
 
-// SdpStaticIpAllocationRuleRulePlan maps the nested rule block (ObjectAs).
-type SdpStaticIpAllocationRuleRulePlan struct {
+// SdpStaticIPAllocationRuleRulePlan maps the nested rule block (ObjectAs).
+type SdpStaticIPAllocationRuleRulePlan struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
@@ -47,7 +47,7 @@ type SdpStaticIpAllocationRuleRulePlan struct {
 	Source      types.Object `tfsdk:"source"`
 }
 
-// SdpStaticIpAllocationSourcePlan maps the source selector.
-type SdpStaticIpAllocationSourcePlan struct {
+// SdpStaticIPAllocationSourcePlan maps the source selector.
+type SdpStaticIPAllocationSourcePlan struct {
 	User types.Object `tfsdk:"user"`
 }

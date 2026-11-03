@@ -14,22 +14,22 @@ import (
 )
 
 var (
-	_ resource.Resource                = &dynamicIpAllocationPolicyResource{}
-	_ resource.ResourceWithConfigure   = &dynamicIpAllocationPolicyResource{}
-	_ resource.ResourceWithImportState = &dynamicIpAllocationPolicyResource{}
+	_ resource.Resource                = &dynamicIPAllocationPolicyResource{}
+	_ resource.ResourceWithConfigure   = &dynamicIPAllocationPolicyResource{}
+	_ resource.ResourceWithImportState = &dynamicIPAllocationPolicyResource{}
 )
 
-func NewDynamicIpAllocationPolicyResource() resource.Resource {
-	return &dynamicIpAllocationPolicyResource{}
+func NewDynamicIPAllocationPolicyResource() resource.Resource {
+	return &dynamicIPAllocationPolicyResource{}
 }
 
-type dynamicIpAllocationPolicyResource struct {
+type dynamicIPAllocationPolicyResource struct {
 	client *catoclient.Service
 
 	apiClient ResourceClient
 }
 
-func (r *dynamicIpAllocationPolicyResource) Metadata(
+func (r *dynamicIPAllocationPolicyResource) Metadata(
 	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
@@ -37,7 +37,7 @@ func (r *dynamicIpAllocationPolicyResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_dynamic_ip_allocation_policy"
 }
 
-func (r *dynamicIpAllocationPolicyResource) Configure(
+func (r *dynamicIPAllocationPolicyResource) Configure(
 	_ context.Context,
 	req resource.ConfigureRequest,
 	_ *resource.ConfigureResponse,
@@ -48,19 +48,19 @@ func (r *dynamicIpAllocationPolicyResource) Configure(
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *dynamicIpAllocationPolicyResource) ImportState(
+func (r *dynamicIPAllocationPolicyResource) ImportState(
 	ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse,
 ) {
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "dynamic_ip_allocation")...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("enabled"), false)...)
 }
 
-func (r *dynamicIpAllocationPolicyResource) Create(
+func (r *dynamicIPAllocationPolicyResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
-	var plan DynamicIpAllocationPolicyModel
+	var plan DynamicIPAllocationPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -74,7 +74,7 @@ func (r *dynamicIpAllocationPolicyResource) Create(
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *dynamicIpAllocationPolicyResource) Read(ctx context.Context, _ resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *dynamicIPAllocationPolicyResource) Read(ctx context.Context, _ resource.ReadRequest, resp *resource.ReadResponse) {
 	st, err := r.readState(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("read policy", err.Error())
@@ -83,12 +83,12 @@ func (r *dynamicIpAllocationPolicyResource) Read(ctx context.Context, _ resource
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *dynamicIpAllocationPolicyResource) Update(
+func (r *dynamicIPAllocationPolicyResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
-	var plan DynamicIpAllocationPolicyModel
+	var plan DynamicIPAllocationPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -102,13 +102,13 @@ func (r *dynamicIpAllocationPolicyResource) Update(
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *dynamicIpAllocationPolicyResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+func (r *dynamicIPAllocationPolicyResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	tflog.Warn(ctx, "cato_dynamic_ip_allocation_policy delete is a no-op; policy always exists")
 }
 
-func (r *dynamicIpAllocationPolicyResource) updatePolicy(
+func (r *dynamicIPAllocationPolicyResource) updatePolicy(
 	ctx context.Context,
-	plan DynamicIpAllocationPolicyModel,
+	plan DynamicIPAllocationPolicyModel,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
 	in := convertUpdatePolicyValues(plan)
@@ -126,11 +126,11 @@ func (r *dynamicIpAllocationPolicyResource) updatePolicy(
 		}
 		return diags
 	}
-	diags.Append(dynamicip.PublishDynamicIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	diags.Append(dynamicip.PublishDynamicIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	return diags
 }
 
-func (r *dynamicIpAllocationPolicyResource) readState(ctx context.Context) (DynamicIpAllocationPolicyModel, error) {
+func (r *dynamicIPAllocationPolicyResource) readState(ctx context.Context) (DynamicIPAllocationPolicyModel, error) {
 	out := convertReadStateValues()
 	body, err := r.resourceAPI().PolicyDynamicIPAllocationPolicy(ctx, r.client.AccountId)
 	if err != nil {

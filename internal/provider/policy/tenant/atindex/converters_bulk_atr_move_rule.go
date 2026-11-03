@@ -9,8 +9,10 @@ import (
 
 // decodeAtrOrderingInputs decodes the section_data / rule_data plan maps into the
 // shared flat-move planner inputs.
-func decodeAtrOrderingInputs(ctx context.Context, plan AtrRulesIndex) (map[string]int64, map[string]sharedpolicy.FlatRuleRow, error) {
-	sectionIndexes := map[string]int64{}
+func decodeAtrOrderingInputs(
+	ctx context.Context, plan AtrRulesIndex,
+) (sectionIndexes map[string]int64, ruleRows map[string]sharedpolicy.FlatRuleRow, err error) {
+	sectionIndexes = map[string]int64{}
 	if !plan.SectionData.IsNull() && !plan.SectionData.IsUnknown() {
 		entries := map[string]AtrRulesIndexSectionEntry{}
 		if diags := plan.SectionData.ElementsAs(ctx, &entries, false); diags.HasError() {
@@ -20,7 +22,7 @@ func decodeAtrOrderingInputs(ctx context.Context, plan AtrRulesIndex) (map[strin
 			sectionIndexes[name] = e.SectionIndex.ValueInt64()
 		}
 	}
-	ruleRows := map[string]sharedpolicy.FlatRuleRow{}
+	ruleRows = map[string]sharedpolicy.FlatRuleRow{}
 	if !plan.RuleData.IsNull() && !plan.RuleData.IsUnknown() {
 		entries := map[string]AtrRulesIndexRuleEntry{}
 		if diags := plan.RuleData.ElementsAs(ctx, &entries, false); diags.HasError() {

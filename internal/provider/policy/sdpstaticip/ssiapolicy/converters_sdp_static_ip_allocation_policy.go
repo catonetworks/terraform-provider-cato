@@ -8,7 +8,7 @@ import (
 
 // convertUpdatePolicyValues converts between the Terraform model and SDK values.
 func convertUpdatePolicyValues(
-	plan SdpStaticIpAllocationPolicyModel,
+	plan SdpStaticIPAllocationPolicyModel,
 ) (resultIn cato_models.SdpStaticIPAllocationPolicyUpdateInput) {
 	st := cato_models.PolicyToggleStateDisabled
 	if plan.Enabled.ValueBool() {
@@ -21,14 +21,14 @@ func convertUpdatePolicyValues(
 }
 
 // convertReadStateValues converts between the Terraform model and SDK values.
-func convertReadStateValues() (resultOut SdpStaticIpAllocationPolicyModel) {
-	resultOut = SdpStaticIpAllocationPolicyModel{ID: types.StringValue("sdp_static_ip_allocation")}
+func convertReadStateValues() (resultOut SdpStaticIPAllocationPolicyModel) {
+	resultOut = SdpStaticIPAllocationPolicyModel{ID: types.StringValue("sdp_static_ip_allocation")}
 	return resultOut
 }
 
 // convertReadStateValues2 converts between the Terraform model and SDK values.
 func convertReadStateValues2(
-	out *SdpStaticIpAllocationPolicyModel,
+	out *SdpStaticIPAllocationPolicyModel,
 	pol *cato_go_sdk.PolicySdpStaticIpAllocationPolicy_Policy_SdpStaticIPAllocation_Policy,
 ) {
 	out.Enabled = types.BoolValue(pol.Enabled)

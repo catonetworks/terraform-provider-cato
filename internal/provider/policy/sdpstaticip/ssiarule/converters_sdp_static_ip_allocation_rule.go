@@ -25,7 +25,7 @@ func userRefFromSource(
 		return nil
 	}
 	asOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
-	src := SdpStaticIpAllocationSourcePlan{}
+	src := SdpStaticIPAllocationSourcePlan{}
 	diags.Append(sourceObj.As(ctx, &src, asOpts)...)
 	if diags.HasError() || src.User.IsNull() || src.User.IsUnknown() {
 		return nil
@@ -46,9 +46,9 @@ func userRefFromSource(
 	}
 }
 
-func hydrateSdpStaticIpAllocationAddRuleInput(
+func hydrateSdpStaticIPAllocationAddRuleInput(
 	ctx context.Context,
-	plan SdpStaticIpAllocationRule,
+	plan SdpStaticIPAllocationRule,
 ) (cato_models.SdpStaticIPAllocationAddRuleInput, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := cato_models.SdpStaticIPAllocationAddRuleInput{}
@@ -63,7 +63,7 @@ func hydrateSdpStaticIpAllocationAddRuleInput(
 		out.At.Ref = pos.Ref.ValueStringPointer()
 	}
 
-	rule := SdpStaticIpAllocationRuleRulePlan{}
+	rule := SdpStaticIPAllocationRuleRulePlan{}
 	diags.Append(plan.Rule.As(ctx, &rule, asOpts)...)
 	if diags.HasError() {
 		return out, diags
@@ -84,14 +84,14 @@ func hydrateSdpStaticIpAllocationAddRuleInput(
 	return out, diags
 }
 
-func hydrateSdpStaticIpAllocationUpdateRuleInput(
+func hydrateSdpStaticIPAllocationUpdateRuleInput(
 	ctx context.Context,
-	plan SdpStaticIpAllocationRule,
+	plan SdpStaticIPAllocationRule,
 ) (cato_models.SdpStaticIPAllocationUpdateRuleInput, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	asOpts := basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
 
-	rule := SdpStaticIpAllocationRuleRulePlan{}
+	rule := SdpStaticIPAllocationRuleRulePlan{}
 	diags.Append(plan.Rule.As(ctx, &rule, asOpts)...)
 	if diags.HasError() {
 		return cato_models.SdpStaticIPAllocationUpdateRuleInput{}, diags
@@ -117,17 +117,17 @@ func hydrateSdpStaticIpAllocationUpdateRuleInput(
 // convertCreateInput converts between the Terraform model and SDK values.
 func convertCreateInput(
 	ctx context.Context,
-	priorRulePlan *SdpStaticIpAllocationRuleRulePlan,
-	_ SdpStaticIpAllocationRuleRulePlan,
+	priorRulePlan *SdpStaticIPAllocationRuleRulePlan,
+	_ SdpStaticIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SdpStaticIpAllocationRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SdpStaticIPAllocationRuleRuleAttrTypes, rulePlan)
 	return resultRuleObj, resultOdiags
 }
 
 // convertCreateInput2 converts between the Terraform model and SDK values.
-func convertCreateInput2(plan *SdpStaticIpAllocationRule, newID string, ruleObj basetypes.ObjectValue) {
+func convertCreateInput2(plan *SdpStaticIPAllocationRule, newID string, ruleObj basetypes.ObjectValue) {
 	plan.ID = types.StringValue(newID)
 	plan.Rule = ruleObj
 }
@@ -135,18 +135,18 @@ func convertCreateInput2(plan *SdpStaticIpAllocationRule, newID string, ruleObj 
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(
 	ctx context.Context,
-	_ SdpStaticIpAllocationRuleRulePlan,
-	priorHydrated *SdpStaticIpAllocationRuleRulePlan,
+	_ SdpStaticIPAllocationRuleRulePlan,
+	priorHydrated *SdpStaticIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	hydrated := *priorHydrated
 	defer func() { *priorHydrated = hydrated }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SdpStaticIpAllocationRuleRuleAttrTypes, hydrated)
+	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SdpStaticIPAllocationRuleRuleAttrTypes, hydrated)
 	return resultRuleObj, resultOdiags
 }
 
 // convertReadState2 converts between the Terraform model and SDK values.
 func convertReadState2(
-	state *SdpStaticIpAllocationRule,
+	state *SdpStaticIPAllocationRule,
 	cur *cato_go_sdk.PolicySdpStaticIpAllocationPolicy_Policy_SdpStaticIPAllocation_Policy_Rules_Rule,
 	ruleObj basetypes.ObjectValue,
 	diagnostics *diag.Diagnostics,
@@ -167,7 +167,7 @@ func convertReadState2(
 // convertUpdateInput converts between the Terraform model and SDK values.
 func convertUpdateInput(
 	ctx context.Context,
-	plan SdpStaticIpAllocationRule,
+	plan SdpStaticIPAllocationRule,
 	diagnostics *diag.Diagnostics,
 ) (
 	resultMove cato_models.PolicyMoveRuleInput,
@@ -189,12 +189,12 @@ func convertUpdateInput(
 // convertUpdateInput2 converts between the Terraform model and SDK values.
 func convertUpdateInput2(
 	ctx context.Context,
-	_ SdpStaticIpAllocationRuleRulePlan,
-	priorRulePlan *SdpStaticIpAllocationRuleRulePlan,
+	_ SdpStaticIPAllocationRuleRulePlan,
+	priorRulePlan *SdpStaticIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SdpStaticIpAllocationRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SdpStaticIPAllocationRuleRuleAttrTypes, rulePlan)
 	return resultRuleObj, resultOdiags
 }
 
@@ -209,11 +209,11 @@ func convertUpdateInput3(pos policyrule.Position) (resultAtObj basetypes.ObjectV
 
 // convertUpdateInput4 converts between the Terraform model and SDK values.
 func convertUpdateInput4(
-	rule SdpStaticIpAllocationRuleRulePlan,
+	rule SdpStaticIPAllocationRuleRulePlan,
 	ruleObj basetypes.ObjectValue,
 	atObj basetypes.ObjectValue,
-) (resultSt SdpStaticIpAllocationRule) {
-	resultSt = SdpStaticIpAllocationRule{
+) (resultSt SdpStaticIPAllocationRule) {
+	resultSt = SdpStaticIPAllocationRule{
 		ID:   types.StringValue(rule.ID.ValueString()),
 		At:   atObj,
 		Rule: ruleObj,
@@ -222,23 +222,23 @@ func convertUpdateInput4(
 }
 
 // convertDeleteInput converts between the Terraform model and SDK values.
-func convertDeleteInput(rule SdpStaticIpAllocationRuleRulePlan) (resultRm cato_models.SdpStaticIPAllocationRemoveRuleInput) {
+func convertDeleteInput(rule SdpStaticIPAllocationRuleRulePlan) (resultRm cato_models.SdpStaticIPAllocationRemoveRuleInput) {
 	resultRm = cato_models.SdpStaticIPAllocationRemoveRuleInput{ID: rule.ID.ValueString()}
 	return resultRm
 }
 
-// hydrateSdpStaticIpAllocationRuleStateFromClient maps a policy read rule into Terraform nested objects.
-func hydrateSdpStaticIpAllocationRuleStateFromClient(
+// hydrateSdpStaticIPAllocationRuleStateFromClient maps a policy read rule into Terraform nested objects.
+func hydrateSdpStaticIPAllocationRuleStateFromClient(
 	_ context.Context,
 	r *cato_go_sdk.PolicySdpStaticIpAllocationPolicy_Policy_SdpStaticIPAllocation_Policy_Rules_Rule,
-) (SdpStaticIpAllocationRuleRulePlan, diag.Diagnostics) {
+) (SdpStaticIPAllocationRuleRulePlan, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	out := SdpStaticIpAllocationRuleRulePlan{}
+	out := SdpStaticIPAllocationRuleRulePlan{}
 	if r == nil {
 		return out, diags
 	}
 
-	out.Source = types.ObjectNull(SdpStaticIpAllocationSourceAttrTypes)
+	out.Source = types.ObjectNull(SdpStaticIPAllocationSourceAttrTypes)
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())
@@ -260,7 +260,7 @@ func hydrateSdpStaticIpAllocationRuleStateFromClient(
 			diags.Append(d...)
 			userObj = o
 		}
-		srcObj, d := types.ObjectValue(SdpStaticIpAllocationSourceAttrTypes, map[string]attr.Value{
+		srcObj, d := types.ObjectValue(SdpStaticIPAllocationSourceAttrTypes, map[string]attr.Value{
 			"user": userObj,
 		})
 		diags.Append(d...)

@@ -12,6 +12,7 @@ import (
 	wfrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 )
 
+//nolint:funlen // Scope and cleanup schemas mirror the rule schema.
 func (r *wfSubPolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	// Reuse the exact cato_wf_rule "rule" schema for the sub-policy scope so the
 	// scope stays in lockstep (drift-free) with the rule resource.

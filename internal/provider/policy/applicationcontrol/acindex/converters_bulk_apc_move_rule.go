@@ -9,8 +9,10 @@ import (
 
 // decodeApcOrderingInputs decodes the section_data / rule_data plan maps into the
 // shared flat-move planner inputs.
-func decodeApcOrderingInputs(ctx context.Context, plan ApcRulesIndex) (map[string]int64, map[string]sharedpolicy.FlatRuleRow, error) {
-	sectionIndexes := map[string]int64{}
+func decodeApcOrderingInputs(
+	ctx context.Context, plan ApcRulesIndex,
+) (sectionIndexes map[string]int64, ruleRows map[string]sharedpolicy.FlatRuleRow, err error) {
+	sectionIndexes = map[string]int64{}
 	if !plan.SectionData.IsNull() && !plan.SectionData.IsUnknown() {
 		entries := map[string]ApcRulesIndexSectionEntry{}
 		if diags := plan.SectionData.ElementsAs(ctx, &entries, false); diags.HasError() {
@@ -20,7 +22,7 @@ func decodeApcOrderingInputs(ctx context.Context, plan ApcRulesIndex) (map[strin
 			sectionIndexes[name] = e.SectionIndex.ValueInt64()
 		}
 	}
-	ruleRows := map[string]sharedpolicy.FlatRuleRow{}
+	ruleRows = map[string]sharedpolicy.FlatRuleRow{}
 	if !plan.RuleData.IsNull() && !plan.RuleData.IsUnknown() {
 		entries := map[string]ApcRulesIndexRuleEntry{}
 		if diags := plan.RuleData.ElementsAs(ctx, &entries, false); diags.HasError() {

@@ -8,7 +8,7 @@ import (
 
 // convertUpdatePolicyValues converts between the Terraform model and SDK values.
 func convertUpdatePolicyValues(
-	plan DynamicIpAllocationPolicyModel,
+	plan DynamicIPAllocationPolicyModel,
 ) (resultIn cato_models.DynamicIPAllocationPolicyUpdateInput) {
 	st := cato_models.PolicyToggleStateDisabled
 	if plan.Enabled.ValueBool() {
@@ -21,14 +21,14 @@ func convertUpdatePolicyValues(
 }
 
 // convertReadStateValues converts between the Terraform model and SDK values.
-func convertReadStateValues() (resultOut DynamicIpAllocationPolicyModel) {
-	resultOut = DynamicIpAllocationPolicyModel{ID: types.StringValue("dynamic_ip_allocation")}
+func convertReadStateValues() (resultOut DynamicIPAllocationPolicyModel) {
+	resultOut = DynamicIPAllocationPolicyModel{ID: types.StringValue("dynamic_ip_allocation")}
 	return resultOut
 }
 
 // convertReadStateValues2 converts between the Terraform model and SDK values.
 func convertReadStateValues2(
-	out *DynamicIpAllocationPolicyModel,
+	out *DynamicIPAllocationPolicyModel,
 	pol *cato_go_sdk.PolicyDynamicIpAllocationPolicy_Policy_DynamicIPAllocation_Policy,
 ) {
 	out.Enabled = types.BoolValue(pol.Enabled)

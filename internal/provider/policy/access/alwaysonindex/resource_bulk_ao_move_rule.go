@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sort"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	attr "github.com/hashicorp/terraform-plugin-framework/attr"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -20,7 +21,6 @@ import (
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
@@ -125,13 +125,13 @@ type aoMoveOp struct {
 	SectionName string // for rules: the target section
 }
 
-// BuildAoMoveSequence turns the ordering inputs into a deterministic move
+// buildAoMoveSequence turns the ordering inputs into a deterministic move
 // sequence: sections in section_index order (each moved LAST_IN_POLICY, so
 // the sequence yields ascending order), then per section (same order) its
 // rules in index_in_section order (each moved LAST_IN_SECTION). Rules whose
 // section is not in sectionIndexes are grouped after, in name order, so the
 // sequence is total and deterministic.
-func BuildAoMoveSequence(sectionIndexes map[string]int64, ruleRows map[string]AoRuleRow) []aoMoveOp {
+func buildAoMoveSequence(sectionIndexes map[string]int64, ruleRows map[string]AoRuleRow) []aoMoveOp {
 	ops := make([]aoMoveOp, 0, len(sectionIndexes)+len(ruleRows))
 
 	sectionNames := make([]string, 0, len(sectionIndexes))
@@ -226,7 +226,6 @@ func (r *aoRulesIndexResource) Delete(ctx context.Context, _ resource.DeleteRequ
 	resp.State.RemoveResource(ctx)
 }
 
-//nolint:gocyclo
 func (r *aoRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan AoRulesIndex) error {
 	sectionIndexes, ruleRows, decodeErr := decodeAoOrderingInputs(ctx, plan)
 	if decodeErr != nil {
@@ -245,7 +244,7 @@ func (r *aoRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 			return readErr
 		}
 
-		for _, op := range BuildAoMoveSequence(sectionIndexes, ruleRows) {
+		for _, op := range buildAoMoveSequence(sectionIndexes, ruleRows) {
 			if op.IsSection {
 				sectionID, ok := body.SectionIDByName[op.Name]
 				if !ok {

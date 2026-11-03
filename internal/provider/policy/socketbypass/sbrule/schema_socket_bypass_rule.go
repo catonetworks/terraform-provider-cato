@@ -130,7 +130,6 @@ func serviceAttribute() schema.SingleNestedAttribute {
 	}
 }
 
-//nolint:funlen
 func (r *socketBypassRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a rule in the Cato socket bypass policy. " +

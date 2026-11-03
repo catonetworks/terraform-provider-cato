@@ -9,8 +9,10 @@ import (
 
 // decodeSwpOrderingInputs decodes the section_data / rule_data plan maps into the
 // shared flat-move planner inputs.
-func decodeSwpOrderingInputs(ctx context.Context, plan SwpRulesIndex) (map[string]int64, map[string]sharedpolicy.FlatRuleRow, error) {
-	sectionIndexes := map[string]int64{}
+func decodeSwpOrderingInputs(
+	ctx context.Context, plan SwpRulesIndex,
+) (sectionIndexes map[string]int64, ruleRows map[string]sharedpolicy.FlatRuleRow, err error) {
+	sectionIndexes = map[string]int64{}
 	if !plan.SectionData.IsNull() && !plan.SectionData.IsUnknown() {
 		entries := map[string]SwpRulesIndexSectionEntry{}
 		if diags := plan.SectionData.ElementsAs(ctx, &entries, false); diags.HasError() {
@@ -20,7 +22,7 @@ func decodeSwpOrderingInputs(ctx context.Context, plan SwpRulesIndex) (map[strin
 			sectionIndexes[name] = e.SectionIndex.ValueInt64()
 		}
 	}
-	ruleRows := map[string]sharedpolicy.FlatRuleRow{}
+	ruleRows = map[string]sharedpolicy.FlatRuleRow{}
 	if !plan.RuleData.IsNull() && !plan.RuleData.IsUnknown() {
 		entries := map[string]SwpRulesIndexRuleEntry{}
 		if diags := plan.RuleData.ElementsAs(ctx, &entries, false); diags.HasError() {

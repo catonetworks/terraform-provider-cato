@@ -17,22 +17,22 @@ import (
 )
 
 var (
-	_ resource.Resource                = &dynamicIpAllocationSectionResource{}
-	_ resource.ResourceWithConfigure   = &dynamicIpAllocationSectionResource{}
-	_ resource.ResourceWithImportState = &dynamicIpAllocationSectionResource{}
+	_ resource.Resource                = &dynamicIPAllocationSectionResource{}
+	_ resource.ResourceWithConfigure   = &dynamicIPAllocationSectionResource{}
+	_ resource.ResourceWithImportState = &dynamicIPAllocationSectionResource{}
 )
 
-func NewDynamicIpAllocationSectionResource() resource.Resource {
-	return &dynamicIpAllocationSectionResource{}
+func NewDynamicIPAllocationSectionResource() resource.Resource {
+	return &dynamicIPAllocationSectionResource{}
 }
 
-type dynamicIpAllocationSectionResource struct {
+type dynamicIPAllocationSectionResource struct {
 	client *catoclient.Service
 
 	apiClient ResourceClient
 }
 
-func (r *dynamicIpAllocationSectionResource) Metadata(
+func (r *dynamicIPAllocationSectionResource) Metadata(
 	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
@@ -40,7 +40,7 @@ func (r *dynamicIpAllocationSectionResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_dynamic_ip_allocation_section"
 }
 
-func (r *dynamicIpAllocationSectionResource) Configure(
+func (r *dynamicIPAllocationSectionResource) Configure(
 	_ context.Context,
 	req resource.ConfigureRequest,
 	_ *resource.ConfigureResponse,
@@ -51,7 +51,7 @@ func (r *dynamicIpAllocationSectionResource) Configure(
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *dynamicIpAllocationSectionResource) ImportState(
+func (r *dynamicIPAllocationSectionResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
@@ -59,12 +59,12 @@ func (r *dynamicIpAllocationSectionResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("section").AtName("id"), req, resp)
 }
 
-func (r *dynamicIpAllocationSectionResource) Create(
+func (r *dynamicIPAllocationSectionResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
-	var plan DynamicIpAllocationSection
+	var plan DynamicIPAllocationSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -97,7 +97,7 @@ func (r *dynamicIpAllocationSectionResource) Create(
 		return
 	}
 
-	resp.Diagnostics.Append(dynamicip.PublishDynamicIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(dynamicip.PublishDynamicIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -107,12 +107,12 @@ func (r *dynamicIpAllocationSectionResource) Create(
 	resp.State.SetAttribute(ctx, path.Root("section").AtName("id"), sid)
 }
 
-func (r *dynamicIpAllocationSectionResource) Read(
+func (r *dynamicIPAllocationSectionResource) Read(
 	ctx context.Context,
 	req resource.ReadRequest,
 	resp *resource.ReadResponse,
 ) {
-	var state DynamicIpAllocationSection
+	var state DynamicIPAllocationSection
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -147,12 +147,12 @@ func (r *dynamicIpAllocationSectionResource) Read(
 }
 
 //nolint:gocyclo
-func (r *dynamicIpAllocationSectionResource) Update(
+func (r *dynamicIPAllocationSectionResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
-	var plan DynamicIpAllocationSection
+	var plan DynamicIPAllocationSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -193,19 +193,19 @@ func (r *dynamicIpAllocationSectionResource) Update(
 		}
 	}
 
-	resp.Diagnostics.Append(dynamicip.PublishDynamicIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(dynamicip.PublishDynamicIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (r *dynamicIpAllocationSectionResource) Delete(
+func (r *dynamicIPAllocationSectionResource) Delete(
 	ctx context.Context,
 	req resource.DeleteRequest,
 	resp *resource.DeleteResponse,
 ) {
-	var state DynamicIpAllocationSection
+	var state DynamicIPAllocationSection
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -220,7 +220,7 @@ func (r *dynamicIpAllocationSectionResource) Delete(
 		resp.Diagnostics.AddError("Cato API PolicyDynamicIPAllocationRemoveSection error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(dynamicip.PublishDynamicIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	resp.Diagnostics.Append(dynamicip.PublishDynamicIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

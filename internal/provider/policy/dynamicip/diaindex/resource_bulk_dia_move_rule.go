@@ -1,4 +1,4 @@
-// Package atindex implements cato_bulk_dia_move_rule: bulk ordering and
+// Package diaindex implements cato_bulk_dia_move_rule: bulk ordering and
 // publishing for the Dynamic IP Allocation policy. The policy is flat (sections +
 // rules, no sub-policies) and the API has no reorderPolicy mutation, so
 // ordering is applied as a deterministic sequence of MoveSection/MoveRule
@@ -9,13 +9,13 @@ import (
 	"context"
 	"fmt"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
@@ -187,7 +187,7 @@ func (r *diaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 				}
 				ms := moveResp.GetPolicy().GetDynamicIPAllocation().GetMoveSection()
 				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("Dynamic IP Allocation moveSection status %q", string(*st))
+					return fmt.Errorf("dynamic ip allocation moveSection status %q", string(*st))
 				}
 				continue
 			}
@@ -212,7 +212,7 @@ func (r *diaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 			}
 			mr := moveResp.GetPolicy().GetDynamicIPAllocation().GetMoveRule()
 			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("Dynamic IP Allocation moveRule status %q", string(*st))
+				return fmt.Errorf("dynamic ip allocation moveRule status %q", string(*st))
 			}
 		}
 	}
@@ -237,7 +237,7 @@ func (r *diaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 				}
 				msg += fmt.Sprintf("%s : %s", code, m)
 			}
-			return fmt.Errorf("Dynamic IP Allocation publishPolicyRevision errors: %s", msg)
+			return fmt.Errorf("dynamic ip allocation publishPolicyRevision errors: %s", msg)
 		}
 		return nil
 	})

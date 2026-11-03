@@ -9,9 +9,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
-// PublishDynamicIpAllocationPolicyRevision publishes the dynamic IP allocation draft when one exists.
+// PublishDynamicIPAllocationPolicyRevision publishes the dynamic IP allocation draft when one exists.
 // If there is no draft, the API returns FAILURE with PolicyRevisionNotFound — that is treated as success.
-func PublishDynamicIpAllocationPolicyRevision(ctx context.Context, client PublishClient, accountID string) diag.Diagnostics {
+func PublishDynamicIPAllocationPolicyRevision(ctx context.Context, client PublishClient, accountID string) diag.Diagnostics {
 	var diags diag.Diagnostics
 	res, err := client.PolicyDynamicIPAllocationPublishPolicyRevision(ctx, accountID)
 	if err != nil {

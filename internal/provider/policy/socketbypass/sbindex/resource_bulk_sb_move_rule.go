@@ -1,4 +1,4 @@
-// Package atindex implements cato_bulk_sb_move_rule: bulk ordering and
+// Package sbindex implements cato_bulk_sb_move_rule: bulk ordering and
 // publishing for the Socket Bypass policy. The policy is flat (sections +
 // rules, no sub-policies) and the API has no reorderPolicy mutation, so
 // ordering is applied as a deterministic sequence of MoveSection/MoveRule
@@ -9,13 +9,13 @@ import (
 	"context"
 	"fmt"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
@@ -187,7 +187,7 @@ func (r *sbRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 				}
 				ms := moveResp.GetPolicy().GetSocketBypass().GetMoveSection()
 				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("Socket Bypass moveSection status %q", string(*st))
+					return fmt.Errorf("socket bypass moveSection status %q", string(*st))
 				}
 				continue
 			}
@@ -212,7 +212,7 @@ func (r *sbRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 			}
 			mr := moveResp.GetPolicy().GetSocketBypass().GetMoveRule()
 			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("Socket Bypass moveRule status %q", string(*st))
+				return fmt.Errorf("socket bypass moveRule status %q", string(*st))
 			}
 		}
 	}
@@ -237,7 +237,7 @@ func (r *sbRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 				}
 				msg += fmt.Sprintf("%s : %s", code, m)
 			}
-			return fmt.Errorf("Socket Bypass publishPolicyRevision errors: %s", msg)
+			return fmt.Errorf("socket bypass publishPolicyRevision errors: %s", msg)
 		}
 		return nil
 	})

@@ -9,13 +9,13 @@ import (
 	"context"
 	"fmt"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
@@ -187,7 +187,7 @@ func (r *apcRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 				}
 				ms := moveResp.GetPolicy().GetApplicationControl().GetMoveSection()
 				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("Application Control moveSection status %q", string(*st))
+					return fmt.Errorf("application control moveSection status %q", string(*st))
 				}
 				continue
 			}
@@ -212,7 +212,7 @@ func (r *apcRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 			}
 			mr := moveResp.GetPolicy().GetApplicationControl().GetMoveRule()
 			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("Application Control moveRule status %q", string(*st))
+				return fmt.Errorf("application control moveRule status %q", string(*st))
 			}
 		}
 	}
@@ -237,7 +237,7 @@ func (r *apcRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 				}
 				msg += fmt.Sprintf("%s : %s", code, m)
 			}
-			return fmt.Errorf("Application Control publishPolicyRevision errors: %s", msg)
+			return fmt.Errorf("application control publishPolicyRevision errors: %s", msg)
 		}
 		return nil
 	})

@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-func (r *dynamicIpAllocationSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *dynamicIPAllocationSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a custom section in the Cato dynamic IP allocation (App & Data Inline Protection) policy. " +
 			"Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. " +

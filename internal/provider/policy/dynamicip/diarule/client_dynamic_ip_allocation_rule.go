@@ -46,7 +46,7 @@ type ResourceClient interface {
 	) (*cato_go_sdk.PolicyDynamicIPAllocationPublishPolicyRevision, error)
 }
 
-func (r *dynamicIpAllocationRuleResource) resourceAPI() ResourceClient {
+func (r *dynamicIPAllocationRuleResource) resourceAPI() ResourceClient {
 	if r.apiClient != nil {
 		return r.apiClient
 	}
@@ -99,7 +99,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationUpdateRule(
 
 // sdkClient forwards operations to the configured SDK client.
 type sdkClient struct {
-	resource *dynamicIpAllocationRuleResource
+	resource *dynamicIPAllocationRuleResource
 }
 
 var _ ResourceClient = (*sdkClient)(nil)

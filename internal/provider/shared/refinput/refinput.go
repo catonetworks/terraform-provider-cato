@@ -95,7 +95,7 @@ func GlobalIPRange(by cato_models.ObjectRefBy, input string) *cato_models.Global
 }
 
 func Application(by cato_models.ObjectRefBy, input string) *cato_models.ApplicationRefInput {
-	return &cato_models.ApplicationRefInput{By: cato_models.ObjectRefBy(by), Input: input}
+	return &cato_models.ApplicationRefInput{By: by, Input: input}
 }
 
 func AllocatedIP(by cato_models.ObjectRefBy, input string) *cato_models.AllocatedIPRefInput {

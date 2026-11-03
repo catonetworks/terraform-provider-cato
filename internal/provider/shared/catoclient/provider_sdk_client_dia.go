@@ -8,7 +8,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
 
-// DynamicIpAllocation policy family wrappers (draft-targeted: nil mutation inputs).
+// DynamicIPAllocation policy family wrappers (draft-targeted: nil mutation inputs).
 
 func (c *ProviderSDKClient) PolicyDynamicIPAllocationPolicy(
 	ctx context.Context,

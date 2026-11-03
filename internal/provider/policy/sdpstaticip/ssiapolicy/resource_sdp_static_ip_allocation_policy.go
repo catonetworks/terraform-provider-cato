@@ -14,22 +14,22 @@ import (
 )
 
 var (
-	_ resource.Resource                = &sdpStaticIpAllocationPolicyResource{}
-	_ resource.ResourceWithConfigure   = &sdpStaticIpAllocationPolicyResource{}
-	_ resource.ResourceWithImportState = &sdpStaticIpAllocationPolicyResource{}
+	_ resource.Resource                = &sdpStaticIPAllocationPolicyResource{}
+	_ resource.ResourceWithConfigure   = &sdpStaticIPAllocationPolicyResource{}
+	_ resource.ResourceWithImportState = &sdpStaticIPAllocationPolicyResource{}
 )
 
-func NewSdpStaticIpAllocationPolicyResource() resource.Resource {
-	return &sdpStaticIpAllocationPolicyResource{}
+func NewSdpStaticIPAllocationPolicyResource() resource.Resource {
+	return &sdpStaticIPAllocationPolicyResource{}
 }
 
-type sdpStaticIpAllocationPolicyResource struct {
+type sdpStaticIPAllocationPolicyResource struct {
 	client *catoclient.Service
 
 	apiClient ResourceClient
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) Metadata(
+func (r *sdpStaticIPAllocationPolicyResource) Metadata(
 	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
@@ -37,7 +37,7 @@ func (r *sdpStaticIpAllocationPolicyResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_sdp_static_ip_allocation_policy"
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) Configure(
+func (r *sdpStaticIPAllocationPolicyResource) Configure(
 	_ context.Context,
 	req resource.ConfigureRequest,
 	_ *resource.ConfigureResponse,
@@ -48,19 +48,19 @@ func (r *sdpStaticIpAllocationPolicyResource) Configure(
 	r.client = req.ProviderData.(*catoclient.Service)
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) ImportState(
+func (r *sdpStaticIPAllocationPolicyResource) ImportState(
 	ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse,
 ) {
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "sdp_static_ip_allocation")...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("enabled"), false)...)
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) Create(
+func (r *sdpStaticIPAllocationPolicyResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
-	var plan SdpStaticIpAllocationPolicyModel
+	var plan SdpStaticIPAllocationPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -74,7 +74,7 @@ func (r *sdpStaticIpAllocationPolicyResource) Create(
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) Read(ctx context.Context, _ resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *sdpStaticIPAllocationPolicyResource) Read(ctx context.Context, _ resource.ReadRequest, resp *resource.ReadResponse) {
 	st, err := r.readState(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("read policy", err.Error())
@@ -83,12 +83,12 @@ func (r *sdpStaticIpAllocationPolicyResource) Read(ctx context.Context, _ resour
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) Update(
+func (r *sdpStaticIPAllocationPolicyResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
-	var plan SdpStaticIpAllocationPolicyModel
+	var plan SdpStaticIPAllocationPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -102,13 +102,13 @@ func (r *sdpStaticIpAllocationPolicyResource) Update(
 	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+func (r *sdpStaticIPAllocationPolicyResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	tflog.Warn(ctx, "cato_sdp_static_ip_allocation_policy delete is a no-op; policy always exists")
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) updatePolicy(
+func (r *sdpStaticIPAllocationPolicyResource) updatePolicy(
 	ctx context.Context,
-	plan SdpStaticIpAllocationPolicyModel,
+	plan SdpStaticIPAllocationPolicyModel,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
 	in := convertUpdatePolicyValues(plan)
@@ -126,11 +126,11 @@ func (r *sdpStaticIpAllocationPolicyResource) updatePolicy(
 		}
 		return diags
 	}
-	diags.Append(sdpstaticip.PublishSdpStaticIpAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	diags.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	return diags
 }
 
-func (r *sdpStaticIpAllocationPolicyResource) readState(ctx context.Context) (SdpStaticIpAllocationPolicyModel, error) {
+func (r *sdpStaticIPAllocationPolicyResource) readState(ctx context.Context) (SdpStaticIPAllocationPolicyModel, error) {
 	out := convertReadStateValues()
 	body, err := r.resourceAPI().PolicySdpStaticIPAllocationPolicy(ctx, r.client.AccountId)
 	if err != nil {

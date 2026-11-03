@@ -114,7 +114,7 @@ func stDNSExclusionInput(
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
-	dx := SplitTunnelDnsExclusionPlan{}
+	dx := SplitTunnelDNSExclusionPlan{}
 	diags.Append(obj.As(ctx, &dx, stAsOpts)...)
 	if diags.HasError() {
 		return nil
@@ -166,7 +166,7 @@ func hydrateSplitTunnelAddRuleInput(
 	if c := refinput.FromSet(ctx, rule.Country, &diags, "country", refinput.Country); c != nil {
 		data.Country = c
 	}
-	data.DNSExclusion = stDNSExclusionInput(ctx, rule.DnsExclusion, &diags)
+	data.DNSExclusion = stDNSExclusionInput(ctx, rule.DNSExclusion, &diags)
 
 	out.Rule = data
 	return out, diags
@@ -219,7 +219,7 @@ func hydrateSplitTunnelUpdateRuleInput(
 	if c := refinput.FromSet(ctx, rule.Country, &diags, "country", refinput.Country); c != nil {
 		upd.Rule.Country = c
 	}
-	if dx := stDNSExclusionInput(ctx, rule.DnsExclusion, &diags); dx != nil {
+	if dx := stDNSExclusionInput(ctx, rule.DNSExclusion, &diags); dx != nil {
 		upd.Rule.DNSExclusion = &cato_models.SplitTunnelDNSExclusionUpdateInput{Domain: dx.Domain}
 	}
 
@@ -340,8 +340,6 @@ func convertDeleteInput(rule SplitTunnelRuleRulePlan) (resultRm cato_models.Spli
 }
 
 // hydrateSplitTunnelRuleStateFromClient maps a policy read rule into Terraform nested objects.
-//
-//nolint:gocyclo
 func hydrateSplitTunnelRuleStateFromClient(
 	ctx context.Context,
 	r *cato_go_sdk.PolicySplitTunnelPolicy_Policy_SplitTunnel_Policy_Rules_Rule,
@@ -355,7 +353,7 @@ func hydrateSplitTunnelRuleStateFromClient(
 	out.Country = types.SetNull(idname.RefObjectType)
 	out.Platform = types.ListNull(types.StringType)
 	out.Destination = types.ObjectNull(SplitTunnelDestinationAttrTypes)
-	out.DnsExclusion = types.ObjectNull(SplitTunnelDnsExclusionAttrTypes)
+	out.DNSExclusion = types.ObjectNull(SplitTunnelDNSExclusionAttrTypes)
 	out.Source = types.ObjectNull(SplitTunnelSourceAttrTypes)
 	out.SourceNetwork = types.ObjectNull(SplitTunnelSourceNetworkAttrTypes)
 
@@ -402,11 +400,11 @@ func hydrateSplitTunnelRuleStateFromClient(
 	}
 
 	if dx := r.GetDNSExclusion(); dx != nil {
-		dxObj, d := types.ObjectValue(SplitTunnelDnsExclusionAttrTypes, map[string]attr.Value{
+		dxObj, d := types.ObjectValue(SplitTunnelDNSExclusionAttrTypes, map[string]attr.Value{
 			"domain": convert.ParseList(ctx, types.StringType, dx.GetDomain(), "rule.dns_exclusion.domain"),
 		})
 		diags.Append(d...)
-		out.DnsExclusion = dxObj
+		out.DNSExclusion = dxObj
 	}
 
 	if src := r.GetSource(); src != nil {

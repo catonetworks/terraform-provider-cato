@@ -333,7 +333,7 @@ func convertDeleteInput(rule RemotePortFwdRuleRulePlan) (resultRm cato_models.Re
 
 // hydrateRemotePortFwdRuleStateFromClient maps a policy read rule into Terraform nested objects.
 //
-//nolint:gocyclo
+//nolint:funlen // Hydrate all rule fields together.
 func hydrateRemotePortFwdRuleStateFromClient(
 	ctx context.Context,
 	r *cato_go_sdk.RemotePortFwdPolicy_Policy_RemotePortFwd_Policy_Rules_Rule,

@@ -2,8 +2,8 @@ package diapolicy
 
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
-// DynamicIpAllocationPolicyModel holds account-level Dynamic IP Allocation policy toggles.
-type DynamicIpAllocationPolicyModel struct {
+// DynamicIPAllocationPolicyModel holds account-level Dynamic IP Allocation policy toggles.
+type DynamicIPAllocationPolicyModel struct {
 	ID            types.String `tfsdk:"id"`
 	Enabled       types.Bool   `tfsdk:"enabled"`
 	PublishedTime types.String `tfsdk:"published_time"`

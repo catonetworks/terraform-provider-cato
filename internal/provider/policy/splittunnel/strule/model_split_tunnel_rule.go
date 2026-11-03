@@ -16,8 +16,8 @@ var SplitTunnelDestinationAttrTypes = map[string]attr.Type{
 	"global_ip_range": types.SetType{ElemType: idname.RefObjectType},
 }
 
-// SplitTunnelDnsExclusionAttrTypes is the DNS exclusion selector.
-var SplitTunnelDnsExclusionAttrTypes = map[string]attr.Type{
+// SplitTunnelDNSExclusionAttrTypes is the DNS exclusion selector.
+var SplitTunnelDNSExclusionAttrTypes = map[string]attr.Type{
 	"domain": types.ListType{ElemType: types.StringType},
 }
 
@@ -44,7 +44,7 @@ var SplitTunnelRuleRuleAttrTypes = map[string]attr.Type{
 	"country":          types.SetType{ElemType: idname.RefObjectType},
 	"platform":         types.ListType{ElemType: types.StringType},
 	"destination":      types.ObjectType{AttrTypes: SplitTunnelDestinationAttrTypes},
-	"dns_exclusion":    types.ObjectType{AttrTypes: SplitTunnelDnsExclusionAttrTypes},
+	"dns_exclusion":    types.ObjectType{AttrTypes: SplitTunnelDNSExclusionAttrTypes},
 	"source":           types.ObjectType{AttrTypes: SplitTunnelSourceAttrTypes},
 	"source_network":   types.ObjectType{AttrTypes: SplitTunnelSourceNetworkAttrTypes},
 }
@@ -75,7 +75,7 @@ type SplitTunnelRuleRulePlan struct {
 	Country         types.Set    `tfsdk:"country"`
 	Platform        types.List   `tfsdk:"platform"`
 	Destination     types.Object `tfsdk:"destination"`
-	DnsExclusion    types.Object `tfsdk:"dns_exclusion"`
+	DNSExclusion    types.Object `tfsdk:"dns_exclusion"`
 	Source          types.Object `tfsdk:"source"`
 	SourceNetwork   types.Object `tfsdk:"source_network"`
 }
@@ -88,8 +88,8 @@ type SplitTunnelDestinationPlan struct {
 	GlobalIPRange types.Set  `tfsdk:"global_ip_range"`
 }
 
-// SplitTunnelDnsExclusionPlan maps the DNS exclusion selector.
-type SplitTunnelDnsExclusionPlan struct {
+// SplitTunnelDNSExclusionPlan maps the DNS exclusion selector.
+type SplitTunnelDNSExclusionPlan struct {
 	Domain types.List `tfsdk:"domain"`
 }
 
