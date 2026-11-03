@@ -49,6 +49,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/networkrange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhindex"
@@ -81,6 +82,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/pasection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfrule"
@@ -102,6 +104,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/strule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tsindex"
@@ -119,6 +122,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
@@ -655,6 +659,10 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		sbsection.NewSocketBypassSectionResource,
 		sbindex.NewSbRulesIndexResource,
 		sbpolicy.NewSocketBypassPolicyResource,
+		atpolicy.NewAppTenantRestrictionPolicyResource,
+		alwaysonpolicy.NewZtnaAlwaysOnPolicyResource,
+		wnwpolicy.NewWanNetworkPolicyResource,
+		pasection.NewPrivateAccessSectionResource,
 		acrule.NewApplicationControlRuleResource,
 		acindex.NewApcRulesIndexResource,
 		acsection.NewApplicationControlSectionResource,
