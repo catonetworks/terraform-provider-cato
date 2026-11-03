@@ -6,6 +6,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -134,9 +136,10 @@ func (r *remotePortFwdRuleResource) Schema(_ context.Context, _ resource.SchemaR
 					},
 					"internal_port_range": portRangeAttribute("Internal port range"),
 					"forward_icmp": schema.BoolAttribute{
-						Description: "Whether ICMP is forwarded",
-						Optional:    true,
-						Computed:    true,
+						Description:   "Whether ICMP is forwarded",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 					},
 					"remote_ips": schema.SingleNestedAttribute{
 						Description: "Remote IPs the restriction type applies to",
@@ -173,8 +176,10 @@ func (r *remotePortFwdRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						},
 					},
 					"tracking": schema.SingleNestedAttribute{
-						Description: "Alert tracking. Optional - the API default is disabled.",
-						Optional:    true,
+						Description:   "Alert tracking. Optional - the API default is disabled.",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
 						Attributes: map[string]schema.Attribute{
 							"enabled": schema.BoolAttribute{
 								Description: "Whether alerting is enabled",
@@ -183,6 +188,7 @@ func (r *remotePortFwdRuleResource) Schema(_ context.Context, _ resource.SchemaR
 							"frequency": schema.StringAttribute{
 								Description: "Alert frequency (HOURLY, DAILY, WEEKLY, IMMEDIATE)",
 								Optional:    true,
+								Computed:    true,
 							},
 							"mailing_list":       refSetAttribute("Mailing list references"),
 							"subscription_group": refSetAttribute("Subscription group references"),

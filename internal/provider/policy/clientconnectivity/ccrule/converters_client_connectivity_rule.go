@@ -341,7 +341,7 @@ func hydrateClientConnectivityRuleStateFromClient(
 		out.Platform = convert.ParseList(ctx, types.StringType, plats, "rule.platform")
 	}
 
-	if src := r.GetSource(); src != nil {
+	if src := r.GetSource(); src != nil && (len(src.GetUser()) > 0 || len(src.GetUsersGroup()) > 0) {
 		srcObj, d := types.ObjectValue(ClientConnectivitySourceAttrTypes, map[string]attr.Value{
 			"user":        oldidname.ParseNameIDList(ctx, src.GetUser(), "rule.source.user"),
 			"users_group": oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),

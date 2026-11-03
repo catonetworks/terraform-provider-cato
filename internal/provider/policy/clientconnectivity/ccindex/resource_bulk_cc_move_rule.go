@@ -186,8 +186,8 @@ func (r *ccRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 					return err
 				}
 				ms := moveResp.GetPolicy().GetClientConnectivity().GetMoveSection()
-				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("client connectivity moveSection status %q", string(*st))
+				if err := sharedpolicy.MutationResult(ms.GetStatus(), ms.GetErrors()); err != nil {
+					return err
 				}
 				continue
 			}
@@ -211,8 +211,8 @@ func (r *ccRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 				return err
 			}
 			mr := moveResp.GetPolicy().GetClientConnectivity().GetMoveRule()
-			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("client connectivity moveRule status %q", string(*st))
+			if err := sharedpolicy.MutationResult(mr.GetStatus(), mr.GetErrors()); err != nil {
+				return err
 			}
 		}
 	}
@@ -222,23 +222,7 @@ func (r *ccRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 		if err != nil {
 			return err
 		}
-		if errs := pub.GetPolicy().GetClientConnectivity().GetPublishPolicyRevision().GetErrors(); len(errs) > 0 {
-			msg := ""
-			for _, e := range errs {
-				if msg != "" {
-					msg += "; "
-				}
-				code, m := "", ""
-				if e.GetErrorCode() != nil {
-					code = *e.GetErrorCode()
-				}
-				if e.GetErrorMessage() != nil {
-					m = *e.GetErrorMessage()
-				}
-				msg += fmt.Sprintf("%s : %s", code, m)
-			}
-			return fmt.Errorf("client connectivity publishPolicyRevision errors: %s", msg)
-		}
-		return nil
+		payload := pub.GetPolicy().GetClientConnectivity().GetPublishPolicyRevision()
+		return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 	})
 }

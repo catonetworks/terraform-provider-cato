@@ -399,7 +399,7 @@ func hydrateSplitTunnelRuleStateFromClient(
 		out.Destination = dstObj
 	}
 
-	if dx := r.GetDNSExclusion(); dx != nil {
+	if dx := r.GetDNSExclusion(); dx != nil && len(dx.GetDomain()) > 0 {
 		dxObj, d := types.ObjectValue(SplitTunnelDNSExclusionAttrTypes, map[string]attr.Value{
 			"domain": convert.ParseList(ctx, types.StringType, dx.GetDomain(), "rule.dns_exclusion.domain"),
 		})
@@ -407,14 +407,7 @@ func hydrateSplitTunnelRuleStateFromClient(
 		out.DNSExclusion = dxObj
 	}
 
-	if src := r.GetSource(); src != nil {
-		srcObj, d := types.ObjectValue(SplitTunnelSourceAttrTypes, map[string]attr.Value{
-			"user":        oldidname.ParseNameIDList(ctx, src.GetUser(), "rule.source.user"),
-			"users_group": oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),
-		})
-		diags.Append(d...)
-		out.Source = srcObj
-	}
+	out.Source = hydrateSplitTunnelSource(ctx, r, &diags)
 
 	if sn := r.GetSourceNetwork(); sn != nil && sn.GetSourceNetworkType() != nil {
 		snObj, d := types.ObjectValue(SplitTunnelSourceNetworkAttrTypes, map[string]attr.Value{
@@ -425,4 +418,21 @@ func hydrateSplitTunnelRuleStateFromClient(
 	}
 
 	return out, diags
+}
+
+func hydrateSplitTunnelSource(
+	ctx context.Context,
+	r *cato_go_sdk.PolicySplitTunnelPolicy_Policy_SplitTunnel_Policy_Rules_Rule,
+	diags *diag.Diagnostics,
+) types.Object {
+	if src := r.GetSource(); src != nil && (len(src.GetUser()) > 0 || len(src.GetUsersGroup()) > 0) {
+		srcObj, d := types.ObjectValue(SplitTunnelSourceAttrTypes, map[string]attr.Value{
+			"user":        oldidname.ParseNameIDList(ctx, src.GetUser(), "rule.source.user"),
+			"users_group": oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),
+		})
+		diags.Append(d...)
+		return srcObj
+	}
+
+	return types.ObjectNull(SplitTunnelSourceAttrTypes)
 }

@@ -2,9 +2,7 @@ package ccsection
 
 import (
 	"context"
-	"fmt"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -13,6 +11,7 @@ import (
 	clientconnectivity "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -82,18 +81,11 @@ func (r *clientConnectivitySectionResource) Create(
 		return
 	}
 	add := policyChange.GetPolicy().GetClientConnectivity().GetAddSection()
-	for _, e := range add.GetErrors() {
-		if e != nil && e.ErrorCode != nil {
-			resp.Diagnostics.AddError("API error: "+*e.ErrorCode, *e.ErrorMessage)
-			return
-		}
-	}
-	if add.GetStatus() == nil || *add.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		st := ""
-		if add.GetStatus() != nil {
-			st = string(*add.GetStatus())
-		}
-		resp.Diagnostics.AddError("client connectivity addSection failed", st)
+	if err := sharedpolicy.MutationResult(
+		add.GetStatus(),
+		add.GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
 		return
 	}
 
@@ -146,7 +138,6 @@ func (r *clientConnectivitySectionResource) Read(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-//nolint:gocyclo
 func (r *clientConnectivitySectionResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
@@ -168,14 +159,12 @@ func (r *clientConnectivitySectionResource) Update(
 		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityMoveSection error", err.Error())
 		return
 	}
-	if moveSection.GetPolicy().GetClientConnectivity().GetMoveSection().GetStatus() == nil ||
-		*moveSection.GetPolicy().GetClientConnectivity().GetMoveSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range moveSection.GetPolicy().GetClientConnectivity().GetMoveSection().GetErrors() {
-			if item != nil && item.ErrorCode != nil {
-				resp.Diagnostics.AddError("API error moving section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(
+		moveSection.GetPolicy().GetClientConnectivity().GetMoveSection().GetStatus(),
+		moveSection.GetPolicy().GetClientConnectivity().GetMoveSection().GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	updateSection, err := r.resourceAPI().PolicyClientConnectivityUpdateSection(ctx, inputUpdate, r.client.AccountId)
@@ -183,14 +172,12 @@ func (r *clientConnectivitySectionResource) Update(
 		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityUpdateSection error", err.Error())
 		return
 	}
-	if updateSection.GetPolicy().GetClientConnectivity().GetUpdateSection().GetStatus() == nil ||
-		*updateSection.GetPolicy().GetClientConnectivity().GetUpdateSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range updateSection.GetPolicy().GetClientConnectivity().GetUpdateSection().GetErrors() {
-			if item != nil && item.ErrorCode != nil {
-				resp.Diagnostics.AddError("API error updating section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(
+		updateSection.GetPolicy().GetClientConnectivity().GetUpdateSection().GetStatus(),
+		updateSection.GetPolicy().GetClientConnectivity().GetUpdateSection().GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	resp.Diagnostics.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
@@ -216,8 +203,17 @@ func (r *clientConnectivitySectionResource) Delete(
 		return
 	}
 	remove := convertDeleteInput(section)
-	if _, err := r.resourceAPI().PolicyClientConnectivityRemoveSection(ctx, remove, r.client.AccountId); err != nil {
+	removed, err := r.resourceAPI().PolicyClientConnectivityRemoveSection(ctx, remove, r.client.AccountId)
+	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityRemoveSection error", err.Error())
+		return
+	}
+	payload := removed.GetPolicy().GetClientConnectivity().GetRemoveSection()
+	if err := sharedpolicy.MutationResult(
+		payload.GetStatus(),
+		payload.GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy deletion failed", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)

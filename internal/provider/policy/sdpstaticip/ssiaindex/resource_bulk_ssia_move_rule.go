@@ -186,8 +186,8 @@ func (r *ssiaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pl
 					return err
 				}
 				ms := moveResp.GetPolicy().GetSdpStaticIPAllocation().GetMoveSection()
-				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("sdp static ip allocation moveSection status %q", string(*st))
+				if err := sharedpolicy.MutationResult(ms.GetStatus(), ms.GetErrors()); err != nil {
+					return err
 				}
 				continue
 			}
@@ -211,8 +211,8 @@ func (r *ssiaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pl
 				return err
 			}
 			mr := moveResp.GetPolicy().GetSdpStaticIPAllocation().GetMoveRule()
-			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("sdp static ip allocation moveRule status %q", string(*st))
+			if err := sharedpolicy.MutationResult(mr.GetStatus(), mr.GetErrors()); err != nil {
+				return err
 			}
 		}
 	}
@@ -222,23 +222,7 @@ func (r *ssiaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pl
 		if err != nil {
 			return err
 		}
-		if errs := pub.GetPolicy().GetSdpStaticIPAllocation().GetPublishPolicyRevision().GetErrors(); len(errs) > 0 {
-			msg := ""
-			for _, e := range errs {
-				if msg != "" {
-					msg += "; "
-				}
-				code, m := "", ""
-				if e.GetErrorCode() != nil {
-					code = *e.GetErrorCode()
-				}
-				if e.GetErrorMessage() != nil {
-					m = *e.GetErrorMessage()
-				}
-				msg += fmt.Sprintf("%s : %s", code, m)
-			}
-			return fmt.Errorf("sdp static ip allocation publishPolicyRevision errors: %s", msg)
-		}
-		return nil
+		payload := pub.GetPolicy().GetSdpStaticIPAllocation().GetPublishPolicyRevision()
+		return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 	})
 }

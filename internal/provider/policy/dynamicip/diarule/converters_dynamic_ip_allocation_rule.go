@@ -326,7 +326,7 @@ func hydrateDynamicIPAllocationRuleStateFromClient(
 		out.Range = rngObj
 	}
 
-	if src := r.GetSource(); src != nil {
+	if src := r.GetSource(); src != nil && (len(src.GetUser()) > 0 || len(src.GetUsersGroup()) > 0) {
 		srcObj, d := types.ObjectValue(DynamicIPAllocationSourceAttrTypes, map[string]attr.Value{
 			"user":        oldidname.ParseNameIDList(ctx, src.GetUser(), "rule.source.user"),
 			"users_group": oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),

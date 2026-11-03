@@ -563,7 +563,7 @@ func hydrateSocketBypassRuleStateFromClient(
 		out.Action = o
 	}
 
-	if s := r.GetSite(); s != nil {
+	if s := r.GetSite(); s != nil && (len(s.GetSite()) > 0 || len(s.GetGroup()) > 0) {
 		o, d := types.ObjectValue(SocketBypassSiteAttrTypes, map[string]attr.Value{
 			"site":  oldidname.ParseNameIDList(ctx, s.GetSite(), "rule.site.site"),
 			"group": oldidname.ParseNameIDList(ctx, s.GetGroup(), "rule.site.group"),
@@ -614,7 +614,7 @@ func hydrateSocketBypassRuleStateFromClient(
 		out.Destination = o
 	}
 
-	if svc := r.GetService(); svc != nil {
+	if svc := r.GetService(); svc != nil && (len(svc.GetSimple()) > 0 || len(svc.GetCustom()) > 0) {
 		simple := []string{}
 		for _, s := range svc.GetSimple() {
 			if s == nil {

@@ -186,8 +186,8 @@ func (r *rpfRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 					return err
 				}
 				ms := moveResp.GetPolicy().GetRemotePortFwd().GetMoveSection()
-				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("remote port forwarding moveSection status %q", string(*st))
+				if err := sharedpolicy.MutationResult(ms.GetStatus(), ms.GetErrors()); err != nil {
+					return err
 				}
 				continue
 			}
@@ -211,8 +211,8 @@ func (r *rpfRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 				return err
 			}
 			mr := moveResp.GetPolicy().GetRemotePortFwd().GetMoveRule()
-			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("remote port forwarding moveRule status %q", string(*st))
+			if err := sharedpolicy.MutationResult(mr.GetStatus(), mr.GetErrors()); err != nil {
+				return err
 			}
 		}
 	}
@@ -222,23 +222,7 @@ func (r *rpfRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 		if err != nil {
 			return err
 		}
-		if errs := pub.GetPolicy().GetRemotePortFwd().GetPublishPolicyRevision().GetErrors(); len(errs) > 0 {
-			msg := ""
-			for _, e := range errs {
-				if msg != "" {
-					msg += "; "
-				}
-				code, m := "", ""
-				if e.GetErrorCode() != nil {
-					code = *e.GetErrorCode()
-				}
-				if e.GetErrorMessage() != nil {
-					m = *e.GetErrorMessage()
-				}
-				msg += fmt.Sprintf("%s : %s", code, m)
-			}
-			return fmt.Errorf("remote port forwarding publishPolicyRevision errors: %s", msg)
-		}
-		return nil
+		payload := pub.GetPolicy().GetRemotePortFwd().GetPublishPolicyRevision()
+		return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 	})
 }

@@ -2,6 +2,7 @@ package wfsubpolicy
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -109,7 +110,7 @@ func TestIfSubPolicyCreateSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallAddSubPolicy(mock.Anything, mock.Anything, "account-123").
 		Return(ifAddSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
-		Return(nil, nil).Once()
+		Return(successfulSubPolicyPublish(t), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(ifSubPolicyResponse("test-sub", "a sub", "scope"), nil).Once()
 
@@ -138,7 +139,7 @@ func TestIfSubPolicyCreateNotFoundAfterPublish(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallAddSubPolicy(mock.Anything, mock.Anything, "account-123").
 		Return(ifAddSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
-		Return(nil, nil).Once()
+		Return(successfulSubPolicyPublish(t), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(wfrule.EmptyWanFirewallPolicyResponse(), nil).Once()
 
@@ -194,7 +195,7 @@ func TestIfSubPolicyUpdateScopeSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallUpdateRule(mock.Anything, mock.Anything, "account-123").
 		Return(wfrule.SuccessfulUpdateRuleResponse("scope-1"), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
-		Return(nil, nil).Once()
+		Return(successfulSubPolicyPublish(t), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
 		Return(ifSubPolicyResponse("test-sub", "desc", "scope-name"), nil).Once()
 
@@ -234,7 +235,7 @@ func TestIfSubPolicyDeleteSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallRemoveSubPolicy(mock.Anything, mock.Anything, "account-123").
 		Return(ifRemoveSubPolicyResponse(cato_models.PolicyMutationStatusSuccess, ""), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
-		Return(nil, nil).Once()
+		Return(successfulSubPolicyPublish(t), nil).Once()
 
 	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.DeleteResponse{}
@@ -396,9 +397,8 @@ func ifSubPolicyResponse(subName, subDesc, scopeName string) *cato_go_sdk.Policy
 
 var _ = basetypes.ObjectAsOptions{}
 
-// The cleanup identity follows position: whatever rule sits LAST in the
-// sub-policy is the cleanup, even after manual moves/renames in CMA.
-func TestWanCleanupRuleFollowsLastPosition(t *testing.T) {
+// An established cleanup identity must survive external reorders.
+func TestWanCleanupRulePreservesIdentity(t *testing.T) {
 	body := ifSubPolicyResponse("test-sub", "desc", "scope-name")
 	moved := wfrule.MinimalAPIRule("Moved User Rule", 5)
 	moved.ID = "user-9"
@@ -410,11 +410,11 @@ func TestWanCleanupRuleFollowsLastPosition(t *testing.T) {
 			Rule:      moved,
 		},
 	)
-	got := wanCleanupRule(body, "sub-1")
-	if got == nil || got.ID != "user-9" {
-		t.Fatalf("expected last rule user-9 as cleanup, got %+v", got)
+	got := wanCleanupRule(body, "sub-1", "cleanup-1")
+	if got == nil || got.ID != "cleanup-1" {
+		t.Fatalf("expected tracked cleanup-1 despite reorder, got %+v", got)
 	}
-	if wanCleanupRule(body, "") != nil {
+	if wanCleanupRule(body, "", "") != nil {
 		t.Fatal("expected nil for empty sub id")
 	}
 }
@@ -462,26 +462,32 @@ func TestCleanupNameConfigured(t *testing.T) {
 	}
 }
 
-func TestCleanupUpdateErrorDetail(t *testing.T) {
-	plain := cleanupUpdateErrorDetail("someOtherError", "boom", "X - Cleanup Rule", "r-1")
-	if plain != "someOtherError : boom" {
-		t.Fatalf("unexpected plain detail: %q", plain)
+func successfulSubPolicyPublish(t *testing.T) *cato_go_sdk.PolicyWanFirewallPublishPolicyRevision {
+	t.Helper()
+	var response cato_go_sdk.PolicyWanFirewallPublishPolicyRevision
+	if err := json.Unmarshal([]byte(`{"policy":{"wanFirewall":{"publishPolicyRevision":{"status":"SUCCESS"}}}}`), &response); err != nil {
+		t.Fatal(err)
 	}
-	moved := cleanupUpdateErrorDetail("ruleNameAlreadyExists", "Rule with the same name already exists", "X - Cleanup Rule", "r-1")
-	for _, want := range []string{"LAST rule", "r-1", `"X - Cleanup Rule"`, "manually moved", "not intended to be moved outside Terraform"} {
-		if !containsStr(moved, want) {
-			t.Fatalf("expected detail to contain %q, got: %s", want, moved)
-		}
-	}
+	return &response
 }
 
-func containsStr(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && (func() bool {
-		for i := 0; i+len(needle) <= len(haystack); i++ {
-			if haystack[i:i+len(needle)] == needle {
-				return true
-			}
-		}
-		return false
-	})()
+func TestMissingTrackedCleanupPreservesSubPolicyState(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(ifSubPolicyResponse("test-sub", "desc", "scope-name"), nil).Once()
+	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	state := newIfSubPolicyStateWithID(ctx, t)
+	var model WanFirewallSubPolicy
+	state.Get(ctx, &model)
+	model.CleanupRuleID = types.StringValue("missing-cleanup")
+	state.Set(ctx, model)
+	response := resource.ReadResponse{State: state}
+	r.Read(ctx, resource.ReadRequest{State: state}, &response)
+	if !response.Diagnostics.HasError() {
+		t.Fatal("missing tracked cleanup must require reconciliation")
+	}
+	if !state.Raw.Equal(response.State.Raw) {
+		t.Fatal("existing sub-policy state must not be removed")
+	}
 }

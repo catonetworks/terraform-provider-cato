@@ -2,9 +2,7 @@ package sbsection
 
 import (
 	"context"
-	"fmt"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -13,6 +11,7 @@ import (
 	socketbypass "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -82,18 +81,11 @@ func (r *socketBypassSectionResource) Create(
 		return
 	}
 	add := policyChange.GetPolicy().GetSocketBypass().GetAddSection()
-	for _, e := range add.GetErrors() {
-		if e != nil && e.ErrorCode != nil {
-			resp.Diagnostics.AddError("API error: "+*e.ErrorCode, *e.ErrorMessage)
-			return
-		}
-	}
-	if add.GetStatus() == nil || *add.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		st := ""
-		if add.GetStatus() != nil {
-			st = string(*add.GetStatus())
-		}
-		resp.Diagnostics.AddError("socket bypass addSection failed", st)
+	if err := sharedpolicy.MutationResult(
+		add.GetStatus(),
+		add.GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
 		return
 	}
 
@@ -146,7 +138,6 @@ func (r *socketBypassSectionResource) Read(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-//nolint:gocyclo
 func (r *socketBypassSectionResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
@@ -168,14 +159,12 @@ func (r *socketBypassSectionResource) Update(
 		resp.Diagnostics.AddError("Cato API PolicySocketBypassMoveSection error", err.Error())
 		return
 	}
-	if moveSection.GetPolicy().GetSocketBypass().GetMoveSection().GetStatus() == nil ||
-		*moveSection.GetPolicy().GetSocketBypass().GetMoveSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range moveSection.GetPolicy().GetSocketBypass().GetMoveSection().GetErrors() {
-			if item != nil && item.ErrorCode != nil {
-				resp.Diagnostics.AddError("API error moving section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(
+		moveSection.GetPolicy().GetSocketBypass().GetMoveSection().GetStatus(),
+		moveSection.GetPolicy().GetSocketBypass().GetMoveSection().GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	updateSection, err := r.resourceAPI().PolicySocketBypassUpdateSection(ctx, inputUpdate, r.client.AccountId)
@@ -183,14 +172,12 @@ func (r *socketBypassSectionResource) Update(
 		resp.Diagnostics.AddError("Cato API PolicySocketBypassUpdateSection error", err.Error())
 		return
 	}
-	if updateSection.GetPolicy().GetSocketBypass().GetUpdateSection().GetStatus() == nil ||
-		*updateSection.GetPolicy().GetSocketBypass().GetUpdateSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range updateSection.GetPolicy().GetSocketBypass().GetUpdateSection().GetErrors() {
-			if item != nil && item.ErrorCode != nil {
-				resp.Diagnostics.AddError("API error updating section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(
+		updateSection.GetPolicy().GetSocketBypass().GetUpdateSection().GetStatus(),
+		updateSection.GetPolicy().GetSocketBypass().GetUpdateSection().GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	resp.Diagnostics.Append(socketbypass.PublishSocketBypassPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
@@ -216,8 +203,17 @@ func (r *socketBypassSectionResource) Delete(
 		return
 	}
 	remove := convertDeleteInput(section)
-	if _, err := r.resourceAPI().PolicySocketBypassRemoveSection(ctx, remove, r.client.AccountId); err != nil {
+	removed, err := r.resourceAPI().PolicySocketBypassRemoveSection(ctx, remove, r.client.AccountId)
+	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicySocketBypassRemoveSection error", err.Error())
+		return
+	}
+	payload := removed.GetPolicy().GetSocketBypass().GetRemoveSection()
+	if err := sharedpolicy.MutationResult(
+		payload.GetStatus(),
+		payload.GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy deletion failed", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(socketbypass.PublishSocketBypassPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)

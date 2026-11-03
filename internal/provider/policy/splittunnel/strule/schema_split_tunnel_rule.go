@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -157,8 +158,10 @@ func (r *splitTunnelRuleResource) Schema(_ context.Context, _ resource.SchemaReq
 						},
 					},
 					"source_network": schema.SingleNestedAttribute{
-						Description: "Source network the rule applies to",
-						Optional:    true,
+						Description:   "Source network the rule applies to",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
 						Attributes: map[string]schema.Attribute{
 							"source_network_type": schema.StringAttribute{
 								Description: "Source network type (ANY, ANY_MANAGED_NETWORK, ANY_UNMANAGED_NETWORK)",

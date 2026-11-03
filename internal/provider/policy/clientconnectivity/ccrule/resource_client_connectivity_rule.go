@@ -2,10 +2,8 @@ package ccrule
 
 import (
 	"context"
-	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -13,6 +11,7 @@ import (
 
 	clientconnectivity "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -91,12 +90,8 @@ func (r *clientConnectivityRuleResource) Create(
 			return
 		}
 	}
-	if add.GetStatus() == nil || *add.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		st := ""
-		if add.GetStatus() != nil {
-			st = string(*add.GetStatus())
-		}
-		resp.Diagnostics.AddError("client connectivity addRule failed", st)
+	if err := sharedpolicy.MutationResult(add.GetStatus(), add.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
 		return
 	}
 
@@ -228,13 +223,9 @@ func (r *clientConnectivityRuleResource) Update(
 		return
 	}
 	mv := moveRes.GetPolicy().GetClientConnectivity().GetMoveRule()
-	if mv.GetStatus() == nil || *mv.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range mv.GetErrors() {
-			if e != nil && e.GetErrorCode() != nil {
-				resp.Diagnostics.AddError("API error moving rule", fmt.Sprintf("%s : %s", *e.GetErrorCode(), *e.GetErrorMessage()))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	upd, diags := hydrateClientConnectivityUpdateRuleInput(ctx, plan)
@@ -249,13 +240,9 @@ func (r *clientConnectivityRuleResource) Update(
 		return
 	}
 	ur := updRes.GetPolicy().GetClientConnectivity().GetUpdateRule()
-	if ur.GetStatus() == nil || *ur.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range ur.GetErrors() {
-			if e != nil && e.GetErrorCode() != nil {
-				resp.Diagnostics.AddError("API error updating rule", fmt.Sprintf("%s : %s", *e.GetErrorCode(), *e.GetErrorMessage()))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(ur.GetStatus(), ur.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	resp.Diagnostics.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
@@ -322,8 +309,14 @@ func (r *clientConnectivityRuleResource) Delete(
 		return
 	}
 	rm := convertDeleteInput(rule)
-	if _, err := r.resourceAPI().PolicyClientConnectivityRemoveRule(ctx, rm, r.client.AccountId); err != nil {
+	removed, err := r.resourceAPI().PolicyClientConnectivityRemoveRule(ctx, rm, r.client.AccountId)
+	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityRemoveRule error", err.Error())
+		return
+	}
+	payload := removed.GetPolicy().GetClientConnectivity().GetRemoveRule()
+	if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy deletion failed", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)

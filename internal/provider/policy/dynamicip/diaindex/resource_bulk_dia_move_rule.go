@@ -186,8 +186,8 @@ func (r *diaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 					return err
 				}
 				ms := moveResp.GetPolicy().GetDynamicIPAllocation().GetMoveSection()
-				if st := ms.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-					return fmt.Errorf("dynamic ip allocation moveSection status %q", string(*st))
+				if err := sharedpolicy.MutationResult(ms.GetStatus(), ms.GetErrors()); err != nil {
+					return err
 				}
 				continue
 			}
@@ -211,8 +211,8 @@ func (r *diaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 				return err
 			}
 			mr := moveResp.GetPolicy().GetDynamicIPAllocation().GetMoveRule()
-			if st := mr.GetStatus(); st != nil && *st != cato_models.PolicyMutationStatusSuccess {
-				return fmt.Errorf("dynamic ip allocation moveRule status %q", string(*st))
+			if err := sharedpolicy.MutationResult(mr.GetStatus(), mr.GetErrors()); err != nil {
+				return err
 			}
 		}
 	}
@@ -222,23 +222,7 @@ func (r *diaRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 		if err != nil {
 			return err
 		}
-		if errs := pub.GetPolicy().GetDynamicIPAllocation().GetPublishPolicyRevision().GetErrors(); len(errs) > 0 {
-			msg := ""
-			for _, e := range errs {
-				if msg != "" {
-					msg += "; "
-				}
-				code, m := "", ""
-				if e.GetErrorCode() != nil {
-					code = *e.GetErrorCode()
-				}
-				if e.GetErrorMessage() != nil {
-					m = *e.GetErrorMessage()
-				}
-				msg += fmt.Sprintf("%s : %s", code, m)
-			}
-			return fmt.Errorf("dynamic ip allocation publishPolicyRevision errors: %s", msg)
-		}
-		return nil
+		payload := pub.GetPolicy().GetDynamicIPAllocation().GetPublishPolicyRevision()
+		return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 	})
 }

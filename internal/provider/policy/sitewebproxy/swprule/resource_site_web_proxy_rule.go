@@ -2,10 +2,8 @@ package swprule
 
 import (
 	"context"
-	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -13,6 +11,7 @@ import (
 
 	sitewebproxy "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -91,12 +90,8 @@ func (r *siteWebProxyRuleResource) Create(
 			return
 		}
 	}
-	if add.GetStatus() == nil || *add.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		st := ""
-		if add.GetStatus() != nil {
-			st = string(*add.GetStatus())
-		}
-		resp.Diagnostics.AddError("site web proxy addRule failed", st)
+	if err := sharedpolicy.MutationResult(add.GetStatus(), add.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
 		return
 	}
 
@@ -228,13 +223,9 @@ func (r *siteWebProxyRuleResource) Update(
 		return
 	}
 	mv := moveRes.GetPolicy().GetSiteWebProxy().GetMoveRule()
-	if mv.GetStatus() == nil || *mv.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range mv.GetErrors() {
-			if e != nil && e.GetErrorCode() != nil {
-				resp.Diagnostics.AddError("API error moving rule", fmt.Sprintf("%s : %s", *e.GetErrorCode(), *e.GetErrorMessage()))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	upd, diags := hydrateSiteWebProxyUpdateRuleInput(ctx, plan)
@@ -249,13 +240,9 @@ func (r *siteWebProxyRuleResource) Update(
 		return
 	}
 	ur := updRes.GetPolicy().GetSiteWebProxy().GetUpdateRule()
-	if ur.GetStatus() == nil || *ur.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range ur.GetErrors() {
-			if e != nil && e.GetErrorCode() != nil {
-				resp.Diagnostics.AddError("API error updating rule", fmt.Sprintf("%s : %s", *e.GetErrorCode(), *e.GetErrorMessage()))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(ur.GetStatus(), ur.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	resp.Diagnostics.Append(sitewebproxy.PublishSiteWebProxyPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
@@ -322,8 +309,14 @@ func (r *siteWebProxyRuleResource) Delete(
 		return
 	}
 	rm := convertDeleteInput(rule)
-	if _, err := r.resourceAPI().PolicySiteWebProxyRemoveRule(ctx, rm, r.client.AccountId); err != nil {
+	removed, err := r.resourceAPI().PolicySiteWebProxyRemoveRule(ctx, rm, r.client.AccountId)
+	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicySiteWebProxyRemoveRule error", err.Error())
+		return
+	}
+	payload := removed.GetPolicy().GetSiteWebProxy().GetRemoveRule()
+	if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy deletion failed", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(sitewebproxy.PublishSiteWebProxyPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)

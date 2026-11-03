@@ -2,9 +2,7 @@ package ssiasection
 
 import (
 	"context"
-	"fmt"
 
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -13,6 +11,7 @@ import (
 	sdpstaticip "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -82,18 +81,11 @@ func (r *sdpStaticIPAllocationSectionResource) Create(
 		return
 	}
 	add := policyChange.GetPolicy().GetSdpStaticIPAllocation().GetAddSection()
-	for _, e := range add.GetErrors() {
-		if e != nil && e.ErrorCode != nil {
-			resp.Diagnostics.AddError("API error: "+*e.ErrorCode, *e.ErrorMessage)
-			return
-		}
-	}
-	if add.GetStatus() == nil || *add.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		st := ""
-		if add.GetStatus() != nil {
-			st = string(*add.GetStatus())
-		}
-		resp.Diagnostics.AddError("SDP static IP allocation addSection failed", st)
+	if err := sharedpolicy.MutationResult(
+		add.GetStatus(),
+		add.GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
 		return
 	}
 
@@ -146,7 +138,6 @@ func (r *sdpStaticIPAllocationSectionResource) Read(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-//nolint:gocyclo
 func (r *sdpStaticIPAllocationSectionResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
@@ -168,14 +159,12 @@ func (r *sdpStaticIPAllocationSectionResource) Update(
 		resp.Diagnostics.AddError("Cato API PolicySdpStaticIPAllocationMoveSection error", err.Error())
 		return
 	}
-	if moveSection.GetPolicy().GetSdpStaticIPAllocation().GetMoveSection().GetStatus() == nil ||
-		*moveSection.GetPolicy().GetSdpStaticIPAllocation().GetMoveSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range moveSection.GetPolicy().GetSdpStaticIPAllocation().GetMoveSection().GetErrors() {
-			if item != nil && item.ErrorCode != nil {
-				resp.Diagnostics.AddError("API error moving section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(
+		moveSection.GetPolicy().GetSdpStaticIPAllocation().GetMoveSection().GetStatus(),
+		moveSection.GetPolicy().GetSdpStaticIPAllocation().GetMoveSection().GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	updateSection, err := r.resourceAPI().PolicySdpStaticIPAllocationUpdateSection(ctx, inputUpdate, r.client.AccountId)
@@ -183,14 +172,12 @@ func (r *sdpStaticIPAllocationSectionResource) Update(
 		resp.Diagnostics.AddError("Cato API PolicySdpStaticIPAllocationUpdateSection error", err.Error())
 		return
 	}
-	if updateSection.GetPolicy().GetSdpStaticIPAllocation().GetUpdateSection().GetStatus() == nil ||
-		*updateSection.GetPolicy().GetSdpStaticIPAllocation().GetUpdateSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range updateSection.GetPolicy().GetSdpStaticIPAllocation().GetUpdateSection().GetErrors() {
-			if item != nil && item.ErrorCode != nil {
-				resp.Diagnostics.AddError("API error updating section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
-				return
-			}
-		}
+	if err := sharedpolicy.MutationResult(
+		updateSection.GetPolicy().GetSdpStaticIPAllocation().GetUpdateSection().GetStatus(),
+		updateSection.GetPolicy().GetSdpStaticIPAllocation().GetUpdateSection().GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
 	}
 
 	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
@@ -216,8 +203,17 @@ func (r *sdpStaticIPAllocationSectionResource) Delete(
 		return
 	}
 	remove := convertDeleteInput(section)
-	if _, err := r.resourceAPI().PolicySdpStaticIPAllocationRemoveSection(ctx, remove, r.client.AccountId); err != nil {
+	removed, err := r.resourceAPI().PolicySdpStaticIPAllocationRemoveSection(ctx, remove, r.client.AccountId)
+	if err != nil {
 		resp.Diagnostics.AddError("Cato API PolicySdpStaticIPAllocationRemoveSection error", err.Error())
+		return
+	}
+	payload := removed.GetPolicy().GetSdpStaticIPAllocation().GetRemoveSection()
+	if err := sharedpolicy.MutationResult(
+		payload.GetStatus(),
+		payload.GetErrors(),
+	); err != nil {
+		resp.Diagnostics.AddError("Policy deletion failed", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(sdpstaticip.PublishSdpStaticIPAllocationPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)

@@ -31,14 +31,6 @@ func wanSubPolicyInfo(
 	return nil
 }
 
-// derefStr safely dereferences an optional string pointer.
-func derefStr(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 // wanScopeRule returns the SUB_POLICY_SCOPE rule owned by the given sub-policy,
 // or nil when not found.
 func wanScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule {
@@ -55,15 +47,11 @@ func wanScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Po
 	return nil
 }
 
-// wanCleanupRule returns the sub-policy's cleanup rule: ALWAYS the LAST rule
-// (max rule.index) inside the sub-policy. The API auto-creates the cleanup rule
-// at the bottom; if an admin later moves or renames rules so a different rule
-// sits last, the cleanup identity follows the position — every read/update
-// re-resolves the last rule and refreshes cleanup_rule_id to it. This is also
-// what populates the cleanup on `terraform import`.
+// wanCleanupRule preserves an established cleanup rule identity across external
+// reorders. Only creation/import without a stored ID uses the last-rule convention.
 func wanCleanupRule(
 	body *cato_go_sdk.Policy,
-	subID string,
+	subID string, cleanupID string,
 ) *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule {
 	if body == nil || subID == "" {
 		return nil
@@ -78,6 +66,12 @@ func wanCleanupRule(
 			continue
 		}
 		rule := rp.GetRule()
+		if cleanupID != "" {
+			if rule.GetID() == cleanupID {
+				return rule
+			}
+			continue
+		}
 		if last == nil || rule.GetIndex() > last.GetIndex() {
 			last = rule
 		}
@@ -98,39 +92,6 @@ func cleanupNameConfigured(cleanupObj types.Object) bool {
 	}
 	name, ok := nameAttr.(types.String)
 	return ok && name.ValueString() != ""
-}
-
-// cleanupUpdateErrorDetail formats a cleanup-rule update failure. The cleanup
-// is identified positionally (the sub-policy's LAST rule), so if an admin moves
-// the cleanup rule in the CMA, the provider targets whatever rule now sits last
-// and renaming it to the configured cleanup name collides with the real cleanup
-// rule elsewhere in the sub-policy. Make that remediation obvious instead of
-// surfacing a bare ruleNameAlreadyExists.
-func cleanupUpdateErrorDetail(errCode, errMessage, configuredName, targetRuleID string) string {
-	detail := fmt.Sprintf("%s : %s", errCode, errMessage)
-	if errCode == "ruleNameAlreadyExists" {
-		detail += fmt.Sprintf(
-			"\n\nThe cleanup rule is identified as the sub-policy's LAST rule (currently rule id %s). "+
-				"A different rule named %q already exists in this sub-policy, which usually means the "+
-				"cleanup rule was manually moved out of the last position in the CMA. "+
-				"Move the cleanup rule back to the bottom of the sub-policy (or re-export the policy JSON) and retry. "+
-				"The cleanup rule is managed by this resource and is not intended to be moved outside Terraform.",
-			targetRuleID, configuredName,
-		)
-	}
-	return detail
-}
-
-// cleanupConfiguredName returns the name carried by the cleanup_rule config
-// object, or "" when unset.
-func cleanupConfiguredName(cleanupObj types.Object) string {
-	if cleanupObj.IsNull() || cleanupObj.IsUnknown() {
-		return ""
-	}
-	if nameAttr, ok := cleanupObj.Attributes()["name"].(types.String); ok && !nameAttr.IsNull() && !nameAttr.IsUnknown() {
-		return nameAttr.ValueString()
-	}
-	return ""
 }
 
 // hydrateCleanupState encodes the cleanup rule into the model, refreshing
