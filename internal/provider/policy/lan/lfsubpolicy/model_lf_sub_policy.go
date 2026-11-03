@@ -20,6 +20,29 @@ type LanFirewallSubPolicy struct {
 	At          types.Object `tfsdk:"at"`            // policyrule.PolicyRulePositionInput
 	ScopeRuleID types.String `tfsdk:"scope_rule_id"` // computed SUB_POLICY_SCOPE rule id
 	Scope       types.Object `tfsdk:"scope"`         // LanFirewallSubPolicyScope
+
+	// Cleanup rule: the API auto-creates one per sub-policy; it is embedded
+	// in this resource (same relationship as a socket site's default
+	// interface). Identity is positional - the sub-policy's LAST rule.
+	CleanupRuleID types.String `tfsdk:"cleanup_rule_id"`
+	CleanupRule   types.Object `tfsdk:"cleanup_rule"` // LanFirewallSubPolicyCleanupRule
+}
+
+// LanFirewallSubPolicyCleanupRule is the manageable surface of the
+// API-created cleanup rule (name customization + enable/description).
+type LanFirewallSubPolicyCleanupRule struct {
+	ID          types.String `tfsdk:"id"`
+	Name        types.String `tfsdk:"name"`
+	Description types.String `tfsdk:"description"`
+	Enabled     types.Bool   `tfsdk:"enabled"`
+}
+
+// LanFirewallSubPolicyCleanupRuleTypes is the attr-type map for cleanup_rule.
+var LanFirewallSubPolicyCleanupRuleTypes = map[string]attr.Type{
+	"id":          types.StringType,
+	"name":        types.StringType,
+	"description": types.StringType,
+	"enabled":     types.BoolType,
 }
 
 type LanFirewallSubPolicyScope struct {
