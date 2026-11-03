@@ -3,6 +3,7 @@ package lfsubpolicy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
@@ -173,7 +174,87 @@ func TestLfSubPolicyCreatePreservesIDWhenPublishFails(t *testing.T) {
 	var state LanFirewallSubPolicy
 	require.False(t, response.State.Get(ctx, &state).HasError())
 	require.Equal(t, "sub-policy-123", state.ID.ValueString())
-	require.Equal(t, []string{"add", "publish"}, client.calls)
+	require.Equal(t, []string{"policy", "add", "publish"}, client.calls)
+}
+
+func TestLfSubPolicyCreateRecoversFromAddSubPolicyError(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	resourceSchema := lfSubPolicySchema(ctx, t)
+	plan := tfsdk.Plan{Schema: resourceSchema}
+	require.False(t, plan.Set(ctx, lfSubPolicyPlan()).HasError())
+
+	scopeType := cato_models.PolicyRuleTypeEnumSubPolicyScope
+	policyWithSubPolicy := &cato_go_sdk.PolicySocketLanPolicy{
+		Policy: cato_go_sdk.PolicySocketLanPolicy_Policy{
+			SocketLan: &cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan{
+				Policy: cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy{
+					Rules: []*cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules{
+						{
+							RuleType: scopeType,
+							SubPolicy: &cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_SubPolicy{
+								ID:   "sub-policy-recovered",
+								Name: "sub-policy",
+							},
+							Rule: cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule{
+								ID:          "scope-rule-recovered",
+								Name:        "sub-policy",
+								Description: "description",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	client := &lfSubPolicyFakeClient{
+		addErr:        errors.New("graphql: The field at path '/policy/socketLan/addSubPolicy/policy/rules' was declared as a non null type"),
+		policyResults: []*cato_go_sdk.PolicySocketLanPolicy{nil, policyWithSubPolicy},
+	}
+	res := &lfSubPolicyResource{
+		client:          &catoclient.Service{AccountId: "account-123"},
+		subPolicyClient: client,
+	}
+	response := &resource.CreateResponse{State: tfsdk.State{Schema: resourceSchema}}
+
+	res.Create(ctx, resource.CreateRequest{Plan: plan}, response)
+
+	require.False(t, response.Diagnostics.HasError(), "unexpected diagnostics: %+v", response.Diagnostics)
+	warned := false
+	for _, d := range response.Diagnostics.Warnings() {
+		if d.Summary() == "Recovered LAN sub-policy from unreadable addSubPolicy response" {
+			warned = true
+		}
+	}
+	require.True(t, warned, "expected recovery warning, got: %+v", response.Diagnostics)
+	var state LanFirewallSubPolicy
+	require.False(t, response.State.Get(ctx, &state).HasError())
+	require.Equal(t, "sub-policy-recovered", state.ID.ValueString())
+	require.Equal(t, "scope-rule-recovered", state.ScopeRuleID.ValueString())
+	// snapshot read, failing add, recovery publish + read, hydrate, cleanup reconcile
+	require.Equal(t, []string{"policy", "add", "publish", "policy", "policy", "policy"}, client.calls)
+}
+
+func TestLfSubPolicyCreateReportsAddErrorWhenRecoveryFindsNothing(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	resourceSchema := lfSubPolicySchema(ctx, t)
+	plan := tfsdk.Plan{Schema: resourceSchema}
+	require.False(t, plan.Set(ctx, lfSubPolicyPlan()).HasError())
+	client := &lfSubPolicyFakeClient{addErr: errors.New("DOWNSTREAM_SERVICE_ERROR")}
+	res := &lfSubPolicyResource{
+		client:          &catoclient.Service{AccountId: "account-123"},
+		subPolicyClient: client,
+	}
+	response := &resource.CreateResponse{State: tfsdk.State{Schema: resourceSchema}}
+
+	res.Create(ctx, resource.CreateRequest{Plan: plan}, response)
+
+	require.True(t, response.Diagnostics.HasError())
+	require.Contains(t, fmt.Sprintf("%+v", response.Diagnostics.Errors()), "DOWNSTREAM_SERVICE_ERROR")
+	require.Equal(t, []string{"policy", "add", "publish", "policy"}, client.calls)
 }
 
 func TestLfSubPolicyUpdateMovesImportedPositionAndPreservesPriorStateOnPublishFailure(t *testing.T) {
@@ -293,6 +374,8 @@ type lfSubPolicyFakeClient struct {
 	moveInput       cato_models.PolicyMoveRuleInput
 	publishErr      error
 	publishNotFound bool
+	addErr          error
+	policyResults   []*cato_go_sdk.PolicySocketLanPolicy
 	calls           []string
 }
 
@@ -315,13 +398,21 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanMoveRule(
 	}, nil
 }
 
-func (*lfSubPolicyFakeClient) PolicySocketLanPolicy(
+func (c *lfSubPolicyFakeClient) PolicySocketLanPolicy(
 	context.Context,
 	string,
 	*cato_models.SocketLanPolicyInput,
 	...clientv2.RequestInterceptor,
 ) (*cato_go_sdk.PolicySocketLanPolicy, error) {
-	return nil, nil
+	c.calls = append(c.calls, "policy")
+	if len(c.policyResults) == 0 {
+		return nil, nil
+	}
+	result := c.policyResults[0]
+	if len(c.policyResults) > 1 {
+		c.policyResults = c.policyResults[1:]
+	}
+	return result, nil
 }
 
 func (c *lfSubPolicyFakeClient) PolicySocketLanAddSubPolicy(
@@ -331,6 +422,11 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanAddSubPolicy(
 	...clientv2.RequestInterceptor,
 ) (*cato_go_sdk.PolicySocketLanAddSubPolicy, error) {
 	c.calls = append(c.calls, "add")
+	if c.addErr != nil {
+		// Mirrors the live defect: GraphQL nulls the whole socketLan payload
+		// and the transport surfaces the response error.
+		return &cato_go_sdk.PolicySocketLanAddSubPolicy{}, c.addErr
+	}
 	return &cato_go_sdk.PolicySocketLanAddSubPolicy{
 		Policy: cato_go_sdk.PolicySocketLanAddSubPolicy_Policy{
 			SocketLan: &cato_go_sdk.PolicySocketLanAddSubPolicy_Policy_SocketLan{
