@@ -2,6 +2,7 @@ package ifrule
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -825,4 +826,42 @@ func GetInternetFwRuleSchema(ctx context.Context, t *testing.T) schema.Schema {
 	r.Schema(ctx, resource.SchemaRequest{}, resp)
 
 	return resp.Schema
+}
+
+func failedAddRuleNameExistsResponse() *cato_go_sdk.PolicyInternetFirewallAddRule {
+	code := "ruleNameAlreadyExists"
+	msg := "Rule with the same name already exists"
+	return &cato_go_sdk.PolicyInternetFirewallAddRule{
+		Policy: cato_go_sdk.PolicyInternetFirewallAddRule_Policy{
+			InternetFirewall: &cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall{
+				AddRule: cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule{
+					Status: "FAILURE",
+					Errors: []*cato_go_sdk.PolicyInternetFirewallAddRule_Policy_InternetFirewall_AddRule_Errors{
+						{ErrorCode: &code, ErrorMessage: &msg},
+					},
+				},
+			},
+		},
+	}
+}
+
+// A duplicate name is not evidence that this resource owns the live rule.
+func TestInternetFwRuleCreateNameCollisionRequiresImport(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewInternetFirewallPolicyClient(t)
+	mockClient.EXPECT().
+		PolicyInternetFirewallAddRule(mock.Anything, mock.Anything, "account-123").
+		Return(failedAddRuleNameExistsResponse(), nil).Once()
+	r := &InternetFwRuleResource{
+		Client: &catoclient.Service{AccountId: "account-123"}, IfwClient: mockClient,
+	}
+	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
+	r.Create(ctx, req, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected name collision to require import without updating or publishing")
+	}
+	if !strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "import the existing rule explicitly") {
+		t.Fatalf("expected import guidance: %v", resp.Diagnostics)
+	}
 }

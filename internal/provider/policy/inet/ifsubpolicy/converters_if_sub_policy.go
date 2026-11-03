@@ -31,14 +31,6 @@ func ifwSubPolicyInfo(
 	return nil
 }
 
-// derefStr safely dereferences an optional string pointer.
-func derefStr(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 // ifwScopeRule returns the SUB_POLICY_SCOPE rule owned by the given sub-policy,
 // or nil when not found.
 func ifwScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule {
@@ -53,6 +45,68 @@ func ifwScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Po
 		}
 	}
 	return nil
+}
+
+// ifwCleanupRule preserves an established cleanup rule identity across external
+// reorders. Only creation/import without a stored ID uses the last-rule convention.
+func ifwCleanupRule(
+	body *cato_go_sdk.Policy,
+	subID string, cleanupID string,
+) *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule {
+	if body == nil || subID == "" {
+		return nil
+	}
+	var last *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule
+	for _, rp := range body.GetPolicy().GetInternetFirewall().GetPolicy().GetRules() {
+		sp := rp.GetSubPolicy()
+		if sp == nil || sp.GetID() != subID {
+			continue
+		}
+		if rt := rp.GetRuleType(); rt != nil && *rt == subPolicyScopeRuleType {
+			continue
+		}
+		rule := rp.GetRule()
+		if cleanupID != "" {
+			if rule.GetID() == cleanupID {
+				return rule
+			}
+			continue
+		}
+		if last == nil || rule.GetIndex() > last.GetIndex() {
+			last = rule
+		}
+	}
+	return last
+}
+
+// cleanupNameConfigured reports whether the cleanup_rule object carries a
+// user-supplied (known, non-empty) name — i.e. the config renames the cleanup
+// rule rather than keeping the API-generated "<sub-policy name> - Cleanup Rule".
+func cleanupNameConfigured(cleanupObj types.Object) bool {
+	if cleanupObj.IsNull() || cleanupObj.IsUnknown() {
+		return false
+	}
+	nameAttr, ok := cleanupObj.Attributes()["name"]
+	if !ok || nameAttr.IsNull() || nameAttr.IsUnknown() {
+		return false
+	}
+	name, ok := nameAttr.(types.String)
+	return ok && name.ValueString() != ""
+}
+
+// hydrateCleanupState encodes the cleanup rule into the model, refreshing
+// cleanup_rule_id. The prior cleanup object (state or plan) seeds the hydrator
+// so omitted optional fields stay stable, mirroring the scope handling.
+func hydrateCleanupState(
+	ctx context.Context,
+	model *InternetFirewallSubPolicy,
+	cleanup *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule,
+) (basetypes.ObjectValue, diag.Diagnostics) {
+	model.CleanupRuleID = types.StringValue(cleanup.GetID())
+	cleanupRule := ifrule.InternetFirewallRule{Rule: model.CleanupRule, At: model.At}
+	cleanupState := ifrule.HydrateIfwRuleState(ctx, cleanupRule, cleanup)
+	cleanupState.ID = types.StringValue(cleanup.GetID())
+	return types.ObjectValueFrom(ctx, ifrule.InternetFirewallRuleRuleAttrTypes, cleanupState)
 }
 
 // ifwSubPolicyIDByName returns the id of the sub-policy with the given name that
@@ -120,6 +174,22 @@ func convertCreateInput2(
 		},
 		Scope: hydrated.Create.Rule,
 	}
+	// scope.tracking is a non-nullable PolicyTrackingInput! in
+	// InternetFirewallAddSubPolicyInput, but the API rejects enabled tracking
+	// settings on a scoping rule — so when the (optional) tracking attribute is
+	// omitted, send the schema's documented disabled default instead of null.
+	if resultAddInput.Scope != nil && resultAddInput.Scope.Tracking == nil {
+		resultAddInput.Scope.Tracking = &cato_models.PolicyTrackingInput{
+			Event: &cato_models.PolicyRuleTrackingEventInput{Enabled: false},
+			Alert: &cato_models.PolicyRuleTrackingAlertInput{
+				Enabled:           false,
+				Frequency:         cato_models.PolicyRuleTrackingFrequencyEnumHourly,
+				MailingList:       []*cato_models.SubscriptionMailingListRefInput{},
+				SubscriptionGroup: []*cato_models.SubscriptionGroupRefInput{},
+				Webhook:           []*cato_models.SubscriptionWebhookRefInput{},
+			},
+		}
+	}
 	return resultExisting, resultAddInput
 }
 
@@ -162,11 +232,10 @@ func convertReadState(
 	scope *cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule,
 ) (resultScopeObj basetypes.ObjectValue, resultDiags diag.Diagnostics) {
 	state.Name = types.StringValue(info.GetName())
-	if info.GetDescription() == "" {
-		state.Description = types.StringNull()
-	} else {
-		state.Description = types.StringValue(info.GetDescription())
-	}
+	// description is Required, so config always holds a value ("" when unset);
+	// writing null here on an empty API description would diff against "" and,
+	// with RequiresReplace, force needless replacement on every plan.
+	state.Description = types.StringValue(info.GetDescription())
 	state.ScopeRuleID = types.StringValue(scope.GetID())
 
 	scopeRule := ifrule.InternetFirewallRule{Rule: state.Scope, At: state.At}
