@@ -33,4 +33,14 @@ func TestRegisteredResourceSchemas(t *testing.T) {
 			}
 		})
 	}
+	for _, name := range []string{"cato_always_on_rule_bulk", "cato_always_on_policy"} {
+		if !seen[name] {
+			t.Errorf("canonical Always On resource %s is missing", name)
+		}
+	}
+	for _, name := range []string{"cato_bulk_ao_move_rule", "cato_ztna_always_on_policy"} {
+		if seen[name] {
+			t.Errorf("duplicate Always On resource %s must not be registered", name)
+		}
+	}
 }

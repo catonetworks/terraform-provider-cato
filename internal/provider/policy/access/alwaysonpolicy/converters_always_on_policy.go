@@ -30,7 +30,18 @@ func parsePolicyUpdate(p *cato_go_sdk.PolicyZtnaAlwaysOnUpdatePolicy_Policy_Ztna
 
 func parsePolicy(p *cato_go_sdk.PolicyZtnaAlwaysOnPolicy) *PolicyModel {
 	policy := p.GetPolicy().GetZtnaAlwaysOn().GetPolicy()
-	return &PolicyModel{
-		Enabled: types.BoolValue(policy.GetEnabled()),
+	state := &PolicyModel{
+		Enabled:       types.BoolValue(policy.GetEnabled()),
+		PublishedTime: types.StringNull(), PublishedBy: types.StringNull(),
+		RevisionID: types.StringNull(), RevisionName: types.StringNull(),
 	}
+	if audit := policy.GetAudit(); audit != nil {
+		state.PublishedTime = types.StringValue(audit.GetPublishedTime())
+		state.PublishedBy = types.StringValue(audit.GetPublishedBy())
+	}
+	if revision := policy.GetRevision(); revision != nil {
+		state.RevisionID = types.StringValue(revision.GetID())
+		state.RevisionName = types.StringValue(revision.GetName())
+	}
+	return state
 }

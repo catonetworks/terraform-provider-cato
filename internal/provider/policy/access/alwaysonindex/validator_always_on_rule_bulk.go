@@ -266,3 +266,52 @@ func checkRuleIndexes(ruleMap map[string]int64, diags *diag.Diagnostics) bool {
 	}
 	return true
 }
+
+// ruleSectionsChanged distinguishes relocation from a reorder within existing sections.
+func ruleSectionsChanged(current, target map[string]map[string]int64) bool {
+	owners := map[string]string{}
+	for section, rules := range current {
+		for name := range rules {
+			owners[name] = section
+		}
+	}
+	for section, rules := range target {
+		for name := range rules {
+			if previous, ok := owners[name]; ok && previous != section {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// validateRuleRelocation preserves complete policy membership while allowing section ownership to change.
+func validateRuleRelocation(sectionIDs map[string]string, current, target map[string]map[string]int64, diags *diag.Diagnostics) {
+	currentNames := map[string]bool{}
+	for _, rules := range current {
+		for name := range rules {
+			currentNames[name] = true
+		}
+	}
+	targetNames := map[string]bool{}
+	for section, rules := range target {
+		if _, exists := sectionIDs[section]; !exists {
+			diags.AddError("Section ID not found", fmt.Sprintf("Section %q does not exist", section))
+			return
+		}
+		if !checkRuleIndexes(rules, diags) {
+			return
+		}
+		for name := range rules {
+			if !currentNames[name] || targetNames[name] {
+				diags.AddError("Invalid rule membership",
+					fmt.Sprintf("Rule %q is missing from the live policy or appears more than once in the target", name))
+				return
+			}
+			targetNames[name] = true
+		}
+	}
+	if len(targetNames) != len(currentNames) {
+		diags.AddError("Invalid rule membership", "Ordering must include every existing rule exactly once.")
+	}
+}
