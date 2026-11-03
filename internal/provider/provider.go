@@ -93,6 +93,10 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swppolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swprule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swpsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/strule"
@@ -647,6 +651,10 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		swpsection.NewSiteWebProxySectionResource,
 		swpindex.NewSwpRulesIndexResource,
 		swppolicy.NewSiteWebProxyPolicyResource,
+		sbrule.NewSocketBypassRuleResource,
+		sbsection.NewSocketBypassSectionResource,
+		sbindex.NewSbRulesIndexResource,
+		sbpolicy.NewSocketBypassPolicyResource,
 		acrule.NewApplicationControlRuleResource,
 		acindex.NewApcRulesIndexResource,
 		acsection.NewApplicationControlSectionResource,
