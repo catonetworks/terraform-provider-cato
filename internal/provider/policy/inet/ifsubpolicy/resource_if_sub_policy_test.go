@@ -111,7 +111,7 @@ func TestIfSubPolicyCreateSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(nil, nil).Once()
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(ifSubPolicyResponse("sub-1", "test-sub", "a sub", "scope-1", "scope"), nil).Once()
+		Return(ifSubPolicyResponse("test-sub", "a sub", "scope"), nil).Once()
 
 	r := &ifSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
@@ -154,7 +154,7 @@ func TestIfSubPolicyReadSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(ifSubPolicyResponse("sub-1", "renamed", "desc", "scope-1", "scope-name"), nil).Once()
+		Return(ifSubPolicyResponse("renamed", "desc", "scope-name"), nil).Once()
 
 	r := &ifSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
 	state := newIfSubPolicyStateWithID(ctx, t)
@@ -196,7 +196,7 @@ func TestIfSubPolicyUpdateScopeSuccess(t *testing.T) {
 	mockClient.EXPECT().PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(nil, nil).Once()
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name"), nil).Once()
+		Return(ifSubPolicyResponse("test-sub", "desc", "scope-name"), nil).Once()
 
 	r := &ifSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
 	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
@@ -354,7 +354,9 @@ func ifRemoveSubPolicyResponse(status cato_models.PolicyMutationStatus, errMsg s
 	}
 }
 
-func ifSubPolicyResponse(subID, subName, subDesc, scopeID, scopeName string) *cato_go_sdk.Policy {
+func ifSubPolicyResponse(subName, subDesc, scopeName string) *cato_go_sdk.Policy {
+	const subID = "sub-1"
+	const scopeID = "scope-1"
 	scopeRule := ifrule.MinimalAPIRule(scopeName, 0)
 	scopeRule.ID = scopeID
 	scopeRule.Name = scopeName
@@ -397,7 +399,7 @@ var _ = basetypes.ObjectAsOptions{}
 // The cleanup identity follows position: whatever rule sits LAST in the
 // sub-policy is the cleanup, even after manual moves/renames in CMA.
 func TestIfwCleanupRuleFollowsLastPosition(t *testing.T) {
-	body := ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name")
+	body := ifSubPolicyResponse("test-sub", "desc", "scope-name")
 	moved := ifrule.MinimalAPIRule("Moved User Rule", 5)
 	moved.ID = "user-9"
 	body.Policy.InternetFirewall.Policy.Rules = append(
@@ -423,7 +425,7 @@ func TestIfSubPolicyReadHydratesCleanup(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name"), nil).Once()
+		Return(ifSubPolicyResponse("test-sub", "desc", "scope-name"), nil).Once()
 
 	r := &ifSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
 	state := newIfSubPolicyStateWithID(ctx, t)

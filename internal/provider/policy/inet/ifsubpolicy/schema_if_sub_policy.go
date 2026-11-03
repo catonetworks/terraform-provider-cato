@@ -12,6 +12,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
 )
 
+//nolint:funlen // Scope and cleanup schemas intentionally mirror the rule schema.
 func (r *ifSubPolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	// Reuse the exact cato_if_rule "rule" schema for the sub-policy scope so the
 	// scope stays in lockstep (drift-free) with the rule resource.

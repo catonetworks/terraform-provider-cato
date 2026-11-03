@@ -2,10 +2,10 @@ package ifrule
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -845,90 +845,23 @@ func failedAddRuleNameExistsResponse() *cato_go_sdk.PolicyInternetFirewallAddRul
 	}
 }
 
-// Create self-heals on ruleNameAlreadyExists: the live orphan is adopted
-// (updated to match config, its id taken into state) instead of failing.
-func TestInternetFwRuleCreateAdoptsExistingOnNameCollision(t *testing.T) {
+// A duplicate name is not evidence that this resource owns the live rule.
+func TestInternetFwRuleCreateNameCollisionRequiresImport(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
-
-	adopted := MinimalAPIRule("test-ifw-rule", 7)
-	adopted.ID = "r-adopt"
-
 	mockClient.EXPECT().
 		PolicyInternetFirewallAddRule(mock.Anything, mock.Anything, "account-123").
-		Return(failedAddRuleNameExistsResponse(), nil).
-		Once()
-	// adoption lookup + post-publish read-back use the same query
-	mockClient.EXPECT().
-		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(InternetFirewallPolicyResponseWithRule(adopted), nil).
-		Twice()
-	mockClient.EXPECT().
-		PolicyInternetFirewallUpdateRule(mock.Anything, mock.Anything, mock.MatchedBy(func(in cato_models.InternetFirewallUpdateRuleInput) bool {
-			return in.ID == "r-adopt"
-		}), "account-123").
-		Return(SuccessfulUpdateRuleResponse("r-adopt"), nil).
-		Once()
-	mockClient.EXPECT().
-		PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, "account-123").
-		Return(nil, nil).
-		Once()
-
+		Return(failedAddRuleNameExistsResponse(), nil).Once()
 	r := &InternetFwRuleResource{
-		Client:    &catoclient.Service{AccountId: "account-123"},
-		IfwClient: mockClient,
+		Client: &catoclient.Service{AccountId: "account-123"}, IfwClient: mockClient,
 	}
 	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
 	resp := &resource.CreateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
-
 	r.Create(ctx, req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
-	}
-	warned := false
-	for _, d := range resp.Diagnostics.Warnings() {
-		if d.Summary() == "Adopted Existing Rule" {
-			warned = true
-		}
-	}
-	if !warned {
-		t.Fatal("expected Adopted Existing Rule warning")
-	}
-	assertRuleState(ctx, t, resp.State, "r-adopt", "test-ifw-rule")
-}
-
-// A same-named rule in a different scope (e.g. inside a sub-policy when the
-// plan targets the main policy) cannot be adopted - updateRule cannot move it.
-func TestInternetFwRuleCreateNameCollisionWrongScope(t *testing.T) {
-	ctx := context.Background()
-	mockClient := mocks.NewInternetFirewallPolicyClient(t)
-
-	other := MinimalAPIRule("test-ifw-rule", 3)
-	other.ID = "r-foreign"
-	body := InternetFirewallPolicyResponseWithRule(other)
-	body.Policy.InternetFirewall.Policy.Rules[0].SubPolicy =
-		&cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_SubPolicy{ID: "sp-9", Name: "Other SP"}
-
-	mockClient.EXPECT().
-		PolicyInternetFirewallAddRule(mock.Anything, mock.Anything, "account-123").
-		Return(failedAddRuleNameExistsResponse(), nil).
-		Once()
-	mockClient.EXPECT().
-		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(body, nil).
-		Once()
-
-	r := &InternetFwRuleResource{
-		Client:    &catoclient.Service{AccountId: "account-123"},
-		IfwClient: mockClient,
-	}
-	req := resource.CreateRequest{Plan: newInternetFwRulePlan(ctx, t, "")}
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
-
-	r.Create(ctx, req, resp)
-
 	if !resp.Diagnostics.HasError() {
-		t.Fatal("expected error for cross-scope name collision")
+		t.Fatal("expected name collision to require import without updating or publishing")
+	}
+	if !strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "import the existing rule explicitly") {
+		t.Fatalf("expected import guidance: %v", resp.Diagnostics)
 	}
 }

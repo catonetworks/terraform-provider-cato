@@ -53,6 +53,7 @@ func (r *ifSubPolicyResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+//nolint:gocyclo,funlen // Scope and cleanup mutations each require API error and hydration checks.
 func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan InternetFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -261,6 +262,7 @@ func (r *ifSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+//nolint:gocyclo,funlen // Scope and cleanup mutations each require API error and hydration checks.
 func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan InternetFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)

@@ -161,15 +161,6 @@ func (r *ifwRulesIndexResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-// discardStaleRevisions returns a cleanup closure that discards unpublished
-// firewall policy revisions (left by interrupted applies or abandoned CMA UI
-// sessions) so a blocked moveSection/reorderPolicy/publish can proceed on retry.
-func (r *ifwRulesIndexResource) discardStaleRevisions(ctx context.Context) func() error {
-	return func() error {
-		return policy.DiscardFirewallAndWANPolicyRevisions(ctx, r.client.Catov2.Client, r.client.AccountId)
-	}
-}
-
 //nolint:gocyclo,funlen,gocritic
 func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	ctx context.Context,
@@ -330,7 +321,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			"response": utils.InterfaceToJSONString(policyMoveSectionInputInt),
 		})
 		var sectionMoveAPIData *cato_go_sdk.PolicyInternetFirewallMoveSection
-		moveErr := policy.WithPolicyRevisionCleanupRetry(ctx, "PolicyInternetFirewallMoveSection", r.discardStaleRevisions(ctx), func() error {
+		moveErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyInternetFirewallMoveSection", func() error {
 			var callErr error
 			sectionMoveAPIData, callErr = r.resourceAPI().PolicyInternetFirewallMoveSection(
 				ctx, nil, policyMoveSectionInputInt, r.client.AccountId)
@@ -444,7 +435,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			})
 
 			var reorderOut *cato_go_sdk.PolicyInternetFirewallReorderPolicy
-			reorderErr := policy.WithPolicyRevisionCleanupRetry(ctx, "PolicyInternetFirewallReorderPolicy", r.discardStaleRevisions(ctx), func() error {
+			reorderErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyInternetFirewallReorderPolicy", func() error {
 				var callErr error
 				reorderOut, callErr = r.resourceAPI().PolicyInternetFirewallReorderPolicy(
 					ctx,
@@ -491,7 +482,7 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 	}
 
 	// Publish changes
-	pubErr := policy.WithPolicyRevisionCleanupRetry(ctx, "PolicyInternetFirewallPublishPolicyRevision", r.discardStaleRevisions(ctx), func() error {
+	pubErr := policy.WithPolicyRevisionConflictRetry(ctx, "PolicyInternetFirewallPublishPolicyRevision", func() error {
 		_, errPub := r.resourceAPI().PolicyInternetFirewallPublishPolicyRevision(
 			ctx,
 			&cato_models.InternetFirewallPolicyMutationInput{},
