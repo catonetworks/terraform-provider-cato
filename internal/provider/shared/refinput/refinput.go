@@ -98,6 +98,26 @@ func Application(by cato_models.ObjectRefBy, input string) *cato_models.Applicat
 	return &cato_models.ApplicationRefInput{By: cato_models.ObjectRefBy(by), Input: input}
 }
 
+func AllocatedIP(by cato_models.ObjectRefBy, input string) *cato_models.AllocatedIPRefInput {
+	return &cato_models.AllocatedIPRefInput{By: by, Input: input}
+}
+
+func Site(by cato_models.ObjectRefBy, input string) *cato_models.SiteRefInput {
+	return &cato_models.SiteRefInput{By: by, Input: input}
+}
+
+func SubscriptionMailingList(by cato_models.ObjectRefBy, input string) *cato_models.SubscriptionMailingListRefInput {
+	return &cato_models.SubscriptionMailingListRefInput{By: by, Input: input}
+}
+
+func SubscriptionGroup(by cato_models.ObjectRefBy, input string) *cato_models.SubscriptionGroupRefInput {
+	return &cato_models.SubscriptionGroupRefInput{By: by, Input: input}
+}
+
+func SubscriptionWebhook(by cato_models.ObjectRefBy, input string) *cato_models.SubscriptionWebhookRefInput {
+	return &cato_models.SubscriptionWebhookRefInput{By: by, Input: input}
+}
+
 // StringsFromList decodes a types.List of strings (nil when null/unknown).
 func StringsFromList(ctx context.Context, list types.List, diags *diag.Diagnostics) []string {
 	if list.IsNull() || list.IsUnknown() {

@@ -81,10 +81,18 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiaindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiapolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiarule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiasection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swpindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swppolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swprule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swpsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/strule"
@@ -631,6 +639,14 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		stsection.NewSplitTunnelSectionResource,
 		stindex.NewStRulesIndexResource,
 		stpolicy.NewSplitTunnelPolicyResource,
+		rpfrule.NewRemotePortFwdRuleResource,
+		rpfsection.NewRemotePortFwdSectionResource,
+		rpfindex.NewRpfRulesIndexResource,
+		rpfpolicy.NewRemotePortFwdPolicyResource,
+		swprule.NewSiteWebProxyRuleResource,
+		swpsection.NewSiteWebProxySectionResource,
+		swpindex.NewSwpRulesIndexResource,
+		swppolicy.NewSiteWebProxyPolicyResource,
 		acrule.NewApplicationControlRuleResource,
 		acindex.NewApcRulesIndexResource,
 		acsection.NewApplicationControlSectionResource,
