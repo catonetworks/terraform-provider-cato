@@ -43,11 +43,7 @@ func TestAccBulkPolicyFamilies(t *testing.T) {
 			return fmt.Sprintf(`range={global_ip_range={id=%q}}`, ranges[0].ID)
 		}},
 		{"terminal_server", "ts", func(t *testing.T) string {
-			ranges := acc.GetGlobalIPRanges(t)
-			if len(ranges) == 0 {
-				t.Skip("account needs an existing global IP range")
-			}
-			return fmt.Sprintf(`allowed_host_ip={id=%q}`, ranges[0].ID)
+			return fmt.Sprintf(`allowed_host_ip={id=%q}`, globalIPRangeID(t))
 		}},
 		{"site_web_proxy", "swp", func(_ *testing.T) string {
 			return `fqdn="validation.invalid", port="8443", allowed_destination_protocol="HTTPS", should_associate_with_all_sites=false, authentication_config={method="NONE"}`
@@ -200,4 +196,20 @@ func readPublishedPolicy(ctx context.Context, t *testing.T, family string) (any,
 		return nil, fmt.Errorf("no published-policy reader for %s", family)
 	}
 	return response, err
+}
+
+// Fixture discovery must never create or delete shared account objects.
+func globalIPRangeID(t *testing.T) string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	response, err := acc.GetClient(t).ObjectGlobalIPRangeList(ctx, acc.CatoAccountID, nil)
+	if err != nil {
+		t.Fatalf("list existing global IP ranges: %v", err)
+	}
+	items := response.GetObject().GetGlobalIPRangeList().GetItems()
+	if len(items) == 0 {
+		t.Skip("account needs an existing global IP range fixture")
+	}
+	return items[0].GetID()
 }
