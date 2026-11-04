@@ -18,6 +18,10 @@ The `cato_if_sub_policy` resource manages an Internet Firewall sub-policy (a nes
 // NOTE: The Cato API has no updateSubPolicy mutation, so changing `name` or
 // `description` forces replacement, which also removes any rules contained in
 // the sub-policy. The scope must set at least one non-ANY match field.
+// Changing `at.position` or `at.ref` moves the sub-policy scope in place and
+// preserves its child rules. Refresh retains the last applied placement;
+// external reordering is not detected. If cato_bulk_if_move_rule manages
+// ordering, keep `at` unchanged and change positions in that resource instead.
 
 // minimal sub-policy
 resource "cato_if_sub_policy" "minimal" {
@@ -106,7 +110,7 @@ resource "cato_if_rule" "in_sub_policy" {
 
 ### Required
 
-- `at` (Attributes) Position of the sub-policy scope within the Internet Firewall policy. Input-only placement used at creation; ongoing ordering is managed by cato_bulk_if_move_rule. (see [below for nested schema](#nestedatt--at))
+- `at` (Attributes) Position of the sub-policy scope within the Internet Firewall policy. Changing position or ref moves the scope rule in place without replacing the sub-policy or its child rules. Refresh preserves the last applied placement and does not detect external reordering. When cato_bulk_if_move_rule owns ordering, keep at unchanged to avoid conflicting moves. (see [below for nested schema](#nestedatt--at))
 - `description` (String) Sub-policy description. Changing this forces replacement (no updateSubPolicy API).
 - `name` (String) Sub-policy name. Changing this forces replacement (no updateSubPolicy API).
 - `scope` (Attributes) Scope of the sub-policy. This is the SUB_POLICY_SCOPE rule that defines when the sub-policy applies. Uses the same parameters as a cato_if_rule rule. (see [below for nested schema](#nestedatt--scope))

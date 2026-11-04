@@ -272,7 +272,7 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	plan.ScopeRuleID = state.ScopeRuleID
 	plan.CleanupRuleID = state.CleanupRuleID
 
-	// name/description are RequiresReplace, so only the scope can change here.
+	// Name/description require replacement; scope, cleanup, and placement update in place.
 	scopeRule := ifrule.InternetFirewallRule{Rule: plan.Scope, At: plan.At}
 	hydrated, diags := ifrule.HydrateIfwRuleAPI(ctx, scopeRule)
 	resp.Diagnostics.Append(diags...)
@@ -338,6 +338,26 @@ func (r *ifSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		mutationPayload := cleanupUpdateResp.GetPolicy().GetInternetFirewall().GetUpdateRule()
 		if err := sharedpolicy.MutationResult(mutationPayload.GetStatus(), mutationPayload.GetErrors()); err != nil {
 			resp.Diagnostics.AddError("Sub-Policy Rule Mutation Failed", err.Error())
+			return
+		}
+	}
+
+	// Move the scope rule within the parent policy without replacing the
+	// sub-policy or its children. Preserve external ordering on unrelated updates.
+	if !plan.At.Equal(state.At) {
+		moveResp, err := r.resourceAPI().PolicyInternetFirewallMoveRule(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			cato_models.PolicyMoveRuleInput{ID: scopeRuleID, To: hydrated.Create.At},
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyInternetFirewallMoveRule error", err.Error())
+			return
+		}
+		payload := moveResp.GetPolicy().GetInternetFirewall().GetMoveRule()
+		if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Sub-Policy Scope Move Failed", err.Error())
 			return
 		}
 	}
