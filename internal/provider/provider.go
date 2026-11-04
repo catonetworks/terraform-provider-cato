@@ -70,9 +70,16 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserversection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diaindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diapolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifwrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifindex"
@@ -88,10 +95,24 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/pasection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiaindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiapolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swpindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swppolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stpolicy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tsindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tspolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsrule"
@@ -103,6 +124,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
@@ -638,6 +660,28 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		papolicy.NewPrivAccessPolicyResource,
 		parule.NewPrivAccessRuleResource,
 		parulebulk.NewPrivAccessRuleBulkResource,
+		acindex.NewApcRulesIndexResource,
+		atindex.NewAtrRulesIndexResource,
+		atpolicy.NewAppTenantRestrictionPolicyResource,
+		wnwpolicy.NewWanNetworkPolicyResource,
+		amfhindex.NewAmfhRulesIndexResource,
+		amfhpolicy.NewAntiMalwareFileHashPolicyResource,
+		ccindex.NewCcRulesIndexResource,
+		ccpolicy.NewClientConnectivityPolicyResource,
+		diaindex.NewDiaRulesIndexResource,
+		diapolicy.NewDynamicIpAllocationPolicyResource,
+		rpfindex.NewRpfRulesIndexResource,
+		rpfpolicy.NewRemotePortFwdPolicyResource,
+		ssiaindex.NewSsiaRulesIndexResource,
+		ssiapolicy.NewSdpStaticIpAllocationPolicyResource,
+		swpindex.NewSwpRulesIndexResource,
+		swppolicy.NewSiteWebProxyPolicyResource,
+		sbindex.NewSbRulesIndexResource,
+		sbpolicy.NewSocketBypassPolicyResource,
+		stindex.NewStRulesIndexResource,
+		stpolicy.NewSplitTunnelPolicyResource,
+		tsindex.NewTsRulesIndexResource,
+		tspolicy.NewTerminalServerPolicyResource,
 		atrule.NewAppTenantRestrictionRuleResource,
 		atsection.NewAppTenantRestrictionSectionResource,
 		acpolicy.NewApplicationControlPolicyResource,

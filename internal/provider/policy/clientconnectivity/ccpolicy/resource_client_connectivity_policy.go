@@ -1,0 +1,145 @@
+package ccpolicy
+
+import (
+	"context"
+
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	diag "github.com/hashicorp/terraform-plugin-framework/diag"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
+
+	clientconnectivity "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+)
+
+var (
+	_ resource.Resource                = &clientConnectivityPolicyResource{}
+	_ resource.ResourceWithConfigure   = &clientConnectivityPolicyResource{}
+	_ resource.ResourceWithImportState = &clientConnectivityPolicyResource{}
+)
+
+func NewClientConnectivityPolicyResource() resource.Resource {
+	return &clientConnectivityPolicyResource{}
+}
+
+type clientConnectivityPolicyResource struct {
+	client *catoclient.Service
+
+	apiClient ResourceClient
+}
+
+func (r *clientConnectivityPolicyResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + "_client_connectivity_policy"
+}
+
+func (r *clientConnectivityPolicyResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
+	if req.ProviderData == nil {
+		return
+	}
+	r.client = req.ProviderData.(*catoclient.Service)
+}
+
+func (r *clientConnectivityPolicyResource) ImportState(
+	ctx context.Context, _ resource.ImportStateRequest, resp *resource.ImportStateResponse,
+) {
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "client_connectivity")...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("enabled"), false)...)
+}
+
+func (r *clientConnectivityPolicyResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
+	var plan ClientConnectivityPolicyModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(r.updatePolicy(ctx, plan)...)
+	st, err := r.readState(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("read policy", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
+}
+
+func (r *clientConnectivityPolicyResource) Read(ctx context.Context, _ resource.ReadRequest, resp *resource.ReadResponse) {
+	st, err := r.readState(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("read policy", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
+}
+
+func (r *clientConnectivityPolicyResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
+	var plan ClientConnectivityPolicyModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(r.updatePolicy(ctx, plan)...)
+	st, err := r.readState(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("read policy", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
+}
+
+func (r *clientConnectivityPolicyResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+	tflog.Warn(ctx, "cato_client_connectivity_policy delete is a no-op; policy always exists")
+}
+
+func (r *clientConnectivityPolicyResource) updatePolicy(
+	ctx context.Context,
+	plan ClientConnectivityPolicyModel,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	in := convertUpdatePolicyValues(plan)
+	res, err := r.resourceAPI().PolicyClientConnectivityUpdatePolicy(ctx, in, r.client.AccountId)
+	if err != nil {
+		diags.AddError("PolicyClientConnectivityUpdatePolicy", err.Error())
+		return diags
+	}
+	up := res.GetPolicy().GetClientConnectivity().GetUpdatePolicy()
+	if up.GetStatus() == nil || *up.GetStatus() != cato_models.PolicyMutationStatusSuccess {
+		for _, e := range up.GetErrors() {
+			if e != nil && e.ErrorCode != nil {
+				diags.AddError("API error", *e.ErrorMessage)
+			}
+		}
+		return diags
+	}
+	diags.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	return diags
+}
+
+func (r *clientConnectivityPolicyResource) readState(ctx context.Context) (ClientConnectivityPolicyModel, error) {
+	out := convertReadStateValues()
+	body, err := r.resourceAPI().PolicyClientConnectivityPolicy(ctx, r.client.AccountId)
+	if err != nil {
+		return out, err
+	}
+	pol := body.GetPolicy().GetClientConnectivity().GetPolicy()
+	if pol == nil {
+		return out, nil
+	}
+	convertReadStateValues2(&out, pol)
+	return out, nil
+}
