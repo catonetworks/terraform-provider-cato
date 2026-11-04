@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.4.0 (2026-11-04)
+
+### Breaking changes
+- None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration.
+
+### Features
+- Added `cato_dns_settings`, `cato_dns_site_settings`, and `cato_dns_forwarding_rule` to manage account DNS settings, site DNS overrides, and individual forwarding rules.
+- Added `cato_dhcp_settings`, `cato_dhcp_option`, and `cato_dhcp_relay_group` to manage account DHCP settings, individual DHCP options, and relay groups.
+- Added `cato_always_on_policy` to enable or disable the account's Always On policy, `cato_always_on_section` to manage its sections, and `cato_always_on_rule_bulk` to order existing sections and rules and publish their changes.
+
+### Enhancements
+- Added optional `cleanup_rule` settings and computed `cleanup_rule_id` to `cato_if_sub_policy`, so you can configure and track the automatically created cleanup rule alongside its sub-policy.
+- Made platform and source-reference collections optional in `cato_always_on_rule`, allowing configurations to omit unused match criteria.
+
+### Bug fixes
+- Fixed `cato_if_sub_policy.at` updates to reposition the existing scope rule without replacing the sub-policy or its child rules. Changes to either `position` or `ref` now take effect; unrelated updates preserve the existing order.
+- Fixed `cato_if_sub_policy` refresh and import handling to avoid unnecessary replacement for empty descriptions and imported placement. Scope tracking can now be omitted when it is managed by Cato.
+- Improved `cato_if_sub_policy` error reporting when scope or cleanup rules are missing or Cato rejects a rule change or publication, avoiding false success and preserving tracked ownership.
+- Added retries for temporary read failures after `cato_if_rule` creation and updates, reducing failed applies after the rule has already been saved.
+- Improved `cato_bulk_if_move_rule` retries when concurrent policy changes invalidate the requested ordering. Internet and WAN firewall bulk ordering now reports a missing target section directly instead of failing with an incomplete ordering request.
+
+### Notes
+- The standalone DNS and DHCP resources require the corresponding account features, `NCS_DNS_PUBLIC_API` and `NCS_DHCP_PUBLIC_API`.
+- Removing `cato_dns_settings` or `cato_dhcp_settings` from Terraform retains the account settings. Removing `cato_dns_site_settings` removes the site override and restores inherited DNS settings.
+- Always On rule and section changes are saved to the draft policy. Use `cato_always_on_rule_bulk` to order and publish them; configure its `publish_trigger` and dependencies when rule or section content can change without changing their order.
+- `cato_if_sub_policy.at` retains the last applied placement during refresh and does not detect external reordering. If `cato_bulk_if_move_rule` manages ordering, keep `at` unchanged to avoid conflicting moves.
+
 ## 1.3.0 (2026-10-26)
 
 ### Breaking changes
