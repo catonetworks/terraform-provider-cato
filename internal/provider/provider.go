@@ -101,7 +101,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiapolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swpindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swppolicy"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swprule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule"
@@ -677,7 +676,6 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		ssiapolicy.NewSdpStaticIpAllocationPolicyResource,
 		swpindex.NewSwpRulesIndexResource,
 		swppolicy.NewSiteWebProxyPolicyResource,
-		swprule.NewSiteWebProxyRuleResource,
 		sbindex.NewSbRulesIndexResource,
 		sbpolicy.NewSocketBypassPolicyResource,
 		stindex.NewStRulesIndexResource,
