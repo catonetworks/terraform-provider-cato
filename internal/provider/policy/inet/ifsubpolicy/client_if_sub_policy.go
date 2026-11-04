@@ -12,6 +12,13 @@ import (
 // cato_if_sub_policy resource. It exists so the resource can be unit tested with
 // generated mocks.
 type InternetFirewallSubPolicyClient interface {
+	PolicyInternetFirewallMoveRule(
+		ctx context.Context,
+		internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
+		policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error)
 	PolicyInternetFirewall(
 		ctx context.Context,
 		internetFirewallPolicyInput *cato_models.InternetFirewallPolicyInput,
@@ -60,6 +67,13 @@ func (r *ifSubPolicyResource) getClient() InternetFirewallSubPolicyClient {
 
 // ResourceClient contains only the SDK operations used by this resource.
 type ResourceClient interface {
+	PolicyInternetFirewallMoveRule(
+		ctx context.Context,
+		internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
+		policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+		accountID string,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error)
 	PolicyInternetFirewall(
 		ctx context.Context,
 		internetFirewallPolicyInput *cato_models.InternetFirewallPolicyInput,
@@ -101,6 +115,18 @@ func (r *ifSubPolicyResource) resourceAPI() ResourceClient {
 		return r.apiClient
 	}
 	return &sdkClient{resource: r}
+}
+
+func (c *sdkClient) PolicyInternetFirewallMoveRule(
+	ctx context.Context,
+	internetFirewallPolicyMutationInput *cato_models.InternetFirewallPolicyMutationInput,
+	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
+	accountID string,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.PolicyInternetFirewallMoveRule, error) {
+	return c.resource.getClient().PolicyInternetFirewallMoveRule(
+		ctx, internetFirewallPolicyMutationInput, policyMoveRuleInput, accountID, interceptors...,
+	)
 }
 
 func (c *sdkClient) PolicyInternetFirewall(

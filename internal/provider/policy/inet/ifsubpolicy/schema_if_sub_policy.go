@@ -163,14 +163,14 @@ func (r *ifSubPolicyResource) Schema(ctx context.Context, _ resource.SchemaReque
 }
 
 // ifSubPolicyAtAttribute defines the position of the sub-policy scope within the
-// main policy. Like the standard cato_if_rule `at`, it is an input-only
-// placement parameter: the API never returns a position, Read preserves the
-// stored value instead of reconciling it, and changing it is a no-op in-place
-// update (actual ordering is owned by cato_bulk_if_move_rule).
+// main policy. Changes move the scope rule in place. The API does not return
+// relative placement, so Read preserves the last applied value.
 func ifSubPolicyAtAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		Description: "Position of the sub-policy scope within the Internet Firewall policy. " +
-			"Input-only placement used at creation; ongoing ordering is managed by cato_bulk_if_move_rule.",
+			"Changing position or ref moves the scope rule in place without replacing the sub-policy or its child rules. " +
+			"Refresh preserves the last applied placement and does not detect external reordering. " +
+			"When cato_bulk_if_move_rule owns ordering, keep at unchanged to avoid conflicting moves.",
 		Required: true,
 		Attributes: map[string]schema.Attribute{
 			"position": schema.StringAttribute{
