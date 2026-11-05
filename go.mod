@@ -5,7 +5,8 @@ go 1.26.10
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v1.1.2
+	github.com/catonetworks/cato-go-sdk v1.1.3
+	github.com/gqlgo/gqlgenc v0.37.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
@@ -14,6 +15,7 @@ require (
 	github.com/hashicorp/terraform-plugin-testing v1.16.0
 	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.11.1
+	github.com/vektah/gqlparser/v2 v2.5.33
 	go.yaml.in/yaml/v3 v3.0.4
 )
 
@@ -124,7 +126,6 @@ require (
 	github.com/gostaticanalysis/comment v1.5.0 // indirect
 	github.com/gostaticanalysis/forcetypeassert v0.2.0 // indirect
 	github.com/gostaticanalysis/nilerr v0.1.2 // indirect
-	github.com/gqlgo/gqlgenc v0.37.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-checkpoint v0.5.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -246,7 +247,6 @@ require (
 	github.com/ultraware/whitespace v0.2.0 // indirect
 	github.com/uudashr/gocognit v1.2.1 // indirect
 	github.com/uudashr/iface v1.4.2 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.33 // indirect
 	github.com/vektra/mockery/v3 v3.6.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect

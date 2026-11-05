@@ -3,13 +3,11 @@ package acrule
 import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -17,6 +15,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -48,25 +47,6 @@ func applicationControlScheduleSchemaAttributes() map[string]schema.Attribute {
 }
 
 func applicationControlTrackingSchemaAttributes() map[string]schema.Attribute {
-	nameID := schema.NestedAttributeObject{
-		Attributes: map[string]schema.Attribute{
-			"name": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.Expressions{
-						path.MatchRelative().AtParent().AtName("id"),
-					}...),
-				},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"id": schema.StringAttribute{
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-		},
-	}
 	return map[string]schema.Attribute{
 		"event": schema.SingleNestedAttribute{
 			Optional: true,
@@ -103,28 +83,22 @@ func applicationControlTrackingSchemaAttributes() map[string]schema.Attribute {
 					},
 				},
 				"subscription_group": schema.SetNestedAttribute{
-					Optional:     true,
-					Computed:     true,
-					NestedObject: nameID,
-					PlanModifiers: []planmodifier.Set{
-						setplanmodifier.UseStateForUnknown(),
-					},
+					Optional:      true,
+					Computed:      true,
+					NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Subscription group")},
+					PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 				},
 				"webhook": schema.SetNestedAttribute{
-					Optional:     true,
-					Computed:     true,
-					NestedObject: nameID,
-					PlanModifiers: []planmodifier.Set{
-						setplanmodifier.UseStateForUnknown(),
-					},
+					Optional:      true,
+					Computed:      true,
+					NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Webhook")},
+					PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 				},
 				"mailing_list": schema.SetNestedAttribute{
-					Optional:     true,
-					Computed:     true,
-					NestedObject: nameID,
-					PlanModifiers: []planmodifier.Set{
-						setplanmodifier.UseStateForUnknown(),
-					},
+					Optional:      true,
+					Computed:      true,
+					NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Mailing list")},
+					PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 				},
 			},
 		},
@@ -135,25 +109,6 @@ func applicationControlTrackingSchemaAttributes() map[string]schema.Attribute {
 //
 //nolint:funlen
 func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
-	deviceNested := schema.NestedAttributeObject{
-		Attributes: map[string]schema.Attribute{
-			"name": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.Expressions{
-						path.MatchRelative().AtParent().AtName("id"),
-					}...),
-				},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"id": schema.StringAttribute{
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-		},
-	}
 	return map[string]schema.Attribute{
 		"action": schema.StringAttribute{
 			Description: "Rule action",
@@ -198,13 +153,11 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			Attributes: applicationControlTrackingSchemaAttributes(),
 		},
 		"device": schema.SetNestedAttribute{
-			Description:  "Device profiles",
-			Optional:     true,
-			Computed:     true,
-			NestedObject: deviceNested,
-			PlanModifiers: []planmodifier.Set{
-				setplanmodifier.UseStateForUnknown(),
-			},
+			Description:   "Device profiles",
+			Optional:      true,
+			Computed:      true,
+			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Device")},
+			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
 		"access_method": schema.ListNestedAttribute{
 			Description: "Access method rows",
@@ -240,24 +193,9 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"activity": schema.SingleNestedAttribute{
-						Required: true,
-						Attributes: map[string]schema.Attribute{
-							"id": schema.StringAttribute{
-								Optional: true,
-								Computed: true,
-								Validators: []validator.String{
-									stringvalidator.ConflictsWith(path.Expressions{
-										path.MatchRelative().AtParent().AtName("name"),
-									}...),
-								},
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-							"name": schema.StringAttribute{
-								Optional:      true,
-								Computed:      true,
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-						},
+						Required:      true,
+						Attributes:    idname.SchemaNameID("Activity"),
+						PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 					},
 				},
 			},
@@ -280,27 +218,10 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			},
 			Attributes: map[string]schema.Attribute{
 				"user_notification": schema.SetNestedAttribute{
-					Optional: true,
-					Computed: true,
-					NestedObject: schema.NestedAttributeObject{
-						Attributes: map[string]schema.Attribute{
-							"name": schema.StringAttribute{
-								Optional: true,
-								Computed: true,
-								Validators: []validator.String{
-									stringvalidator.ConflictsWith(path.Expressions{
-										path.MatchRelative().AtParent().AtName("id"),
-									}...),
-								},
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-							"id": schema.StringAttribute{
-								Optional:      true,
-								Computed:      true,
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-						},
-					},
+					Optional:      true,
+					Computed:      true,
+					NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("User notification")},
+					PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 				},
 			},
 		},
@@ -339,50 +260,16 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			},
 			Attributes: map[string]schema.Attribute{
 				"content_profile": schema.SetNestedAttribute{
-					Optional: true,
-					Computed: true,
-					NestedObject: schema.NestedAttributeObject{
-						Attributes: map[string]schema.Attribute{
-							"name": schema.StringAttribute{
-								Optional: true,
-								Computed: true,
-								Validators: []validator.String{
-									stringvalidator.ConflictsWith(path.Expressions{
-										path.MatchRelative().AtParent().AtName("id"),
-									}...),
-								},
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-							"id": schema.StringAttribute{
-								Optional:      true,
-								Computed:      true,
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-						},
-					},
+					Optional:      true,
+					Computed:      true,
+					NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Content profile")},
+					PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 				},
 				"edm_profile": schema.SetNestedAttribute{
-					Optional: true,
-					Computed: true,
-					NestedObject: schema.NestedAttributeObject{
-						Attributes: map[string]schema.Attribute{
-							"name": schema.StringAttribute{
-								Optional: true,
-								Computed: true,
-								Validators: []validator.String{
-									stringvalidator.ConflictsWith(path.Expressions{
-										path.MatchRelative().AtParent().AtName("id"),
-									}...),
-								},
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-							"id": schema.StringAttribute{
-								Optional:      true,
-								Computed:      true,
-								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-							},
-						},
-					},
+					Optional:      true,
+					Computed:      true,
+					NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("EDM profile")},
+					PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 				},
 			},
 		},

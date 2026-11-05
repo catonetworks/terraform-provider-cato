@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -10,6 +11,8 @@ import (
 
 // ResourceClient contains only the SDK operations used by this resource.
 type ResourceClient interface {
+	AccountRoles(ctx context.Context, accountID string, accountType *cato_models.AccountType,
+		interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.AccountRoles, error)
 	Admin(
 		ctx context.Context,
 		accountID string,
@@ -108,3 +111,35 @@ func (c *sdkClient) Admins(
 type sdkClient struct{ resource *adminResource }
 
 var _ ResourceClient = (*sdkClient)(nil)
+
+func (c *sdkClient) AccountRoles(ctx context.Context, accountID string, accountType *cato_models.AccountType,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.AccountRoles, error) {
+	return c.resource.client.Catov2.AccountRoles(ctx, accountID, accountType, interceptors...)
+}
+
+// resolveManagedRoleID requires an exact, unambiguous name within the admin's account.
+func resolveManagedRoleID(ctx context.Context, client ResourceClient, accountID, name string) (string, error) {
+	response, err := client.AccountRoles(ctx, accountID, nil)
+	if err != nil {
+		return "", err
+	}
+	roles := response.GetAccountRoles()
+	if roles == nil || roles.GetItems() == nil {
+		return "", fmt.Errorf("API returned no account roles")
+	}
+	var id string
+	for _, role := range roles.GetItems() {
+		if role == nil || role.GetName() != name || role.GetID() == "" {
+			continue
+		}
+		if id != "" && id != role.GetID() {
+			return "", fmt.Errorf("managed role name %q is ambiguous; specify an explicit ID", name)
+		}
+		id = role.GetID()
+	}
+	if id == "" {
+		return "", fmt.Errorf("managed role %q not found in account %s", name, accountID)
+	}
+	return id, nil
+}

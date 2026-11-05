@@ -507,8 +507,8 @@ Optional:
 
 Optional:
 
-- `id` (String) App category ID
-- `name` (String) App category name
+- `id` (String) app_category ID
+- `name` (String) app_category name
 
 
 <a id="nestedatt--rule--application--application"></a>
@@ -516,8 +516,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Application ID
-- `name` (String) Application name
+- `id` (String) application ID
+- `name` (String) application name
 
 
 <a id="nestedatt--rule--application--country"></a>
@@ -525,8 +525,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Country ID
-- `name` (String) Country name
+- `id` (String) country ID
+- `name` (String) country name
 
 
 <a id="nestedatt--rule--application--custom_app"></a>
@@ -534,8 +534,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Custom app ID
-- `name` (String) Custom app name
+- `id` (String) custom_app ID
+- `name` (String) custom_app name
 
 
 <a id="nestedatt--rule--application--custom_category"></a>
@@ -543,8 +543,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Custom category ID
-- `name` (String) Custom category name
+- `id` (String) custom_category ID
+- `name` (String) custom_category name
 
 
 <a id="nestedatt--rule--application--custom_service"></a>
@@ -596,8 +596,8 @@ Required:
 
 Optional:
 
-- `id` (String) Global IP range ID
-- `name` (String) Global IP range name
+- `id` (String) global_ip_range ID
+- `name` (String) global_ip_range name
 
 
 <a id="nestedatt--rule--application--ip_range"></a>
@@ -614,8 +614,8 @@ Required:
 
 Optional:
 
-- `id` (String) Service ID
-- `name` (String) Service name
+- `id` (String) service ID
+- `name` (String) service name
 
 
 
@@ -624,8 +624,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Country ID
-- `name` (String) Country name
+- `id` (String) country ID
+- `name` (String) country name
 
 
 <a id="nestedatt--rule--device_posture_profile"></a>
@@ -633,8 +633,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Device posture profile ID
-- `name` (String) Device posture profile name
+- `id` (String) device_posture_profile ID
+- `name` (String) device_posture_profile name
 
 
 <a id="nestedatt--rule--source"></a>
@@ -661,8 +661,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Floating subnet ID
-- `name` (String) Floating subnet name
+- `id` (String) floating_subnet ID
+- `name` (String) floating_subnet name
 
 
 <a id="nestedatt--rule--source--global_ip_range"></a>
@@ -670,8 +670,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Global IP range ID
-- `name` (String) Global IP range name
+- `id` (String) global_ip_range ID
+- `name` (String) global_ip_range name
 
 
 <a id="nestedatt--rule--source--group"></a>
@@ -679,8 +679,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Group ID
-- `name` (String) Group name
+- `id` (String) group ID
+- `name` (String) group name
 
 
 <a id="nestedatt--rule--source--host"></a>
@@ -688,8 +688,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Host ID
-- `name` (String) Host name
+- `id` (String) host ID
+- `name` (String) host name
 
 
 <a id="nestedatt--rule--source--ip_range"></a>
@@ -706,8 +706,8 @@ Required:
 
 Optional:
 
-- `id` (String) Network interface ID
-- `name` (String) Network interface name
+- `id` (String) network_interface ID
+- `name` (String) network_interface name
 
 
 <a id="nestedatt--rule--source--site"></a>
@@ -715,8 +715,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site ID
-- `name` (String) Site name
+- `id` (String) site ID
+- `name` (String) site name
 
 
 <a id="nestedatt--rule--source--site_network_subnet"></a>
@@ -724,8 +724,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site network subnet ID
-- `name` (String) Site network subnet name
+- `id` (String) site_network_subnet ID
+- `name` (String) site_network_subnet name
 
 
 <a id="nestedatt--rule--source--system_group"></a>
@@ -733,8 +733,8 @@ Optional:
 
 Optional:
 
-- `id` (String) System group ID
-- `name` (String) System group name
+- `id` (String) system_group ID
+- `name` (String) system_group name
 
 
 <a id="nestedatt--rule--source--user"></a>
@@ -742,8 +742,8 @@ Optional:
 
 Optional:
 
-- `id` (String) User ID
-- `name` (String) User name
+- `id` (String) user ID
+- `name` (String) user name
 
 
 <a id="nestedatt--rule--source--users_group"></a>
@@ -751,5 +751,5 @@ Optional:
 
 Optional:
 
-- `id` (String) User group ID
-- `name` (String) User group name
+- `id` (String) users_group ID
+- `name` (String) users_group name

@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -98,24 +97,18 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
 					"site": schema.SetNestedAttribute{
-						Description: "List of sites",
-						Optional:    true,
-						Computed:    true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes:    idname.SchemaNameID("Site"),
-							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-						},
-						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+						Description:   "List of sites",
+						Optional:      true,
+						Computed:      true,
+						NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site")},
+						PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 					},
 					"group": schema.SetNestedAttribute{
-						Description: "List of groups",
-						Optional:    true,
-						Computed:    true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes:    idname.SchemaNameID("Group"),
-							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-						},
-						PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+						Description:   "List of groups",
+						Optional:      true,
+						Computed:      true,
+						NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group")},
+						PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 					},
 				},
 			},
@@ -269,77 +262,56 @@ func (r *socketLanNetworkRuleResource) lanRuleSourceDestinationSchema(descriptio
 				},
 			},
 			"host": schema.SetNestedAttribute{
-				Description: "List of hosts",
-				Optional:    true,
-				Computed:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("Host"),
-					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Description:   "List of hosts",
+				Optional:      true,
+				Computed:      true,
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Host")},
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 			},
 			"group": schema.SetNestedAttribute{
-				Description: "List of groups",
-				Optional:    true,
-				Computed:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("Group"),
-					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Description:   "List of groups",
+				Optional:      true,
+				Computed:      true,
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group")},
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 			},
 			"system_group": schema.SetNestedAttribute{
-				Description: "List of system groups",
-				Optional:    true,
-				Computed:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("System group"),
-					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Description:   "List of system groups",
+				Optional:      true,
+				Computed:      true,
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("System group")},
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 			},
 			"network_interface": schema.SetNestedAttribute{
-				Description: "List of network interfaces",
-				Optional:    true,
-				Computed:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("Network interface"),
-					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Description:   "List of network interfaces",
+				Optional:      true,
+				Computed:      true,
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Network interface")},
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 			},
 			"global_ip_range": schema.SetNestedAttribute{
-				Description: "List of global IP ranges",
-				Optional:    true,
-				Computed:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("Global IP range"),
-					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Description:   "List of global IP ranges",
+				Optional:      true,
+				Computed:      true,
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global IP range")},
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 			},
 			"floating_subnet": schema.SetNestedAttribute{
 				Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic " +
 					"exactly matched to the route advertised by BGP. They are not associated with a " +
 					"specific site. This is useful in scenarios such as active-standby high " +
 					"availability routed via BGP.",
-				Optional: true,
-				Computed: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("Floating subnet"),
-					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Optional:      true,
+				Computed:      true,
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Floating subnet")},
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 			},
 			"site_network_subnet": schema.SetNestedAttribute{
-				Description: "GlobalRange + InterfaceSubnet",
-				Optional:    true,
-				Computed:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes:    idname.SchemaNameID("Site Network Subnet"),
-					PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-				},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Description:   "GlobalRange + InterfaceSubnet",
+				Optional:      true,
+				Computed:      true,
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site Network Subnet")},
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 			},
 		},
 	}

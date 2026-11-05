@@ -729,8 +729,8 @@ func hydrateSocketLanSiteState(
 	apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule,
 ) types.Object {
 	siteAttrs := map[string]attr.Value{
-		"site":  types.SetNull(idname.RefObjectType),
-		"group": types.SetNull(idname.RefObjectType),
+		"site":  types.SetValueMust(idname.RefObjectType, nil),
+		"group": types.SetValueMust(idname.RefObjectType, nil),
 	}
 
 	// Sites
@@ -775,13 +775,13 @@ func hydrateSocketLanSourceState(
 		"ip":                  types.ListNull(types.StringType),
 		"subnet":              types.ListNull(types.StringType),
 		"ip_range":            types.ListNull(iprange.RangeObjectType),
-		"host":                types.SetNull(idname.RefObjectType),
-		"group":               types.SetNull(idname.RefObjectType),
-		"system_group":        types.SetNull(idname.RefObjectType),
-		"network_interface":   types.SetNull(idname.RefObjectType),
-		"global_ip_range":     types.SetNull(idname.RefObjectType),
-		"floating_subnet":     types.SetNull(idname.RefObjectType),
-		"site_network_subnet": types.SetNull(idname.RefObjectType),
+		"host":                types.SetValueMust(idname.RefObjectType, nil),
+		"group":               types.SetValueMust(idname.RefObjectType, nil),
+		"system_group":        types.SetValueMust(idname.RefObjectType, nil),
+		"network_interface":   types.SetValueMust(idname.RefObjectType, nil),
+		"global_ip_range":     types.SetValueMust(idname.RefObjectType, nil),
+		"floating_subnet":     types.SetValueMust(idname.RefObjectType, nil),
+		"site_network_subnet": types.SetValueMust(idname.RefObjectType, nil),
 	}
 
 	// VLAN
@@ -940,13 +940,13 @@ func hydrateSocketLanDestinationState(
 		"ip":                  types.ListNull(types.StringType),
 		"subnet":              types.ListNull(types.StringType),
 		"ip_range":            types.ListNull(iprange.RangeObjectType),
-		"host":                types.SetNull(idname.RefObjectType),
-		"group":               types.SetNull(idname.RefObjectType),
-		"system_group":        types.SetNull(idname.RefObjectType),
-		"network_interface":   types.SetNull(idname.RefObjectType),
-		"global_ip_range":     types.SetNull(idname.RefObjectType),
-		"floating_subnet":     types.SetNull(idname.RefObjectType),
-		"site_network_subnet": types.SetNull(idname.RefObjectType),
+		"host":                types.SetValueMust(idname.RefObjectType, nil),
+		"group":               types.SetValueMust(idname.RefObjectType, nil),
+		"system_group":        types.SetValueMust(idname.RefObjectType, nil),
+		"network_interface":   types.SetValueMust(idname.RefObjectType, nil),
+		"global_ip_range":     types.SetValueMust(idname.RefObjectType, nil),
+		"floating_subnet":     types.SetValueMust(idname.RefObjectType, nil),
+		"site_network_subnet": types.SetValueMust(idname.RefObjectType, nil),
 	}
 
 	// VLAN

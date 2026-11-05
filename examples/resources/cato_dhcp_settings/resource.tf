@@ -8,5 +8,6 @@ resource "cato_dhcp_settings" "example" {
   # }
 }
 # Omission preserves current lease/relay configuration.
+# Omitting relay.group retains the selected relay group.
 # Enabled relay needs an effective timeout and group; disable relay to stop using it.
 # Destroy removes Terraform ownership and retains account DHCP settings.

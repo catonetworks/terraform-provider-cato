@@ -44,13 +44,13 @@ resource "cato_admin" "basic_admin" {
 
   managed_roles = [
     {
-      id = "1"
+      name = "Editor" # Or specify id = "1" instead of name.
     }
   ]
 }
 
 # Example: Admin user creation for MSP in Sub Account from Reseller API key
-resource "cato_admin" "basic_admin" {
+resource "cato_admin" "sub_account_admin" {
   account_id             = "12345" // Sub account ID for MSP use
   email                  = "admin@email.com"
   first_name             = "John"
@@ -74,14 +74,14 @@ resource "cato_admin" "reseller_admin" {
 
   managed_roles = [
     {
-      id               = "1"
-      allowed_accounts = ["1234"]
+      id = "1"
     }
   ]
 
   reseller_roles = [
     {
-      id = "4"
+      id               = "4"
+      allowed_accounts = ["1234"]
     }
   ]
 }
@@ -100,7 +100,7 @@ resource "cato_admin" "reseller_admin" {
 
 - `account_id` (String) Account ID to which the admin belongs.
 - `admin_id` (String) Admin user ID
-- `managed_roles` (Attributes Set) (see [below for nested schema](#nestedatt--managed_roles))
+- `managed_roles` (Attributes Set) Managed account roles. Specify either id or name for each role; names must be unique within the account. (see [below for nested schema](#nestedatt--managed_roles))
 - `password_never_expires` (Boolean) Whether the password never expires
 - `reseller_roles` (Attributes Set) (see [below for nested schema](#nestedatt--reseller_roles))
 
@@ -112,12 +112,9 @@ resource "cato_admin" "reseller_admin" {
 <a id="nestedatt--managed_roles"></a>
 ### Nested Schema for `managed_roles`
 
-Required:
+Optional:
 
 - `id` (String) Role ID
-
-Read-Only:
-
 - `name` (String) Role name
 
 

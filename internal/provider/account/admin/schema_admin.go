@@ -13,9 +13,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
-//nolint:funlen
 func (r *adminResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_admin` resource contains the configuration parameters necessary to manage a Cato Networks admin user.",
@@ -74,25 +75,11 @@ func (r *adminResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Default:     booldefault.StaticBool(true),
 			},
 			"managed_roles": schema.SetNestedAttribute{
-				Optional: true,
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.UseStateForUnknown(),
-				},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Description: "Role ID",
-							Required:    true,
-						},
-						"name": schema.StringAttribute{
-							Description: "Role name",
-							Computed:    true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.UseStateForUnknown(),
-							},
-						},
-					},
-				},
+				Description:   "Managed account roles. Specify either id or name for each role; names must be unique within the account.",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
+				NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Role")},
 			},
 			"reseller_roles": schema.SetNestedAttribute{
 				Optional: true,

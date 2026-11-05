@@ -8,7 +8,42 @@ import (
 	attr "github.com/hashicorp/terraform-plugin-framework/attr"
 	diag "github.com/hashicorp/terraform-plugin-framework/diag"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
+
+// resolveManagedRoles fills missing IDs before conversion and preserves them for post-write hydration.
+func resolveManagedRoles(ctx context.Context, plan *Admin, client ResourceClient, accountID string, diagnostics *diag.Diagnostics) {
+	if !utils.HasValue(plan.ManagedRoles) {
+		return
+	}
+	var roles []ManagedRole
+	diagnostics.Append(plan.ManagedRoles.ElementsAs(ctx, &roles, false)...)
+	if diagnostics.HasError() {
+		return
+	}
+	for i := range roles {
+		if utils.HasValue(roles[i].ID) && roles[i].ID.ValueString() != "" {
+			continue
+		}
+		if !utils.HasValue(roles[i].Name) || roles[i].Name.ValueString() == "" {
+			diagnostics.AddError("Invalid managed role", "Each managed role must contain a known, non-empty ID or name.")
+			return
+		}
+		id, err := resolveManagedRoleID(ctx, client, accountID, roles[i].Name.ValueString())
+		if err != nil {
+			diagnostics.AddError("Cato API Admin error", err.Error())
+			return
+		}
+		roles[i].ID = types.StringValue(id)
+	}
+	resolved, diags := types.SetValueFrom(ctx, idname.RefObjectType, roles)
+	diagnostics.Append(diags...)
+	if !diagnostics.HasError() {
+		plan.ManagedRoles = resolved
+	}
+}
 
 // convertCreateInput converts between the Terraform model and SDK values.
 //
@@ -120,7 +155,7 @@ func convertCreateInput2(plan *Admin, curAccountID string, adminID string) {
 	plan.AdminID = types.StringValue(adminID)
 }
 
-// populateAdminStateFromResponse applies computed admin fields and managed-role names after creation.
+// populateAdminStateFromResponse applies computed admin fields and role names after a write.
 //
 //nolint:gocyclo,funlen
 func populateAdminStateFromResponse(
@@ -133,7 +168,7 @@ func populateAdminStateFromResponse(
 	if readAdminResult.GetAdmin() == nil {
 		diagnostics.AddError(
 			"Cato API Admin error",
-			"Failed to read admin after creation - no admin data returned",
+			"Failed to read admin - no admin data returned",
 		)
 		return
 	}
@@ -242,44 +277,20 @@ func populateAdminStateFromResponse(
 
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(ctx context.Context, state *Admin, adminData *cato_models.Admin, diagnostics *diag.Diagnostics) {
-	if managedRoles := adminData.ManagedRoles; managedRoles != nil {
-		managedRolesList := make([]ManagedRole, 0)
-		for _, role := range managedRoles {
-			if roleData := role.Role; roleData != nil {
-				managedRolesList = append(managedRolesList, ManagedRole{
-					ID:   types.StringValue(roleData.ID),
-					Name: types.StringValue(roleData.Name),
-				})
-			}
-		}
-		if len(managedRolesList) > 0 {
-			managedRolesValue, diags := types.SetValueFrom(ctx, types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"id":   types.StringType,
-					"name": types.StringType,
-				},
-			}, managedRolesList)
-			diagnostics.Append(diags...)
-			if diagnostics.HasError() {
-				return
-			}
-			state.ManagedRoles = managedRolesValue
-		} else {
-			state.ManagedRoles = types.SetNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"id":   types.StringType,
-					"name": types.StringType,
-				},
+	managedRoles := make([]ManagedRole, 0, len(adminData.ManagedRoles))
+	for _, role := range adminData.ManagedRoles {
+		if role != nil && role.Role != nil {
+			managedRoles = append(managedRoles, ManagedRole{
+				ID: types.StringValue(role.Role.ID), Name: types.StringValue(role.Role.Name),
 			})
 		}
-	} else {
-		state.ManagedRoles = types.SetNull(types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"id":   types.StringType,
-				"name": types.StringType,
-			},
-		})
 	}
+	managedRolesValue, diags := types.SetValueFrom(ctx, idname.RefObjectType, managedRoles)
+	diagnostics.Append(diags...)
+	if diagnostics.HasError() {
+		return
+	}
+	state.ManagedRoles = managedRolesValue
 
 	// Handle reseller roles
 	if resellerRoles := adminData.ResellerRoles; resellerRoles != nil {

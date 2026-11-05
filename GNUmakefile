@@ -99,6 +99,7 @@ mocks: ## Generate mockery mocks
 	go tool mockery
 
 test: ## Run unit tests
+	@bash test_data/acctest_retry_test.sh
 	@unset TF_ACC; go test -json $$(go list ./... | grep -v terraform-provider-cato/internal/acctests) | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 
 acctest-clean: ## Delete stale acctest resources

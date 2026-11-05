@@ -995,6 +995,7 @@ func hydrateSocketLanFirewallRuleState(
 	ctx context.Context,
 	plan SocketLanFirewallRule,
 	apiRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule,
+	diags *diag.Diagnostics,
 ) SocketLanFirewallRuleStateOutput {
 	result := SocketLanFirewallRuleStateOutput{
 		ID:        types.StringValue(apiRule.ID),
@@ -1012,31 +1013,31 @@ func hydrateSocketLanFirewallRuleState(
 	}
 
 	// Source
-	result.Source = hydrateSocketLanFirewallSourceState(ctx, apiRule.Source)
+	result.Source = hydrateSocketLanFirewallSourceState(ctx, apiRule.Source, diags)
 
 	// Destination
-	result.Destination = hydrateSocketLanFirewallDestinationState(ctx, apiRule.Destination)
+	result.Destination = hydrateSocketLanFirewallDestinationState(ctx, apiRule.Destination, diags)
 
 	// Application - check if plan had application block defined
 	var planRuleData SocketLanFirewallRuleData
 	plan.Rule.As(ctx, &planRuleData, basetypes.ObjectAsOptions{})
 	planHasApplication := !planRuleData.Application.IsNull()
 	planHasService := !planRuleData.Service.IsNull()
-	result.Application = hydrateSocketLanFirewallApplicationState(ctx, apiRule.Application, planHasApplication)
+	result.Application = hydrateSocketLanFirewallApplicationState(ctx, apiRule.Application, planHasApplication, diags)
 
 	// Service - check if plan had service block defined (following Application pattern)
-	result.Service = hydrateSocketLanFirewallServiceState(ctx, apiRule.Service, planHasService)
+	result.Service = hydrateSocketLanFirewallServiceState(ctx, apiRule.Service, planHasService, diags)
 
 	// Tracking
-	result.Tracking = hydrateSocketLanFirewallTrackingState(ctx, apiRule.Tracking)
+	result.Tracking = hydrateSocketLanFirewallTrackingState(ctx, apiRule.Tracking, diags)
 
 	return result
 }
 
-//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallSourceState(
-	_ context.Context,
+	ctx context.Context,
 	apiSource cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Source,
+	diags *diag.Diagnostics,
 ) types.Object {
 	sourceAttrs := map[string]attr.Value{
 		"vlan":                types.ListNull(types.Int64Type),
@@ -1108,126 +1109,23 @@ func hydrateSocketLanFirewallSourceState(
 		sourceAttrs["ip_range"] = ipRangeList
 	}
 
-	// Host
-	if len(apiSource.Host) > 0 {
-		var hosts []attr.Value
-		for _, h := range apiSource.Host {
-			hostObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(h.ID),
-				"name": types.StringValue(h.Name),
-			})
-			hosts = append(hosts, hostObj)
-		}
-		hostSet, _ := types.SetValue(idname.RefObjectType, hosts)
-		sourceAttrs["host"] = hostSet
-	}
-
-	// Site
-	if len(apiSource.Site) > 0 {
-		var sites []attr.Value
-		for _, s := range apiSource.Site {
-			siteObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(s.ID),
-				"name": types.StringValue(s.Name),
-			})
-			sites = append(sites, siteObj)
-		}
-		siteSet, _ := types.SetValue(idname.RefObjectType, sites)
-		sourceAttrs["site"] = siteSet
-	}
-
-	// Group
-	if len(apiSource.Group) > 0 {
-		var groups []attr.Value
-		for _, g := range apiSource.Group {
-			groupObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(g.ID),
-				"name": types.StringValue(g.Name),
-			})
-			groups = append(groups, groupObj)
-		}
-		groupSet, _ := types.SetValue(idname.RefObjectType, groups)
-		sourceAttrs["group"] = groupSet
-	}
-
-	// System Group
-	if len(apiSource.SystemGroup) > 0 {
-		var systemGroups []attr.Value
-		for _, sg := range apiSource.SystemGroup {
-			sgObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(sg.ID),
-				"name": types.StringValue(sg.Name),
-			})
-			systemGroups = append(systemGroups, sgObj)
-		}
-		sgSet, _ := types.SetValue(idname.RefObjectType, systemGroups)
-		sourceAttrs["system_group"] = sgSet
-	}
-
-	// Network Interface
-	if len(apiSource.NetworkInterface) > 0 {
-		var networkInterfaces []attr.Value
-		for _, ni := range apiSource.NetworkInterface {
-			niObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(ni.ID),
-				"name": types.StringValue(ni.Name),
-			})
-			networkInterfaces = append(networkInterfaces, niObj)
-		}
-		niSet, _ := types.SetValue(idname.RefObjectType, networkInterfaces)
-		sourceAttrs["network_interface"] = niSet
-	}
-
-	// Global IP Range
-	if len(apiSource.GlobalIPRange) > 0 {
-		var globalIPRanges []attr.Value
-		for _, gir := range apiSource.GlobalIPRange {
-			girObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(gir.ID),
-				"name": types.StringValue(gir.Name),
-			})
-			globalIPRanges = append(globalIPRanges, girObj)
-		}
-		girSet, _ := types.SetValue(idname.RefObjectType, globalIPRanges)
-		sourceAttrs["global_ip_range"] = girSet
-	}
-
-	// Floating Subnet
-	if len(apiSource.FloatingSubnet) > 0 {
-		var floatingSubnets []attr.Value
-		for _, fs := range apiSource.FloatingSubnet {
-			fsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(fs.ID),
-				"name": types.StringValue(fs.Name),
-			})
-			floatingSubnets = append(floatingSubnets, fsObj)
-		}
-		fsSet, _ := types.SetValue(idname.RefObjectType, floatingSubnets)
-		sourceAttrs["floating_subnet"] = fsSet
-	}
-
-	// Site Network Subnet
-	if len(apiSource.SiteNetworkSubnet) > 0 {
-		var siteNetworkSubnets []attr.Value
-		for _, sns := range apiSource.SiteNetworkSubnet {
-			snsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(sns.ID),
-				"name": types.StringValue(sns.Name),
-			})
-			siteNetworkSubnets = append(siteNetworkSubnets, snsObj)
-		}
-		snsSet, _ := types.SetValue(idname.RefObjectType, siteNetworkSubnets)
-		sourceAttrs["site_network_subnet"] = snsSet
-	}
+	sourceAttrs["host"] = idname.ParseIDNameSet(ctx, apiSource.Host, diags)
+	sourceAttrs["site"] = idname.ParseIDNameSet(ctx, apiSource.Site, diags)
+	sourceAttrs["group"] = idname.ParseIDNameSet(ctx, apiSource.Group, diags)
+	sourceAttrs["system_group"] = idname.ParseIDNameSet(ctx, apiSource.SystemGroup, diags)
+	sourceAttrs["network_interface"] = idname.ParseIDNameSet(ctx, apiSource.NetworkInterface, diags)
+	sourceAttrs["global_ip_range"] = idname.ParseIDNameSet(ctx, apiSource.GlobalIPRange, diags)
+	sourceAttrs["floating_subnet"] = idname.ParseIDNameSet(ctx, apiSource.FloatingSubnet, diags)
+	sourceAttrs["site_network_subnet"] = idname.ParseIDNameSet(ctx, apiSource.SiteNetworkSubnet, diags)
 
 	sourceObj, _ := types.ObjectValue(SocketLanFirewallSourceAttrTypes, sourceAttrs)
 	return sourceObj
 }
 
-//nolint:gocyclo,funlen
 func hydrateSocketLanFirewallDestinationState(
-	_ context.Context,
+	ctx context.Context,
 	apiDest cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Destination,
+	diags *diag.Diagnostics,
 ) types.Object {
 	destAttrs := map[string]attr.Value{
 		"vlan":                types.ListNull(types.Int64Type),
@@ -1288,127 +1186,26 @@ func hydrateSocketLanFirewallDestinationState(
 		destAttrs["ip_range"] = ipRangeList
 	}
 
-	// Host
-	if len(apiDest.Host) > 0 {
-		var hosts []attr.Value
-		for _, h := range apiDest.Host {
-			hostObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(h.ID),
-				"name": types.StringValue(h.Name),
-			})
-			hosts = append(hosts, hostObj)
-		}
-		hostSet, _ := types.SetValue(idname.RefObjectType, hosts)
-		destAttrs["host"] = hostSet
-	}
+	destAttrs["host"] = idname.ParseIDNameSet(ctx, apiDest.Host, diags)
+	destAttrs["site"] = idname.ParseIDNameSet(ctx, apiDest.Site, diags)
+	destAttrs["group"] = idname.ParseIDNameSet(ctx, apiDest.Group, diags)
+	destAttrs["system_group"] = idname.ParseIDNameSet(ctx, apiDest.SystemGroup, diags)
+	destAttrs["network_interface"] = idname.ParseIDNameSet(ctx, apiDest.NetworkInterface, diags)
+	destAttrs["global_ip_range"] = idname.ParseIDNameSet(ctx, apiDest.GlobalIPRange, diags)
+	destAttrs["floating_subnet"] = idname.ParseIDNameSet(ctx, apiDest.FloatingSubnet, diags)
+	destAttrs["site_network_subnet"] = idname.ParseIDNameSet(ctx, apiDest.SiteNetworkSubnet, diags)
 
-	// Site
-	if len(apiDest.Site) > 0 {
-		var sites []attr.Value
-		for _, s := range apiDest.Site {
-			siteObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(s.ID),
-				"name": types.StringValue(s.Name),
-			})
-			sites = append(sites, siteObj)
-		}
-		siteSet, _ := types.SetValue(idname.RefObjectType, sites)
-		destAttrs["site"] = siteSet
-	}
-
-	// Group
-	if len(apiDest.Group) > 0 {
-		var groups []attr.Value
-		for _, g := range apiDest.Group {
-			groupObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(g.ID),
-				"name": types.StringValue(g.Name),
-			})
-			groups = append(groups, groupObj)
-		}
-		groupSet, _ := types.SetValue(idname.RefObjectType, groups)
-		destAttrs["group"] = groupSet
-	}
-
-	// System Group
-	if len(apiDest.SystemGroup) > 0 {
-		var systemGroups []attr.Value
-		for _, sg := range apiDest.SystemGroup {
-			sgObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(sg.ID),
-				"name": types.StringValue(sg.Name),
-			})
-			systemGroups = append(systemGroups, sgObj)
-		}
-		sgSet, _ := types.SetValue(idname.RefObjectType, systemGroups)
-		destAttrs["system_group"] = sgSet
-	}
-
-	// Network Interface
-	if len(apiDest.NetworkInterface) > 0 {
-		var networkInterfaces []attr.Value
-		for _, ni := range apiDest.NetworkInterface {
-			niObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(ni.ID),
-				"name": types.StringValue(ni.Name),
-			})
-			networkInterfaces = append(networkInterfaces, niObj)
-		}
-		niSet, _ := types.SetValue(idname.RefObjectType, networkInterfaces)
-		destAttrs["network_interface"] = niSet
-	}
-
-	// Global IP Range
-	if len(apiDest.GlobalIPRange) > 0 {
-		var globalIPRanges []attr.Value
-		for _, gir := range apiDest.GlobalIPRange {
-			girObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(gir.ID),
-				"name": types.StringValue(gir.Name),
-			})
-			globalIPRanges = append(globalIPRanges, girObj)
-		}
-		girSet, _ := types.SetValue(idname.RefObjectType, globalIPRanges)
-		destAttrs["global_ip_range"] = girSet
-	}
-
-	// Floating Subnet
-	if len(apiDest.FloatingSubnet) > 0 {
-		var floatingSubnets []attr.Value
-		for _, fs := range apiDest.FloatingSubnet {
-			fsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(fs.ID),
-				"name": types.StringValue(fs.Name),
-			})
-			floatingSubnets = append(floatingSubnets, fsObj)
-		}
-		fsSet, _ := types.SetValue(idname.RefObjectType, floatingSubnets)
-		destAttrs["floating_subnet"] = fsSet
-	}
-
-	// Site Network Subnet
-	if len(apiDest.SiteNetworkSubnet) > 0 {
-		var siteNetworkSubnets []attr.Value
-		for _, sns := range apiDest.SiteNetworkSubnet {
-			snsObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(sns.ID),
-				"name": types.StringValue(sns.Name),
-			})
-			siteNetworkSubnets = append(siteNetworkSubnets, snsObj)
-		}
-		snsSet, _ := types.SetValue(idname.RefObjectType, siteNetworkSubnets)
-		destAttrs["site_network_subnet"] = snsSet
-	}
-
-	destObj, _ := types.ObjectValue(SocketLanFirewallDestinationAttrTypes, destAttrs)
+	destObj, objDiags := types.ObjectValue(SocketLanFirewallDestinationAttrTypes, destAttrs)
+	diags.Append(objDiags...)
 	return destObj
 }
 
-//nolint:gocyclo,funlen
+//nolint:gocyclo
 func hydrateSocketLanFirewallApplicationState(
-	_ context.Context,
+	ctx context.Context,
 	apiApp cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Application,
 	planHasApplication bool,
+	diags *diag.Diagnostics,
 ) types.Object {
 	appAttrs := map[string]attr.Value{
 		"application":     types.SetNull(idname.RefObjectType),
@@ -1422,32 +1219,10 @@ func hydrateSocketLanFirewallApplicationState(
 	}
 
 	// Application
-	if len(apiApp.Application) > 0 {
-		var apps []attr.Value
-		for _, app := range apiApp.Application {
-			appObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(app.ID),
-				"name": types.StringValue(app.Name),
-			})
-			apps = append(apps, appObj)
-		}
-		appSet, _ := types.SetValue(idname.RefObjectType, apps)
-		appAttrs["application"] = appSet
-	}
+	appAttrs["application"] = idname.ParseIDNameSet(ctx, apiApp.Application, diags)
 
-	// CustomApp
-	if len(apiApp.CustomApp) > 0 {
-		var customApps []attr.Value
-		for _, ca := range apiApp.CustomApp {
-			caObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(ca.ID),
-				"name": types.StringValue(ca.Name),
-			})
-			customApps = append(customApps, caObj)
-		}
-		caSet, _ := types.SetValue(idname.RefObjectType, customApps)
-		appAttrs["custom_app"] = caSet
-	}
+	// Custom App
+	appAttrs["custom_app"] = idname.ParseIDNameSet(ctx, apiApp.CustomApp, diags)
 
 	// Domain
 	if len(apiApp.Domain) > 0 {
@@ -1504,18 +1279,7 @@ func hydrateSocketLanFirewallApplicationState(
 	}
 
 	// Global IP Range
-	if len(apiApp.GlobalIPRange) > 0 {
-		var globalIPRanges []attr.Value
-		for _, gir := range apiApp.GlobalIPRange {
-			girObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(gir.ID),
-				"name": types.StringValue(gir.Name),
-			})
-			globalIPRanges = append(globalIPRanges, girObj)
-		}
-		girSet, _ := types.SetValue(idname.RefObjectType, globalIPRanges)
-		appAttrs["global_ip_range"] = girSet
-	}
+	appAttrs["global_ip_range"] = idname.ParseIDNameSet(ctx, apiApp.GlobalIPRange, diags)
 
 	// Check if there's any actual content from the API
 	hasContent := len(apiApp.Application) > 0 || len(apiApp.CustomApp) > 0 || len(apiApp.Domain) > 0 ||
@@ -1533,9 +1297,10 @@ func hydrateSocketLanFirewallApplicationState(
 }
 
 func hydrateSocketLanFirewallServiceState(
-	_ context.Context,
+	ctx context.Context,
 	apiService cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Service,
 	planHasService bool,
+	diags *diag.Diagnostics,
 ) types.Object {
 	serviceAttrs := map[string]attr.Value{
 		"simple":   types.SetNull(simpleservice.SimpleServiceObjectType),
@@ -1557,18 +1322,7 @@ func hydrateSocketLanFirewallServiceState(
 	}
 
 	// Standard services
-	if len(apiService.Standard) > 0 {
-		var standardServices []attr.Value
-		for _, s := range apiService.Standard {
-			svcObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(s.ID),
-				"name": types.StringValue(s.Name),
-			})
-			standardServices = append(standardServices, svcObj)
-		}
-		standardSet, _ := types.SetValue(idname.RefObjectType, standardServices)
-		serviceAttrs["standard"] = standardSet
-	}
+	serviceAttrs["standard"] = idname.ParseIDNameSet(ctx, apiService.Standard, diags)
 
 	// Custom services
 	if len(apiService.Custom) > 0 {
@@ -1620,8 +1374,9 @@ func hydrateSocketLanFirewallServiceState(
 }
 
 func hydrateSocketLanFirewallTrackingState(
-	_ context.Context,
+	ctx context.Context,
 	apiTracking cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule_Tracking,
+	diags *diag.Diagnostics,
 ) types.Object {
 	trackingAttrs := map[string]attr.Value{
 		"event": types.ObjectNull(policyrule.TrackingEventAttrTypes),
@@ -1648,46 +1403,13 @@ func hydrateSocketLanFirewallTrackingState(
 	}
 
 	// Subscription groups
-	if len(apiTracking.Alert.SubscriptionGroup) > 0 {
-		var subGroups []attr.Value
-		for _, sg := range apiTracking.Alert.SubscriptionGroup {
-			sgObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(sg.ID),
-				"name": types.StringValue(sg.Name),
-			})
-			subGroups = append(subGroups, sgObj)
-		}
-		sgSet, _ := types.SetValue(idname.RefObjectType, subGroups)
-		alertAttrs["subscription_group"] = sgSet
-	}
+	alertAttrs["subscription_group"] = idname.ParseIDNameSet(ctx, apiTracking.Alert.SubscriptionGroup, diags)
 
 	// Webhooks
-	if len(apiTracking.Alert.Webhook) > 0 {
-		var webhooks []attr.Value
-		for _, wh := range apiTracking.Alert.Webhook {
-			whObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(wh.ID),
-				"name": types.StringValue(wh.Name),
-			})
-			webhooks = append(webhooks, whObj)
-		}
-		whSet, _ := types.SetValue(idname.RefObjectType, webhooks)
-		alertAttrs["webhook"] = whSet
-	}
+	alertAttrs["webhook"] = idname.ParseIDNameSet(ctx, apiTracking.Alert.Webhook, diags)
 
 	// Mailing lists
-	if len(apiTracking.Alert.MailingList) > 0 {
-		var mailingLists []attr.Value
-		for _, ml := range apiTracking.Alert.MailingList {
-			mlObj, _ := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-				"id":   types.StringValue(ml.ID),
-				"name": types.StringValue(ml.Name),
-			})
-			mailingLists = append(mailingLists, mlObj)
-		}
-		mlSet, _ := types.SetValue(idname.RefObjectType, mailingLists)
-		alertAttrs["mailing_list"] = mlSet
-	}
+	alertAttrs["mailing_list"] = idname.ParseIDNameSet(ctx, apiTracking.Alert.MailingList, diags)
 
 	alertObj, _ := types.ObjectValue(policyrule.TrackingAlertAttrTypes, alertAttrs)
 	trackingAttrs["alert"] = alertObj
@@ -1726,7 +1448,7 @@ func convertCreateInput2(
 	}
 
 	// Hydrate state from API response
-	ruleState := hydrateSocketLanFirewallRuleState(ctx, plan, currentRule)
+	ruleState := hydrateSocketLanFirewallRuleState(ctx, plan, currentRule, diagnostics)
 
 	// Build the rule object
 	resultRuleObj, resultDiagstmp = types.ObjectValueFrom(ctx, SocketLanFirewallRuleRuleAttrTypes, ruleState)
@@ -1752,11 +1474,13 @@ func convertReadState2(
 	state SocketLanFirewallRule,
 	currentRule *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule_Firewall_Rule,
 ) (resultRuleObj basetypes.ObjectValue, resultDiagstmp diag.Diagnostics) {
-	ruleState := hydrateSocketLanFirewallRuleState(ctx, state, currentRule)
+	var diags diag.Diagnostics
+	ruleState := hydrateSocketLanFirewallRuleState(ctx, state, currentRule, &diags)
 
 	// Build the rule object
 	resultRuleObj, resultDiagstmp = types.ObjectValueFrom(ctx, SocketLanFirewallRuleRuleAttrTypes, ruleState)
-	return resultRuleObj, resultDiagstmp
+	diags.Append(resultDiagstmp...)
+	return resultRuleObj, diags
 }
 
 // convertReadState3 converts between the Terraform model and SDK values.
@@ -1861,7 +1585,7 @@ func convertUpdateInput5(
 	}
 
 	// Hydrate state from API response
-	ruleState := hydrateSocketLanFirewallRuleState(ctx, plan, currentRule)
+	ruleState := hydrateSocketLanFirewallRuleState(ctx, plan, currentRule, diagnostics)
 
 	// Build the rule object
 	resultRuleObj, resultDiagstmp = types.ObjectValueFrom(ctx, SocketLanFirewallRuleRuleAttrTypes, ruleState)

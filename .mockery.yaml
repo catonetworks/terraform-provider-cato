@@ -6,12 +6,18 @@ structname: "{{.InterfaceName}}"
 force-file-write: true
 formatter: gofmt
 packages:
+  github.com/catonetworks/terraform-provider-cato/internal/provider/account/admin:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AdminResourceClient.go
+          structname: AdminResourceClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonindex:
     interfaces:
       ResourceClient:
         config:
           filename: BulkAlwaysOnRuleClient.go
-          structname: BulkAlwaysOnRuleClient
+          structname: AlwaysOnRuleBulkClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonpolicy:
     interfaces:
       ResourceClient:
@@ -96,39 +102,196 @@ packages:
         config:
           filename: IAMRoleReader.go
           structname: IAMRoleReader
-  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssettings:
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivityrule:
     interfaces:
       ResourceClient:
         config:
+          filename: ClientConnectivityRuleClient.go
+          structname: ClientConnectivityRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivitysection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: ClientConnectivitySectionClient.go
+          structname: ClientConnectivitySectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SplitTunnelRuleClient.go
+          structname: SplitTunnelRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SplitTunnelSectionClient.go
+          structname: SplitTunnelSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: TerminalServerRuleClient.go
+          structname: TerminalServerRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserversection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: TerminalServerSectionClient.go
+          structname: TerminalServerSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DynamicIPAllocationRuleClient.go
+          structname: DynamicIPAllocationRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: DynamicIPAllocationSectionClient.go
+          structname: DynamicIPAllocationSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/sdpstaticipallocationrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SdpStaticIPAllocationRuleClient.go
+          structname: SdpStaticIPAllocationRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/sdpstaticipallocationsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SdpStaticIPAllocationSectionClient.go
+          structname: SdpStaticIPAllocationSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SocketBypassRuleClient.go
+          structname: SocketBypassRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SocketBypassSectionClient.go
+          structname: SocketBypassSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/pasection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: PrivateAccessSectionClient.go
+          structname: PrivateAccessSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/security/remoteportforward/rpfrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: RemotePortFwdRuleClient.go
+          structname: RemotePortFwdRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/security/remoteportforward/rpfsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: RemotePortFwdSectionClient.go
+          structname: RemotePortFwdSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/security/antimalwarefilehash/amfhrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AntiMalwareFileHashRuleClient.go
+          structname: AntiMalwareFileHashRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/security/antimalwarefilehash/amfhsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AntiMalwareFileHashSectionClient.go
+          structname: AntiMalwareFileHashSectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/access/user:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: UserClient.go
+          structname: UserClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/account/mailinglist:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: MailingListClient.go
+          structname: MailingListClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/account/subscriptiongroup:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SubscriptionGroupClient.go
+          structname: SubscriptionGroupClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectsite:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: CloudInterconnectSiteClient.go
+          structname: CloudInterconnectSiteClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryawsvsocket:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SecondaryAWSVSocketClient.go
+          structname: SecondaryAWSVSocketClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryazurevsocket:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SecondaryAzureVSocketClient.go
+          structname: SecondaryAzureVSocketClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/wifissid:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: WifiSSIDClient.go
+          structname: WifiSSIDClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectphysicalconnection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: CloudInterconnectPhysicalConnectionClient.go
+          structname: CloudInterconnectPhysicalConnectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/customapplication:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: CustomApplicationClient.go
+          structname: CustomApplicationClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/fqdncontainer:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: FQDNContainerClient.go
+          structname: FQDNContainerClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/ipaddressrangecontainer:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: IPAddressRangeContainerClient.go
+          structname: IPAddressRangeContainerClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/resource/sitewebproxy/swpsection:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: SiteWebProxySectionClient.go
+          structname: SiteWebProxySectionClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssettings:
           filename: DNSSettingsResourceClient.go
           structname: DNSSettingsResourceClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnssitesettings:
-    interfaces:
-      ResourceClient:
-        config:
           filename: DNSSiteSettingsResourceClient.go
           structname: DNSSiteSettingsResourceClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/network/dnsforwardingrule:
-    interfaces:
-      ResourceClient:
-        config:
           filename: DNSForwardingRuleResourceClient.go
           structname: DNSForwardingRuleResourceClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpsettings:
-    interfaces:
-      ResourceClient:
-        config:
           filename: DHCPSettingsResourceClient.go
           structname: DHCPSettingsResourceClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpoption:
-    interfaces:
-      ResourceClient:
-        config:
           filename: DHCPOptionResourceClient.go
           structname: DHCPOptionResourceClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcprelaygroup:
-    interfaces:
-      ResourceClient:
-        config:
           filename: DHCPRelayGroupResourceClient.go
           structname: DHCPRelayGroupResourceClient
