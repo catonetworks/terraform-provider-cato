@@ -112,12 +112,9 @@ resource "cato_admin" "reseller_admin" {
 <a id="nestedatt--managed_roles"></a>
 ### Nested Schema for `managed_roles`
 
-Required:
+Optional:
 
 - `id` (String) Role ID
-
-Read-Only:
-
 - `name` (String) Role name
 
 

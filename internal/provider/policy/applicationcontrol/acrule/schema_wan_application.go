@@ -1,87 +1,51 @@
 package acrule
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 // wanApplicationSchemaAttributes returns schema attributes matching WanApplicationAttrTypes (WAN-style application matcher).
-//
-//nolint:funlen
 func wanApplicationSchemaAttributes() map[string]schema.Attribute {
-	nameIDNested := schema.NestedAttributeObject{
-		Attributes: map[string]schema.Attribute{
-			"name": schema.StringAttribute{
-				Description: "Object name",
-				Optional:    true,
-				Computed:    true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.Expressions{
-						path.MatchRelative().AtParent().AtName("id"),
-					}...),
-				},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"id": schema.StringAttribute{
-				Description:   "Object ID",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-		},
-	}
 	return map[string]schema.Attribute{
 		"application": schema.SetNestedAttribute{
-			Description:  "Predefined applications (logical OR within the set)",
-			Optional:     true,
-			Computed:     true,
-			NestedObject: nameIDNested,
-			PlanModifiers: []planmodifier.Set{
-				setplanmodifier.UseStateForUnknown(),
-			},
+			Description:   "Predefined applications (logical OR within the set)",
+			Optional:      true,
+			Computed:      true,
+			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Application")},
+			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
 		"custom_app": schema.SetNestedAttribute{
-			Description:  "Custom applications",
-			Optional:     true,
-			Computed:     true,
-			NestedObject: nameIDNested,
-			PlanModifiers: []planmodifier.Set{
-				setplanmodifier.UseStateForUnknown(),
-			},
+			Description:   "Custom applications",
+			Optional:      true,
+			Computed:      true,
+			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom application")},
+			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
 		"app_category": schema.SetNestedAttribute{
-			Description:  "Application categories",
-			Optional:     true,
-			Computed:     true,
-			NestedObject: nameIDNested,
-			PlanModifiers: []planmodifier.Set{
-				setplanmodifier.UseStateForUnknown(),
-			},
+			Description:   "Application categories",
+			Optional:      true,
+			Computed:      true,
+			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("App category")},
+			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
 		"custom_category": schema.SetNestedAttribute{
-			Description:  "Custom categories",
-			Optional:     true,
-			Computed:     true,
-			NestedObject: nameIDNested,
-			PlanModifiers: []planmodifier.Set{
-				setplanmodifier.UseStateForUnknown(),
-			},
+			Description:   "Custom categories",
+			Optional:      true,
+			Computed:      true,
+			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom category")},
+			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
 		"sanctioned_apps_category": schema.SetNestedAttribute{
-			Description:  "Sanctioned cloud application categories",
-			Optional:     true,
-			Computed:     true,
-			NestedObject: nameIDNested,
-			PlanModifiers: []planmodifier.Set{
-				setplanmodifier.UseStateForUnknown(),
-			},
+			Description:   "Sanctioned cloud application categories",
+			Optional:      true,
+			Computed:      true,
+			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Sanctioned apps category")},
+			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
 		"domain": schema.ListAttribute{
 			Description: "Second-level domains to match",
@@ -134,13 +98,11 @@ func wanApplicationSchemaAttributes() map[string]schema.Attribute {
 			},
 		},
 		"global_ip_range": schema.SetNestedAttribute{
-			Description:  "Global IP range objects",
-			Optional:     true,
-			Computed:     true,
-			NestedObject: nameIDNested,
-			PlanModifiers: []planmodifier.Set{
-				setplanmodifier.UseStateForUnknown(),
-			},
+			Description:   "Global IP range objects",
+			Optional:      true,
+			Computed:      true,
+			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global IP range")},
+			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
 	}
 }

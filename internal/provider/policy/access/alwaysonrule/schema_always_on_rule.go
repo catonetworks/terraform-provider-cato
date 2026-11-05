@@ -154,15 +154,10 @@ func schemaAlwaysOnRuleSource() schema.SingleNestedAttribute {
 
 func schemaAlwaysOnRuleReferences(prefix, description string) schema.SetNestedAttribute {
 	return schema.SetNestedAttribute{
-		Description: description,
-		Optional:    true,
-		Computed:    true,
-		PlanModifiers: []planmodifier.Set{
-			planmodifiers.NullSetModifier(idname.RefObjectType),
-		},
-		NestedObject: schema.NestedAttributeObject{
-			Attributes:    idname.SchemaNameID(prefix),
-			PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-		},
+		Description:   description,
+		Optional:      true,
+		Computed:      true,
+		PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
+		NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID(prefix)},
 	}
 }

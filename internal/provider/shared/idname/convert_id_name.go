@@ -2,6 +2,7 @@ package idname
 
 import (
 	"context"
+	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -47,8 +48,10 @@ func ParseIDNameSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 
 	// null value
 	if items == nil {
-		return types.SetNull(types.ObjectType{AttrTypes: RefAttrTypes})
+		items = []*T{}
 	}
+
+	seen := make(map[string]struct{})
 
 	refObjects := make([]attr.Value, 0, len(items))
 	for _, i := range items {
@@ -57,6 +60,11 @@ func ParseIDNameSet[T idRefTypes](ctx context.Context, items []*T, diags *diag.D
 		}
 		// make IDNameRefModel struct
 		val := idn(*i)
+		if _, ok := seen[val.ID]; ok {
+			diags.AddWarning("Duplicate Set Element", fmt.Sprintf("Set element with id=%s, name=%s", val.ID, val.Name))
+			continue
+		}
+		seen[val.ID] = struct{}{}
 		ref := Ref{ID: types.StringValue(val.ID), Name: types.StringValue(val.Name)}
 		// make IDNameRefModel Object
 		obj, valueDiag := types.ObjectValueFrom(ctx, RefAttrTypes, ref)

@@ -69,7 +69,7 @@ func TestAccAdmin(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "managed_roles.#", "1"),
 					resource.TestCheckResourceAttr(res, "managed_roles.0.%", "2"),
 					resource.TestCheckResourceAttr(res, "managed_roles.0.id", "2"),
-					resource.TestCheckResourceAttr(res, "managed_roles.0.name", "Editor"),
+					resource.TestCheckResourceAttr(res, "managed_roles.0.name", "Viewer"),
 					resource.TestCheckResourceAttr(res, "mfa_enabled", "true"),
 					resource.TestCheckResourceAttr(res, "password_never_expires", "false"),
 					acc.PrintAttributes(res),

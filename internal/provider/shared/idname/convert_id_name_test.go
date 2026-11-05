@@ -16,6 +16,38 @@ func referenceValue(id, name types.String) types.Object {
 	return types.ObjectValueMust(RefAttrTypes, map[string]attr.Value{"id": id, "name": name})
 }
 
+func TestParseIDNameSet(t *testing.T) {
+	t.Parallel()
+	type reference struct {
+		ID   string `json:"id" graphql:"id"`
+		Name string `json:"name" graphql:"name"`
+	}
+	ref := &reference{ID: "user-1", Name: "Alice"}
+	for _, tc := range []struct {
+		name  string
+		items []*reference
+		want  types.Set
+	}{
+		{name: "null", want: types.SetValueMust(RefObjectType, nil)},
+		{name: "empty", items: []*reference{}, want: types.SetValueMust(RefObjectType, nil)},
+		{name: "null elements", items: []*reference{nil}, want: types.SetValueMust(RefObjectType, nil)},
+		{
+			name: "populated", items: []*reference{nil, ref},
+			want: types.SetValueMust(RefObjectType, []attr.Value{
+				referenceValue(types.StringValue("user-1"), types.StringValue("Alice")),
+			}),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var diags diag.Diagnostics
+			got := ParseIDNameSet(context.Background(), tc.items, &diags)
+			require.False(t, diags.HasError(), "%v", diags)
+			require.True(t, got.Equal(tc.want), "got %s, want %s", got, tc.want)
+		})
+	}
+}
+
 func TestPrepareIDName(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

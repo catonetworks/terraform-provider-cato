@@ -310,6 +310,16 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	// Update the state with the admin ID (should be the same)
 	convertUpdateInput2(&plan, curAccountID, curAdminID)
 
+	readAdminResult, err := r.resourceAPI().Admin(ctx, curAccountID, curAdminID)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API Admin error", "Failed to read admin after update: "+err.Error())
+		return
+	}
+	populateAdminStateFromResponse(ctx, &plan, curAccountID, readAdminResult, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Set the state
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)

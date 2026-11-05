@@ -18,7 +18,6 @@ import (
 	customservice "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	iprange "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iprange"
-	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
@@ -760,18 +759,18 @@ func hydrateTLSRuleState(
 		TLSSourceAttrTypes,
 		map[string]attr.Value{
 			"ip":                  convert.ParseList(ctx, types.StringType, currentRule.Source.IP, "rule.source.ip"),
-			"host":                oldidname.ParseNameIDList(ctx, currentRule.Source.Host, "rule.source.host"),
-			"site":                oldidname.ParseNameIDList(ctx, currentRule.Source.Site, "rule.source.site"),
+			"host":                idname.ParseIDNameSet(ctx, currentRule.Source.Host, &diags),
+			"site":                idname.ParseIDNameSet(ctx, currentRule.Source.Site, &diags),
 			"subnet":              convert.ParseList(ctx, types.StringType, currentRule.Source.Subnet, "rule.source.subnet"),
 			"ip_range":            convert.ParseFromToList(ctx, currentRule.Source.IPRangeTLSInspectSource, "rule.source.ip_range"),
-			"global_ip_range":     oldidname.ParseNameIDList(ctx, currentRule.Source.GlobalIPRange, "rule.source.global_ip_range"),
-			"network_interface":   oldidname.ParseNameIDList(ctx, currentRule.Source.NetworkInterface, "rule.source.network_interface"),
-			"site_network_subnet": oldidname.ParseNameIDList(ctx, currentRule.Source.SiteNetworkSubnet, "rule.source.site_network_subnet"),
-			"floating_subnet":     oldidname.ParseNameIDList(ctx, currentRule.Source.FloatingSubnet, "rule.source.floating_subnet"),
-			"user":                oldidname.ParseNameIDList(ctx, currentRule.Source.User, "rule.source.user"),
-			"users_group":         oldidname.ParseNameIDList(ctx, currentRule.Source.UsersGroup, "rule.source.users_group"),
-			"group":               oldidname.ParseNameIDList(ctx, currentRule.Source.Group, "rule.source.group"),
-			"system_group":        oldidname.ParseNameIDList(ctx, currentRule.Source.SystemGroup, "rule.source.system_group"),
+			"global_ip_range":     idname.ParseIDNameSet(ctx, currentRule.Source.GlobalIPRange, &diags),
+			"network_interface":   idname.ParseIDNameSet(ctx, currentRule.Source.NetworkInterface, &diags),
+			"site_network_subnet": idname.ParseIDNameSet(ctx, currentRule.Source.SiteNetworkSubnet, &diags),
+			"floating_subnet":     idname.ParseIDNameSet(ctx, currentRule.Source.FloatingSubnet, &diags),
+			"user":                idname.ParseIDNameSet(ctx, currentRule.Source.User, &diags),
+			"users_group":         idname.ParseIDNameSet(ctx, currentRule.Source.UsersGroup, &diags),
+			"group":               idname.ParseIDNameSet(ctx, currentRule.Source.Group, &diags),
+			"system_group":        idname.ParseIDNameSet(ctx, currentRule.Source.SystemGroup, &diags),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -794,10 +793,10 @@ func hydrateTLSRuleState(
 	// /// /// /// /// end rule.source // /// /// /// /// /
 
 	// Rule -> Country
-	ruleInput.Country = oldidname.ParseNameIDList(ctx, currentRule.Country, "rule.country")
+	ruleInput.Country = idname.ParseIDNameSet(ctx, currentRule.Country, &diags)
 
 	// Rule -> Device Posture Profile
-	ruleInput.DevicePostureProfile = oldidname.ParseNameIDList(ctx, currentRule.DevicePostureProfile, "rule.device_posture_profile")
+	ruleInput.DevicePostureProfile = idname.ParseIDNameSet(ctx, currentRule.DevicePostureProfile, &diags)
 
 	// // /// /// /// / Rule -> Application // /// /// /// /// /
 	// Note: RemoteAsn is []scalars.Asn32 (which is type string in SDK), so convert.ParseList handles it directly
@@ -871,22 +870,22 @@ func hydrateTLSRuleState(
 	curRuleApplicationObj, diagstmp := types.ObjectValue(
 		TLSApplicationAttrTypes,
 		map[string]attr.Value{
-			"application":          oldidname.ParseNameIDList(ctx, currentRule.Application.Application, "rule.application.application"),
-			"custom_app":           oldidname.ParseNameIDList(ctx, currentRule.Application.CustomApp, "rule.application.custom_app"),
-			"app_category":         oldidname.ParseNameIDList(ctx, currentRule.Application.AppCategory, "rule.application.app_category"),
-			"custom_category":      oldidname.ParseNameIDList(ctx, currentRule.Application.CustomCategory, "rule.application.custom_category"),
+			"application":          idname.ParseIDNameSet(ctx, currentRule.Application.Application, &diags),
+			"custom_app":           idname.ParseIDNameSet(ctx, currentRule.Application.CustomApp, &diags),
+			"app_category":         idname.ParseIDNameSet(ctx, currentRule.Application.AppCategory, &diags),
+			"custom_category":      idname.ParseIDNameSet(ctx, currentRule.Application.CustomCategory, &diags),
 			"domain":               convert.ParseList(ctx, types.StringType, currentRule.Application.Domain, "rule.application.domain"),
 			"fqdn":                 convert.ParseList(ctx, types.StringType, currentRule.Application.Fqdn, "rule.application.fqdn"),
 			"ip":                   convert.ParseList(ctx, types.StringType, currentRule.Application.IP, "rule.application.ip"),
 			"subnet":               convert.ParseList(ctx, types.StringType, currentRule.Application.Subnet, "rule.application.subnet"),
 			"ip_range":             convert.ParseFromToList(ctx, currentRule.Application.IPRangeTLSInspectApplication, "rule.application.ip_range"),
-			"global_ip_range":      oldidname.ParseNameIDList(ctx, currentRule.Application.GlobalIPRange, "rule.application.global_ip_range"),
+			"global_ip_range":      idname.ParseIDNameSet(ctx, currentRule.Application.GlobalIPRange, &diags),
 			"remote_asn":           convert.ParseList(ctx, types.StringType, currentRule.Application.RemoteAsn, "rule.application.remote_asn"),
-			"service":              oldidname.ParseNameIDList(ctx, currentRule.Application.Service, "rule.application.service"),
+			"service":              idname.ParseIDNameSet(ctx, currentRule.Application.Service, &diags),
 			"custom_service":       customServiceValue,
 			"custom_service_ip":    customServiceIPValue,
 			"tls_inspect_category": tlsInspectCategoryValue,
-			"country":              oldidname.ParseNameIDList(ctx, currentRule.Application.Country, "rule.application.country"),
+			"country":              idname.ParseIDNameSet(ctx, currentRule.Application.Country, &diags),
 		},
 	)
 	ruleInput.Application = curRuleApplicationObj

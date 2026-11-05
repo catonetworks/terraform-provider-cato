@@ -15,6 +15,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
+	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 //nolint:funlen
@@ -98,24 +99,10 @@ func (r *appTenantRestrictionRuleResource) Schema(_ context.Context, _ resource.
 						},
 					},
 					"application": schema.SingleNestedAttribute{
-						Description: "Target application reference",
-						Optional:    true,
-						Attributes: map[string]schema.Attribute{
-							"id": schema.StringAttribute{
-								Optional: true,
-								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
-								},
-								Computed: true,
-							},
-							"name": schema.StringAttribute{
-								Optional: true,
-								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
-								},
-								Computed: true,
-							},
-						},
+						Description:   "Target application reference",
+						Optional:      true,
+						PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+						Attributes:    idname.SchemaNameID("Application"),
 					},
 					"headers": schema.ListNestedAttribute{
 						Description: "HTTP headers to inject when action is INJECT_HEADERS",

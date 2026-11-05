@@ -13,12 +13,15 @@ import (
 )
 
 // IDNamePlanModifier returns a plan modifier for ID/Name reference objects
-func IDNamePlanModifier() planmodifier.Object {
-	return idNamePlanModifier{}
+func IDNamePlanModifier(optional ...bool) planmodifier.Object {
+	return idNamePlanModifier{optional: false}
+}
+func IDNamePlanModifierOptional() planmodifier.Object {
+	return idNamePlanModifier{optional: true}
 }
 
 // idNamePlanModifier implements the plan modifier.
-type idNamePlanModifier struct{}
+type idNamePlanModifier struct{ optional bool }
 
 // Description returns a human-readable description of the plan modifier.
 func (m idNamePlanModifier) Description(_ context.Context) string {
@@ -54,11 +57,16 @@ func (m idNamePlanModifier) PlanModifyObject(ctx context.Context, req planmodifi
 
 	// Ensure there is exactly one name or id in the config
 	if cfg.Name.IsNull() && cfg.ID.IsNull() {
-		resp.Diagnostics.AddError("idName reference error in "+req.Path.String(), "'name' or 'id' must be defined in the config ")
+		if m.optional {
+			return
+		}
+		resp.Diagnostics.AddError("idName reference error in "+req.Path.String(),
+			"'name' or 'id' must be defined in the config "+req.Path.String())
 	}
 	if !cfg.Name.IsNull() && !cfg.ID.IsNull() {
 		resp.Diagnostics.AddError("idName reference error in "+req.Path.String(),
-			fmt.Sprintf("only one of 'name' or 'id' can be specified in the config, [id:%q, name:%q]", cfg.ID.ValueString(), cfg.Name.ValueString()))
+			fmt.Sprintf("only one of 'name' or 'id' can be specified in the config, [id:%q, name:%q]", cfg.ID.ValueString(),
+				cfg.Name.ValueString()))
 	}
 
 	// Do nothing if there is no state value.

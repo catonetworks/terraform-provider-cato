@@ -4,6 +4,7 @@ package if_rule
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -13,7 +14,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
 )
 
-// ENG-221537: references resolving to the same category must not erase the set.
+// ENG-221537: references resolving to the same category must report a configuration error.
 func TestAccInternetFw_AppCategoriesDuplicateReferences(t *testing.T) {
 	acc.SkipByEnv(t)
 	acc.CleanupFirewallAndWANPolicyRevisions(t)
@@ -36,8 +37,11 @@ resource "cato_if_rule" "categories" {
   }
 }`, name, categories)
 	}
-	initial := config(`{ id = "suspected_malware" }, { name = "Malware" }, { name = "Alcohol and Tobacco" }`)
-	updated := config(`{ name = "Alcohol and Tobacco" }, { name = "Botnets" }, { name = "Malware" }, { id = "suspected_malware" }`)
+	initial := config(`{ id = "suspected_malware" }, { name = "Alcohol and Tobacco" }`)
+	initialDuplicates := config(`{ id = "suspected_malware" }, { name = "Malware" }, { name = "Alcohol and Tobacco" }`)
+	updated := config(`{ name = "Alcohol and Tobacco" }, { name = "Botnets" }, { name = "Malware" }`)
+	updatedDuplicates := config(`{ name = "Alcohol and Tobacco" }, { name = "Botnets" }, { name = "Malware" }, { id = "suspected_malware" }`)
+	duplicateError := regexp.MustCompile(`Duplicate entry in the config path=rule\.destination\.app_category,\s+id=suspected_malware, name=Malware`)
 	check := func(count string) resource.TestCheckFunc {
 		return resource.ComposeAggregateTestCheckFunc(
 			resource.TestCheckResourceAttr("cato_if_rule.categories", "rule.destination.app_category.#", count),
@@ -50,8 +54,10 @@ resource "cato_if_rule" "categories" {
 		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{Config: initial, Check: check("2")},
+			{Config: initialDuplicates, PlanOnly: true, ExpectError: duplicateError},
 			{Config: initial, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 			{Config: updated, Check: resource.ComposeAggregateTestCheckFunc(check("3"), resource.TestCheckTypeSetElemNestedAttrs("cato_if_rule.categories", "rule.destination.app_category.*", map[string]string{"id": "botnets", "name": "Botnets"}))},
+			{Config: updatedDuplicates, PlanOnly: true, ExpectError: duplicateError},
 			{Config: updated, PlanOnly: true, ConfigPlanChecks: resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 		},
 	})

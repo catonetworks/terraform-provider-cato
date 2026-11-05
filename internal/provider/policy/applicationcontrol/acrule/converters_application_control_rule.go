@@ -18,7 +18,6 @@ import (
 	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	iprange "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iprange"
-	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -892,8 +891,7 @@ func applicationControlTypedRuleStateFromApplicationRule(
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := ar.GetActionConfig(); cfg != nil {
-		un := oldidname.ParseNameIDList(ctx, cfg.GetUserNotification(),
-			"application_rule.action_config.user_notification")
+		un := idname.ParseIDNameSet(ctx, cfg.GetUserNotification(), &diags)
 		o, d := types.ObjectValue(applicationControlActionConfigAttrTypes, map[string]attr.Value{
 			"user_notification": un,
 		})
@@ -902,13 +900,12 @@ func applicationControlTypedRuleStateFromApplicationRule(
 	}
 
 	attrs := map[string]attr.Value{
-		"action":   types.StringValue(ar.GetAction().String()),
-		"severity": types.StringValue(ar.GetSeverity().String()),
-		"schedule": schObj,
-		"source":   srcObj,
-		"tracking": trObj,
-		"device": oldidname.ParseNameIDList(ctx, ar.GetDevice(),
-			"application_rule.device"),
+		"action":                       types.StringValue(ar.GetAction().String()),
+		"severity":                     types.StringValue(ar.GetSeverity().String()),
+		"schedule":                     schObj,
+		"source":                       srcObj,
+		"tracking":                     trObj,
+		"device":                       idname.ParseIDNameSet(ctx, ar.GetDevice(), &diags),
 		"access_method":                acList,
 		"application":                  appObj,
 		"application_activity":         activityList,
@@ -945,7 +942,7 @@ func applicationControlTypedRuleStateFromDataRule(
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := dr.GetActionConfig(); cfg != nil {
-		un := oldidname.ParseNameIDList(ctx, cfg.GetUserNotification(), "data_rule.action_config.user_notification")
+		un := idname.ParseIDNameSet(ctx, cfg.GetUserNotification(), &diags)
 		o, d := types.ObjectValue(applicationControlActionConfigAttrTypes, map[string]attr.Value{
 			"user_notification": un,
 		})
@@ -956,8 +953,8 @@ func applicationControlTypedRuleStateFromDataRule(
 	dlpObj := types.ObjectNull(applicationControlDlpProfileAttrTypes)
 	if dp := dr.GetDlpProfile(); dp != nil {
 		o, d := types.ObjectValue(applicationControlDlpProfileAttrTypes, map[string]attr.Value{
-			"content_profile": oldidname.ParseNameIDList(ctx, dp.GetContentProfile(), "data_rule.dlp_profile.content_profile"),
-			"edm_profile":     oldidname.ParseNameIDList(ctx, dp.GetEdmProfile(), "data_rule.dlp_profile.edm_profile"),
+			"content_profile": idname.ParseIDNameSet(ctx, dp.GetContentProfile(), &diags),
+			"edm_profile":     idname.ParseIDNameSet(ctx, dp.GetEdmProfile(), &diags),
 		})
 		diags.Append(d...)
 		dlpObj = o
@@ -971,7 +968,7 @@ func applicationControlTypedRuleStateFromDataRule(
 		"schedule":                     schObj,
 		"source":                       srcObj,
 		"tracking":                     trObj,
-		"device":                       oldidname.ParseNameIDList(ctx, dr.GetDevice(), "data_rule.device"),
+		"device":                       idname.ParseIDNameSet(ctx, dr.GetDevice(), &diags),
 		"access_method":                acList,
 		"application":                  appObj,
 		"application_activity":         activityList,
@@ -1008,7 +1005,7 @@ func applicationControlTypedRuleStateFromFileRule(
 
 	actionCfg := types.ObjectNull(applicationControlActionConfigAttrTypes)
 	if cfg := fr.GetActionConfig(); cfg != nil {
-		un := oldidname.ParseNameIDList(ctx, cfg.GetUserNotification(), "file_rule.action_config.user_notification")
+		un := idname.ParseIDNameSet(ctx, cfg.GetUserNotification(), &diags)
 		o, d := types.ObjectValue(applicationControlActionConfigAttrTypes, map[string]attr.Value{
 			"user_notification": un,
 		})
@@ -1024,7 +1021,7 @@ func applicationControlTypedRuleStateFromFileRule(
 		"schedule":                     schObj,
 		"source":                       srcObj,
 		"tracking":                     trObj,
-		"device":                       oldidname.ParseNameIDList(ctx, fr.GetDevice(), "file_rule.device"),
+		"device":                       idname.ParseIDNameSet(ctx, fr.GetDevice(), &diags),
 		"access_method":                acList,
 		"application":                  appObj,
 		"application_activity":         activityList,
@@ -1233,34 +1230,23 @@ func acSourceObjectFromApplicationRuleSource(
 		return types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
-		"country": oldidname.ParseNameIDList(ctx, src.GetCountry(),
-			"application_rule.source.country"),
+		"country": idname.ParseIDNameSet(ctx, src.GetCountry(), diags),
 		"ip": convert.ParseList(ctx, types.StringType, src.GetIP(),
 			"application_rule.source.ip"),
-		"host": oldidname.ParseNameIDList(ctx, src.GetHost(),
-			"application_rule.source.host"),
-		"site": oldidname.ParseNameIDList(ctx, src.GetSite(),
-			"application_rule.source.site"),
+		"host": idname.ParseIDNameSet(ctx, src.GetHost(), diags),
+		"site": idname.ParseIDNameSet(ctx, src.GetSite(), diags),
 		"subnet": convert.ParseList(ctx, types.StringType, src.GetSubnet(),
 			"application_rule.source.subnet"),
 		"ip_range": convert.ParseFromToList(ctx, src.GetIPRange(),
 			"application_rule.source.ip_range"),
-		"global_ip_range": oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(),
-			"application_rule.source.global_ip_range"),
-		"network_interface": oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(),
-			"application_rule.source.network_interface"),
-		"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(),
-			"application_rule.source.site_network_subnet"),
-		"floating_subnet": oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(),
-			"application_rule.source.floating_subnet"),
-		"user": oldidname.ParseNameIDList(ctx, src.GetUser(),
-			"application_rule.source.user"),
-		"users_group": oldidname.ParseNameIDList(ctx, src.GetUsersGroup(),
-			"application_rule.source.users_group"),
-		"group": oldidname.ParseNameIDList(ctx, src.GetGroup(),
-			"application_rule.source.group"),
-		"system_group": oldidname.ParseNameIDList(ctx, src.GetSystemGroup(),
-			"application_rule.source.system_group"),
+		"global_ip_range":     idname.ParseIDNameSet(ctx, src.GetGlobalIPRange(), diags),
+		"network_interface":   idname.ParseIDNameSet(ctx, src.GetNetworkInterface(), diags),
+		"site_network_subnet": idname.ParseIDNameSet(ctx, src.GetSiteNetworkSubnet(), diags),
+		"floating_subnet":     idname.ParseIDNameSet(ctx, src.GetFloatingSubnet(), diags),
+		"user":                idname.ParseIDNameSet(ctx, src.GetUser(), diags),
+		"users_group":         idname.ParseIDNameSet(ctx, src.GetUsersGroup(), diags),
+		"group":               idname.ParseIDNameSet(ctx, src.GetGroup(), diags),
+		"system_group":        idname.ParseIDNameSet(ctx, src.GetSystemGroup(), diags),
 	}
 	o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
@@ -1276,20 +1262,20 @@ func acSourceObjectFromDataRuleSource(
 		return types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
-		"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "data_rule.source.country"),
+		"country":             idname.ParseIDNameSet(ctx, src.GetCountry(), diags),
 		"ip":                  convert.ParseList(ctx, types.StringType, src.GetIP(), "data_rule.source.ip"),
-		"host":                oldidname.ParseNameIDList(ctx, src.GetHost(), "data_rule.source.host"),
-		"site":                oldidname.ParseNameIDList(ctx, src.GetSite(), "data_rule.source.site"),
+		"host":                idname.ParseIDNameSet(ctx, src.GetHost(), diags),
+		"site":                idname.ParseIDNameSet(ctx, src.GetSite(), diags),
 		"subnet":              convert.ParseList(ctx, types.StringType, src.GetSubnet(), "data_rule.source.subnet"),
 		"ip_range":            convert.ParseFromToList(ctx, src.GetIPRange(), "data_rule.source.ip_range"),
-		"global_ip_range":     oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(), "data_rule.source.global_ip_range"),
-		"network_interface":   oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(), "data_rule.source.network_interface"),
-		"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(), "data_rule.source.site_network_subnet"),
-		"floating_subnet":     oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(), "data_rule.source.floating_subnet"),
-		"user":                oldidname.ParseNameIDList(ctx, src.GetUser(), "data_rule.source.user"),
-		"users_group":         oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "data_rule.source.users_group"),
-		"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "data_rule.source.group"),
-		"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "data_rule.source.system_group"),
+		"global_ip_range":     idname.ParseIDNameSet(ctx, src.GetGlobalIPRange(), diags),
+		"network_interface":   idname.ParseIDNameSet(ctx, src.GetNetworkInterface(), diags),
+		"site_network_subnet": idname.ParseIDNameSet(ctx, src.GetSiteNetworkSubnet(), diags),
+		"floating_subnet":     idname.ParseIDNameSet(ctx, src.GetFloatingSubnet(), diags),
+		"user":                idname.ParseIDNameSet(ctx, src.GetUser(), diags),
+		"users_group":         idname.ParseIDNameSet(ctx, src.GetUsersGroup(), diags),
+		"group":               idname.ParseIDNameSet(ctx, src.GetGroup(), diags),
+		"system_group":        idname.ParseIDNameSet(ctx, src.GetSystemGroup(), diags),
 	}
 	o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
@@ -1305,20 +1291,20 @@ func acSourceObjectFromFileRuleSource(
 		return types.ObjectNull(applicationcontrol.ApplicationControlSourceAttrTypes)
 	}
 	srcAttrs := map[string]attr.Value{
-		"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "file_rule.source.country"),
+		"country":             idname.ParseIDNameSet(ctx, src.GetCountry(), diags),
 		"ip":                  convert.ParseList(ctx, types.StringType, src.GetIP(), "file_rule.source.ip"),
-		"host":                oldidname.ParseNameIDList(ctx, src.GetHost(), "file_rule.source.host"),
-		"site":                oldidname.ParseNameIDList(ctx, src.GetSite(), "file_rule.source.site"),
+		"host":                idname.ParseIDNameSet(ctx, src.GetHost(), diags),
+		"site":                idname.ParseIDNameSet(ctx, src.GetSite(), diags),
 		"subnet":              convert.ParseList(ctx, types.StringType, src.GetSubnet(), "file_rule.source.subnet"),
 		"ip_range":            convert.ParseFromToList(ctx, src.GetIPRange(), "file_rule.source.ip_range"),
-		"global_ip_range":     oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(), "file_rule.source.global_ip_range"),
-		"network_interface":   oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(), "file_rule.source.network_interface"),
-		"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(), "file_rule.source.site_network_subnet"),
-		"floating_subnet":     oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(), "file_rule.source.floating_subnet"),
-		"user":                oldidname.ParseNameIDList(ctx, src.GetUser(), "file_rule.source.user"),
-		"users_group":         oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "file_rule.source.users_group"),
-		"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "file_rule.source.group"),
-		"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "file_rule.source.system_group"),
+		"global_ip_range":     idname.ParseIDNameSet(ctx, src.GetGlobalIPRange(), diags),
+		"network_interface":   idname.ParseIDNameSet(ctx, src.GetNetworkInterface(), diags),
+		"site_network_subnet": idname.ParseIDNameSet(ctx, src.GetSiteNetworkSubnet(), diags),
+		"floating_subnet":     idname.ParseIDNameSet(ctx, src.GetFloatingSubnet(), diags),
+		"user":                idname.ParseIDNameSet(ctx, src.GetUser(), diags),
+		"users_group":         idname.ParseIDNameSet(ctx, src.GetUsersGroup(), diags),
+		"group":               idname.ParseIDNameSet(ctx, src.GetGroup(), diags),
+		"system_group":        idname.ParseIDNameSet(ctx, src.GetSystemGroup(), diags),
 	}
 	o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
 	diags.Append(d...)
@@ -1344,14 +1330,11 @@ func acTrackingObjectFromApplicationRuleTracking(
 		freq = al.GetFrequency().String()
 	}
 	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
-		"enabled":   types.BoolValue(al.GetEnabled()),
-		"frequency": types.StringValue(freq),
-		"subscription_group": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(),
-			"application_rule.tracking.alert.subscription_group"),
-		"webhook": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetWebhook(),
-			"application_rule.tracking.alert.webhook"),
-		"mailing_list": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetMailingList(),
-			"application_rule.tracking.alert.mailing_list"),
+		"enabled":            types.BoolValue(al.GetEnabled()),
+		"frequency":          types.StringValue(freq),
+		"subscription_group": idname.ParseIDNameSet(ctx, al.GetSubscriptionGroup(), diags),
+		"webhook":            idname.ParseIDNameSet(ctx, al.GetWebhook(), diags),
+		"mailing_list":       idname.ParseIDNameSet(ctx, al.GetMailingList(), diags),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
@@ -1383,9 +1366,9 @@ func acTrackingObjectFromDataRuleTracking(
 	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
-		"subscription_group": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "data_rule.tracking.alert.subscription_group"),
-		"webhook":            oldidname.ParseNameIDListOrEmptySet(ctx, al.GetWebhook(), "data_rule.tracking.alert.webhook"),
-		"mailing_list":       oldidname.ParseNameIDListOrEmptySet(ctx, al.GetMailingList(), "data_rule.tracking.alert.mailing_list"),
+		"subscription_group": idname.ParseIDNameSet(ctx, al.GetSubscriptionGroup(), diags),
+		"webhook":            idname.ParseIDNameSet(ctx, al.GetWebhook(), diags),
+		"mailing_list":       idname.ParseIDNameSet(ctx, al.GetMailingList(), diags),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
@@ -1417,9 +1400,9 @@ func acTrackingObjectFromFileRuleTracking(
 	alObj, d := types.ObjectValue(policyrule.TrackingAlertAttrTypes, map[string]attr.Value{
 		"enabled":            types.BoolValue(al.GetEnabled()),
 		"frequency":          types.StringValue(freq),
-		"subscription_group": oldidname.ParseNameIDListOrEmptySet(ctx, al.GetSubscriptionGroup(), "file_rule.tracking.alert.subscription_group"),
-		"webhook":            oldidname.ParseNameIDListOrEmptySet(ctx, al.GetWebhook(), "file_rule.tracking.alert.webhook"),
-		"mailing_list":       oldidname.ParseNameIDListOrEmptySet(ctx, al.GetMailingList(), "file_rule.tracking.alert.mailing_list"),
+		"subscription_group": idname.ParseIDNameSet(ctx, al.GetSubscriptionGroup(), diags),
+		"webhook":            idname.ParseIDNameSet(ctx, al.GetWebhook(), diags),
+		"mailing_list":       idname.ParseIDNameSet(ctx, al.GetMailingList(), diags),
 	})
 	diags.Append(d...)
 	o, d := types.ObjectValue(policyrule.TrackingAttrTypes, map[string]attr.Value{
@@ -1463,22 +1446,17 @@ func wanApplicationObjectFromApplicationRuleApplication(
 	emptyIPRangeList, _ := types.ListValue(iprange.RangeObjectType, []attr.Value{})
 	emptyNameIDSet, _ := types.SetValue(idname.RefObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application": oldidname.ParseNameIDListOrEmptySet(ctx, apps,
-			"application_rule.application.application"),
-		"custom_app": oldidname.ParseNameIDListOrEmptySet(ctx, customs,
-			"application_rule.application.custom_app"),
-		"app_category": oldidname.ParseNameIDListOrEmptySet(ctx, cats,
-			"application_rule.application.app_category"),
-		"custom_category": oldidname.ParseNameIDListOrEmptySet(ctx, customCats,
-			"application_rule.application.custom_category"),
-		"sanctioned_apps_category": oldidname.ParseNameIDListOrEmptySet(ctx, sac,
-			"application_rule.application.sanctioned_apps_category"),
-		"domain":          emptyStrList,
-		"fqdn":            emptyStrList,
-		"ip":              emptyStrList,
-		"subnet":          emptyStrList,
-		"ip_range":        emptyIPRangeList,
-		"global_ip_range": emptyNameIDSet,
+		"application":              idname.ParseIDNameSet(ctx, apps, diags),
+		"custom_app":               idname.ParseIDNameSet(ctx, customs, diags),
+		"app_category":             idname.ParseIDNameSet(ctx, cats, diags),
+		"custom_category":          idname.ParseIDNameSet(ctx, customCats, diags),
+		"sanctioned_apps_category": idname.ParseIDNameSet(ctx, sac, diags),
+		"domain":                   emptyStrList,
+		"fqdn":                     emptyStrList,
+		"ip":                       emptyStrList,
+		"subnet":                   emptyStrList,
+		"ip_range":                 emptyIPRangeList,
+		"global_ip_range":          emptyNameIDSet,
 	}
 	o, d := types.ObjectValue(wfrule.WanApplicationAttrTypes, attrs)
 	diags.Append(d...)
@@ -1517,11 +1495,11 @@ func wanApplicationObjectFromDataRuleApplication(
 	emptyIPRangeList2, _ := types.ListValue(iprange.RangeObjectType, []attr.Value{})
 	emptyNameIDSet2, _ := types.SetValue(idname.RefObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              oldidname.ParseNameIDListOrEmptySet(ctx, apps, "data_rule.application.application"),
-		"custom_app":               oldidname.ParseNameIDListOrEmptySet(ctx, customs, "data_rule.application.custom_app"),
-		"app_category":             oldidname.ParseNameIDListOrEmptySet(ctx, cats, "data_rule.application.app_category"),
-		"custom_category":          oldidname.ParseNameIDListOrEmptySet(ctx, customCats, "data_rule.application.custom_category"),
-		"sanctioned_apps_category": oldidname.ParseNameIDListOrEmptySet(ctx, sac, "data_rule.application.sanctioned_apps_category"),
+		"application":              idname.ParseIDNameSet(ctx, apps, diags),
+		"custom_app":               idname.ParseIDNameSet(ctx, customs, diags),
+		"app_category":             idname.ParseIDNameSet(ctx, cats, diags),
+		"custom_category":          idname.ParseIDNameSet(ctx, customCats, diags),
+		"sanctioned_apps_category": idname.ParseIDNameSet(ctx, sac, diags),
 		"domain":                   emptyStrList2,
 		"fqdn":                     emptyStrList2,
 		"ip":                       emptyStrList2,
@@ -1566,11 +1544,11 @@ func wanApplicationObjectFromFileRuleApplication(
 	emptyIPRangeList3, _ := types.ListValue(iprange.RangeObjectType, []attr.Value{})
 	emptyNameIDSet3, _ := types.SetValue(idname.RefObjectType, []attr.Value{})
 	attrs := map[string]attr.Value{
-		"application":              oldidname.ParseNameIDListOrEmptySet(ctx, apps, "file_rule.application.application"),
-		"custom_app":               oldidname.ParseNameIDListOrEmptySet(ctx, customs, "file_rule.application.custom_app"),
-		"app_category":             oldidname.ParseNameIDListOrEmptySet(ctx, cats, "file_rule.application.app_category"),
-		"custom_category":          oldidname.ParseNameIDListOrEmptySet(ctx, customCats, "file_rule.application.custom_category"),
-		"sanctioned_apps_category": oldidname.ParseNameIDListOrEmptySet(ctx, sac, "file_rule.application.sanctioned_apps_category"),
+		"application":              idname.ParseIDNameSet(ctx, apps, diags),
+		"custom_app":               idname.ParseIDNameSet(ctx, customs, diags),
+		"app_category":             idname.ParseIDNameSet(ctx, cats, diags),
+		"custom_category":          idname.ParseIDNameSet(ctx, customCats, diags),
+		"sanctioned_apps_category": idname.ParseIDNameSet(ctx, sac, diags),
 		"domain":                   emptyStrList3,
 		"fqdn":                     emptyStrList3,
 		"ip":                       emptyStrList3,

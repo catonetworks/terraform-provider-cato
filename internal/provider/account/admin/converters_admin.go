@@ -120,7 +120,7 @@ func convertCreateInput2(plan *Admin, curAccountID string, adminID string) {
 	plan.AdminID = types.StringValue(adminID)
 }
 
-// populateAdminStateFromResponse applies computed admin fields and managed-role names after creation.
+// populateAdminStateFromResponse applies computed admin fields and role names after a write.
 //
 //nolint:gocyclo,funlen
 func populateAdminStateFromResponse(
@@ -133,7 +133,7 @@ func populateAdminStateFromResponse(
 	if readAdminResult.GetAdmin() == nil {
 		diagnostics.AddError(
 			"Cato API Admin error",
-			"Failed to read admin after creation - no admin data returned",
+			"Failed to read admin - no admin data returned",
 		)
 		return
 	}
