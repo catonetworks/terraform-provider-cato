@@ -78,12 +78,30 @@ def provision_webhooks(account, endpoint):
                        'auth': {}, 'body': '{}'}})
 
 
+def provision_advanced_groups(account, endpoint):
+    data = graphql(account, endpoint,
+        'query($id:ID!){groups(accountId:$id){groupList(input:{paging:{limit:100,from:0},'
+        'filter:[{name:[{regex:"^acctest_advanced_group_00[0-2]$"}]}],'
+        'sort:{name:{direction:ASC,priority:1}}}){items{id name}}}}')
+    existing = {group['name'] for group in data['groups']['groupList']['items']}
+    for index in range(3):
+        name = f'acctest_advanced_group_{index:03d}'
+        if name not in existing:
+            # Match the acceptance helper's persistent names. Select only the
+            # identity, so no generated SDK members-projection arguments leak in.
+            graphql(account, endpoint,
+                'mutation($id:ID!,$input:CreateGroupInput!){groups(accountId:$id){'
+                'createGroup(input:$input){group{id name}}}}',
+                {'input': {'name': name, 'description': name + ' terraform tests'}})
+
+
 def provision(account, args, state_root):
     directory = state_root / account['id']
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
     shutil.copyfile(Path(__file__).with_name('main.tf'), directory / 'main.tf')
     env = dict(os.environ, CATO_TOKEN=account['api_key'], CATO_BASEURL=args.endpoint,
-               TF_VAR_account_id=account['id'], TF_CLI_CONFIG_FILE=str(state_root / 'terraform.rc'))
+               TF_VAR_account_id=account['id'], TF_CLI_CONFIG_FILE=str(state_root / 'terraform.rc'),
+               DISABLE_POLICY_RULE_CLEANUP='true')
     env.pop('TF_LOG', None)
     env.pop('TF_LOG_PROVIDER', None)
     env.pop('TF_LOG_PATH', None)
@@ -99,6 +117,7 @@ def provision(account, args, state_root):
     test_vars = json.loads(result.stdout)
     provision_users(account, args.endpoint)
     provision_webhooks(account, args.endpoint)
+    provision_advanced_groups(account, args.endpoint)
     return account['id'], test_vars
 
 

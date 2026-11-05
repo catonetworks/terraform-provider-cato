@@ -40,6 +40,12 @@ resource "cato_static_host" "fixture" {
   ip      = "10.240.${count.index}.10"
 }
 
+resource "cato_dhcp_relay_group" "fixture" {
+  count  = 3
+  name   = "tf-fixture-dhcp-relay-${count.index}"
+  server = ["192.0.2.${51 + count.index}"]
+}
+
 resource "cato_mailing_list" "fixture" {
   count   = 3
   name    = "tf-fixture-mailing-${count.index}"

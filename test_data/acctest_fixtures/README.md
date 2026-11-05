@@ -4,12 +4,17 @@ Each CI account needs its own fixtures because any group can land on any account
 Use dedicated test accounts. Names beginning with `tf-fixture-` survive the test
 cleanup, which removes disposable sites beginning with `acctest_`.
 
-`main.tf` creates three sites (including native interfaces/ranges), hosts, mailing
-lists, subscription groups, and custom applications. `provision.py` also creates
+`main.tf` creates three sites (including native interfaces/ranges), hosts, DHCP
+relay groups, mailing lists, subscription groups, and custom applications. `provision.py` also creates
 three fixture users and disabled, unattached webhooks on `example.invalid`.
 The users must be enabled and have remote-access eligibility to be returned by
-the existing `vpnUser` lookup. No passwords or API keys are issued for them.
+the existing `vpnUser` lookup. It also seeds `acctest_advanced_group_000` through
+`002`, the persistent names expected by the existing group fixture helper.
+No passwords or API keys are issued for fixture users.
 The account must have sufficient trial VPN-user capacity before provisioning.
+Wi-Fi suites also require the `SOCKET_WIFI` migration. Enroll the dedicated
+accounts through CMA's Tag Rollout with an explicit Include audience; this tag
+has a migration action and cannot be added through Feature Tags.
 
 The user bootstrap calls the public API directly because a new account can
 allocate user ID `0`, which the current Terraform user resource rejects.
@@ -61,6 +66,11 @@ To update the secret from the protected local file without exposing keys in
 arguments, shell history, or logs:
 
 ```sh
-gh secret set CATO_ACCTEST_ACCOUNTS \
-  --repo catonetworks/terraform-provider-cato < "$PRIVATE_DIR/accounts.json"
+python3 -c 'import json, sys; print(json.dumps(json.load(sys.stdin), separators=(",", ":")))' \
+  < "$PRIVATE_DIR/accounts.json" | \
+  gh secret set CATO_ACCTEST_ACCOUNTS --repo catonetworks/terraform-provider-cato
 ```
+
+Compact JSON avoids GitHub masking individual punctuation-only lines from a
+pretty-printed JSON secret throughout the job logs. Individual API keys are
+masked explicitly by the account-selection step.
