@@ -19,7 +19,7 @@ func TestAssignmentActionSchemaUsesRBACAction(t *testing.T) {
 	}{
 		{"VIEW", false},
 		{"EDIT", false},
-		{"NONE", false},
+		{"NONE", true},
 		{"INVALID", true},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
