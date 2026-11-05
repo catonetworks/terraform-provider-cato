@@ -43,12 +43,16 @@ func TestAlwaysOnRuleBulkOmittedRuleDataPlan(t *testing.T) {
 		return value
 	}
 	for _, tc := range []struct {
-		name   string
-		create bool
-		prior  types.Map
+		name           string
+		create         bool
+		prior          types.Map
+		omitSections   bool
+		triggerChanged bool
 	}{
 		{name: "omitted on create", create: true, prior: types.MapNull(alwaysonindex.RuleObjectType)},
 		{name: "still omitted", prior: empty},
+		{name: "publish only", prior: populated, omitSections: true},
+		{name: "publish intent changes", prior: populated, omitSections: true, triggerChanged: true},
 		{name: "previously populated then omitted", prior: populated},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -61,8 +65,18 @@ func TestAlwaysOnRuleBulkOmittedRuleDataPlan(t *testing.T) {
 				prior = tfprotov6.DynamicValue{JSON: []byte("null")}
 			}
 			// Terraform carries prior computed values into its proposed state when configuration is omitted.
-			proposed := dynamic(t, model)
+			proposedModel := model
+			if tc.triggerChanged {
+				proposedModel.PublishTrigger = types.StringValue("changed")
+			}
+			proposed := dynamic(t, proposedModel)
+			if tc.triggerChanged {
+				model.PublishTrigger = proposedModel.PublishTrigger
+			}
 			model.SectionData = configuredSections
+			if tc.omitSections {
+				model.SectionData = types.MapNull(alwaysonindex.SectionObjectType)
+			}
 			model.RuleData = types.MapNull(alwaysonindex.RuleObjectType)
 			model.Changes = types.Int64Null()
 			config := dynamic(t, model)
@@ -80,9 +94,11 @@ func TestAlwaysOnRuleBulkOmittedRuleDataPlan(t *testing.T) {
 			planned := tfsdk.Plan{Schema: schemaResp.Schema, Raw: raw}
 			var actual alwaysonindex.RulesIndex
 			require.False(t, planned.Get(ctx, &actual).HasError())
-			require.False(t, actual.RuleData.IsNull(), "omitted rule_data must default to a known empty map")
-			require.False(t, actual.RuleData.IsUnknown())
-			require.True(t, empty.Equal(actual.RuleData), "expected {}, got %s", actual.RuleData)
+			if tc.create || tc.triggerChanged {
+				require.True(t, actual.RuleData.IsUnknown(), "omitted rule_data is resolved from the live policy at apply")
+			} else {
+				require.True(t, tc.prior.Equal(actual.RuleData), "omission must preserve the previously observed rules")
+			}
 		})
 	}
 }

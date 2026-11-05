@@ -70,7 +70,7 @@ func TestPolicyWiringAndSchema(t *testing.T) {
 	r.Metadata(ctx, resource.MetadataRequest{ProviderTypeName: "cato"}, &metadata)
 	require.Equal(t, "cato_always_on_policy", metadata.TypeName)
 	s := policySchema()
-	require.Len(t, s.Attributes, 1)
+	require.Len(t, s.Attributes, 5)
 	enabled, ok := s.Attributes["enabled"].(schema.BoolAttribute)
 	require.True(t, ok)
 	require.True(t, enabled.Required)
@@ -109,6 +109,8 @@ func TestPolicyCreateAndUpdate(t *testing.T) {
 				client.On("PolicyZtnaAlwaysOnPublishPolicyRevision", mock.Anything, "123",
 					(*cato_models.ZtnaAlwaysOnPolicyMutationInput)(nil), (*cato_models.PolicyPublishRevisionInput)(nil)).
 					Return(successfulPublish(t), nil).Once().NotBefore(update)
+				client.On("PolicyZtnaAlwaysOnPolicy", mock.Anything, "123", mock.Anything).
+					Return(policyResponse(t, enabled), nil).Once()
 				r := &alwaysOnPolicyResource{client: &catoclient.Service{AccountId: "123"}, apiClient: client}
 				plan := policyPlan(t, types.BoolValue(enabled))
 				var state tfsdk.State

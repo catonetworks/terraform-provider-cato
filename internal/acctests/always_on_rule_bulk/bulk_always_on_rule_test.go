@@ -3,6 +3,7 @@
 package always_on_rule_bulk
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -66,6 +67,22 @@ func TestAccAlwaysOnRuleBulk(t *testing.T) {
 					resource.TestCheckResourceAttrSet(res, "rule_data.acctest_r1.id"),
 					resource.TestCheckResourceAttrSet(res, "rule_data.acctest_r2.id"),
 					resource.TestCheckResourceAttrSet(res, "rule_data.acctest_r4.id"),
+				),
+			},
+			{
+				Config: cfg.relocatedConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(res, "rule_data.acctest_r1.section_name", "acctest_s2"),
+					resource.TestCheckResourceAttr(res, "rule_data.acctest_r1.index_in_section", "1"),
+					resource.TestCheckResourceAttr(res, "rule_data.acctest_r4.index_in_section", "2"),
+				),
+			},
+			{
+				Config: cfg.publishOnlyConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(res, "section_data.%", "3"),
+					resource.TestCheckResourceAttr(res, "rule_data.%", "3"),
+					resource.TestCheckResourceAttr(res, "rule_data.acctest_r1.section_name", "acctest_s2"),
 				),
 			},
 		},
@@ -326,4 +343,30 @@ var alwaysOnTFs = []string{
 		}
 	}
 	`,
+}
+
+func (cfg bulkAlwaysOnCfg) relocatedConfig() string {
+	config := cfg.getTfConfig(1)
+	config = strings.Replace(config, `"acctest_r1" = {
+				section_name = "acctest_s4"
+				index_in_section = 2`, `"acctest_r1" = {
+				section_name = "acctest_s2"
+				index_in_section = 1`, 1)
+	return strings.Replace(config, `"acctest_r4" = {
+				section_name = "acctest_s4"
+				index_in_section = 3`, `"acctest_r4" = {
+				section_name = "acctest_s4"
+				index_in_section = 2`, 1)
+}
+
+func (cfg bulkAlwaysOnCfg) publishOnlyConfig() string {
+	config := cfg.relocatedConfig()
+	start := strings.LastIndex(config, "\n\t\tsection_data = {")
+	if start < 0 {
+		panic("ordering fixture is missing section_data")
+	}
+	return config[:start] + `
+        publish_trigger = "publish-only"
+    }
+ `
 }

@@ -20,6 +20,7 @@ Attributes:
     Type: map
     ItemType: nested
     Mode: optional
+    Computed: true
     Attributes:
       - Name: id
         Description: Always On rule ID
@@ -38,7 +39,8 @@ Attributes:
     Description: Map of Always On section positions keyed by nonempty section name. Section indexes must form a sequence from 1 to the number of sections.
     Type: map
     ItemType: nested
-    Mode: required
+    Mode: optional
+    Computed: true
     Attributes:
       - Name: id
         Description: Always On policy section ID
@@ -61,3 +63,7 @@ Attributes:
       to publish content-only changes in the same apply.
     Type: string
     Mode: optional
+
+# Omitted ordering maps preserve live order. Configured maps retain full-policy membership validation.
+# Rules can be relocated between existing sections without recreating the rule resources.
+# Transient reads and concurrent-revision publication blocks retry without discarding drafts.

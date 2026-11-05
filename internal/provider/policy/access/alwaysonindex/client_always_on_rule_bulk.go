@@ -7,6 +7,8 @@ import (
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 // ResourceClient contains the SDK operations used for bulk Always On ordering.
@@ -29,7 +31,12 @@ func (r *alwaysOnRuleBulkResource) readPolicy(ctx context.Context, diags *diag.D
 		diags.AddError("Always On ordering is not configured", "An API client and account ID are required")
 		return nil
 	}
-	result, err := r.getClient().PolicyZtnaAlwaysOnPolicy(ctx, r.client.AccountId, nil)
+	var result *cato.PolicyZtnaAlwaysOnPolicy
+	err := policy.WithTransientReadRetry(ctx, "Read Always On ordering", func() error {
+		var callErr error
+		result, callErr = r.getClient().PolicyZtnaAlwaysOnPolicy(ctx, r.client.AccountId, nil)
+		return callErr
+	})
 	if err != nil {
 		diags.AddError("Failed to read Always On policy ordering", err.Error())
 		return nil

@@ -83,7 +83,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationCreatePolicyRevision(
 	policyCreateRevisionInput cato_models.PolicyCreateRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationCreatePolicyRevision, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationCreatePolicyRevision(
+	return c.client.V2().PolicyDynamicIPAllocationCreatePolicyRevision(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyMutationInput,
@@ -99,7 +99,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationAddRule(
 	dynamicIPAllocationAddRuleInput cato_models.DynamicIPAllocationAddRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationAddRule, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationAddRule(
+	return c.client.V2().PolicyDynamicIPAllocationAddRule(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyMutationInput,
@@ -114,7 +114,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationPolicy(
 	dynamicIPAllocationPolicyInput *cato_models.DynamicIPAllocationPolicyInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationPolicy, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationPolicy(
+	return c.client.V2().PolicyDynamicIPAllocationPolicy(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyInput,
@@ -129,7 +129,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationUpdateRule(
 	dynamicIPAllocationUpdateRuleInput cato_models.DynamicIPAllocationUpdateRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationUpdateRule, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationUpdateRule(
+	return c.client.V2().PolicyDynamicIPAllocationUpdateRule(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyMutationInput,
@@ -145,7 +145,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationMoveRule(
 	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationMoveRule, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationMoveRule(
+	return c.client.V2().PolicyDynamicIPAllocationMoveRule(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyMutationInput,
@@ -161,7 +161,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationRemoveRule(
 	dynamicIPAllocationRemoveRuleInput cato_models.DynamicIPAllocationRemoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationRemoveRule, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationRemoveRule(
+	return c.client.V2().PolicyDynamicIPAllocationRemoveRule(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyMutationInput,
@@ -177,7 +177,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationPublishPolicyRevision(
 	policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationPublishPolicyRevision, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationPublishPolicyRevision(
+	return c.client.V2().PolicyDynamicIPAllocationPublishPolicyRevision(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyMutationInput,
@@ -193,7 +193,7 @@ func (c *sdkClient) PolicyDynamicIPAllocationDiscardPolicyRevision(
 	policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyDynamicIPAllocationDiscardPolicyRevision, error) {
-	return c.client.Catov2.PolicyDynamicIPAllocationDiscardPolicyRevision(
+	return c.client.V2().PolicyDynamicIPAllocationDiscardPolicyRevision(
 		ctx,
 		accountID,
 		dynamicIPAllocationPolicyMutationInput,

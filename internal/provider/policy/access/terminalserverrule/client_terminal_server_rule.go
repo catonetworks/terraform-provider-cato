@@ -83,7 +83,7 @@ func (c *sdkClient) PolicyTerminalServerCreatePolicyRevision(
 	policyCreateRevisionInput cato_models.PolicyCreateRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerCreatePolicyRevision, error) {
-	return c.client.Catov2.PolicyTerminalServerCreatePolicyRevision(
+	return c.client.V2().PolicyTerminalServerCreatePolicyRevision(
 		ctx,
 		accountID,
 		terminalServerPolicyMutationInput,
@@ -99,7 +99,7 @@ func (c *sdkClient) PolicyTerminalServerAddRule(
 	terminalServerAddRuleInput cato_models.TerminalServerAddRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerAddRule, error) {
-	return c.client.Catov2.PolicyTerminalServerAddRule(
+	return c.client.V2().PolicyTerminalServerAddRule(
 		ctx,
 		accountID,
 		terminalServerPolicyMutationInput,
@@ -114,7 +114,7 @@ func (c *sdkClient) PolicyTerminalServerPolicy(
 	terminalServerPolicyInput *cato_models.TerminalServerPolicyInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerPolicy, error) {
-	return c.client.Catov2.PolicyTerminalServerPolicy(
+	return c.client.V2().PolicyTerminalServerPolicy(
 		ctx,
 		accountID,
 		terminalServerPolicyInput,
@@ -129,7 +129,7 @@ func (c *sdkClient) PolicyTerminalServerUpdateRule(
 	terminalServerUpdateRuleInput cato_models.TerminalServerUpdateRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerUpdateRule, error) {
-	return c.client.Catov2.PolicyTerminalServerUpdateRule(
+	return c.client.V2().PolicyTerminalServerUpdateRule(
 		ctx,
 		accountID,
 		terminalServerPolicyMutationInput,
@@ -145,7 +145,7 @@ func (c *sdkClient) PolicyTerminalServerMoveRule(
 	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerMoveRule, error) {
-	return c.client.Catov2.PolicyTerminalServerMoveRule(
+	return c.client.V2().PolicyTerminalServerMoveRule(
 		ctx,
 		accountID,
 		terminalServerPolicyMutationInput,
@@ -161,7 +161,7 @@ func (c *sdkClient) PolicyTerminalServerRemoveRule(
 	terminalServerRemoveRuleInput cato_models.TerminalServerRemoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerRemoveRule, error) {
-	return c.client.Catov2.PolicyTerminalServerRemoveRule(
+	return c.client.V2().PolicyTerminalServerRemoveRule(
 		ctx,
 		accountID,
 		terminalServerPolicyMutationInput,
@@ -177,7 +177,7 @@ func (c *sdkClient) PolicyTerminalServerPublishPolicyRevision(
 	policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerPublishPolicyRevision, error) {
-	return c.client.Catov2.PolicyTerminalServerPublishPolicyRevision(
+	return c.client.V2().PolicyTerminalServerPublishPolicyRevision(
 		ctx,
 		accountID,
 		terminalServerPolicyMutationInput,
@@ -193,7 +193,7 @@ func (c *sdkClient) PolicyTerminalServerDiscardPolicyRevision(
 	policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyTerminalServerDiscardPolicyRevision, error) {
-	return c.client.Catov2.PolicyTerminalServerDiscardPolicyRevision(
+	return c.client.V2().PolicyTerminalServerDiscardPolicyRevision(
 		ctx,
 		accountID,
 		terminalServerPolicyMutationInput,

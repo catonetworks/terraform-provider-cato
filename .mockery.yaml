@@ -11,7 +11,7 @@ packages:
       ResourceClient:
         config:
           filename: BulkAlwaysOnRuleClient.go
-          structname: BulkAlwaysOnRuleClient
+          structname: AlwaysOnRuleBulkClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonpolicy:
     interfaces:
       ResourceClient:
@@ -289,3 +289,10 @@ packages:
   github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcprelaygroup:
           filename: DHCPRelayGroupResourceClient.go
           structname: DHCPRelayGroupResourceClient
+
+  github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: WanFirewallRuleClient.go
+          structname: WanFirewallRuleClient

@@ -83,7 +83,7 @@ func (c *sdkClient) PolicyClientConnectivityCreatePolicyRevision(
 	policyCreateRevisionInput cato_models.PolicyCreateRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityCreatePolicyRevision, error) {
-	return c.client.Catov2.PolicyClientConnectivityCreatePolicyRevision(
+	return c.client.V2().PolicyClientConnectivityCreatePolicyRevision(
 		ctx,
 		accountID,
 		clientConnectivityPolicyMutationInput,
@@ -99,7 +99,7 @@ func (c *sdkClient) PolicyClientConnectivityAddRule(
 	clientConnectivityAddRuleInput cato_models.ClientConnectivityAddRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityAddRule, error) {
-	return c.client.Catov2.PolicyClientConnectivityAddRule(
+	return c.client.V2().PolicyClientConnectivityAddRule(
 		ctx,
 		accountID,
 		clientConnectivityPolicyMutationInput,
@@ -114,7 +114,7 @@ func (c *sdkClient) PolicyClientConnectivityPolicy(
 	clientConnectivityPolicyInput *cato_models.ClientConnectivityPolicyInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityPolicy, error) {
-	return c.client.Catov2.PolicyClientConnectivityPolicy(
+	return c.client.V2().PolicyClientConnectivityPolicy(
 		ctx,
 		accountID,
 		clientConnectivityPolicyInput,
@@ -129,7 +129,7 @@ func (c *sdkClient) PolicyClientConnectivityUpdateRule(
 	clientConnectivityUpdateRuleInput cato_models.ClientConnectivityUpdateRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityUpdateRule, error) {
-	return c.client.Catov2.PolicyClientConnectivityUpdateRule(
+	return c.client.V2().PolicyClientConnectivityUpdateRule(
 		ctx,
 		accountID,
 		clientConnectivityPolicyMutationInput,
@@ -145,7 +145,7 @@ func (c *sdkClient) PolicyClientConnectivityMoveRule(
 	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityMoveRule, error) {
-	return c.client.Catov2.PolicyClientConnectivityMoveRule(
+	return c.client.V2().PolicyClientConnectivityMoveRule(
 		ctx,
 		accountID,
 		clientConnectivityPolicyMutationInput,
@@ -161,7 +161,7 @@ func (c *sdkClient) PolicyClientConnectivityRemoveRule(
 	clientConnectivityRemoveRuleInput cato_models.ClientConnectivityRemoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityRemoveRule, error) {
-	return c.client.Catov2.PolicyClientConnectivityRemoveRule(
+	return c.client.V2().PolicyClientConnectivityRemoveRule(
 		ctx,
 		accountID,
 		clientConnectivityPolicyMutationInput,
@@ -177,7 +177,7 @@ func (c *sdkClient) PolicyClientConnectivityPublishPolicyRevision(
 	policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityPublishPolicyRevision, error) {
-	return c.client.Catov2.PolicyClientConnectivityPublishPolicyRevision(
+	return c.client.V2().PolicyClientConnectivityPublishPolicyRevision(
 		ctx,
 		accountID,
 		clientConnectivityPolicyMutationInput,
@@ -193,7 +193,7 @@ func (c *sdkClient) PolicyClientConnectivityDiscardPolicyRevision(
 	policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicyClientConnectivityDiscardPolicyRevision, error) {
-	return c.client.Catov2.PolicyClientConnectivityDiscardPolicyRevision(
+	return c.client.V2().PolicyClientConnectivityDiscardPolicyRevision(
 		ctx,
 		accountID,
 		clientConnectivityPolicyMutationInput,
