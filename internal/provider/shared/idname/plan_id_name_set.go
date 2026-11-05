@@ -74,7 +74,7 @@ func (m idNameSetPlanModifier) PlanModifySet(ctx context.Context, req planmodifi
 		if utils.CheckErr(&resp.Diagnostics, req.StateValue.ElementsAs(ctx, &state, false)) {
 			return
 		}
-		names, ids = m.makeNameIDMaps(state, req.Path.String(), &resp.Diagnostics)
+		names, ids = makeNameIDMaps(state, req.Path.String(), &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -153,6 +153,10 @@ func (m idNameSetPlanModifier) handleName(cfgItem *Ref, nameIDMap map[string]str
 		Name: types.StringValue(name),
 	}
 	if id, ok := nameIDMap[name]; ok {
+		if id == "" {
+			diags.AddError(refErrSummary, fmt.Sprintf("Duplicate name '%s' in the state %s; specify an explicit ID", name, path))
+			return ref
+		}
 		ref.ID = types.StringValue(id)
 	}
 	return ref
@@ -186,7 +190,7 @@ func (m idNameSetPlanModifier) handleID(cfgItem *Ref, idNameMap map[string]strin
 	return ref
 }
 
-func (m idNameSetPlanModifier) makeNameIDMaps(state []*Ref, path string, diags *diag.Diagnostics,
+func makeNameIDMaps(state []*Ref, path string, diags *diag.Diagnostics,
 ) (names, ids map[string]string) {
 	names = make(map[string]string)
 	ids = make(map[string]string)
@@ -195,12 +199,13 @@ func (m idNameSetPlanModifier) makeNameIDMaps(state []*Ref, path string, diags *
 			continue
 		}
 		name, id := item.Name.ValueString(), item.ID.ValueString()
-		if _, ok := names[name]; ok {
-			diags.AddError(refErrSummary, fmt.Sprintf("Duplicate name '%s' in the state %s", name, path))
-			return
+		if previousID, ok := names[name]; ok && previousID != id {
+			// Keep every ID usable, but never pick an arbitrary ID for an ambiguous name.
+			names[name] = ""
+		} else {
+			names[name] = id
 		}
-		names[name] = id
-		if _, ok := ids[id]; ok {
+		if previousName, ok := ids[id]; ok && previousName != name {
 			diags.AddError(refErrSummary, fmt.Sprintf("Duplicate id '%s' in the state %s", id, path))
 			return
 		}

@@ -40,6 +40,95 @@ func (_m *AdminResourceClient) EXPECT() *AdminResourceClient_Expecter {
 	return &AdminResourceClient_Expecter{mock: &_m.Mock}
 }
 
+// AccountRoles provides a mock function for the type AdminResourceClient
+func (_mock *AdminResourceClient) AccountRoles(ctx context.Context, accountID string, accountType *cato_models.AccountType, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.AccountRoles, error) {
+	var tmpRet mock.Arguments
+	if len(interceptors) > 0 {
+		tmpRet = _mock.Called(ctx, accountID, accountType, interceptors)
+	} else {
+		tmpRet = _mock.Called(ctx, accountID, accountType)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountRoles")
+	}
+
+	var r0 *cato_go_sdk.AccountRoles
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.AccountType, ...clientv2.RequestInterceptor) (*cato_go_sdk.AccountRoles, error)); ok {
+		return returnFunc(ctx, accountID, accountType, interceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.AccountType, ...clientv2.RequestInterceptor) *cato_go_sdk.AccountRoles); ok {
+		r0 = returnFunc(ctx, accountID, accountType, interceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.AccountRoles)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.AccountType, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, accountType, interceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// AdminResourceClient_AccountRoles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountRoles'
+type AdminResourceClient_AccountRoles_Call struct {
+	*mock.Call
+}
+
+// AccountRoles is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+//   - accountType *cato_models.AccountType
+//   - interceptors ...clientv2.RequestInterceptor
+func (_e *AdminResourceClient_Expecter) AccountRoles(ctx interface{}, accountID interface{}, accountType interface{}, interceptors ...interface{}) *AdminResourceClient_AccountRoles_Call {
+	return &AdminResourceClient_AccountRoles_Call{Call: _e.mock.On("AccountRoles",
+		append([]interface{}{ctx, accountID, accountType}, interceptors...)...)}
+}
+
+func (_c *AdminResourceClient_AccountRoles_Call) Run(run func(ctx context.Context, accountID string, accountType *cato_models.AccountType, interceptors ...clientv2.RequestInterceptor)) *AdminResourceClient_AccountRoles_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *cato_models.AccountType
+		if args[2] != nil {
+			arg2 = args[2].(*cato_models.AccountType)
+		}
+		var arg3 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 3 {
+			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
+	})
+	return _c
+}
+
+func (_c *AdminResourceClient_AccountRoles_Call) Return(accountRoles *cato_go_sdk.AccountRoles, err error) *AdminResourceClient_AccountRoles_Call {
+	_c.Call.Return(accountRoles, err)
+	return _c
+}
+
+func (_c *AdminResourceClient_AccountRoles_Call) RunAndReturn(run func(ctx context.Context, accountID string, accountType *cato_models.AccountType, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.AccountRoles, error)) *AdminResourceClient_AccountRoles_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Admin provides a mock function for the type AdminResourceClient
 func (_mock *AdminResourceClient) Admin(ctx context.Context, accountID string, adminID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.Admin, error) {
 	var tmpRet mock.Arguments

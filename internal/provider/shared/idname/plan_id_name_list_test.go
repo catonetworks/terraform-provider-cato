@@ -132,6 +132,18 @@ func TestPlanModifyList(t *testing.T) {
 			want: list(planNameA), wantError: "Duplicate name",
 		},
 		{
+			name:   "duplicate display names allow explicit IDs in configuration order",
+			config: list(idB, idA), plan: list(planIDB, planIDA),
+			state: list(resolvedA, ref(types.StringValue("id-b"), types.StringValue("ref-a"))),
+			want:  list(ref(types.StringValue("id-b"), types.StringValue("ref-a")), resolvedA),
+		},
+		{
+			name:   "duplicate display names allow removing an explicit ID",
+			config: list(idA), plan: list(planIDA),
+			state: list(resolvedA, ref(types.StringValue("id-b"), types.StringValue("ref-a"))),
+			want:  list(resolvedA),
+		},
+		{
 			name:   "ambiguous state IDs report diagnostics",
 			config: list(idA), plan: list(planIDA), state: list(resolvedA, ref(types.StringValue("id-a"), types.StringValue("ref-b"))),
 			want: list(planIDA), wantError: "Duplicate id",

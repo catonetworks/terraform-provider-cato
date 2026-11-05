@@ -82,6 +82,30 @@ func TestPlanModifySet(t *testing.T) {
 			config: set(nameB), plan: set(planNameB), state: set(resolvedA, resolvedB), want: set(resolvedB),
 		},
 		{
+			name:   "duplicate display names allow explicit IDs",
+			config: set(idA, idB), plan: set(planIDA, planIDB),
+			state: set(resolvedA, ref(types.StringValue("id-b"), types.StringValue("ref-a"))),
+			want:  set(resolvedA, ref(types.StringValue("id-b"), types.StringValue("ref-a"))),
+		},
+		{
+			name:   "duplicate display names allow removing an explicit ID",
+			config: set(idB), plan: set(planIDB),
+			state: set(resolvedA, ref(types.StringValue("id-b"), types.StringValue("ref-a"))),
+			want:  set(ref(types.StringValue("id-b"), types.StringValue("ref-a"))),
+		},
+		{
+			name:   "unrelated duplicate display names do not block name references",
+			config: set(nameB), plan: set(planNameB),
+			state: set(resolvedA, ref(types.StringValue("id-c"), types.StringValue("ref-a")), resolvedB),
+			want:  set(resolvedB),
+		},
+		{
+			name:   "ambiguous name references require an explicit ID",
+			config: set(nameA), plan: set(planNameA),
+			state: set(resolvedA, ref(types.StringValue("id-b"), types.StringValue("ref-a")), ref(types.StringValue("id-c"), types.StringValue("ref-a"))),
+			want:  set(planNameA), wantError: "Duplicate name",
+		},
+		{
 			name:   "empty configuration produces a known empty set",
 			config: set(), plan: set(), state: set(resolvedA), want: set(),
 		},

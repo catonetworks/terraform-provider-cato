@@ -75,6 +75,7 @@ func (r *adminResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Default:     booldefault.StaticBool(true),
 			},
 			"managed_roles": schema.SetNestedAttribute{
+				Description:   "Managed account roles. Specify either id or name for each role; names must be unique within the account.",
 				Optional:      true,
 				Computed:      true,
 				PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},

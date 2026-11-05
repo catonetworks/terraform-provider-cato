@@ -73,7 +73,7 @@ func (m idNameListPlanModifier) PlanModifyList(ctx context.Context, req planmodi
 		if utils.CheckErr(&resp.Diagnostics, req.StateValue.ElementsAs(ctx, &state, false)) {
 			return
 		}
-		names, ids = m.makeNameIDMaps(state, req.Path.String(), &resp.Diagnostics)
+		names, ids = makeNameIDMaps(state, req.Path.String(), &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -137,6 +137,10 @@ func (m idNameListPlanModifier) handleName(cfgItem *Ref, nameIDMap map[string]st
 		Name: types.StringValue(name),
 	}
 	if id, ok := nameIDMap[name]; ok {
+		if id == "" {
+			diags.AddError(refErrSummary, fmt.Sprintf("Duplicate name '%s' in the state %s; specify an explicit ID", name, path))
+			return ref
+		}
 		ref.ID = types.StringValue(id)
 	}
 	return ref
@@ -168,27 +172,4 @@ func (m idNameListPlanModifier) handleID(cfgItem *Ref, idNameMap map[string]stri
 		ref.Name = types.StringValue(name)
 	}
 	return ref
-}
-
-func (m idNameListPlanModifier) makeNameIDMaps(state []*Ref, path string, diags *diag.Diagnostics,
-) (names, ids map[string]string) {
-	names = make(map[string]string)
-	ids = make(map[string]string)
-	for _, item := range state {
-		if item == nil || !utils.HasValue(item.Name) || !utils.HasValue(item.ID) {
-			continue
-		}
-		name, id := item.Name.ValueString(), item.ID.ValueString()
-		if previousID, ok := names[name]; ok && previousID != id {
-			diags.AddError(refErrSummary, fmt.Sprintf("Duplicate name '%s' in the state %s", name, path))
-			return
-		}
-		names[name] = id
-		if previousName, ok := ids[id]; ok && previousName != name {
-			diags.AddError(refErrSummary, fmt.Sprintf("Duplicate id '%s' in the state %s", id, path))
-			return
-		}
-		ids[id] = name
-	}
-	return names, ids
 }

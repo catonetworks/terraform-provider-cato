@@ -137,7 +137,7 @@ var adminTFs = []string{
 		password_never_expires = true
 
 		managed_roles = [
-			{ id = "1" }
+			{ name = "Editor" }
 		]
 	}`,
 
@@ -148,7 +148,7 @@ var adminTFs = []string{
 		password_never_expires = false
 
 		managed_roles = [
-			{ id = "2" }
+			{ name = "Viewer" }
 		]
 	}`,
 }

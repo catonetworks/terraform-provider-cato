@@ -61,6 +61,15 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
+	accountID := r.client.AccountId
+	if utils.HasValue(plan.AccountID) {
+		accountID = plan.AccountID.ValueString()
+	}
+	resolveManagedRoles(ctx, &plan, r.resourceAPI(), accountID, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	curAccountID, input := convertCreateInput(
 		ctx,
 		r,
@@ -269,6 +278,10 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Check if any immutable fields have changed
+	resolveManagedRoles(ctx, &plan, r.resourceAPI(), curAccountID, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	input := convertUpdateInput(ctx, plan, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
