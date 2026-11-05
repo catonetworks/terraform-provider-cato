@@ -61,6 +61,15 @@ func (r *adminResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
+	accountID := r.client.AccountId
+	if utils.HasValue(plan.AccountID) {
+		accountID = plan.AccountID.ValueString()
+	}
+	resolveManagedRoles(ctx, &plan, r.resourceAPI(), accountID, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	curAccountID, input := convertCreateInput(
 		ctx,
 		r,
@@ -269,6 +278,10 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	})
 
 	// Check if any immutable fields have changed
+	resolveManagedRoles(ctx, &plan, r.resourceAPI(), curAccountID, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	input := convertUpdateInput(ctx, plan, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -309,6 +322,16 @@ func (r *adminResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	// Update the state with the admin ID (should be the same)
 	convertUpdateInput2(&plan, curAccountID, curAdminID)
+
+	readAdminResult, err := r.resourceAPI().Admin(ctx, curAccountID, curAdminID)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API Admin error", "Failed to read admin after update: "+err.Error())
+		return
+	}
+	populateAdminStateFromResponse(ctx, &plan, curAccountID, readAdminResult, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Set the state
 	diags = resp.State.Set(ctx, plan)

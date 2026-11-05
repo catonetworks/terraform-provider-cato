@@ -16,7 +16,6 @@ import (
 	applicationcontrol "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
-	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -535,20 +534,20 @@ func hydrateAppTenantRestrictionRuleStateFromClient(
 	src := r.GetSource()
 	if src != nil {
 		srcAttrs := map[string]attr.Value{
-			"country":             oldidname.ParseNameIDList(ctx, src.GetCountry(), "rule.source.country"),
+			"country":             idname.ParseIDNameSet(ctx, src.GetCountry(), &diags),
 			"ip":                  convert.ParseList(ctx, types.StringType, src.GetIP(), "rule.source.ip"),
-			"host":                oldidname.ParseNameIDList(ctx, src.GetHost(), "rule.source.host"),
-			"site":                oldidname.ParseNameIDList(ctx, src.GetSite(), "rule.source.site"),
+			"host":                idname.ParseIDNameSet(ctx, src.GetHost(), &diags),
+			"site":                idname.ParseIDNameSet(ctx, src.GetSite(), &diags),
 			"subnet":              convert.ParseList(ctx, types.StringType, src.GetSubnet(), "rule.source.subnet"),
 			"ip_range":            convert.ParseFromToList(ctx, src.GetIPRange(), "rule.source.ip_range"),
-			"global_ip_range":     oldidname.ParseNameIDList(ctx, src.GetGlobalIPRange(), "rule.source.global_ip_range"),
-			"network_interface":   oldidname.ParseNameIDList(ctx, src.GetNetworkInterface(), "rule.source.network_interface"),
-			"site_network_subnet": oldidname.ParseNameIDList(ctx, src.GetSiteNetworkSubnet(), "rule.source.site_network_subnet"),
-			"floating_subnet":     oldidname.ParseNameIDList(ctx, src.GetFloatingSubnet(), "rule.source.floating_subnet"),
-			"user":                oldidname.ParseNameIDList(ctx, src.GetUser(), "rule.source.user"),
-			"users_group":         oldidname.ParseNameIDList(ctx, src.GetUsersGroup(), "rule.source.users_group"),
-			"group":               oldidname.ParseNameIDList(ctx, src.GetGroup(), "rule.source.group"),
-			"system_group":        oldidname.ParseNameIDList(ctx, src.GetSystemGroup(), "rule.source.system_group"),
+			"global_ip_range":     idname.ParseIDNameSet(ctx, src.GetGlobalIPRange(), &diags),
+			"network_interface":   idname.ParseIDNameSet(ctx, src.GetNetworkInterface(), &diags),
+			"site_network_subnet": idname.ParseIDNameSet(ctx, src.GetSiteNetworkSubnet(), &diags),
+			"floating_subnet":     idname.ParseIDNameSet(ctx, src.GetFloatingSubnet(), &diags),
+			"user":                idname.ParseIDNameSet(ctx, src.GetUser(), &diags),
+			"users_group":         idname.ParseIDNameSet(ctx, src.GetUsersGroup(), &diags),
+			"group":               idname.ParseIDNameSet(ctx, src.GetGroup(), &diags),
+			"system_group":        idname.ParseIDNameSet(ctx, src.GetSystemGroup(), &diags),
 		}
 		o, d := types.ObjectValue(applicationcontrol.ApplicationControlSourceAttrTypes, srcAttrs)
 		diags.Append(d...)

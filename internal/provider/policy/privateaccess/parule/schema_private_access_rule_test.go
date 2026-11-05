@@ -31,6 +31,16 @@ func TestPrivateAccessReferenceSetDefaults(t *testing.T) {
 			"id": types.StringValue("reference-1"), "name": types.StringValue("Example"),
 		}),
 	})
+	byID := types.SetValueMust(idname.RefObjectType, []attr.Value{
+		types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{
+			"id": types.StringValue("reference-1"), "name": types.StringNull(),
+		}),
+	})
+	byName := types.SetValueMust(idname.RefObjectType, []attr.Value{
+		types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{
+			"id": types.StringNull(), "name": types.StringValue("Example"),
+		}),
+	})
 	paths := []path.Path{
 		path.Root("countries"),
 		path.Root("devices"),
@@ -56,7 +66,8 @@ func TestPrivateAccessReferenceSetDefaults(t *testing.T) {
 			}{
 				{name: "omitted on create", config: null, plan: unknown, state: null, want: empty},
 				{name: "removed on update", config: null, plan: unknown, state: value, want: empty},
-				{name: "configured reference", config: value, plan: value, state: value, want: value},
+				{name: "configured ID", config: byID, plan: unknown, state: value, want: value},
+				{name: "configured name", config: byName, plan: unknown, state: value, want: value},
 				{name: "unknown configuration", config: unknown, plan: unknown, state: value, want: unknown},
 				{name: "destroy", config: null, plan: null, state: value, want: null, destroy: true},
 			} {
@@ -66,11 +77,15 @@ func TestPrivateAccessReferenceSetDefaults(t *testing.T) {
 					if tc.destroy {
 						raw = tftypes.NewValue(tftypes.String, nil)
 					}
+					stateRaw := tftypes.NewValue(tftypes.String, nil)
+					if !tc.state.IsNull() {
+						stateRaw = tftypes.NewValue(tftypes.String, "existing resource")
+					}
 					response := planmodifier.SetResponse{PlanValue: tc.plan}
 					for _, modifier := range setAttribute.PlanModifiers {
 						modifier.PlanModifySet(ctx, planmodifier.SetRequest{
 							Path: attributePath, ConfigValue: tc.config, PlanValue: response.PlanValue,
-							StateValue: tc.state, Plan: tfsdk.Plan{Raw: raw},
+							StateValue: tc.state, Plan: tfsdk.Plan{Raw: raw}, State: tfsdk.State{Raw: stateRaw},
 						}, &response)
 						require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
 					}

@@ -18,7 +18,6 @@ import (
 	customservice "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/customservice"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	iprange "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iprange"
-	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	policyschedule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 	portrange "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/portrange"
@@ -2048,32 +2047,19 @@ func HydrateIfwRuleState(
 	curRuleSourceObj, diagstmp := types.ObjectValue(
 		IfwSourceAttrTypes,
 		map[string]attr.Value{
-			"ip": convert.ParseList(ctx, types.StringType, currentRule.Source.IP,
-				"rule.source.ip"),
-			"host": oldidname.ParseNameIDList(ctx, currentRule.Source.Host,
-				"rule.source.host"),
-			"site": oldidname.ParseNameIDList(ctx, currentRule.Source.Site,
-				"rule.source.site"),
-			"subnet": convert.ParseList(ctx, types.StringType, currentRule.Source.Subnet,
-				"rule.source.subnet"),
-			"ip_range": convert.ParseFromToList(ctx, currentRule.Source.IPRange,
-				"rule.source.ip_range"),
-			"global_ip_range": oldidname.ParseNameIDList(ctx, currentRule.Source.GlobalIPRange,
-				"rule.source.global_ip_range"),
-			"network_interface": oldidname.ParseNameIDList(ctx, currentRule.Source.NetworkInterface,
-				"rule.source.network_interface"),
-			"site_network_subnet": oldidname.ParseNameIDList(ctx, currentRule.Source.SiteNetworkSubnet,
-				"rule.source.site_network_subnet"),
-			"floating_subnet": oldidname.ParseNameIDList(ctx, currentRule.Source.FloatingSubnet,
-				"rule.source.floating_subnet"),
-			"user": oldidname.ParseNameIDList(ctx, currentRule.Source.User,
-				"rule.source.user"),
-			"users_group": oldidname.ParseNameIDList(ctx, currentRule.Source.UsersGroup,
-				"rule.source.users_group"),
-			"group": oldidname.ParseNameIDList(ctx, currentRule.Source.Group,
-				"rule.source.group"),
-			"system_group": oldidname.ParseNameIDList(ctx, currentRule.Source.SystemGroup,
-				"rule.source.system_group"),
+			"ip":                  convert.ParseList(ctx, types.StringType, currentRule.Source.IP, "rule.source.ip"),
+			"host":                idname.ParseIDNameSet(ctx, currentRule.Source.Host, &diags),
+			"site":                idname.ParseIDNameSet(ctx, currentRule.Source.Site, &diags),
+			"subnet":              convert.ParseList(ctx, types.StringType, currentRule.Source.Subnet, "rule.source.subnet"),
+			"ip_range":            convert.ParseFromToList(ctx, currentRule.Source.IPRange, "rule.source.ip_range"),
+			"global_ip_range":     idname.ParseIDNameSet(ctx, currentRule.Source.GlobalIPRange, &diags),
+			"network_interface":   idname.ParseIDNameSet(ctx, currentRule.Source.NetworkInterface, &diags),
+			"site_network_subnet": idname.ParseIDNameSet(ctx, currentRule.Source.SiteNetworkSubnet, &diags),
+			"floating_subnet":     idname.ParseIDNameSet(ctx, currentRule.Source.FloatingSubnet, &diags),
+			"user":                idname.ParseIDNameSet(ctx, currentRule.Source.User, &diags),
+			"users_group":         idname.ParseIDNameSet(ctx, currentRule.Source.UsersGroup, &diags),
+			"group":               idname.ParseIDNameSet(ctx, currentRule.Source.Group, &diags),
+			"system_group":        idname.ParseIDNameSet(ctx, currentRule.Source.SystemGroup, &diags),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -2091,11 +2077,9 @@ func HydrateIfwRuleState(
 	// /// /// /// /// end rule.source // /// /// /// /// /
 
 	// Rule -> Country
-	ruleInput.Country = oldidname.ParseNameIDList(ctx, currentRule.Country,
-		"rule.country")
+	ruleInput.Country = idname.ParseIDNameSet(ctx, currentRule.Country, &diags)
 	// Rule -> Device
-	ruleInput.Device = oldidname.ParseNameIDList(ctx, currentRule.Device,
-		"rule.device")
+	ruleInput.Device = idname.ParseIDNameSet(ctx, currentRule.Device, &diags)
 
 	// Rule -> DeviceOS
 	ruleInput.DeviceOs = convert.ParseList(ctx, types.StringType, currentRule.DeviceOs,
@@ -2157,21 +2141,16 @@ func HydrateIfwRuleState(
 	curRuleDestinationObj, diagstmp := types.ObjectValue(
 		IfwDestAttrTypes,
 		map[string]attr.Value{
-			"application": oldidname.ParseNameIDList(ctx, currentRule.Destination.Application,
-				"rule.destination.application"),
-			"custom_app": oldidname.ParseNameIDList(ctx, currentRule.Destination.CustomApp,
-				"rule.destination.custom_app"),
-			"app_category": oldidname.ParseNameIDList(ctx, currentRule.Destination.AppCategory,
-				"rule.destination.app_category"),
-			"custom_category": oldidname.ParseNameIDList(ctx, currentRule.Destination.CustomCategory,
-				"rule.destination.custom_category"),
-			"sanctioned_apps_category": oldidname.ParseNameIDList(
+			"application":     idname.ParseIDNameSet(ctx, currentRule.Destination.Application, &diags),
+			"custom_app":      idname.ParseIDNameSet(ctx, currentRule.Destination.CustomApp, &diags),
+			"app_category":    idname.ParseIDNameSet(ctx, currentRule.Destination.AppCategory, &diags),
+			"custom_category": idname.ParseIDNameSet(ctx, currentRule.Destination.CustomCategory, &diags),
+			"sanctioned_apps_category": idname.ParseIDNameSet(
 				ctx,
 				currentRule.Destination.SanctionedAppsCategory,
-				"rule.destination.sanctioned_apps_category",
+				&diags,
 			),
-			"country": oldidname.ParseNameIDList(ctx, currentRule.Destination.Country,
-				"rule.destination.country"),
+			"country": idname.ParseIDNameSet(ctx, currentRule.Destination.Country, &diags),
 			"domain": convert.ParseList(ctx, types.StringType, currentRule.Destination.Domain,
 				"rule.destination.domain"),
 			"fqdn": convert.ParseList(ctx, types.StringType, currentRule.Destination.Fqdn,
@@ -2182,8 +2161,7 @@ func HydrateIfwRuleState(
 				"rule.destination.subnet"),
 			"ip_range": convert.ParseFromToList(ctx, currentRule.Destination.IPRange,
 				"rule.destination.ip_range"),
-			"global_ip_range": oldidname.ParseNameIDList(ctx, currentRule.Destination.GlobalIPRange,
-				"rule.destination.global_ip_range"),
+			"global_ip_range": idname.ParseIDNameSet(ctx, currentRule.Destination.GlobalIPRange, &diags),
 			"remote_asn": convert.ParseList(ctx, types.StringType, currentRule.Destination.RemoteAsn,
 				"rule.destination.remote_asn"),
 		},
@@ -2212,8 +2190,8 @@ func HydrateIfwRuleState(
 		curRuleServiceObj, diagstmp := types.ObjectValue(
 			IfwServiceAttrTypes,
 			map[string]attr.Value{
-				"standard": oldidname.ParseNameIDList(ctx, currentRule.Service.Standard,
-					"rule.service.standard"),
+				"standard": idname.ParseIDNameSet(ctx, currentRule.Service.Standard,
+					&diags),
 				"custom": customServiceValue,
 			},
 		)
@@ -2262,14 +2240,11 @@ func HydrateIfwRuleState(
 	trackingAlertValue, diagstmp := types.ObjectValue(
 		policyrule.TrackingAlertAttrTypes,
 		map[string]attr.Value{
-			"enabled":   types.BoolValue(currentRule.Tracking.Alert.Enabled),
-			"frequency": types.StringValue(currentRule.Tracking.Alert.Frequency.String()),
-			"subscription_group": oldidname.ParseNameIDList(ctx, currentRule.Tracking.Alert.SubscriptionGroup,
-				"rule.tracking.alert.subscription_group"),
-			"webhook": oldidname.ParseNameIDList(ctx, currentRule.Tracking.Alert.Webhook,
-				"rule.tracking.alert.webhook"),
-			"mailing_list": oldidname.ParseNameIDList(ctx, currentRule.Tracking.Alert.MailingList,
-				"rule.tracking.alert.mailing_list"),
+			"enabled":            types.BoolValue(currentRule.Tracking.Alert.Enabled),
+			"frequency":          types.StringValue(currentRule.Tracking.Alert.Frequency.String()),
+			"subscription_group": idname.ParseIDNameSet(ctx, currentRule.Tracking.Alert.SubscriptionGroup, &diags),
+			"webhook":            idname.ParseIDNameSet(ctx, currentRule.Tracking.Alert.Webhook, &diags),
+			"mailing_list":       idname.ParseIDNameSet(ctx, currentRule.Tracking.Alert.MailingList, &diags),
 		},
 	)
 	diags = append(diags, diagstmp...)
@@ -2310,30 +2285,20 @@ func HydrateIfwRuleState(
 				map[string]attr.Value{
 					"ip": convert.ParseList(ctx, types.StringType, ruleException.Source.IP,
 						"rule.exception.source.ip"),
-					"host": oldidname.ParseNameIDList(ctx, ruleException.Source.Host,
-						"rule.exception.source.host"),
-					"site": oldidname.ParseNameIDList(ctx, ruleException.Source.Site,
-						"rule.exception.source.site"),
+					"host": idname.ParseIDNameSet(ctx, ruleException.Source.Host, &diags),
+					"site": idname.ParseIDNameSet(ctx, ruleException.Source.Site, &diags),
 					"subnet": convert.ParseList(ctx, types.StringType, ruleException.Source.Subnet,
 						"rule.exception.source.subnet"),
 					"ip_range": convert.ParseFromToList(ctx, ruleException.Source.IPRange,
 						"rule.exception.source.ip_range"),
-					"global_ip_range": oldidname.ParseNameIDList(ctx, ruleException.Source.GlobalIPRange,
-						"rule.exception.source.global_ip_range"),
-					"network_interface": oldidname.ParseNameIDList(ctx, ruleException.Source.NetworkInterface,
-						"rule.exception.source.network_interface"),
-					"site_network_subnet": oldidname.ParseNameIDList(ctx, ruleException.Source.SiteNetworkSubnet,
-						"rule.exception.source.site_network_subnet"),
-					"floating_subnet": oldidname.ParseNameIDList(ctx, ruleException.Source.FloatingSubnet,
-						"rule.exception.source.floating_subnet"),
-					"user": oldidname.ParseNameIDList(ctx, ruleException.Source.User,
-						"rule.exception.source.user"),
-					"users_group": oldidname.ParseNameIDList(ctx, ruleException.Source.UsersGroup,
-						"rule.exception.source.users_group"),
-					"group": oldidname.ParseNameIDList(ctx, ruleException.Source.Group,
-						"rule.exception.source.group"),
-					"system_group": oldidname.ParseNameIDList(ctx, ruleException.Source.SystemGroup,
-						"rule.exception.source.system_group"),
+					"global_ip_range":     idname.ParseIDNameSet(ctx, ruleException.Source.GlobalIPRange, &diags),
+					"network_interface":   idname.ParseIDNameSet(ctx, ruleException.Source.NetworkInterface, &diags),
+					"site_network_subnet": idname.ParseIDNameSet(ctx, ruleException.Source.SiteNetworkSubnet, &diags),
+					"floating_subnet":     idname.ParseIDNameSet(ctx, ruleException.Source.FloatingSubnet, &diags),
+					"user":                idname.ParseIDNameSet(ctx, ruleException.Source.User, &diags),
+					"users_group":         idname.ParseIDNameSet(ctx, ruleException.Source.UsersGroup, &diags),
+					"group":               idname.ParseIDNameSet(ctx, ruleException.Source.Group, &diags),
+					"system_group":        idname.ParseIDNameSet(ctx, ruleException.Source.SystemGroup, &diags),
 				},
 			)
 			tflog.Warn(ctx, "TFLOG_WARN_IFW.curExceptionSourceObj", map[string]interface{}{
@@ -2346,24 +2311,12 @@ func HydrateIfwRuleState(
 			curExceptionDestObj, diagstmp := types.ObjectValue(
 				IfwDestAttrTypes,
 				map[string]attr.Value{
-					"application": oldidname.ParseNameIDList(ctx, ruleException.Destination.Application,
-						"rule.exception.destination.application"),
-					"custom_app": oldidname.ParseNameIDList(ctx, ruleException.Destination.CustomApp,
-						"rule.exception.destination.custom_app"),
-					"app_category": oldidname.ParseNameIDList(ctx, ruleException.Destination.AppCategory,
-						"rule.exception.destination.app_category"),
-					"custom_category": oldidname.ParseNameIDList(
-						ctx,
-						ruleException.Destination.CustomCategory,
-						"rule.exception.destination.custom_category",
-					),
-					"sanctioned_apps_category": oldidname.ParseNameIDList(
-						ctx,
-						ruleException.Destination.SanctionedAppsCategory,
-						"rule.exception.destination.sanctioned_apps_category",
-					),
-					"country": oldidname.ParseNameIDList(ctx, ruleException.Destination.Country,
-						"rule.exception.destination.country"),
+					"application":              idname.ParseIDNameSet(ctx, ruleException.Destination.Application, &diags),
+					"custom_app":               idname.ParseIDNameSet(ctx, ruleException.Destination.CustomApp, &diags),
+					"app_category":             idname.ParseIDNameSet(ctx, ruleException.Destination.AppCategory, &diags),
+					"custom_category":          idname.ParseIDNameSet(ctx, ruleException.Destination.CustomCategory, &diags),
+					"sanctioned_apps_category": idname.ParseIDNameSet(ctx, ruleException.Destination.SanctionedAppsCategory, &diags),
+					"country":                  idname.ParseIDNameSet(ctx, ruleException.Destination.Country, &diags),
 					"domain": convert.ParseList(ctx, types.StringType, ruleException.Destination.Domain,
 						"rule.exception.destination.domain"),
 					"fqdn": convert.ParseList(ctx, types.StringType, ruleException.Destination.Fqdn,
@@ -2374,11 +2327,7 @@ func HydrateIfwRuleState(
 						"rule.exception.destination.subnet"),
 					"ip_range": convert.ParseFromToList(ctx, ruleException.Destination.IPRange,
 						"rule.exception.destination.ip_range"),
-					"global_ip_range": oldidname.ParseNameIDList(
-						ctx,
-						ruleException.Destination.GlobalIPRange,
-						"rule.exception.destination.global_ip_range",
-					),
+					"global_ip_range": idname.ParseIDNameSet(ctx, ruleException.Destination.GlobalIPRange, &diags),
 					"remote_asn": convert.ParseList(
 						ctx,
 						types.StringType,
@@ -2401,9 +2350,8 @@ func HydrateIfwRuleState(
 			diags = append(diags, diagstmp...)
 			curExceptionServiceObjAttrs := curExceptionServiceObj.Attributes()
 			if len(ruleException.Service.Custom) > 0 || len(ruleException.Service.Standard) > 0 {
-				// Rule -> Service -> Standard (use regular oldidname.ParseNameIDList like WAN firewall)
-				curExceptionServiceObjAttrs["standard"] = oldidname.ParseNameIDList(ctx, ruleException.Service.Standard,
-					"rule.exception.service.standard")
+				// Rule -> Service -> Standard (use regular idname.ParseIDNameSet like WAN firewall)
+				curExceptionServiceObjAttrs["standard"] = idname.ParseIDNameSet(ctx, ruleException.Service.Standard, &diags)
 
 				// Rule -> Service -> Custom
 				if ruleException.Service.Custom != nil {
@@ -2433,14 +2381,12 @@ func HydrateIfwRuleState(
 			// Preserve the configured value from state when the matching exception still exists.
 			exceptionDeviceAttributesObj := useStateExceptionDeviceAttributes(ctx, state, ruleException.Name)
 
-			// Initialize Exception object with populated values (use regular oldidname.ParseNameIDList like WAN firewall)
+			// Initialize Exception object with populated values (use regular idname.ParseIDNameSet like WAN firewall)
 			exceptionAttrs := map[string]attr.Value{
-				"name":   types.StringValue(ruleException.Name),
-				"source": curExceptionSourceObj,
-				"country": oldidname.ParseNameIDList(ctx, ruleException.Country,
-					"rule.exception.country"),
-				"device": oldidname.ParseNameIDList(ctx, ruleException.Device,
-					"rule.exception.device"),
+				"name":              types.StringValue(ruleException.Name),
+				"source":            curExceptionSourceObj,
+				"country":           idname.ParseIDNameSet(ctx, ruleException.Country, &diags),
+				"device":            idname.ParseIDNameSet(ctx, ruleException.Device, &diags),
 				"device_attributes": exceptionDeviceAttributesObj,
 				"device_os": convert.ParseList(ctx, types.StringType, ruleException.DeviceOs,
 					"rule.exception.device_os"),

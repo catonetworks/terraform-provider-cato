@@ -14,10 +14,15 @@ type relayGroupModifier struct{}
 func (relayGroupModifier) Description(context.Context) string {
 	return "Preserve an omitted relay group; resolve configured IDs and names."
 }
+
 func (m relayGroupModifier) MarkdownDescription(ctx context.Context) string {
 	return m.Description(ctx)
 }
+
 func (relayGroupModifier) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
 	if req.ConfigValue.IsNull() {
 		if !req.StateValue.IsNull() {
 			resp.PlanValue = req.StateValue

@@ -337,8 +337,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User notification ID
+- `name` (String) User notification name
 
 
 
@@ -364,8 +364,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) App category ID
+- `name` (String) App category name
 
 
 <a id="nestedatt--rule--application_rule--application--application"></a>
@@ -373,8 +373,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Application ID
+- `name` (String) Application name
 
 
 <a id="nestedatt--rule--application_rule--application--custom_app"></a>
@@ -382,8 +382,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Custom application ID
+- `name` (String) Custom application name
 
 
 <a id="nestedatt--rule--application_rule--application--custom_category"></a>
@@ -391,8 +391,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Custom category ID
+- `name` (String) Custom category name
 
 
 <a id="nestedatt--rule--application_rule--application--global_ip_range"></a>
@@ -400,8 +400,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--application_rule--application--ip_range"></a>
@@ -418,8 +418,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Sanctioned apps category ID
+- `name` (String) Sanctioned apps category name
 
 
 
@@ -435,8 +435,8 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Activity ID
+- `name` (String) Activity name
 
 
 
@@ -445,8 +445,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Device ID
+- `name` (String) Device name
 
 
 <a id="nestedatt--rule--application_rule--dlp_profile"></a>
@@ -462,8 +462,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Content profile ID
+- `name` (String) Content profile name
 
 
 <a id="nestedatt--rule--application_rule--dlp_profile--edm_profile"></a>
@@ -471,8 +471,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) EDM profile ID
+- `name` (String) EDM profile name
 
 
 
@@ -543,8 +543,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Country ID
+- `name` (String) Country name
 
 
 <a id="nestedatt--rule--application_rule--source--floating_subnet"></a>
@@ -552,8 +552,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
 
 
 <a id="nestedatt--rule--application_rule--source--global_ip_range"></a>
@@ -561,8 +561,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--application_rule--source--group"></a>
@@ -570,8 +570,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--application_rule--source--host"></a>
@@ -579,8 +579,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Host ID
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--application_rule--source--ip_range"></a>
@@ -597,8 +597,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
 
 
 <a id="nestedatt--rule--application_rule--source--site"></a>
@@ -606,8 +606,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site ID
+- `name` (String) Site name
 
 
 <a id="nestedatt--rule--application_rule--source--site_network_subnet"></a>
@@ -615,8 +615,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site network subnet ID
+- `name` (String) Site network subnet name
 
 
 <a id="nestedatt--rule--application_rule--source--system_group"></a>
@@ -624,8 +624,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) System group ID
+- `name` (String) System group name
 
 
 <a id="nestedatt--rule--application_rule--source--user"></a>
@@ -633,8 +633,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User ID
+- `name` (String) User name
 
 
 <a id="nestedatt--rule--application_rule--source--users_group"></a>
@@ -642,8 +642,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User group ID
+- `name` (String) User group name
 
 
 
@@ -671,8 +671,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Mailing list ID
+- `name` (String) Mailing list name
 
 
 <a id="nestedatt--rule--application_rule--tracking--alert--subscription_group"></a>
@@ -680,8 +680,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Subscription group ID
+- `name` (String) Subscription group name
 
 
 <a id="nestedatt--rule--application_rule--tracking--alert--webhook"></a>
@@ -689,8 +689,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Webhook ID
+- `name` (String) Webhook name
 
 
 
@@ -752,8 +752,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User notification ID
+- `name` (String) User notification name
 
 
 
@@ -779,8 +779,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) App category ID
+- `name` (String) App category name
 
 
 <a id="nestedatt--rule--data_rule--application--application"></a>
@@ -788,8 +788,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Application ID
+- `name` (String) Application name
 
 
 <a id="nestedatt--rule--data_rule--application--custom_app"></a>
@@ -797,8 +797,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Custom application ID
+- `name` (String) Custom application name
 
 
 <a id="nestedatt--rule--data_rule--application--custom_category"></a>
@@ -806,8 +806,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Custom category ID
+- `name` (String) Custom category name
 
 
 <a id="nestedatt--rule--data_rule--application--global_ip_range"></a>
@@ -815,8 +815,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--data_rule--application--ip_range"></a>
@@ -833,8 +833,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Sanctioned apps category ID
+- `name` (String) Sanctioned apps category name
 
 
 
@@ -850,8 +850,8 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Activity ID
+- `name` (String) Activity name
 
 
 
@@ -860,8 +860,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Device ID
+- `name` (String) Device name
 
 
 <a id="nestedatt--rule--data_rule--dlp_profile"></a>
@@ -877,8 +877,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Content profile ID
+- `name` (String) Content profile name
 
 
 <a id="nestedatt--rule--data_rule--dlp_profile--edm_profile"></a>
@@ -886,8 +886,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) EDM profile ID
+- `name` (String) EDM profile name
 
 
 
@@ -958,8 +958,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Country ID
+- `name` (String) Country name
 
 
 <a id="nestedatt--rule--data_rule--source--floating_subnet"></a>
@@ -967,8 +967,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
 
 
 <a id="nestedatt--rule--data_rule--source--global_ip_range"></a>
@@ -976,8 +976,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--data_rule--source--group"></a>
@@ -985,8 +985,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--data_rule--source--host"></a>
@@ -994,8 +994,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Host ID
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--data_rule--source--ip_range"></a>
@@ -1012,8 +1012,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
 
 
 <a id="nestedatt--rule--data_rule--source--site"></a>
@@ -1021,8 +1021,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site ID
+- `name` (String) Site name
 
 
 <a id="nestedatt--rule--data_rule--source--site_network_subnet"></a>
@@ -1030,8 +1030,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site network subnet ID
+- `name` (String) Site network subnet name
 
 
 <a id="nestedatt--rule--data_rule--source--system_group"></a>
@@ -1039,8 +1039,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) System group ID
+- `name` (String) System group name
 
 
 <a id="nestedatt--rule--data_rule--source--user"></a>
@@ -1048,8 +1048,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User ID
+- `name` (String) User name
 
 
 <a id="nestedatt--rule--data_rule--source--users_group"></a>
@@ -1057,8 +1057,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User group ID
+- `name` (String) User group name
 
 
 
@@ -1086,8 +1086,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Mailing list ID
+- `name` (String) Mailing list name
 
 
 <a id="nestedatt--rule--data_rule--tracking--alert--subscription_group"></a>
@@ -1095,8 +1095,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Subscription group ID
+- `name` (String) Subscription group name
 
 
 <a id="nestedatt--rule--data_rule--tracking--alert--webhook"></a>
@@ -1104,8 +1104,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Webhook ID
+- `name` (String) Webhook name
 
 
 
@@ -1167,8 +1167,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User notification ID
+- `name` (String) User notification name
 
 
 
@@ -1194,8 +1194,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) App category ID
+- `name` (String) App category name
 
 
 <a id="nestedatt--rule--file_rule--application--application"></a>
@@ -1203,8 +1203,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Application ID
+- `name` (String) Application name
 
 
 <a id="nestedatt--rule--file_rule--application--custom_app"></a>
@@ -1212,8 +1212,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Custom application ID
+- `name` (String) Custom application name
 
 
 <a id="nestedatt--rule--file_rule--application--custom_category"></a>
@@ -1221,8 +1221,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Custom category ID
+- `name` (String) Custom category name
 
 
 <a id="nestedatt--rule--file_rule--application--global_ip_range"></a>
@@ -1230,8 +1230,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--file_rule--application--ip_range"></a>
@@ -1248,8 +1248,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Object ID
-- `name` (String) Object name
+- `id` (String) Sanctioned apps category ID
+- `name` (String) Sanctioned apps category name
 
 
 
@@ -1265,8 +1265,8 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Activity ID
+- `name` (String) Activity name
 
 
 
@@ -1275,8 +1275,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Device ID
+- `name` (String) Device name
 
 
 <a id="nestedatt--rule--file_rule--dlp_profile"></a>
@@ -1292,8 +1292,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Content profile ID
+- `name` (String) Content profile name
 
 
 <a id="nestedatt--rule--file_rule--dlp_profile--edm_profile"></a>
@@ -1301,8 +1301,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) EDM profile ID
+- `name` (String) EDM profile name
 
 
 
@@ -1373,8 +1373,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Country ID
+- `name` (String) Country name
 
 
 <a id="nestedatt--rule--file_rule--source--floating_subnet"></a>
@@ -1382,8 +1382,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
 
 
 <a id="nestedatt--rule--file_rule--source--global_ip_range"></a>
@@ -1391,8 +1391,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global IP range ID
+- `name` (String) Global IP range name
 
 
 <a id="nestedatt--rule--file_rule--source--group"></a>
@@ -1400,8 +1400,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--file_rule--source--host"></a>
@@ -1409,8 +1409,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Host ID
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--file_rule--source--ip_range"></a>
@@ -1427,8 +1427,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
 
 
 <a id="nestedatt--rule--file_rule--source--site"></a>
@@ -1436,8 +1436,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site ID
+- `name` (String) Site name
 
 
 <a id="nestedatt--rule--file_rule--source--site_network_subnet"></a>
@@ -1445,8 +1445,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site network subnet ID
+- `name` (String) Site network subnet name
 
 
 <a id="nestedatt--rule--file_rule--source--system_group"></a>
@@ -1454,8 +1454,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) System group ID
+- `name` (String) System group name
 
 
 <a id="nestedatt--rule--file_rule--source--user"></a>
@@ -1463,8 +1463,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User ID
+- `name` (String) User name
 
 
 <a id="nestedatt--rule--file_rule--source--users_group"></a>
@@ -1472,8 +1472,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) User group ID
+- `name` (String) User group name
 
 
 
@@ -1501,8 +1501,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Mailing list ID
+- `name` (String) Mailing list name
 
 
 <a id="nestedatt--rule--file_rule--tracking--alert--subscription_group"></a>
@@ -1510,8 +1510,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Subscription group ID
+- `name` (String) Subscription group name
 
 
 <a id="nestedatt--rule--file_rule--tracking--alert--webhook"></a>
@@ -1519,8 +1519,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Webhook ID
+- `name` (String) Webhook name
 
 
 

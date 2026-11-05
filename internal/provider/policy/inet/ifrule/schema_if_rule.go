@@ -83,26 +83,6 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Required:    true,
 						Optional:    false,
 					},
-					// "section": schema.SingleNestedAttribute{
-					// 	Required: false,
-					// 	Optional: true,
-					// 	Computed: true,
-					// 	PlanModifiers: []planmodifier.Object{
-					// 		objectplanmodifier.UseStateForUnknown(), // Preserve section from API when not in config
-					// 	},
-					// 	Attributes: map[string]schema.Attribute{
-					// 		"name": schema.StringAttribute{
-					// 			Description: "",
-					// 			Required:    false,
-					// 			Optional:    true,
-					// 		},
-					// 		"id": schema.StringAttribute{
-					// 			Description: "",
-					// 			Required:    false,
-					// 			Optional:    true,
-					// 		},
-					// 	},
-					// },
 					"active_period": schema.SingleNestedAttribute{
 						Description: "Time period during which the rule is active. Outside this period, the rule is inactive. Times should be in RFC3339 format (e.g., '2024-12-31T23:59:59Z').",
 						Optional:    true,
@@ -158,34 +138,20 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 							},
 							"host": schema.SetNestedAttribute{
-								Description: "Hosts and servers defined for your account",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Host"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Hosts and servers defined for your account",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Host")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"site": schema.SetNestedAttribute{
-								Description: "Site defined for the account",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Site"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Site defined for the account",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"subnet": schema.ListAttribute{
 								ElementType: types.StringType,
@@ -216,138 +182,74 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 							},
 							"global_ip_range": schema.SetNestedAttribute{
-								Description: "Globally defined IP range, IP and subnet objects",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Global IP range"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Globally defined IP range, IP and subnet objects",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global IP range")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"network_interface": schema.SetNestedAttribute{
 								Description: "Network range defined for a site",
-								Required:    false,
 								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
+								Computed:    true,
+								Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Network interface"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+									Attributes: idname.SchemaNameID("Network interface"),
 								},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"site_network_subnet": schema.SetNestedAttribute{
 								Description: "GlobalRange + InterfaceSubnet",
-								Required:    false,
 								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
+								Computed:    true,
+								Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Site network subnet"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+									Attributes: idname.SchemaNameID("Site network subnet"),
 								},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"floating_subnet": schema.SetNestedAttribute{
 								Description: "Floating Subnets (ie. Floating Ranges) are used to identify traffic exactly matched to the route advertised by BGP. They are not associated with a specific site. This is useful in scenarios such as active-standby high availability routed via BGP.",
-								Required:    false,
 								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
+								Computed:    true,
+								Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Floating subnet"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+									Attributes: idname.SchemaNameID("Floating subnet"),
 								},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"user": schema.SetNestedAttribute{
-								Description: "Individual users defined for the account",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("User"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Individual users defined for the account",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("User")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"users_group": schema.SetNestedAttribute{
-								Description: "Group of users",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									planmodifiers.IDNameSetPlanModifier(),
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "User Group Name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "User Group ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-										},
-									},
-								},
+								Description:   "Group of users",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Users group")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"group": schema.SetNestedAttribute{
-								Description: "Groups defined for your account",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
-								},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Group"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Groups defined for your account",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"system_group": schema.SetNestedAttribute{
-								Description: "Predefined Cato groups",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("System group"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Predefined Cato groups",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("System group")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 						},
 					},
@@ -365,27 +267,21 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 					},
 					"country": schema.SetNestedAttribute{
 						Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
-						Required:    false,
 						Optional:    true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
+						Computed:    true,
+						Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 						NestedObject: schema.NestedAttributeObject{
-							Attributes:    idname.SchemaNameID("Country"),
-							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+							Attributes: idname.SchemaNameID("Country"),
 						},
+						PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 					},
 					"device": schema.SetNestedAttribute{
-						Description: "Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
-						Required:    false,
-						Optional:    true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
-						NestedObject: schema.NestedAttributeObject{
-							Attributes:    idname.SchemaNameID("Device"),
-							PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-						},
+						Description:   "Source Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
+						Optional:      true,
+						Computed:      true,
+						Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+						NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Device")},
+						PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 					},
 					"device_os": schema.ListAttribute{
 						ElementType: types.StringType,
@@ -486,36 +382,27 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Attributes: map[string]schema.Attribute{
 							"application": schema.SetNestedAttribute{
 								Description: "Applications for the rule (pre-defined)",
-								Required:    false,
 								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
+								Computed:    true,
+								Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Application"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+									Attributes: idname.SchemaNameID("Application"),
 								},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"custom_app": schema.SetNestedAttribute{
-								Description: "Custom (user-defined) applications",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Custom app"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Custom (user-defined) applications",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom app")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"app_category": schema.SetNestedAttribute{
-								Description:   "Cato category of applications which are dynamically updated by Cato",
-								Required:      false,
-								Optional:      true,
-								PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
+								Description: "Cato category of applications which are dynamically updated by Cato",
+								Optional:    true,
+								Computed:    true,
+								Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"name": schema.StringAttribute{
@@ -537,42 +424,33 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										},
 									},
 								},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"custom_category": schema.SetNestedAttribute{
-								Description: "Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc.",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Custom category"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc.",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom category")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"sanctioned_apps_category": schema.SetNestedAttribute{
-								Description: "Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization.",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Sanctioned apps category"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization.",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Sanctioned apps category")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"country": schema.SetNestedAttribute{
 								Description: "Countries",
-								Required:    false,
 								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
+								Computed:    true,
+								Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Country"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+									Attributes: idname.SchemaNameID("Country"),
 								},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"domain": schema.ListAttribute{
 								ElementType: types.StringType,
@@ -630,16 +508,12 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 								},
 							},
 							"global_ip_range": schema.SetNestedAttribute{
-								Description: "Globally defined IP range, IP and subnet objects.",
-								Required:    false,
-								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Global IP range"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-								},
+								Description:   "Globally defined IP range, IP and subnet objects.",
+								Optional:      true,
+								Computed:      true,
+								Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+								NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global IP range")},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"remote_asn": schema.ListAttribute{
 								ElementType: types.StringType,
@@ -656,15 +530,13 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Attributes: map[string]schema.Attribute{
 							"standard": schema.SetNestedAttribute{
 								Description: "Standard Service to which this Internet Firewall rule applies",
-								Required:    false,
 								Optional:    true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
+								Computed:    true,
+								Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 								NestedObject: schema.NestedAttributeObject{
-									Attributes:    idname.SchemaNameID("Service"),
-									PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+									Attributes: idname.SchemaNameID("Service"),
 								},
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 							},
 							"custom": schema.ListNestedAttribute{
 								Description: "Custom Service defined by a combination of L4 ports and an IP Protocol",
@@ -774,39 +646,33 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									},
 									"subscription_group": schema.SetNestedAttribute{
 										Description: "Returns data for the Subscription Group that receives the alert",
-										Required:    false,
 										Optional:    true,
-										Validators: []validator.Set{
-											setvalidator.SizeAtLeast(1),
-										},
+										Computed:    true,
+										Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 										NestedObject: schema.NestedAttributeObject{
-											Attributes:    idname.SchemaNameID("Subscription group"),
-											PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+											Attributes: idname.SchemaNameID("Subscription group"),
 										},
+										PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 									},
 									"webhook": schema.SetNestedAttribute{
 										Description: "Returns data for the Webhook that receives the alert",
-										Required:    false,
 										Optional:    true,
-										Validators: []validator.Set{
-											setvalidator.SizeAtLeast(1),
-										},
+										Computed:    true,
+										Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 										NestedObject: schema.NestedAttributeObject{
-											Attributes:    idname.SchemaNameID("Webhook"),
-											PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+											Attributes: idname.SchemaNameID("Webhook"),
 										},
+										PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 									},
 									"mailing_list": schema.SetNestedAttribute{
 										Description: "Returns data for the Mailing List that receives the alert",
-										Required:    false,
 										Optional:    true,
-										Validators: []validator.Set{
-											setvalidator.SizeAtLeast(1),
-										},
+										Computed:    true,
+										Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 										NestedObject: schema.NestedAttributeObject{
-											Attributes:    idname.SchemaNameID("Mailing list"),
-											PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+											Attributes: idname.SchemaNameID("Mailing list"),
 										},
+										PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 									},
 								},
 							},
@@ -926,28 +792,22 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											},
 										},
 										"host": schema.SetNestedAttribute{
-											Description: "Hosts and servers defined for your account",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
-											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Host"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-											},
+											Description:   "Hosts and servers defined for your account",
+											Optional:      true,
+											Computed:      true,
+											Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+											NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Host")},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"site": schema.SetNestedAttribute{
 											Description: "Sites defined in your account",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Site"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Site"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"subnet": schema.ListAttribute{
 											ElementType: types.StringType,
@@ -988,118 +848,80 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										},
 										"global_ip_range": schema.SetNestedAttribute{
 											Description: "Global IP Range",
-											Required:    false,
 											Optional:    true,
+											Computed:    true,
 											Validators: []validator.Set{
 												setvalidator.SizeAtLeast(1),
 											},
-											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Global IP Range"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-											},
+											NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global IP Range")},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"network_interface": schema.SetNestedAttribute{
 											Description: "Network range defined for a site",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Network Interface"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Network Interface"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"site_network_subnet": schema.SetNestedAttribute{
-											Required: false,
-											Optional: true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Optional:   true,
+											Computed:   true,
+											Validators: []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Site Network Subnet"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Site Network Subnet"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"floating_subnet": schema.SetNestedAttribute{
 											Description: "Floating Subnet defined for a site",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Floating Subnet"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Floating Subnet"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"user": schema.SetNestedAttribute{
 											Description: "User defined for your account",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("User"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("User"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"users_group": schema.SetNestedAttribute{
-											Description: "Group of users",
-											Required:    false,
-											Optional:    true,
-											PlanModifiers: []planmodifier.Set{
-												planmodifiers.IDNameSetPlanModifier(),
-											},
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
-											NestedObject: schema.NestedAttributeObject{
-												Attributes: map[string]schema.Attribute{
-													"name": schema.StringAttribute{
-														Description: "User Group Name",
-														Required:    false,
-														Optional:    true,
-														Validators: []validator.String{
-															stringvalidator.ConflictsWith(path.Expressions{
-																path.MatchRelative().AtParent().AtName("id"),
-															}...),
-														},
-														Computed: true,
-													},
-													"id": schema.StringAttribute{
-														Description: "User Group ID",
-														Required:    false,
-														Optional:    true,
-														Computed:    true,
-													},
-												},
-											},
+											Description:   "Group of users",
+											Optional:      true,
+											Computed:      true,
+											Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+											NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Users group")},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"group": schema.SetNestedAttribute{
-											Description: "",
-											Required:    false,
+											Description: "Group",
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Group"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Group"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"system_group": schema.SetNestedAttribute{
-											Description: "",
-											Required:    false,
+											Description: "System group",
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("System Group"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("System Group"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 									},
 								},
@@ -1107,25 +929,20 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
 									Required:    false,
 									Optional:    true,
+									Computed:    true,
 									Validators: []validator.Set{
 										setvalidator.SizeAtLeast(1),
 									},
-									NestedObject: schema.NestedAttributeObject{
-										Attributes:    idname.SchemaNameID("Country"),
-										PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-									},
+									NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Country")},
+									PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								},
 								"device": schema.SetNestedAttribute{
-									Description: "Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
-									Required:    false,
-									Optional:    true,
-									Validators: []validator.Set{
-										setvalidator.SizeAtLeast(1),
-									},
-									NestedObject: schema.NestedAttributeObject{
-										Attributes:    idname.SchemaNameID("Device"),
-										PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-									},
+									Description:   "Source Device Profile traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.",
+									Optional:      true,
+									Computed:      true,
+									Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+									NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Device")},
+									PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								},
 								"device_attributes": schema.SingleNestedAttribute{
 									Description: "Device attributes matching criteria for the exception.",
@@ -1229,75 +1046,57 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Attributes: map[string]schema.Attribute{
 										"application": schema.SetNestedAttribute{
 											Description: "Applications for the rule (pre-defined)",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Application"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Application"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"custom_app": schema.SetNestedAttribute{
 											Description: "Custom (user-defined) applications",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Custom Application"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Custom Application"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"app_category": schema.SetNestedAttribute{
-											Description: "Cato category of applications which are dynamically updated by Cato",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
-											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Application Category"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-											},
+											Description:   "Cato category of applications which are dynamically updated by Cato",
+											Optional:      true,
+											Computed:      true,
+											Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+											NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Application Category")},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"custom_category": schema.SetNestedAttribute{
 											Description: "Custom Categories – Groups of objects such as predefined and custom applications, predefined and custom services, domains, FQDNs etc.",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Custom Category"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Custom Category"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"sanctioned_apps_category": schema.SetNestedAttribute{
-											Description: "Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization.",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
-											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Sanctioned Apps Category"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-											},
+											Description:   "Sanctioned Cloud Applications - apps that are approved and generally represent an understood and acceptable level of risk in your organization.",
+											Optional:      true,
+											Computed:      true,
+											Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+											NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Sanctioned Apps Category")},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"country": schema.SetNestedAttribute{
-											Description: "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
-											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Country"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
-											},
+											Description:   "Source country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.",
+											Optional:      true,
+											Computed:      true,
+											Validators:    []validator.Set{setvalidator.SizeAtLeast(1)},
+											NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Country")},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"domain": schema.ListAttribute{
 											ElementType: types.StringType,
@@ -1359,15 +1158,13 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										},
 										"global_ip_range": schema.SetNestedAttribute{
 											Description: "Globally defined IP range, IP and subnet objects.",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Global IP Range"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Global IP Range"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"remote_asn": schema.ListAttribute{
 											ElementType: types.StringType,
@@ -1390,15 +1187,13 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Attributes: map[string]schema.Attribute{
 										"standard": schema.SetNestedAttribute{
 											Description: "Standard Service to which this Internet Firewall rule applies",
-											Required:    false,
 											Optional:    true,
-											Validators: []validator.Set{
-												setvalidator.SizeAtLeast(1),
-											},
+											Computed:    true,
+											Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 											NestedObject: schema.NestedAttributeObject{
-												Attributes:    idname.SchemaNameID("Service Standard"),
-												PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+												Attributes: idname.SchemaNameID("Service Standard"),
 											},
+											PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										},
 										"custom": schema.ListNestedAttribute{
 											Description: "Custom Service defined by a combination of L4 ports and an IP Protocol",

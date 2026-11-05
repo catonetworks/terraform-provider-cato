@@ -530,8 +530,8 @@ Optional:
 
 Optional:
 
-- `id` (String) User Group ID
-- `name` (String) User Group Name
+- `id` (String) Users group ID
+- `name` (String) Users group name
 
 
 
@@ -824,7 +824,7 @@ Optional:
 
 - `floating_subnet` (Attributes Set) Floating Subnet defined for a site (see [below for nested schema](#nestedatt--rule--exceptions--source--floating_subnet))
 - `global_ip_range` (Attributes Set) Global IP Range (see [below for nested schema](#nestedatt--rule--exceptions--source--global_ip_range))
-- `group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--group))
+- `group` (Attributes Set) Group (see [below for nested schema](#nestedatt--rule--exceptions--source--group))
 - `host` (Attributes Set) Hosts and servers defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--host))
 - `ip` (List of String)
 - `ip_range` (Attributes List) IP range traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--exceptions--source--ip_range))
@@ -832,7 +832,7 @@ Optional:
 - `site` (Attributes Set) Sites defined in your account (see [below for nested schema](#nestedatt--rule--exceptions--source--site))
 - `site_network_subnet` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--site_network_subnet))
 - `subnet` (List of String) Subnet traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
-- `system_group` (Attributes Set) (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
+- `system_group` (Attributes Set) System group (see [below for nested schema](#nestedatt--rule--exceptions--source--system_group))
 - `user` (Attributes Set) User defined for your account (see [below for nested schema](#nestedatt--rule--exceptions--source--user))
 - `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--rule--exceptions--source--users_group))
 
@@ -931,8 +931,8 @@ Optional:
 
 Optional:
 
-- `id` (String) User Group ID
-- `name` (String) User Group Name
+- `id` (String) Users group ID
+- `name` (String) Users group name
 
 
 

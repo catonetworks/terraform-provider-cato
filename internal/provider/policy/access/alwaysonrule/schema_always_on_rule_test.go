@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/require"
@@ -35,11 +36,13 @@ func TestAlwaysOnRuleSetDefaults(t *testing.T) {
 			var modifiers []planmodifier.Set
 			var elementType attr.Type
 			var element attr.Value
+			var configElement attr.Value
 			switch setAttribute := attribute.(type) {
 			case schema.SetAttribute:
 				modifiers = setAttribute.PlanModifiers
 				elementType = types.StringType
 				element = types.StringValue("WINDOWS")
+				configElement = element
 			case schema.SetNestedAttribute:
 				modifiers = setAttribute.PlanModifiers
 				elementType = idname.RefObjectType
@@ -48,6 +51,9 @@ func TestAlwaysOnRuleSetDefaults(t *testing.T) {
 				})
 				require.False(t, objectDiags.HasError(), "%v", objectDiags)
 				element = object
+				configElement = types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{
+					"id": types.StringValue("reference-1"), "name": types.StringNull(),
+				})
 			default:
 				t.Fatalf("expected a set attribute, got %T", attribute)
 			}
@@ -55,6 +61,7 @@ func TestAlwaysOnRuleSetDefaults(t *testing.T) {
 			unknown := types.SetUnknown(elementType)
 			empty := types.SetValueMust(elementType, nil)
 			value := types.SetValueMust(elementType, []attr.Value{element})
+			configured := types.SetValueMust(elementType, []attr.Value{configElement})
 			for _, tc := range []struct {
 				name                      string
 				config, plan, state, want types.Set
@@ -63,13 +70,17 @@ func TestAlwaysOnRuleSetDefaults(t *testing.T) {
 				{name: "omitted on create", config: null, plan: unknown, state: null, want: empty},
 				{name: "removed on update", config: null, plan: unknown, state: value, want: empty},
 				{name: "explicit empty", config: empty, plan: empty, state: value, want: empty},
-				{name: "configured value", config: value, plan: value, state: value, want: value},
+				{name: "configured value", config: configured, plan: value, state: value, want: value},
 				{name: "unknown config", config: unknown, plan: unknown, state: value, want: unknown},
 				{name: "destroy", config: null, plan: null, state: value, want: null, destroy: true},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					t.Parallel()
 					plan := alwaysOnPlan(t, alwaysOnPlanModel(t))
+					state := tfsdk.State(plan)
+					if tc.state.IsNull() {
+						state.Raw = tftypes.NewValue(state.Raw.Type(), nil)
+					}
 					if tc.destroy {
 						plan.Raw = tftypes.NewValue(plan.Raw.Type(), nil)
 					}
@@ -77,7 +88,7 @@ func TestAlwaysOnRuleSetDefaults(t *testing.T) {
 					for _, modifier := range modifiers {
 						modifier.PlanModifySet(ctx, planmodifier.SetRequest{
 							Path: attributePath, ConfigValue: tc.config, PlanValue: response.PlanValue,
-							StateValue: tc.state, Plan: plan,
+							StateValue: tc.state, Plan: plan, State: state,
 						}, &response)
 						require.False(t, response.Diagnostics.HasError(), "%v", response.Diagnostics)
 					}

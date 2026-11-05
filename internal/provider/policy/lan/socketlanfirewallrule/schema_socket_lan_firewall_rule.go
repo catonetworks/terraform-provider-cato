@@ -14,11 +14,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
 //nolint:funlen
@@ -141,265 +142,92 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 								},
 							},
 							"host": schema.SetNestedAttribute{
-								Description: "Hosts",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Hosts",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Host name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Host ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("host")},
 							},
 							"site": schema.SetNestedAttribute{
-								Description: "Sites",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Sites",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Site name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Site ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("site")},
 							},
 							"group": schema.SetNestedAttribute{
-								Description: "Groups",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Groups",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Group name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Group ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("group")},
 							},
 							"system_group": schema.SetNestedAttribute{
-								Description: "System groups",
-								Required:    false,
-								Optional:    true,
+								Description:   "System groups",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "System group name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "System group ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("system_group")},
 							},
 							"network_interface": schema.SetNestedAttribute{
-								Description: "Network interfaces",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Network interfaces",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Network interface name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Network interface ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("network_interface")},
 							},
 							"global_ip_range": schema.SetNestedAttribute{
-								Description: "Global IP ranges",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Global IP ranges",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Global IP range name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Global IP range ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("global_ip_range")},
 							},
 							"floating_subnet": schema.SetNestedAttribute{
-								Description: "Floating subnets",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Floating subnets",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Floating subnet name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Floating subnet ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("floating_subnet")},
 							},
 							"site_network_subnet": schema.SetNestedAttribute{
-								Description: "Site network subnets",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Site network subnets",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Site network subnet name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Site network subnet ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("site_network_subnet")},
 							},
 							"mac": schema.ListAttribute{
 								ElementType: types.StringType,
@@ -464,265 +292,92 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 								},
 							},
 							"host": schema.SetNestedAttribute{
-								Description: "Hosts",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Hosts",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Host name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Host ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("host")},
 							},
 							"site": schema.SetNestedAttribute{
-								Description: "Sites",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Sites",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Site name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Site ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("site")},
 							},
 							"group": schema.SetNestedAttribute{
-								Description: "Groups",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Groups",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Group name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Group ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("group")},
 							},
 							"system_group": schema.SetNestedAttribute{
-								Description: "System groups",
-								Required:    false,
-								Optional:    true,
+								Description:   "System groups",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "System group name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "System group ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("system_group")},
 							},
 							"network_interface": schema.SetNestedAttribute{
-								Description: "Network interfaces",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Network interfaces",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Network interface name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Network interface ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("network_interface")},
 							},
 							"global_ip_range": schema.SetNestedAttribute{
-								Description: "Global IP ranges",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Global IP ranges",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Global IP range name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Global IP range ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("global_ip_range")},
 							},
 							"floating_subnet": schema.SetNestedAttribute{
-								Description: "Floating subnets",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Floating subnets",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Floating subnet name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Floating subnet ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("floating_subnet")},
 							},
 							"site_network_subnet": schema.SetNestedAttribute{
-								Description: "Site network subnets",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Site network subnets",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Site network subnet name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Site network subnet ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("site_network_subnet")},
 							},
 						},
 					},
@@ -732,74 +387,26 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 						Optional:    true,
 						Attributes: map[string]schema.Attribute{
 							"application": schema.SetNestedAttribute{
-								Description: "Applications",
-								Required:    false,
-								Optional:    true,
+								Description:   "Applications",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Application name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Application ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("application")},
 							},
 							"custom_app": schema.SetNestedAttribute{
-								Description: "Custom applications",
-								Required:    false,
-								Optional:    true,
+								Description:   "Custom applications",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Custom app name",
-											Required:    false,
-											Optional:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-											Computed: true,
-										},
-										"id": schema.StringAttribute{
-											Description: "Custom app ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("custom_app")},
 							},
 							"domain": schema.ListAttribute{
 								ElementType: types.StringType,
@@ -843,39 +450,15 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 								},
 							},
 							"global_ip_range": schema.SetNestedAttribute{
-								Description: "Global IP ranges",
-								Required:    false,
-								Optional:    true,
+								Description:   "Global IP ranges",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Global IP range name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Global IP range ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("global_ip_range")},
 							},
 						},
 					},
@@ -901,42 +484,15 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 								},
 							},
 							"standard": schema.SetNestedAttribute{
-								Description: "Standard services",
-								Required:    false,
-								Optional:    true,
-								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(),
-								},
+								Description:   "Standard services",
+								Required:      false,
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
 								},
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"name": schema.StringAttribute{
-											Description: "Service name",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											Validators: []validator.String{
-												stringvalidator.ConflictsWith(path.Expressions{
-													path.MatchRelative().AtParent().AtName("id"),
-												}...),
-											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-										"id": schema.StringAttribute{
-											Description: "Service ID",
-											Required:    false,
-											Optional:    true,
-											Computed:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(),
-											},
-										},
-									},
-								},
+								NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("standard")},
 							},
 							"custom": schema.ListNestedAttribute{
 								Description: "Custom Service defined by a combination of L4 ports and an IP Protocol",
@@ -1039,109 +595,37 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 										Computed: true,
 									},
 									"subscription_group": schema.SetNestedAttribute{
-										Description: "Returns data for the Subscription Group that receives the alert",
-										Required:    false,
-										Optional:    true,
+										Description:   "Returns data for the Subscription Group that receives the alert",
+										Required:      false,
+										Optional:      true,
+										Computed:      true,
+										PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										Validators: []validator.Set{
 											setvalidator.SizeAtLeast(1),
 										},
-										NestedObject: schema.NestedAttributeObject{
-											Attributes: map[string]schema.Attribute{
-												"name": schema.StringAttribute{
-													Description: "Subscription Group Name",
-													Required:    false,
-													Optional:    true,
-													Validators: []validator.String{
-														stringvalidator.ConflictsWith(path.Expressions{
-															path.MatchRelative().AtParent().AtName("id"),
-														}...),
-													},
-													PlanModifiers: []planmodifier.String{
-														stringplanmodifier.UseStateForUnknown(), // Avoid drift
-													},
-													Computed: true,
-												},
-												"id": schema.StringAttribute{
-													Description: "Subscription Group ID",
-													Required:    false,
-													Optional:    true,
-													PlanModifiers: []planmodifier.String{
-														stringplanmodifier.UseStateForUnknown(), // Avoid drift
-													},
-													Computed: true,
-												},
-											},
-										},
+										NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("subscription_group")},
 									},
 									"webhook": schema.SetNestedAttribute{
-										Description: "Returns data for the Webhook that receives the alert",
-										Required:    false,
-										Optional:    true,
+										Description:   "Returns data for the Webhook that receives the alert",
+										Required:      false,
+										Optional:      true,
+										Computed:      true,
+										PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										Validators: []validator.Set{
 											setvalidator.SizeAtLeast(1),
 										},
-										NestedObject: schema.NestedAttributeObject{
-											Attributes: map[string]schema.Attribute{
-												"name": schema.StringAttribute{
-													Description: "Webhook Name",
-													Required:    false,
-													Optional:    true,
-													Validators: []validator.String{
-														stringvalidator.ConflictsWith(path.Expressions{
-															path.MatchRelative().AtParent().AtName("id"),
-														}...),
-													},
-													PlanModifiers: []planmodifier.String{
-														stringplanmodifier.UseStateForUnknown(), // Avoid drift
-													},
-													Computed: true,
-												},
-												"id": schema.StringAttribute{
-													Description: "Webhook ID",
-													Required:    false,
-													Optional:    true,
-													PlanModifiers: []planmodifier.String{
-														stringplanmodifier.UseStateForUnknown(), // Avoid drift
-													},
-													Computed: true,
-												},
-											},
-										},
+										NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("webhook")},
 									},
 									"mailing_list": schema.SetNestedAttribute{
-										Description: "Returns data for the Mailing List that receives the alert",
-										Required:    false,
-										Optional:    true,
+										Description:   "Returns data for the Mailing List that receives the alert",
+										Required:      false,
+										Optional:      true,
+										Computed:      true,
+										PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 										Validators: []validator.Set{
 											setvalidator.SizeAtLeast(1),
 										},
-										NestedObject: schema.NestedAttributeObject{
-											Attributes: map[string]schema.Attribute{
-												"name": schema.StringAttribute{
-													Description: "Mailing List Name",
-													Required:    false,
-													Optional:    true,
-													Validators: []validator.String{
-														stringvalidator.ConflictsWith(path.Expressions{
-															path.MatchRelative().AtParent().AtName("id"),
-														}...),
-													},
-													PlanModifiers: []planmodifier.String{
-														stringplanmodifier.UseStateForUnknown(), // Avoid drift
-													},
-													Computed: true,
-												},
-												"id": schema.StringAttribute{
-													Description: "Mailing List ID",
-													Required:    false,
-													Optional:    true,
-													PlanModifiers: []planmodifier.String{
-														stringplanmodifier.UseStateForUnknown(), // Avoid drift
-													},
-													Computed: true,
-												},
-											},
-										},
+										NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("mailing_list")},
 									},
 								},
 							},

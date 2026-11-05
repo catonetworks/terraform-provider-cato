@@ -20,35 +20,62 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
-func TestInternetFwRuleAppCategoryPlanResolvesOverlappingReferences(t *testing.T) {
+func TestInternetFwRuleAppCategoryPlan(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	ref := func(id, name types.String) attr.Value {
 		return types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": id, "name": name})
 	}
-	config := types.SetValueMust(idname.RefObjectType, []attr.Value{
+	configRefs := []attr.Value{
 		ref(types.StringValue("suspected_malware"), types.StringNull()),
-		ref(types.StringNull(), types.StringValue("Malware")),
 		ref(types.StringNull(), types.StringValue("Alcohol and Tobacco")),
-	})
-	plan := types.SetValueMust(idname.RefObjectType, []attr.Value{
+	}
+	planRefs := []attr.Value{
 		ref(types.StringValue("suspected_malware"), types.StringUnknown()),
-		ref(types.StringUnknown(), types.StringValue("Malware")),
 		ref(types.StringUnknown(), types.StringValue("Alcohol and Tobacco")),
-	})
+	}
 	state := types.SetValueMust(idname.RefObjectType, []attr.Value{
 		ref(types.StringValue("food_drinks_tobacco"), types.StringValue("Alcohol and Tobacco")),
 		ref(types.StringValue("suspected_malware"), types.StringValue("Malware")),
 	})
-	rule := GetInternetFwRuleSchema(ctx, t).Attributes["rule"].(schema.SingleNestedAttribute)
+	resourceSchema := GetInternetFwRuleSchema(ctx, t)
+	rule := resourceSchema.Attributes["rule"].(schema.SingleNestedAttribute)
 	destination := rule.Attributes["destination"].(schema.SingleNestedAttribute)
 	categories := destination.Attributes["app_category"].(schema.SetNestedAttribute)
-	for _, modifier := range categories.PlanModifiers {
-		resp := planmodifier.SetResponse{PlanValue: plan}
-		modifier.PlanModifySet(ctx, planmodifier.SetRequest{ConfigValue: config, PlanValue: plan, StateValue: state}, &resp)
-		require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
-		plan = resp.PlanValue
+	for _, tc := range []struct {
+		name    string
+		overlap bool
+	}{
+		{name: "matching references resolve from state"},
+		{name: "overlapping ID and name are rejected", overlap: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			config := types.SetValueMust(idname.RefObjectType, configRefs)
+			plan := types.SetValueMust(idname.RefObjectType, planRefs)
+			if tc.overlap {
+				config = types.SetValueMust(idname.RefObjectType, append(config.Elements(), ref(types.StringNull(), types.StringValue("Malware"))))
+				plan = types.SetValueMust(idname.RefObjectType, append(plan.Elements(), ref(types.StringUnknown(), types.StringValue("Malware"))))
+			}
+			resourcePlan := tfsdk.Plan{Schema: resourceSchema}
+			require.False(t, resourcePlan.Set(ctx, NewMinimalInternetFwRuleModel("rule-123")).HasError())
+			resp := planmodifier.SetResponse{PlanValue: plan}
+			for _, modifier := range categories.PlanModifiers {
+				modifier.PlanModifySet(ctx, planmodifier.SetRequest{
+					ConfigValue: config, PlanValue: resp.PlanValue, StateValue: state,
+					Plan: resourcePlan, State: tfsdk.State(resourcePlan),
+				}, &resp)
+				if tc.overlap {
+					require.True(t, resp.Diagnostics.HasError())
+					require.Contains(t, resp.Diagnostics.Errors()[0].Detail(), "Duplicate entry in the config")
+					require.True(t, plan.Equal(resp.PlanValue), "invalid configuration must preserve the incoming plan")
+					return
+				}
+				require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+			}
+			require.True(t, resp.PlanValue.Equal(state), "got %s, want %s", resp.PlanValue, state)
+		})
 	}
-	require.True(t, plan.Equal(state), "got %s, want %s", plan, state)
 }
 
 func TestHydrateIfwRuleStateDuplicateAppCategories(t *testing.T) {
