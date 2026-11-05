@@ -3,6 +3,7 @@ package ipsecsite
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -11,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *siteIpsecResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -211,7 +214,7 @@ func connectionModeAttribute() schema.StringAttribute {
 		Description: "Connection mode for IPSec tunnel. Valid values: RESPONDER_ONLY, BIDIRECTIONAL",
 		Optional:    true,
 		Validators: []validator.String{
-			stringvalidator.OneOf("RESPONDER_ONLY", "BIDIRECTIONAL"),
+			stringvalidator.OneOf(utils.ToStrings(cato_models.AllConnectionMode)...),
 		},
 	}
 }
@@ -222,7 +225,7 @@ func identificationTypeAttribute() schema.StringAttribute {
 			"RESPONDER_ONLY. Valid values: IPV4, FQDN, EMAIL, KEY_ID",
 		Optional: true,
 		Validators: []validator.String{
-			stringvalidator.OneOf("IPV4", "FQDN", "EMAIL", "KEY_ID"),
+			stringvalidator.OneOf(utils.ToStrings(cato_models.AllIdentificationType)...),
 		},
 		PlanModifiers: []planmodifier.String{IdentificationTypeValidator()},
 	}
@@ -238,7 +241,7 @@ func ipsecMessageAttribute(description string) schema.SingleNestedAttribute {
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("NONE", "AUTOMATIC", "AES_CBC_128", "AES_CBC_256", "AES_GCM_128", "AES_GCM_256", "DES3_CBC"),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllIPSecCipher)...),
 				},
 				Default: stringdefault.StaticString("AUTOMATIC"),
 			},
@@ -249,18 +252,7 @@ func ipsecMessageAttribute(description string) schema.SingleNestedAttribute {
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(
-						"NONE",
-						"AUTOMATIC",
-						"DH_2_MODP1024",
-						"DH_5_MODP1536",
-						"DH_14_MODP2048",
-						"DH_15_MODP3072",
-						"DH_16_MODP4096",
-						"DH_19_ECP256",
-						"DH_20_ECP384",
-						"DH_21_ECP521",
-					),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllIPSecDHGroup)...),
 				},
 				Default: stringdefault.StaticString("AUTOMATIC"),
 			},
@@ -269,7 +261,7 @@ func ipsecMessageAttribute(description string) schema.SingleNestedAttribute {
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("NONE", "AUTOMATIC", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllIPSecHash)...),
 				},
 				Default: stringdefault.StaticString("AUTOMATIC"),
 			},
@@ -278,7 +270,7 @@ func ipsecMessageAttribute(description string) schema.SingleNestedAttribute {
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("NONE", "AUTOMATIC", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllIPSecHash)...),
 				},
 				Default: stringdefault.StaticString("AUTOMATIC"),
 			},

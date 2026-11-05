@@ -182,7 +182,7 @@ resource "cato_rbac_assignment" "viewer" {
 
 Required:
 
-- `action` (String) VIEW or EDIT access.
+- `action` (String) Entity access action. Configure VIEW or EDIT for explicit assignment grants.
 - `id` (String) Entity identifier.
 - `type` (String) Public entity type.
 

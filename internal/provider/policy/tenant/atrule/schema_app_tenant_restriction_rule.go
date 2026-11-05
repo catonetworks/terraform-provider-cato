@@ -15,6 +15,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:funlen
@@ -41,10 +42,7 @@ func (r *appTenantRestrictionRuleResource) Schema(_ context.Context, _ resource.
 							stringplanmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf(
-								"AFTER_RULE", "BEFORE_RULE", "FIRST_IN_POLICY", "FIRST_IN_SECTION",
-								"LAST_IN_POLICY", "LAST_IN_SECTION",
-							),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...),
 						},
 					},
 					"ref": schema.StringAttribute{
@@ -80,21 +78,14 @@ func (r *appTenantRestrictionRuleResource) Schema(_ context.Context, _ resource.
 						Description: "Rule action",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf(
-								string(cato_models.AppTenantRestrictionActionEnumBypass),
-								string(cato_models.AppTenantRestrictionActionEnumInjectHeaders),
-							),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllAppTenantRestrictionActionEnum)...),
 						},
 					},
 					"severity": schema.StringAttribute{
 						Description: "Rule severity",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf(
-								string(cato_models.AppTenantRestrictionSeverityEnumHigh),
-								string(cato_models.AppTenantRestrictionSeverityEnumMedium),
-								string(cato_models.AppTenantRestrictionSeverityEnumLow),
-							),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllAppTenantRestrictionSeverityEnum)...),
 						},
 					},
 					"application": schema.SingleNestedAttribute{

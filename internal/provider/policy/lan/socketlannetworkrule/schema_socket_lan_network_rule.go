@@ -3,6 +3,7 @@ package socketlannetworkrule
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -40,7 +42,7 @@ func (r *socketLanNetworkRuleResource) Schema(_ context.Context, _ resource.Sche
 						Required:    true,
 						Optional:    false,
 						Validators: []validator.String{
-							stringvalidator.OneOf("AFTER_RULE", "BEFORE_RULE", "FIRST_IN_POLICY", "FIRST_IN_SECTION", "LAST_IN_POLICY", "LAST_IN_SECTION"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...),
 						},
 					},
 					"ref": schema.StringAttribute{
@@ -83,12 +85,12 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 			"direction": schema.StringAttribute{
 				Description: "Direction of the traffic (TO, BOTH)",
 				Required:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("TO", "BOTH")},
+				Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketLanDirection)...)},
 			},
 			"transport": schema.StringAttribute{
 				Description: "Transport type (LAN, WAN)",
 				Required:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("LAN", "WAN")},
+				Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketLanTransportType)...)},
 			},
 
 			"site": schema.SingleNestedAttribute{
@@ -205,7 +207,7 @@ func (r *socketLanNetworkRuleResource) lanRuleSchema() schema.SingleNestedAttrib
 					"nat_type": schema.StringAttribute{
 						Description: "NAT type (DYNAMIC_PAT)",
 						Optional:    true,
-						Validators:  []validator.String{stringvalidator.OneOf("DYNAMIC_PAT")},
+						Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketLanNatType)...)},
 					},
 				},
 			},

@@ -4,6 +4,7 @@ package wfrule
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:funlen
@@ -105,14 +107,14 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "The action applied by the Wan Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanFirewallActionEnum)...),
 						},
 					},
 					"direction": schema.StringAttribute{
 						Description: "Define the direction on which the rule is applied (https://api.catonetworks.com/documentation/#definition-WanFirewallDirectionEnum)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("TO", "BOTH"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanFirewallDirectionEnum)...),
 						},
 					},
 					"active_period": schema.SingleNestedAttribute{
@@ -998,7 +1000,7 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 							stringplanmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllConnectionOriginEnum)...),
 						},
 						Computed: true,
 					},
@@ -1581,7 +1583,7 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										Optional:    true,
 										Required:    false,
 										Validators: []validator.String{
-											stringvalidator.OneOf("DAILY", "HOURLY", "IMMEDIATE", "WEEKLY"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRuleTrackingFrequencyEnum)...),
 										},
 										PlanModifiers: []planmodifier.String{
 											stringplanmodifier.UseStateForUnknown(), // Avoid drift
@@ -1716,7 +1718,7 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 									stringplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
 								Validators: []validator.String{
-									stringvalidator.OneOf("ALWAYS", "CUSTOM_RECURRING", "CUSTOM_TIMEFRAME", "WORKING_HOURS"),
+									stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyActiveOnEnum)...),
 								},
 							},
 							"custom_timeframe": schema.SingleNestedAttribute{
@@ -1763,7 +1765,7 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										Required:    false,
 										Optional:    true,
 										Validators: []validator.List{
-											listvalidator.ValueStringsAre(stringvalidator.OneOf("SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY")),
+											listvalidator.ValueStringsAre(stringvalidator.OneOf(utils.ToStrings(cato_models.AllDayOfWeek)...)),
 										},
 									},
 								},
@@ -2822,7 +2824,7 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										listplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
 									Validators: []validator.List{
-										listvalidator.ValueStringsAre(stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS")),
+										listvalidator.ValueStringsAre(stringvalidator.OneOf(utils.ToStrings(cato_models.AllOperatingSystem)...)),
 										listvalidator.SizeAtLeast(1),
 									},
 								},
@@ -3231,7 +3233,7 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										stringplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
 									Validators: []validator.String{
-										stringvalidator.OneOf("BOTH", "TO"),
+										stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanFirewallDirectionEnum)...),
 									},
 								},
 								"connection_origin": schema.StringAttribute{
@@ -3242,7 +3244,7 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 										stringplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
 									Validators: []validator.String{
-										stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+										stringvalidator.OneOf(utils.ToStrings(cato_models.AllConnectionOriginEnum)...),
 									},
 								},
 							},

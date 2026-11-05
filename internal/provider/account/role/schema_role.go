@@ -3,6 +3,7 @@ package role
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -11,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *roleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -81,7 +84,7 @@ func permissionAttributes() map[string]schema.Attribute {
 		"action": schema.StringAttribute{
 			Description: "Granted action: VIEW or EDIT.",
 			Required:    true,
-			Validators:  []validator.String{stringvalidator.OneOf("VIEW", "EDIT")},
+			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllRoleManagementGrantAction)...)},
 		},
 	}
 }

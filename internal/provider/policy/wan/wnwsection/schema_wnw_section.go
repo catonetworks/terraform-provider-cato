@@ -4,12 +4,15 @@ package wnwsection
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *wanNetworkSectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -36,7 +39,7 @@ func (r *wanNetworkSectionResource) Schema(_ context.Context, _ resource.SchemaR
 							stringplanmodifier.UseStateForUnknown(), // Avoid drift
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf("AFTER_SECTION", "BEFORE_SECTION", "LAST_IN_POLICY"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicySectionPositionEnum)...),
 						},
 					},
 					"ref": schema.StringAttribute{

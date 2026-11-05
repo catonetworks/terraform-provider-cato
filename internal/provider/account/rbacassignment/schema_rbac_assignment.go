@@ -3,6 +3,7 @@ package rbacassignment
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -13,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *assignmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -112,14 +115,12 @@ func entityAttributes() map[string]schema.Attribute {
 		"type": schema.StringAttribute{
 			Description: "Public entity type.",
 			Required:    true,
-			Validators: []validator.String{stringvalidator.OneOf(
-				"SITE", "USERSGROUP", "GROUP", "SYSTEMGROUP", "WAN_FIREWALL_POLICY", "INTERNET_FIREWALL_POLICY",
-			)},
+			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllAuthorizedEntityType)...)},
 		},
 		"action": schema.StringAttribute{
-			Description: "VIEW or EDIT access.",
+			Description: "Entity access action. Configure VIEW or EDIT for explicit assignment grants.",
 			Required:    true,
-			Validators:  []validator.String{stringvalidator.OneOf("VIEW", "EDIT")},
+			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllRBACAction)...)},
 		},
 	}
 }

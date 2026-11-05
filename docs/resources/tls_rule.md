@@ -472,7 +472,7 @@ Optional:
 - `country` (Attributes Set) Countries (see [below for nested schema](#nestedatt--rule--country))
 - `description` (String) Description of the rule
 - `device_posture_profile` (Attributes Set) Device posture profiles (see [below for nested schema](#nestedatt--rule--device_posture_profile))
-- `platform` (String) Platform filter (ANDROID, EMBEDDED, IOS, LINUX, MACOS, WINDOWS)
+- `platform` (String) Platform filter (ANDROID, CHROMEOS, EMBEDDED, IOS, LINUX, MACOS, WINDOWS)
 - `source` (Attributes) Source traffic matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--source))
 - `untrusted_certificate_action` (String) Action for untrusted certificates (ALLOW, BLOCK, PROMPT)
 
@@ -500,7 +500,7 @@ Optional:
 - `remote_asn` (List of String) Remote ASN list
 - `service` (Attributes Set) Services (see [below for nested schema](#nestedatt--rule--application--service))
 - `subnet` (List of String) Subnet list
-- `tls_inspect_category` (String) TLS Inspection category (POPULAR_CLOUD_APPS, STREAMING_MEDIA)
+- `tls_inspect_category` (String) TLS Inspection category (POPULAR_CLOUD_APPS, SAFE_TO_INSPECT_DOMAINS)
 
 <a id="nestedatt--rule--application--app_category"></a>
 ### Nested Schema for `rule.application.app_category`
@@ -552,7 +552,7 @@ Optional:
 
 Required:
 
-- `protocol` (String) Protocol (TCP, UDP, ICMP, ANY)
+- `protocol` (String) Protocol (TCP, UDP, TCP_UDP, ICMP, ANY)
 
 Optional:
 

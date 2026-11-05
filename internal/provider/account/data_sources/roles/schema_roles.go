@@ -3,6 +3,7 @@ package roles
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iam"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func stringFilterSchema() schema.SingleNestedAttribute {
@@ -29,10 +31,9 @@ func (d *rolesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 			"id":         schema.StringAttribute{Description: "Account identifier for this query.", Computed: true},
 			"account_id": iam.DataAccountAttribute(),
 			"sort_direction": schema.StringAttribute{Description: "Name sort direction, ASC (default) or DESC.",
-				Optional: true,
-				Computed: true,
-				Validators: []validator.String{stringvalidator.OneOf("ASC",
-					"DESC")}},
+				Optional:   true,
+				Computed:   true,
+				Validators: []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllSortOrder)...)}},
 
 			"filter": schema.SingleNestedAttribute{Description: "Optional role filters.", Optional: true, Attributes: map[string]schema.Attribute{
 				"id": stringFilterSchema(), "name": stringFilterSchema(),

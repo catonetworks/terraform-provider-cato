@@ -3,6 +3,7 @@ package bgppeer
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -11,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:funlen
@@ -98,7 +101,7 @@ func (r *bgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Default action for routes not matching filters (ACCEPT or DROP).",
 				Required:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("ACCEPT", "DROP"),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllBgpDefaultAction)...),
 				},
 			},
 			"perform_nat": schema.BoolAttribute{
@@ -166,7 +169,7 @@ func (r *bgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						Description: "Frequency of health alerts.",
 						Optional:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("HOURLY", "DAILY", "WEEKLY", "IMMEDIATE"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRuleTrackingFrequencyEnum)...),
 						},
 					},
 					"subscription_id": schema.StringAttribute{
