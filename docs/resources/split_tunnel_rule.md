@@ -50,6 +50,7 @@ resource "cato_split_tunnel_rule" "example" {
       fqdn            = ["example.com"]
       global_ip_range = [{ id = "replace-with-object-id" }]
     }
+    # Removing dns_exclusion clears previously configured exclusions.
     dns_exclusion = {
       domain = ["example.com"]
     }
@@ -108,7 +109,7 @@ Optional:
 - `coverage` (String) Traffic coverage (ALL or WEB_ONLY)
 - `description` (String) Rule description
 - `destination` (Attributes) Destinations the rule applies to (see [below for nested schema](#nestedatt--rule--destination))
-- `dns_exclusion` (Attributes) Domains excluded from DNS tunneling (see [below for nested schema](#nestedatt--rule--dns_exclusion))
+- `dns_exclusion` (Attributes) Domains excluded from DNS tunneling. Removing this block clears previously configured exclusions. (see [below for nested schema](#nestedatt--rule--dns_exclusion))
 - `platform` (List of String) Operating systems the rule applies to
 - `source` (Attributes) Users and user groups the rule applies to (see [below for nested schema](#nestedatt--rule--source))
 - `source_network` (Attributes) Source network the rule applies to (see [below for nested schema](#nestedatt--rule--source_network))

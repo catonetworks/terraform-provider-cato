@@ -219,8 +219,12 @@ func hydrateSplitTunnelUpdateRuleInput(
 	if c := refinput.FromSet(ctx, rule.Country, &diags, "country", refinput.Country); c != nil {
 		upd.Rule.Country = c
 	}
+	// Updates must send an explicit empty list when the block is removed.
+	if !rule.DNSExclusion.IsUnknown() {
+		upd.Rule.DNSExclusion = &cato_models.SplitTunnelDNSExclusionUpdateInput{Domain: []string{}}
+	}
 	if dx := stDNSExclusionInput(ctx, rule.DNSExclusion, &diags); dx != nil {
-		upd.Rule.DNSExclusion = &cato_models.SplitTunnelDNSExclusionUpdateInput{Domain: dx.Domain}
+		upd.Rule.DNSExclusion.Domain = dx.Domain
 	}
 
 	return upd, diags

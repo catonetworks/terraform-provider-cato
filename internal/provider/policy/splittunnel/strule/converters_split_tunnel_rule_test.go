@@ -73,3 +73,36 @@ func TestStateConversionsPreserveConfiguredEmptyFilters(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateDNSExclusion(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name     string
+		value    types.Object
+		expected []string
+		omitted  bool
+	}{
+		{name: "removed", value: types.ObjectNull(SplitTunnelDNSExclusionAttrTypes), expected: []string{}},
+		{name: "empty", value: types.ObjectValueMust(SplitTunnelDNSExclusionAttrTypes, map[string]attr.Value{"domain": types.ListValueMust(types.StringType, nil)}), expected: []string{}},
+		{name: "populated", value: types.ObjectValueMust(SplitTunnelDNSExclusionAttrTypes, map[string]attr.Value{"domain": types.ListValueMust(types.StringType, []attr.Value{types.StringValue("example.com")})}), expected: []string{"example.com"}},
+		{name: "unknown", value: types.ObjectUnknown(SplitTunnelDNSExclusionAttrTypes), omitted: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var remote cato_go_sdk.PolicySplitTunnelPolicy_Policy_SplitTunnel_Policy_Rules_Rule
+			require.NoError(t, json.Unmarshal([]byte(`{"id":"rule-1"}`), &remote))
+			rule, diags := hydrateSplitTunnelRuleStateFromClient(ctx, &remote)
+			require.False(t, diags.HasError(), "%v", diags)
+			rule.DNSExclusion = tc.value
+			object, diags := types.ObjectValueFrom(ctx, SplitTunnelRuleRuleAttrTypes, rule)
+			require.False(t, diags.HasError(), "%v", diags)
+			input, diags := hydrateSplitTunnelUpdateRuleInput(ctx, SplitTunnelRule{Rule: object, At: types.ObjectNull(map[string]attr.Type{})})
+			require.False(t, diags.HasError(), "%v", diags)
+			if tc.omitted {
+				require.Nil(t, input.Rule.DNSExclusion)
+				return
+			}
+			require.NotNil(t, input.Rule.DNSExclusion)
+			require.Equal(t, tc.expected, input.Rule.DNSExclusion.Domain)
+		})
+	}
+}

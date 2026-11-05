@@ -35,6 +35,7 @@ resource "cato_split_tunnel_rule" "example" {
       fqdn            = ["example.com"]
       global_ip_range = [{ id = "replace-with-object-id" }]
     }
+    # Removing dns_exclusion clears previously configured exclusions.
     dns_exclusion = {
       domain = ["example.com"]
     }

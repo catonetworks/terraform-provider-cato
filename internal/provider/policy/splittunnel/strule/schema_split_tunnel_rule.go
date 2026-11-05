@@ -140,7 +140,7 @@ func (r *splitTunnelRuleResource) Schema(_ context.Context, _ resource.SchemaReq
 						},
 					},
 					"dns_exclusion": schema.SingleNestedAttribute{
-						Description: "Domains excluded from DNS tunneling",
+						Description: "Domains excluded from DNS tunneling. Removing this block clears previously configured exclusions.",
 						Optional:    true,
 						Attributes: map[string]schema.Attribute{
 							"domain": schema.ListAttribute{

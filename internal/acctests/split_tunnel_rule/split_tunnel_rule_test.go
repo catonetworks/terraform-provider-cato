@@ -117,10 +117,10 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{Config: config(name+"-updated", "dns"), Check: resource.TestCheckResourceAttr(resourceName, "rule.dns_exclusion.domain.#", "1")},
 			{Config: config(name+"-updated", "dns"), PlanOnly: true, ExpectNonEmptyPlan: false},
-			{Config: config(name+"-updated", "updated")},
+			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckNoResourceAttr(resourceName, "rule.dns_exclusion.domain.#")},
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{PreConfig: func() { addExternalDNSExclusion(t, createdID) }, Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: true},
-			{Config: config(name+"-updated", "updated")},
+			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckNoResourceAttr(resourceName, "rule.dns_exclusion.domain.#")},
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
 				object := state.RootModule().Resources[resourceName]
 				if object == nil || object.Primary == nil {
