@@ -106,13 +106,49 @@ In order to test the provider, you can simply run `make test`.
 make test
 ```
 
-In order to run the full suite of Acceptance tests, run `make testacc`.
+To run all acceptance tests locally against one account, export `CATO_ACCOUNT_ID`,
+`CATO_TOKEN`, `CATO_BASEURL`, and that account's `TFACC_TEST_VARS`, then run:
 
 *Note:* Acceptance tests create real resources, and often cost money to run.
 
 ```sh
-make testacc
+make acctest-flaky
+# Run just one suite, or one of the CI groups, using the same local account:
+make acctest-flaky t=if_rule
+make acctest-flaky group=0
 ```
+`make acctest` also runs the complete suite on one account, without retries.
+Both commands run packages serially to avoid concurrent policy revisions.
+
+GitHub Actions runs ten balanced acceptance groups concurrently. Each run shuffles
+the ten account slots once, assigns a distinct account to each group, and holds a
+workflow-wide lock until every group finishes. The existing required `test` check
+passes only when all groups pass. Local runs do not need the CI account pool.
+
+The `CATO_ACCTEST_ACCOUNTS` Actions secret is a JSON array of exactly ten records,
+each with `id` (numeric string), `api_key`, and `test_vars` (that account's fixture
+references). IDs and keys must be unique. Each job selects one record and uses its
+fixture references; the old shared `TFACC_TEST_VARS` variable is not used in CI.
+Keep this file and Terraform fixture state outside the checkout.
+
+Timings come from [job 127228450392](https://github.com/catonetworks/terraform-provider-cato/actions/runs/42022493205/job/127228450392).
+The planner uses longest-duration-first assignment with a three-second allowance
+per package invocation. It splits `socket_site` by top-level test to avoid its
+three-minute package dominating one group. Estimates are about 137–141 seconds
+per group, before cleanup, compilation, setup, and retries; changed account
+features and previously skipped tests can change actual durations.
+
+```sh
+python3 test_data/acctest_groups.py summary
+python3 test_data/acctest_groups.py validate
+```
+
+When adding a package, add its estimated seconds to
+`test_data/acctest_timings.json`. For a package with individual test timings,
+include every top-level test. Validation fails if packages or split tests are
+missing, preventing silent omissions. Update durations from a new successful run
+when the baseline becomes stale. See [fixture setup](test_data/acctest_fixtures/README.md)
+for persistent account prerequisites.
 Please refer to [Running TF Provider Tests](https://catonetworks.atlassian.net/wiki/spaces/RnD/pages/7257526403/Running+TF+Provider+Tests) for more details
 
 ## Helpful Terraform Aliases (Unix & Windows)

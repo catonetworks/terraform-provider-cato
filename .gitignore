@@ -130,5 +130,8 @@ website/vendor
 # Keep windows files with windows line endings
 *.winfile eol=crlf
 
+# Python acceptance tooling
+__pycache__/
+
 # Claude
 CLAUDE.md

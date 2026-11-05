@@ -1,0 +1,241 @@
+{
+  "source_job_url": "https://github.com/catonetworks/terraform-provider-cato/actions/runs/42022493205/job/127228450392",
+  "source_commit": "c064c4c586af0075bebcca8f05a0282cbbd7059b",
+  "invocation_overhead_seconds": 3.0,
+  "packages": {
+    "account": {
+      "seconds": 0.68
+    },
+    "admin": {
+      "seconds": 10.09
+    },
+    "always_on_policy": {
+      "seconds": 6.11
+    },
+    "always_on_rule": {
+      "seconds": 6.36
+    },
+    "always_on_rule_bulk": {
+      "seconds": 12.19
+    },
+    "always_on_section": {
+      "seconds": 9.93
+    },
+    "anti_malware_file_hash_rule": {
+      "seconds": 11.43
+    },
+    "anti_malware_file_hash_section": {
+      "seconds": 11.15
+    },
+    "app_connector": {
+      "seconds": 10.66
+    },
+    "app_tenant_restriction_rule": {
+      "seconds": 16.82
+    },
+    "app_tenant_restriction_section": {
+      "seconds": 5.82
+    },
+    "application_control_policy": {
+      "seconds": 10.36
+    },
+    "application_control_rule": {
+      "seconds": 24.85
+    },
+    "application_control_section": {
+      "seconds": 7.62
+    },
+    "bgp_peer": {
+      "seconds": 0.69
+    },
+    "client_connectivity_rule": {
+      "seconds": 12.44
+    },
+    "client_connectivity_section": {
+      "seconds": 12.88
+    },
+    "cloud_interconnect_physical_connection": {
+      "seconds": 0.68
+    },
+    "cloud_interconnect_site": {
+      "seconds": 22.25
+    },
+    "custom_application": {
+      "seconds": 8.97
+    },
+    "dns_dhcp": {
+      "seconds": 0.67
+    },
+    "dynamic_ip_allocation_rule": {
+      "seconds": 20.04
+    },
+    "dynamic_ip_allocation_section": {
+      "seconds": 10.26
+    },
+    "firewall_sub_policy": {
+      "seconds": 55.16
+    },
+    "fqdn_container": {
+      "seconds": 14.23
+    },
+    "global_ip_ranges": {
+      "seconds": 20.34
+    },
+    "group": {
+      "seconds": 6.58
+    },
+    "group_members": {
+      "seconds": 6.01
+    },
+    "if_rule": {
+      "seconds": 72.76
+    },
+    "if_rules_index": {
+      "seconds": 43.96
+    },
+    "if_section": {
+      "seconds": 14.25
+    },
+    "ip_address_range_container": {
+      "seconds": 13.91
+    },
+    "ipsec_site": {
+      "seconds": 18.39
+    },
+    "lan_interface": {
+      "seconds": 21.78
+    },
+    "lan_interface_lag_member": {
+      "seconds": 26.29
+    },
+    "license": {
+      "seconds": 0.67
+    },
+    "mailing_list": {
+      "seconds": 10.24
+    },
+    "network_range": {
+      "seconds": 35.33
+    },
+    "private_access_policy": {
+      "seconds": 24.16
+    },
+    "private_access_section": {
+      "seconds": 10.43
+    },
+    "private_app": {
+      "seconds": 5.31
+    },
+    "rbac_assignment": {
+      "seconds": 7.47
+    },
+    "remote_port_forward_rule": {
+      "seconds": 12.5
+    },
+    "remote_port_forward_section": {
+      "seconds": 11.18
+    },
+    "role": {
+      "seconds": 12.23
+    },
+    "sdp_static_ip_allocation_rule": {
+      "seconds": 0.71
+    },
+    "sdp_static_ip_allocation_section": {
+      "seconds": 10.61
+    },
+    "secondary_aws_vsocket": {
+      "seconds": 0.67
+    },
+    "secondary_azure_vsocket": {
+      "seconds": 0.7
+    },
+    "site_web_proxy_section": {
+      "seconds": 0.9
+    },
+    "socket_bypass_rule": {
+      "seconds": 0.83
+    },
+    "socket_bypass_section": {
+      "seconds": 0.83
+    },
+    "socket_lan_firewall_rule": {
+      "seconds": 22.13
+    },
+    "socket_lan_network_rule": {
+      "seconds": 33.59
+    },
+    "socket_lan_section": {
+      "seconds": 6.26
+    },
+    "socket_site": {
+      "seconds": 173.38,
+      "tests": {
+        "TestAccSocketSite_ConnType": 71.68,
+        "TestAccSocketSite_DHCP": 29.28,
+        "TestAccSocketSite_DhcpSettingsNull": 24.56,
+        "TestAccSocketSite_Basic": 19.39,
+        "TestAccSocketSite_LocationEmptyCity": 15.62,
+        "TestAccSocketSite_Interface": 12.13,
+        "TestAccSocketSite_Location": 0.0
+      }
+    },
+    "split_tunnel_rule": {
+      "seconds": 22.57
+    },
+    "split_tunnel_section": {
+      "seconds": 11.06
+    },
+    "static_host": {
+      "seconds": 19.95
+    },
+    "subscription_group": {
+      "seconds": 10.92
+    },
+    "terminal_server_rule": {
+      "seconds": 0.85
+    },
+    "terminal_server_section": {
+      "seconds": 0.87
+    },
+    "tls_inspection_section": {
+      "seconds": 5.85
+    },
+    "tls_rule": {
+      "seconds": 6.67
+    },
+    "tls_rules_index": {
+      "seconds": 16.67
+    },
+    "user": {
+      "seconds": 8.75
+    },
+    "wan_interface": {
+      "seconds": 22.19
+    },
+    "wan_network_section": {
+      "seconds": 7.15
+    },
+    "wf_rule": {
+      "seconds": 7.34
+    },
+    "wf_rules_index": {
+      "seconds": 23.08
+    },
+    "wf_rules_index_with_rule_data": {
+      "seconds": 13.85
+    },
+    "wf_section": {
+      "seconds": 13.58
+    },
+    "wifi_ssid": {
+      "seconds": 16.68
+    },
+    "wnw_rule": {
+      "seconds": 7.83
+    },
+    "wnw_rules_index": {
+      "seconds": 21.83
+    }
+  }
+}
