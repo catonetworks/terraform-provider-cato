@@ -98,6 +98,8 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 			return nil
 		},
 		PreCheck: acc.CheckCMAVars(t),
+		// Import cannot recover the configured empty source object from the API.
+		// Ignore only its container marker; user and group values remain verified.
 		Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(name, "initial"), Check: resource.ComposeTestCheckFunc(checkEmptyFilters, resource.TestCheckResourceAttrSet(resourceName, "rule.id"), func(state *terraform.State) error {
 				createdID = state.RootModule().Resources[resourceName].Primary.Attributes["rule.id"]
@@ -110,7 +112,7 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.source.%"}},
 			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckResourceAttr(resourceName, "rule.name", "acctest-split_tunnel_rule-"+name+"-updated")},
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{Config: config(name+"-updated", "dns"), Check: resource.TestCheckResourceAttr(resourceName, "rule.dns_exclusion.domain.#", "1")},
@@ -125,7 +127,7 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.source.%"}},
 		}, resourceName,
 
 			// Change only the rule created by this test, then let Terraform detect and repair drift.

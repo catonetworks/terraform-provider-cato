@@ -99,6 +99,8 @@ rule = {
 			return nil
 		},
 		PreCheck: acc.CheckCMAVars(t),
+		// Import cannot recover the configured empty source object from the API.
+		// Ignore only its container marker; user and group values remain verified.
 		Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(name, "initial"), Check: resource.ComposeTestCheckFunc(checkEmptyFilters, resource.TestCheckResourceAttrSet(resourceName, "rule.id"))},
 			{Config: config(name, "initial"), PlanOnly: true, ExpectNonEmptyPlan: false},
@@ -108,7 +110,7 @@ rule = {
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.source.%"}},
 			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckResourceAttr(resourceName, "rule.name", "acctest-dynamic_ip_allocation_rule-"+name+"-updated")},
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
 				object := state.RootModule().Resources[resourceName]
@@ -116,7 +118,7 @@ rule = {
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.source.%"}},
 		}, resourceName,
 
 			// Create only a dedicated fixture: the account-wide global-IP-ranges resource
