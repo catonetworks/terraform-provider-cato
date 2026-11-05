@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.5.0-prerelease.1 (2026-11-04)
+
+### Features
+- Added rule and section resources for Client Connectivity, Split Tunnel, Terminal Server, Dynamic IP Allocation, SDP Static IP Allocation, Socket Bypass, Remote Port Forwarding, and Anti-Malware File Hash policies.
+- Added `cato_private_access_section` and `cato_site_web_proxy_section` to manage sections in existing policies.
+- Added `cato_cloud_interconnect_site` and `cato_cloud_interconnect_physical_connection` to manage Cloud Interconnect sites and physical connections.
+- Added `cato_secondary_aws_vsocket` and `cato_secondary_azure_vsocket` to manage secondary vSockets, and `cato_wifi_ssid` to manage Wi-Fi SSIDs.
+- Added `cato_user` to manage local users, and `cato_mailing_list` and `cato_subscription_group` to manage notification recipients and subscriptions.
+- Added `cato_custom_application`, `cato_fqdn_container`, and `cato_ip_address_range_container` to manage custom applications and reusable domain and IP address collections.
+
+### Notes
+- This is a prerelease for evaluating the new resources. API availability depends on the account's enabled features; use a test account when evaluating beta APIs.
+- The new policy rule and section resources automatically publish changes. Sections must be empty before deletion.
+- `cato_user` does not grant remote-access eligibility and cannot import or modify directory-managed users.
+- Updated the Cato Terraform provider to the latest API schema. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches.
+
 ## 1.4.0 (2026-11-04)
 
 ### Breaking changes

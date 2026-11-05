@@ -21,6 +21,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/appconnector"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectorgroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/privateapp"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/user"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/account"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/admin"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/licensinginfo"
@@ -28,8 +29,12 @@ import (
 	roleds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/roles"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/license"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/mailinglist"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/rbacassignment"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/subscriptiongroup"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectphysicalconnection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/allocatedip"
 	dhcprelaygroupds "github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/dhcprelaygroup"
@@ -47,11 +52,24 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterface"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/laninterfacelagmember"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/networkrange"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryawsvsocket"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/secondaryazurevsocket"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/socketsite"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/wifissid"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivityrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/clientconnectivitysection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/dynamicipallocationsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/sdpstaticipallocationrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/sdpstaticipallocationsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/splittunnelsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserverrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/terminalserversection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
@@ -69,6 +87,9 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/pasection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
@@ -85,12 +106,20 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/customapplication"
 	groupdata "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/group"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/fqdncontainer"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/groupmembers"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/ipaddressrangecontainer"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/sitewebproxy/swpsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/statichost"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/waninterface"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/security/antimalwarefilehash/amfhrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/security/antimalwarefilehash/amfhsection"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/security/remoteportforward/rpfrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/security/remoteportforward/rpfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -535,6 +564,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		terminalserversection.NewResource,
 		account.NewAccountResource,
 		dnssettings.NewDNSSettingsResource,
 		dnssitesettings.NewDNSSiteSettingsResource,
@@ -543,11 +573,40 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		dhcpoption.NewDHCPOptionResource,
 		dhcprelaygroup.NewDHCPRelayGroupResource,
 		role.NewResource,
+		mailinglist.NewResource,
+		subscriptiongroup.NewResource,
+		cloudinterconnectsite.NewResource,
+		secondaryawsvsocket.NewResource,
+		secondaryazurevsocket.NewResource,
+		wifissid.NewResource,
+		cloudinterconnectphysicalconnection.NewResource,
+		customapplication.NewResource,
+		fqdncontainer.NewResource,
+		ipaddressrangecontainer.NewResource,
 		rbacassignment.NewResource,
 		admin.NewAdminResource,
+		user.NewResource,
+		alwaysonrule.NewAlwaysOnRuleResource,
+
+		clientconnectivityrule.NewResource,
+		clientconnectivitysection.NewResource,
+		splittunnelrule.NewResource,
+		splittunnelsection.NewResource,
+		terminalserverrule.NewResource,
+		dynamicipallocationrule.NewResource,
+		dynamicipallocationsection.NewResource,
+		sdpstaticipallocationrule.NewResource,
+		sdpstaticipallocationsection.NewResource,
+		sbrule.NewResource,
+		sbsection.NewResource,
+		pasection.NewResource,
+		rpfrule.NewResource,
+		rpfsection.NewResource,
+		amfhrule.NewResource,
+		amfhsection.NewResource,
+		swpsection.NewResource,
 		alwaysonindex.NewAlwaysOnRuleBulkResource,
 		alwaysonpolicy.NewAlwaysOnPolicyResource,
-		alwaysonrule.NewAlwaysOnRuleResource,
 		alwaysonsection.NewAlwaysOnSectionResource,
 		bgppeer.NewBgpPeerResource,
 		group.NewGroupResource,
