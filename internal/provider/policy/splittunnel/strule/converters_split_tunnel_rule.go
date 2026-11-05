@@ -230,11 +230,11 @@ func hydrateSplitTunnelUpdateRuleInput(
 func convertCreateInput(
 	ctx context.Context,
 	priorRulePlan *SplitTunnelRuleRulePlan,
-	_ SplitTunnelRuleRulePlan,
+	prior SplitTunnelRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SplitTunnelRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SplitTunnelRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -247,12 +247,12 @@ func convertCreateInput2(plan *SplitTunnelRule, newID string, ruleObj basetypes.
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(
 	ctx context.Context,
-	_ SplitTunnelRuleRulePlan,
+	prior SplitTunnelRuleRulePlan,
 	priorHydrated *SplitTunnelRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	hydrated := *priorHydrated
 	defer func() { *priorHydrated = hydrated }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SplitTunnelRuleRuleAttrTypes, hydrated)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SplitTunnelRuleRuleAttrTypes, hydrated, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -301,12 +301,12 @@ func convertUpdateInput(
 // convertUpdateInput2 converts between the Terraform model and SDK values.
 func convertUpdateInput2(
 	ctx context.Context,
-	_ SplitTunnelRuleRulePlan,
+	prior SplitTunnelRuleRulePlan,
 	priorRulePlan *SplitTunnelRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SplitTunnelRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SplitTunnelRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 

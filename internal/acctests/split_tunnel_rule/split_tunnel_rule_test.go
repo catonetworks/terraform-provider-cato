@@ -51,6 +51,16 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 		return anchor + "\n" + target
 	}
 	resourceName := "cato_split_tunnel_rule.test"
+
+	// Assert configured empties survive the read after apply.
+	checkEmptyFilters := resource.ComposeTestCheckFunc(
+		resource.TestCheckResourceAttr(resourceName, "rule.country.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.destination.application.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.destination.fqdn.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.destination.global_ip_range.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.source.user.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.source.users_group.#", "0"),
+	)
 	var createdID string
 
 	published := func(state *terraform.State) error {
@@ -89,7 +99,7 @@ rule = {"action": "ROUTE_ONLY_SELECTED", "country": [], "coverage": "ALL", "desc
 		},
 		PreCheck: acc.CheckCMAVars(t),
 		Steps: acc.WithStableResourceID([]resource.TestStep{
-			{Config: config(name, "initial"), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttrSet(resourceName, "rule.id"), func(state *terraform.State) error {
+			{Config: config(name, "initial"), Check: resource.ComposeTestCheckFunc(checkEmptyFilters, resource.TestCheckResourceAttrSet(resourceName, "rule.id"), func(state *terraform.State) error {
 				createdID = state.RootModule().Resources[resourceName].Primary.Attributes["rule.id"]
 				return nil
 			})},

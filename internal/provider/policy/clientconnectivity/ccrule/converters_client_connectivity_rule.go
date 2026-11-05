@@ -176,11 +176,11 @@ func hydrateClientConnectivityUpdateRuleInput(
 func convertCreateInput(
 	ctx context.Context,
 	priorRulePlan *ClientConnectivityRuleRulePlan,
-	_ ClientConnectivityRuleRulePlan,
+	prior ClientConnectivityRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, ClientConnectivityRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, ClientConnectivityRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -193,12 +193,12 @@ func convertCreateInput2(plan *ClientConnectivityRule, newID string, ruleObj bas
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(
 	ctx context.Context,
-	_ ClientConnectivityRuleRulePlan,
+	prior ClientConnectivityRuleRulePlan,
 	priorHydrated *ClientConnectivityRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	hydrated := *priorHydrated
 	defer func() { *priorHydrated = hydrated }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, ClientConnectivityRuleRuleAttrTypes, hydrated)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, ClientConnectivityRuleRuleAttrTypes, hydrated, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -247,12 +247,12 @@ func convertUpdateInput(
 // convertUpdateInput2 converts between the Terraform model and SDK values.
 func convertUpdateInput2(
 	ctx context.Context,
-	_ ClientConnectivityRuleRulePlan,
+	prior ClientConnectivityRuleRulePlan,
 	priorRulePlan *ClientConnectivityRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, ClientConnectivityRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, ClientConnectivityRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 

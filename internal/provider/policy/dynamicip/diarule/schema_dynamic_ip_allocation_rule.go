@@ -58,7 +58,8 @@ func refObjectAttribute(description string, required bool) schema.SingleNestedAt
 func (r *dynamicIPAllocationRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a rule in the Cato dynamic IP allocation policy. " +
-			"Underlying GraphQL is marked @beta; behavior and fields may change.",
+			"Underlying GraphQL is marked @beta; behavior and fields may change. " +
+			"Explicitly configured empty filters are preserved in state when the API omits them.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Rule ID",

@@ -160,11 +160,11 @@ func hydrateDynamicIPAllocationUpdateRuleInput(
 func convertCreateInput(
 	ctx context.Context,
 	priorRulePlan *DynamicIPAllocationRuleRulePlan,
-	_ DynamicIPAllocationRuleRulePlan,
+	prior DynamicIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIPAllocationRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, DynamicIPAllocationRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -177,12 +177,12 @@ func convertCreateInput2(plan *DynamicIPAllocationRule, newID string, ruleObj ba
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(
 	ctx context.Context,
-	_ DynamicIPAllocationRuleRulePlan,
+	prior DynamicIPAllocationRuleRulePlan,
 	priorHydrated *DynamicIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	hydrated := *priorHydrated
 	defer func() { *priorHydrated = hydrated }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIPAllocationRuleRuleAttrTypes, hydrated)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, DynamicIPAllocationRuleRuleAttrTypes, hydrated, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -231,12 +231,12 @@ func convertUpdateInput(
 // convertUpdateInput2 converts between the Terraform model and SDK values.
 func convertUpdateInput2(
 	ctx context.Context,
-	_ DynamicIPAllocationRuleRulePlan,
+	prior DynamicIPAllocationRuleRulePlan,
 	priorRulePlan *DynamicIPAllocationRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, DynamicIPAllocationRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, DynamicIPAllocationRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 
