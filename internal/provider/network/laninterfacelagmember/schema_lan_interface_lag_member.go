@@ -53,10 +53,8 @@ func (r *lanInterfaceLagMemberResource) Schema(_ context.Context, _ resource.Sch
 				Description: "SocketInterface destination type (https://api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
 				Optional:    true,
 				Computed:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketInterfaceDestType)...),
-				},
-				Default: stringdefault.StaticString(socketinterface.LanLagMemberDestType),
+				Validators:  []validator.String{stringvalidator.OneOf(socketinterface.LanLagMemberDestType)},
+				Default:     stringdefault.StaticString(socketinterface.LanLagMemberDestType),
 			},
 		},
 	}

@@ -120,7 +120,7 @@ func entityAttributes() map[string]schema.Attribute {
 		"action": schema.StringAttribute{
 			Description: "Entity access action. Configure VIEW or EDIT for explicit assignment grants.",
 			Required:    true,
-			Validators:  []validator.String{stringvalidator.OneOf(utils.ToStrings(cato_models.AllRBACAction)...)},
+			Validators:  []validator.String{stringvalidator.OneOf(string(cato_models.RBACActionView), string(cato_models.RBACActionEdit))},
 		},
 	}
 }
