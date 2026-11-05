@@ -587,6 +587,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 	}
 }
 
+//nolint:funlen // Keep the declarative resource registry together.
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		account.NewAccountResource,
