@@ -149,6 +149,14 @@ func ConvertToBgpPeer(input cato_go_sdk.Site_Site_BgpPeer) BgpPeer {
 	}
 }
 
+// preserveOmittedBgpPassword keeps the API's empty default equivalent to an
+// omitted password. Explicit values and remote password changes remain visible.
+func preserveOmittedBgpPassword(remote *BgpPeer, prior BgpPeer) {
+	if prior.Md5AuthKey.IsNull() && !remote.Md5AuthKey.IsUnknown() && remote.Md5AuthKey.ValueString() == "" {
+		remote.Md5AuthKey = types.StringNull()
+	}
+}
+
 // convertCreateInput converts between the Terraform model and SDK values.
 //
 //nolint:funlen

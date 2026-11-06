@@ -47,30 +47,26 @@
       "seconds": 5.23
     },
     "bgp_peer": {
-      "seconds": 7.5,
-      "observed_seconds": 1.39,
-      "measurement_status": "estimated_skipped"
+      "seconds": 14.04,
+      "measurement_status": "measured_local"
     },
     "bulk_policy_families": {
-      "seconds": 50.28,
+      "seconds": 49.64,
       "tests": {
-        "TestAccBulkPolicyFamilies_AntiMalwareFileHash": 5.64,
-        "TestAccBulkPolicyFamilies_ClientConnectivity": 5.65,
-        "TestAccBulkPolicyFamilies_SplitTunnel": 5.18,
-        "TestAccBulkPolicyFamilies_DynamicIPAllocation": 5.8,
-        "TestAccBulkPolicyFamilies_TerminalServer": 5.64,
+        "TestAccBulkPolicyFamilies_AntiMalwareFileHash": 5.17,
+        "TestAccBulkPolicyFamilies_ClientConnectivity": 5.52,
+        "TestAccBulkPolicyFamilies_SplitTunnel": 4.8,
+        "TestAccBulkPolicyFamilies_DynamicIPAllocation": 5.15,
+        "TestAccBulkPolicyFamilies_TerminalServer": 5.27,
         "TestAccBulkPolicyFamilies_SiteWebProxy": 5.64,
-        "TestAccBulkPolicyFamilies_SocketBypass": 5.45,
-        "TestAccBulkPolicyFamilies_SDPStaticIPAllocation": 5.64,
-        "TestAccBulkPolicyFamilies_RemotePortForward": 5.64
+        "TestAccBulkPolicyFamilies_SocketBypass": 5.64,
+        "TestAccBulkPolicyFamilies_SDPStaticIPAllocation": 5.85,
+        "TestAccBulkPolicyFamilies_RemotePortForward": 6.6
       },
-      "observed_seconds": 29.54,
       "estimated_tests": [
-        "TestAccBulkPolicyFamilies_TerminalServer",
-        "TestAccBulkPolicyFamilies_SiteWebProxy",
-        "TestAccBulkPolicyFamilies_SDPStaticIPAllocation",
-        "TestAccBulkPolicyFamilies_RemotePortForward"
-      ]
+        "TestAccBulkPolicyFamilies_SiteWebProxy"
+      ],
+      "measurement_status": "partial_local_backend_failure"
     },
     "client_connectivity_rule": {
       "seconds": 6.6
@@ -90,9 +86,8 @@
       "seconds": 6.14
     },
     "dns_dhcp": {
-      "seconds": 7.5,
-      "observed_seconds": 1.38,
-      "measurement_status": "estimated_skipped"
+      "seconds": 79.93,
+      "measurement_status": "measured_local"
     },
     "dynamic_ip_allocation_rule": {
       "seconds": 13.36
@@ -105,7 +100,8 @@
       "measurement_status": "retained_failed"
     },
     "fqdn_container": {
-      "seconds": 9.04
+      "seconds": 12.65,
+      "measurement_status": "measured_local"
     },
     "global_ip_ranges": {
       "seconds": 11.92
@@ -127,12 +123,12 @@
       "seconds": 8.82
     },
     "ip_address_range_container": {
-      "seconds": 9.34
+      "seconds": 12.58,
+      "measurement_status": "measured_local"
     },
     "ipsec_site": {
-      "seconds": 18.39,
-      "observed_seconds": 1.7,
-      "measurement_status": "estimated_skipped"
+      "seconds": 16.47,
+      "measurement_status": "measured_local"
     },
     "lan_interface": {
       "seconds": 18.49
@@ -164,9 +160,8 @@
       "seconds": 5.19
     },
     "remote_port_forward_rule": {
-      "seconds": 12.5,
-      "observed_seconds": 1.58,
-      "measurement_status": "estimated_skipped"
+      "seconds": 9.87,
+      "measurement_status": "measured_local"
     },
     "remote_port_forward_section": {
       "seconds": 7.5
@@ -175,27 +170,23 @@
       "seconds": 7.2
     },
     "sdp_static_ip_allocation_rule": {
-      "seconds": 7.5,
-      "observed_seconds": 1.35,
-      "measurement_status": "estimated_skipped"
+      "seconds": 9.37,
+      "measurement_status": "measured_local"
     },
     "sdp_static_ip_allocation_section": {
       "seconds": 6.65
     },
     "secondary_aws_vsocket": {
-      "seconds": 7.5,
-      "observed_seconds": 1.37,
-      "measurement_status": "estimated_skipped"
+      "seconds": 10.94,
+      "measurement_status": "measured_local"
     },
     "secondary_azure_vsocket": {
-      "seconds": 7.5,
-      "observed_seconds": 1.36,
-      "measurement_status": "estimated_skipped"
+      "seconds": 10.84,
+      "measurement_status": "measured_local"
     },
     "site_web_proxy_section": {
-      "seconds": 7.5,
-      "observed_seconds": 1.75,
-      "measurement_status": "estimated_skipped"
+      "seconds": 7.53,
+      "measurement_status": "measured_local"
     },
     "socket_bypass_rule": {
       "seconds": 7.78
@@ -242,14 +233,12 @@
       "seconds": 8.49
     },
     "terminal_server_rule": {
-      "seconds": 7.5,
-      "observed_seconds": 1.54,
-      "measurement_status": "estimated_skipped"
+      "seconds": 15.05,
+      "measurement_status": "measured_local"
     },
     "terminal_server_section": {
-      "seconds": 7.5,
-      "observed_seconds": 1.57,
-      "measurement_status": "estimated_skipped"
+      "seconds": 6.83,
+      "measurement_status": "measured_local"
     },
     "tls_inspection_section": {
       "seconds": 4.28
@@ -379,5 +368,41 @@
     "terminal_server_section": [
       "TestAccTerminalServerSection"
     ]
+  },
+  "local_followup": {
+    "date": "2026-11-06",
+    "source_commit": "486e8dc6411e875d5e757851fcbe0b23e206f2f4",
+    "working_tree_fixes": [
+      "BGP omitted password hydration",
+      "Terminal Server explicit empty set hydration",
+      "Socket Bypass nested import ID"
+    ],
+    "measured_packages": [
+      "bgp_peer",
+      "dns_dhcp",
+      "terminal_server_rule",
+      "terminal_server_section",
+      "site_web_proxy_section",
+      "ipsec_site",
+      "remote_port_forward_rule",
+      "sdp_static_ip_allocation_rule",
+      "secondary_aws_vsocket",
+      "secondary_azure_vsocket",
+      "fqdn_container",
+      "ip_address_range_container"
+    ],
+    "measured_bulk_tests": [
+      "TestAccBulkPolicyFamilies_AntiMalwareFileHash",
+      "TestAccBulkPolicyFamilies_ClientConnectivity",
+      "TestAccBulkPolicyFamilies_SplitTunnel",
+      "TestAccBulkPolicyFamilies_DynamicIPAllocation",
+      "TestAccBulkPolicyFamilies_TerminalServer",
+      "TestAccBulkPolicyFamilies_SocketBypass",
+      "TestAccBulkPolicyFamilies_SDPStaticIPAllocation",
+      "TestAccBulkPolicyFamilies_RemotePortForward"
+    ],
+    "blocked_bulk_tests": {
+      "TestAccBulkPolicyFamilies_SiteWebProxy": "backend rejects transportProtocol on addRule"
+    }
   }
 }

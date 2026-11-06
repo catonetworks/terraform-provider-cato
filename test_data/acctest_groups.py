@@ -15,6 +15,16 @@ TIMINGS = ROOT / 'test_data/acctest_timings.json'
 GROUP_COUNT = 10
 FIXTURE_TYPES = ('custom_apps', 'custom_categories', 'device_postures',
                  'floating_ranges', 'system_groups', 'user_groups')
+# Only fixture settings may be supplied per account; never override credentials,
+# the endpoint, runner paths, or arbitrary workflow environment variables.
+TEST_ENV_NAMES = frozenset((
+    'CATO_TEST_SITE_ID', 'TFACC_ENABLE_DNS_DHCP_CRUD',
+    'TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID', 'TFACC_DNS_DHCP_SERVERS',
+    'TFACC_DHCP_OPTION_TAG', 'TFACC_SDP_STATIC_IP', 'TFACC_SDP_STATIC_IP_ANCHOR',
+    'TFACC_ALLOW_UNREGISTERED_SECONDARY_SITE', 'ACC_TEST_BW_LICENSE',
+    'TFACC_FQDN_CONTAINER_URL', 'TFACC_IP_RANGE_CONTAINER_URL',
+    'TFACC_CONTAINER_NOTIFICATION_MAILING_LIST_ID', 'TFACC_CONTAINER_URL_ALLOW_NOTIFICATIONS',
+))
 
 
 def load_timings():
@@ -97,6 +107,14 @@ def validate_accounts(accounts):
             raise ValueError('Accounts and API keys must be unique')
         if not isinstance(account.get('test_vars', {}), dict):
             raise ValueError('Per-account test_vars must be an object')
+        test_env = account.get('test_env', {})
+        if not isinstance(test_env, dict):
+            raise ValueError('Per-account test_env must be an object')
+        for name, value in test_env.items():
+            if name not in TEST_ENV_NAMES or not isinstance(value, str) or any(c in value for c in '\r\n'):
+                raise ValueError('Invalid per-account fixture environment setting')
+        if test_env.get('TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID', account_id) != account_id:
+            raise ValueError('DNS/DHCP fixture authorization must match the selected account')
         ids.add(account_id)
         keys.add(key)
 
@@ -110,6 +128,8 @@ def write_account_environment(accounts, slot, path):
     with Path(path).open('a') as output:
         output.write(f'CATO_ACCOUNT_ID={account["id"]}\nCATO_TOKEN={account["api_key"]}\n')
         output.write('TFACC_TEST_VARS=' + json.dumps(account.get('test_vars', {}), separators=(',', ':')) + '\n')
+        for name, value in sorted(account.get('test_env', {}).items()):
+            output.write(f'{name}={value}\n')
 
 
 def validate_fixture_references(accounts):

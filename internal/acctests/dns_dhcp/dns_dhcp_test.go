@@ -5,6 +5,7 @@ package dns_dhcp
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -91,8 +92,8 @@ func restoreBaseline(t *testing.T, client *catoclient.ProviderSDKClient, dns *ca
 func liveInputs(t *testing.T) (siteID string, servers []string, tag int) {
 	t.Helper()
 	acc.CheckCMAVars(t)()
-	if os.Getenv("CATO_BASEURL") != "https://system.cc.dev-us1-m1.catonet.works/api/v1/graphql" {
-		t.Fatal("DNS/DHCP suite requires dev-us1-m1")
+	if !dnsDHCPEnvironmentAllowed(os.Getenv("CATO_BASEURL"), acc.CatoAccountID, os.Getenv("TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID")) {
+		t.Fatal("DNS/DHCP requires HTTPS and TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID matching the dedicated test account")
 	}
 	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") != "true" {
 		t.Fatal("Set DISABLE_POLICY_RULE_CLEANUP=true")
@@ -114,4 +115,15 @@ func liveInputs(t *testing.T) (siteID string, servers []string, tag int) {
 	}
 
 	return siteID, servers, tag
+}
+
+// dnsDHCPEnvironmentAllowed retains the original development environment and
+// requires an explicit account match before testing account-wide settings elsewhere.
+func dnsDHCPEnvironmentAllowed(endpoint, accountID, allowedAccountID string) bool {
+	parsed, err := url.Parse(endpoint)
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil {
+		return false
+	}
+	return endpoint == "https://system.cc.dev-us1-m1.catonet.works/api/v1/graphql" ||
+		(accountID != "" && accountID == allowedAccountID)
 }

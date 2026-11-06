@@ -74,6 +74,24 @@ class AcceptanceGroupsTest(unittest.TestCase):
             groups.write_account_environment(pool, 2, env_file)
             self.assertTrue(env_file.read_text().endswith('TFACC_TEST_VARS={}\n'))
 
+    def test_account_environment_includes_only_safe_fixture_settings(self):
+        pool = [{'id': str(i), 'api_key': f'inert-test-key-{i}'} for i in range(10)]
+        pool[3]['test_env'] = {'TFACC_ENABLE_DNS_DHCP_CRUD': 'true',
+                               'TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID': '3',
+                               'CATO_TEST_SITE_ID': '42'}
+        with tempfile.TemporaryDirectory() as directory:
+            output = pathlib.Path(directory) / 'environment'
+            groups.write_account_environment(pool, 3, output)
+            self.assertIn('TFACC_ENABLE_DNS_DHCP_CRUD=true\n', output.read_text())
+            self.assertIn('CATO_TEST_SITE_ID=42\n', output.read_text())
+        for settings in [{'CATO_TOKEN': 'override'}, {'PATH': '/tmp'},
+                         {'TFACC_ENABLE_DNS_DHCP_CRUD': 'true\nCATO_TOKEN=override'},
+                         {'TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID': '4'}]:
+            with self.subTest(settings=settings):
+                pool[3]['test_env'] = settings
+                with self.assertRaises(ValueError):
+                    groups.validate_accounts(pool)
+
     def test_ci_rejects_missing_or_incomplete_account_fixtures(self):
         pool = [{'id': str(i), 'api_key': f'inert-test-key-{i}'} for i in range(10)]
         with self.assertRaisesRegex(ValueError, 'fixture references'):
@@ -85,6 +103,31 @@ class AcceptanceGroupsTest(unittest.TestCase):
         pool[9]['test_vars']['floating_ranges'][0]['id'] = ''
         with self.assertRaisesRegex(ValueError, 'floating_ranges'):
             groups.validate_fixture_references(pool)
+
+    def test_make_exports_acceptance_switches(self):
+        names = ('TFACC_ENABLE_ACCOUNT_CRUD', 'TFACC_ACCOUNT_CRUD_ALLOWED',
+                 'TFACC_ENABLE_BGP_PEER_CRUD', 'TFACC_ENABLE_RULES_INDEX_CRUD')
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / 'test_data').mkdir()
+            runner = root / 'test_data/flaky_acctest.sh'
+            runner.write_text("""#!/usr/bin/env python3
+import json, os
+names = ('TFACC_ENABLE_ACCOUNT_CRUD', 'TFACC_ACCOUNT_CRUD_ALLOWED',
+         'TFACC_ENABLE_BGP_PEER_CRUD', 'TFACC_ENABLE_RULES_INDEX_CRUD')
+with open(os.environ['TEST_SWITCH_OUTPUT'], 'w') as output:
+    json.dump({name: os.environ.get(name) for name in names}, output)
+""")
+            runner.chmod(0o700)
+            output = root / 'switches.json'
+            env = {key: value for key, value in os.environ.items() if key not in names}
+            env['TEST_SWITCH_OUTPUT'] = str(output)
+            command = ['make', '-f', str(groups.ROOT / 'GNUmakefile'), 'acctest-flaky']
+            subprocess.run(command, cwd=root, env=env, capture_output=True, check=True)
+            self.assertEqual(json.loads(output.read_text()), dict(zip(names, ('false', 'false', 'true', 'true'))))
+            env.update(dict.fromkeys(names, 'true'))
+            subprocess.run(command, cwd=root, env=env, capture_output=True, check=True)
+            self.assertEqual(json.loads(output.read_text()), dict.fromkeys(names, 'true'))
 
     def test_runner_keeps_groups_and_single_account_runs_serial(self):
         with tempfile.TemporaryDirectory() as directory:

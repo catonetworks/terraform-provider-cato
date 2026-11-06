@@ -10,6 +10,7 @@ import (
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
 	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
@@ -143,11 +144,11 @@ func hydrateTerminalServerUpdateRuleInput(
 func convertCreateInput(
 	ctx context.Context,
 	priorRulePlan *TerminalServerRuleRulePlan,
-	_ TerminalServerRuleRulePlan,
+	prior TerminalServerRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, TerminalServerRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, TerminalServerRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -160,12 +161,12 @@ func convertCreateInput2(plan *TerminalServerRule, newID string, ruleObj basetyp
 // convertReadState converts between the Terraform model and SDK values.
 func convertReadState(
 	ctx context.Context,
-	_ TerminalServerRuleRulePlan,
+	prior TerminalServerRuleRulePlan,
 	priorHydrated *TerminalServerRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	hydrated := *priorHydrated
 	defer func() { *priorHydrated = hydrated }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, TerminalServerRuleRuleAttrTypes, hydrated)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, TerminalServerRuleRuleAttrTypes, hydrated, prior)
 	return resultRuleObj, resultOdiags
 }
 
@@ -214,12 +215,12 @@ func convertUpdateInput(
 // convertUpdateInput2 converts between the Terraform model and SDK values.
 func convertUpdateInput2(
 	ctx context.Context,
-	_ TerminalServerRuleRulePlan,
+	prior TerminalServerRuleRulePlan,
 	priorRulePlan *TerminalServerRuleRulePlan,
 ) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
 	rulePlan := *priorRulePlan
 	defer func() { *priorRulePlan = rulePlan }()
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, TerminalServerRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, TerminalServerRuleRuleAttrTypes, rulePlan, prior)
 	return resultRuleObj, resultOdiags
 }
 

@@ -142,8 +142,8 @@ resource "cato_bulk_%[6]s_move_rule" "test" {
 						resource.TestCheckResourceAttrSet(sectionAddress, "section.id"),
 						checkPublishedSectionOrder(t, family.prefix, name+"-section", name+"-anchor"),
 					)},
-					{ResourceName: ruleAddress, ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"at"}},
-					{ResourceName: sectionAddress, ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"at"}},
+					{ResourceName: ruleAddress, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: importNestedID(ruleAddress, "rule.id"), ImportStateVerifyIgnore: []string{"at"}},
+					{ResourceName: sectionAddress, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "section.id", ImportStateIdFunc: importNestedID(sectionAddress, "section.id"), ImportStateVerifyIgnore: []string{"at"}},
 					{Config: config("updated"), Check: resource.TestCheckResourceAttr(ruleAddress, "rule.description", "updated")},
 				},
 			})
@@ -269,5 +269,17 @@ func requirePolicyReadAccess(t *testing.T, family string) {
 			t.Skipf("test account lacks read access to %s; use a config with this policy entitlement", family)
 		}
 		t.Fatalf("read %s policy prerequisite: %v", family, err)
+	}
+}
+
+// Both legacy nested-ID resources and newer top-level-ID resources participate
+// in these tests. Import the API identity rather than Terraform's synthetic ID.
+func importNestedID(address, attribute string) resource.ImportStateIdFunc {
+	return func(state *terraform.State) (string, error) {
+		object := state.RootModule().Resources[address]
+		if object == nil || object.Primary == nil || object.Primary.Attributes[attribute] == "" {
+			return "", fmt.Errorf("missing import identity %s.%s", address, attribute)
+		}
+		return object.Primary.Attributes[attribute], nil
 	}
 }
