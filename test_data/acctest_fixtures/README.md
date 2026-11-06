@@ -76,3 +76,50 @@ python3 -c 'import json, sys; print(json.dumps(json.load(sys.stdin), separators=
 Compact JSON avoids GitHub masking individual punctuation-only lines from a
 pretty-printed JSON secret throughout the job logs. Individual API keys are
 masked explicitly by the account-selection step.
+
+## Optional live coverage
+
+Each account record can contain a `test_env` object alongside `test_vars`.
+The account selector exports only the fixture settings allowed in
+`acctest_groups.py`; credentials, endpoints, runner paths, and multiline values
+cannot be overridden through this object. Settings must reference the selected
+account's fixtures.
+
+To enable the additional suites on every randomly assigned account:
+
+- Allocate a dedicated public IP within existing test-account capacity. IPsec,
+  BGP, and remote-port-forward tests use the allocated-IP lookup.
+- Enable `PPS_UA_TERMINAL_SERVER_UI` for Terminal Server. Enable
+  `PPS_WEB_PROXY_UI` through a Tag Rollout with an explicit Include audience,
+  because it has a migration action.
+- Enable `ADD_SECONDARY_ON_HA_SITE_CREATION` and set
+  `TFACC_ALLOW_UNREGISTERED_SECONDARY_SITE=1` for AWS/Azure secondary sites.
+- Configure a dedicated static-IP subnet under IP Allocation Policy > Settings.
+  Set `TFACC_SDP_STATIC_IP` and `TFACC_SDP_STATIC_IP_ANCHOR` to two distinct,
+  unused addresses in it. The tests create disabled users and remove their rules.
+- For DNS/DHCP, set `TFACC_ENABLE_DNS_DHCP_CRUD=true`,
+  `TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID` to that record's ID, `CATO_TEST_SITE_ID` to
+  its persistent fixture site, `TFACC_DNS_DHCP_SERVERS` to two test DNS addresses,
+  and `TFACC_DHCP_OPTION_TAG` to an unused option tag. The suite restores prior
+  account settings and fixture-site collections. The explicit matching account
+  permits dedicated HTTPS environments in addition to the original dev endpoint.
+- For URL containers, set `TFACC_FQDN_CONTAINER_URL` and
+  `TFACC_IP_RANGE_CONTAINER_URL` to public HTTPS feeds, and
+  `TFACC_CONTAINER_NOTIFICATION_MAILING_LIST_ID` to a dedicated mailing list
+  containing only a reserved `example.invalid` address. Set
+  `TFACC_CONTAINER_URL_ALLOW_NOTIFICATIONS=1`. An empty list is rejected by the
+  API. The test containers remain unattached to policies and are destroyed.
+
+The dedicated pool was validated with a `/24` static subnet and two addresses
+reserved for serial execution. DNS/DHCP, standalone SDP static-IP, and secondary
+site coverage were exercised on each account; other newly enabled suites were
+exercised on representative pool accounts.
+
+Remaining prerequisites are explicit: account CRUD requires a reseller-capable
+key; license/App Connector bandwidth tests require active pooled-bandwidth
+licenses; physical Cloud Interconnect needs a PoP advertising the isolated
+`CrossConnetMock` provider with `DOT1Q`. The trial pool has neither the licenses
+nor an eligible mock PoP. Bulk Site Web Proxy rule creation remains blocked by
+the backend rejecting `transportProtocol`, including requests that omit it;
+policy access and standalone section CRUD are available. Keep that specific
+bulk test excluded with its backend reason until the API supports creation.

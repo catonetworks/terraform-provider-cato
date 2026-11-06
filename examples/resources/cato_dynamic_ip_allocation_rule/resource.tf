@@ -21,9 +21,9 @@ provider "cato" {
 }
 
 # Changes are automatically published. Use a test account when evaluating beta APIs.
+# Explicit empty filters remain empty in state even when omitted by the API.
 resource "cato_dynamic_ip_allocation_rule" "example" {
-  # Optional placement; omission on update preserves the current position.
-  # at = { position = "LAST_IN_POLICY" }
+  at = { position = "LAST_IN_POLICY" }
   rule = {
     country = [{ id = "replace-with-object-id" }]
     description = "Managed by Terraform"

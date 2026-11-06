@@ -99,7 +99,7 @@ func (c *sdkClient) PolicySocketBypassAddRule(
 	socketBypassAddRuleInput cato_models.SocketBypassAddRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySocketBypassAddRule, error) {
-	return c.client.Catov2.PolicySocketBypassAddRule(
+	return c.client.Catov2.Client.PolicySocketBypassAddRule(
 		ctx,
 		accountID,
 		socketBypassPolicyMutationInput,
@@ -114,7 +114,7 @@ func (c *sdkClient) PolicySocketBypassPolicy(
 	socketBypassPolicyInput *cato_models.SocketBypassPolicyInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySocketBypassPolicy, error) {
-	return c.client.Catov2.PolicySocketBypassPolicy(
+	return c.client.Catov2.Client.PolicySocketBypassPolicy(
 		ctx,
 		accountID,
 		socketBypassPolicyInput,
@@ -129,7 +129,7 @@ func (c *sdkClient) PolicySocketBypassUpdateRule(
 	socketBypassUpdateRuleInput cato_models.SocketBypassUpdateRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySocketBypassUpdateRule, error) {
-	return c.client.Catov2.PolicySocketBypassUpdateRule(
+	return c.client.Catov2.Client.PolicySocketBypassUpdateRule(
 		ctx,
 		accountID,
 		socketBypassPolicyMutationInput,
@@ -145,7 +145,7 @@ func (c *sdkClient) PolicySocketBypassMoveRule(
 	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySocketBypassMoveRule, error) {
-	return c.client.Catov2.PolicySocketBypassMoveRule(
+	return c.client.Catov2.Client.PolicySocketBypassMoveRule(
 		ctx,
 		accountID,
 		socketBypassPolicyMutationInput,
@@ -161,7 +161,7 @@ func (c *sdkClient) PolicySocketBypassRemoveRule(
 	socketBypassRemoveRuleInput cato_models.SocketBypassRemoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySocketBypassRemoveRule, error) {
-	return c.client.Catov2.PolicySocketBypassRemoveRule(
+	return c.client.Catov2.Client.PolicySocketBypassRemoveRule(
 		ctx,
 		accountID,
 		socketBypassPolicyMutationInput,
@@ -177,7 +177,7 @@ func (c *sdkClient) PolicySocketBypassPublishPolicyRevision(
 	policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySocketBypassPublishPolicyRevision, error) {
-	return c.client.Catov2.PolicySocketBypassPublishPolicyRevision(
+	return c.client.Catov2.Client.PolicySocketBypassPublishPolicyRevision(
 		ctx,
 		accountID,
 		socketBypassPolicyMutationInput,

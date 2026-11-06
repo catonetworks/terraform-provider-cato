@@ -21,9 +21,9 @@ provider "cato" {
 }
 
 # Changes are automatically published. Use a test account when evaluating beta APIs.
+# Explicit empty filters remain empty in state even when omitted by the API.
 resource "cato_split_tunnel_rule" "example" {
-  # Optional placement; omission on update preserves the current position.
-  # at = { position = "LAST_IN_POLICY" }
+  at = { position = "LAST_IN_POLICY" }
   rule = {
     action      = "ROUTE_ONLY_SELECTED"
     country     = [{ id = "replace-with-object-id" }]
@@ -35,6 +35,7 @@ resource "cato_split_tunnel_rule" "example" {
       fqdn            = ["example.com"]
       global_ip_range = [{ id = "replace-with-object-id" }]
     }
+    # Removing dns_exclusion clears previously configured exclusions.
     dns_exclusion = {
       domain = ["example.com"]
     }

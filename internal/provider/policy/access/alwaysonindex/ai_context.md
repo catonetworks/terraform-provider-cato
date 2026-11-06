@@ -51,8 +51,8 @@ individual AlwaysOn rule and section resources leave changes in the draft.
 
 ## Terraform contract
 
-See schema_description.yaml. section_data is a required map; rule_data is an
-optional map. Each section_data map key is the API section name; its value
+See schema_description.yaml. section_data and rule_data are optional computed maps. Omitting either map preserves
+its current live ordering; configured maps still require complete membership. Each section_data map key is the API section name; its value
 contains only computed id and required section_index. There is no section_name
 attribute within section_data. Each rule_data map key is the API rule name;
 there is no rule_name attribute within rule_data. Rules reference
@@ -94,3 +94,7 @@ and publishing retries. HTTP tests verify account/revision/interceptor forwardin
 Acceptance coverage uses disabled rule fixtures, tests Create/Update/removing the
 ordering resource, and publishes fixture deletions during cleanup. Do not run
 acceptance tests without an explicit request. The SDK dependency is unchanged.
+
+Rules may move between existing sections. Relocations validate complete rule membership
+before any move, append target sequences in deterministic section order, and publish once.
+Transient reads and concurrent-revision publication blocks retry without discarding drafts.

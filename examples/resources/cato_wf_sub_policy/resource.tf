@@ -15,15 +15,12 @@ resource "cato_wf_sub_policy" "minimal" {
 
   scope = {
     enabled     = true
-    source      = {}
+    source      = { subnet = ["192.0.2.0/24"] }
     destination = {}
-    tracking = {
-      event = {
-        enabled = true
-      }
-    }
   }
 }
+
+// Scope tracking is API-managed; omit it from scope.
 
 // full sub-policy with a scoped source and a nested rule owned by it
 resource "cato_wf_sub_policy" "full" {
@@ -37,14 +34,9 @@ resource "cato_wf_sub_policy" "full" {
   scope = {
     enabled = true
     source = {
-      ip = ["10.0.0.0/8"]
+      subnet = ["10.0.0.0/8"]
     }
     destination = {}
-    tracking = {
-      event = {
-        enabled = true
-      }
-    }
   }
 }
 
@@ -65,7 +57,7 @@ resource "cato_wf_rule" "in_sub_policy" {
     action  = "ALLOW"
     source  = {}
     destination = {
-      ip = ["10.1.0.0/16"]
+      subnet = ["10.1.0.0/16"]
     }
     tracking = {
       event = {

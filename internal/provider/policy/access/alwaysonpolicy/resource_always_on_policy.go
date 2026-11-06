@@ -2,14 +2,17 @@ package alwaysonpolicy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -69,11 +72,15 @@ func (r *alwaysOnPolicyResource) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	state := r.updatePolicy(ctx, plan, &resp.Diagnostics)
+	r.updatePolicy(ctx, plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	r.publishPolicy(ctx, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state := r.readPolicy(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -93,7 +100,12 @@ func (r *alwaysOnPolicyResource) readPolicy(ctx context.Context, diags *diag.Dia
 		diags.AddError("failed to read Always On policy", "An API client and account ID are required")
 		return nil
 	}
-	result, err := r.getClient().PolicyZtnaAlwaysOnPolicy(ctx, r.client.AccountId, nil)
+	var result *cato.PolicyZtnaAlwaysOnPolicy
+	err := policy.WithTransientReadRetry(ctx, "Read Always On policy", func() error {
+		var callErr error
+		result, callErr = r.getClient().PolicyZtnaAlwaysOnPolicy(ctx, r.client.AccountId, nil)
+		return callErr
+	})
 	if err != nil {
 		diags.AddError("failed to read Always On policy", err.Error())
 		return nil
@@ -111,11 +123,15 @@ func (r *alwaysOnPolicyResource) Update(ctx context.Context, req resource.Update
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	state := r.updatePolicy(ctx, plan, &resp.Diagnostics)
+	r.updatePolicy(ctx, plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	r.publishPolicy(ctx, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state := r.readPolicy(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -130,16 +146,16 @@ func (r *alwaysOnPolicyResource) Delete(ctx context.Context, _ resource.DeleteRe
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *alwaysOnPolicyResource) updatePolicy(ctx context.Context, plan PolicyModel, diags *diag.Diagnostics) *PolicyModel {
+func (r *alwaysOnPolicyResource) updatePolicy(ctx context.Context, plan PolicyModel, diags *diag.Diagnostics) {
 	input := buildPolicyInput(plan, diags)
 	if diags.HasError() {
-		return nil
+		return
 	}
 	errMsg := "failed to update Always On policy"
 	result, err := r.getClient().PolicyZtnaAlwaysOnUpdatePolicy(ctx, r.client.AccountId, nil, input)
 	payload := result.GetPolicy().GetZtnaAlwaysOn().GetUpdatePolicy()
 	if utils.CheckAPIErrors(err, payload.GetErrors(), errMsg, diags) {
-		return nil
+		return
 	}
 	status := payload.GetStatus()
 	if status == nil || *status != cato_models.PolicyMutationStatusSuccess {
@@ -148,18 +164,32 @@ func (r *alwaysOnPolicyResource) updatePolicy(ctx context.Context, plan PolicyMo
 			value = string(*status)
 		}
 		diags.AddError(errMsg, fmt.Sprintf("API returned mutation status %q", value))
-		return nil
+		return
 	}
 
 	state := parsePolicyUpdate(payload)
 	if !state.Enabled.Equal(plan.Enabled) {
 		diags.AddError(errMsg, "API reported success but the policy enabled value did not match the requested value on read.")
-		return nil
+		return
 	}
-	return state
 }
 
 func (r *alwaysOnPolicyResource) publishPolicy(ctx context.Context, diags *diag.Diagnostics) {
+	err := policy.WithPolicyRevisionConflictRetry(ctx, "Publish Always On policy", func() error {
+		var attempt diag.Diagnostics
+		r.publishPolicyOnce(ctx, &attempt)
+		var failures []error
+		for _, diagnostic := range attempt.Errors() {
+			failures = append(failures, errors.New(diagnostic.Detail()))
+		}
+		return errors.Join(failures...)
+	})
+	if err != nil {
+		diags.AddError("failed to publish Always On policy", err.Error())
+	}
+}
+
+func (r *alwaysOnPolicyResource) publishPolicyOnce(ctx context.Context, diags *diag.Diagnostics) {
 	const summary = "failed to publish Always On policy"
 	result, err := r.getClient().PolicyZtnaAlwaysOnPublishPolicyRevision(ctx, r.client.AccountId, nil, nil)
 	if err != nil {
@@ -167,8 +197,8 @@ func (r *alwaysOnPolicyResource) publishPolicy(ctx context.Context, diags *diag.
 		return
 	}
 	payload := result.GetPolicy().GetZtnaAlwaysOn().GetPublishPolicyRevision()
-	if errors := payload.GetErrors(); len(errors) == 1 {
-		if errors[0].ErrorCode != nil && *errors[0].ErrorCode == apperror.PolicyRevisionNotFound {
+	if apiErrors := payload.GetErrors(); len(apiErrors) == 1 {
+		if apiErrors[0].ErrorCode != nil && *apiErrors[0].ErrorCode == apperror.PolicyRevisionNotFound {
 			return // no policy draft to discard; OK
 		}
 	}

@@ -14,20 +14,106 @@ import (
 	wfrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 )
 
-// wanSubPolicyIDs returns the set of sub-policy ids currently in the snapshot.
-func wanSubPolicyIDs(body *cato_go_sdk.Policy) map[string]struct{} {
-	ids := map[string]struct{}{}
-	if body == nil {
-		return ids
+// wanSubPolicyInfo returns the sub-policy info block for the given sub-policy id,
+// or nil when it is not present in the policy snapshot.
+func wanSubPolicyInfo(
+	body *cato_go_sdk.Policy,
+	subID string,
+) *cato_go_sdk.Policy_Policy_WanFirewall_Policy_SubPolicies_Policy {
+	if body == nil || subID == "" {
+		return nil
 	}
 	for _, sp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetSubPolicies() {
-		ids[sp.GetPolicy().GetID()] = struct{}{}
+		if sp.GetPolicy().GetID() == subID {
+			return sp.GetPolicy()
+		}
 	}
-	return ids
+	return nil
+}
+
+// wanScopeRule returns the SUB_POLICY_SCOPE rule owned by the given sub-policy,
+// or nil when not found.
+func wanScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule {
+	if body == nil || subID == "" {
+		return nil
+	}
+	for _, rp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetRules() {
+		rt := rp.GetRuleType()
+		sp := rp.GetSubPolicy()
+		if rt != nil && *rt == subPolicyScopeRuleType && sp != nil && sp.GetID() == subID {
+			return rp.GetRule()
+		}
+	}
+	return nil
+}
+
+// wanCleanupRule preserves an established cleanup rule identity across external
+// reorders. Only creation/import without a stored ID uses the last-rule convention.
+func wanCleanupRule(
+	body *cato_go_sdk.Policy,
+	subID string, cleanupID string,
+) *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule {
+	if body == nil || subID == "" {
+		return nil
+	}
+	var last *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule
+	for _, rp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetRules() {
+		sp := rp.GetSubPolicy()
+		if sp == nil || sp.GetID() != subID {
+			continue
+		}
+		if rt := rp.GetRuleType(); rt != nil && *rt == subPolicyScopeRuleType {
+			continue
+		}
+		rule := rp.GetRule()
+		if cleanupID != "" {
+			if rule.GetID() == cleanupID {
+				return rule
+			}
+			continue
+		}
+		if last == nil || rule.GetIndex() > last.GetIndex() {
+			last = rule
+		}
+	}
+	return last
+}
+
+// cleanupNameConfigured reports whether the cleanup_rule object carries a
+// user-supplied (known, non-empty) name — i.e. the config renames the cleanup
+// rule rather than keeping the API-generated "<sub-policy name> - Cleanup Rule".
+func cleanupNameConfigured(cleanupObj types.Object) bool {
+	if cleanupObj.IsNull() || cleanupObj.IsUnknown() {
+		return false
+	}
+	nameAttr, ok := cleanupObj.Attributes()["name"]
+	if !ok || nameAttr.IsNull() || nameAttr.IsUnknown() {
+		return false
+	}
+	name, ok := nameAttr.(types.String)
+	return ok && name.ValueString() != ""
+}
+
+// hydrateCleanupState encodes the cleanup rule into the model, refreshing
+// cleanup_rule_id. The prior cleanup object (state or plan) seeds the hydrator
+// so omitted optional fields stay stable, mirroring the scope handling.
+func hydrateCleanupState(
+	ctx context.Context,
+	model *WanFirewallSubPolicy,
+	cleanup *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule,
+) (basetypes.ObjectValue, diag.Diagnostics) {
+	model.CleanupRuleID = types.StringValue(cleanup.GetID())
+	cleanupRule := wfrule.Rule{Rule: model.CleanupRule, At: model.At}
+	cleanupState, hsDiags := wfrule.HydrateWanRuleState(ctx, cleanupRule, cleanup)
+	cleanupState.ID = types.StringValue(cleanup.GetID())
+	obj, objDiags := types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, cleanupState)
+	hsDiags.Append(objDiags...)
+	return obj, hsDiags
 }
 
 // wanSubPolicyIDByName returns the id of the sub-policy with the given name that
-// is not present in the exclude set.
+// is not present in the exclude set. It is used to identify a freshly created
+// sub-policy by diffing the sub-policy list before and after creation.
 func wanSubPolicyIDByName(body *cato_go_sdk.Policy, name string, exclude map[string]struct{}) string {
 	if body == nil {
 		return ""
@@ -45,36 +131,27 @@ func wanSubPolicyIDByName(body *cato_go_sdk.Policy, name string, exclude map[str
 	return ""
 }
 
-// derefStr safely dereferences an optional string pointer.
-func derefStr(s *string) string {
-	if s == nil {
-		return ""
+// wanSubPolicyIDs returns the set of sub-policy ids currently in the snapshot.
+func wanSubPolicyIDs(body *cato_go_sdk.Policy) map[string]struct{} {
+	ids := map[string]struct{}{}
+	if body == nil {
+		return ids
 	}
-	return *s
+	for _, sp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetSubPolicies() {
+		ids[sp.GetPolicy().GetID()] = struct{}{}
+	}
+	return ids
 }
 
-// wanScopeRule returns the SUB_POLICY_SCOPE rule owned by the given sub-policy.
-func wanScopeRule(body *cato_go_sdk.Policy, subID string) *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule {
-	if body == nil || subID == "" {
-		return nil
-	}
-	for _, rp := range body.GetPolicy().GetWanFirewall().GetPolicy().GetRules() {
-		rt := rp.GetRuleType()
-		sp := rp.GetSubPolicy()
-		if rt != nil && *rt == cato_models.PolicyRuleTypeEnumSubPolicyScope && sp != nil && sp.GetID() == subID {
-			return rp.GetRule()
-		}
-	}
-	return nil
-}
-
-// wanObjectRefByID builds an ObjectRefBy=ID reference input for WAN.
-func wanObjectRefByID(id string) *cato_models.WanFirewallPolicyRefInput {
+// objectRefByID builds an ObjectRefBy=ID reference input.
+func objectRefByID(id string) *cato_models.WanFirewallPolicyRefInput {
 	return &cato_models.WanFirewallPolicyRefInput{By: cato_models.ObjectRefByID, Input: id}
 }
 
 // convertCreateInput converts between the Terraform model and SDK values.
-func convertCreateInput(plan WanFirewallSubPolicy) (resultCreateScope basetypes.ObjectValue, resultDiags diag.Diagnostics) {
+func convertCreateInput(
+	plan WanFirewallSubPolicy,
+) (resultCreateScope basetypes.ObjectValue, resultDiags diag.Diagnostics) {
 	scopeAttrs := maps.Clone(plan.Scope.Attributes())
 	scopeAttrs["action"] = types.StringValue(string(cato_models.WanFirewallActionEnumAllow))
 	scopeAttrs["name"] = plan.Name
@@ -99,11 +176,27 @@ func convertCreateInput2(
 		},
 		Scope: hydrated.Create.Rule,
 	}
+	// scope.tracking is a non-nullable PolicyTrackingInput! in
+	// WanFirewallAddSubPolicyInput, but the API rejects enabled tracking
+	// settings on a scoping rule — so when the (optional) tracking attribute is
+	// omitted, send the schema's documented disabled default instead of null.
+	if resultAddInput.Scope != nil && resultAddInput.Scope.Tracking == nil {
+		resultAddInput.Scope.Tracking = &cato_models.PolicyTrackingInput{
+			Event: &cato_models.PolicyRuleTrackingEventInput{Enabled: false},
+			Alert: &cato_models.PolicyRuleTrackingAlertInput{
+				Enabled:           false,
+				Frequency:         cato_models.PolicyRuleTrackingFrequencyEnumHourly,
+				MailingList:       []*cato_models.SubscriptionMailingListRefInput{},
+				SubscriptionGroup: []*cato_models.SubscriptionGroupRefInput{},
+				Webhook:           []*cato_models.SubscriptionWebhookRefInput{},
+			},
+		}
+	}
 	return resultExisting, resultAddInput
 }
 
-// wanSubPolicyStateFromPolicy finds the created sub-policy and hydrates its published scope rule.
-func wanSubPolicyStateFromPolicy(
+// wanFirewallSubPolicyStateFromPolicy finds the created sub-policy and encodes its published scope rule.
+func wanFirewallSubPolicyStateFromPolicy(
 	ctx context.Context,
 	plan *WanFirewallSubPolicy,
 	priorDiags *diag.Diagnostics,
@@ -111,42 +204,28 @@ func wanSubPolicyStateFromPolicy(
 	existing map[string]struct{},
 	after *cato_go_sdk.Policy,
 	diagnostics *diag.Diagnostics,
-) (
-	resultScope *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule,
-	resultScopeState wfrule.PolicyPolicyWanFirewallPolicyRulesRule,
-) {
+) (resultScopeObj basetypes.ObjectValue) {
 	diags := *priorDiags
 	defer func() { *priorDiags = diags }()
 	subID := wanSubPolicyIDByName(after, plan.Name.ValueString(), existing)
 	if subID == "" {
 		diagnostics.AddError("Sub-Policy Not Found", "Created WAN Firewall sub-policy could not be located after publish.")
-		return resultScope, resultScopeState
+		return resultScopeObj
 	}
-	resultScope = wanScopeRule(after, subID)
-	if resultScope == nil {
+	scope := wanScopeRule(after, subID)
+	if scope == nil {
 		diagnostics.AddError("Scope Rule Not Found", fmt.Sprintf("No SUB_POLICY_SCOPE rule found for sub-policy %s.", subID))
-		return resultScope, resultScopeState
+		return resultScopeObj
 	}
 
 	plan.ID = types.StringValue(subID)
-	plan.ScopeRuleID = types.StringValue(resultScope.GetID())
-	resultScopeState, diags = wfrule.HydrateWanRuleState(ctx, scopeRule, resultScope)
-	return resultScope, resultScopeState
-}
-
-// convertCreateInput4 converts between the Terraform model and SDK values.
-func convertCreateInput4(
-	ctx context.Context,
-	priorDiags *diag.Diagnostics,
-	scope *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule,
-	priorScopeState *wfrule.PolicyPolicyWanFirewallPolicyRulesRule,
-) (resultScopeObj basetypes.ObjectValue) {
-	diags := *priorDiags
-	defer func() { *priorDiags = diags }()
-	scopeState := *priorScopeState
-	defer func() { *priorScopeState = scopeState }()
+	plan.ScopeRuleID = types.StringValue(scope.GetID())
+	scopeState, hsDiags := wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
+	diags.Append(hsDiags...)
 	scopeState.ID = types.StringValue(scope.GetID())
-	resultScopeObj, diags = types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	var objDiags diag.Diagnostics
+	resultScopeObj, objDiags = types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	diags.Append(objDiags...)
 	return resultScopeObj
 }
 
@@ -156,54 +235,52 @@ func convertReadState(
 	state *WanFirewallSubPolicy,
 	info *cato_go_sdk.Policy_Policy_WanFirewall_Policy_SubPolicies_Policy,
 	scope *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule,
-) (resultScopeState wfrule.PolicyPolicyWanFirewallPolicyRulesRule, resultDiags diag.Diagnostics) {
+) (resultScopeObj basetypes.ObjectValue, resultDiags diag.Diagnostics) {
 	state.Name = types.StringValue(info.GetName())
-	if info.GetDescription() == "" {
-		state.Description = types.StringNull()
-	} else {
-		state.Description = types.StringValue(info.GetDescription())
-	}
+	// description is Required, so config always holds a value ("" when unset);
+	// writing null here on an empty API description would diff against "" and,
+	// with RequiresReplace, force needless replacement on every plan.
+	state.Description = types.StringValue(info.GetDescription())
 	state.ScopeRuleID = types.StringValue(scope.GetID())
 
 	scopeRule := wfrule.Rule{Rule: state.Scope, At: state.At}
-	resultScopeState, resultDiags = wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
-	return resultScopeState, resultDiags
-}
-
-// convertReadState2 converts between the Terraform model and SDK values.
-func convertReadState2(
-	ctx context.Context,
-	scope *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule,
-	priorScopeState *wfrule.PolicyPolicyWanFirewallPolicyRulesRule,
-	priorDiags *diag.Diagnostics,
-) (resultScopeObj basetypes.ObjectValue) {
-	scopeState := *priorScopeState
-	defer func() { *priorScopeState = scopeState }()
-	diags := *priorDiags
-	defer func() { *priorDiags = diags }()
+	scopeState, hsDiags := wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
+	resultDiags.Append(hsDiags...)
 	scopeState.ID = types.StringValue(scope.GetID())
-	resultScopeObj, diags = types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
-	return resultScopeObj
+	resultScopeObj, objDiags := types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	resultDiags.Append(objDiags...)
+	return resultScopeObj, resultDiags
 }
 
 // convertUpdateInput converts between the Terraform model and SDK values.
 func convertUpdateInput(
 	ctx context.Context,
+	plan WanFirewallSubPolicy,
+	scopeRule wfrule.Rule,
 	priorDiags *diag.Diagnostics,
-	scope *cato_go_sdk.Policy_Policy_WanFirewall_Policy_Rules_Rule,
-	priorScopeState *wfrule.PolicyPolicyWanFirewallPolicyRulesRule,
+	body *cato_go_sdk.Policy,
+	diagnostics *diag.Diagnostics,
 ) (resultScopeObj basetypes.ObjectValue) {
 	diags := *priorDiags
 	defer func() { *priorDiags = diags }()
-	scopeState := *priorScopeState
-	defer func() { *priorScopeState = scopeState }()
+	scope := wanScopeRule(body, plan.ID.ValueString())
+	if scope == nil {
+		diagnostics.AddError("Scope Rule Not Found", "Sub-policy scope rule not found after update.")
+		return resultScopeObj
+	}
+	scopeState, hsDiags := wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
+	diags.Append(hsDiags...)
 	scopeState.ID = types.StringValue(scope.GetID())
-	resultScopeObj, diags = types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	var objDiags diag.Diagnostics
+	resultScopeObj, objDiags = types.ObjectValueFrom(ctx, wfrule.WanFirewallRuleRuleAttrTypes, scopeState)
+	diags.Append(objDiags...)
 	return resultScopeObj
 }
 
 // convertDeleteInput converts between the Terraform model and SDK values.
-func convertDeleteInput(state WanFirewallSubPolicy) (resultRemoveInput cato_models.WanFirewallRemoveSubPolicyInput) {
-	resultRemoveInput = cato_models.WanFirewallRemoveSubPolicyInput{Ref: wanObjectRefByID(state.ID.ValueString())}
+func convertDeleteInput(
+	state WanFirewallSubPolicy,
+) (resultRemoveInput cato_models.WanFirewallRemoveSubPolicyInput) {
+	resultRemoveInput = cato_models.WanFirewallRemoveSubPolicyInput{Ref: objectRefByID(state.ID.ValueString())}
 	return resultRemoveInput
 }

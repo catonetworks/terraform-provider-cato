@@ -83,7 +83,7 @@ func (c *sdkClient) PolicySplitTunnelCreatePolicyRevision(
 	policyCreateRevisionInput cato_models.PolicyCreateRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelCreatePolicyRevision, error) {
-	return c.client.Catov2.PolicySplitTunnelCreatePolicyRevision(
+	return c.client.V2().PolicySplitTunnelCreatePolicyRevision(
 		ctx,
 		accountID,
 		splitTunnelPolicyMutationInput,
@@ -99,7 +99,7 @@ func (c *sdkClient) PolicySplitTunnelAddRule(
 	splitTunnelAddRuleInput cato_models.SplitTunnelAddRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelAddRule, error) {
-	return c.client.Catov2.PolicySplitTunnelAddRule(
+	return c.client.V2().PolicySplitTunnelAddRule(
 		ctx,
 		accountID,
 		splitTunnelPolicyMutationInput,
@@ -114,7 +114,7 @@ func (c *sdkClient) PolicySplitTunnelPolicy(
 	splitTunnelPolicyInput *cato_models.SplitTunnelPolicyInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelPolicy, error) {
-	return c.client.Catov2.PolicySplitTunnelPolicy(
+	return c.client.V2().PolicySplitTunnelPolicy(
 		ctx,
 		accountID,
 		splitTunnelPolicyInput,
@@ -129,7 +129,7 @@ func (c *sdkClient) PolicySplitTunnelUpdateRule(
 	splitTunnelUpdateRuleInput cato_models.SplitTunnelUpdateRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelUpdateRule, error) {
-	return c.client.Catov2.PolicySplitTunnelUpdateRule(
+	return c.client.V2().PolicySplitTunnelUpdateRule(
 		ctx,
 		accountID,
 		splitTunnelPolicyMutationInput,
@@ -145,7 +145,7 @@ func (c *sdkClient) PolicySplitTunnelMoveRule(
 	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelMoveRule, error) {
-	return c.client.Catov2.PolicySplitTunnelMoveRule(
+	return c.client.V2().PolicySplitTunnelMoveRule(
 		ctx,
 		accountID,
 		splitTunnelPolicyMutationInput,
@@ -161,7 +161,7 @@ func (c *sdkClient) PolicySplitTunnelRemoveRule(
 	splitTunnelRemoveRuleInput cato_models.SplitTunnelRemoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelRemoveRule, error) {
-	return c.client.Catov2.PolicySplitTunnelRemoveRule(
+	return c.client.V2().PolicySplitTunnelRemoveRule(
 		ctx,
 		accountID,
 		splitTunnelPolicyMutationInput,
@@ -177,7 +177,7 @@ func (c *sdkClient) PolicySplitTunnelPublishPolicyRevision(
 	policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelPublishPolicyRevision, error) {
-	return c.client.Catov2.PolicySplitTunnelPublishPolicyRevision(
+	return c.client.V2().PolicySplitTunnelPublishPolicyRevision(
 		ctx,
 		accountID,
 		splitTunnelPolicyMutationInput,
@@ -193,7 +193,7 @@ func (c *sdkClient) PolicySplitTunnelDiscardPolicyRevision(
 	policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySplitTunnelDiscardPolicyRevision, error) {
-	return c.client.Catov2.PolicySplitTunnelDiscardPolicyRevision(
+	return c.client.V2().PolicySplitTunnelDiscardPolicyRevision(
 		ctx,
 		accountID,
 		splitTunnelPolicyMutationInput,

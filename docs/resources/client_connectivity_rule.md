@@ -3,12 +3,12 @@
 page_title: "cato_client_connectivity_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages a client connectivity rule. Changes are automatically published. Omitting at on update preserves placement.
+  Manages a rule in the Cato client connectivity policy. Underlying GraphQL is marked @beta; behavior and fields may change. Explicitly configured empty filters are preserved in state when the API omits them.
 ---
 
 # cato_client_connectivity_rule (Resource)
 
-Manages a client connectivity rule. Changes are automatically published. Omitting at on update preserves placement.
+Manages a rule in the Cato client connectivity policy. Underlying GraphQL is marked @beta; behavior and fields may change. Explicitly configured empty filters are preserved in state when the API omits them.
 
 ## Example Usage
 
@@ -36,9 +36,9 @@ provider "cato" {
 }
 
 # Changes are automatically published. Use a test account when evaluating beta APIs.
+# Explicit empty filters remain empty in state even when omitted by the API.
 resource "cato_client_connectivity_rule" "example" {
-  # Optional placement; omission on update preserves the current position.
-  # at = { position = "LAST_IN_POLICY" }
+  at = { position = "LAST_IN_POLICY" }
   rule = {
     action            = "ALLOW"
     confidence_level  = "HIGH"
@@ -65,42 +65,56 @@ resource "cato_client_connectivity_rule" "example" {
 
 ### Required
 
-- `rule` (Attributes) Parameters for the rule you are adding (see [below for nested schema](#nestedatt--rule))
+- `at` (Attributes) Where to insert the rule (see [below for nested schema](#nestedatt--at))
+- `rule` (Attributes) Rule definition (see [below for nested schema](#nestedatt--rule))
 
-### Optional
+### Read-Only
 
-- `at` (Attributes) Position of the rule in the policy (see [below for nested schema](#nestedatt--at))
+- `id` (String) Rule ID
+
+<a id="nestedatt--at"></a>
+### Nested Schema for `at`
+
+Required:
+
+- `position` (String) Position relative to policy, section, or another rule
+
+Optional:
+
+- `ref` (String) Reference rule or section ID when required by position
+
 
 <a id="nestedatt--rule"></a>
 ### Nested Schema for `rule`
 
 Required:
 
-- `action` (String) The action applied by the client connectivity if the rule is matched
-- `confidence_level` (String) User confidence level
-- `connection_origin` (Set of String) Connection origin matching criteria. Logical 'OR' is applied within the criteria set. Logical 'AND' is applied between criteria sets.
-- `country` (Attributes Set) Country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--country))
-- `description` (String) Description
-- `device` (Attributes Set) Device Profile traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--device))
-- `enabled` (Boolean) Enabled
-- `name` (String) Name
-- `platform` (Set of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
-- `source` (Attributes) Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--source))
-- `source_range` (Attributes Set) Public ISP IP Range matching criteria. (see [below for nested schema](#nestedatt--rule--source_range))
+- `action` (String) Rule action
+- `confidence_level` (String) Device posture confidence level the rule requires
+- `enabled` (Boolean) Whether the rule is enabled
+- `name` (String) Rule name
+
+Optional:
+
+- `connection_origin` (List of String) Connection origins (ANY, REMOTE, REMOTE_EXTENSION)
+- `country` (Attributes Set) Countries the rule applies to (see [below for nested schema](#nestedatt--rule--country))
+- `description` (String) Rule description
+- `device` (Attributes Set) Device posture profiles the rule applies to (see [below for nested schema](#nestedatt--rule--device))
+- `platform` (List of String) Operating systems the rule applies to
+- `source` (Attributes) Users and user groups the rule applies to (see [below for nested schema](#nestedatt--rule--source))
+- `source_range` (Attributes List) Source global IP ranges the rule applies to (see [below for nested schema](#nestedatt--rule--source_range))
 
 Read-Only:
 
 - `id` (String) Rule ID
-- `index` (Number) Current rule index
-- `section` (Attributes) Policy section containing the rule (see [below for nested schema](#nestedatt--rule--section))
 
 <a id="nestedatt--rule--country"></a>
 ### Nested Schema for `rule.country`
 
 Optional:
 
-- `id` (String) Country ID
-- `name` (String) Country name
+- `id` (String)
+- `name` (String)
 
 
 <a id="nestedatt--rule--device"></a>
@@ -108,25 +122,25 @@ Optional:
 
 Optional:
 
-- `id` (String) Device ID
-- `name` (String) Device name
+- `id` (String)
+- `name` (String)
 
 
 <a id="nestedatt--rule--source"></a>
 ### Nested Schema for `rule.source`
 
-Required:
+Optional:
 
-- `user` (Attributes Set) Individual users defined for the account (see [below for nested schema](#nestedatt--rule--source--user))
-- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--rule--source--users_group))
+- `user` (Attributes Set) User references (see [below for nested schema](#nestedatt--rule--source--user))
+- `users_group` (Attributes Set) User group references (see [below for nested schema](#nestedatt--rule--source--users_group))
 
 <a id="nestedatt--rule--source--user"></a>
 ### Nested Schema for `rule.source.user`
 
 Optional:
 
-- `id` (String) User ID
-- `name` (String) User name
+- `id` (String)
+- `name` (String)
 
 
 <a id="nestedatt--rule--source--users_group"></a>
@@ -134,8 +148,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Users group ID
-- `name` (String) Users group name
+- `id` (String)
+- `name` (String)
 
 
 
@@ -144,38 +158,15 @@ Optional:
 
 Required:
 
-- `global_ip_range` (Attributes) Globally defined IP range (see [below for nested schema](#nestedatt--rule--source_range--global_ip_range))
+- `global_ip_range` (Attributes) Global IP range reference (see [below for nested schema](#nestedatt--rule--source_range--global_ip_range))
 
 <a id="nestedatt--rule--source_range--global_ip_range"></a>
 ### Nested Schema for `rule.source_range.global_ip_range`
 
 Optional:
 
-- `id` (String) Global ip range ID
-- `name` (String) Global ip range name
-
-
-
-<a id="nestedatt--rule--section"></a>
-### Nested Schema for `rule.section`
-
-Read-Only:
-
-- `id` (String) Section ID
-- `name` (String) Section name
-
-
-
-<a id="nestedatt--at"></a>
-### Nested Schema for `at`
-
-Required:
-
-- `position` (String) Position relative to a policy, a section or another rule
-
-Optional:
-
-- `ref` (String) The identifier of the object (e.g. a rule, a section) relative to which the position of the added rule is defined
+- `id` (String)
+- `name` (String)
 
 ## Import
 

@@ -3,12 +3,12 @@
 page_title: "cato_terminal_server_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages a terminal server rule. Changes are automatically published. Omitting at on update preserves placement.
+  Manages a rule in the Cato terminal server policy. Underlying GraphQL is marked @beta; behavior and fields may change.
 ---
 
 # cato_terminal_server_rule (Resource)
 
-Manages a terminal server rule. Changes are automatically published. Omitting at on update preserves placement.
+Manages a rule in the Cato terminal server policy. Underlying GraphQL is marked @beta; behavior and fields may change.
 
 ## Example Usage
 
@@ -54,36 +54,50 @@ resource "cato_terminal_server_rule" "example" {
 
 ### Required
 
-- `rule` (Attributes) Parameters for the rule you are adding (see [below for nested schema](#nestedatt--rule))
+- `at` (Attributes) Where to insert the rule (see [below for nested schema](#nestedatt--at))
+- `rule` (Attributes) Rule definition (see [below for nested schema](#nestedatt--rule))
 
-### Optional
+### Read-Only
 
-- `at` (Attributes) Position of the rule in the policy (see [below for nested schema](#nestedatt--at))
+- `id` (String) Rule ID
+
+<a id="nestedatt--at"></a>
+### Nested Schema for `at`
+
+Required:
+
+- `position` (String) Position relative to policy, section, or another rule
+
+Optional:
+
+- `ref` (String) Reference rule or section ID when required by position
+
 
 <a id="nestedatt--rule"></a>
 ### Nested Schema for `rule`
 
 Required:
 
-- `allowed_host_ip` (Attributes) Allowed Host IP range. all the other IPs will be blocked by the pop. Globally defined IP range (see [below for nested schema](#nestedatt--rule--allowed_host_ip))
-- `description` (String) Description
-- `enabled` (Boolean) Enabled
-- `exclude_traffic` (Attributes Set) Exclude traffic IP Range. all traffic to those Ips will be excluded from the GRE tunnel. Globally defined IP range (see [below for nested schema](#nestedatt--rule--exclude_traffic))
-- `name` (String) Name
+- `allowed_host_ip` (Attributes) Global IP range the terminal server is allowed to use (see [below for nested schema](#nestedatt--rule--allowed_host_ip))
+- `enabled` (Boolean) Whether the rule is enabled
+- `name` (String) Rule name
+
+Optional:
+
+- `description` (String) Rule description
+- `exclude_traffic` (Attributes Set) Global IP ranges whose traffic is excluded from the rule (see [below for nested schema](#nestedatt--rule--exclude_traffic))
 
 Read-Only:
 
 - `id` (String) Rule ID
-- `index` (Number) Current rule index
-- `section` (Attributes) Policy section containing the rule (see [below for nested schema](#nestedatt--rule--section))
 
 <a id="nestedatt--rule--allowed_host_ip"></a>
 ### Nested Schema for `rule.allowed_host_ip`
 
 Optional:
 
-- `id` (String) Allowed host ip ID
-- `name` (String) Allowed host ip name
+- `id` (String)
+- `name` (String)
 
 
 <a id="nestedatt--rule--exclude_traffic"></a>
@@ -91,30 +105,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Exclude traffic ID
-- `name` (String) Exclude traffic name
-
-
-<a id="nestedatt--rule--section"></a>
-### Nested Schema for `rule.section`
-
-Read-Only:
-
-- `id` (String) Section ID
-- `name` (String) Section name
-
-
-
-<a id="nestedatt--at"></a>
-### Nested Schema for `at`
-
-Required:
-
-- `position` (String) Position relative to a policy, a section or another rule
-
-Optional:
-
-- `ref` (String) The identifier of the object (e.g. a rule, a section) relative to which the position of the added rule is defined
+- `id` (String)
+- `name` (String)
 
 ## Import
 
