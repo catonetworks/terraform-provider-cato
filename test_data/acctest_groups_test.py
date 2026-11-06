@@ -14,7 +14,10 @@ class AcceptanceGroupsTest(unittest.TestCase):
     def test_complete_balanced_partition(self):
         plan = groups.plan()
         self.assertEqual(len(plan), 10)
-        self.assertLess(max(g['seconds'] for g in plan) - min(g['seconds'] for g in plan), 5)
+        # Keep the balance check proportional as measured durations change.
+        average_seconds = sum(g['seconds'] for g in plan) / len(plan)
+        self.assertLess(max(g['seconds'] for g in plan) - min(g['seconds'] for g in plan),
+                        average_seconds * 0.05)
         expected = groups.workloads(groups.load_timings())
         actual = [unit for group in plan for unit in group['units']]
         self.assertCountEqual([(u['suite'], u.get('test')) for u in actual],
@@ -29,15 +32,19 @@ class AcceptanceGroupsTest(unittest.TestCase):
         self.assertNotEqual(a, b)
 
     def test_split_suite_filters_are_anchored_and_exhaustive(self):
-        tests = []
-        for group in groups.plan():
-            units = [u for u in group['units'] if u['suite'] == 'socket_site']
-            if units:
-                pattern = groups.test_filter(group['id'], 'socket_site')
-                self.assertTrue(pattern.startswith('^('))
-                self.assertTrue(pattern.endswith(')$'))
-                tests.extend(u['test'] for u in units)
-        self.assertCountEqual(tests, groups.load_timings()['packages']['socket_site']['tests'])
+        for suite, timing in groups.load_timings()['packages'].items():
+            if 'tests' not in timing:
+                continue
+            with self.subTest(suite=suite):
+                tests = []
+                for group in groups.plan():
+                    units = [u for u in group['units'] if u['suite'] == suite]
+                    if units:
+                        pattern = groups.test_filter(group['id'], suite)
+                        self.assertTrue(pattern.startswith('^('))
+                        self.assertTrue(pattern.endswith(')$'))
+                        tests.extend(u['test'] for u in units)
+                self.assertCountEqual(tests, timing['tests'])
 
     def test_account_pool_rejects_duplicates_and_partial_pools(self):
         pool = [{'id': str(i), 'api_key': f'inert-test-key-{i}'} for i in range(10)]

@@ -131,12 +131,18 @@ references). IDs and keys must be unique. Each job selects one record and uses i
 fixture references; the old shared `TFACC_TEST_VARS` variable is not used in CI.
 Keep this file and Terraform fixture state outside the checkout.
 
-Timings come from [job 127228450392](https://github.com/catonetworks/terraform-provider-cato/actions/runs/42022493205/job/127228450392).
+Timings were refreshed from a local `make acctest-flaky` run on 6 November 2026.
+The timing inventory records the measured commit, platform, failed packages, and
+skipped tests. Failed unsplit packages retain the previous CI estimate. Skipped-only
+packages and skipped or failed split tests use explicit conservative estimates
+rather than short skip or failure durations.
+
 The planner uses longest-duration-first assignment with a three-second allowance
-per package invocation. It splits `socket_site` by top-level test to avoid its
-three-minute package dominating one group. Estimates are about 137–141 seconds
-per group, before cleanup, compilation, setup, and retries; changed account
-features and previously skipped tests can change actual durations.
+per package invocation. It splits `socket_site` and the independent
+`bulk_policy_families` tests by top-level test so each can run across multiple
+accounts. Group estimates exclude cleanup, compilation, setup, and retries;
+account features and previously skipped coverage can change actual durations.
+Current estimates are about 131–137 seconds per group (a 4.1% spread).
 
 ```sh
 python3 test_data/acctest_groups.py summary
