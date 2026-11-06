@@ -593,7 +593,14 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf(utils.ToStrings(cato_models.AllInternetFirewallActionEnum)...),
+							// SUB_POLICY is an internal response action for sub-policy scope rules.
+							stringvalidator.OneOf(
+								string(cato_models.InternetFirewallActionEnumAllow),
+								string(cato_models.InternetFirewallActionEnumBlock),
+								string(cato_models.InternetFirewallActionEnumPrompt),
+								string(cato_models.InternetFirewallActionEnumRbi),
+								string(cato_models.InternetFirewallActionEnumCaptivePortal),
+							),
 						},
 					},
 					"tracking": schema.SingleNestedAttribute{

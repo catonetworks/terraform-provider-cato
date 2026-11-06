@@ -108,7 +108,12 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 						Description: "The action applied by the Wan Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-WanFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanFirewallActionEnum)...),
+							// SUB_POLICY is an internal response action for sub-policy scope rules.
+							stringvalidator.OneOf(
+								string(cato_models.WanFirewallActionEnumAllow),
+								string(cato_models.WanFirewallActionEnumBlock),
+								string(cato_models.WanFirewallActionEnumPrompt),
+							),
 						},
 					},
 					"direction": schema.StringAttribute{
