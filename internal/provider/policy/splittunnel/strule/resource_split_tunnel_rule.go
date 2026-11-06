@@ -204,7 +204,9 @@ func (r *splitTunnelRuleResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan SplitTunnelRule
+	var state SplitTunnelRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -217,15 +219,17 @@ func (r *splitTunnelRuleResource) Update(
 		return
 	}
 
-	moveRes, err := r.resourceAPI().PolicySplitTunnelMoveRule(ctx, move, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySplitTunnelMoveRule error", err.Error())
-		return
-	}
-	mv := moveRes.GetPolicy().GetSplitTunnel().GetMoveRule()
-	if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
+	if !plan.At.Equal(state.At) {
+		moveRes, err := r.resourceAPI().PolicySplitTunnelMoveRule(ctx, move, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicySplitTunnelMoveRule error", err.Error())
+			return
+		}
+		mv := moveRes.GetPolicy().GetSplitTunnel().GetMoveRule()
+		if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
 	}
 
 	upd, diags := hydrateSplitTunnelUpdateRuleInput(ctx, plan)

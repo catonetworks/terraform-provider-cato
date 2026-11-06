@@ -3,669 +3,3885 @@ package sbrule
 import (
 	"context"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	cato_scalars "github.com/catonetworks/cato-go-sdk/scalars"
-	attr "github.com/hashicorp/terraform-plugin-framework/attr"
-	diag "github.com/hashicorp/terraform-plugin-framework/diag"
-	types "github.com/hashicorp/terraform-plugin-framework/types"
-	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/catonetworks/cato-go-sdk/scalars"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
-	oldidname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/oldidname"
-	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	refinput "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/refinput"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 )
 
-var sbAsOpts = basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
-
-func sbPortStr(p *cato_scalars.Port) string {
-	if p == nil {
-		return ""
+func buildCreateObject(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassAddRuleDataInput {
+	if value.IsNull() {
+		return nil
 	}
-	return string(*p)
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule must be known before applying.")
+		return nil
+	}
+	var model RuleModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.action", model.Action, true},
+		knownValue{"rule.description", model.Description, true},
+		knownValue{"rule.destination", model.Destination, true},
+		knownValue{"rule.enabled", model.Enabled, true},
+		knownValue{"rule.exception", model.Exception, true},
+		knownValue{"rule.name", model.Name, true},
+		knownValue{"rule.service", model.Service, true},
+		knownValue{"rule.site", model.Site, true},
+		knownValue{"rule.source", model.Source, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassAddRuleDataInput{}
+	input.Action = buildCreateObjectAction(ctx, model.Action, diags)
+	input.Description = model.Description.ValueString()
+	input.Destination = buildCreateObjectDestination(ctx, model.Destination, diags)
+	input.Enabled = model.Enabled.ValueBool()
+	input.Exception = make([]*cato_models.SocketBypassExceptionInput, 0, len(model.Exception.Elements()))
+	for _, item := range model.Exception.Elements() {
+		input.Exception = append(input.Exception, buildCreateObjectException(ctx, item.(types.Object), diags))
+	}
+	input.Name = model.Name.ValueString()
+	input.Service = buildCreateObjectService(ctx, model.Service, diags)
+	input.Site = buildCreateObjectSite(ctx, model.Site, diags)
+	input.Source = buildCreateObjectSource(ctx, model.Source, diags)
+	return input
 }
 
-// ── plan → SDK input builders ───────────────────────────────────────────────
-
-func sbFromToRanges(
-	ctx context.Context,
-	list types.List,
-	diags *diag.Diagnostics,
-) []*cato_models.IPAddressRangeInput {
-	out := []*cato_models.IPAddressRangeInput{}
-	if list.IsNull() || list.IsUnknown() {
-		return out
-	}
-	var rows []SocketBypassFromToPlan
-	diags.Append(list.ElementsAs(ctx, &rows, false)...)
-	for _, row := range rows {
-		out = append(out, &cato_models.IPAddressRangeInput{
-			From: row.From.ValueString(),
-			To:   row.To.ValueString(),
-		})
-	}
-	return out
-}
-
-func sbActionInput(
-	ctx context.Context,
-	obj types.Object,
-	diags *diag.Diagnostics,
+func buildCreateObjectAction(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketBypassActionInput {
-	out := &cato_models.SocketBypassActionInput{
-		Port:  cato_models.BypassSocketPortTypeAutomatic,
-		Event: &cato_models.PolicyRuleTrackingEventInput{Enabled: false},
+	if value.IsNull() {
+		return nil
 	}
-	if obj.IsNull() || obj.IsUnknown() {
-		return out
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.action must be known before applying.")
+		return nil
 	}
-	a := SocketBypassActionPlan{}
-	diags.Append(obj.As(ctx, &a, sbAsOpts)...)
-	if !a.Port.IsNull() && !a.Port.IsUnknown() && a.Port.ValueString() != "" {
-		out.Port = cato_models.BypassSocketPortType(a.Port.ValueString())
-	}
-	if !a.EventEnabled.IsNull() && !a.EventEnabled.IsUnknown() {
-		out.Event.Enabled = a.EventEnabled.ValueBool()
-	}
-	return out
-}
-
-func sbSiteInput(
-	ctx context.Context,
-	obj types.Object,
-	diags *diag.Diagnostics,
-) *cato_models.SocketBypassSiteInput {
-	out := &cato_models.SocketBypassSiteInput{
-		Site:  []*cato_models.SiteRefInput{},
-		Group: []*cato_models.GroupRefInput{},
-	}
-	if obj.IsNull() || obj.IsUnknown() {
-		return out
-	}
-	s := SocketBypassSitePlan{}
-	diags.Append(obj.As(ctx, &s, sbAsOpts)...)
+	var model RuleActionModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
-		return out
+		return nil
 	}
-	if v := refinput.FromSet(ctx, s.Site, diags, "site", refinput.Site); v != nil {
-		out.Site = v
-	}
-	if v := refinput.FromSet(ctx, s.Group, diags, "group", refinput.Group); v != nil {
-		out.Group = v
-	}
-	return out
-}
-
-func sbSourceInput(
-	ctx context.Context,
-	obj types.Object,
-	diags *diag.Diagnostics,
-) *cato_models.SocketBypassSourceInput {
-	out := &cato_models.SocketBypassSourceInput{
-		FloatingSubnet:    []*cato_models.FloatingSubnetRefInput{},
-		GlobalIPRange:     []*cato_models.GlobalIPRangeRefInput{},
-		Group:             []*cato_models.GroupRefInput{},
-		Host:              []*cato_models.HostRefInput{},
-		IP:                []string{},
-		IPRange:           []*cato_models.IPAddressRangeInput{},
-		NetworkInterface:  []*cato_models.NetworkInterfaceRefInput{},
-		SiteNetworkSubnet: []*cato_models.SiteNetworkSubnetRefInput{},
-		Subnet:            []string{},
-		Vlan:              []cato_scalars.Vlan{},
-	}
-	if obj.IsNull() || obj.IsUnknown() {
-		return out
-	}
-	s := SocketBypassSourcePlan{}
-	diags.Append(obj.As(ctx, &s, sbAsOpts)...)
+	validateValues(diags,
+		knownValue{"rule.action.event", model.Event, true},
+		knownValue{"rule.action.port", model.Port, true},
+	)
 	if diags.HasError() {
-		return out
+		return nil
 	}
-	if v := refinput.FromSet(ctx, s.FloatingSubnet, diags, "floating subnet", refinput.FloatingSubnet); v != nil {
-		out.FloatingSubnet = v
-	}
-	if v := refinput.FromSet(ctx, s.GlobalIPRange, diags, "global IP range", refinput.GlobalIPRange); v != nil {
-		out.GlobalIPRange = v
-	}
-	if v := refinput.FromSet(ctx, s.Group, diags, "group", refinput.Group); v != nil {
-		out.Group = v
-	}
-	if v := refinput.FromSet(ctx, s.Host, diags, "host", refinput.Host); v != nil {
-		out.Host = v
-	}
-	if v := refinput.StringsFromList(ctx, s.IP, diags); v != nil {
-		out.IP = v
-	}
-	out.IPRange = sbFromToRanges(ctx, s.IPRange, diags)
-	if v := refinput.FromSet(ctx, s.NetworkInterface, diags, "network interface", refinput.NetworkInterface); v != nil {
-		out.NetworkInterface = v
-	}
-	if v := refinput.FromSet(ctx, s.SiteNetworkSubnet, diags, "site network subnet", refinput.SiteNetworkSubnet); v != nil {
-		out.SiteNetworkSubnet = v
-	}
-	if v := refinput.StringsFromList(ctx, s.Subnet, diags); v != nil {
-		out.Subnet = v
-	}
-	if !s.Vlan.IsNull() && !s.Vlan.IsUnknown() {
-		var vlans []int64
-		diags.Append(s.Vlan.ElementsAs(ctx, &vlans, false)...)
-		for _, v := range vlans {
-			out.Vlan = append(out.Vlan, cato_scalars.Vlan(v))
-		}
-	}
-	return out
+	input := &cato_models.SocketBypassActionInput{}
+	input.Event = buildCreateObjectActionEvent(ctx, model.Event, diags)
+	input.Port = cato_models.BypassSocketPortType(model.Port.ValueString())
+	return input
 }
 
-func sbDestinationInput(
-	ctx context.Context,
-	obj types.Object,
-	diags *diag.Diagnostics,
+func buildCreateObjectActionEvent(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.PolicyRuleTrackingEventInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.action.event must be known before applying.")
+		return nil
+	}
+	var model RuleActionEventModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.action.event.enabled", model.Enabled, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.PolicyRuleTrackingEventInput{}
+	input.Enabled = model.Enabled.ValueBool()
+	return input
+}
+
+func buildCreateObjectDestination(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketBypassDestinationInput {
-	out := &cato_models.SocketBypassDestinationInput{
-		Application:   []*cato_models.ApplicationRefInput{},
-		CustomApp:     []*cato_models.CustomApplicationRefInput{},
-		Domain:        []string{},
-		Fqdn:          []string{},
-		GlobalIPRange: []*cato_models.GlobalIPRangeRefInput{},
-		IP:            []string{},
-		IPRange:       []*cato_models.IPAddressRangeInput{},
-		Subnet:        []string{},
+	if value.IsNull() {
+		return nil
 	}
-	if obj.IsNull() || obj.IsUnknown() {
-		return out
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.destination must be known before applying.")
+		return nil
 	}
-	d := SocketBypassDestinationPlan{}
-	diags.Append(obj.As(ctx, &d, sbAsOpts)...)
+	var model RuleDestinationModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
-		return out
+		return nil
 	}
-	if v := refinput.FromSet(ctx, d.Application, diags, "application", refinput.Application); v != nil {
-		out.Application = v
+	validateValues(diags,
+		knownValue{"rule.destination.application", model.Application, true},
+		knownValue{"rule.destination.custom_app", model.CustomApp, true},
+		knownValue{"rule.destination.domain", model.Domain, true},
+		knownValue{"rule.destination.fqdn", model.Fqdn, true},
+		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.destination.ip", model.IP, true},
+		knownValue{"rule.destination.ip_range", model.IPRange, true},
+		knownValue{"rule.destination.subnet", model.Subnet, true},
+	)
+	if diags.HasError() {
+		return nil
 	}
-	if v := refinput.FromSet(ctx, d.CustomApp, diags, "custom application", refinput.CustomApplication); v != nil {
-		out.CustomApp = v
+	input := &cato_models.SocketBypassDestinationInput{}
+	input.Application = idname.PrepareIDNameSet[cato_models.ApplicationRefInput](ctx, model.Application, diags)
+	input.CustomApp = idname.PrepareIDNameSet[cato_models.CustomApplicationRefInput](ctx, model.CustomApp, diags)
+	input.Domain = convert.PrepareStrings[string](ctx, model.Domain, diags)
+	if input.Domain == nil {
+		input.Domain = []string{}
 	}
-	if v := refinput.StringsFromList(ctx, d.Domain, diags); v != nil {
-		out.Domain = v
+	input.Fqdn = convert.PrepareStrings[string](ctx, model.Fqdn, diags)
+	if input.Fqdn == nil {
+		input.Fqdn = []string{}
 	}
-	if v := refinput.StringsFromList(ctx, d.Fqdn, diags); v != nil {
-		out.Fqdn = v
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
 	}
-	if v := refinput.FromSet(ctx, d.GlobalIPRange, diags, "global IP range", refinput.GlobalIPRange); v != nil {
-		out.GlobalIPRange = v
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildCreateObjectDestinationIPRange(ctx, item.(types.Object), diags))
 	}
-	if v := refinput.StringsFromList(ctx, d.IP, diags); v != nil {
-		out.IP = v
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
 	}
-	out.IPRange = sbFromToRanges(ctx, d.IPRange, diags)
-	if v := refinput.StringsFromList(ctx, d.Subnet, diags); v != nil {
-		out.Subnet = v
-	}
-	return out
+	return input
 }
 
-func sbServiceInput(
-	ctx context.Context,
-	obj types.Object,
-	diags *diag.Diagnostics,
+func buildCreateObjectDestinationIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.destination.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleDestinationIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.destination.ip_range.from", model.From, true},
+		knownValue{"rule.destination.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+func buildCreateObjectException(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassExceptionInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.destination", model.Destination, true},
+		knownValue{"rule.exception.name", model.Name, true},
+		knownValue{"rule.exception.service", model.Service, true},
+		knownValue{"rule.exception.site", model.Site, true},
+		knownValue{"rule.exception.source", model.Source, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassExceptionInput{}
+	input.Destination = buildCreateObjectExceptionDestination(ctx, model.Destination, diags)
+	input.Name = model.Name.ValueString()
+	input.Service = buildCreateObjectExceptionService(ctx, model.Service, diags)
+	input.Site = buildCreateObjectExceptionSite(ctx, model.Site, diags)
+	input.Source = buildCreateObjectExceptionSource(ctx, model.Source, diags)
+	return input
+}
+
+func buildCreateObjectExceptionDestination(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassDestinationInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.destination must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionDestinationModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.destination.application", model.Application, true},
+		knownValue{"rule.exception.destination.custom_app", model.CustomApp, true},
+		knownValue{"rule.exception.destination.domain", model.Domain, true},
+		knownValue{"rule.exception.destination.fqdn", model.Fqdn, true},
+		knownValue{"rule.exception.destination.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.exception.destination.ip", model.IP, true},
+		knownValue{"rule.exception.destination.ip_range", model.IPRange, true},
+		knownValue{"rule.exception.destination.subnet", model.Subnet, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassDestinationInput{}
+	input.Application = idname.PrepareIDNameSet[cato_models.ApplicationRefInput](ctx, model.Application, diags)
+	input.CustomApp = idname.PrepareIDNameSet[cato_models.CustomApplicationRefInput](ctx, model.CustomApp, diags)
+	input.Domain = convert.PrepareStrings[string](ctx, model.Domain, diags)
+	if input.Domain == nil {
+		input.Domain = []string{}
+	}
+	input.Fqdn = convert.PrepareStrings[string](ctx, model.Fqdn, diags)
+	if input.Fqdn == nil {
+		input.Fqdn = []string{}
+	}
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
+	}
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildCreateObjectExceptionDestinationIPRange(ctx, item.(types.Object), diags))
+	}
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
+	}
+	return input
+}
+
+func buildCreateObjectExceptionDestinationIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.destination.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionDestinationIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.destination.ip_range.from", model.From, true},
+		knownValue{"rule.exception.destination.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+func buildCreateObjectExceptionService(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketBypassServiceInput {
-	out := &cato_models.SocketBypassServiceInput{
-		Simple: []*cato_models.SimpleServiceInput{},
-		Custom: []*cato_models.CustomServiceInput{},
+	if value.IsNull() {
+		return nil
 	}
-	if obj.IsNull() || obj.IsUnknown() {
-		return out
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service must be known before applying.")
+		return nil
 	}
-	s := SocketBypassServicePlan{}
-	diags.Append(obj.As(ctx, &s, sbAsOpts)...)
+	var model RuleExceptionServiceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
-		return out
+		return nil
 	}
-	for _, name := range refinput.StringsFromList(ctx, s.Simple, diags) {
-		out.Simple = append(out.Simple, &cato_models.SimpleServiceInput{
-			Name: cato_models.SimpleServiceType(name),
-		})
-	}
-	if !s.Custom.IsNull() && !s.Custom.IsUnknown() {
-		var rows []SocketBypassCustomServicePlan
-		diags.Append(s.Custom.ElementsAs(ctx, &rows, false)...)
-		for _, row := range rows {
-			svc := &cato_models.CustomServiceInput{
-				Protocol: cato_models.IPProtocol(row.Protocol.ValueString()),
-			}
-			for _, p := range refinput.StringsFromList(ctx, row.Port, diags) {
-				svc.Port = append(svc.Port, cato_scalars.Port(p))
-			}
-			if !row.PortRange.IsNull() && !row.PortRange.IsUnknown() {
-				pr := SocketBypassFromToPlan{}
-				diags.Append(row.PortRange.As(ctx, &pr, sbAsOpts)...)
-				svc.PortRange = &cato_models.PortRangeInput{
-					From: cato_scalars.Port(pr.From.ValueString()),
-					To:   cato_scalars.Port(pr.To.ValueString()),
-				}
-			}
-			out.Custom = append(out.Custom, svc)
-		}
-	}
-	return out
-}
-
-func sbExceptions(
-	ctx context.Context,
-	list types.List,
-	diags *diag.Diagnostics,
-) []*cato_models.SocketBypassExceptionInput {
-	out := []*cato_models.SocketBypassExceptionInput{}
-	if list.IsNull() || list.IsUnknown() {
-		return out
-	}
-	var rows []SocketBypassExceptionPlan
-	diags.Append(list.ElementsAs(ctx, &rows, false)...)
-	for _, row := range rows {
-		out = append(out, &cato_models.SocketBypassExceptionInput{
-			Name:        row.Name.ValueString(),
-			Site:        sbSiteInput(ctx, row.Site, diags),
-			Source:      sbSourceInput(ctx, row.Source, diags),
-			Destination: sbDestinationInput(ctx, row.Destination, diags),
-			Service:     sbServiceInput(ctx, row.Service, diags),
-		})
-	}
-	return out
-}
-
-func hydrateSocketBypassAddRuleInput(
-	ctx context.Context,
-	plan SocketBypassRule,
-) (cato_models.SocketBypassAddRuleInput, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	out := cato_models.SocketBypassAddRuleInput{}
-
-	if !plan.At.IsNull() {
-		out.At = &cato_models.PolicyRulePositionInput{}
-		pos := policyrule.Position{}
-		diags.Append(plan.At.As(ctx, &pos, sbAsOpts)...)
-		out.At.Position = (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer())
-		out.At.Ref = pos.Ref.ValueStringPointer()
-	}
-
-	rule := SocketBypassRuleRulePlan{}
-	diags.Append(plan.Rule.As(ctx, &rule, sbAsOpts)...)
+	validateValues(diags,
+		knownValue{"rule.exception.service.custom", model.Custom, true},
+		knownValue{"rule.exception.service.simple", model.Simple, true},
+	)
 	if diags.HasError() {
-		return out, diags
+		return nil
 	}
-
-	out.Rule = &cato_models.SocketBypassAddRuleDataInput{
-		Name:        rule.Name.ValueString(),
-		Description: rule.Description.ValueString(),
-		Enabled:     rule.Enabled.ValueBool(),
-		Action:      sbActionInput(ctx, rule.Action, &diags),
-		Site:        sbSiteInput(ctx, rule.Site, &diags),
-		Source:      sbSourceInput(ctx, rule.Source, &diags),
-		Destination: sbDestinationInput(ctx, rule.Destination, &diags),
-		Service:     sbServiceInput(ctx, rule.Service, &diags),
-		Exception:   sbExceptions(ctx, rule.Exception, &diags),
+	input := &cato_models.SocketBypassServiceInput{}
+	input.Custom = make([]*cato_models.CustomServiceInput, 0, len(model.Custom.Elements()))
+	for _, item := range model.Custom.Elements() {
+		input.Custom = append(input.Custom, buildCreateObjectExceptionServiceCustom(ctx, item.(types.Object), diags))
 	}
-	return out, diags
+	input.Simple = make([]*cato_models.SimpleServiceInput, 0, len(model.Simple.Elements()))
+	for _, item := range model.Simple.Elements() {
+		input.Simple = append(input.Simple, buildCreateObjectExceptionServiceSimple(ctx, item.(types.Object), diags))
+	}
+	return input
 }
 
-func hydrateSocketBypassUpdateRuleInput(
-	ctx context.Context,
-	plan SocketBypassRule,
-) (cato_models.SocketBypassUpdateRuleInput, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	rule := SocketBypassRuleRulePlan{}
-	diags.Append(plan.Rule.As(ctx, &rule, sbAsOpts)...)
+func buildCreateObjectExceptionServiceCustom(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.CustomServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service.custom must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionServiceCustomModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
-		return cato_models.SocketBypassUpdateRuleInput{}, diags
+		return nil
 	}
-
-	action := sbActionInput(ctx, rule.Action, &diags)
-	site := sbSiteInput(ctx, rule.Site, &diags)
-	src := sbSourceInput(ctx, rule.Source, &diags)
-	dst := sbDestinationInput(ctx, rule.Destination, &diags)
-	svc := sbServiceInput(ctx, rule.Service, &diags)
-
-	upd := cato_models.SocketBypassUpdateRuleInput{
-		ID: rule.ID.ValueString(),
-		Rule: &cato_models.SocketBypassUpdateRuleDataInput{
-			Name:        rule.Name.ValueStringPointer(),
-			Description: rule.Description.ValueStringPointer(),
-			Enabled:     rule.Enabled.ValueBoolPointer(),
-			Action: &cato_models.SocketBypassActionUpdateInput{
-				Port:  &action.Port,
-				Event: &cato_models.PolicyRuleTrackingEventUpdateInput{Enabled: &action.Event.Enabled},
-			},
-			Site: &cato_models.SocketBypassSiteUpdateInput{
-				Site:  site.Site,
-				Group: site.Group,
-			},
-			Source: &cato_models.SocketBypassSourceUpdateInput{
-				FloatingSubnet:    src.FloatingSubnet,
-				GlobalIPRange:     src.GlobalIPRange,
-				Group:             src.Group,
-				Host:              src.Host,
-				IP:                src.IP,
-				IPRange:           src.IPRange,
-				NetworkInterface:  src.NetworkInterface,
-				SiteNetworkSubnet: src.SiteNetworkSubnet,
-				Subnet:            src.Subnet,
-				Vlan:              src.Vlan,
-			},
-			Destination: &cato_models.SocketBypassDestinationUpdateInput{
-				Application:   dst.Application,
-				CustomApp:     dst.CustomApp,
-				Domain:        dst.Domain,
-				Fqdn:          dst.Fqdn,
-				GlobalIPRange: dst.GlobalIPRange,
-				IP:            dst.IP,
-				IPRange:       dst.IPRange,
-				Subnet:        dst.Subnet,
-			},
-			Service: &cato_models.SocketBypassServiceUpdateInput{
-				Simple: svc.Simple,
-				Custom: svc.Custom,
-			},
-			Exception: sbExceptions(ctx, rule.Exception, &diags),
-		},
+	validateValues(diags,
+		knownValue{"rule.exception.service.custom.port", model.Port, false},
+		knownValue{"rule.exception.service.custom.port_range", model.PortRange, false},
+		knownValue{"rule.exception.service.custom.protocol", model.Protocol, true},
+	)
+	if diags.HasError() {
+		return nil
 	}
-	return upd, diags
-}
-
-// ── standard convert helpers (same shapes as the other family rules) ───────
-
-func convertCreateInput(
-	ctx context.Context,
-	priorRulePlan *SocketBypassRuleRulePlan,
-	planRule SocketBypassRuleRulePlan,
-) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
-	rulePlan := *priorRulePlan
-	defer func() { *priorRulePlan = rulePlan }()
-	if !planRule.Exception.IsNull() && !planRule.Exception.IsUnknown() {
-		rulePlan.Exception = planRule.Exception
+	input := &cato_models.CustomServiceInput{}
+	input.Port = convert.PrepareStrings[scalars.Port](ctx, model.Port, diags)
+	if input.Port == nil {
+		input.Port = []scalars.Port{}
 	}
-	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SocketBypassRuleRuleAttrTypes, rulePlan, planRule)
-	return resultRuleObj, resultOdiags
+	input.PortRange = buildCreateObjectExceptionServiceCustomPortRange(ctx, model.PortRange, diags)
+	input.Protocol = cato_models.IPProtocol(model.Protocol.ValueString())
+	return input
 }
 
-func convertCreateInput2(plan *SocketBypassRule, newID string, ruleObj basetypes.ObjectValue) {
-	plan.ID = types.StringValue(newID)
-	plan.Rule = ruleObj
-}
-
-func convertReadState(
-	ctx context.Context,
-	rulePlan SocketBypassRuleRulePlan,
-	priorHydrated *SocketBypassRuleRulePlan,
-) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
-	hydrated := *priorHydrated
-	defer func() { *priorHydrated = hydrated }()
-	if !rulePlan.Exception.IsNull() && !rulePlan.Exception.IsUnknown() {
-		hydrated.Exception = rulePlan.Exception
+func buildCreateObjectExceptionServiceCustomPortRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.PortRangeInput {
+	if value.IsNull() {
+		return nil
 	}
-	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SocketBypassRuleRuleAttrTypes, hydrated, rulePlan)
-	return resultRuleObj, resultOdiags
-}
-
-func convertReadState2(
-	state *SocketBypassRule,
-	cur *cato_go_sdk.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule,
-	ruleObj basetypes.ObjectValue,
-	diagnostics *diag.Diagnostics,
-) {
-	if state.At.IsNull() || state.At.IsUnknown() {
-		atObj, d := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-			"position": types.StringValue("LAST_IN_POLICY"),
-			"ref":      types.StringNull(),
-		})
-		diagnostics.Append(d...)
-		state.At = atObj
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service.custom.port_range must be known before applying.")
+		return nil
 	}
-
-	state.ID = types.StringValue(cur.GetID())
-	state.Rule = ruleObj
-}
-
-func convertUpdateInput(
-	ctx context.Context,
-	plan SocketBypassRule,
-	diagnostics *diag.Diagnostics,
-) (
-	resultMove cato_models.PolicyMoveRuleInput,
-	resultAtAsOpts basetypes.ObjectAsOptions,
-) {
-	resultMove = cato_models.PolicyMoveRuleInput{}
-	resultAtAsOpts = basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
-	if !plan.At.IsNull() {
-		pos := policyrule.Position{}
-		diagnostics.Append(plan.At.As(ctx, &pos, resultAtAsOpts)...)
-		resultMove.To = &cato_models.PolicyRulePositionInput{
-			Position: (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer()),
-			Ref:      pos.Ref.ValueStringPointer(),
-		}
+	var model RuleExceptionServiceCustomPortRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
 	}
-	return resultMove, resultAtAsOpts
-}
-
-func convertUpdateInput2(
-	ctx context.Context,
-	rule SocketBypassRuleRulePlan,
-	priorRulePlan *SocketBypassRuleRulePlan,
-) (resultRuleObj basetypes.ObjectValue, resultOdiags diag.Diagnostics) {
-	rulePlan := *priorRulePlan
-	defer func() { *priorRulePlan = rulePlan }()
-	if !rule.Exception.IsNull() && !rule.Exception.IsUnknown() {
-		rulePlan.Exception = rule.Exception
+	validateValues(diags,
+		knownValue{"rule.exception.service.custom.port_range.from", model.From, true},
+		knownValue{"rule.exception.service.custom.port_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
 	}
-	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SocketBypassRuleRuleAttrTypes, rulePlan, rule)
-	return resultRuleObj, resultOdiags
+	input := &cato_models.PortRangeInput{}
+	input.From = scalars.Port(model.From.ValueString())
+	input.To = scalars.Port(model.To.ValueString())
+	return input
 }
 
-func convertUpdateInput3(pos policyrule.Position) (resultAtObj basetypes.ObjectValue, resultAdiags diag.Diagnostics) {
-	resultAtObj, resultAdiags = types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
-		"position": pos.Position,
-		"ref":      pos.Ref,
-	})
-	return resultAtObj, resultAdiags
-}
-
-func convertUpdateInput4(
-	rule SocketBypassRuleRulePlan,
-	ruleObj basetypes.ObjectValue,
-	atObj basetypes.ObjectValue,
-) (resultSt SocketBypassRule) {
-	resultSt = SocketBypassRule{
-		ID:   types.StringValue(rule.ID.ValueString()),
-		At:   atObj,
-		Rule: ruleObj,
+func buildCreateObjectExceptionServiceSimple(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SimpleServiceInput {
+	if value.IsNull() {
+		return nil
 	}
-	return resultSt
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service.simple must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionServiceSimpleModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.service.simple.name", model.Name, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SimpleServiceInput{}
+	input.Name = cato_models.SimpleServiceType(model.Name.ValueString())
+	return input
 }
 
-func convertDeleteInput(rule SocketBypassRuleRulePlan) (resultRm cato_models.SocketBypassRemoveRuleInput) {
-	resultRm = cato_models.SocketBypassRemoveRuleInput{ID: rule.ID.ValueString()}
-	return resultRm
+func buildCreateObjectExceptionSite(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSiteInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.site must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionSiteModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.site.group", model.Group, true},
+		knownValue{"rule.exception.site.site", model.Site, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSiteInput{}
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Site = idname.PrepareIDNameSet[cato_models.SiteRefInput](ctx, model.Site, diags)
+	return input
 }
 
-// ── SDK response → state hydrators ─────────────────────────────────────────
+func buildCreateObjectExceptionSource(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSourceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.source must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionSourceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.source.floating_subnet", model.FloatingSubnet, true},
+		knownValue{"rule.exception.source.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.exception.source.group", model.Group, true},
+		knownValue{"rule.exception.source.host", model.Host, true},
+		knownValue{"rule.exception.source.ip", model.IP, true},
+		knownValue{"rule.exception.source.ip_range", model.IPRange, true},
+		knownValue{"rule.exception.source.network_interface", model.NetworkInterface, true},
+		knownValue{"rule.exception.source.site_network_subnet", model.SiteNetworkSubnet, true},
+		knownValue{"rule.exception.source.subnet", model.Subnet, true},
+		knownValue{"rule.exception.source.vlan", model.Vlan, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSourceInput{}
+	input.FloatingSubnet = idname.PrepareIDNameSet[cato_models.FloatingSubnetRefInput](ctx, model.FloatingSubnet, diags)
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Host = idname.PrepareIDNameSet[cato_models.HostRefInput](ctx, model.Host, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
+	}
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildCreateObjectExceptionSourceIPRange(ctx, item.(types.Object), diags))
+	}
+	input.NetworkInterface = idname.PrepareIDNameSet[cato_models.NetworkInterfaceRefInput](ctx, model.NetworkInterface, diags)
+	input.SiteNetworkSubnet = idname.PrepareIDNameSet[cato_models.SiteNetworkSubnetRefInput](ctx, model.SiteNetworkSubnet, diags)
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
+	}
+	input.Vlan = buildVLANs(ctx, model.Vlan, diags)
+	if input.Vlan == nil {
+		input.Vlan = []scalars.Vlan{}
+	}
+	return input
+}
 
-func sbFromToObj(from, to string, diags *diag.Diagnostics) types.Object {
-	o, d := types.ObjectValue(SocketBypassFromToAttrTypes, map[string]attr.Value{
-		"from": types.StringValue(from),
-		"to":   types.StringValue(to),
-	})
+func buildCreateObjectExceptionSourceIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.source.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionSourceIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.source.ip_range.from", model.From, true},
+		knownValue{"rule.exception.source.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+func buildCreateObjectService(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service must be known before applying.")
+		return nil
+	}
+	var model RuleServiceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.custom", model.Custom, true},
+		knownValue{"rule.service.simple", model.Simple, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassServiceInput{}
+	input.Custom = make([]*cato_models.CustomServiceInput, 0, len(model.Custom.Elements()))
+	for _, item := range model.Custom.Elements() {
+		input.Custom = append(input.Custom, buildCreateObjectServiceCustom(ctx, item.(types.Object), diags))
+	}
+	input.Simple = make([]*cato_models.SimpleServiceInput, 0, len(model.Simple.Elements()))
+	for _, item := range model.Simple.Elements() {
+		input.Simple = append(input.Simple, buildCreateObjectServiceSimple(ctx, item.(types.Object), diags))
+	}
+	return input
+}
+
+func buildCreateObjectServiceCustom(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.CustomServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service.custom must be known before applying.")
+		return nil
+	}
+	var model RuleServiceCustomModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.custom.port", model.Port, false},
+		knownValue{"rule.service.custom.port_range", model.PortRange, false},
+		knownValue{"rule.service.custom.protocol", model.Protocol, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.CustomServiceInput{}
+	input.Port = convert.PrepareStrings[scalars.Port](ctx, model.Port, diags)
+	if input.Port == nil {
+		input.Port = []scalars.Port{}
+	}
+	input.PortRange = buildCreateObjectServiceCustomPortRange(ctx, model.PortRange, diags)
+	input.Protocol = cato_models.IPProtocol(model.Protocol.ValueString())
+	return input
+}
+
+func buildCreateObjectServiceCustomPortRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.PortRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service.custom.port_range must be known before applying.")
+		return nil
+	}
+	var model RuleServiceCustomPortRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.custom.port_range.from", model.From, true},
+		knownValue{"rule.service.custom.port_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.PortRangeInput{}
+	input.From = scalars.Port(model.From.ValueString())
+	input.To = scalars.Port(model.To.ValueString())
+	return input
+}
+
+func buildCreateObjectServiceSimple(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SimpleServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service.simple must be known before applying.")
+		return nil
+	}
+	var model RuleServiceSimpleModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.simple.name", model.Name, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SimpleServiceInput{}
+	input.Name = cato_models.SimpleServiceType(model.Name.ValueString())
+	return input
+}
+
+func buildCreateObjectSite(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSiteInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.site must be known before applying.")
+		return nil
+	}
+	var model RuleSiteModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.site.group", model.Group, true},
+		knownValue{"rule.site.site", model.Site, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSiteInput{}
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Site = idname.PrepareIDNameSet[cato_models.SiteRefInput](ctx, model.Site, diags)
+	return input
+}
+
+func buildCreateObjectSource(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSourceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.source must be known before applying.")
+		return nil
+	}
+	var model RuleSourceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.source.floating_subnet", model.FloatingSubnet, true},
+		knownValue{"rule.source.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.source.group", model.Group, true},
+		knownValue{"rule.source.host", model.Host, true},
+		knownValue{"rule.source.ip", model.IP, true},
+		knownValue{"rule.source.ip_range", model.IPRange, true},
+		knownValue{"rule.source.network_interface", model.NetworkInterface, true},
+		knownValue{"rule.source.site_network_subnet", model.SiteNetworkSubnet, true},
+		knownValue{"rule.source.subnet", model.Subnet, true},
+		knownValue{"rule.source.vlan", model.Vlan, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSourceInput{}
+	input.FloatingSubnet = idname.PrepareIDNameSet[cato_models.FloatingSubnetRefInput](ctx, model.FloatingSubnet, diags)
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Host = idname.PrepareIDNameSet[cato_models.HostRefInput](ctx, model.Host, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
+	}
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildCreateObjectSourceIPRange(ctx, item.(types.Object), diags))
+	}
+	input.NetworkInterface = idname.PrepareIDNameSet[cato_models.NetworkInterfaceRefInput](ctx, model.NetworkInterface, diags)
+	input.SiteNetworkSubnet = idname.PrepareIDNameSet[cato_models.SiteNetworkSubnetRefInput](ctx, model.SiteNetworkSubnet, diags)
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
+	}
+	input.Vlan = buildVLANs(ctx, model.Vlan, diags)
+	if input.Vlan == nil {
+		input.Vlan = []scalars.Vlan{}
+	}
+	return input
+}
+
+func buildCreateObjectSourceIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.source.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleSourceIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.source.ip_range.from", model.From, true},
+		knownValue{"rule.source.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+func buildUpdateObject(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassUpdateRuleDataInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule must be known before applying.")
+		return nil
+	}
+	var model RuleModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.action", model.Action, true},
+		knownValue{"rule.description", model.Description, true},
+		knownValue{"rule.destination", model.Destination, true},
+		knownValue{"rule.enabled", model.Enabled, true},
+		knownValue{"rule.exception", model.Exception, true},
+		knownValue{"rule.name", model.Name, true},
+		knownValue{"rule.service", model.Service, true},
+		knownValue{"rule.site", model.Site, true},
+		knownValue{"rule.source", model.Source, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassUpdateRuleDataInput{}
+	input.Action = buildUpdateObjectAction(ctx, model.Action, diags)
+	vDescription := model.Description.ValueString()
+	input.Description = &vDescription
+	input.Destination = buildUpdateObjectDestination(ctx, model.Destination, diags)
+	vEnabled := model.Enabled.ValueBool()
+	input.Enabled = &vEnabled
+	input.Exception = make([]*cato_models.SocketBypassExceptionInput, 0, len(model.Exception.Elements()))
+	for _, item := range model.Exception.Elements() {
+		input.Exception = append(input.Exception, buildUpdateObjectException(ctx, item.(types.Object), diags))
+	}
+	vName := model.Name.ValueString()
+	input.Name = &vName
+	input.Service = buildUpdateObjectService(ctx, model.Service, diags)
+	input.Site = buildUpdateObjectSite(ctx, model.Site, diags)
+	input.Source = buildUpdateObjectSource(ctx, model.Source, diags)
+	return input
+}
+
+func buildUpdateObjectAction(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassActionUpdateInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.action must be known before applying.")
+		return nil
+	}
+	var model RuleActionModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.action.event", model.Event, true},
+		knownValue{"rule.action.port", model.Port, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassActionUpdateInput{}
+	input.Event = buildUpdateObjectActionEvent(ctx, model.Event, diags)
+	vPort := cato_models.BypassSocketPortType(model.Port.ValueString())
+	input.Port = &vPort
+	return input
+}
+
+func buildUpdateObjectActionEvent(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.PolicyRuleTrackingEventUpdateInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.action.event must be known before applying.")
+		return nil
+	}
+	var model RuleActionEventModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.action.event.enabled", model.Enabled, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.PolicyRuleTrackingEventUpdateInput{}
+	vEnabled := model.Enabled.ValueBool()
+	input.Enabled = &vEnabled
+	return input
+}
+
+func buildUpdateObjectDestination(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassDestinationUpdateInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.destination must be known before applying.")
+		return nil
+	}
+	var model RuleDestinationModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.destination.application", model.Application, true},
+		knownValue{"rule.destination.custom_app", model.CustomApp, true},
+		knownValue{"rule.destination.domain", model.Domain, true},
+		knownValue{"rule.destination.fqdn", model.Fqdn, true},
+		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.destination.ip", model.IP, true},
+		knownValue{"rule.destination.ip_range", model.IPRange, true},
+		knownValue{"rule.destination.subnet", model.Subnet, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassDestinationUpdateInput{}
+	input.Application = idname.PrepareIDNameSet[cato_models.ApplicationRefInput](ctx, model.Application, diags)
+	input.CustomApp = idname.PrepareIDNameSet[cato_models.CustomApplicationRefInput](ctx, model.CustomApp, diags)
+	input.Domain = convert.PrepareStrings[string](ctx, model.Domain, diags)
+	if input.Domain == nil {
+		input.Domain = []string{}
+	}
+	input.Fqdn = convert.PrepareStrings[string](ctx, model.Fqdn, diags)
+	if input.Fqdn == nil {
+		input.Fqdn = []string{}
+	}
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
+	}
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildUpdateObjectDestinationIPRange(ctx, item.(types.Object), diags))
+	}
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
+	}
+	return input
+}
+
+func buildUpdateObjectDestinationIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.destination.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleDestinationIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.destination.ip_range.from", model.From, true},
+		knownValue{"rule.destination.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+func buildUpdateObjectException(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassExceptionInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.destination", model.Destination, true},
+		knownValue{"rule.exception.name", model.Name, true},
+		knownValue{"rule.exception.service", model.Service, true},
+		knownValue{"rule.exception.site", model.Site, true},
+		knownValue{"rule.exception.source", model.Source, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassExceptionInput{}
+	input.Destination = buildUpdateObjectExceptionDestination(ctx, model.Destination, diags)
+	input.Name = model.Name.ValueString()
+	input.Service = buildUpdateObjectExceptionService(ctx, model.Service, diags)
+	input.Site = buildUpdateObjectExceptionSite(ctx, model.Site, diags)
+	input.Source = buildUpdateObjectExceptionSource(ctx, model.Source, diags)
+	return input
+}
+
+func buildUpdateObjectExceptionDestination(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassDestinationInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.destination must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionDestinationModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.destination.application", model.Application, true},
+		knownValue{"rule.exception.destination.custom_app", model.CustomApp, true},
+		knownValue{"rule.exception.destination.domain", model.Domain, true},
+		knownValue{"rule.exception.destination.fqdn", model.Fqdn, true},
+		knownValue{"rule.exception.destination.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.exception.destination.ip", model.IP, true},
+		knownValue{"rule.exception.destination.ip_range", model.IPRange, true},
+		knownValue{"rule.exception.destination.subnet", model.Subnet, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassDestinationInput{}
+	input.Application = idname.PrepareIDNameSet[cato_models.ApplicationRefInput](ctx, model.Application, diags)
+	input.CustomApp = idname.PrepareIDNameSet[cato_models.CustomApplicationRefInput](ctx, model.CustomApp, diags)
+	input.Domain = convert.PrepareStrings[string](ctx, model.Domain, diags)
+	if input.Domain == nil {
+		input.Domain = []string{}
+	}
+	input.Fqdn = convert.PrepareStrings[string](ctx, model.Fqdn, diags)
+	if input.Fqdn == nil {
+		input.Fqdn = []string{}
+	}
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
+	}
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildUpdateObjectExceptionDestinationIPRange(ctx, item.(types.Object), diags))
+	}
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
+	}
+	return input
+}
+
+func buildUpdateObjectExceptionDestinationIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.destination.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionDestinationIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.destination.ip_range.from", model.From, true},
+		knownValue{"rule.exception.destination.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+func buildUpdateObjectExceptionService(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionServiceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.service.custom", model.Custom, true},
+		knownValue{"rule.exception.service.simple", model.Simple, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassServiceInput{}
+	input.Custom = make([]*cato_models.CustomServiceInput, 0, len(model.Custom.Elements()))
+	for _, item := range model.Custom.Elements() {
+		input.Custom = append(input.Custom, buildUpdateObjectExceptionServiceCustom(ctx, item.(types.Object), diags))
+	}
+	input.Simple = make([]*cato_models.SimpleServiceInput, 0, len(model.Simple.Elements()))
+	for _, item := range model.Simple.Elements() {
+		input.Simple = append(input.Simple, buildUpdateObjectExceptionServiceSimple(ctx, item.(types.Object), diags))
+	}
+	return input
+}
+
+func buildUpdateObjectExceptionServiceCustom(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.CustomServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service.custom must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionServiceCustomModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.service.custom.port", model.Port, false},
+		knownValue{"rule.exception.service.custom.port_range", model.PortRange, false},
+		knownValue{"rule.exception.service.custom.protocol", model.Protocol, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.CustomServiceInput{}
+	input.Port = convert.PrepareStrings[scalars.Port](ctx, model.Port, diags)
+	if input.Port == nil {
+		input.Port = []scalars.Port{}
+	}
+	input.PortRange = buildUpdateObjectExceptionServiceCustomPortRange(ctx, model.PortRange, diags)
+	input.Protocol = cato_models.IPProtocol(model.Protocol.ValueString())
+	return input
+}
+
+func buildUpdateObjectExceptionServiceCustomPortRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.PortRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service.custom.port_range must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionServiceCustomPortRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.service.custom.port_range.from", model.From, true},
+		knownValue{"rule.exception.service.custom.port_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.PortRangeInput{}
+	input.From = scalars.Port(model.From.ValueString())
+	input.To = scalars.Port(model.To.ValueString())
+	return input
+}
+
+func buildUpdateObjectExceptionServiceSimple(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SimpleServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.service.simple must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionServiceSimpleModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.service.simple.name", model.Name, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SimpleServiceInput{}
+	input.Name = cato_models.SimpleServiceType(model.Name.ValueString())
+	return input
+}
+
+func buildUpdateObjectExceptionSite(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSiteInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.site must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionSiteModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.site.group", model.Group, true},
+		knownValue{"rule.exception.site.site", model.Site, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSiteInput{}
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Site = idname.PrepareIDNameSet[cato_models.SiteRefInput](ctx, model.Site, diags)
+	return input
+}
+
+func buildUpdateObjectExceptionSource(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSourceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.source must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionSourceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.source.floating_subnet", model.FloatingSubnet, true},
+		knownValue{"rule.exception.source.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.exception.source.group", model.Group, true},
+		knownValue{"rule.exception.source.host", model.Host, true},
+		knownValue{"rule.exception.source.ip", model.IP, true},
+		knownValue{"rule.exception.source.ip_range", model.IPRange, true},
+		knownValue{"rule.exception.source.network_interface", model.NetworkInterface, true},
+		knownValue{"rule.exception.source.site_network_subnet", model.SiteNetworkSubnet, true},
+		knownValue{"rule.exception.source.subnet", model.Subnet, true},
+		knownValue{"rule.exception.source.vlan", model.Vlan, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSourceInput{}
+	input.FloatingSubnet = idname.PrepareIDNameSet[cato_models.FloatingSubnetRefInput](ctx, model.FloatingSubnet, diags)
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Host = idname.PrepareIDNameSet[cato_models.HostRefInput](ctx, model.Host, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
+	}
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildUpdateObjectExceptionSourceIPRange(ctx, item.(types.Object), diags))
+	}
+	input.NetworkInterface = idname.PrepareIDNameSet[cato_models.NetworkInterfaceRefInput](ctx, model.NetworkInterface, diags)
+	input.SiteNetworkSubnet = idname.PrepareIDNameSet[cato_models.SiteNetworkSubnetRefInput](ctx, model.SiteNetworkSubnet, diags)
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
+	}
+	input.Vlan = buildVLANs(ctx, model.Vlan, diags)
+	if input.Vlan == nil {
+		input.Vlan = []scalars.Vlan{}
+	}
+	return input
+}
+
+func buildUpdateObjectExceptionSourceIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.exception.source.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleExceptionSourceIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.exception.source.ip_range.from", model.From, true},
+		knownValue{"rule.exception.source.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+func buildUpdateObjectService(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassServiceUpdateInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service must be known before applying.")
+		return nil
+	}
+	var model RuleServiceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.custom", model.Custom, true},
+		knownValue{"rule.service.simple", model.Simple, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassServiceUpdateInput{}
+	input.Custom = make([]*cato_models.CustomServiceInput, 0, len(model.Custom.Elements()))
+	for _, item := range model.Custom.Elements() {
+		input.Custom = append(input.Custom, buildUpdateObjectServiceCustom(ctx, item.(types.Object), diags))
+	}
+	input.Simple = make([]*cato_models.SimpleServiceInput, 0, len(model.Simple.Elements()))
+	for _, item := range model.Simple.Elements() {
+		input.Simple = append(input.Simple, buildUpdateObjectServiceSimple(ctx, item.(types.Object), diags))
+	}
+	return input
+}
+
+func buildUpdateObjectServiceCustom(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.CustomServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service.custom must be known before applying.")
+		return nil
+	}
+	var model RuleServiceCustomModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.custom.port", model.Port, false},
+		knownValue{"rule.service.custom.port_range", model.PortRange, false},
+		knownValue{"rule.service.custom.protocol", model.Protocol, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.CustomServiceInput{}
+	input.Port = convert.PrepareStrings[scalars.Port](ctx, model.Port, diags)
+	if input.Port == nil {
+		input.Port = []scalars.Port{}
+	}
+	input.PortRange = buildUpdateObjectServiceCustomPortRange(ctx, model.PortRange, diags)
+	input.Protocol = cato_models.IPProtocol(model.Protocol.ValueString())
+	return input
+}
+
+func buildUpdateObjectServiceCustomPortRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.PortRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service.custom.port_range must be known before applying.")
+		return nil
+	}
+	var model RuleServiceCustomPortRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.custom.port_range.from", model.From, true},
+		knownValue{"rule.service.custom.port_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.PortRangeInput{}
+	input.From = scalars.Port(model.From.ValueString())
+	input.To = scalars.Port(model.To.ValueString())
+	return input
+}
+
+func buildUpdateObjectServiceSimple(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SimpleServiceInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.service.simple must be known before applying.")
+		return nil
+	}
+	var model RuleServiceSimpleModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.service.simple.name", model.Name, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SimpleServiceInput{}
+	input.Name = cato_models.SimpleServiceType(model.Name.ValueString())
+	return input
+}
+
+func buildUpdateObjectSite(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSiteUpdateInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.site must be known before applying.")
+		return nil
+	}
+	var model RuleSiteModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.site.group", model.Group, true},
+		knownValue{"rule.site.site", model.Site, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSiteUpdateInput{}
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Site = idname.PrepareIDNameSet[cato_models.SiteRefInput](ctx, model.Site, diags)
+	return input
+}
+
+func buildUpdateObjectSource(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.SocketBypassSourceUpdateInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.source must be known before applying.")
+		return nil
+	}
+	var model RuleSourceModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.source.floating_subnet", model.FloatingSubnet, true},
+		knownValue{"rule.source.global_ip_range", model.GlobalIPRange, true},
+		knownValue{"rule.source.group", model.Group, true},
+		knownValue{"rule.source.host", model.Host, true},
+		knownValue{"rule.source.ip", model.IP, true},
+		knownValue{"rule.source.ip_range", model.IPRange, true},
+		knownValue{"rule.source.network_interface", model.NetworkInterface, true},
+		knownValue{"rule.source.site_network_subnet", model.SiteNetworkSubnet, true},
+		knownValue{"rule.source.subnet", model.Subnet, true},
+		knownValue{"rule.source.vlan", model.Vlan, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.SocketBypassSourceUpdateInput{}
+	input.FloatingSubnet = idname.PrepareIDNameSet[cato_models.FloatingSubnetRefInput](ctx, model.FloatingSubnet, diags)
+	input.GlobalIPRange = idname.PrepareIDNameSet[cato_models.GlobalIPRangeRefInput](ctx, model.GlobalIPRange, diags)
+	input.Group = idname.PrepareIDNameSet[cato_models.GroupRefInput](ctx, model.Group, diags)
+	input.Host = idname.PrepareIDNameSet[cato_models.HostRefInput](ctx, model.Host, diags)
+	input.IP = convert.PrepareStrings[string](ctx, model.IP, diags)
+	if input.IP == nil {
+		input.IP = []string{}
+	}
+	input.IPRange = make([]*cato_models.IPAddressRangeInput, 0, len(model.IPRange.Elements()))
+	for _, item := range model.IPRange.Elements() {
+		input.IPRange = append(input.IPRange, buildUpdateObjectSourceIPRange(ctx, item.(types.Object), diags))
+	}
+	input.NetworkInterface = idname.PrepareIDNameSet[cato_models.NetworkInterfaceRefInput](ctx, model.NetworkInterface, diags)
+	input.SiteNetworkSubnet = idname.PrepareIDNameSet[cato_models.SiteNetworkSubnetRefInput](ctx, model.SiteNetworkSubnet, diags)
+	input.Subnet = convert.PrepareStrings[string](ctx, model.Subnet, diags)
+	if input.Subnet == nil {
+		input.Subnet = []string{}
+	}
+	input.Vlan = buildVLANs(ctx, model.Vlan, diags)
+	if input.Vlan == nil {
+		input.Vlan = []scalars.Vlan{}
+	}
+	return input
+}
+
+func buildUpdateObjectSourceIPRange(
+	ctx context.Context, value types.Object, diags *diag.Diagnostics,
+) *cato_models.IPAddressRangeInput {
+	if value.IsNull() {
+		return nil
+	}
+	if value.IsUnknown() {
+		diags.AddError("Unknown configuration", "rule.source.ip_range must be known before applying.")
+		return nil
+	}
+	var model RuleSourceIPRangeModel
+	diags.Append(value.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil
+	}
+	validateValues(diags,
+		knownValue{"rule.source.ip_range.from", model.From, true},
+		knownValue{"rule.source.ip_range.to", model.To, true},
+	)
+	if diags.HasError() {
+		return nil
+	}
+	input := &cato_models.IPAddressRangeInput{}
+	input.From = model.From.ValueString()
+	input.To = model.To.ValueString()
+	return input
+}
+
+type read = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule
+
+func parseRead(
+	ctx context.Context, value *read, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule object.")
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	model := RuleModel{}
+	model.Action = parseReadAction(ctx, &value.Action, diags)
+	model.Description = types.StringValue(value.Description)
+	model.Destination = parseReadDestination(ctx, &value.Destination, diags)
+	model.Enabled = types.BoolValue(value.Enabled)
+	valuesException := make([]attr.Value, 0, len(value.Exception))
+	for _, item := range value.Exception {
+		valuesException = append(valuesException, parseReadException(ctx, item, diags))
+	}
+	var dException diag.Diagnostics
+	model.Exception, dException = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionAttrTypes}, valuesException)
+	diags.Append(dException...)
+	model.ID = types.StringValue(value.ID)
+	model.Index = types.Int64Value(value.Index)
+	model.Name = types.StringValue(value.Name)
+	model.Section = parseReadSection(ctx, &value.Section, diags)
+	model.Service = parseReadService(ctx, &value.Service, diags)
+	model.Site = parseReadSite(ctx, &value.Site, diags)
+	model.Source = parseReadSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleAttrTypes, model)
 	diags.Append(d...)
-	return o
+	return result
 }
 
-type sbIPRangeGetter interface {
-	GetFrom() string
-	GetTo() string
-}
+type readAction = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Action
 
-func sbRangeList[T sbIPRangeGetter](items []T, diags *diag.Diagnostics) types.List {
-	if len(items) == 0 {
-		return types.ListNull(types.ObjectType{AttrTypes: SocketBypassFromToAttrTypes})
+func parseReadAction(
+	ctx context.Context, value *readAction, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action object.")
+		return types.ObjectNull(ruleActionAttrTypes)
 	}
-	elems := make([]attr.Value, 0, len(items))
-	for _, it := range items {
-		elems = append(elems, sbFromToObj(it.GetFrom(), it.GetTo(), diags))
-	}
-	lst, d := types.ListValue(types.ObjectType{AttrTypes: SocketBypassFromToAttrTypes}, elems)
+	model := RuleActionModel{}
+	model.Event = parseReadActionEvent(ctx, &value.Event, diags)
+	model.Port = types.StringValue(string(value.Port))
+	result, d := types.ObjectValueFrom(ctx, ruleActionAttrTypes, model)
 	diags.Append(d...)
-	return lst
+	return result
 }
 
-// hydrateSocketBypassRuleStateFromClient maps a policy read rule into Terraform nested objects.
-//
-//nolint:gocyclo,funlen
-func hydrateSocketBypassRuleStateFromClient(
-	ctx context.Context,
-	r *cato_go_sdk.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule,
-) (SocketBypassRuleRulePlan, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	out := SocketBypassRuleRulePlan{}
-	if r == nil {
-		return out, diags
+type readActionEvent = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Action_Event
+
+func parseReadActionEvent(
+	ctx context.Context, value *readActionEvent, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action.event object.")
+		return types.ObjectNull(ruleActionEventAttrTypes)
 	}
+	model := RuleActionEventModel{}
+	model.Enabled = types.BoolValue(value.Enabled)
+	result, d := types.ObjectValueFrom(ctx, ruleActionEventAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
 
-	out.Action = types.ObjectNull(SocketBypassActionAttrTypes)
-	out.Site = types.ObjectNull(SocketBypassSiteAttrTypes)
-	out.Source = types.ObjectNull(SocketBypassSourceAttrTypes)
-	out.Destination = types.ObjectNull(SocketBypassDestinationAttrTypes)
-	out.Service = types.ObjectNull(SocketBypassServiceAttrTypes)
-	out.Exception = types.ListNull(types.ObjectType{AttrTypes: SocketBypassExceptionAttrTypes})
+type readDst = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Destination
 
-	out.ID = types.StringValue(r.GetID())
-	out.Name = types.StringValue(r.GetName())
-	if d := r.GetDescription(); d != "" {
-		out.Description = types.StringValue(d)
+func parseReadDestination(
+	ctx context.Context, value *readDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination object.")
+		return types.ObjectNull(ruleDestinationAttrTypes)
+	}
+	model := RuleDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseReadDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readDstIPRange = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Destination_IPRange
+
+func parseReadDestinationIPRange(
+	ctx context.Context, value *readDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination.ip_range object.")
+		return types.ObjectNull(ruleDestinationIPRangeAttrTypes)
+	}
+	model := RuleDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readExc = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception
+
+func parseReadException(
+	ctx context.Context, value *readExc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception object.")
+		return types.ObjectNull(ruleExceptionAttrTypes)
+	}
+	model := RuleExceptionModel{}
+	model.Destination = parseReadExceptionDestination(ctx, &value.Destination, diags)
+	model.Name = types.StringValue(value.Name)
+	model.Service = parseReadExceptionService(ctx, &value.Service, diags)
+	model.Site = parseReadExceptionSite(ctx, &value.Site, diags)
+	model.Source = parseReadExceptionSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readExcDst = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Destination
+
+func parseReadExceptionDestination(
+	ctx context.Context, value *readExcDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination object.")
+		return types.ObjectNull(ruleExceptionDestinationAttrTypes)
+	}
+	model := RuleExceptionDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseReadExceptionDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readExcDstIPRange = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Destination_IPRange
+
+func parseReadExceptionDestinationIPRange(
+	ctx context.Context, value *readExcDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination.ip_range object.")
+		return types.ObjectNull(ruleExceptionDestinationIPRangeAttrTypes)
+	}
+	model := RuleExceptionDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readExcSvc = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Service
+
+func parseReadExceptionService(
+	ctx context.Context, value *readExcSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service object.")
+		return types.ObjectNull(ruleExceptionServiceAttrTypes)
+	}
+	model := RuleExceptionServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseReadExceptionServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseReadExceptionServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readExcSvcCustom = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Service_Custom
+
+func parseReadExceptionServiceCustom(
+	ctx context.Context, value *readExcSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom object.")
+		return types.ObjectNull(ruleExceptionServiceCustomAttrTypes)
+	}
+	model := RuleExceptionServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
 	} else {
-		out.Description = types.StringNull()
+		model.PortRange = parseReadExceptionServiceCustomPortRange(ctx, value.PortRange, diags)
 	}
-	out.Enabled = types.BoolValue(r.GetEnabled())
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
 
-	if a := r.GetAction(); a != nil {
-		port := ""
-		if a.GetPort() != nil {
-			port = string(*a.GetPort())
-		}
-		eventEnabled := false
-		if a.GetEvent() != nil {
-			eventEnabled = a.GetEvent().GetEnabled()
-		}
-		o, d := types.ObjectValue(SocketBypassActionAttrTypes, map[string]attr.Value{
-			"port":          types.StringValue(port),
-			"event_enabled": types.BoolValue(eventEnabled),
-		})
-		diags.Append(d...)
-		out.Action = o
+type readExcSvcCustomPortRange = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Service_Custom_PortRange
+
+func parseReadExceptionServiceCustomPortRange(
+	ctx context.Context, value *readExcSvcCustomPortRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom.port_range object.")
+		return types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
 	}
+	model := RuleExceptionServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
 
-	if s := r.GetSite(); s != nil && (len(s.GetSite()) > 0 || len(s.GetGroup()) > 0) {
-		o, d := types.ObjectValue(SocketBypassSiteAttrTypes, map[string]attr.Value{
-			"site":  oldidname.ParseNameIDList(ctx, s.GetSite(), "rule.site.site"),
-			"group": oldidname.ParseNameIDList(ctx, s.GetGroup(), "rule.site.group"),
-		})
-		diags.Append(d...)
-		out.Site = o
+type readExcSvcSimple = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Service_Simple
+
+func parseReadExceptionServiceSimple(
+	ctx context.Context, value *readExcSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.simple object.")
+		return types.ObjectNull(ruleExceptionServiceSimpleAttrTypes)
 	}
+	model := RuleExceptionServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
 
-	if s := r.GetSource(); s != nil {
-		vlans := types.ListNull(types.Int64Type)
-		if vs := s.GetVlan(); len(vs) > 0 {
-			elems := make([]attr.Value, 0, len(vs))
-			for _, v := range vs {
-				elems = append(elems, types.Int64Value(int64(v)))
-			}
-			lst, d := types.ListValue(types.Int64Type, elems)
-			diags.Append(d...)
-			vlans = lst
-		}
-		o, d := types.ObjectValue(SocketBypassSourceAttrTypes, map[string]attr.Value{
-			"floating_subnet":     oldidname.ParseNameIDList(ctx, s.GetFloatingSubnet(), "rule.source.floating_subnet"),
-			"global_ip_range":     oldidname.ParseNameIDList(ctx, s.GetGlobalIPRange(), "rule.source.global_ip_range"),
-			"group":               oldidname.ParseNameIDList(ctx, s.GetGroup(), "rule.source.group"),
-			"host":                oldidname.ParseNameIDList(ctx, s.GetHost(), "rule.source.host"),
-			"ip":                  convert.ParseList(ctx, types.StringType, s.GetIP(), "rule.source.ip"),
-			"ip_range":            sbRangeList(s.GetIPRange(), &diags),
-			"network_interface":   oldidname.ParseNameIDList(ctx, s.GetNetworkInterface(), "rule.source.network_interface"),
-			"site_network_subnet": oldidname.ParseNameIDList(ctx, s.GetSiteNetworkSubnet(), "rule.source.site_network_subnet"),
-			"subnet":              convert.ParseList(ctx, types.StringType, s.GetSubnet(), "rule.source.subnet"),
-			"vlan":                vlans,
-		})
-		diags.Append(d...)
-		out.Source = o
+type readExcSite = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Site
+
+func parseReadExceptionSite(
+	ctx context.Context, value *readExcSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.site object.")
+		return types.ObjectNull(ruleExceptionSiteAttrTypes)
 	}
-
-	if dst := r.GetDestination(); dst != nil {
-		o, d := types.ObjectValue(SocketBypassDestinationAttrTypes, map[string]attr.Value{
-			"application":     oldidname.ParseNameIDList(ctx, dst.GetApplication(), "rule.destination.application"),
-			"custom_app":      oldidname.ParseNameIDList(ctx, dst.GetCustomApp(), "rule.destination.custom_app"),
-			"domain":          convert.ParseList(ctx, types.StringType, dst.GetDomain(), "rule.destination.domain"),
-			"fqdn":            convert.ParseList(ctx, types.StringType, dst.GetFqdn(), "rule.destination.fqdn"),
-			"global_ip_range": oldidname.ParseNameIDList(ctx, dst.GetGlobalIPRange(), "rule.destination.global_ip_range"),
-			"ip":              convert.ParseList(ctx, types.StringType, dst.GetIP(), "rule.destination.ip"),
-			"ip_range":        sbRangeList(dst.GetIPRange(), &diags),
-			"subnet":          convert.ParseList(ctx, types.StringType, dst.GetSubnet(), "rule.destination.subnet"),
-		})
-		diags.Append(d...)
-		out.Destination = o
+	model := RuleExceptionSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
 	}
-
-	if svc := r.GetService(); svc != nil && (len(svc.GetSimple()) > 0 || len(svc.GetCustom()) > 0) {
-		simple := []string{}
-		for _, s := range svc.GetSimple() {
-			if s == nil {
-				continue
-			}
-			if s.GetName() != nil {
-				simple = append(simple, string(*s.GetName()))
-			}
-		}
-		customElems := []attr.Value{}
-		for _, c := range svc.GetCustom() {
-			if c == nil {
-				continue
-			}
-			ports := []string{}
-			for _, p := range c.GetPort() {
-				ports = append(ports, string(p))
-			}
-			prObj := types.ObjectNull(SocketBypassFromToAttrTypes)
-			if pr := c.GetPortRange(); pr != nil {
-				prObj = sbFromToObj(sbPortStr(pr.GetFrom()), sbPortStr(pr.GetTo()), &diags)
-			}
-			proto := ""
-			if c.GetProtocol() != nil {
-				proto = string(*c.GetProtocol())
-			}
-			o, d := types.ObjectValue(SocketBypassCustomServiceAttrTypes, map[string]attr.Value{
-				"port":       convert.ParseList(ctx, types.StringType, ports, "rule.service.custom.port"),
-				"port_range": prObj,
-				"protocol":   types.StringValue(proto),
-			})
-			diags.Append(d...)
-			customElems = append(customElems, o)
-		}
-		customList := types.ListNull(types.ObjectType{AttrTypes: SocketBypassCustomServiceAttrTypes})
-		if len(customElems) > 0 {
-			lst, d := types.ListValue(types.ObjectType{AttrTypes: SocketBypassCustomServiceAttrTypes}, customElems)
-			diags.Append(d...)
-			customList = lst
-		}
-		o, d := types.ObjectValue(SocketBypassServiceAttrTypes, map[string]attr.Value{
-			"simple": convert.ParseList(ctx, types.StringType, simple, "rule.service.simple"),
-			"custom": customList,
-		})
-		diags.Append(d...)
-		out.Service = o
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
 	}
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
 
-	// Exceptions: preserved from plan/state by the resource layer (the read
-	// response nests the same selector shapes; plan-authoritative handling
-	// keeps the implementation simple and avoids order-normalization churn).
+type readExcSource = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Source
 
-	return out, diags
+func parseReadExceptionSource(
+	ctx context.Context, value *readExcSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source object.")
+		return types.ObjectNull(ruleExceptionSourceAttrTypes)
+	}
+	model := RuleExceptionSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseReadExceptionSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readExcSourceIPRange = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Exception_Source_IPRange
+
+func parseReadExceptionSourceIPRange(
+	ctx context.Context, value *readExcSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source.ip_range object.")
+		return types.ObjectNull(ruleExceptionSourceIPRangeAttrTypes)
+	}
+	model := RuleExceptionSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readSection = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Section
+
+func parseReadSection(
+	ctx context.Context, value *readSection, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.section object.")
+		return types.ObjectNull(ruleSectionAttrTypes)
+	}
+	return idname.ParseIDName(ctx, *value, diags)
+}
+
+type readSvc = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Service
+
+func parseReadService(
+	ctx context.Context, value *readSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service object.")
+		return types.ObjectNull(ruleServiceAttrTypes)
+	}
+	model := RuleServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseReadServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseReadServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readSvcCustom = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Service_Custom
+
+func parseReadServiceCustom(
+	ctx context.Context, value *readSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom object.")
+		return types.ObjectNull(ruleServiceCustomAttrTypes)
+	}
+	model := RuleServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	} else {
+		model.PortRange = parseReadServiceCustomPortRange(ctx, value.PortRange, diags)
+	}
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readSvcCustomPortRange = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Service_Custom_PortRange
+
+func parseReadServiceCustomPortRange(
+	ctx context.Context, value *readSvcCustomPortRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom.port_range object.")
+		return types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	}
+	model := RuleServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readSvcSimple = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Service_Simple
+
+func parseReadServiceSimple(
+	ctx context.Context, value *readSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.simple object.")
+		return types.ObjectNull(ruleServiceSimpleAttrTypes)
+	}
+	model := RuleServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readSite = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Site
+
+func parseReadSite(
+	ctx context.Context, value *readSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.site object.")
+		return types.ObjectNull(ruleSiteAttrTypes)
+	}
+	model := RuleSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	result, d := types.ObjectValueFrom(ctx, ruleSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readSource = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Source
+
+func parseReadSource(
+	ctx context.Context, value *readSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source object.")
+		return types.ObjectNull(ruleSourceAttrTypes)
+	}
+	model := RuleSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseReadSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type readSourceIPRange = cato.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule_Source_IPRange
+
+func parseReadSourceIPRange(
+	ctx context.Context, value *readSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source.ip_range object.")
+		return types.ObjectNull(ruleSourceIPRangeAttrTypes)
+	}
+	model := RuleSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type add = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule
+
+func parseAdd(
+	ctx context.Context, value *add, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule object.")
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	model := RuleModel{}
+	model.Action = parseAddAction(ctx, &value.Action, diags)
+	model.Description = types.StringValue(value.Description)
+	model.Destination = parseAddDestination(ctx, &value.Destination, diags)
+	model.Enabled = types.BoolValue(value.Enabled)
+	valuesException := make([]attr.Value, 0, len(value.Exception))
+	for _, item := range value.Exception {
+		valuesException = append(valuesException, parseAddException(ctx, item, diags))
+	}
+	var dException diag.Diagnostics
+	model.Exception, dException = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionAttrTypes}, valuesException)
+	diags.Append(dException...)
+	model.ID = types.StringValue(value.ID)
+	model.Index = types.Int64Value(value.Index)
+	model.Name = types.StringValue(value.Name)
+	model.Section = parseAddSection(ctx, &value.Section, diags)
+	model.Service = parseAddService(ctx, &value.Service, diags)
+	model.Site = parseAddSite(ctx, &value.Site, diags)
+	model.Source = parseAddSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addAction = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Action
+
+func parseAddAction(
+	ctx context.Context, value *addAction, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action object.")
+		return types.ObjectNull(ruleActionAttrTypes)
+	}
+	model := RuleActionModel{}
+	model.Event = parseAddActionEvent(ctx, &value.Event, diags)
+	model.Port = types.StringValue(string(value.Port))
+	result, d := types.ObjectValueFrom(ctx, ruleActionAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addActionEvent = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Action_Event
+
+func parseAddActionEvent(
+	ctx context.Context, value *addActionEvent, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action.event object.")
+		return types.ObjectNull(ruleActionEventAttrTypes)
+	}
+	model := RuleActionEventModel{}
+	model.Enabled = types.BoolValue(value.Enabled)
+	result, d := types.ObjectValueFrom(ctx, ruleActionEventAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addDst = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Destination
+
+func parseAddDestination(
+	ctx context.Context, value *addDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination object.")
+		return types.ObjectNull(ruleDestinationAttrTypes)
+	}
+	model := RuleDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseAddDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addDstIPRange = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Destination_IPRange
+
+func parseAddDestinationIPRange(
+	ctx context.Context, value *addDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination.ip_range object.")
+		return types.ObjectNull(ruleDestinationIPRangeAttrTypes)
+	}
+	model := RuleDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExc = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception
+
+func parseAddException(
+	ctx context.Context, value *addExc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception object.")
+		return types.ObjectNull(ruleExceptionAttrTypes)
+	}
+	model := RuleExceptionModel{}
+	model.Destination = parseAddExceptionDestination(ctx, &value.Destination, diags)
+	model.Name = types.StringValue(value.Name)
+	model.Service = parseAddExceptionService(ctx, &value.Service, diags)
+	model.Site = parseAddExceptionSite(ctx, &value.Site, diags)
+	model.Source = parseAddExceptionSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcDst = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Destination
+
+func parseAddExceptionDestination(
+	ctx context.Context, value *addExcDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination object.")
+		return types.ObjectNull(ruleExceptionDestinationAttrTypes)
+	}
+	model := RuleExceptionDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseAddExceptionDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcDstIPRange = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Destination_IPRange
+
+func parseAddExceptionDestinationIPRange(
+	ctx context.Context, value *addExcDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination.ip_range object.")
+		return types.ObjectNull(ruleExceptionDestinationIPRangeAttrTypes)
+	}
+	model := RuleExceptionDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcSvc = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Service
+
+func parseAddExceptionService(
+	ctx context.Context, value *addExcSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service object.")
+		return types.ObjectNull(ruleExceptionServiceAttrTypes)
+	}
+	model := RuleExceptionServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseAddExceptionServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseAddExceptionServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcSvcCustom = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Service_Custom
+
+func parseAddExceptionServiceCustom(
+	ctx context.Context, value *addExcSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom object.")
+		return types.ObjectNull(ruleExceptionServiceCustomAttrTypes)
+	}
+	model := RuleExceptionServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
+	} else {
+		model.PortRange = parseAddExceptionServiceCustomPortRange(ctx, value.PortRange, diags)
+	}
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcSvcCustomPortRange = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Service_Custom_PortRange
+
+func parseAddExceptionServiceCustomPortRange(
+	ctx context.Context, value *addExcSvcCustomPortRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom.port_range object.")
+		return types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
+	}
+	model := RuleExceptionServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcSvcSimple = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Service_Simple
+
+func parseAddExceptionServiceSimple(
+	ctx context.Context, value *addExcSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.simple object.")
+		return types.ObjectNull(ruleExceptionServiceSimpleAttrTypes)
+	}
+	model := RuleExceptionServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcSite = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Site
+
+func parseAddExceptionSite(
+	ctx context.Context, value *addExcSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.site object.")
+		return types.ObjectNull(ruleExceptionSiteAttrTypes)
+	}
+	model := RuleExceptionSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcSource = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Source
+
+func parseAddExceptionSource(
+	ctx context.Context, value *addExcSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source object.")
+		return types.ObjectNull(ruleExceptionSourceAttrTypes)
+	}
+	model := RuleExceptionSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseAddExceptionSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addExcSourceIPRange = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Exception_Source_IPRange
+
+func parseAddExceptionSourceIPRange(
+	ctx context.Context, value *addExcSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source.ip_range object.")
+		return types.ObjectNull(ruleExceptionSourceIPRangeAttrTypes)
+	}
+	model := RuleExceptionSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addSection = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Section
+
+func parseAddSection(
+	ctx context.Context, value *addSection, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.section object.")
+		return types.ObjectNull(ruleSectionAttrTypes)
+	}
+	return idname.ParseIDName(ctx, *value, diags)
+}
+
+type addSvc = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Service
+
+func parseAddService(
+	ctx context.Context, value *addSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service object.")
+		return types.ObjectNull(ruleServiceAttrTypes)
+	}
+	model := RuleServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseAddServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseAddServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addSvcCustom = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Service_Custom
+
+func parseAddServiceCustom(
+	ctx context.Context, value *addSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom object.")
+		return types.ObjectNull(ruleServiceCustomAttrTypes)
+	}
+	model := RuleServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	} else {
+		model.PortRange = parseAddServiceCustomPortRange(ctx, value.PortRange, diags)
+	}
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addSvcCustomPortRange = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Service_Custom_PortRange
+
+func parseAddServiceCustomPortRange(
+	ctx context.Context, value *addSvcCustomPortRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom.port_range object.")
+		return types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	}
+	model := RuleServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addSvcSimple = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Service_Simple
+
+func parseAddServiceSimple(
+	ctx context.Context, value *addSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.simple object.")
+		return types.ObjectNull(ruleServiceSimpleAttrTypes)
+	}
+	model := RuleServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addSite = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Site
+
+func parseAddSite(
+	ctx context.Context, value *addSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.site object.")
+		return types.ObjectNull(ruleSiteAttrTypes)
+	}
+	model := RuleSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	result, d := types.ObjectValueFrom(ctx, ruleSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addSource = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Source
+
+func parseAddSource(
+	ctx context.Context, value *addSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source object.")
+		return types.ObjectNull(ruleSourceAttrTypes)
+	}
+	model := RuleSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseAddSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type addSourceIPRange = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule_Source_IPRange
+
+func parseAddSourceIPRange(
+	ctx context.Context, value *addSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source.ip_range object.")
+		return types.ObjectNull(ruleSourceIPRangeAttrTypes)
+	}
+	model := RuleSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type update = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule
+
+func parseUpdate(
+	ctx context.Context, value *update, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule object.")
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	model := RuleModel{}
+	model.Action = parseUpdateAction(ctx, &value.Action, diags)
+	model.Description = types.StringValue(value.Description)
+	model.Destination = parseUpdateDestination(ctx, &value.Destination, diags)
+	model.Enabled = types.BoolValue(value.Enabled)
+	valuesException := make([]attr.Value, 0, len(value.Exception))
+	for _, item := range value.Exception {
+		valuesException = append(valuesException, parseUpdateException(ctx, item, diags))
+	}
+	var dException diag.Diagnostics
+	model.Exception, dException = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionAttrTypes}, valuesException)
+	diags.Append(dException...)
+	model.ID = types.StringValue(value.ID)
+	model.Index = types.Int64Value(value.Index)
+	model.Name = types.StringValue(value.Name)
+	model.Section = parseUpdateSection(ctx, &value.Section, diags)
+	model.Service = parseUpdateService(ctx, &value.Service, diags)
+	model.Site = parseUpdateSite(ctx, &value.Site, diags)
+	model.Source = parseUpdateSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateAction = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Action
+
+func parseUpdateAction(
+	ctx context.Context, value *updateAction, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action object.")
+		return types.ObjectNull(ruleActionAttrTypes)
+	}
+	model := RuleActionModel{}
+	model.Event = parseUpdateActionEvent(ctx, &value.Event, diags)
+	model.Port = types.StringValue(string(value.Port))
+	result, d := types.ObjectValueFrom(ctx, ruleActionAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateActionEvent = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Action_Event
+
+func parseUpdateActionEvent(
+	ctx context.Context, value *updateActionEvent, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action.event object.")
+		return types.ObjectNull(ruleActionEventAttrTypes)
+	}
+	model := RuleActionEventModel{}
+	model.Enabled = types.BoolValue(value.Enabled)
+	result, d := types.ObjectValueFrom(ctx, ruleActionEventAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateDst = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Destination
+
+func parseUpdateDestination(
+	ctx context.Context, value *updateDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination object.")
+		return types.ObjectNull(ruleDestinationAttrTypes)
+	}
+	model := RuleDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseUpdateDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateDstIPRange = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Destination_IPRange
+
+func parseUpdateDestinationIPRange(
+	ctx context.Context, value *updateDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination.ip_range object.")
+		return types.ObjectNull(ruleDestinationIPRangeAttrTypes)
+	}
+	model := RuleDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExc = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception
+
+func parseUpdateException(
+	ctx context.Context, value *updateExc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception object.")
+		return types.ObjectNull(ruleExceptionAttrTypes)
+	}
+	model := RuleExceptionModel{}
+	model.Destination = parseUpdateExceptionDestination(ctx, &value.Destination, diags)
+	model.Name = types.StringValue(value.Name)
+	model.Service = parseUpdateExceptionService(ctx, &value.Service, diags)
+	model.Site = parseUpdateExceptionSite(ctx, &value.Site, diags)
+	model.Source = parseUpdateExceptionSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcDst = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Destination
+
+func parseUpdateExceptionDestination(
+	ctx context.Context, value *updateExcDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination object.")
+		return types.ObjectNull(ruleExceptionDestinationAttrTypes)
+	}
+	model := RuleExceptionDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseUpdateExceptionDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcDstIPRange = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Destination_IPRange
+
+func parseUpdateExceptionDestinationIPRange(
+	ctx context.Context, value *updateExcDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination.ip_range object.")
+		return types.ObjectNull(ruleExceptionDestinationIPRangeAttrTypes)
+	}
+	model := RuleExceptionDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcSvc = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Service
+
+func parseUpdateExceptionService(
+	ctx context.Context, value *updateExcSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service object.")
+		return types.ObjectNull(ruleExceptionServiceAttrTypes)
+	}
+	model := RuleExceptionServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseUpdateExceptionServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseUpdateExceptionServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcSvcCustom = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Service_Custom
+
+func parseUpdateExceptionServiceCustom(
+	ctx context.Context, value *updateExcSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom object.")
+		return types.ObjectNull(ruleExceptionServiceCustomAttrTypes)
+	}
+	model := RuleExceptionServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
+	} else {
+		model.PortRange = parseUpdateExceptionServiceCustomPortRange(ctx, value.PortRange, diags)
+	}
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcSvcPorts = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Service_Custom_PortRange
+
+func parseUpdateExceptionServiceCustomPortRange(
+	ctx context.Context, value *updateExcSvcPorts, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom.port_range object.")
+		return types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
+	}
+	model := RuleExceptionServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcSvcSimple = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Service_Simple
+
+func parseUpdateExceptionServiceSimple(
+	ctx context.Context, value *updateExcSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.simple object.")
+		return types.ObjectNull(ruleExceptionServiceSimpleAttrTypes)
+	}
+	model := RuleExceptionServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcSite = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Site
+
+func parseUpdateExceptionSite(
+	ctx context.Context, value *updateExcSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.site object.")
+		return types.ObjectNull(ruleExceptionSiteAttrTypes)
+	}
+	model := RuleExceptionSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcSource = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Source
+
+func parseUpdateExceptionSource(
+	ctx context.Context, value *updateExcSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source object.")
+		return types.ObjectNull(ruleExceptionSourceAttrTypes)
+	}
+	model := RuleExceptionSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseUpdateExceptionSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateExcSourceIPRange = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Exception_Source_IPRange
+
+func parseUpdateExceptionSourceIPRange(
+	ctx context.Context, value *updateExcSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source.ip_range object.")
+		return types.ObjectNull(ruleExceptionSourceIPRangeAttrTypes)
+	}
+	model := RuleExceptionSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateSection = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Section
+
+func parseUpdateSection(
+	ctx context.Context, value *updateSection, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.section object.")
+		return types.ObjectNull(ruleSectionAttrTypes)
+	}
+	return idname.ParseIDName(ctx, *value, diags)
+}
+
+type updateSvc = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Service
+
+func parseUpdateService(
+	ctx context.Context, value *updateSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service object.")
+		return types.ObjectNull(ruleServiceAttrTypes)
+	}
+	model := RuleServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseUpdateServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseUpdateServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateSvcCustom = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Service_Custom
+
+func parseUpdateServiceCustom(
+	ctx context.Context, value *updateSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom object.")
+		return types.ObjectNull(ruleServiceCustomAttrTypes)
+	}
+	model := RuleServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	} else {
+		model.PortRange = parseUpdateServiceCustomPortRange(ctx, value.PortRange, diags)
+	}
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateSvcCustomPortRange = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Service_Custom_PortRange
+
+func parseUpdateServiceCustomPortRange(
+	ctx context.Context, value *updateSvcCustomPortRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom.port_range object.")
+		return types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	}
+	model := RuleServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateSvcSimple = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Service_Simple
+
+func parseUpdateServiceSimple(
+	ctx context.Context, value *updateSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.simple object.")
+		return types.ObjectNull(ruleServiceSimpleAttrTypes)
+	}
+	model := RuleServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateSite = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Site
+
+func parseUpdateSite(
+	ctx context.Context, value *updateSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.site object.")
+		return types.ObjectNull(ruleSiteAttrTypes)
+	}
+	model := RuleSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	result, d := types.ObjectValueFrom(ctx, ruleSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateSource = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Source
+
+func parseUpdateSource(
+	ctx context.Context, value *updateSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source object.")
+		return types.ObjectNull(ruleSourceAttrTypes)
+	}
+	model := RuleSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseUpdateSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type updateSourceIPRange = cato.PolicySocketBypassUpdateRule_Policy_SocketBypass_UpdateRule_Rule_Rule_Source_IPRange
+
+func parseUpdateSourceIPRange(
+	ctx context.Context, value *updateSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source.ip_range object.")
+		return types.ObjectNull(ruleSourceIPRangeAttrTypes)
+	}
+	model := RuleSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type move = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule
+
+func parseMove(
+	ctx context.Context, value *move, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule object.")
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	model := RuleModel{}
+	model.Action = parseMoveAction(ctx, &value.Action, diags)
+	model.Description = types.StringValue(value.Description)
+	model.Destination = parseMoveDestination(ctx, &value.Destination, diags)
+	model.Enabled = types.BoolValue(value.Enabled)
+	valuesException := make([]attr.Value, 0, len(value.Exception))
+	for _, item := range value.Exception {
+		valuesException = append(valuesException, parseMoveException(ctx, item, diags))
+	}
+	var dException diag.Diagnostics
+	model.Exception, dException = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionAttrTypes}, valuesException)
+	diags.Append(dException...)
+	model.ID = types.StringValue(value.ID)
+	model.Index = types.Int64Value(value.Index)
+	model.Name = types.StringValue(value.Name)
+	model.Section = parseMoveSection(ctx, &value.Section, diags)
+	model.Service = parseMoveService(ctx, &value.Service, diags)
+	model.Site = parseMoveSite(ctx, &value.Site, diags)
+	model.Source = parseMoveSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveAction = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Action
+
+func parseMoveAction(
+	ctx context.Context, value *moveAction, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action object.")
+		return types.ObjectNull(ruleActionAttrTypes)
+	}
+	model := RuleActionModel{}
+	model.Event = parseMoveActionEvent(ctx, &value.Event, diags)
+	model.Port = types.StringValue(string(value.Port))
+	result, d := types.ObjectValueFrom(ctx, ruleActionAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveActionEvent = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Action_Event
+
+func parseMoveActionEvent(
+	ctx context.Context, value *moveActionEvent, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.action.event object.")
+		return types.ObjectNull(ruleActionEventAttrTypes)
+	}
+	model := RuleActionEventModel{}
+	model.Enabled = types.BoolValue(value.Enabled)
+	result, d := types.ObjectValueFrom(ctx, ruleActionEventAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveDst = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Destination
+
+func parseMoveDestination(
+	ctx context.Context, value *moveDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination object.")
+		return types.ObjectNull(ruleDestinationAttrTypes)
+	}
+	model := RuleDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseMoveDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveDstIPRange = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Destination_IPRange
+
+func parseMoveDestinationIPRange(
+	ctx context.Context, value *moveDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.destination.ip_range object.")
+		return types.ObjectNull(ruleDestinationIPRangeAttrTypes)
+	}
+	model := RuleDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExc = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception
+
+func parseMoveException(
+	ctx context.Context, value *moveExc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception object.")
+		return types.ObjectNull(ruleExceptionAttrTypes)
+	}
+	model := RuleExceptionModel{}
+	model.Destination = parseMoveExceptionDestination(ctx, &value.Destination, diags)
+	model.Name = types.StringValue(value.Name)
+	model.Service = parseMoveExceptionService(ctx, &value.Service, diags)
+	model.Site = parseMoveExceptionSite(ctx, &value.Site, diags)
+	model.Source = parseMoveExceptionSource(ctx, &value.Source, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcDst = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Destination
+
+func parseMoveExceptionDestination(
+	ctx context.Context, value *moveExcDst, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination object.")
+		return types.ObjectNull(ruleExceptionDestinationAttrTypes)
+	}
+	model := RuleExceptionDestinationModel{}
+	model.Application = idname.ParseIDNameSet(ctx, value.Application, diags)
+	if model.Application.IsNull() {
+		model.Application = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.CustomApp = idname.ParseIDNameSet(ctx, value.CustomApp, diags)
+	if model.CustomApp.IsNull() {
+		model.CustomApp = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dDomain diag.Diagnostics
+	model.Domain, dDomain = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Domain...))
+	diags.Append(dDomain...)
+	var dFqdn diag.Diagnostics
+	model.Fqdn, dFqdn = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Fqdn...))
+	diags.Append(dFqdn...)
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseMoveExceptionDestinationIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionDestinationIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcDstIPRange = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Destination_IPRange
+
+func parseMoveExceptionDestinationIPRange(
+	ctx context.Context, value *moveExcDstIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.destination.ip_range object.")
+		return types.ObjectNull(ruleExceptionDestinationIPRangeAttrTypes)
+	}
+	model := RuleExceptionDestinationIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionDestinationIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcSvc = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Service
+
+func parseMoveExceptionService(
+	ctx context.Context, value *moveExcSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service object.")
+		return types.ObjectNull(ruleExceptionServiceAttrTypes)
+	}
+	model := RuleExceptionServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseMoveExceptionServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseMoveExceptionServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcSvcCustom = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Service_Custom
+
+func parseMoveExceptionServiceCustom(
+	ctx context.Context, value *moveExcSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom object.")
+		return types.ObjectNull(ruleExceptionServiceCustomAttrTypes)
+	}
+	model := RuleExceptionServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
+	} else {
+		model.PortRange = parseMoveExceptionServiceCustomPortRange(ctx, value.PortRange, diags)
+	}
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcSvcCustomPortRange = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Service_Custom_PortRange
+
+func parseMoveExceptionServiceCustomPortRange(
+	ctx context.Context, value *moveExcSvcCustomPortRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.custom.port_range object.")
+		return types.ObjectNull(ruleExceptionServiceCustomPortRangeAttrTypes)
+	}
+	model := RuleExceptionServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcSvcSimple = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Service_Simple
+
+func parseMoveExceptionServiceSimple(
+	ctx context.Context, value *moveExcSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.service.simple object.")
+		return types.ObjectNull(ruleExceptionServiceSimpleAttrTypes)
+	}
+	model := RuleExceptionServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcSite = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Site
+
+func parseMoveExceptionSite(
+	ctx context.Context, value *moveExcSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.site object.")
+		return types.ObjectNull(ruleExceptionSiteAttrTypes)
+	}
+	model := RuleExceptionSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcSource = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Source
+
+func parseMoveExceptionSource(
+	ctx context.Context, value *moveExcSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source object.")
+		return types.ObjectNull(ruleExceptionSourceAttrTypes)
+	}
+	model := RuleExceptionSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseMoveExceptionSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleExceptionSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveExcSourceIPRange = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Exception_Source_IPRange
+
+func parseMoveExceptionSourceIPRange(
+	ctx context.Context, value *moveExcSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.exception.source.ip_range object.")
+		return types.ObjectNull(ruleExceptionSourceIPRangeAttrTypes)
+	}
+	model := RuleExceptionSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleExceptionSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveSection = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Section
+
+func parseMoveSection(
+	ctx context.Context, value *moveSection, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.section object.")
+		return types.ObjectNull(ruleSectionAttrTypes)
+	}
+	return idname.ParseIDName(ctx, *value, diags)
+}
+
+type moveSvc = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Service
+
+func parseMoveService(
+	ctx context.Context, value *moveSvc, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service object.")
+		return types.ObjectNull(ruleServiceAttrTypes)
+	}
+	model := RuleServiceModel{}
+	valuesCustom := make([]attr.Value, 0, len(value.Custom))
+	for _, item := range value.Custom {
+		valuesCustom = append(valuesCustom, parseMoveServiceCustom(ctx, item, diags))
+	}
+	var dCustom diag.Diagnostics
+	model.Custom, dCustom = types.SetValue(types.ObjectType{AttrTypes: ruleServiceCustomAttrTypes}, valuesCustom)
+	diags.Append(dCustom...)
+	valuesSimple := make([]attr.Value, 0, len(value.Simple))
+	for _, item := range value.Simple {
+		valuesSimple = append(valuesSimple, parseMoveServiceSimple(ctx, item, diags))
+	}
+	var dSimple diag.Diagnostics
+	model.Simple, dSimple = types.SetValue(types.ObjectType{AttrTypes: ruleServiceSimpleAttrTypes}, valuesSimple)
+	diags.Append(dSimple...)
+	result, d := types.ObjectValueFrom(ctx, ruleServiceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveSvcCustom = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Service_Custom
+
+func parseMoveServiceCustom(
+	ctx context.Context, value *moveSvcCustom, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom object.")
+		return types.ObjectNull(ruleServiceCustomAttrTypes)
+	}
+	model := RuleServiceCustomModel{}
+	model.Port = parsePorts(ctx, value.Port, diags)
+	if value.PortRange == nil {
+		model.PortRange = types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	} else {
+		model.PortRange = parseMoveServiceCustomPortRange(ctx, value.PortRange, diags)
+	}
+	model.Protocol = types.StringValue(string(value.Protocol))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveSvcCustomPortRange = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Service_Custom_PortRange
+
+func parseMoveServiceCustomPortRange(
+	ctx context.Context, value *moveSvcCustomPortRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.custom.port_range object.")
+		return types.ObjectNull(ruleServiceCustomPortRangeAttrTypes)
+	}
+	model := RuleServiceCustomPortRangeModel{}
+	model.From = types.StringValue(string(value.From))
+	model.To = types.StringValue(string(value.To))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceCustomPortRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveSvcSimple = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Service_Simple
+
+func parseMoveServiceSimple(
+	ctx context.Context, value *moveSvcSimple, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.service.simple object.")
+		return types.ObjectNull(ruleServiceSimpleAttrTypes)
+	}
+	model := RuleServiceSimpleModel{}
+	model.Name = types.StringValue(string(value.Name))
+	result, d := types.ObjectValueFrom(ctx, ruleServiceSimpleAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveSite = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Site
+
+func parseMoveSite(
+	ctx context.Context, value *moveSite, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.site object.")
+		return types.ObjectNull(ruleSiteAttrTypes)
+	}
+	model := RuleSiteModel{}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Site = idname.ParseIDNameSet(ctx, value.Site, diags)
+	if model.Site.IsNull() {
+		model.Site = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	result, d := types.ObjectValueFrom(ctx, ruleSiteAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveSource = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Source
+
+func parseMoveSource(
+	ctx context.Context, value *moveSource, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source object.")
+		return types.ObjectNull(ruleSourceAttrTypes)
+	}
+	model := RuleSourceModel{}
+	model.FloatingSubnet = idname.ParseIDNameSet(ctx, value.FloatingSubnet, diags)
+	if model.FloatingSubnet.IsNull() {
+		model.FloatingSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.GlobalIPRange = idname.ParseIDNameSet(ctx, value.GlobalIPRange, diags)
+	if model.GlobalIPRange.IsNull() {
+		model.GlobalIPRange = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Group = idname.ParseIDNameSet(ctx, value.Group, diags)
+	if model.Group.IsNull() {
+		model.Group = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.Host = idname.ParseIDNameSet(ctx, value.Host, diags)
+	if model.Host.IsNull() {
+		model.Host = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dIP diag.Diagnostics
+	model.IP, dIP = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.IP...))
+	diags.Append(dIP...)
+	valuesIPRange := make([]attr.Value, 0, len(value.IPRange))
+	for _, item := range value.IPRange {
+		valuesIPRange = append(valuesIPRange, parseMoveSourceIPRange(ctx, item, diags))
+	}
+	var dIPRange diag.Diagnostics
+	model.IPRange, dIPRange = types.SetValue(types.ObjectType{AttrTypes: ruleSourceIPRangeAttrTypes}, valuesIPRange)
+	diags.Append(dIPRange...)
+	model.NetworkInterface = idname.ParseIDNameSet(ctx, value.NetworkInterface, diags)
+	if model.NetworkInterface.IsNull() {
+		model.NetworkInterface = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	model.SiteNetworkSubnet = idname.ParseIDNameSet(ctx, value.SiteNetworkSubnet, diags)
+	if model.SiteNetworkSubnet.IsNull() {
+		model.SiteNetworkSubnet = types.SetValueMust(idname.RefObjectType, nil)
+	}
+	var dSubnet diag.Diagnostics
+	model.Subnet, dSubnet = types.SetValueFrom(ctx, types.StringType, append([]string{}, value.Subnet...))
+	diags.Append(dSubnet...)
+	model.Vlan = parseVLANs(ctx, value.Vlan, diags)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+type moveSourceIPRange = cato.PolicySocketBypassMoveRule_Policy_SocketBypass_MoveRule_Rule_Rule_Source_IPRange
+
+func parseMoveSourceIPRange(
+	ctx context.Context, value *moveSourceIPRange, diags *diag.Diagnostics,
+) types.Object {
+	if value == nil {
+		diags.AddError("Invalid API response", "Missing rule.source.ip_range object.")
+		return types.ObjectNull(ruleSourceIPRangeAttrTypes)
+	}
+	model := RuleSourceIPRangeModel{}
+	model.From = types.StringValue(value.From)
+	model.To = types.StringValue(value.To)
+	result, d := types.ObjectValueFrom(ctx, ruleSourceIPRangeAttrTypes, model)
+	diags.Append(d...)
+	return result
+}
+
+func buildVLANs(ctx context.Context, value types.Set, diags *diag.Diagnostics) []scalars.Vlan {
+	var numbers []int64
+	diags.Append(value.ElementsAs(ctx, &numbers, false)...)
+	result := make([]scalars.Vlan, 0, len(numbers))
+	for _, number := range numbers {
+		result = append(result, scalars.Vlan(number))
+	}
+	return result
+}
+
+func parseVLANs(ctx context.Context, values []scalars.Vlan, diags *diag.Diagnostics) types.Set {
+	return convert.Int64SetFunc(ctx, append([]scalars.Vlan{}, values...), func(value scalars.Vlan) int64 { return int64(value) }, diags)
+}
+
+func parsePorts(ctx context.Context, values []scalars.Port, diags *diag.Diagnostics) types.Set {
+	numbers := make([]string, 0, len(values))
+	for _, value := range values {
+		numbers = append(numbers, string(value))
+	}
+	result, diagnostics := types.SetValueFrom(ctx, types.StringType, numbers)
+	diags.Append(diagnostics...)
+	return result
 }

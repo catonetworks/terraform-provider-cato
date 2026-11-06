@@ -613,8 +613,8 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		user.NewResource,
 		alwaysonrule.NewAlwaysOnRuleResource,
 
-		sbrule.NewSocketBypassRuleResource,
-		sbsection.NewSocketBypassSectionResource,
+		sbrule.NewResource,
+		sbsection.NewResource,
 		pasection.NewResource,
 		// MERGE NOTE (v1.5.0-prerelease.1 + feat/bulk-policy-families consolidation):
 		// Remote Port Forward is deliberately registered under BOTH naming families:
@@ -624,10 +624,11 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		// One naming must be retired before GA.
 		// For the 13 type names implemented on BOTH sides (client connectivity,
 		// dynamic ip allocation, sdp static ip allocation, split tunnel, terminal
-		// server, socket bypass rule+section, anti-malware file hash rule+section,
-		// site web proxy section) the BRANCH implementations are registered; the
-		// tag's implementations under internal/provider/{policy/access,security,
-		// resource/sitewebproxy} remain in-tree but unregistered pending review.
+		// server, anti-malware file hash rule+section,
+		// site web proxy section) the BRANCH implementations are registered.
+		// Socket Bypass retains its established schema and implementation.
+		// The other implementations under policy/access, security and
+		// resource/sitewebproxy remain unregistered pending review.
 		secrpfrule.NewResource,
 		secrpfsection.NewResource,
 		alwaysonindex.NewAlwaysOnRuleBulkResource,

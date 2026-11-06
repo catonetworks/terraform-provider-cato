@@ -204,7 +204,9 @@ func (r *remotePortFwdRuleResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan RemotePortFwdRule
+	var state RemotePortFwdRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -217,15 +219,17 @@ func (r *remotePortFwdRuleResource) Update(
 		return
 	}
 
-	moveRes, err := r.resourceAPI().PolicyRemotePortFwdMoveRule(ctx, move, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyRemotePortFwdMoveRule error", err.Error())
-		return
-	}
-	mv := moveRes.GetPolicy().GetRemotePortFwd().GetMoveRule()
-	if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
+	if !plan.At.Equal(state.At) {
+		moveRes, err := r.resourceAPI().PolicyRemotePortFwdMoveRule(ctx, move, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicyRemotePortFwdMoveRule error", err.Error())
+			return
+		}
+		mv := moveRes.GetPolicy().GetRemotePortFwd().GetMoveRule()
+		if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
 	}
 
 	upd, diags := hydrateRemotePortFwdUpdateRuleInput(ctx, plan)

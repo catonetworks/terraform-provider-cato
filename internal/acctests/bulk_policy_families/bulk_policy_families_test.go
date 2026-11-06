@@ -87,7 +87,7 @@ func runBulkPolicyFamily(t *testing.T, prefix string) {
 			return `fqdn="validation.invalid", port="8443", allowed_destination_protocol="HTTPS", should_associate_with_all_sites=false, authentication_config={method="NONE"}`
 		}},
 		{"socket_bypass", "sb", func(_ *testing.T) string {
-			return `action={port="AUTOMATIC",event_enabled=false}, source={ip=["198.18.0.230"]}, destination={ip=["192.0.2.230"]}`
+			return `action={port="AUTOMATIC",event={enabled=false}}, exception=[], service={custom=[],simple=[]}, site={group=[],site=[]}, source={floating_subnet=[],global_ip_range=[],group=[],host=[],ip=["198.18.0.230"],ip_range=[],network_interface=[],site_network_subnet=[],subnet=[],vlan=[]}, destination={application=[],custom_app=[],domain=[],fqdn=[],global_ip_range=[],ip=["192.0.2.230"],ip_range=[],subnet=[]}`
 		}},
 		{"sdp_static_ip_allocation", "ssia", func(t *testing.T) string {
 			ip := os.Getenv("TFACC_SDP_STATIC_IP")

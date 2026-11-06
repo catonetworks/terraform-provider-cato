@@ -144,7 +144,9 @@ func (r *terminalServerSectionResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan TerminalServerSection
+	var state TerminalServerSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -154,17 +156,19 @@ func (r *terminalServerSectionResource) Update(
 		return
 	}
 
-	moveSection, err := r.resourceAPI().PolicyTerminalServerMoveSection(ctx, inputMove, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyTerminalServerMoveSection error", err.Error())
-		return
-	}
-	if err := sharedpolicy.MutationResult(
-		moveSection.GetPolicy().GetTerminalServer().GetMoveSection().GetStatus(),
-		moveSection.GetPolicy().GetTerminalServer().GetMoveSection().GetErrors(),
-	); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
+	if !plan.At.Equal(state.At) {
+		moveSection, err := r.resourceAPI().PolicyTerminalServerMoveSection(ctx, inputMove, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicyTerminalServerMoveSection error", err.Error())
+			return
+		}
+		if err := sharedpolicy.MutationResult(
+			moveSection.GetPolicy().GetTerminalServer().GetMoveSection().GetStatus(),
+			moveSection.GetPolicy().GetTerminalServer().GetMoveSection().GetErrors(),
+		); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
 	}
 
 	updateSection, err := r.resourceAPI().PolicyTerminalServerUpdateSection(ctx, inputUpdate, r.client.AccountId)

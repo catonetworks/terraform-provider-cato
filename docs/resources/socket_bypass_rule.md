@@ -3,12 +3,12 @@
 page_title: "cato_socket_bypass_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages a rule in the Cato socket bypass policy. Underlying GraphQL is marked @beta; behavior and fields may change.
+  Manages a socket bypass rule. Changes are automatically published. Omitting at on update preserves placement.
 ---
 
 # cato_socket_bypass_rule (Resource)
 
-Manages a rule in the Cato socket bypass policy. Underlying GraphQL is marked @beta; behavior and fields may change.
+Manages a socket bypass rule. Changes are automatically published. Omitting at on update preserves placement.
 
 ## Example Usage
 
@@ -151,77 +151,71 @@ resource "cato_socket_bypass_rule" "example" {
 
 ### Required
 
-- `at` (Attributes) Where to insert the rule (see [below for nested schema](#nestedatt--at))
-- `rule` (Attributes) Rule definition (see [below for nested schema](#nestedatt--rule))
+- `rule` (Attributes) Rule (see [below for nested schema](#nestedatt--rule))
 
-### Read-Only
+### Optional
 
-- `id` (String) Rule ID
-
-<a id="nestedatt--at"></a>
-### Nested Schema for `at`
-
-Required:
-
-- `position` (String) Position relative to policy, section, or another rule
-
-Optional:
-
-- `ref` (String) Reference rule or section ID when required by position
-
+- `at` (Attributes) At (see [below for nested schema](#nestedatt--at))
 
 <a id="nestedatt--rule"></a>
 ### Nested Schema for `rule`
 
 Required:
 
-- `enabled` (Boolean) Whether the rule is enabled
-- `name` (String) Rule name
-
-Optional:
-
-- `action` (Attributes) Bypass action (see [below for nested schema](#nestedatt--rule--action))
-- `description` (String) Rule description
-- `destination` (Attributes) Destination traffic matching criteria (see [below for nested schema](#nestedatt--rule--destination))
-- `exception` (Attributes List) Exceptions to the rule (see [below for nested schema](#nestedatt--rule--exception))
-- `service` (Attributes) Services the rule applies to (see [below for nested schema](#nestedatt--rule--service))
-- `site` (Attributes) Sites and site groups the rule applies to (see [below for nested schema](#nestedatt--rule--site))
-- `source` (Attributes) Source traffic matching criteria (see [below for nested schema](#nestedatt--rule--source))
+- `action` (Attributes) Action (see [below for nested schema](#nestedatt--rule--action))
+- `description` (String) Description
+- `destination` (Attributes) Destination (see [below for nested schema](#nestedatt--rule--destination))
+- `enabled` (Boolean) Enabled
+- `exception` (Attributes Set) Exception (see [below for nested schema](#nestedatt--rule--exception))
+- `name` (String) Name
+- `service` (Attributes) Service (see [below for nested schema](#nestedatt--rule--service))
+- `site` (Attributes) Site (see [below for nested schema](#nestedatt--rule--site))
+- `source` (Attributes) Source (see [below for nested schema](#nestedatt--rule--source))
 
 Read-Only:
 
 - `id` (String) Rule ID
+- `index` (Number) Current rule index
+- `section` (Attributes) Policy section containing the rule (see [below for nested schema](#nestedatt--rule--section))
 
 <a id="nestedatt--rule--action"></a>
 ### Nested Schema for `rule.action`
 
-Optional:
+Required:
 
-- `event_enabled` (Boolean) Whether event tracking is enabled
-- `port` (String) Egress port (AUTOMATIC or WAN1-WAN4)
+- `event` (Attributes) Event (see [below for nested schema](#nestedatt--rule--action--event))
+- `port` (String) Port
+
+<a id="nestedatt--rule--action--event"></a>
+### Nested Schema for `rule.action.event`
+
+Required:
+
+- `enabled` (Boolean) Enabled
+
 
 
 <a id="nestedatt--rule--destination"></a>
 ### Nested Schema for `rule.destination`
 
-Optional:
+Required:
 
-- `application` (Attributes Set) Application references (see [below for nested schema](#nestedatt--rule--destination--application))
-- `custom_app` (Attributes Set) Custom application references (see [below for nested schema](#nestedatt--rule--destination--custom_app))
-- `domain` (List of String)
-- `fqdn` (List of String)
-- `global_ip_range` (Attributes Set) Global IP range references (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
-- `ip` (List of String)
-- `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--rule--destination--ip_range))
-- `subnet` (List of String)
+- `application` (Attributes Set) Application (see [below for nested schema](#nestedatt--rule--destination--application))
+- `custom_app` (Attributes Set) Custom app (see [below for nested schema](#nestedatt--rule--destination--custom_app))
+- `domain` (Set of String) Domain
+- `fqdn` (Set of String) Fqdn
+- `global_ip_range` (Attributes Set) Global ip range (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
+- `ip` (Set of String) Ip
+- `ip_range` (Attributes Set) Ip range (see [below for nested schema](#nestedatt--rule--destination--ip_range))
+- `subnet` (Set of String) Subnet
 
 <a id="nestedatt--rule--destination--application"></a>
 ### Nested Schema for `rule.destination.application`
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Application ID
+- `name` (String) Application name
 
 
 <a id="nestedatt--rule--destination--custom_app"></a>
@@ -229,8 +223,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Custom app ID
+- `name` (String) Custom app name
 
 
 <a id="nestedatt--rule--destination--global_ip_range"></a>
@@ -238,8 +232,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global ip range ID
+- `name` (String) Global ip range name
 
 
 <a id="nestedatt--rule--destination--ip_range"></a>
@@ -247,8 +241,8 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From
+- `to` (String) To
 
 
 
@@ -257,36 +251,33 @@ Required:
 
 Required:
 
-- `name` (String) Exception name
-
-Optional:
-
-- `destination` (Attributes) Destination traffic matching criteria (see [below for nested schema](#nestedatt--rule--exception--destination))
-- `service` (Attributes) Services the rule applies to (see [below for nested schema](#nestedatt--rule--exception--service))
-- `site` (Attributes) Sites and site groups the rule applies to (see [below for nested schema](#nestedatt--rule--exception--site))
-- `source` (Attributes) Source traffic matching criteria (see [below for nested schema](#nestedatt--rule--exception--source))
+- `destination` (Attributes) Destination (see [below for nested schema](#nestedatt--rule--exception--destination))
+- `name` (String) Name
+- `service` (Attributes) Service (see [below for nested schema](#nestedatt--rule--exception--service))
+- `site` (Attributes) Site (see [below for nested schema](#nestedatt--rule--exception--site))
+- `source` (Attributes) Source (see [below for nested schema](#nestedatt--rule--exception--source))
 
 <a id="nestedatt--rule--exception--destination"></a>
 ### Nested Schema for `rule.exception.destination`
 
-Optional:
+Required:
 
-- `application` (Attributes Set) Application references (see [below for nested schema](#nestedatt--rule--exception--destination--application))
-- `custom_app` (Attributes Set) Custom application references (see [below for nested schema](#nestedatt--rule--exception--destination--custom_app))
-- `domain` (List of String)
-- `fqdn` (List of String)
-- `global_ip_range` (Attributes Set) Global IP range references (see [below for nested schema](#nestedatt--rule--exception--destination--global_ip_range))
-- `ip` (List of String)
-- `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--rule--exception--destination--ip_range))
-- `subnet` (List of String)
+- `application` (Attributes Set) Application (see [below for nested schema](#nestedatt--rule--exception--destination--application))
+- `custom_app` (Attributes Set) Custom app (see [below for nested schema](#nestedatt--rule--exception--destination--custom_app))
+- `domain` (Set of String) Domain
+- `fqdn` (Set of String) Fqdn
+- `global_ip_range` (Attributes Set) Global ip range (see [below for nested schema](#nestedatt--rule--exception--destination--global_ip_range))
+- `ip` (Set of String) Ip
+- `ip_range` (Attributes Set) Ip range (see [below for nested schema](#nestedatt--rule--exception--destination--ip_range))
+- `subnet` (Set of String) Subnet
 
 <a id="nestedatt--rule--exception--destination--application"></a>
 ### Nested Schema for `rule.exception.destination.application`
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Application ID
+- `name` (String) Application name
 
 
 <a id="nestedatt--rule--exception--destination--custom_app"></a>
@@ -294,8 +285,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Custom app ID
+- `name` (String) Custom app name
 
 
 <a id="nestedatt--rule--exception--destination--global_ip_range"></a>
@@ -303,8 +294,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global ip range ID
+- `name` (String) Global ip range name
 
 
 <a id="nestedatt--rule--exception--destination--ip_range"></a>
@@ -312,29 +303,29 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From
+- `to` (String) To
 
 
 
 <a id="nestedatt--rule--exception--service"></a>
 ### Nested Schema for `rule.exception.service`
 
-Optional:
+Required:
 
-- `custom` (Attributes List) Custom services (see [below for nested schema](#nestedatt--rule--exception--service--custom))
-- `simple` (List of String) Simple service names
+- `custom` (Attributes Set) Custom (see [below for nested schema](#nestedatt--rule--exception--service--custom))
+- `simple` (Attributes Set) Simple (see [below for nested schema](#nestedatt--rule--exception--service--simple))
 
 <a id="nestedatt--rule--exception--service--custom"></a>
 ### Nested Schema for `rule.exception.service.custom`
 
 Required:
 
-- `protocol` (String) IP protocol
+- `protocol` (String) Protocol
 
 Optional:
 
-- `port` (List of String) Ports
+- `port` (Set of String) Port
 - `port_range` (Attributes) Port range (see [below for nested schema](#nestedatt--rule--exception--service--custom--port_range))
 
 <a id="nestedatt--rule--exception--service--custom--port_range"></a>
@@ -342,27 +333,35 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From
+- `to` (String) To
 
+
+
+<a id="nestedatt--rule--exception--service--simple"></a>
+### Nested Schema for `rule.exception.service.simple`
+
+Required:
+
+- `name` (String) Name
 
 
 
 <a id="nestedatt--rule--exception--site"></a>
 ### Nested Schema for `rule.exception.site`
 
-Optional:
+Required:
 
-- `group` (Attributes Set) Site group references (see [below for nested schema](#nestedatt--rule--exception--site--group))
-- `site` (Attributes Set) Site references (see [below for nested schema](#nestedatt--rule--exception--site--site))
+- `group` (Attributes Set) Group (see [below for nested schema](#nestedatt--rule--exception--site--group))
+- `site` (Attributes Set) Site (see [below for nested schema](#nestedatt--rule--exception--site--site))
 
 <a id="nestedatt--rule--exception--site--group"></a>
 ### Nested Schema for `rule.exception.site.group`
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--exception--site--site"></a>
@@ -370,34 +369,34 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site ID
+- `name` (String) Site name
 
 
 
 <a id="nestedatt--rule--exception--source"></a>
 ### Nested Schema for `rule.exception.source`
 
-Optional:
+Required:
 
-- `floating_subnet` (Attributes Set) Floating subnet references (see [below for nested schema](#nestedatt--rule--exception--source--floating_subnet))
-- `global_ip_range` (Attributes Set) Global IP range references (see [below for nested schema](#nestedatt--rule--exception--source--global_ip_range))
-- `group` (Attributes Set) Group references (see [below for nested schema](#nestedatt--rule--exception--source--group))
-- `host` (Attributes Set) Host references (see [below for nested schema](#nestedatt--rule--exception--source--host))
-- `ip` (List of String)
-- `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--rule--exception--source--ip_range))
-- `network_interface` (Attributes Set) Network interface references (see [below for nested schema](#nestedatt--rule--exception--source--network_interface))
-- `site_network_subnet` (Attributes Set) Site network subnet references (see [below for nested schema](#nestedatt--rule--exception--source--site_network_subnet))
-- `subnet` (List of String)
-- `vlan` (List of Number)
+- `floating_subnet` (Attributes Set) Floating subnet (see [below for nested schema](#nestedatt--rule--exception--source--floating_subnet))
+- `global_ip_range` (Attributes Set) Global ip range (see [below for nested schema](#nestedatt--rule--exception--source--global_ip_range))
+- `group` (Attributes Set) Group (see [below for nested schema](#nestedatt--rule--exception--source--group))
+- `host` (Attributes Set) Host (see [below for nested schema](#nestedatt--rule--exception--source--host))
+- `ip` (Set of String) Ip
+- `ip_range` (Attributes Set) Ip range (see [below for nested schema](#nestedatt--rule--exception--source--ip_range))
+- `network_interface` (Attributes Set) Network interface (see [below for nested schema](#nestedatt--rule--exception--source--network_interface))
+- `site_network_subnet` (Attributes Set) Site network subnet (see [below for nested schema](#nestedatt--rule--exception--source--site_network_subnet))
+- `subnet` (Set of String) Subnet
+- `vlan` (Set of Number) Vlan
 
 <a id="nestedatt--rule--exception--source--floating_subnet"></a>
 ### Nested Schema for `rule.exception.source.floating_subnet`
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
 
 
 <a id="nestedatt--rule--exception--source--global_ip_range"></a>
@@ -405,8 +404,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global ip range ID
+- `name` (String) Global ip range name
 
 
 <a id="nestedatt--rule--exception--source--group"></a>
@@ -414,8 +413,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--exception--source--host"></a>
@@ -423,8 +422,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Host ID
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--exception--source--ip_range"></a>
@@ -432,8 +431,8 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From
+- `to` (String) To
 
 
 <a id="nestedatt--rule--exception--source--network_interface"></a>
@@ -441,8 +440,8 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
 
 
 <a id="nestedatt--rule--exception--source--site_network_subnet"></a>
@@ -450,8 +449,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site network subnet ID
+- `name` (String) Site network subnet name
 
 
 
@@ -459,21 +458,21 @@ Optional:
 <a id="nestedatt--rule--service"></a>
 ### Nested Schema for `rule.service`
 
-Optional:
+Required:
 
-- `custom` (Attributes List) Custom services (see [below for nested schema](#nestedatt--rule--service--custom))
-- `simple` (List of String) Simple service names
+- `custom` (Attributes Set) Custom (see [below for nested schema](#nestedatt--rule--service--custom))
+- `simple` (Attributes Set) Simple (see [below for nested schema](#nestedatt--rule--service--simple))
 
 <a id="nestedatt--rule--service--custom"></a>
 ### Nested Schema for `rule.service.custom`
 
 Required:
 
-- `protocol` (String) IP protocol
+- `protocol` (String) Protocol
 
 Optional:
 
-- `port` (List of String) Ports
+- `port` (Set of String) Port
 - `port_range` (Attributes) Port range (see [below for nested schema](#nestedatt--rule--service--custom--port_range))
 
 <a id="nestedatt--rule--service--custom--port_range"></a>
@@ -481,27 +480,35 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From
+- `to` (String) To
 
+
+
+<a id="nestedatt--rule--service--simple"></a>
+### Nested Schema for `rule.service.simple`
+
+Required:
+
+- `name` (String) Name
 
 
 
 <a id="nestedatt--rule--site"></a>
 ### Nested Schema for `rule.site`
 
-Optional:
+Required:
 
-- `group` (Attributes Set) Site group references (see [below for nested schema](#nestedatt--rule--site--group))
-- `site` (Attributes Set) Site references (see [below for nested schema](#nestedatt--rule--site--site))
+- `group` (Attributes Set) Group (see [below for nested schema](#nestedatt--rule--site--group))
+- `site` (Attributes Set) Site (see [below for nested schema](#nestedatt--rule--site--site))
 
 <a id="nestedatt--rule--site--group"></a>
 ### Nested Schema for `rule.site.group`
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--site--site"></a>
@@ -509,34 +516,34 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site ID
+- `name` (String) Site name
 
 
 
 <a id="nestedatt--rule--source"></a>
 ### Nested Schema for `rule.source`
 
-Optional:
+Required:
 
-- `floating_subnet` (Attributes Set) Floating subnet references (see [below for nested schema](#nestedatt--rule--source--floating_subnet))
-- `global_ip_range` (Attributes Set) Global IP range references (see [below for nested schema](#nestedatt--rule--source--global_ip_range))
-- `group` (Attributes Set) Group references (see [below for nested schema](#nestedatt--rule--source--group))
-- `host` (Attributes Set) Host references (see [below for nested schema](#nestedatt--rule--source--host))
-- `ip` (List of String)
-- `ip_range` (Attributes List) IP ranges (see [below for nested schema](#nestedatt--rule--source--ip_range))
-- `network_interface` (Attributes Set) Network interface references (see [below for nested schema](#nestedatt--rule--source--network_interface))
-- `site_network_subnet` (Attributes Set) Site network subnet references (see [below for nested schema](#nestedatt--rule--source--site_network_subnet))
-- `subnet` (List of String)
-- `vlan` (List of Number)
+- `floating_subnet` (Attributes Set) Floating subnet (see [below for nested schema](#nestedatt--rule--source--floating_subnet))
+- `global_ip_range` (Attributes Set) Global ip range (see [below for nested schema](#nestedatt--rule--source--global_ip_range))
+- `group` (Attributes Set) Group (see [below for nested schema](#nestedatt--rule--source--group))
+- `host` (Attributes Set) Host (see [below for nested schema](#nestedatt--rule--source--host))
+- `ip` (Set of String) Ip
+- `ip_range` (Attributes Set) Ip range (see [below for nested schema](#nestedatt--rule--source--ip_range))
+- `network_interface` (Attributes Set) Network interface (see [below for nested schema](#nestedatt--rule--source--network_interface))
+- `site_network_subnet` (Attributes Set) Site network subnet (see [below for nested schema](#nestedatt--rule--source--site_network_subnet))
+- `subnet` (Set of String) Subnet
+- `vlan` (Set of Number) Vlan
 
 <a id="nestedatt--rule--source--floating_subnet"></a>
 ### Nested Schema for `rule.source.floating_subnet`
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Floating subnet ID
+- `name` (String) Floating subnet name
 
 
 <a id="nestedatt--rule--source--global_ip_range"></a>
@@ -544,8 +551,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Global ip range ID
+- `name` (String) Global ip range name
 
 
 <a id="nestedatt--rule--source--group"></a>
@@ -553,8 +560,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Group ID
+- `name` (String) Group name
 
 
 <a id="nestedatt--rule--source--host"></a>
@@ -562,8 +569,8 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Host ID
+- `name` (String) Host name
 
 
 <a id="nestedatt--rule--source--ip_range"></a>
@@ -571,8 +578,8 @@ Optional:
 
 Required:
 
-- `from` (String)
-- `to` (String)
+- `from` (String) From
+- `to` (String) To
 
 
 <a id="nestedatt--rule--source--network_interface"></a>
@@ -580,8 +587,8 @@ Required:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Network interface ID
+- `name` (String) Network interface name
 
 
 <a id="nestedatt--rule--source--site_network_subnet"></a>
@@ -589,8 +596,31 @@ Optional:
 
 Optional:
 
-- `id` (String)
-- `name` (String)
+- `id` (String) Site network subnet ID
+- `name` (String) Site network subnet name
+
+
+
+<a id="nestedatt--rule--section"></a>
+### Nested Schema for `rule.section`
+
+Read-Only:
+
+- `id` (String) Section ID
+- `name` (String) Section name
+
+
+
+<a id="nestedatt--at"></a>
+### Nested Schema for `at`
+
+Required:
+
+- `position` (String) Position
+
+Optional:
+
+- `ref` (String) Ref
 
 ## Import
 

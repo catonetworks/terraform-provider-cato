@@ -204,7 +204,9 @@ func (r *terminalServerRuleResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan TerminalServerRule
+	var state TerminalServerRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -217,15 +219,17 @@ func (r *terminalServerRuleResource) Update(
 		return
 	}
 
-	moveRes, err := r.resourceAPI().PolicyTerminalServerMoveRule(ctx, move, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyTerminalServerMoveRule error", err.Error())
-		return
-	}
-	mv := moveRes.GetPolicy().GetTerminalServer().GetMoveRule()
-	if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
+	if !plan.At.Equal(state.At) {
+		moveRes, err := r.resourceAPI().PolicyTerminalServerMoveRule(ctx, move, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicyTerminalServerMoveRule error", err.Error())
+			return
+		}
+		mv := moveRes.GetPolicy().GetTerminalServer().GetMoveRule()
+		if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
 	}
 
 	upd, diags := hydrateTerminalServerUpdateRuleInput(ctx, plan)

@@ -153,7 +153,9 @@ func (r *privateAccessSectionResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan PrivateAccessSection
+	var state PrivateAccessSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -163,17 +165,19 @@ func (r *privateAccessSectionResource) Update(
 		return
 	}
 
-	moveSection, err := r.resourceAPI().PolicyPrivateAccessMoveSection(ctx, inputMove, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyPrivateAccessMoveSection error", err.Error())
-		return
-	}
-	if moveSection.GetPolicy().GetPrivateAccess().GetMoveSection().GetStatus() == nil ||
-		*moveSection.GetPolicy().GetPrivateAccess().GetMoveSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range moveSection.GetPolicy().GetPrivateAccess().GetMoveSection().GetErrors() {
-			if item != nil && item.ErrorCode != nil {
-				resp.Diagnostics.AddError("API error moving section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
-				return
+	if !plan.At.Equal(state.At) {
+		moveSection, err := r.resourceAPI().PolicyPrivateAccessMoveSection(ctx, inputMove, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicyPrivateAccessMoveSection error", err.Error())
+			return
+		}
+		if moveSection.GetPolicy().GetPrivateAccess().GetMoveSection().GetStatus() == nil ||
+			*moveSection.GetPolicy().GetPrivateAccess().GetMoveSection().GetStatus() != cato_models.PolicyMutationStatusSuccess {
+			for _, item := range moveSection.GetPolicy().GetPrivateAccess().GetMoveSection().GetErrors() {
+				if item != nil && item.ErrorCode != nil {
+					resp.Diagnostics.AddError("API error moving section", fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage))
+					return
+				}
 			}
 		}
 	}

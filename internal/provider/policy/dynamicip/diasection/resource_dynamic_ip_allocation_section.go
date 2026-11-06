@@ -144,7 +144,9 @@ func (r *dynamicIPAllocationSectionResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan DynamicIPAllocationSection
+	var state DynamicIPAllocationSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -154,17 +156,19 @@ func (r *dynamicIPAllocationSectionResource) Update(
 		return
 	}
 
-	moveSection, err := r.resourceAPI().PolicyDynamicIPAllocationMoveSection(ctx, inputMove, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyDynamicIPAllocationMoveSection error", err.Error())
-		return
-	}
-	if err := sharedpolicy.MutationResult(
-		moveSection.GetPolicy().GetDynamicIPAllocation().GetMoveSection().GetStatus(),
-		moveSection.GetPolicy().GetDynamicIPAllocation().GetMoveSection().GetErrors(),
-	); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
+	if !plan.At.Equal(state.At) {
+		moveSection, err := r.resourceAPI().PolicyDynamicIPAllocationMoveSection(ctx, inputMove, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicyDynamicIPAllocationMoveSection error", err.Error())
+			return
+		}
+		if err := sharedpolicy.MutationResult(
+			moveSection.GetPolicy().GetDynamicIPAllocation().GetMoveSection().GetStatus(),
+			moveSection.GetPolicy().GetDynamicIPAllocation().GetMoveSection().GetErrors(),
+		); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
 	}
 
 	updateSection, err := r.resourceAPI().PolicyDynamicIPAllocationUpdateSection(ctx, inputUpdate, r.client.AccountId)

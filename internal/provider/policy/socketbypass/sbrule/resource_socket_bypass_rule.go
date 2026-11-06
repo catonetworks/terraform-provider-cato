@@ -2,325 +2,423 @@ package sbrule
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
+	"fmt"
 
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	path "github.com/hashicorp/terraform-plugin-framework/path"
-	resource "github.com/hashicorp/terraform-plugin-framework/resource"
-	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	socketbypass "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass"
-	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
-	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
-	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
-	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	policyshared "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
-	_ resource.Resource                = &socketBypassRuleResource{}
-	_ resource.ResourceWithConfigure   = &socketBypassRuleResource{}
-	_ resource.ResourceWithImportState = &socketBypassRuleResource{}
+	_ resource.Resource                = (*policyResource)(nil)
+	_ resource.ResourceWithConfigure   = (*policyResource)(nil)
+	_ resource.ResourceWithImportState = (*policyResource)(nil)
 )
 
-func NewSocketBypassRuleResource() resource.Resource {
-	return &socketBypassRuleResource{}
-}
-
-type socketBypassRuleResource struct {
-	client *catoclient.Service
-
+type policyResource struct {
+	client    *catoclient.Service
 	apiClient ResourceClient
 }
 
-func (r *socketBypassRuleResource) Metadata(
-	_ context.Context,
-	req resource.MetadataRequest,
-	resp *resource.MetadataResponse,
-) {
+// NewResource returns the cato_socket_bypass_rule resource.
+func NewResource() resource.Resource { return &policyResource{} }
+
+func (r *policyResource) getClient() ResourceClient {
+	if r.apiClient != nil {
+		return r.apiClient
+	}
+	if r.client == nil || r.client.Catov2 == nil {
+		return nil
+	}
+	return &sdkClient{client: r.client}
+}
+
+func (r *policyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_socket_bypass_rule"
 }
 
-func (r *socketBypassRuleResource) Configure(
-	_ context.Context,
-	req resource.ConfigureRequest,
-	_ *resource.ConfigureResponse,
-) {
+func (r *policyResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*catoclient.Service)
+	client, ok := req.ProviderData.(*catoclient.Service)
+	if !ok {
+		resp.Diagnostics.AddError("Unexpected resource configuration", fmt.Sprintf("Expected *catoclient.Service, got %T", req.ProviderData))
+		return
+	}
+	r.client = client
 }
 
-func (r *socketBypassRuleResource) ImportState(
-	ctx context.Context,
-	req resource.ImportStateRequest,
-	resp *resource.ImportStateResponse,
-) {
+func (r *policyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
 }
 
-//nolint:gocyclo,funlen
-func (r *socketBypassRuleResource) Create(
-	ctx context.Context,
-	req resource.CreateRequest,
-	resp *resource.CreateResponse,
-) {
-	var plan SocketBypassRule
+func (r *policyResource) configured(diags *diag.Diagnostics) bool {
+	if r.client == nil || r.getClient() == nil {
+		diags.AddError("Resource not configured", "The Cato client must be configured before managing this resource.")
+		return false
+	}
+	return true
+}
+
+func (r *policyResource) ready(id types.String, diags *diag.Diagnostics) bool {
+	return !diags.HasError() && policyshared.ValidID(id, diags) && r.configured(diags)
+}
+
+// Create retains identity before publishing so a failed publication can be recovered.
+func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	input, diags := hydrateSocketBypassAddRuleInput(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	object := buildCreateObject(ctx, plan.Rule, &resp.Diagnostics)
+	at := policyshared.BuildRulePosition(ctx, plan.At, &resp.Diagnostics)
+	policyshared.ValidateRulePosition(at, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() || !r.configured(&resp.Diagnostics) {
+		return
+	}
+	if at == nil {
+		position := cato_models.PolicyRulePositionEnumLastInPolicy
+		at = &cato_models.PolicyRulePositionInput{Position: &position}
+	}
+	revision := r.beginRevision(ctx, "", &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	tflog.Debug(ctx, "Create.PolicySocketBypassAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
-	res, err := r.resourceAPI().PolicySocketBypassAddRule(ctx, input, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySocketBypassAddRule error", err.Error())
-		return
-	}
-	add := res.GetPolicy().GetSocketBypass().GetAddRule()
-	for _, e := range add.GetErrors() {
-		if e != nil && e.GetErrorCode() != nil {
-			resp.Diagnostics.AddError("API error: "+*e.GetErrorCode(), *e.GetErrorMessage())
-			return
+	retained := false
+	defer func() {
+		if !retained {
+			r.discard(ctx, revision, &resp.Diagnostics)
 		}
+	}()
+	if resp.Private != nil {
+		policyshared.RememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
 	}
-	if err := sharedpolicy.MutationResult(add.GetStatus(), add.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+	result, err := r.getClient().PolicySocketBypassAddRule(ctx, r.client.AccountId, mutationInput(revision),
+		cato_models.SocketBypassAddRuleInput{At: at, Rule: object})
+	payload := result.GetPolicy().GetSocketBypass().GetAddRule()
+	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to create rule", &resp.Diagnostics) {
 		return
 	}
+	if !policyshared.CheckStatus(payload.GetStatus(), &resp.Diagnostics) {
+		return
+	}
+	returned := payload.GetRule().GetRule()
+	if returned.GetID() == "" {
+		resp.Diagnostics.AddError("Invalid API response", "Create did not return a resource ID.")
+		return
+	}
+	plan.Rule = parseAdd(ctx, returned, &resp.Diagnostics)
 
-	resp.Diagnostics.Append(socketbypass.PublishSocketBypassPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	body, err := r.resourceAPI().PolicySocketBypassPolicy(ctx, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySocketBypassPolicy error", err.Error())
-		return
-	}
-
-	newID := ""
-	if add.GetRule() != nil && add.GetRule().GetRule() != nil {
-		newID = add.GetRule().GetRule().GetID()
-	}
-	if newID == "" {
-		resp.Diagnostics.AddError("Read after create failed", "addRule response did not return rule id")
-		return
-	}
-	var cur *cato_go_sdk.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule
-	for _, item := range body.GetPolicy().GetSocketBypass().GetPolicy().GetRules() {
-		if item != nil && item.GetRule() != nil && item.GetRule().GetID() == newID {
-			cur = item.GetRule()
-			break
-		}
-	}
-	if cur == nil {
-		resp.Diagnostics.AddError("Read after create failed", "rule not found in policy response")
-		return
-	}
-
-	rulePlan, hdiags := hydrateSocketBypassRuleStateFromClient(ctx, cur)
-	resp.Diagnostics.Append(hdiags...)
-
-	// Merge plan-only attributes the API does not echo back.
-	var planRule SocketBypassRuleRulePlan
-	resp.Diagnostics.Append(plan.Rule.As(
-		ctx,
-		&planRule,
-		basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true},
-	)...)
-	ruleObj, odiags := convertCreateInput(ctx, &rulePlan, planRule)
-	resp.Diagnostics.Append(odiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	convertCreateInput2(&plan, newID, ruleObj)
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	retained = true
+	if r.publishOrReconcile(ctx, revision, returned.GetID(), plan.Rule, &resp.Diagnostics) && resp.Private != nil {
+		policyshared.RememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
+	}
 }
 
-func (r *socketBypassRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state SocketBypassRule
+func (r *policyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state resourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
+	var id types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("rule").AtName("id"), &id)...)
+	if !r.ready(id, &resp.Diagnostics) {
 		return
 	}
-
-	body, err := r.resourceAPI().PolicySocketBypassPolicy(ctx, r.client.AccountId)
+	policy, err := r.readPolicy(ctx, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySocketBypassPolicy error", err.Error())
+		resp.Diagnostics.AddError("Failed to read rule", err.Error())
 		return
 	}
+	object := findObject(policy, id.ValueString())
+	if object == nil {
+		// A failed create may exist only in its owned draft. Keep its identity for destroy.
+		if req.Private != nil {
+			revision := policyshared.PendingRevision(ctx, req.Private, &resp.Diagnostics)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			if revision != "" {
+				draft, draftErr := r.readPolicy(ctx, revision)
+				if draftErr != nil && !errors.Is(draftErr, errMissingRevision) {
+					resp.Diagnostics.AddError("Failed to inspect pending revision", draftErr.Error())
+					return
+				}
+				if draftErr == nil && findObject(draft, id.ValueString()) != nil {
+					return
+				}
+			}
+		}
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	state.Rule = parseRead(ctx, object, &resp.Diagnostics)
 
-	rulePlan := SocketBypassRuleRulePlan{}
-	resp.Diagnostics.Append(state.Rule.As(ctx, &rulePlan, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	pol := body.GetPolicy().GetSocketBypass().GetPolicy()
-	if pol == nil {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	var cur *cato_go_sdk.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule
-	for _, item := range pol.GetRules() {
-		if item != nil && item.GetRule() != nil && item.GetRule().GetID() == rulePlan.ID.ValueString() {
-			cur = item.GetRule()
-			break
-		}
-	}
-	if cur == nil {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	hydrated, hdiags := hydrateSocketBypassRuleStateFromClient(ctx, cur)
-	resp.Diagnostics.Append(hdiags...)
-
-	// Merge state-only attributes the API does not echo back.
-	ruleObj, odiags := convertReadState(ctx, rulePlan, &hydrated)
-	resp.Diagnostics.Append(odiags...)
-
-	// Preserve the 'at' block from state — the API does not return placement
-	// information, so we keep whatever was previously configured. On import the
-	// state has no 'at', so we fall back to the safe default LAST_IN_POLICY.
-	convertReadState2(&state, cur, ruleObj, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-//nolint:gocyclo,funlen
-func (r *socketBypassRuleResource) Update(
-	ctx context.Context,
-	req resource.UpdateRequest,
-	resp *resource.UpdateResponse,
-) {
-	var plan SocketBypassRule
+func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	var id types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("rule").AtName("id"), &id)...)
+	if resp.Diagnostics.HasError() || !policyshared.ValidID(id, &resp.Diagnostics) {
+		return
+	}
+	object := buildUpdateObject(ctx, plan.Rule, &resp.Diagnostics)
+	at := policyshared.BuildRulePosition(ctx, plan.At, &resp.Diagnostics)
+	policyshared.ValidateRulePosition(at, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() || !r.configured(&resp.Diagnostics) {
+		return
+	}
+	revision := r.updateRevision(ctx, req, resp)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	var rule SocketBypassRuleRulePlan
-	move, atAsOpts := convertUpdateInput(ctx, plan, &resp.Diagnostics)
-	resp.Diagnostics.Append(plan.Rule.As(ctx, &rule, atAsOpts)...)
-	move.ID = rule.ID.ValueString()
+	retained := false
+	defer func() {
+		if !retained {
+			r.discard(ctx, revision, &resp.Diagnostics)
+		}
+	}()
+	plan.Rule = r.updateObject(ctx, id.ValueString(), object, revision, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	moveRes, err := r.resourceAPI().PolicySocketBypassMoveRule(ctx, move, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySocketBypassMoveRule error", err.Error())
-		return
-	}
-	mv := moveRes.GetPolicy().GetSocketBypass().GetMoveRule()
-	if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
-	}
-
-	upd, diags := hydrateSocketBypassUpdateRuleInput(ctx, plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updRes, err := r.resourceAPI().PolicySocketBypassUpdateRule(ctx, upd, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySocketBypassUpdateRule error", err.Error())
-		return
-	}
-	ur := updRes.GetPolicy().GetSocketBypass().GetUpdateRule()
-	if err := sharedpolicy.MutationResult(ur.GetStatus(), ur.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
-	}
-
-	resp.Diagnostics.Append(socketbypass.PublishSocketBypassPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	body, err := r.resourceAPI().PolicySocketBypassPolicy(ctx, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySocketBypassPolicy error", err.Error())
-		return
-	}
-
-	var cur *cato_go_sdk.PolicySocketBypassPolicy_Policy_SocketBypass_Policy_Rules_Rule
-	for _, item := range body.GetPolicy().GetSocketBypass().GetPolicy().GetRules() {
-		if item != nil && item.GetRule() != nil && item.GetRule().GetID() == rule.ID.ValueString() {
-			cur = item.GetRule()
-			break
+	if at != nil && !plan.At.Equal(state.At) {
+		plan.Rule = r.move(ctx, id.ValueString(), at, revision, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 	}
-	if cur == nil {
-		resp.Diagnostics.AddError("Read after update failed", "rule not found in policy response")
+	retained = true
+	if !r.publishOrReconcile(ctx, revision, id.ValueString(), plan.Rule, &resp.Diagnostics) {
 		return
 	}
-
-	rulePlan, hdiags := hydrateSocketBypassRuleStateFromClient(ctx, cur)
-	resp.Diagnostics.Append(hdiags...)
-
-	// Merge plan-only attributes the API does not echo back.
-	ruleObj, odiags := convertUpdateInput2(ctx, rule, &rulePlan)
-	resp.Diagnostics.Append(odiags...)
-	if resp.Diagnostics.HasError() {
-		return
+	if resp.Private != nil {
+		policyshared.RememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
 	}
-
-	var pos policyrule.Position
-	resp.Diagnostics.Append(plan.At.As(ctx, &pos, atAsOpts)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	atObj, adiags := convertUpdateInput3(pos)
-	resp.Diagnostics.Append(adiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	st := convertUpdateInput4(rule, ruleObj, atObj)
-	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (r *socketBypassRuleResource) Delete(
-	ctx context.Context,
-	req resource.DeleteRequest,
-	resp *resource.DeleteResponse,
-) {
-	var state SocketBypassRule
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+func (r *policyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var id types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("rule").AtName("id"), &id)...)
+	if !r.ready(id, &resp.Diagnostics) {
+		return
+	}
+	pending := ""
+	if req.Private != nil {
+		pending = policyshared.PendingRevision(ctx, req.Private, &resp.Diagnostics)
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	rule := SocketBypassRuleRulePlan{}
-	resp.Diagnostics.Append(state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
-	if resp.Diagnostics.HasError() {
-		return
+	// Dispose only this resource's unfinished draft before examining published state.
+	if pending != "" {
+		if !r.discard(ctx, pending, &resp.Diagnostics) {
+			return
+		}
+		if resp.Private != nil {
+			policyshared.RememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
+		}
+		pending = ""
 	}
-	rm := convertDeleteInput(rule)
-	removed, err := r.resourceAPI().PolicySocketBypassRemoveRule(ctx, rm, r.client.AccountId)
+	policy, err := r.readPolicy(ctx, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySocketBypassRemoveRule error", err.Error())
+		resp.Diagnostics.AddError("Failed to read rule before deletion", err.Error())
 		return
 	}
-	payload := removed.GetPolicy().GetSocketBypass().GetRemoveRule()
-	if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy deletion failed", err.Error())
+	object := findObject(policy, id.ValueString())
+	if object == nil {
 		return
 	}
-	resp.Diagnostics.Append(socketbypass.PublishSocketBypassPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+
+	revision := r.beginRevision(ctx, pending, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	retained := false
+	defer func() {
+		if !retained {
+			r.discard(ctx, revision, &resp.Diagnostics)
+		}
+	}()
+	if resp.Private != nil {
+		policyshared.RememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
+	}
+	if !r.removeObject(ctx, id.ValueString(), revision, &resp.Diagnostics) {
+		return
+	}
+	retained = true
+	if r.publishOrReconcile(ctx, revision, id.ValueString(), types.ObjectNull(ruleAttrTypes), &resp.Diagnostics) && resp.Private != nil {
+		policyshared.RememberRevision(ctx, resp.Private, "", &resp.Diagnostics)
+	}
+}
+
+func (r *policyResource) updateRevision(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) string {
+	pending := ""
+	if req.Private != nil {
+		pending = policyshared.PendingRevision(ctx, req.Private, &resp.Diagnostics)
+	}
+	if resp.Diagnostics.HasError() {
+		return ""
+	}
+	revision := r.beginRevision(ctx, pending, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return ""
+	}
+	if resp.Private != nil {
+		policyshared.RememberRevision(ctx, resp.Private, revision, &resp.Diagnostics)
+	}
+	return revision
+}
+
+func (r *policyResource) updateObject(ctx context.Context, id string, object *cato_models.SocketBypassUpdateRuleDataInput,
+	revision string, diags *diag.Diagnostics,
+) types.Object {
+	result, err := r.getClient().PolicySocketBypassUpdateRule(ctx, r.client.AccountId, mutationInput(revision),
+		cato_models.SocketBypassUpdateRuleInput{ID: id, Rule: object})
+	payload := result.GetPolicy().GetSocketBypass().GetUpdateRule()
+	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to update rule", diags) {
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	if !policyshared.CheckStatus(payload.GetStatus(), diags) {
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	returned := payload.GetRule().GetRule()
+	if returned.GetID() != id {
+		diags.AddError("Invalid API response", "Update returned a different resource ID.")
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	return parseUpdate(ctx, returned, diags)
+}
+
+func (r *policyResource) move(ctx context.Context, id string, at *cato_models.PolicyRulePositionInput,
+	revision string, diags *diag.Diagnostics,
+) types.Object {
+	result, err := r.getClient().PolicySocketBypassMoveRule(ctx, r.client.AccountId, mutationInput(revision),
+		cato_models.PolicyMoveRuleInput{ID: id, To: at})
+	payload := result.GetPolicy().GetSocketBypass().GetMoveRule()
+	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to move rule", diags) || !policyshared.CheckStatus(payload.GetStatus(), diags) {
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	object := payload.GetRule().GetRule()
+	if object.GetID() != id {
+		diags.AddError("Invalid API response", "Move returned a different resource ID.")
+		return types.ObjectNull(ruleAttrTypes)
+	}
+	return parseMove(ctx, object, diags)
+}
+
+func mutationInput(revision string) *cato_models.SocketBypassPolicyMutationInput {
+	return &cato_models.SocketBypassPolicyMutationInput{Revision: &cato_models.PolicyMutationRevisionInput{ID: &revision}}
+}
+
+func (r *policyResource) beginRevision(ctx context.Context, pending string, diags *diag.Diagnostics) string {
+	if pending != "" && !r.discard(ctx, pending, diags) {
+		return ""
+	}
+	result, err := r.getClient().PolicySocketBypassCreatePolicyRevision(ctx, r.client.AccountId, nil,
+		cato_models.PolicyCreateRevisionInput{Name: "terraform-" + rand.Text(), Description: "Managed by Terraform"})
+	payload := result.GetPolicy().GetSocketBypass().GetCreatePolicyRevision()
+	if utils.CheckAPIErrors(err,
+		payload.GetErrors(),
+		"Failed to create policy revision",
+		diags) ||
+		!policyshared.CheckStatus(payload.GetStatus(),
+			diags) {
+		return ""
+	}
+	revision := payload.GetPolicy().GetRevision().GetID()
+	if revision == "" {
+		diags.AddError("Invalid API response", "CreatePolicyRevision did not return a revision ID.")
+	}
+	return revision
+}
+
+func (r *policyResource) publish(ctx context.Context, revision string, diags *diag.Diagnostics) bool {
+	result, err := r.getClient().PolicySocketBypassPublishPolicyRevision(
+		ctx, r.client.AccountId, mutationInput(revision), &cato_models.PolicyPublishRevisionInput{},
+	)
+	payload := result.GetPolicy().GetSocketBypass().GetPublishPolicyRevision()
+	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to publish policy revision "+revision, diags) {
+		return false
+	}
+	return policyshared.CheckStatus(payload.GetStatus(), diags)
+}
+
+func (r *policyResource) discard(ctx context.Context, revision string, diags *diag.Diagnostics) bool {
+	result, err := r.getClient().PolicySocketBypassDiscardPolicyRevision(ctx, r.client.AccountId, mutationInput(revision),
+		&cato_models.PolicyDiscardRevisionInput{ID: &revision})
+	payload := result.GetPolicy().GetSocketBypass().GetDiscardPolicyRevision()
+	if policyshared.RevisionMissing(err) {
+		return true
+	}
+	for _, item := range payload.GetErrors() {
+		if code := item.GetErrorCode(); code != nil && *code == "PolicyRevisionNotFound" {
+			return true
+		}
+	}
+	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to discard the resource's policy revision "+revision, diags) {
+		return false
+	}
+	return policyshared.CheckStatus(payload.GetStatus(), diags)
+}
+
+func (r *policyResource) removeObject(ctx context.Context, id, revision string, diags *diag.Diagnostics) bool {
+	result, err := r.getClient().PolicySocketBypassRemoveRule(ctx, r.client.AccountId, mutationInput(revision),
+		cato_models.SocketBypassRemoveRuleInput{ID: id})
+	payload := result.GetPolicy().GetSocketBypass().GetRemoveRule()
+	if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to delete rule", diags) {
+		return false
+	}
+	return policyshared.CheckStatus(payload.GetStatus(), diags)
+}
+
+// A publication can commit even when its response is lost. Reconcile only after
+// the owned revision is confirmed gone, and only against published state.
+func (r *policyResource) publishOrReconcile(ctx context.Context, revision, id string, expected types.Object, diags *diag.Diagnostics) bool {
+	var publication diag.Diagnostics
+	if r.publish(ctx, revision, &publication) {
+		return true
+	}
+	_, err := r.readPolicy(ctx, revision)
+	if errors.Is(err, errMissingRevision) {
+		policy, readErr := r.readPolicy(ctx, "")
+		if readErr == nil {
+			object := findObject(policy, id)
+			if expected.IsNull() && object == nil {
+				return true
+			}
+			if !expected.IsNull() && object != nil {
+				var conversion diag.Diagnostics
+				actual := parseRead(ctx, object, &conversion)
+				if !conversion.HasError() && actual.Equal(expected) {
+					return true
+				}
+			}
+		}
+	}
+	diags.Append(publication...)
+	return false
 }

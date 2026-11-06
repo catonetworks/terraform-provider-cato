@@ -144,7 +144,9 @@ func (r *remotePortFwdSectionResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan RemotePortFwdSection
+	var state RemotePortFwdSection
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -154,17 +156,19 @@ func (r *remotePortFwdSectionResource) Update(
 		return
 	}
 
-	moveSection, err := r.resourceAPI().PolicyRemotePortFwdMoveSection(ctx, inputMove, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicyRemotePortFwdMoveSection error", err.Error())
-		return
-	}
-	if err := sharedpolicy.MutationResult(
-		moveSection.GetPolicy().GetRemotePortFwd().GetMoveSection().GetStatus(),
-		moveSection.GetPolicy().GetRemotePortFwd().GetMoveSection().GetErrors(),
-	); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
+	if !plan.At.Equal(state.At) {
+		moveSection, err := r.resourceAPI().PolicyRemotePortFwdMoveSection(ctx, inputMove, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicyRemotePortFwdMoveSection error", err.Error())
+			return
+		}
+		if err := sharedpolicy.MutationResult(
+			moveSection.GetPolicy().GetRemotePortFwd().GetMoveSection().GetStatus(),
+			moveSection.GetPolicy().GetRemotePortFwd().GetMoveSection().GetErrors(),
+		); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
 	}
 
 	updateSection, err := r.resourceAPI().PolicyRemotePortFwdUpdateSection(ctx, inputUpdate, r.client.AccountId)

@@ -3,12 +3,12 @@
 page_title: "cato_socket_bypass_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages a custom section in the Cato socket bypass (App & Data Inline Protection) policy. Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. Underlying GraphQL is marked @beta.
+  Manages a socket bypass section. Changes are automatically published. Only empty sections can be deleted.
 ---
 
 # cato_socket_bypass_section (Resource)
 
-Manages a custom section in the Cato socket bypass (App & Data Inline Protection) policy. Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. Underlying GraphQL is marked @beta.
+Manages a socket bypass section. Changes are automatically published. Only empty sections can be deleted.
 
 ## Example Usage
 
@@ -52,23 +52,23 @@ resource "cato_socket_bypass_section" "example" {
 
 ### Required
 
-- `at` (Attributes) Where to insert the section (see [below for nested schema](#nestedatt--at))
-- `section` (Attributes) Section name and computed ID (see [below for nested schema](#nestedatt--section))
+- `at` (Attributes) At (see [below for nested schema](#nestedatt--at))
+- `section` (Attributes) Section (see [below for nested schema](#nestedatt--section))
 
 ### Read-Only
 
-- `id` (String) Section ID
+- `id` (String) Section ID; mirrors section.id
 
 <a id="nestedatt--at"></a>
 ### Nested Schema for `at`
 
 Required:
 
-- `position` (String) Position relative to policy or another section
+- `position` (String) Position
 
 Optional:
 
-- `ref` (String) Reference section ID when position is AFTER_SECTION or BEFORE_SECTION
+- `ref` (String) Ref
 
 
 <a id="nestedatt--section"></a>
@@ -76,7 +76,7 @@ Optional:
 
 Required:
 
-- `name` (String) Section name
+- `name` (String) Name
 
 Read-Only:
 

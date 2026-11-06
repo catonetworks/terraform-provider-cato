@@ -204,7 +204,9 @@ func (r *sdpStaticIPAllocationRuleResource) Update(
 	resp *resource.UpdateResponse,
 ) {
 	var plan SdpStaticIPAllocationRule
+	var state SdpStaticIPAllocationRule
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -217,15 +219,17 @@ func (r *sdpStaticIPAllocationRuleResource) Update(
 		return
 	}
 
-	moveRes, err := r.resourceAPI().PolicySdpStaticIPAllocationMoveRule(ctx, move, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError("Cato API PolicySdpStaticIPAllocationMoveRule error", err.Error())
-		return
-	}
-	mv := moveRes.GetPolicy().GetSdpStaticIPAllocation().GetMoveRule()
-	if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
-		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
-		return
+	if !plan.At.Equal(state.At) {
+		moveRes, err := r.resourceAPI().PolicySdpStaticIPAllocationMoveRule(ctx, move, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicySdpStaticIPAllocationMoveRule error", err.Error())
+			return
+		}
+		mv := moveRes.GetPolicy().GetSdpStaticIPAllocation().GetMoveRule()
+		if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
 	}
 
 	upd, diags := hydrateSdpStaticIPAllocationUpdateRuleInput(ctx, plan)
