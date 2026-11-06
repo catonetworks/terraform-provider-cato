@@ -2,7 +2,7 @@
 PRG=$(basename "$0")
 HELP="$PRG runs terraform acceptance tests
 Usage:
-  $PRG [ --coverage ] [ --suite <file-name> | <test-dir> ]
+  $PRG [ --coverage ] [ --group <0-9> | --suite <file-name> | <test-dir> ]
 "
 export OUT=tmp_recorded/output
 export COVERAGE=tmp_recorded/coverage
@@ -12,6 +12,8 @@ export TF_ACC_MOCK=''
 enable_coverage=''
 nocolor=''
 test_suite=''
+test_group=''
+groups_script="$(dirname "$0")/acctest_groups.py"
 single_tests=''
 retry_count=3
 result=ok
@@ -25,10 +27,16 @@ parse_args() {
 			--nocolor) nocolor='-nocolor';;
 			--suite) [ $# -gt 1 ] || { echo "Error: test suite file name expected"; exit 1; }
 				shift; test_suite=$1;;
+			--group) [ $# -gt 1 ] || { echo "Error: group number expected"; exit 1; }
+				shift; test_group=$1;;
 			*) single_tests="$single_tests $1"
 		esac
 		shift
 	done
+	if [ -n "$test_group" ]; then
+		[ -z "$test_suite$single_tests" ] || { echo "Error: --group cannot be combined with suite selection"; exit 1; }
+		single_tests=$(python3 "$groups_script" suites --group "$test_group") || exit 1
+	fi
 	if [ -n "$test_suite" ]; then
 		[ -f "$test_suite" ] || { echo "Error: test suite file '$test_suite' does not exist"; exit 1; }
 		single_tests=$(<$test_suite)
@@ -41,14 +49,18 @@ cleanup() {
 
 run_test() {
 	tdir=$1; cover_file=$2
+	run_filter='.'
+	if [ -n "$test_group" ]; then
+		run_filter=$(python3 "$groups_script" filter --group "$test_group" --suite "$(basename "$tdir")") || return 1
+	fi
 	timeout=8m
 	case "$(basename "$tdir")" in
 	wf_rules_index | wf_rules_index_with_rule_data) timeout=12m ;;
 	esac
 	if [ "$enable_coverage" = y ]; then
-		go test -timeout "$timeout" -tags acctest -count=1 -parallel=1 -p=1 "$tdir" -json -coverprofile="$cover_file" -covermode=atomic -coverpkg=./...
+		go test -timeout "$timeout" -tags acctest -count=1 -parallel=1 -p=1 "$tdir" -run "$run_filter" -json -coverprofile="$cover_file" -covermode=atomic -coverpkg=./...
 	else
-		go test -timeout "$timeout" -tags acctest -count=1 -parallel=1 -p=1 "$1" -json
+		go test -timeout "$timeout" -tags acctest -count=1 -parallel=1 -p=1 "$1" -run "$run_filter" -json
 	fi
 }
 

@@ -1,6 +1,13 @@
 name: pull-request
 on:
     push:
+    workflow_dispatch:
+
+# One run owns the entire pool until all matrix jobs have finished. Randomization
+# alone cannot prevent two independent runs from using the same account.
+concurrency:
+  group: cato-acceptance-account-pool
+  cancel-in-progress: false
 
 permissions:
     contents: read
@@ -20,17 +27,8 @@ jobs:
       - name: Run vuln check
         run: make vul
 
-  test:
+  unit-test:
     runs-on: ubuntu-latest
-
-    env:
-      CATO_ACCOUNT_ID: ${{ vars.CATO_ACCOUNT_ID }}
-      CATO_ENDPOINT: ${{ vars.CATO_ENDPOINT }}
-      CATO_BASEURL: ${{ vars.CATO_ENDPOINT }}
-      CATO_TOKEN: ${{ secrets.CATO_TOKEN }}
-      TFACC_TEST_VARS: ${{ vars.TFACC_TEST_VARS }}
-      TFACC_TEST_SKIP: ${{ vars.TFACC_TEST_SKIP }}
-      TFACC_ENABLE_RULES_INDEX_CRUD: "true"
 
     steps:
       - uses: actions/checkout@v6
@@ -46,5 +44,62 @@ jobs:
       - name: Run unit tests
         run: make test
 
-      - name: Run acceptance tests
-        run: make acctest-flaky
+      - name: Check acceptance runner shell syntax
+        run: shellcheck --severity=error test_data/flaky_acctest.sh
+
+  acceptance-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Allocate ten distinct accounts randomly
+        id: plan
+        run: |
+          python3 test_data/acctest_groups.py validate
+          echo "matrix=$(python3 test_data/acctest_groups.py matrix)" >> "$GITHUB_OUTPUT"
+          python3 test_data/acctest_groups.py summary >> "$GITHUB_STEP_SUMMARY"
+
+  acceptance:
+    needs: [unit-test, acceptance-plan]
+    runs-on: ubuntu-latest
+    name: acceptance / group ${{ matrix.group }}
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix: ${{ fromJSON(needs.acceptance-plan.outputs.matrix) }}
+    env:
+      CATO_ENDPOINT: ${{ vars.CATO_ENDPOINT }}
+      CATO_BASEURL: ${{ vars.CATO_ENDPOINT }}
+      TFACC_TEST_SKIP: ${{ vars.TFACC_TEST_SKIP }}
+      TFACC_ENABLE_RULES_INDEX_CRUD: "true"
+      ACCTEST_GROUP: ${{ matrix.group }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Select account and its fixture references
+        env:
+          CATO_ACCTEST_ACCOUNTS: ${{ secrets.CATO_ACCTEST_ACCOUNTS }}
+          ACCOUNT_SLOT: ${{ matrix.account_slot }}
+        run: python3 test_data/acctest_groups.py account --slot "$ACCOUNT_SLOT"
+      - name: Run acceptance group serially on its assigned account
+        run: make acctest-flaky group="$ACCTEST_GROUP"
+
+  # Preserve the existing required "test" status as the gate for every group.
+  test:
+    if: always()
+    needs: [unit-test, acceptance-plan, acceptance]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every acceptance group to succeed
+        env:
+          UNIT_RESULT: ${{ needs.unit-test.result }}
+          PLAN_RESULT: ${{ needs.acceptance-plan.result }}
+          ACCEPTANCE_RESULT: ${{ needs.acceptance.result }}
+        run: |
+          test "$UNIT_RESULT" = success
+          test "$PLAN_RESULT" = success
+          test "$ACCEPTANCE_RESULT" = success
