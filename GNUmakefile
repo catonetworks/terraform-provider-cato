@@ -101,6 +101,7 @@ mocks: ## Generate mockery mocks
 test: ## Run unit tests
 	@python3 -m unittest discover -s test_data -p '*_test.py'
 	@bash test_data/acctest_retry_test.sh
+	@go test -tags=acctest ./internal/acctests/acc -run '^TestSkipByEnvUsesTestIdentity$$'
 	@unset TF_ACC; go test -json $$(go list ./... | grep -v terraform-provider-cato/internal/acctests) | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 
 acctest-clean: ## Delete stale acctest resources

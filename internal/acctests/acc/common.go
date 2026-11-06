@@ -10,8 +10,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"regexp"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -157,18 +155,12 @@ func PrintAttributes(resource string) func(st *terraform.State) error {
 	}
 }
 
-var funcPrefixRE = regexp.MustCompile(`^.*\.`)
-
+// SkipByEnv identifies the test even when invoked through shared test helpers.
 func SkipByEnv(t *testing.T) {
-	pc, _, _, ok := runtime.Caller(1)
-	if !ok {
-		fmt.Println("could not get caller")
-		return
-	}
-
-	funcName := funcPrefixRE.ReplaceAllString(runtime.FuncForPC(pc).Name(), "")
-	if details, ok := skipTests[funcName]; ok {
-		t.Skipf("skipping test '%s': %s", funcName, details)
+	t.Helper()
+	name, _, _ := strings.Cut(t.Name(), "/")
+	if details, ok := skipTests[name]; ok {
+		t.Skipf("skipping test '%s': %s", name, details)
 	}
 }
 
