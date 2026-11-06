@@ -15,6 +15,8 @@ The account must have sufficient trial VPN-user capacity before provisioning.
 Wi-Fi suites also require the `SOCKET_WIFI` migration. Enroll the dedicated
 accounts through CMA's Tag Rollout with an explicit Include audience; this tag
 has a migration action and cannot be added through Feature Tags.
+Enable Static Range Translation under Resources > System Settings for the
+socket-site translated-subnet test. IP Overlapping must remain disabled.
 
 The user bootstrap calls the public API directly because a new account can
 allocate user ID `0`, which the current Terraform user resource rejects.
