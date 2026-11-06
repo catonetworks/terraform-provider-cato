@@ -385,7 +385,7 @@ func convertCreateInput(
 	if !planRule.Exception.IsNull() && !planRule.Exception.IsUnknown() {
 		rulePlan.Exception = planRule.Exception
 	}
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SocketBypassRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SocketBypassRuleRuleAttrTypes, rulePlan, planRule)
 	return resultRuleObj, resultOdiags
 }
 
@@ -404,7 +404,7 @@ func convertReadState(
 	if !rulePlan.Exception.IsNull() && !rulePlan.Exception.IsUnknown() {
 		hydrated.Exception = rulePlan.Exception
 	}
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SocketBypassRuleRuleAttrTypes, hydrated)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SocketBypassRuleRuleAttrTypes, hydrated, rulePlan)
 	return resultRuleObj, resultOdiags
 }
 
@@ -458,7 +458,7 @@ func convertUpdateInput2(
 	if !rule.Exception.IsNull() && !rule.Exception.IsUnknown() {
 		rulePlan.Exception = rule.Exception
 	}
-	resultRuleObj, resultOdiags = types.ObjectValueFrom(ctx, SocketBypassRuleRuleAttrTypes, rulePlan)
+	resultRuleObj, resultOdiags = convert.PreserveEmptyValues(ctx, SocketBypassRuleRuleAttrTypes, rulePlan, rule)
 	return resultRuleObj, resultOdiags
 }
 
