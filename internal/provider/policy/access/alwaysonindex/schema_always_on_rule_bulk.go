@@ -9,8 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 )
 
 func (r *alwaysOnRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -18,8 +16,9 @@ func (r *alwaysOnRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRe
 		Description: "Manages ordering of existing Always On policy sections and rules.",
 		Attributes: map[string]schema.Attribute{
 			"section_data": schema.MapNestedAttribute{
-				Description: "Map of Always On section positions keyed by section name",
-				Required:    true,
+				Description: "Map of Always On section positions keyed by section name. Omit to preserve the live section order.",
+				Optional:    true,
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 					"id": schemaIndexID("Always On policy section ID"),
 					"section_index": schema.Int64Attribute{
@@ -31,9 +30,10 @@ func (r *alwaysOnRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRe
 				Validators: []validator.Map{sectionDataValidator{}},
 			},
 			"rule_data": schema.MapNestedAttribute{
-				Description: "Map of Always On rule positions keyed by rule name",
-				Optional:    true,
-				Computed:    true,
+				Description: "Map of Always On rule positions keyed by rule name. Rules may move between sections; " +
+					"include every rule exactly once. Omit to preserve live rule ordering.",
+				Optional: true,
+				Computed: true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 					"id": schemaIndexID("Always On rule ID"),
 					"index_in_section": schema.Int64Attribute{
@@ -46,8 +46,7 @@ func (r *alwaysOnRuleBulkResource) Schema(_ context.Context, _ resource.SchemaRe
 						Required:    true,
 					},
 				}},
-				Validators:    []validator.Map{ruleDataValidator{}},
-				PlanModifiers: []planmodifier.Map{planmodifiers.EmptyMapDefault(RuleObjectType)},
+				Validators: []validator.Map{ruleDataValidator{}},
 			},
 			"changes": schema.Int64Attribute{
 				Description:   "Internal flag",

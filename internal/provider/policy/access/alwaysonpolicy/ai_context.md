@@ -3,7 +3,7 @@
 Package: `internal/provider/policy/access/alwaysonpolicy`.
 
 Status: schema approved and implemented on 2026-10-27. The sole schema
-attribute is the mandatory enabled boolean. The resource is registered in provider.go.
+configurable attribute is the mandatory enabled boolean. Audit and draft metadata are computed. The resource is registered in provider.go.
 
 ## API and SDK
 
@@ -113,3 +113,7 @@ The complete example and import command are under examples/resources/cato_always
 Verification completed: make sort-imports, make test, go build ./..., make lint,
 make vul, and make docs all passed. Vulnerability checking found no vulnerabilities.
 The acceptance package compiled with go test -c -tags acctest; it was not run.
+
+Computed published_time, published_by, revision_id, and revision_name come from the
+policy read response. Create/Update refresh these fields after publication; missing
+audit/draft objects clear the corresponding state values to null.

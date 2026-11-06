@@ -184,6 +184,9 @@ func makeRuleIndexMap(rules map[string]Rule) map[string]map[string]int64 {
 // and returns ordered current and target slices in sectionOrder struct
 func buildSectionOrder(ctx context.Context, state, config RulesIndex, diags *diag.Diagnostics,
 ) (order sectionOrder, sectionIDs map[string]string) {
+	if config.SectionData.IsNull() {
+		config.SectionData = state.SectionData
+	}
 	var currentSections, targetSections map[string]Section
 
 	if !state.SectionData.IsNull() {
@@ -230,6 +233,9 @@ func makeSectionSlice(sectionIDs map[string]string, sectionIndexes map[string]in
 // and returns a map where for each section there are ordered current and target slices of rules
 func buildRuleOrder(ctx context.Context, state, config RulesIndex, sectionIDs map[string]string, diags *diag.Diagnostics,
 ) map[string]ruleOrder {
+	if config.RuleData.IsNull() {
+		config.RuleData = state.RuleData
+	}
 	var currentRules, targetRules map[string]Rule
 
 	if !state.RuleData.IsNull() {
@@ -248,7 +254,11 @@ func buildRuleOrder(ctx context.Context, state, config RulesIndex, sectionIDs ma
 	ruleIDs := makeRuleIDMap(currentRules)
 	currentRuleIndexMap := makeRuleIndexMap(currentRules)
 	targetRuleIndexMap := makeRuleIndexMap(targetRules)
-	validateRules(sectionIDs, currentRuleIndexMap, targetRuleIndexMap, diags)
+	if ruleSectionsChanged(currentRuleIndexMap, targetRuleIndexMap) {
+		validateRuleRelocation(sectionIDs, currentRuleIndexMap, targetRuleIndexMap, diags)
+	} else {
+		validateRules(sectionIDs, currentRuleIndexMap, targetRuleIndexMap, diags)
+	}
 	if diags.HasError() {
 		return nil
 	}

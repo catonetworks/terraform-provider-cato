@@ -257,64 +257,6 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			"ruleListFromPlan": utils.InterfaceToJSONString(ruleListFromPlan),
 		})
 
-		ruleNameIDData, err := r.resourceAPI().PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
-		tflog.Warn(ctx, "Read.PolicyWanFirewallRulesIndex.response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(ruleNameIDData),
-		})
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API EntityLookup error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
-		ruleNameIDMap := make(map[string]string)
-		ruleNameDescriptionMap := make(map[string]string)
-		ruleNameEnabledMap := make(map[string]bool)
-
-		// create map of IFW rule names from the API to their IDs for easy lookup
-		for _, ruleNameIDDataItem := range ruleNameIDData.Policy.WanFirewall.Policy.Rules {
-			ruleNameIDMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.ID
-			ruleNameDescriptionMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Description
-			ruleNameEnabledMap[ruleNameIDDataItem.Rule.Name] = ruleNameIDDataItem.Rule.Enabled
-		}
-
-		tflog.Warn(ctx, "Read.ruleNameIDMap.response", map[string]interface{}{
-			"ruleNameIDMap": utils.InterfaceToJSONString(ruleNameIDMap),
-		})
-
-		sectionIdxAfter, err := r.resourceAPI().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
-		if err != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"Catov2 API PolicyWanFirewallSectionsIndex error",
-				err.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
-		}
-
-		sections := make([]policy.BulkPolicySectionRef, 0, len(sectionIdxAfter.Policy.WanFirewall.Policy.Sections))
-		for _, item := range sectionIdxAfter.Policy.WanFirewall.Policy.Sections {
-			sections = append(sections, policy.BulkPolicySectionRef{
-				ID:   item.Section.ID,
-				Name: item.Section.Name,
-			})
-		}
-
-		rules := make([]policy.BulkPolicyRuleRow, 0, len(ruleNameIDData.Policy.WanFirewall.Policy.Rules))
-		for _, item := range ruleNameIDData.Policy.WanFirewall.Policy.Rules {
-			rules = append(rules, policy.BulkPolicyRuleRow{
-				SectionID:   item.Rule.Section.ID,
-				SectionName: item.Rule.Section.Name,
-				RuleID:      item.Rule.ID,
-				RuleName:    item.Rule.Name,
-				Index:       item.Rule.Index,
-				IsSystem: policy.ElementHasProperty(
-					item.Properties,
-					cato_models.PolicyElementPropertiesEnumSystem,
-				),
-			})
-		}
-
 		planned := make([]policy.BulkPlannedRuleIndex, 0, len(ruleListFromPlan))
 		for _, r := range ruleListFromPlan {
 			planned = append(planned, policy.BulkPlannedRuleIndex{
@@ -324,43 +266,113 @@ func (r *wanRulesIndexResource) moveWanRulesAndSections(
 			})
 		}
 
-		reorderIn, buildErr := policy.BuildPolicyReorderInput(sections, rules, planned)
-		if buildErr != nil {
-			diags = append(diags, diag.NewErrorDiagnostic(
-				"WAN firewall policy reorder",
-				buildErr.Error(),
-			))
-			return basetypes.MapValue{}, basetypes.MapValue{}, diags, buildErr
-		}
+		ruleNameIDMap := make(map[string]string)
+		ruleNameDescriptionMap := make(map[string]string)
+		ruleNameEnabledMap := make(map[string]bool)
+		rules := make([]policy.BulkPolicyRuleRow, 0)
 
-		tflog.Debug(ctx, "PolicyWanFirewallReorderPolicy request", map[string]interface{}{
-			"policyReorderInput": utils.InterfaceToJSONString(reorderIn),
-		})
+		// The planned placements are static, but the rule/section snapshots are
+		// not: concurrent writers (other applies or module instances sharing the
+		// account) can add or remove rules between our snapshot and the
+		// reorderPolicy call, which the API rejects with
+		// reorderPolicyMissingRules/-Sections. Re-snapshot the policy, rebuild
+		// the input, and retry on that signal instead of failing the apply.
+		const reorderSnapshotMaxAttempts = 4
+		for attempt := 1; ; attempt++ {
+			ruleNameIDData, err := r.resourceAPI().PolicyWanFirewallRulesIndex(ctx, r.client.AccountId)
+			if err != nil {
+				diags = append(diags, diag.NewErrorDiagnostic(
+					"Catov2 API PolicyWanFirewallRulesIndex error",
+					err.Error(),
+				))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+			}
+			rules = rules[:0]
+			clear(ruleNameIDMap)
+			clear(ruleNameDescriptionMap)
+			clear(ruleNameEnabledMap)
+			for _, item := range ruleNameIDData.Policy.WanFirewall.Policy.Rules {
+				rules = append(rules, policy.BulkPolicyRuleRow{
+					SectionID:   item.Rule.Section.ID,
+					SectionName: item.Rule.Section.Name,
+					RuleID:      item.Rule.ID,
+					RuleName:    item.Rule.Name,
+					Index:       item.Rule.Index,
+					IsSystem: policy.ElementHasProperty(
+						item.Properties,
+						cato_models.PolicyElementPropertiesEnumSystem,
+					),
+				})
+				ruleNameIDMap[item.Rule.Name] = item.Rule.ID
+				ruleNameDescriptionMap[item.Rule.Name] = item.Rule.Description
+				ruleNameEnabledMap[item.Rule.Name] = item.Rule.Enabled
+			}
 
-		var reorderOut *cato_go_sdk.PolicyWanFirewallReorderPolicy
-		reorderErr := policy.WithAcctestPolicyRevisionCleanupRetryOnce(ctx, "PolicyWanFirewallReorderPolicy", func() error {
-			return r.resourceAPI().DiscardPolicyRevisions(ctx)
-		}, func() error {
-			var callErr error
-			reorderOut, callErr = r.resourceAPI().PolicyWanFirewallReorderPolicy(
-				ctx,
-				&cato_models.WanFirewallPolicyMutationInput{},
-				reorderIn,
-				r.client.AccountId,
-			)
-			return policy.WanFirewallReorderError(reorderOut, callErr)
-		})
-		if reorderErr != nil {
+			sectionIdxAfter, err := r.resourceAPI().PolicyWanFirewallSectionsIndex(ctx, r.client.AccountId)
+			if err != nil {
+				diags = append(diags, diag.NewErrorDiagnostic(
+					"Catov2 API PolicyWanFirewallSectionsIndex error",
+					err.Error(),
+				))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+			}
+			sections := make([]policy.BulkPolicySectionRef, 0, len(sectionIdxAfter.Policy.WanFirewall.Policy.Sections))
+			for _, item := range sectionIdxAfter.Policy.WanFirewall.Policy.Sections {
+				sections = append(sections, policy.BulkPolicySectionRef{
+					ID:   item.Section.ID,
+					Name: item.Section.Name,
+				})
+			}
+
+			reorderIn, buildErr := policy.BuildPolicyReorderInput(sections, rules, planned)
+			if buildErr != nil {
+				diags = append(diags, diag.NewErrorDiagnostic(
+					"WAN firewall policy reorder",
+					buildErr.Error(),
+				))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, buildErr
+			}
+
+			tflog.Debug(ctx, "PolicyWanFirewallReorderPolicy request", map[string]interface{}{
+				"attempt":            attempt,
+				"policyReorderInput": utils.InterfaceToJSONString(reorderIn),
+			})
+
+			var reorderOut *cato_go_sdk.PolicyWanFirewallReorderPolicy
+			reorderErr := policy.WithAcctestPolicyRevisionCleanupRetryOnce(ctx, "PolicyWanFirewallReorderPolicy", func() error {
+				return r.resourceAPI().DiscardPolicyRevisions(ctx)
+			}, func() error {
+				var callErr error
+				reorderOut, callErr = r.resourceAPI().PolicyWanFirewallReorderPolicy(
+					ctx,
+					&cato_models.WanFirewallPolicyMutationInput{},
+					reorderIn,
+					r.client.AccountId,
+				)
+				return policy.WanFirewallReorderError(reorderOut, callErr)
+			})
+			if reorderErr == nil {
+				tflog.Debug(ctx, "PolicyWanFirewallReorderPolicy response", map[string]interface{}{
+					"response": utils.InterfaceToJSONString(reorderOut),
+				})
+				break
+			}
+			if attempt < reorderSnapshotMaxAttempts && policy.ReorderErrLooksLikeStaleSnapshot(reorderErr.Error()) {
+				tflog.Warn(ctx, "reorder input built from stale policy snapshot; re-snapshotting and retrying", map[string]any{
+					"attempt": attempt,
+					"error":   reorderErr.Error(),
+				})
+				if err := policy.SleepReorderSnapshotRetry(ctx, attempt); err != nil {
+					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+				}
+				continue
+			}
 			diags = append(diags, diag.NewErrorDiagnostic(
 				"Catov2 API PolicyWanFirewallReorderPolicy error",
 				reorderErr.Error(),
 			))
 			return basetypes.MapValue{}, basetypes.MapValue{}, diags, reorderErr
 		}
-
-		tflog.Debug(ctx, "PolicyWanFirewallReorderPolicy response", map[string]interface{}{
-			"response": utils.InterfaceToJSONString(reorderOut),
-		})
 
 		// Build final state using API values for computed fields so they are always known post-apply.
 		for _, ruleFromPlan := range ruleListFromPlan {

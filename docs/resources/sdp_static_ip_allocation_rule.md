@@ -3,12 +3,12 @@
 page_title: "cato_sdp_static_ip_allocation_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages a sdp static ip allocation rule. Changes are automatically published. Omitting at on update preserves placement.
+  Manages a rule in the Cato SDP static IP allocation policy. Underlying GraphQL is marked @beta; behavior and fields may change.
 ---
 
 # cato_sdp_static_ip_allocation_rule (Resource)
 
-Manages a sdp static ip allocation rule. Changes are automatically published. Omitting at on update preserves placement.
+Manages a rule in the Cato SDP static IP allocation policy. Underlying GraphQL is marked @beta; behavior and fields may change.
 
 ## Example Usage
 
@@ -57,66 +57,57 @@ resource "cato_sdp_static_ip_allocation_rule" "example" {
 
 ### Required
 
-- `rule` (Attributes) Rule (see [below for nested schema](#nestedatt--rule))
+- `at` (Attributes) Where to insert the rule (see [below for nested schema](#nestedatt--at))
+- `rule` (Attributes) Rule definition (see [below for nested schema](#nestedatt--rule))
 
-### Optional
-
-- `at` (Attributes) At (see [below for nested schema](#nestedatt--at))
-
-<a id="nestedatt--rule"></a>
-### Nested Schema for `rule`
-
-Required:
-
-- `description` (String) Description
-- `enabled` (Boolean) Enabled
-- `ip` (String) Ip
-- `name` (String) Name
-- `source` (Attributes) Source (see [below for nested schema](#nestedatt--rule--source))
-
-Read-Only:
+### Read-Only
 
 - `id` (String) Rule ID
-- `index` (Number) Current rule index
-- `section` (Attributes) Policy section containing the rule (see [below for nested schema](#nestedatt--rule--section))
-
-<a id="nestedatt--rule--source"></a>
-### Nested Schema for `rule.source`
-
-Required:
-
-- `user` (Attributes) User (see [below for nested schema](#nestedatt--rule--source--user))
-
-<a id="nestedatt--rule--source--user"></a>
-### Nested Schema for `rule.source.user`
-
-Optional:
-
-- `id` (String) User ID
-- `name` (String) User name
-
-
-
-<a id="nestedatt--rule--section"></a>
-### Nested Schema for `rule.section`
-
-Read-Only:
-
-- `id` (String) Section ID
-- `name` (String) Section name
-
-
 
 <a id="nestedatt--at"></a>
 ### Nested Schema for `at`
 
 Required:
 
-- `position` (String) Position
+- `position` (String) Position relative to policy, section, or another rule
 
 Optional:
 
-- `ref` (String) Ref
+- `ref` (String) Reference rule or section ID when required by position
+
+
+<a id="nestedatt--rule"></a>
+### Nested Schema for `rule`
+
+Required:
+
+- `enabled` (Boolean) Whether the rule is enabled
+- `ip` (String) Static IP address allocated to the user
+- `name` (String) Rule name
+- `source` (Attributes) User the static IP is allocated to (see [below for nested schema](#nestedatt--rule--source))
+
+Optional:
+
+- `description` (String) Rule description
+
+Read-Only:
+
+- `id` (String) Rule ID
+
+<a id="nestedatt--rule--source"></a>
+### Nested Schema for `rule.source`
+
+Required:
+
+- `user` (Attributes) User reference (see [below for nested schema](#nestedatt--rule--source--user))
+
+<a id="nestedatt--rule--source--user"></a>
+### Nested Schema for `rule.source.user`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
 
 ## Import
 
