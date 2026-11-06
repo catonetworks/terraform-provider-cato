@@ -50,3 +50,27 @@ func (r *optionResource) resourceAPI() ResourceClient {
 	}
 	return &sdkClient{nc.NewDHCPClient(r.client.Catov2)}
 }
+
+// A downstream delete failure is not absence proof; confirm against the exact scoped object.
+func (r *optionResource) confirmDeleted(ctx context.Context, id string, operationErr error) bool {
+	if !nc.IsBackendFailure(operationErr, "deleteOption") {
+		return false
+	}
+	result,
+		err := r.resourceAPI().NetworkConfigDhcpOption(ctx,
+		r.client.AccountId,
+		cato_models.NetworkConfigDhcpOptionRefInput{By: cato_models.ObjectRefByID,
+			Input: id})
+	if err != nil {
+		return nc.IsNotFound(err, "option")
+	}
+	return result != nil && result.NetworkConfig != nil && result.NetworkConfig.Dhcp.Option == nil
+}
+
+func createdID(result *cato.NetworkConfigDhcpCreateOption) string {
+	items := result.GetNetworkConfig().GetDhcp().GetCreateOption().GetOption()
+	if len(items) != 1 {
+		return ""
+	}
+	return items[0].GetID()
+}

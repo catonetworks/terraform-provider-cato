@@ -46,3 +46,27 @@ func (r *forwardingRuleResource) resourceAPI() ResourceClient {
 	}
 	return &sdkClient{nc.NewDNSClient(r.client.Catov2)}
 }
+
+// A downstream delete failure is not absence proof; confirm against the exact scoped object.
+func (r *forwardingRuleResource) confirmDeleted(ctx context.Context, id string, operationErr error) bool {
+	if !nc.IsBackendFailure(operationErr, "deleteForwardingRule") {
+		return false
+	}
+	result,
+		err := r.resourceAPI().NetworkConfigDNSForwardingRule(ctx,
+		r.client.AccountId,
+		cato_models.NetworkConfigDNSForwardingRuleRefInput{By: cato_models.ObjectRefByID,
+			Input: id})
+	if err != nil {
+		return nc.IsNotFound(err, "forwardingRule")
+	}
+	return result != nil && result.NetworkConfig != nil && result.NetworkConfig.DNS.ForwardingRule == nil
+}
+
+func createdID(result *cato.NetworkConfigDNSCreateForwardingRule) string {
+	items := result.GetNetworkConfig().GetDNS().GetCreateForwardingRule().GetForwardingRule()
+	if len(items) != 1 {
+		return ""
+	}
+	return items[0].GetID()
+}

@@ -46,3 +46,27 @@ func (r *relayGroupResource) resourceAPI() ResourceClient {
 	}
 	return &sdkClient{nc.NewDHCPClient(r.client.Catov2)}
 }
+
+// A downstream delete failure is not absence proof; confirm against the exact scoped object.
+func (r *relayGroupResource) confirmDeleted(ctx context.Context, id string, operationErr error) bool {
+	if !nc.IsBackendFailure(operationErr, "deleteRelayGroup") {
+		return false
+	}
+	result,
+		err := r.resourceAPI().NetworkConfigDhcpRelayGroup(ctx,
+		r.client.AccountId,
+		cato_models.NetworkConfigDhcpRelayGroupRefInput{By: cato_models.ObjectRefByID,
+			Input: id})
+	if err != nil {
+		return nc.IsNotFound(err, "relayGroup")
+	}
+	return result != nil && result.NetworkConfig != nil && result.NetworkConfig.Dhcp.RelayGroup == nil
+}
+
+func createdID(result *cato.NetworkConfigDhcpCreateRelayGroup) string {
+	items := result.GetNetworkConfig().GetDhcp().GetCreateRelayGroup().GetRelayGroup()
+	if len(items) != 1 {
+		return ""
+	}
+	return items[0].GetID()
+}
