@@ -69,8 +69,8 @@ resource "cato_socket_lan_firewall_rule" "allow_all" {
 # Block specific ports with weekly alerts
 resource "cato_socket_lan_firewall_rule" "block_ports" {
   at = {
-    position = "LAST_IN_RULE"
-    ref      = cato_socket_lan_network_rule.parent_rule.rule.id
+    position = "AFTER_SUB_RULE"
+    ref      = cato_socket_lan_firewall_rule.allow_all.rule.id
   }
   rule = {
     name      = "Block Insecure HTTP"
@@ -378,7 +378,7 @@ resource "cato_socket_lan_firewall_rule" "kitchen_sink" {
 
 Required:
 
-- `position` (String) Position relative to the parent rule (FIRST_IN_RULE, LAST_IN_RULE, AFTER_RULE, BEFORE_RULE)
+- `position` (String) Position relative to the parent rule (FIRST_IN_RULE, LAST_IN_RULE, AFTER_SUB_RULE, BEFORE_SUB_RULE)
 - `ref` (String) The parent network rule ID or sibling firewall rule ID
 
 

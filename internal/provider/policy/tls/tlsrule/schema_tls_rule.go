@@ -3,6 +3,7 @@ package tlsrule
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:funlen
@@ -43,7 +45,7 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						Required: true,
 						Optional: false,
 						Validators: []validator.String{
-							stringvalidator.OneOf("FIRST_IN_POLICY", "LAST_IN_POLICY", "FIRST_IN_SECTION", "LAST_IN_SECTION", "BEFORE_RULE", "AFTER_RULE"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...),
 						},
 					},
 					"ref": schema.StringAttribute{
@@ -83,7 +85,7 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						Description: "The action applied by TLS Inspection if the rule is matched (INSPECT, BYPASS)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("INSPECT", "BYPASS"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllTLSInspectAction)...),
 						},
 					},
 					"untrusted_certificate_action": schema.StringAttribute{
@@ -91,7 +93,7 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						Required:    false,
 						Optional:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllTLSInspectUntrustedCertificateAction)...),
 						},
 					},
 					"connection_origin": schema.StringAttribute{
@@ -99,7 +101,7 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						Required:    false,
 						Optional:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllConnectionOriginEnum)...),
 						},
 					},
 					"source": schema.SingleNestedAttribute{
@@ -285,11 +287,11 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 						NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("device_posture_profile")},
 					},
 					"platform": schema.StringAttribute{
-						Description: "Platform filter (ANDROID, EMBEDDED, IOS, LINUX, MACOS, WINDOWS)",
+						Description: "Platform filter (ANDROID, CHROMEOS, EMBEDDED, IOS, LINUX, MACOS, WINDOWS)",
 						Required:    false,
 						Optional:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllOperatingSystem)...),
 						},
 					},
 					"application": schema.SingleNestedAttribute{
@@ -462,10 +464,10 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 										},
 									},
 									"protocol": schema.StringAttribute{
-										Description: "Protocol (TCP, UDP, ICMP, ANY)",
+										Description: "Protocol (TCP, UDP, TCP_UDP, ICMP, ANY)",
 										Required:    true,
 										Validators: []validator.String{
-											stringvalidator.OneOf("TCP", "UDP", "ICMP", "ANY"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllIPProtocol)...),
 										},
 									},
 								},
@@ -502,11 +504,11 @@ func (r *tlsInspectionRuleResource) Schema(_ context.Context, _ resource.SchemaR
 								},
 							},
 							"tls_inspect_category": schema.StringAttribute{
-								Description: "TLS Inspection category (POPULAR_CLOUD_APPS, STREAMING_MEDIA)",
+								Description: "TLS Inspection category (POPULAR_CLOUD_APPS, SAFE_TO_INSPECT_DOMAINS)",
 								Required:    false,
 								Optional:    true,
 								Validators: []validator.String{
-									stringvalidator.OneOf("POPULAR_CLOUD_APPS", "STREAMING_MEDIA"),
+									stringvalidator.OneOf(utils.ToStrings(cato_models.AllTLSInspectSystemCategory)...),
 								},
 							},
 							"country": schema.SetNestedAttribute{

@@ -4,6 +4,7 @@ package wnwrule
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:funlen
@@ -66,14 +68,14 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "Type of WAN rule (INTERNET or WAN)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("INBOUND_INTERNET", "INTERNET", "WAN"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleType)...),
 						},
 					},
 					"route_type": schema.StringAttribute{
 						Description: "Routing method for the rule",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("BACKHAUL", "BACKHAUL_HAIRPINNING", "NAT", "NONE", "OPTIMIZED", "VIA"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleRouteType)...),
 						},
 					},
 					"source": schema.SingleNestedAttribute{
@@ -459,7 +461,7 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 											Description: "Protocol",
 											Optional:    true,
 											Validators: []validator.String{
-												stringvalidator.OneOf("ANY", "ICMP", "TCP", "TCP_UDP", "UDP"),
+												stringvalidator.OneOf(utils.ToStrings(cato_models.AllIPProtocol)...),
 											},
 										},
 									},
@@ -971,7 +973,7 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 														Description: "Protocol",
 														Optional:    true,
 														Validators: []validator.String{
-															stringvalidator.OneOf("ANY", "ICMP", "TCP", "TCP_UDP", "UDP"),
+															stringvalidator.OneOf(utils.ToStrings(cato_models.AllIPProtocol)...),
 														},
 													},
 												},
@@ -1039,21 +1041,21 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Description: "Transport type",
 										Optional:    true,
 										Validators: []validator.String{
-											stringvalidator.OneOf("ALTERNATIVE_WAN", "AUTOMATIC", "NONE", "OFF_CLOUD", "WAN"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleTransportType)...),
 										},
 									},
 									"primary_interface_role": schema.StringAttribute{
 										Description: "Primary interface role",
 										Optional:    true,
 										Validators: []validator.String{
-											stringvalidator.OneOf("AUTOMATIC", "NONE", "WAN1", "WAN2", "WAN3", "WAN4", "WAN5", "WAN6"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleInterfaceRole)...),
 										},
 									},
 									"secondary_interface_role": schema.StringAttribute{
 										Description: "Secondary interface role",
 										Optional:    true,
 										Validators: []validator.String{
-											stringvalidator.OneOf("AUTOMATIC", "NONE", "WAN1", "WAN2", "WAN3", "WAN4", "WAN5", "WAN6"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleInterfaceRole)...),
 										},
 									},
 								},
@@ -1066,21 +1068,21 @@ func (r *wanNetworkRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Description: "Transport type",
 										Optional:    true,
 										Validators: []validator.String{
-											stringvalidator.OneOf("ALTERNATIVE_WAN", "AUTOMATIC", "NONE", "OFF_CLOUD", "WAN"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleTransportType)...),
 										},
 									},
 									"primary_interface_role": schema.StringAttribute{
 										Description: "Primary interface role",
 										Optional:    true,
 										Validators: []validator.String{
-											stringvalidator.OneOf("AUTOMATIC", "NONE", "WAN1", "WAN2", "WAN3", "WAN4", "WAN5", "WAN6"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleInterfaceRole)...),
 										},
 									},
 									"secondary_interface_role": schema.StringAttribute{
 										Description: "Secondary interface role",
 										Optional:    true,
 										Validators: []validator.String{
-											stringvalidator.OneOf("AUTOMATIC", "NONE", "WAN1", "WAN2", "WAN3", "WAN4", "WAN5", "WAN6"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllWanNetworkRuleInterfaceRole)...),
 										},
 									},
 								},

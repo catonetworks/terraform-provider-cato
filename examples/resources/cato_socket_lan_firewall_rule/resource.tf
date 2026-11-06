@@ -55,8 +55,8 @@ resource "cato_socket_lan_firewall_rule" "allow_all" {
 # Block specific ports with weekly alerts
 resource "cato_socket_lan_firewall_rule" "block_ports" {
   at = {
-    position = "LAST_IN_RULE"
-    ref      = cato_socket_lan_network_rule.parent_rule.rule.id
+    position = "AFTER_SUB_RULE"
+    ref      = cato_socket_lan_firewall_rule.allow_all.rule.id
   }
   rule = {
     name      = "Block Insecure HTTP"

@@ -64,7 +64,7 @@ resource "cato_group_members" "members" {
 
 Required:
 
-- `type` (String) Member type: FLOATING_SUBNET, GLOBAL_IP_RANGE, HOST, NETWORK_INTERFACE, SITE, SITE_NETWORK_SUBNET
+- `type` (String) Member type: DEVICE, FLOATING_SUBNET, GLOBAL_IP_RANGE, HOST, NETWORK_INTERFACE, SITE, SITE_NETWORK_SUBNET, VLAN
 
 Optional:
 

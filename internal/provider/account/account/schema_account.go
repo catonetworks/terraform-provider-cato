@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -10,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -40,7 +43,7 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:    true,
 				Default:     stringdefault.StaticString("SINGLE_TENANT"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("SINGLE_TENANT", "MULTI_TENANT"),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllAccountTenancy)...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -63,7 +66,7 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:    true,
 				Default:     stringdefault.StaticString("CUSTOMER"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("CUSTOMER", "PARTNER"),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllAccountProfileType)...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

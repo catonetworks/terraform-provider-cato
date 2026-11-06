@@ -3,6 +3,7 @@ package ifrule
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:funlen,lll
@@ -47,7 +49,7 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Required:    true,
 						Optional:    false,
 						Validators: []validator.String{
-							stringvalidator.OneOf("AFTER_RULE", "BEFORE_RULE", "FIRST_IN_POLICY", "FIRST_IN_SECTION", "LAST_IN_POLICY", "LAST_IN_SECTION"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...),
 						},
 					},
 					"ref": schema.StringAttribute{
@@ -261,7 +263,7 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 							stringplanmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllConnectionOriginEnum)...),
 						},
 						Computed: true,
 					},
@@ -591,7 +593,14 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Description: "The action applied by the Internet Firewall if the rule is matched (https://api.catonetworks.com/documentation/#definition-InternetFirewallActionEnum)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("ALLOW", "BLOCK", "PROMPT", "RBI", "CAPTIVE_PORTAL"),
+							// SUB_POLICY is an internal response action for sub-policy scope rules.
+							stringvalidator.OneOf(
+								string(cato_models.InternetFirewallActionEnumAllow),
+								string(cato_models.InternetFirewallActionEnumBlock),
+								string(cato_models.InternetFirewallActionEnumPrompt),
+								string(cato_models.InternetFirewallActionEnumRbi),
+								string(cato_models.InternetFirewallActionEnumCaptivePortal),
+							),
 						},
 					},
 					"tracking": schema.SingleNestedAttribute{
@@ -636,7 +645,7 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Optional:    true,
 										Required:    false,
 										Validators: []validator.String{
-											stringvalidator.OneOf("DAILY", "HOURLY", "IMMEDIATE", "WEEKLY"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRuleTrackingFrequencyEnum)...),
 										},
 										PlanModifiers: []planmodifier.String{
 											stringplanmodifier.UseStateForUnknown(), // Avoid drift
@@ -696,7 +705,7 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 									stringplanmodifier.UseStateForUnknown(), // Avoid drift
 								},
 								Validators: []validator.String{
-									stringvalidator.OneOf("ALWAYS", "CUSTOM_RECURRING", "CUSTOM_TIMEFRAME", "WORKING_HOURS"),
+									stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyActiveOnEnum)...),
 								},
 							},
 							"custom_timeframe": schema.SingleNestedAttribute{
@@ -743,7 +752,7 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										Required:    false,
 										Optional:    true,
 										Validators: []validator.List{
-											listvalidator.ValueStringsAre(stringvalidator.OneOf("SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY")),
+											listvalidator.ValueStringsAre(stringvalidator.OneOf(utils.ToStrings(cato_models.AllDayOfWeek)...)),
 										},
 									},
 								},
@@ -1035,7 +1044,7 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										listplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
 									Validators: []validator.List{
-										listvalidator.ValueStringsAre(stringvalidator.OneOf("ANDROID", "EMBEDDED", "IOS", "LINUX", "MACOS", "WINDOWS")),
+										listvalidator.ValueStringsAre(stringvalidator.OneOf(utils.ToStrings(cato_models.AllOperatingSystem)...)),
 										listvalidator.SizeAtLeast(1),
 									},
 								},
@@ -1243,7 +1252,7 @@ func (r *InternetFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 										stringplanmodifier.UseStateForUnknown(), // Avoid drift
 									},
 									Validators: []validator.String{
-										stringvalidator.OneOf("ANY", "REMOTE", "SITE"),
+										stringvalidator.OneOf(utils.ToStrings(cato_models.AllConnectionOriginEnum)...),
 									},
 								},
 							},

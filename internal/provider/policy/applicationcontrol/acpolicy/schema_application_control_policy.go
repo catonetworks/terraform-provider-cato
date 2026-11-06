@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *applicationControlPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -32,7 +34,7 @@ func (r *applicationControlPolicyResource) Schema(_ context.Context, _ resource.
 				Description: "Data control feature toggle (ENABLED or DISABLED)",
 				Required:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(string(cato_models.PolicyToggleStateEnabled), string(cato_models.PolicyToggleStateDisabled)),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyToggleState)...),
 				},
 			},
 			"published_time": schema.StringAttribute{

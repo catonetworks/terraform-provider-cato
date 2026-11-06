@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -41,16 +42,7 @@ func (d *licensingInfoDataSource) Schema(_ context.Context, _ datasource.SchemaR
 				Required:    false,
 				Optional:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(
-						"CATO_ANTI_MALWARE", "CATO_ANTI_MALWARE_NG", "CATO_CASB", "CATO_DATALAKE",
-						"CATO_DATALAKE_12M", "CATO_DATALAKE_3M", "CATO_DATALAKE_6M", "CATO_DEM",
-						"CATO_DLP", "CATO_EPP", "CATO_ILMM", "CATO_IOT_OT", "CATO_IP_ADD", "CATO_IPS",
-						"CATO_MANAGED_XDR", "CATO_MDR", "CATO_NOCAAS_HF", "CATO_PB", "CATO_PB_SSE",
-						"CATO_RBI", "CATO_SAAS", "CATO_SAAS_SECURITY_API", "CATO_SAAS_SECURITY_API_ALL_APPS",
-						"CATO_SAAS_SECURITY_API_ONE_APP", "CATO_SAAS_SECURITY_API_TWO_APPS", "CATO_SITE",
-						"CATO_SSE_SITE", "CATO_THREAT_PREVENTION", "CATO_THREAT_PREVENTION_ADV",
-						"CATO_XDR_PRO", "CATO_ZTNA_USERS", "MOBILE_USERS",
-					),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllLicenseSku)...),
 				},
 			},
 			"is_active": schema.BoolAttribute{

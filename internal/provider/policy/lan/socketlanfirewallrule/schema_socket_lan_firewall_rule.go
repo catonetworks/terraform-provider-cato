@@ -3,6 +3,7 @@ package socketlanfirewallrule
 import (
 	"context"
 
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -20,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 //nolint:funlen
@@ -36,11 +38,11 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 				Optional:    false,
 				Attributes: map[string]schema.Attribute{
 					"position": schema.StringAttribute{
-						Description: "Position relative to the parent rule (FIRST_IN_RULE, LAST_IN_RULE, AFTER_RULE, BEFORE_RULE)",
+						Description: "Position relative to the parent rule (FIRST_IN_RULE, LAST_IN_RULE, AFTER_SUB_RULE, BEFORE_SUB_RULE)",
 						Required:    true,
 						Optional:    false,
 						Validators: []validator.String{
-							stringvalidator.OneOf("FIRST_IN_RULE", "LAST_IN_RULE", "AFTER_RULE", "BEFORE_RULE"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicySubRulePositionEnum)...),
 						},
 					},
 					"ref": schema.StringAttribute{
@@ -80,14 +82,14 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 						Description: "Direction of the traffic (TO, BOTH)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("TO", "BOTH"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketLanFirewallDirection)...),
 						},
 					},
 					"action": schema.StringAttribute{
 						Description: "Action (ALLOW, BLOCK)",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("ALLOW", "BLOCK"),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketLanFirewallAction)...),
 						},
 					},
 					"source": schema.SingleNestedAttribute{
@@ -586,7 +588,7 @@ func (r *socketLanFirewallRuleResource) Schema(_ context.Context, _ resource.Sch
 										Optional: true,
 										Required: false,
 										Validators: []validator.String{
-											stringvalidator.OneOf("DAILY", "HOURLY", "IMMEDIATE", "WEEKLY"),
+											stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRuleTrackingFrequencyEnum)...),
 										},
 										PlanModifiers: []planmodifier.String{
 											stringplanmodifier.UseStateForUnknown(), // Avoid drift

@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func (r *applicationControlRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -36,10 +38,7 @@ func (r *applicationControlRuleResource) Schema(_ context.Context, _ resource.Sc
 							stringplanmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf(
-								"AFTER_RULE", "BEFORE_RULE", "FIRST_IN_POLICY", "FIRST_IN_SECTION",
-								"LAST_IN_POLICY", "LAST_IN_SECTION",
-							),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRulePositionEnum)...),
 						},
 					},
 					"ref": schema.StringAttribute{
@@ -75,11 +74,7 @@ func (r *applicationControlRuleResource) Schema(_ context.Context, _ resource.Sc
 						Description: "Which nested rule block is active",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf(
-								string(cato_models.ApplicationControlRuleTypeApplication),
-								string(cato_models.ApplicationControlRuleTypeData),
-								string(cato_models.ApplicationControlRuleTypeFile),
-							),
+							stringvalidator.OneOf(utils.ToStrings(cato_models.AllApplicationControlRuleType)...),
 						},
 					},
 					"application_rule": schema.SingleNestedAttribute{

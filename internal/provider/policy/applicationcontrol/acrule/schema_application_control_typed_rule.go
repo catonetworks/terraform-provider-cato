@@ -16,6 +16,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/planmodifiers"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	idname "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 func applicationControlScheduleSchemaAttributes() map[string]schema.Attribute {
@@ -74,7 +75,7 @@ func applicationControlTrackingSchemaAttributes() map[string]schema.Attribute {
 					Optional: true,
 					Computed: true,
 					Validators: []validator.String{
-						stringvalidator.OneOf("DAILY", "HOURLY", "IMMEDIATE", "WEEKLY"),
+						stringvalidator.OneOf(utils.ToStrings(cato_models.AllPolicyRuleTrackingFrequencyEnum)...),
 					},
 					Default: stringdefault.StaticString("HOURLY"),
 					PlanModifiers: []planmodifier.String{
@@ -113,22 +114,14 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			Description: "Rule action",
 			Required:    true,
 			Validators: []validator.String{
-				stringvalidator.OneOf(
-					string(cato_models.ApplicationControlActionAllow),
-					string(cato_models.ApplicationControlActionBlock),
-					string(cato_models.ApplicationControlActionMonitor),
-				),
+				stringvalidator.OneOf(utils.ToStrings(cato_models.AllApplicationControlAction)...),
 			},
 		},
 		"severity": schema.StringAttribute{
 			Description: "Rule severity",
 			Required:    true,
 			Validators: []validator.String{
-				stringvalidator.OneOf(
-					string(cato_models.ApplicationControlSeverityHigh),
-					string(cato_models.ApplicationControlSeverityMedium),
-					string(cato_models.ApplicationControlSeverityLow),
-				),
+				stringvalidator.OneOf(utils.ToStrings(cato_models.AllApplicationControlSeverity)...),
 			},
 		},
 		"schedule": schema.SingleNestedAttribute{
@@ -213,10 +206,7 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			Computed:    true,
 			Default:     stringdefault.StaticString("ALL"),
 			Validators: []validator.String{
-				stringvalidator.OneOf(
-					string(cato_models.ApplicationControlSatisfyAll),
-					string(cato_models.ApplicationControlSatisfyAny),
-				),
+				stringvalidator.OneOf(utils.ToStrings(cato_models.AllApplicationControlSatisfy)...),
 			},
 		},
 		"action_config": schema.SingleNestedAttribute{
@@ -258,10 +248,7 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 				stringplanmodifier.UseStateForUnknown(),
 			},
 			Validators: []validator.String{
-				stringvalidator.OneOf(
-					string(cato_models.ApplicationControlSatisfyAll),
-					string(cato_models.ApplicationControlSatisfyAny),
-				),
+				stringvalidator.OneOf(utils.ToStrings(cato_models.AllApplicationControlSatisfy)...),
 			},
 		},
 		"dlp_profile": schema.SingleNestedAttribute{

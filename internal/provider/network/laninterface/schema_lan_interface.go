@@ -51,9 +51,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "SocketInterface destination type (https://api.catonetworks.com/documentation/#definition-SocketInterfaceDestType)",
 				Required:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(
-						"INTERFACE_DISABLED", "LAN", "LAN_AND_HA", lanLagMasterDestType, lanLagMasterAndVrrpDestType, "VRRP", "VRRP_AND_LAN",
-					),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketInterfaceDestType)...),
 				},
 			},
 			"local_ip": schema.StringAttribute{
@@ -81,7 +79,7 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    false,
 				Optional:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("DIRECT_LINK", "VIA_SWITCH"),
+					stringvalidator.OneOf(utils.ToStrings(cato_models.AllVrrpType)...),
 				},
 			},
 		},
