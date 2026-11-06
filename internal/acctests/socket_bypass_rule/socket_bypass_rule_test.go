@@ -31,7 +31,7 @@ func TestAccSocketBypassRule(t *testing.T) {
 		}()).Replace(`resource "cato_socket_bypass_rule" "test" {
 at = { position = "${position}" }
 rule = {
- action = { port = "AUTOMATIC", event = { enabled = false } }
+ action = { port = "AUTOMATIC", event_enabled = false }
  description = "${description}"
  destination = {
   application = [], custom_app = [], domain = [], fqdn = [], global_ip_range = []
@@ -99,6 +99,8 @@ rule = {
 			return nil
 		},
 		PreCheck: acc.CheckCMAVars(t),
+		// The API omits wholly empty service/site selectors, so import cannot
+		// recover their configured object-presence markers. Keep checking their values.
 		Steps: acc.WithStableResourceID([]resource.TestStep{
 			{Config: config(name, "initial"), Check: resource.TestCheckResourceAttrSet(resourceName, "rule.id")},
 			{Config: config(name, "initial"), PlanOnly: true, ExpectNonEmptyPlan: false},
@@ -108,7 +110,7 @@ rule = {
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.service.%", "rule.site.%"}},
 			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckResourceAttr(resourceName, "rule.name", "acctest-socket_bypass_rule-"+name+"-updated")},
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
 				object := state.RootModule().Resources[resourceName]
@@ -116,7 +118,7 @@ rule = {
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.service.%", "rule.site.%"}},
 		}, resourceName, "rule.id", published),
 	})
 }
