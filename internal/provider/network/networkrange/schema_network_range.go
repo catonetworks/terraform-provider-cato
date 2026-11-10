@@ -66,7 +66,6 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description:   networkRangeMDNSReflectorDescription,
 				Optional:      true,
 				Computed:      true,
-				Default:       booldefault.StaticBool(false),
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{

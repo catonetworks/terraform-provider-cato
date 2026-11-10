@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Known issues (API/SDK side, not fixable in the provider)
+- `cato_socket_lan_firewall_rule`: publishing (and reading) a socket LAN policy that contains a firewall sub-rule fails with a policy-platform serialization error — the API declares `rule.firewall[].access` as non-null `EntityAccess`, but rules created through the public `socketLanFirewallAddRule` mutation have no access value (the input type carries no access field, and the AddRule response deliberately omits the field, which is why creation itself succeeds). Requires an API fix (nullable/defaulted `access`) or a cato-go-sdk regeneration that drops `access` from the `policy.socketLan` query/publish selections.
+- `cato_socket_site` / `cato_app_connector`: the platform's location-resolution service intermittently rejects known cities (`City [Paris] is unknown`, `Cannot resolve location for city 'New York'`, both `DOWNSTREAM_SERVICE_ERROR`) — the same requests succeeded on earlier runs with identical inputs.
+
+### Fixes
+- `cato_socket_site`: `site_location.state_code` is now Computed with `UseStateForUnknown`, and an omitted `state_code` stays null in state instead of absorbing the API-resolved value — fixes "Provider produced inconsistent result after apply" when the config omits it.
+- `cato_network_range`: an omitted `dhcp_settings` block now stays `ACCOUNT_DEFAULT` in state instead of being overwritten with the API-resolved values — fixes inconsistent `dhcp_type`/`dhcp_microsegmentation` results after apply.
+- `cato_network_range` / `cato_socket_site`: `mdns_reflector` no longer defaults to `false`. An omitted value stays null and is not sent to the API, which previously caused "mDNS reflector is not supported for this network range configuration" on Routed ranges. **Behavior change** for configurations that relied on the implicit `false` default — set `mdns_reflector = false` explicitly to keep the old input.
+- `cato_group`: state now tracks only the members declared in the resource's configuration; members added out-of-band (including via `cato_group_members`) are no longer absorbed into state on refresh.
+- `cato_socket_lan_firewall_rule` / `cato_socket_lan_network_rule`: rule mutations and policy revision publishes now retry when the API reports concurrent policy revisions, rule creation validates the mutation status (not just the error list), and post-mutation policy read-backs retry transient backend errors — mirrors the internet firewall resource's behavior.
+
 ## 1.5.0-prerelease.1 (2026-11-04)
 
 ### Features

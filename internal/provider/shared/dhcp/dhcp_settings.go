@@ -119,8 +119,16 @@ func lookupDhcpRelayGroupID(ctx context.Context, client SdkClienter, diags *diag
 
 // SettingsDefault returns types.Object of dhcp.Settings, with type=ACCOUNT_DEFAULT, other fields null.
 func SettingsDefault(ctx context.Context, diags *diag.Diagnostics) types.Object {
+	return SettingsDefaultWithType(ctx, cato_models.DhcpTypeAccountDefault, diags)
+}
+
+// SettingsDefaultWithType returns a dhcp.Settings object carrying only the given dhcp_type
+// (all other fields null). It mirrors the plan modifier's default selection so hydration can
+// reproduce the exact sentinel the plan used (ACCOUNT_DEFAULT for native/VLAN ranges,
+// DHCP_DISABLED for routed/direct ranges) and avoid an inconsistent result after apply.
+func SettingsDefaultWithType(ctx context.Context, dhcpType cato_models.DhcpType, diags *diag.Diagnostics) types.Object {
 	tfDhcpSettings := Settings{
-		DhcpType:              types.StringValue(string(cato_models.DhcpTypeAccountDefault)),
+		DhcpType:              types.StringValue(string(dhcpType)),
 		IPRange:               types.StringNull(),
 		RelayGroupID:          types.StringNull(),
 		RelayGroupName:        types.StringNull(),
@@ -132,6 +140,17 @@ func SettingsDefault(ctx context.Context, diags *diag.Diagnostics) types.Object 
 		return types.ObjectNull(SettingsAttrTypes)
 	}
 	return dhcpSettingsObj
+}
+
+// SettingsDefaultForRangeType returns the default dhcp_settings object the plan modifier would
+// pick for a range of the given type: ACCOUNT_DEFAULT for native/VLAN, DHCP_DISABLED otherwise.
+func SettingsDefaultForRangeType(ctx context.Context, rangeType cato_models.SubnetType, diags *diag.Diagnostics) types.Object {
+	switch rangeType {
+	case cato_models.SubnetTypeNative, cato_models.SubnetTypeVlan:
+		return SettingsDefaultWithType(ctx, cato_models.DhcpTypeAccountDefault, diags)
+	default:
+		return SettingsDefaultWithType(ctx, cato_models.DhcpTypeDhcpDisabled, diags)
+	}
 }
 
 // ParseSettings converts API DHCP settings data to the types.Object of dhcp.Settings
@@ -173,6 +192,34 @@ func ParseSettings(ctx context.Context, client SdkClienter,
 		return types.ObjectNull(SettingsAttrTypes)
 	}
 	return dhcpSettingsObj
+}
+
+// PreservePlannedMicrosegmentation keeps an explicitly planned dhcp_microsegmentation value
+// when the API view reports none. The API only materializes the flag for DHCP_RANGE, while a
+// config may legally set it to false for any dhcp_type - writing the API's null over the
+// planned false would be an inconsistent result after apply.
+func PreservePlannedMicrosegmentation(ctx context.Context, parsedObj, plannedObj types.Object,
+	diags *diag.Diagnostics,
+) types.Object {
+	if !utils.HasValue(plannedObj) || !utils.HasValue(parsedObj) {
+		return parsedObj
+	}
+	var parsed, planned Settings
+	if utils.CheckErr(diags, parsedObj.As(ctx, &parsed, basetypes.ObjectAsOptions{})) ||
+		utils.CheckErr(diags, plannedObj.As(ctx, &planned, basetypes.ObjectAsOptions{})) {
+		return parsedObj
+	}
+	if !parsed.DhcpMicrosegmentation.IsNull() ||
+		planned.DhcpMicrosegmentation.IsNull() || planned.DhcpMicrosegmentation.IsUnknown() {
+		return parsedObj
+	}
+	parsed.DhcpMicrosegmentation = planned.DhcpMicrosegmentation
+	obj, objDiags := types.ObjectValueFrom(ctx, SettingsAttrTypes, parsed)
+	diags.Append(objDiags...)
+	if diags.HasError() {
+		return parsedObj
+	}
+	return obj
 }
 
 // GetRelayGroupName looks up the DHCP relay group name based on the provided relay group ID.

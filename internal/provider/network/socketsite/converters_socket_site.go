@@ -63,6 +63,54 @@ func prepareSocketSiteInput(ctx context.Context, plan *SocketSite, diags *diag.D
 	}
 }
 
+// vrrpDestTypeSuffix is the suffix the Cato API appends to a socket interface destination
+// type once a second socket is physically connected and the HA pair forms. It is never
+// accepted as an input value by siteUpdateSocketInterface.
+const vrrpDestTypeSuffix = "_AND_VRRP"
+
+// stripVrrpForAPI reduces a "*_AND_VRRP" destination type to its settable base type.
+// The API appends the _AND_VRRP suffix automatically after HA forms; siteUpdateSocketInterface
+// rejects *_AND_VRRP as an input value on both create and update (only LAN, LAN_LAG_MEMBER and
+// LAN_LAG_MASTER are settable), so LAN_LAG_MASTER_AND_VRRP reduces to LAN_LAG_MASTER and any
+// other *_AND_VRRP variant reduces to LAN. The configured *_AND_VRRP value is kept in Terraform
+// state (see parsedInterfaceDestType); the promotion itself happens server-side once the second
+// socket actually exists.
+func stripVrrpForAPI(destType cato_models.SocketInterfaceDestType) cato_models.SocketInterfaceDestType {
+	if !strings.HasSuffix(string(destType), vrrpDestTypeSuffix) {
+		return destType
+	}
+	if destType == cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp {
+		return cato_models.SocketInterfaceDestTypeLanLagMaster
+	}
+	return cato_models.SocketInterfaceDestTypeLan
+}
+
+// parsedInterfaceDestType decides which interface_dest_type value to store in state after an
+// API read-back.
+//
+// On the apply paths (Create/Update, isApplyPath=true) "prior" carries the PLANNED value and it
+// wins whenever the user set one: the API is only ever sent the stripped base type (see
+// stripVrrpForAPI), so the read-back reports the base type while Terraform requires the applied
+// state to equal the planned value exactly.
+//
+// On the Read path (isApplyPath=false) "prior" carries the previous state and is kept only for
+// the single-socket drift case: prior holds "X_AND_VRRP" while the API still reports the base
+// "X" because the HA pair has not formed yet (never downgrade). Anything else — including the
+// server-side *_AND_VRRP promotion once the second socket connects — stores the API value as-is.
+func parsedInterfaceDestType(prior types.String, apiDestType *string, isApplyPath bool) types.String {
+	if !utils.HasValue(prior) {
+		return types.StringPointerValue(apiDestType)
+	}
+	if isApplyPath {
+		return prior
+	}
+	if apiDestType != nil &&
+		stripVrrpForAPI(cato_models.SocketInterfaceDestType(prior.ValueString())) == cato_models.SocketInterfaceDestType(*apiDestType) {
+		return prior
+	}
+	return types.StringPointerValue(apiDestType)
+}
+
 // prepareSocketInterfaceInput prepares inputs for SiteUpdateSocketInterface API, on error updates diags.
 func prepareSocketInterfaceInput(
 	ctx context.Context,
@@ -101,6 +149,10 @@ func prepareSocketInterfaceInput(
 	if interfaceDestType == "" {
 		interfaceDestType = cato_models.SocketInterfaceDestTypeLan
 	}
+	// *_AND_VRRP is never settable via the API (create or update) — send the base type. The
+	// configured *_AND_VRRP value stays in state (see parsedInterfaceDestType). Stripping happens
+	// before the Lag/Lan checks below so a reduced LAN_LAG_MASTER still carries lag.minLinks.
+	interfaceDestType = stripVrrpForAPI(interfaceDestType)
 
 	ifaceName := convert.KnownStringPointer(planNativeRange.InterfaceName)
 	if ifaceName == nil {
@@ -222,15 +274,11 @@ func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetai
 		City:        types.StringPointerValue(siteLoc.GetCityName()),
 	}
 
-	// API sometimes returns empty string and sometimes null for city - use what is in the plan in that case
-	city := siteLoc.GetCityName()
-	if ((city == nil) || (*city == "")) && utils.HasValue(siteLocation) {
+	if utils.HasValue(siteLocation) {
 		if utils.CheckErr(diags, siteLocation.As(ctx, &planLocation, basetypes.ObjectAsOptions{})) {
 			return types.ObjectNull(tf.SiteLocationResourceAttrTypes)
 		}
-		if planLocation.City.IsNull() || (utils.HasValue(planLocation.City) && (planLocation.City.ValueString() == "")) {
-			tfLocation.City = planLocation.City
-		}
+		preservePlannedSiteLocationValues(planLocation, siteLoc.GetCityName(), &tfLocation)
 	}
 
 	locObj, objDiags := types.ObjectValueFrom(ctx, tf.SiteLocationResourceAttrTypes, tfLocation)
@@ -240,6 +288,20 @@ func (r *socketSiteResource) parseSiteLocation(ctx context.Context, siteGenDetai
 	}
 
 	return locObj
+}
+
+// preservePlannedSiteLocationValues keeps plan-held values the API reports differently:
+// the API sometimes returns empty string and sometimes null for city, and it resolves a
+// concrete state code (e.g. "US-CA") even when config omits state_code - both would
+// otherwise produce an inconsistent result after apply.
+func preservePlannedSiteLocationValues(planLocation tf.SiteLocation, apiCity *string, tfLocation *tf.SiteLocation) {
+	if (apiCity == nil || *apiCity == "") &&
+		(planLocation.City.IsNull() || (utils.HasValue(planLocation.City) && planLocation.City.ValueString() == "")) {
+		tfLocation.City = planLocation.City
+	}
+	if planLocation.StateCode.IsNull() {
+		tfLocation.StateCode = types.StringNull()
+	}
 }
 
 // parseSockets converts API site socket data to the types.Set of Socket
@@ -396,6 +458,8 @@ func convertFindNativeRangeValues(siteID string) (resultInput cato_models.Networ
 }
 
 // convertParseNativeRangeValues converts between the Terraform model and SDK values.
+// On the apply paths (Create/Update) stateNativeRange/tfStateNativeRange carry the PLANNED
+// native range; on Read they carry the prior state (isApplyPath=false).
 func convertParseNativeRangeValues(
 	ctx context.Context,
 	networkRange *cato_go_sdk.NetworkRangeList_Site_NetworkRangeList_Items,
@@ -405,12 +469,15 @@ func convertParseNativeRangeValues(
 	priorObjDiags *diag.Diagnostics,
 	tfStateNativeRange NativeRange,
 	dhcpSettingsObj types.Object,
+	isApplyPath bool,
 ) (resultNetRangeObj basetypes.ObjectValue) {
 	objDiags := *priorObjDiags
 	defer func() { *priorObjDiags = objDiags }()
 	lagMinLinks := types.Int64Null()
+	priorInterfaceDestType := types.StringNull()
 	if utils.HasValue(stateNativeRange) {
 		lagMinLinks = tfStateNativeRange.LagMinLinks
+		priorInterfaceDestType = tfStateNativeRange.InterfaceDestType
 	}
 
 	// Fix interface index - API sometimes returns 'INT_5', sometimes just 5
@@ -449,8 +516,12 @@ func convertParseNativeRangeValues(
 		Vlan:                  types.Int64PointerValue(networkRange.Vlan),
 		MdnsReflector:         types.BoolValue(networkRange.MdnsReflector),
 		LagMinLinks:           lagMinLinks,
-		InterfaceDestType:     types.StringPointerValue(nativeInterface.destType),
+		InterfaceDestType:     parsedInterfaceDestType(priorInterfaceDestType, nativeInterface.destType, isApplyPath),
 	}
+
+	// The native range is always a NATIVE range (never Routed), so the API's mdns_reflector
+	// value is authoritative and is surfaced as-is (removing the Default(false) on the schema
+	// is enough to avoid the inconsistent-result since an omitted value plans as unknown).
 
 	resultNetRangeObj, objDiags = types.ObjectValueFrom(ctx, SiteNativeRangeResourceAttrTypes, tfNativeRange)
 	diags.Append(objDiags...)

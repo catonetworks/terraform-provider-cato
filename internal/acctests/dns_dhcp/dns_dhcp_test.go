@@ -92,7 +92,7 @@ func restoreBaseline(t *testing.T, client *catoclient.ProviderSDKClient, dns *ca
 func liveInputs(t *testing.T) (siteID string, servers []string, tag int) {
 	t.Helper()
 	acc.CheckCMAVars(t)()
-	if !dnsDHCPEnvironmentAllowed(os.Getenv("CATO_BASEURL"), acc.CatoAccountID, os.Getenv("TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID")) {
+	if !dnsDHCPEnvironmentAllowed(acc.CatoEndpoint, acc.CatoAccountID, os.Getenv("TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID")) {
 		t.Fatal("DNS/DHCP requires HTTPS and TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID matching the dedicated test account")
 	}
 	if os.Getenv("DISABLE_POLICY_RULE_CLEANUP") != "true" {

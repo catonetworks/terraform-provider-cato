@@ -24,7 +24,7 @@ func TestAccDNSDHCPDeletedParent(t *testing.T) {
 		t.Skipf("set %s=true to run DNS/DHCP acceptance tests", envEnableDNSDHCPCRUD)
 	}
 	_, servers, _ := liveInputs(t)
-	sdk, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, &http.Client{Timeout: time.Minute}, nil)
+	sdk, err := cato.New(acc.CatoEndpoint, acc.CatoToken, acc.CatoAccountID, &http.Client{Timeout: time.Minute}, nil)
 	require.NoError(t, err)
 	for _, action := range []string{"refresh", "destroy"} {
 		t.Run(action, func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestAccDNSDHCPDeletedParent(t *testing.T) {
 			})
 			config := fmt.Sprintf(`
 provider "cato" {
- account_id = %q
+ %s
  retry_max = 0
  version_check_disabled = true
 }
@@ -63,7 +63,7 @@ resource "cato_dns_site_settings" "parent" {
  site = { id = %q }
  primary_server = %q
 }
-`, acc.CatoAccountID, siteID, servers[0])
+`, acc.ProviderAuthAttr(), siteID, servers[0])
 			removed := func(state *terraform.State) error {
 				if _, ok := state.RootModule().Resources["cato_dns_site_settings.parent"]; ok {
 					return fmt.Errorf("deleted-parent override remains in state")

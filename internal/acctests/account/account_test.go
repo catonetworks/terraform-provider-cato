@@ -102,7 +102,7 @@ func TestAccAccount_ImmutableFieldValidation(t *testing.T) {
 }
 
 func testAccAccountDestroy(st *terraform.State) error {
-	client, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, nil, map[string]string{
+	client, err := cato.New(acc.CatoEndpoint, acc.CatoToken, acc.CatoAccountID, nil, map[string]string{
 		"User-Agent": "cato-terraform-test",
 	})
 	if err != nil {

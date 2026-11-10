@@ -572,6 +572,229 @@ func TestSocketSitePrepareUpdateInputsTranslatedSubnetFromConfig(t *testing.T) {
 	}
 }
 
+func TestStripVrrpForAPI(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		destType cato_models.SocketInterfaceDestType
+		want     cato_models.SocketInterfaceDestType
+	}{
+		"lag_master_and_vrrp_reduces_to_lag_master": {
+			destType: cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp,
+			want:     cato_models.SocketInterfaceDestTypeLanLagMaster,
+		},
+		"lag_master_unchanged": {
+			destType: cato_models.SocketInterfaceDestTypeLanLagMaster,
+			want:     cato_models.SocketInterfaceDestTypeLanLagMaster,
+		},
+		"lan_unchanged": {
+			destType: cato_models.SocketInterfaceDestTypeLan,
+			want:     cato_models.SocketInterfaceDestTypeLan,
+		},
+		"vrrp_and_lan_unchanged": { // prefix form, not an *_AND_VRRP suffix
+			destType: cato_models.SocketInterfaceDestTypeVrrpAndLan,
+			want:     cato_models.SocketInterfaceDestTypeVrrpAndLan,
+		},
+		"vrrp_unchanged": {
+			destType: cato_models.SocketInterfaceDestTypeVrrp,
+			want:     cato_models.SocketInterfaceDestTypeVrrp,
+		},
+		"future_non_lag_and_vrrp_variant_reduces_to_lan": {
+			destType: cato_models.SocketInterfaceDestType("SOMETHING_AND_VRRP"),
+			want:     cato_models.SocketInterfaceDestTypeLan,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := stripVrrpForAPI(tt.destType); got != tt.want {
+				t.Fatalf("stripVrrpForAPI(%s): expected %s, got %s", tt.destType, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestPrepareSocketInterfaceInputVrrpDestType(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		destType     types.String
+		lagMinLinks  types.Int64
+		wantDestType cato_models.SocketInterfaceDestType
+		wantLag      bool
+	}{
+		"strips_vrrp_and_keeps_lag": {
+			destType:     types.StringValue(string(cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp)),
+			lagMinLinks:  types.Int64Value(1),
+			wantDestType: cato_models.SocketInterfaceDestTypeLanLagMaster,
+			wantLag:      true,
+		},
+		"leaves_plain_lag_master": {
+			destType:     types.StringValue(string(cato_models.SocketInterfaceDestTypeLanLagMaster)),
+			lagMinLinks:  types.Int64Value(2),
+			wantDestType: cato_models.SocketInterfaceDestTypeLanLagMaster,
+			wantLag:      true,
+		},
+		"leaves_plain_lan": {
+			destType:     types.StringValue(string(cato_models.SocketInterfaceDestTypeLan)),
+			lagMinLinks:  types.Int64Null(),
+			wantDestType: cato_models.SocketInterfaceDestTypeLan,
+			wantLag:      false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			plan := newSocketSitePlanWithDestType(ctx, t, tt.destType, tt.lagMinLinks)
+			cfg := plan
+			var diags diag.Diagnostics
+
+			// The *_AND_VRRP strip is unconditional for the API input (create AND update).
+			socketIfaceInput, _ := prepareSocketInterfaceInput(ctx, cfg, plan, false, &diags)
+			if diags.HasError() {
+				t.Fatalf("prepareSocketInterfaceInput: %v", diags)
+			}
+
+			if socketIfaceInput.DestType != tt.wantDestType {
+				t.Fatalf("expected dest type %s, got %s", tt.wantDestType, socketIfaceInput.DestType)
+			}
+			if tt.wantLag {
+				if socketIfaceInput.Lag == nil {
+					t.Fatal("expected LAG input to be preserved")
+				}
+				if socketIfaceInput.Lag.MinLinks != tt.lagMinLinks.ValueInt64() {
+					t.Fatalf("expected lag min links %d, got %d", tt.lagMinLinks.ValueInt64(), socketIfaceInput.Lag.MinLinks)
+				}
+			} else if socketIfaceInput.Lag != nil {
+				t.Fatalf("expected no LAG input, got %+v", socketIfaceInput.Lag)
+			}
+			if socketIfaceInput.Lan == nil {
+				t.Fatal("expected LAN input")
+			}
+		})
+	}
+}
+
+func TestParsedInterfaceDestType(t *testing.T) {
+	t.Parallel()
+
+	lagMasterAndVrrp := string(cato_models.SocketInterfaceDestTypeLanLagMasterAndVrrp)
+	lagMaster := string(cato_models.SocketInterfaceDestTypeLanLagMaster)
+	lan := string(cato_models.SocketInterfaceDestTypeLan)
+
+	tests := map[string]struct {
+		prior       types.String
+		apiDestType *string
+		isApplyPath bool
+		want        types.String
+	}{
+		// Apply paths (Create/Update): the planned value wins whenever the user set one,
+		// since the API was only ever sent the stripped base type.
+		"apply_keeps_planned_vrrp_over_api_base": {
+			prior:       types.StringValue(lagMasterAndVrrp),
+			apiDestType: stringPtr(lagMaster),
+			isApplyPath: true,
+			want:        types.StringValue(lagMasterAndVrrp),
+		},
+		"apply_keeps_planned_value_identity": {
+			prior:       types.StringValue(lan),
+			apiDestType: stringPtr(lan),
+			isApplyPath: true,
+			want:        types.StringValue(lan),
+		},
+		"apply_unknown_plan_takes_api_value": {
+			prior:       types.StringUnknown(),
+			apiDestType: stringPtr(lagMaster),
+			isApplyPath: true,
+			want:        types.StringValue(lagMaster),
+		},
+		"apply_null_plan_takes_api_value": {
+			prior:       types.StringNull(),
+			apiDestType: stringPtr(lan),
+			isApplyPath: true,
+			want:        types.StringValue(lan),
+		},
+		// Read path: never downgrade *_AND_VRRP while the API still reports the base type
+		// (single-socket drift); everything else stores the API value.
+		"read_keeps_prior_vrrp_when_api_reports_base": {
+			prior:       types.StringValue(lagMasterAndVrrp),
+			apiDestType: stringPtr(lagMaster),
+			isApplyPath: false,
+			want:        types.StringValue(lagMasterAndVrrp),
+		},
+		"read_stores_api_promotion": {
+			prior:       types.StringValue(lagMaster),
+			apiDestType: stringPtr(lagMasterAndVrrp),
+			isApplyPath: false,
+			want:        types.StringValue(lagMasterAndVrrp),
+		},
+		"read_identity_keeps_value": {
+			prior:       types.StringValue(lagMasterAndVrrp),
+			apiDestType: stringPtr(lagMasterAndVrrp),
+			isApplyPath: false,
+			want:        types.StringValue(lagMasterAndVrrp),
+		},
+		"read_unrelated_api_value_wins": {
+			prior:       types.StringValue(lagMasterAndVrrp),
+			apiDestType: stringPtr(lan),
+			isApplyPath: false,
+			want:        types.StringValue(lan),
+		},
+		"read_no_prior_takes_api_value": {
+			prior:       types.StringNull(),
+			apiDestType: stringPtr(lagMaster),
+			isApplyPath: false,
+			want:        types.StringValue(lagMaster),
+		},
+		"read_api_nil_with_prior_stores_null": {
+			prior:       types.StringValue(lagMasterAndVrrp),
+			apiDestType: nil,
+			isApplyPath: false,
+			want:        types.StringNull(),
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := parsedInterfaceDestType(tt.prior, tt.apiDestType, tt.isApplyPath)
+			if !got.Equal(tt.want) {
+				t.Fatalf("parsedInterfaceDestType(%v, %v, %v): expected %v, got %v",
+					tt.prior, tt.apiDestType, tt.isApplyPath, tt.want, got)
+			}
+		})
+	}
+}
+
+func newSocketSitePlanWithDestType(ctx context.Context, t *testing.T, destType types.String, lagMinLinks types.Int64) *SocketSite {
+	t.Helper()
+
+	nativeRange, diags := types.ObjectValueFrom(ctx, SiteNativeRangeResourceAttrTypes, NativeRange{
+		NativeNetworkRange: types.StringValue("10.51.0.128/25"),
+		LocalIP:            types.StringValue("10.51.0.1"),
+		InterfaceDestType:  destType,
+		LagMinLinks:        lagMinLinks,
+		DhcpSettings:       types.ObjectNull(dhcp.SettingsAttrTypes),
+	})
+	if diags.HasError() {
+		t.Fatalf("build native range: %v", diags)
+	}
+
+	return &SocketSite{
+		Name:           types.StringValue("socket-site-01"),
+		ConnectionType: types.StringValue("SOCKET_X1500"),
+		SiteType:       types.StringValue("BRANCH"),
+		NativeRange:    nativeRange,
+		SiteLocation:   types.ObjectNull(tf.SiteLocationResourceAttrTypes),
+	}
+}
+
 func newSocketSitePlanWithTranslatedSubnet(ctx context.Context, t *testing.T, translatedSubnet types.String) *SocketSite {
 	t.Helper()
 

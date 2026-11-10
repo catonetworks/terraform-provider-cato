@@ -297,9 +297,14 @@ func (r *networkRangeResource) hydrateNetworkRangeState(ctx context.Context, cfg
 
 	// DHCP settings
 	isDhcpSettingsDefault := r.checkDhcpSettingsDefault(ctx, cfg, state, diags)
-	dhcpSettingsObj := dhcp.SettingsDefault(ctx, diags)
-	if responseRange.DhcpSettings != nil && !isDhcpSettingsDefault {
+	// Config omits dhcp_settings (or carries the default sentinel): reproduce the exact sentinel
+	// the plan modifier chose for this range type (ACCOUNT_DEFAULT for native/VLAN, DHCP_DISABLED
+	// for routed/direct). The API never returns ACCOUNT_DEFAULT, so parsing the response here
+	// would always mismatch the plan and produce an inconsistent result after apply.
+	dhcpSettingsObj := dhcp.SettingsDefaultForRangeType(ctx, responseRange.RangeType, diags)
+	if !isDhcpSettingsDefault && responseRange.DhcpSettings != nil {
 		dhcpSettingsObj = dhcp.ParseSettings(ctx, r.dhcpClient(), responseRange.DhcpSettings, diags)
+		dhcpSettingsObj = dhcp.PreservePlannedMicrosegmentation(ctx, dhcpSettingsObj, state.DhcpSettings, diags)
 	}
 	if diags.HasError() {
 		return tf.NetworkRange{}, true
