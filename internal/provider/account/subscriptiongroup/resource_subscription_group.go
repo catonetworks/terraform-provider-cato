@@ -80,7 +80,22 @@ func (r *subscriptionGroupResource) Create(ctx context.Context, req resource.Cre
 	if !validID(types.StringValue(item.GetID()), &resp.Diagnostics) {
 		return
 	}
-	current := parseSubscriptionGroup(ctx, item, item.GetMailingList(), item.GetIntegration().GetWebhookList(), &resp.Diagnostics)
+	// The create mutation response does not echo back mailing-list / integration
+	// membership (it returns an empty collection), so re-read via the query -- which
+	// does return membership -- to produce consistent state. Otherwise the planned
+	// member elements "vanish" from the applied value.
+	created, err := r.find(ctx, item.GetID())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to read subscription group after create", err.Error())
+		return
+	}
+	if created == nil {
+		resp.Diagnostics.AddError("Subscription group missing after create",
+			"The created subscription group could not be read back.")
+		return
+	}
+	current := parseSubscriptionGroup(ctx, created, created.GetMailingList(), created.GetIntegration().GetWebhookList(), &resp.Diagnostics)
+	current = orderMembersLike(current, plan)
 	if !resp.Diagnostics.HasError() {
 		resp.Diagnostics.Append(resp.State.Set(ctx, current)...)
 	}
@@ -101,6 +116,7 @@ func (r *subscriptionGroupResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 	current := parseSubscriptionGroup(ctx, item, item.GetMailingList(), item.GetIntegration().GetWebhookList(), &resp.Diagnostics)
+	current = orderMembersLike(current, state)
 	if !resp.Diagnostics.HasError() {
 		resp.Diagnostics.Append(resp.State.Set(ctx, current)...)
 	}
@@ -141,7 +157,20 @@ func (r *subscriptionGroupResource) Update(ctx context.Context, req resource.Upd
 		resp.Diagnostics.AddError("Invalid API response", "Update did not return the requested subscription-group identity.")
 		return
 	}
-	current := parseSubscriptionGroup(ctx, item, item.GetMailingList(), item.GetIntegration().GetWebhookList(), &resp.Diagnostics)
+	// The update mutation response does not reliably echo back membership; re-read via
+	// the query (as Create does) so the applied state carries the real members.
+	updated, err := r.find(ctx, item.GetID())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to read subscription group after update", err.Error())
+		return
+	}
+	if updated == nil {
+		resp.Diagnostics.AddError("Subscription group missing after update",
+			"The updated subscription group could not be read back.")
+		return
+	}
+	current := parseSubscriptionGroup(ctx, updated, updated.GetMailingList(), updated.GetIntegration().GetWebhookList(), &resp.Diagnostics)
+	current = orderMembersLike(current, plan)
 	if !resp.Diagnostics.HasError() {
 		resp.Diagnostics.Append(resp.State.Set(ctx, current)...)
 	}

@@ -132,7 +132,7 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-	// Update Socket Interface
+	// Update Socket Interface (*_AND_VRRP dest types are reduced to their settable base type for the API)
 	r.updateSocketInterface(ctx, &cfg, &plan, siteID, false, &diags)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
@@ -261,7 +261,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	// Update Socket Interface
+	// Update Socket Interface (*_AND_VRRP dest types are reduced to their settable base type for the API)
 	r.updateSocketInterface(ctx, &cfg, &plan, siteID, isHA, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -601,6 +601,8 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *SocketSi
 	}
 
 	// try to get LagMinLinks from state; not available in API; TODO: add to API
+	// cfg != nil distinguishes the apply paths (Create/Update, where stateNativeRange carries the
+	// plan and interface_dest_type must match it) from Read (cfg == nil, prior state semantics).
 	netRangeObj := convertParseNativeRangeValues(
 		ctx,
 		networkRange,
@@ -610,6 +612,7 @@ func (r *socketSiteResource) parseNativeRange(ctx context.Context, cfg *SocketSi
 		&objDiags,
 		tfStateNativeRange,
 		dhcpSettingsObj,
+		cfg != nil,
 	)
 	if diags.HasError() {
 		return types.ObjectNull(SiteNativeRangeResourceAttrTypes)
@@ -632,8 +635,17 @@ func (r *socketSiteResource) parseDhcpSettingsObj(
 	diags *diag.Diagnostics,
 ) types.Object {
 	isDhcpDefault := r.checkDhcpSettingsDefault(ctx, cfg, stateNativeRange, diags)
+
+	var plannedDhcpSettings types.Object
+	if utils.HasValue(stateNativeRange) {
+		var tfStateNativeRange NativeRange
+		if !utils.CheckErr(diags, stateNativeRange.As(ctx, &tfStateNativeRange, basetypes.ObjectAsOptions{})) {
+			plannedDhcpSettings = tfStateNativeRange.DhcpSettings
+		}
+	}
+
 	if networkRange.DhcpSettings != nil && !isDhcpDefault {
-		return dhcp.ParseSettings(ctx, r.dhcpClient(),
+		parsed := dhcp.ParseSettings(ctx, r.dhcpClient(),
 			&cato_go_sdk.NetworkRange_Site_NetworkRange_DhcpSettings{
 				DhcpMicrosegmentation: networkRange.DhcpSettings.DhcpMicrosegmentation,
 				DhcpType:              networkRange.DhcpSettings.DhcpType,
@@ -641,9 +653,17 @@ func (r *socketSiteResource) parseDhcpSettingsObj(
 				RelayGroupID:          networkRange.DhcpSettings.RelayGroupID,
 			},
 			diags)
+		return dhcp.PreservePlannedMicrosegmentation(ctx, parsed, plannedDhcpSettings, diags)
 	}
-	if isDhcpDefault && r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags) {
-		return dhcp.SettingsDefault(ctx, diags)
+	if isDhcpDefault {
+		// Keep the planned/state dhcp_settings object so apply matches plan - e.g. an
+		// explicitly configured dhcp_microsegmentation=false on ACCOUNT_DEFAULT must survive.
+		if !plannedDhcpSettings.IsNull() && !plannedDhcpSettings.IsUnknown() {
+			return plannedDhcpSettings
+		}
+		if r.isDhcpSettingsExplicit(ctx, cfg, stateNativeRange, diags) {
+			return dhcp.SettingsDefault(ctx, diags)
+		}
 	}
 	return types.ObjectNull(dhcp.SettingsAttrTypes)
 }

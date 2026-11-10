@@ -78,7 +78,7 @@ func (m dhcpSettingsModifier) PlanModifyObject(ctx context.Context, req planmodi
 		resp.PlanValue = m.planDhcpRange(ctx, state, cfg, &resp.Diagnostics)
 		return
 	case cato_models.DhcpTypeAccountDefault, cato_models.DhcpTypeDhcpDisabled:
-		resp.PlanValue = m.planDhcpEmpty(ctx, dhcpType.String(), &resp.Diagnostics)
+		resp.PlanValue = m.planDhcpEmptyWithConfig(ctx, dhcpType.String(), cfg, &resp.Diagnostics)
 		return
 	default:
 		resp.Diagnostics.AddError("Unsupported DHCP type", "Unknown DHCP type: "+dhcpType.String())
@@ -114,7 +114,7 @@ func (m dhcpSettingsModifier) planDhcpRelay(ctx context.Context, state, cfg *tf.
 	plan := tf.DhcpSettings{
 		DhcpType:              cfg.DhcpType,
 		IPRange:               types.StringNull(),
-		DhcpMicrosegmentation: types.BoolNull(),
+		DhcpMicrosegmentation: explicitFalseOrNull(cfg.DhcpMicrosegmentation),
 		RelayGroupID:          types.StringUnknown(),
 		RelayGroupName:        types.StringUnknown(),
 	}
@@ -161,15 +161,38 @@ func (m dhcpSettingsModifier) planDhcpRange(ctx context.Context, state, cfg *tf.
 }
 
 func (m dhcpSettingsModifier) planDhcpEmpty(ctx context.Context, dhcpType string, diags *diag.Diagnostics) types.Object {
+	return m.planDhcpEmptyWithConfig(ctx, dhcpType, nil, diags)
+}
+
+// planDhcpEmptyWithConfig plans the empty (ACCOUNT_DEFAULT/DHCP_DISABLED) settings object.
+// A dhcp_microsegmentation explicitly set in config must be carried into the plan - Terraform
+// rejects a plan that turns a concrete config value into null ("planned an invalid value").
+// Only false can reach here; true is rejected for non-DHCP_RANGE types before dispatch.
+func (m dhcpSettingsModifier) planDhcpEmptyWithConfig(
+	ctx context.Context, dhcpType string, cfg *tf.DhcpSettings, diags *diag.Diagnostics,
+) types.Object {
+	micro := types.BoolNull()
+	if cfg != nil {
+		micro = explicitFalseOrNull(cfg.DhcpMicrosegmentation)
+	}
 	plan := tf.DhcpSettings{
 		DhcpType:              types.StringValue(dhcpType),
 		IPRange:               types.StringNull(),
-		DhcpMicrosegmentation: types.BoolNull(),
+		DhcpMicrosegmentation: micro,
 		RelayGroupID:          types.StringNull(),
 		RelayGroupName:        types.StringNull(),
 	}
 
 	return m.makePlanObj(ctx, plan, diags)
+}
+
+// explicitFalseOrNull keeps a config-provided dhcp_microsegmentation value in the plan
+// (only false is possible for non-DHCP_RANGE types) and returns null when it was omitted.
+func explicitFalseOrNull(cfgVal types.Bool) types.Bool {
+	if !cfgVal.IsNull() && !cfgVal.IsUnknown() {
+		return cfgVal
+	}
+	return types.BoolNull()
 }
 
 func (m dhcpSettingsModifier) makePlanObj(ctx context.Context, plan tf.DhcpSettings, diags *diag.Diagnostics) types.Object {
