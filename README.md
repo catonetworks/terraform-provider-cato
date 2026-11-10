@@ -50,6 +50,43 @@ export CATO_RETRY_WAIT_MIN_SECONDS="1"
 export CATO_RETRY_WAIT_MAX_SECONDS="30"
 ```
 
+### Authentication
+
+The provider supports two ways to authenticate, resolved in this order (first match wins, per field):
+
+1. **Explicit configuration** — `token` and `account_id` (and optionally `baseurl`) set directly in the `provider` block. This is the existing behavior and always wins.
+2. **Environment variables** — `CATO_TOKEN` and `CATO_BASEURL` fill in those two fields when left unset in the provider block, exactly as before. (There is no `CATO_ACCOUNT_ID` environment variable — set `account_id` in the provider block, or use a profile below.)
+3. **catocli profile** — new. If `profile` is set in the provider block (or `CATO_PROFILE` is set in the environment) and `token`, `account_id`, or `baseurl` are still unresolved after steps 1–2, the provider looks up that profile's section in the catocli credentials file (`~/.cato/credentials` by default — the same AWS-CLI-style file `catocli configure set` writes) and uses its `cato_token`, `account_id`, and `endpoint` values to fill in whatever is still missing. Explicit values always take precedence; profile values never override them.
+
+If nothing resolves from any of the above, `terraform plan`/`apply` fails with a single error listing all three options.
+
+```hcl
+# explicit (unchanged)
+provider "cato" {
+  baseurl    = "..."
+  token      = "..."
+  account_id = "..."
+}
+
+# catocli profile
+provider "cato" {
+  profile = "refarch-dev"
+}
+```
+
+```sh
+# or via env, with no provider block attribute needed at all
+export CATO_PROFILE=refarch-dev
+terraform plan
+```
+
+Why use a profile: it's the same `~/.cato/credentials` store `catocli` itself reads and writes, so there's one shared credential store instead of two — no API tokens need to live in `*.tfvars` files or shell `export`s, and switching between tenants/accounts is just a matter of pointing `profile` (or `CATO_PROFILE`) at a different profile name.
+
+To point at a credentials file somewhere other than `~/.cato/credentials` (useful in CI, or for tests that shouldn't depend on the invoking user's real credentials), set:
+```
+export CATO_CREDENTIALS_FILE="/path/to/alternate/credentials"
+```
+
 ### Debugging GraphQL API Traffic
 
 When Terraform debug logging is enabled, the provider logs each GraphQL API

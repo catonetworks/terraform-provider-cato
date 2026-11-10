@@ -140,6 +140,30 @@ func PrepareIDNameSet[T idRefInputs](ctx context.Context, tfSet types.Set, diags
 	return sdkList
 }
 
+// PrepareIDNameList is the types.List counterpart of PrepareIDNameSet. It always returns a
+// non-nil slice, including for null/unknown lists and conversion errors. Ref collections that
+// accept name-only references (Computed id -> Unknown at plan) must be modeled as List rather
+// than Set: Terraform correlates List elements by index, so an Unknown nested value resolves
+// cleanly after apply, whereas a Set element containing an Unknown cannot be correlated
+// ("Provider produced inconsistent result after apply").
+func PrepareIDNameList[T idRefInputs](ctx context.Context, tfList types.List, diags *diag.Diagnostics) (sdkList []*T) {
+	if !utils.HasValue(tfList) {
+		return []*T{}
+	}
+
+	sdkList = make([]*T, 0, len(tfList.Elements()))
+	for _, idName := range tfList.Elements() {
+		refBy, refInput, isSet := prepareIDName(ctx, idName.(types.Object), diags)
+		if diags.HasError() {
+			return []*T{}
+		}
+		if isSet {
+			sdkList = append(sdkList, &T{By: refBy, Input: refInput})
+		}
+	}
+	return sdkList
+}
+
 // prepareIDName prepares the id and name input for the Cato API
 // on error it sets the diagnostics error
 func prepareIDName(ctx context.Context, idName types.Object, diags *diag.Diagnostics,

@@ -29,11 +29,16 @@ func (r *subscriptionGroupResource) Schema(_ context.Context, _ resource.SchemaR
 		},
 	}
 }
-func schemaGroupMembers(description string) schema.SetNestedAttribute {
-	return schema.SetNestedAttribute{Description: description, Optional: true, Computed: true,
+// Modeled as a List (not a Set): elements accept name-only references whose Computed
+// `id` is Unknown at plan time. Terraform correlates List elements by index, so an
+// Unknown nested value resolves cleanly after apply (including the first create, when
+// there is no prior state); a Set element containing an Unknown cannot be correlated and
+// raises "Provider produced inconsistent result after apply".
+func schemaGroupMembers(description string) schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{Description: description, Optional: true, Computed: true,
 		NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID(description)},
-		PlanModifiers: []planmodifier.Set{
-			planmodifiers.NullSetModifier(idname.RefObjectType), planmodifiers.IDNameSetPlanModifier(),
+		PlanModifiers: []planmodifier.List{
+			planmodifiers.NullListModifier(idname.RefObjectType), planmodifiers.IDNameListPlanModifier(),
 		},
 	}
 }

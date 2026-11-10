@@ -20,6 +20,14 @@ provider "cato" {
   # version_check_timeout_seconds = 2
 }
 
+# Alternative: catocli profile based authentication. Instead of baseurl/token/account_id
+# above, point at a profile name from the catocli credentials file (~/.cato/credentials
+# by default; override with CATO_CREDENTIALS_FILE). See the "Authentication" section of
+# the provider README for the full resolution order.
+# provider "cato" {
+#   profile = "refarch-dev"
+# }
+
 resource "cato_socket_site" "site1" {
   name            = "SOCKET Site - X1700"
   description     = "SOCKET Site - X1700"

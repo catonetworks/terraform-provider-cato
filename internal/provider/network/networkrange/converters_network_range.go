@@ -27,7 +27,7 @@ func (r *networkRangeResource) checkDhcpSettingsDefault(ctx context.Context, cfg
 	// cfg defined -> Create/Update flow; check the config value
 	if cfg != nil {
 		if !utils.HasValue(cfg.DhcpSettings) {
-			return false
+			return true
 		}
 		var cfgDhcpSettings dhcp.Settings
 		if utils.CheckErr(diags, cfg.DhcpSettings.As(ctx, &cfgDhcpSettings, basetypes.ObjectAsOptions{})) {
@@ -41,8 +41,11 @@ func (r *networkRangeResource) checkDhcpSettingsDefault(ctx context.Context, cfg
 	}
 
 	// cfg is nil -> called from Read(); check the state
-	if state == nil || !utils.HasValue(state.DhcpSettings) {
+	if state == nil {
 		return false
+	}
+	if !utils.HasValue(state.DhcpSettings) {
+		return true
 	}
 
 	var stateDhcpSettings dhcp.Settings
@@ -85,7 +88,10 @@ func convertHydrateNetworkRangeStateValues(
 	if responseRange.RangeType != cato_models.SubnetTypeVlan {
 		resultNewState.Vlan = types.Int64Null()
 	}
-	if state.MdnsReflector.IsNull() {
+	// mDNS reflector is not supported on Routed ranges: the API stores a meaningless false
+	// there (the SDK field is a non-nullable bool), so expose null to match "unset" and avoid
+	// sending it back. For every other range type the API's value is authoritative.
+	if responseRange.RangeType == cato_models.SubnetTypeRouted {
 		resultNewState.MdnsReflector = types.BoolNull()
 	}
 	if !state.Gateway.IsUnknown() {

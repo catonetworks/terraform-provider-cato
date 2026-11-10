@@ -51,7 +51,7 @@ func newLiveFixture(t *testing.T) *liveFixture {
 	}
 	siteID, servers, tag := liveInputs(t)
 	require.GreaterOrEqual(t, len(servers), 2, "Provide at least two test server IPs to verify ordered updates")
-	sdk, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, &http.Client{Timeout: time.Minute}, nil)
+	sdk, err := cato.New(acc.CatoEndpoint, acc.CatoToken, acc.CatoAccountID, &http.Client{Timeout: time.Minute}, nil)
 	require.NoError(t, err)
 	f := &liveFixture{t: t, sdk: sdk, client: catoclient.NewProviderSDKClient(sdk), siteID: siteID, servers: servers, tag: tag, name: fmt.Sprintf("acctest-dns-dhcp-%d", time.Now().UnixNano()), ids: map[string]string{}}
 	f.baseline = f.snapshot()
@@ -204,7 +204,7 @@ func (f *liveFixture) config(mode string) string {
 	}
 	return fmt.Sprintf(`
 provider "cato" {
- account_id = %q
+ %s
  retry_max = 0
  version_check_disabled = true
 }
@@ -242,7 +242,7 @@ resource "cato_dhcp_option" "test" {
  value = %q
  description = %s
 }
-`, acc.CatoAccountID, primary, secondary, suffix, accept, siteRef, sitePrimary, siteSecondary, siteSuffix, domain, hcl(servers), name, hcl(servers), dhcpFields, f.tag, value, description)
+`, acc.ProviderAuthAttr(), primary, secondary, suffix, accept, siteRef, sitePrimary, siteSecondary, siteSuffix, domain, hcl(servers), name, hcl(servers), dhcpFields, f.tag, value, description)
 }
 
 func (f *liveFixture) check(recreated bool) resource.TestCheckFunc {

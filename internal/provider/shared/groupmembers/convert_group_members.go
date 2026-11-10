@@ -28,6 +28,12 @@ func ParseGroupMemberListWithConfig[T any](ctx context.Context, items []T, confi
 	var configMembersList []Member
 	configMap := make(map[string]Member)
 
+	// When a config/plan member list is provided, state is scoped to those members only -
+	// members added out-of-band (e.g. via a separate cato_group_members resource) must not
+	// be absorbed into this resource's state, or it would drift on every refresh.
+	// A null/unknown list (import) keeps the include-all behavior so hydration still works.
+	filterToConfig := !configMembers.IsNull() && !configMembers.IsUnknown()
+
 	if !configMembers.IsNull() && !configMembers.IsUnknown() {
 		if diags := configMembers.ElementsAs(ctx, &configMembersList, false); !diags.HasError() {
 			for _, configMember := range configMembersList {
@@ -82,6 +88,11 @@ func ParseGroupMemberListWithConfig[T any](ctx context.Context, items []T, confi
 			if _, exists := configMap[key]; exists {
 				matchedConfig = true
 			}
+		}
+
+		// Skip members not present in config when scoping to config (see filterToConfig above)
+		if filterToConfig && !matchedConfig {
+			continue
 		}
 
 		// Build the result member object
