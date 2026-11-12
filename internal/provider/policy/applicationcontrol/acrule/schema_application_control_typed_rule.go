@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -197,6 +198,68 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 						Attributes:    idname.SchemaNameID("Activity"),
 						PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 					},
+					"field": schema.SingleNestedAttribute{
+						Description: "Activity condition field (e.g. URL) — some activities require a condition",
+						Optional:    true,
+						Computed:    true,
+						PlanModifiers: []planmodifier.Object{
+							acRefObjectPlanModifier(),
+						},
+						Attributes: map[string]schema.Attribute{
+							"id": schema.StringAttribute{
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+							"name": schema.StringAttribute{
+								Optional: true,
+								Computed: true,
+								Validators: []validator.String{
+									stringvalidator.ConflictsWith(path.Expressions{
+										path.MatchRelative().AtParent().AtName("id"),
+									}...),
+								},
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+						},
+					},
+					"operator": schema.StringAttribute{
+						Description:   "Activity condition operator (e.g. IS, CONTAINS)",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					},
+					"value": schema.StringAttribute{
+						Description:   "Activity condition value (required by some activities, e.g. Full Path URL)",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					},
+					"value_set": schema.SingleNestedAttribute{
+						Description: "Activity condition value set reference",
+						Optional:    true,
+						Computed:    true,
+						PlanModifiers: []planmodifier.Object{
+							acRefObjectPlanModifier(),
+						},
+						Attributes: map[string]schema.Attribute{
+							"id": schema.StringAttribute{
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+							"name": schema.StringAttribute{
+								Optional: true,
+								Computed: true,
+								Validators: []validator.String{
+									stringvalidator.ConflictsWith(path.Expressions{
+										path.MatchRelative().AtParent().AtName("id"),
+									}...),
+								},
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -207,6 +270,100 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 			Default:     stringdefault.StaticString("ALL"),
 			Validators: []validator.String{
 				stringvalidator.OneOf(utils.ToStrings(cato_models.AllApplicationControlSatisfy)...),
+			},
+		},
+		"application_criteria": schema.SingleNestedAttribute{
+			Description: "Attribute-based application matching (compliance/security attributes, risk score, origin country, AI risk). " +
+				"Typically combined with application.application_type. Omitted attributes default to ANY.",
+			Optional: true,
+			Computed: true,
+			PlanModifiers: []planmodifier.Object{
+				objectplanmodifier.UseStateForUnknown(),
+			},
+			Attributes: map[string]schema.Attribute{
+				"compliance_attributes": schema.MapAttribute{
+					Description: "Compliance attribute constraints keyed by API field name (hippa, isae3402, iso27001, pciDss, soc1, soc2, soc3, sox). " +
+						"Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.",
+					ElementType: types.StringType,
+					Optional:    true,
+					Computed:    true,
+					PlanModifiers: []planmodifier.Map{
+						mapplanmodifier.UseStateForUnknown(),
+					},
+				},
+				"security_attributes": schema.MapAttribute{
+					Description: "Security attribute constraints keyed by API field name (auditTrail, encryptionAtRest, httpSecurityHeaders, " +
+						"mfa, rbac, rememberPassword, sso, tlsEnforcement, trustedCertificate). " +
+						"Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.",
+					ElementType: types.StringType,
+					Optional:    true,
+					Computed:    true,
+					PlanModifiers: []planmodifier.Map{
+						mapplanmodifier.UseStateForUnknown(),
+					},
+				},
+				"origin_country": schema.SetNestedAttribute{
+					Description: "Application origin countries",
+					Optional:    true,
+					Computed:    true,
+					NestedObject: schema.NestedAttributeObject{
+						Attributes: map[string]schema.Attribute{
+							"name": schema.StringAttribute{
+								Optional: true,
+								Computed: true,
+								Validators: []validator.String{
+									stringvalidator.ConflictsWith(path.Expressions{
+										path.MatchRelative().AtParent().AtName("id"),
+									}...),
+								},
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+							"id": schema.StringAttribute{
+								Optional:      true,
+								Computed:      true,
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							},
+						},
+					},
+					PlanModifiers: []planmodifier.Set{
+						acRefSetPlanModifier(),
+					},
+				},
+				"risk": schema.ListNestedAttribute{
+					Description: "Risk score constraints",
+					Optional:    true,
+					Computed:    true,
+					NestedObject: schema.NestedAttributeObject{
+						Attributes: map[string]schema.Attribute{
+							"risk":          schema.StringAttribute{Required: true, Description: "Risk score (e.g. \"7\")"},
+							"risk_operator": schema.StringAttribute{Required: true, Description: "Comparison operator (e.g. GREATER_THAN, IS)"},
+						},
+					},
+					PlanModifiers: []planmodifier.List{
+						listplanmodifier.UseStateForUnknown(),
+					},
+				},
+				"ai_risk": schema.ListAttribute{
+					Description: "AI risk levels (LOW, MEDIUM, HIGH, CRITICAL)",
+					ElementType: types.StringType,
+					Optional:    true,
+					Computed:    true,
+					PlanModifiers: []planmodifier.List{
+						listplanmodifier.UseStateForUnknown(),
+					},
+				},
+			},
+		},
+		"application_criteria_satisfy": schema.StringAttribute{
+			Description: "How application criteria are combined (ALL | ANY)",
+			Optional:    true,
+			Computed:    true,
+			Default:     stringdefault.StaticString("ALL"),
+			Validators: []validator.String{
+				stringvalidator.OneOf(
+					string(cato_models.ApplicationControlSatisfyAll),
+					string(cato_models.ApplicationControlSatisfyAny),
+				),
 			},
 		},
 		"action_config": schema.SingleNestedAttribute{
@@ -236,7 +393,66 @@ func applicationControlTypedRuleSchemaAttributes() map[string]schema.Attribute {
 				Attributes: map[string]schema.Attribute{
 					"file_attribute": schema.StringAttribute{Required: true},
 					"operator":       schema.StringAttribute{Required: true},
-					"value":          schema.StringAttribute{Optional: true, Computed: true},
+					"value": schema.StringAttribute{
+						Description: "Attribute value (e.g. a size threshold). MUST be omitted for CONTENT_TYPE rows — " +
+							"use the content-type ref sets instead.",
+						Optional: true,
+						Computed: true,
+					},
+					"content_type_values": schema.SetNestedAttribute{
+						Description: "Content type references (CONTENT_TYPE rows)",
+						Optional:    true,
+						Computed:    true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"id": schema.StringAttribute{
+									Optional:      true,
+									Computed:      true,
+									PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+								},
+								"name": schema.StringAttribute{
+									Optional: true,
+									Computed: true,
+									Validators: []validator.String{
+										stringvalidator.ConflictsWith(path.Expressions{
+											path.MatchRelative().AtParent().AtName("id"),
+										}...),
+									},
+									PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+								},
+							},
+						},
+						PlanModifiers: []planmodifier.Set{
+							acRefSetPlanModifier(),
+						},
+					},
+					"content_type_group_values": schema.SetNestedAttribute{
+						Description: "Content type GROUP references (CONTENT_TYPE rows, e.g. Binaries, Scripts)",
+						Optional:    true,
+						Computed:    true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"id": schema.StringAttribute{
+									Optional:      true,
+									Computed:      true,
+									PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+								},
+								"name": schema.StringAttribute{
+									Optional: true,
+									Computed: true,
+									Validators: []validator.String{
+										stringvalidator.ConflictsWith(path.Expressions{
+											path.MatchRelative().AtParent().AtName("id"),
+										}...),
+									},
+									PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+								},
+							},
+						},
+						PlanModifiers: []planmodifier.Set{
+							acRefSetPlanModifier(),
+						},
+					},
 				},
 			},
 		},

@@ -242,6 +242,12 @@ func (r *privateAppResource) hydratePrivateAppState(
 	result, err := r.resourceAPI().PrivateAppReadPrivateApp(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "PrivateAppReadPrivateApp", map[string]any{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
+		// A deleted app surfaces as a GraphQL NOT_FOUND error (not a nil
+		// payload) -- map it so Read can drop the resource from state instead
+		// of failing the whole refresh.
+		if strings.Contains(err.Error(), "NOT_FOUND") {
+			return nil, diags, ErrPrivateAppNotFound
+		}
 		return nil, diags, err
 	}
 

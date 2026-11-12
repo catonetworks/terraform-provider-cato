@@ -304,6 +304,8 @@ Optional:
 - `application` (Attributes) Application matching (WAN-shaped object) (see [below for nested schema](#nestedatt--rule--application_rule--application))
 - `application_activity` (Attributes List) Application activities to match (required for file/data rules when an application is specified) (see [below for nested schema](#nestedatt--rule--application_rule--application_activity))
 - `application_activity_satisfy` (String) How application activities are combined (ALL | ANY)
+- `application_criteria` (Attributes) Attribute-based application matching (compliance/security attributes, risk score, origin country, AI risk). Typically combined with application.application_type. Omitted attributes default to ANY. (see [below for nested schema](#nestedatt--rule--application_rule--application_criteria))
+- `application_criteria_satisfy` (String) How application criteria are combined (ALL | ANY)
 - `device` (Attributes Set) Device profiles (see [below for nested schema](#nestedatt--rule--application_rule--device))
 - `dlp_profile` (Attributes) DLP profile (data rules) (see [below for nested schema](#nestedatt--rule--application_rule--dlp_profile))
 - `file_attribute` (Attributes List) File attribute rows (data/file rules) (see [below for nested schema](#nestedatt--rule--application_rule--file_attribute))
@@ -349,6 +351,7 @@ Optional:
 
 - `app_category` (Attributes Set) Application categories (see [below for nested schema](#nestedatt--rule--application_rule--application--app_category))
 - `application` (Attributes Set) Predefined applications (logical OR within the set) (see [below for nested schema](#nestedatt--rule--application_rule--application--application))
+- `application_type` (List of String) Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).
 - `custom_app` (Attributes Set) Custom applications (see [below for nested schema](#nestedatt--rule--application_rule--application--custom_app))
 - `custom_category` (Attributes Set) Custom categories (see [below for nested schema](#nestedatt--rule--application_rule--application--custom_category))
 - `domain` (List of String) Second-level domains to match
@@ -430,6 +433,13 @@ Required:
 
 - `activity` (Attributes) (see [below for nested schema](#nestedatt--rule--application_rule--application_activity--activity))
 
+Optional:
+
+- `field` (Attributes) Activity condition field (e.g. URL) — some activities require a condition (see [below for nested schema](#nestedatt--rule--application_rule--application_activity--field))
+- `operator` (String) Activity condition operator (e.g. IS, CONTAINS)
+- `value` (String) Activity condition value (required by some activities, e.g. Full Path URL)
+- `value_set` (Attributes) Activity condition value set reference (see [below for nested schema](#nestedatt--rule--application_rule--application_activity--value_set))
+
 <a id="nestedatt--rule--application_rule--application_activity--activity"></a>
 ### Nested Schema for `rule.application_rule.application_activity.activity`
 
@@ -437,6 +447,54 @@ Optional:
 
 - `id` (String) Activity ID
 - `name` (String) Activity name
+
+
+<a id="nestedatt--rule--application_rule--application_activity--field"></a>
+### Nested Schema for `rule.application_rule.application_activity.field`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--application_rule--application_activity--value_set"></a>
+### Nested Schema for `rule.application_rule.application_activity.value_set`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--application_rule--application_criteria"></a>
+### Nested Schema for `rule.application_rule.application_criteria`
+
+Optional:
+
+- `ai_risk` (List of String) AI risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+- `compliance_attributes` (Map of String) Compliance attribute constraints keyed by API field name (hippa, isae3402, iso27001, pciDss, soc1, soc2, soc3, sox). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+- `origin_country` (Attributes Set) Application origin countries (see [below for nested schema](#nestedatt--rule--application_rule--application_criteria--origin_country))
+- `risk` (Attributes List) Risk score constraints (see [below for nested schema](#nestedatt--rule--application_rule--application_criteria--risk))
+- `security_attributes` (Map of String) Security attribute constraints keyed by API field name (auditTrail, encryptionAtRest, httpSecurityHeaders, mfa, rbac, rememberPassword, sso, tlsEnforcement, trustedCertificate). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+
+<a id="nestedatt--rule--application_rule--application_criteria--origin_country"></a>
+### Nested Schema for `rule.application_rule.application_criteria.origin_country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--application_rule--application_criteria--risk"></a>
+### Nested Schema for `rule.application_rule.application_criteria.risk`
+
+Required:
+
+- `risk` (String) Risk score (e.g. "7")
+- `risk_operator` (String) Comparison operator (e.g. GREATER_THAN, IS)
 
 
 
@@ -486,7 +544,27 @@ Required:
 
 Optional:
 
-- `value` (String)
+- `content_type_group_values` (Attributes Set) Content type GROUP references (CONTENT_TYPE rows, e.g. Binaries, Scripts) (see [below for nested schema](#nestedatt--rule--application_rule--file_attribute--content_type_group_values))
+- `content_type_values` (Attributes Set) Content type references (CONTENT_TYPE rows) (see [below for nested schema](#nestedatt--rule--application_rule--file_attribute--content_type_values))
+- `value` (String) Attribute value (e.g. a size threshold). MUST be omitted for CONTENT_TYPE rows — use the content-type ref sets instead.
+
+<a id="nestedatt--rule--application_rule--file_attribute--content_type_group_values"></a>
+### Nested Schema for `rule.application_rule.file_attribute.content_type_group_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--application_rule--file_attribute--content_type_values"></a>
+### Nested Schema for `rule.application_rule.file_attribute.content_type_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
 
 
 <a id="nestedatt--rule--application_rule--schedule"></a>
@@ -719,6 +797,8 @@ Optional:
 - `application` (Attributes) Application matching (WAN-shaped object) (see [below for nested schema](#nestedatt--rule--data_rule--application))
 - `application_activity` (Attributes List) Application activities to match (required for file/data rules when an application is specified) (see [below for nested schema](#nestedatt--rule--data_rule--application_activity))
 - `application_activity_satisfy` (String) How application activities are combined (ALL | ANY)
+- `application_criteria` (Attributes) Attribute-based application matching (compliance/security attributes, risk score, origin country, AI risk). Typically combined with application.application_type. Omitted attributes default to ANY. (see [below for nested schema](#nestedatt--rule--data_rule--application_criteria))
+- `application_criteria_satisfy` (String) How application criteria are combined (ALL | ANY)
 - `device` (Attributes Set) Device profiles (see [below for nested schema](#nestedatt--rule--data_rule--device))
 - `dlp_profile` (Attributes) DLP profile (data rules) (see [below for nested schema](#nestedatt--rule--data_rule--dlp_profile))
 - `file_attribute` (Attributes List) File attribute rows (data/file rules) (see [below for nested schema](#nestedatt--rule--data_rule--file_attribute))
@@ -764,6 +844,7 @@ Optional:
 
 - `app_category` (Attributes Set) Application categories (see [below for nested schema](#nestedatt--rule--data_rule--application--app_category))
 - `application` (Attributes Set) Predefined applications (logical OR within the set) (see [below for nested schema](#nestedatt--rule--data_rule--application--application))
+- `application_type` (List of String) Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).
 - `custom_app` (Attributes Set) Custom applications (see [below for nested schema](#nestedatt--rule--data_rule--application--custom_app))
 - `custom_category` (Attributes Set) Custom categories (see [below for nested schema](#nestedatt--rule--data_rule--application--custom_category))
 - `domain` (List of String) Second-level domains to match
@@ -845,6 +926,13 @@ Required:
 
 - `activity` (Attributes) (see [below for nested schema](#nestedatt--rule--data_rule--application_activity--activity))
 
+Optional:
+
+- `field` (Attributes) Activity condition field (e.g. URL) — some activities require a condition (see [below for nested schema](#nestedatt--rule--data_rule--application_activity--field))
+- `operator` (String) Activity condition operator (e.g. IS, CONTAINS)
+- `value` (String) Activity condition value (required by some activities, e.g. Full Path URL)
+- `value_set` (Attributes) Activity condition value set reference (see [below for nested schema](#nestedatt--rule--data_rule--application_activity--value_set))
+
 <a id="nestedatt--rule--data_rule--application_activity--activity"></a>
 ### Nested Schema for `rule.data_rule.application_activity.activity`
 
@@ -852,6 +940,54 @@ Optional:
 
 - `id` (String) Activity ID
 - `name` (String) Activity name
+
+
+<a id="nestedatt--rule--data_rule--application_activity--field"></a>
+### Nested Schema for `rule.data_rule.application_activity.field`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--data_rule--application_activity--value_set"></a>
+### Nested Schema for `rule.data_rule.application_activity.value_set`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--data_rule--application_criteria"></a>
+### Nested Schema for `rule.data_rule.application_criteria`
+
+Optional:
+
+- `ai_risk` (List of String) AI risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+- `compliance_attributes` (Map of String) Compliance attribute constraints keyed by API field name (hippa, isae3402, iso27001, pciDss, soc1, soc2, soc3, sox). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+- `origin_country` (Attributes Set) Application origin countries (see [below for nested schema](#nestedatt--rule--data_rule--application_criteria--origin_country))
+- `risk` (Attributes List) Risk score constraints (see [below for nested schema](#nestedatt--rule--data_rule--application_criteria--risk))
+- `security_attributes` (Map of String) Security attribute constraints keyed by API field name (auditTrail, encryptionAtRest, httpSecurityHeaders, mfa, rbac, rememberPassword, sso, tlsEnforcement, trustedCertificate). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+
+<a id="nestedatt--rule--data_rule--application_criteria--origin_country"></a>
+### Nested Schema for `rule.data_rule.application_criteria.origin_country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--data_rule--application_criteria--risk"></a>
+### Nested Schema for `rule.data_rule.application_criteria.risk`
+
+Required:
+
+- `risk` (String) Risk score (e.g. "7")
+- `risk_operator` (String) Comparison operator (e.g. GREATER_THAN, IS)
 
 
 
@@ -901,7 +1037,27 @@ Required:
 
 Optional:
 
-- `value` (String)
+- `content_type_group_values` (Attributes Set) Content type GROUP references (CONTENT_TYPE rows, e.g. Binaries, Scripts) (see [below for nested schema](#nestedatt--rule--data_rule--file_attribute--content_type_group_values))
+- `content_type_values` (Attributes Set) Content type references (CONTENT_TYPE rows) (see [below for nested schema](#nestedatt--rule--data_rule--file_attribute--content_type_values))
+- `value` (String) Attribute value (e.g. a size threshold). MUST be omitted for CONTENT_TYPE rows — use the content-type ref sets instead.
+
+<a id="nestedatt--rule--data_rule--file_attribute--content_type_group_values"></a>
+### Nested Schema for `rule.data_rule.file_attribute.content_type_group_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--data_rule--file_attribute--content_type_values"></a>
+### Nested Schema for `rule.data_rule.file_attribute.content_type_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
 
 
 <a id="nestedatt--rule--data_rule--schedule"></a>
@@ -1134,6 +1290,8 @@ Optional:
 - `application` (Attributes) Application matching (WAN-shaped object) (see [below for nested schema](#nestedatt--rule--file_rule--application))
 - `application_activity` (Attributes List) Application activities to match (required for file/data rules when an application is specified) (see [below for nested schema](#nestedatt--rule--file_rule--application_activity))
 - `application_activity_satisfy` (String) How application activities are combined (ALL | ANY)
+- `application_criteria` (Attributes) Attribute-based application matching (compliance/security attributes, risk score, origin country, AI risk). Typically combined with application.application_type. Omitted attributes default to ANY. (see [below for nested schema](#nestedatt--rule--file_rule--application_criteria))
+- `application_criteria_satisfy` (String) How application criteria are combined (ALL | ANY)
 - `device` (Attributes Set) Device profiles (see [below for nested schema](#nestedatt--rule--file_rule--device))
 - `dlp_profile` (Attributes) DLP profile (data rules) (see [below for nested schema](#nestedatt--rule--file_rule--dlp_profile))
 - `file_attribute` (Attributes List) File attribute rows (data/file rules) (see [below for nested schema](#nestedatt--rule--file_rule--file_attribute))
@@ -1179,6 +1337,7 @@ Optional:
 
 - `app_category` (Attributes Set) Application categories (see [below for nested schema](#nestedatt--rule--file_rule--application--app_category))
 - `application` (Attributes Set) Predefined applications (logical OR within the set) (see [below for nested schema](#nestedatt--rule--file_rule--application--application))
+- `application_type` (List of String) Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).
 - `custom_app` (Attributes Set) Custom applications (see [below for nested schema](#nestedatt--rule--file_rule--application--custom_app))
 - `custom_category` (Attributes Set) Custom categories (see [below for nested schema](#nestedatt--rule--file_rule--application--custom_category))
 - `domain` (List of String) Second-level domains to match
@@ -1260,6 +1419,13 @@ Required:
 
 - `activity` (Attributes) (see [below for nested schema](#nestedatt--rule--file_rule--application_activity--activity))
 
+Optional:
+
+- `field` (Attributes) Activity condition field (e.g. URL) — some activities require a condition (see [below for nested schema](#nestedatt--rule--file_rule--application_activity--field))
+- `operator` (String) Activity condition operator (e.g. IS, CONTAINS)
+- `value` (String) Activity condition value (required by some activities, e.g. Full Path URL)
+- `value_set` (Attributes) Activity condition value set reference (see [below for nested schema](#nestedatt--rule--file_rule--application_activity--value_set))
+
 <a id="nestedatt--rule--file_rule--application_activity--activity"></a>
 ### Nested Schema for `rule.file_rule.application_activity.activity`
 
@@ -1267,6 +1433,54 @@ Optional:
 
 - `id` (String) Activity ID
 - `name` (String) Activity name
+
+
+<a id="nestedatt--rule--file_rule--application_activity--field"></a>
+### Nested Schema for `rule.file_rule.application_activity.field`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--file_rule--application_activity--value_set"></a>
+### Nested Schema for `rule.file_rule.application_activity.value_set`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--file_rule--application_criteria"></a>
+### Nested Schema for `rule.file_rule.application_criteria`
+
+Optional:
+
+- `ai_risk` (List of String) AI risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+- `compliance_attributes` (Map of String) Compliance attribute constraints keyed by API field name (hippa, isae3402, iso27001, pciDss, soc1, soc2, soc3, sox). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+- `origin_country` (Attributes Set) Application origin countries (see [below for nested schema](#nestedatt--rule--file_rule--application_criteria--origin_country))
+- `risk` (Attributes List) Risk score constraints (see [below for nested schema](#nestedatt--rule--file_rule--application_criteria--risk))
+- `security_attributes` (Map of String) Security attribute constraints keyed by API field name (auditTrail, encryptionAtRest, httpSecurityHeaders, mfa, rbac, rememberPassword, sso, tlsEnforcement, trustedCertificate). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+
+<a id="nestedatt--rule--file_rule--application_criteria--origin_country"></a>
+### Nested Schema for `rule.file_rule.application_criteria.origin_country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--file_rule--application_criteria--risk"></a>
+### Nested Schema for `rule.file_rule.application_criteria.risk`
+
+Required:
+
+- `risk` (String) Risk score (e.g. "7")
+- `risk_operator` (String) Comparison operator (e.g. GREATER_THAN, IS)
 
 
 
@@ -1316,7 +1530,27 @@ Required:
 
 Optional:
 
-- `value` (String)
+- `content_type_group_values` (Attributes Set) Content type GROUP references (CONTENT_TYPE rows, e.g. Binaries, Scripts) (see [below for nested schema](#nestedatt--rule--file_rule--file_attribute--content_type_group_values))
+- `content_type_values` (Attributes Set) Content type references (CONTENT_TYPE rows) (see [below for nested schema](#nestedatt--rule--file_rule--file_attribute--content_type_values))
+- `value` (String) Attribute value (e.g. a size threshold). MUST be omitted for CONTENT_TYPE rows — use the content-type ref sets instead.
+
+<a id="nestedatt--rule--file_rule--file_attribute--content_type_group_values"></a>
+### Nested Schema for `rule.file_rule.file_attribute.content_type_group_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--file_rule--file_attribute--content_type_values"></a>
+### Nested Schema for `rule.file_rule.file_attribute.content_type_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
 
 
 <a id="nestedatt--rule--file_rule--schedule"></a>

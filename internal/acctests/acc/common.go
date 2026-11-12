@@ -383,7 +383,11 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 			ctx,
 			createGroupInput,
 			CatoAccountID,
-			cato_models.GroupMembersListInput{},
+			cato_models.GroupMembersListInput{
+				// paging and sort are non-nullable inputs on the live schema
+				Paging: &cato_models.PagingInput{Limit: 50, From: 0},
+				Sort:   &cato_models.GroupMembersListSortInput{},
+			},
 		)
 		if err != nil {
 			t.Fatalf("ERROR creating test group: %v", err)
