@@ -6,13 +6,11 @@ package mocks
 
 import (
 	"context"
-
 	"github.com/Yamashou/gqlgenc/clientv2"
-	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
-	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	mock "github.com/stretchr/testify/mock"
-
+	"github.com/catonetworks/cato-go-sdk"
+	"github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/networkconfig"
+	mock "github.com/stretchr/testify/mock"
 )
 
 // NewDNSSiteSettingsResourceClient creates a new instance of DNSSiteSettingsResourceClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

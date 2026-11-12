@@ -78,6 +78,64 @@ func TestParsePolicyEmpty(t *testing.T) {
 	}
 }
 
+func TestParsePolicyDefaultSection(t *testing.T) {
+	t.Parallel()
+	// The ztnaAlwaysOn API returns rules whose section.id/name are empty when
+	// they live at the policy root (implicit default section). cato_always_on_rule_bulk
+	// is a mover that only manages SECTIONED rules (the module excludes
+	// section_name "" rows from rule_data), so root rules must be SKIPPED in the
+	// read-back -- not rejected, and not included -- so the counts match.
+	// This mixes one sectioned rule (kept) with one root rule (skipped).
+	var result cato.PolicyZtnaAlwaysOnPolicy
+	require.NoError(t, json.Unmarshal([]byte(`{"policy":{"ztnaAlwaysOn":{"policy":{
+		"revision":{"changes":2},
+		"sections":[{"section":{"id":"s1","name":"First"}}],
+		"rules":[
+			{"rule":{"id":"r1","name":"Sectioned","index":10,"section":{"id":"s1","name":"First"}}},
+			{"rule":{"id":"r2","name":"Root Rule","index":20,"section":{"id":"","name":""}}}
+		]
+	}}}}`), &result))
+
+	var diags diag.Diagnostics
+	actual := parseRulesIndex(ctx, &result, &diags)
+	require.False(t, diags.HasError(), "%v", diags)
+	require.NotNil(t, actual)
+	require.Equal(t, types.MapValueMust(types.ObjectType{AttrTypes: SectionAttrTypes}, map[string]attr.Value{
+		"First": types.ObjectValueMust(SectionAttrTypes, map[string]attr.Value{
+			"id": types.StringValue("s1"), "section_index": types.Int64Value(1),
+		}),
+	}), actual.SectionData)
+	// Only the sectioned rule survives; the root rule is skipped.
+	require.Equal(t, types.MapValueMust(types.ObjectType{AttrTypes: RuleAttrTypes}, map[string]attr.Value{
+		"Sectioned": types.ObjectValueMust(RuleAttrTypes, map[string]attr.Value{
+			"id": types.StringValue("r1"), "section_name": types.StringValue("First"), "index_in_section": types.Int64Value(1),
+		}),
+	}), actual.RuleData)
+}
+
+func TestParsePolicyAllRootRules(t *testing.T) {
+	t.Parallel()
+	// A policy whose rules are ALL at the root (the real refarch Always-On shape:
+	// 0 sections, every rule section.id == "") parses to empty section/rule data
+	// -- matching the module's empty rule_data, so the mover makes no moves.
+	var result cato.PolicyZtnaAlwaysOnPolicy
+	require.NoError(t, json.Unmarshal([]byte(`{"policy":{"ztnaAlwaysOn":{"policy":{
+		"revision":{"changes":2},
+		"sections":[],
+		"rules":[
+			{"rule":{"id":"r1","name":"Always-On Policy","index":10,"section":{"id":"","name":""}}},
+			{"rule":{"id":"r2","name":"Always-on Policy - iOS","index":20,"section":{"id":"","name":""}}}
+		]
+	}}}}`), &result))
+
+	var diags diag.Diagnostics
+	actual := parseRulesIndex(ctx, &result, &diags)
+	require.False(t, diags.HasError(), "%v", diags)
+	require.NotNil(t, actual)
+	require.Equal(t, types.MapValueMust(types.ObjectType{AttrTypes: SectionAttrTypes}, map[string]attr.Value{}), actual.SectionData)
+	require.Equal(t, types.MapValueMust(types.ObjectType{AttrTypes: RuleAttrTypes}, map[string]attr.Value{}), actual.RuleData)
+}
+
 func TestParsePolicyInvalidResponse(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, policy string }{

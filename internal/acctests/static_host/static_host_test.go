@@ -36,7 +36,7 @@ func TestAccStaticHost(t *testing.T) {
 				Config: cfg.getTfConfig(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "5"),
+					resource.TestCheckResourceAttr(res, "%", "6"), // id, ip, mac_address, name, site_id, site_name
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "ip", "192.168.220.20"),
 					resource.TestCheckResourceAttr(res, "mac_address", "00:00:00:00:00:50"),
@@ -88,7 +88,7 @@ func TestAccStaticHost(t *testing.T) {
 				Config: cfg.getTfConfig(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
-					resource.TestCheckResourceAttr(res, "%", "5"),
+					resource.TestCheckResourceAttr(res, "%", "6"), // id, ip, mac_address, name, site_id, site_name
 					resource.TestCheckResourceAttrSet(res, "id"),
 					resource.TestCheckResourceAttr(res, "ip", "192.168.220.21"),
 					resource.TestCheckResourceAttr(res, "mac_address", "00:00:00:00:00:51"),

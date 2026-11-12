@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	diag "github.com/hashicorp/terraform-plugin-framework/diag"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
@@ -77,6 +79,23 @@ func (r *appConnectorResource) Create(ctx context.Context, req resource.CreateRe
 	result, err := r.resourceAPI().AppConnectorCreateConnector(ctx, r.client.AccountId, input)
 	tflog.Debug(ctx, "AppConnectorCreateConnector", map[string]interface{}{"response": utils.InterfaceToJSONString(result)})
 	if err != nil {
+		// Create-or-adopt: removeZtnaAppConnector is still being rolled out
+		// per-account, so a connector left behind by a teardown can neither be
+		// deleted nor re-created ("already exists"). Adopt the existing
+		// connector by name instead of failing.
+		if strings.Contains(err.Error(), "already exists") {
+			existingID, findErr := r.findConnectorIDByName(ctx, plan.Name.ValueString())
+			if findErr == nil && existingID != "" {
+				tflog.Info(ctx, "adopting existing app connector with matching name",
+					map[string]interface{}{"name": plan.Name.ValueString(), "id": existingID})
+				adopted, hydrateDiags, hydrateErr := r.hydrateAppConnectorState(ctx, existingID, plan)
+				resp.Diagnostics.Append(hydrateDiags...)
+				if hydrateErr == nil && adopted != nil {
+					resp.Diagnostics.Append(resp.State.Set(ctx, adopted)...)
+					return
+				}
+			}
+		}
 		resp.Diagnostics.AddError("Cato API AppConnectorCreateConnector error", err.Error())
 		return
 	}
@@ -236,6 +255,30 @@ func convertCreateInput2(
 }
 
 // hydrateAppConnectorState fetches the current state of an appConnector from the API.
+// findConnectorIDByName returns the id of the live connector with the given
+// name, or "" when none matches. Used by the create-or-adopt path.
+func (r *appConnectorResource) findConnectorIDByName(ctx context.Context, name string) (string, error) {
+	result, err := r.resourceAPI().AppConnectorListConnectors(ctx, r.client.AccountId,
+		cato_models.ZtnaAppConnectorListInput{
+			Paging: &cato_models.PagingInput{Limit: 1000, From: 0},
+			// sort is a non-nullable input even though its fields are optional
+			Sort: &cato_models.ZtnaAppConnectorListSortInput{},
+		})
+	if err != nil {
+		return "", err
+	}
+	list := result.GetZtnaAppConnector().GetZtnaAppConnectorList()
+	if list == nil {
+		return "", nil
+	}
+	for _, item := range list.ZtnaAppConnector {
+		if item != nil && item.Name == name {
+			return item.ID, nil
+		}
+	}
+	return "", nil
+}
+
 func (r *appConnectorResource) hydrateAppConnectorState(
 	ctx context.Context,
 	appConnectorID string,

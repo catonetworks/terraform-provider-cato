@@ -157,23 +157,36 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request")
-	tunnelData, errIPSec := r.resourceAPI().SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
-	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(tunnelData),
-	})
-	if errIPSec != nil {
-		resp.Diagnostics.AddError(
-			"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
-			errIPSec.Error(),
-		)
-		return
-	}
+	// Skip the tunnels mutation entirely for a PLACEHOLDER config -- an empty
+	// `primary {}` (no destination/pop/ip and no tunnels) is schema-valid and
+	// creates just the site shell, but the API rejects a content-free
+	// AddIpsecIkeV2SiteTunnels call ("publicCatoIp is a mandatory field for
+	// IPv4 destination type"). Tunnels are added later via update.
+	var tunnelsPrimaryData []*cato_go_sdk.SiteAddIpsecIkeV2SiteTunnels_Site_AddIpsecIkeV2SiteTunnels_PrimaryAddIpsecIkeV2SiteTunnelsPayload_Tunnels
+	var tunnelsSecondaryData []*cato_go_sdk.SiteAddIpsecIkeV2SiteTunnels_Site_AddIpsecIkeV2SiteTunnels_SecondaryAddIpsecIkeV2SiteTunnelsPayload_Tunnels
+	if ipsecTunnelsInputHasContent(tunnelInputs.add) {
+		tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request")
+		tunnelData, errIPSec := r.resourceAPI().SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
+		tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(tunnelData),
+		})
+		if errIPSec != nil {
+			resp.Diagnostics.AddError(
+				"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
+				errIPSec.Error(),
+			)
+			return
+		}
 
-	// create types to support multiple primary and secondary tunnels
-	addTunnels := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels()
-	tunnelsPrimaryData := addTunnels.PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
-	tunnelsSecondaryData := addTunnels.SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
+		// create types to support multiple primary and secondary tunnels
+		addTunnels := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels()
+		tunnelsPrimaryData = addTunnels.PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
+		tunnelsSecondaryData = addTunnels.SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
+	} else {
+		tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.skipped", map[string]interface{}{
+			"reason": "ipsec primary/secondary carry no endpoint or tunnel configuration (placeholder site)",
+		})
+	}
 
 	// Hydrate the state with API data to ensure consistency
 	hydratedState, _, hydrateErr := r.hydrateIpsecSiteState(ctx, plan, siteID)
