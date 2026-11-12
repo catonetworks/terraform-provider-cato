@@ -40,12 +40,12 @@ func (_m *SocketBypassSectionClient) EXPECT() *SocketBypassSectionClient_Expecte
 }
 
 // PolicySocketBypassAddSection provides a mock function for the type SocketBypassSectionClient
-func (_mock *SocketBypassSectionClient) PolicySocketBypassAddSection(ctx context.Context, input cato_models.PolicyAddSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassAddSection, error) {
+func (_mock *SocketBypassSectionClient) PolicySocketBypassAddSection(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyAddSectionInput cato_models.PolicyAddSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassAddSection, error) {
 	var tmpRet mock.Arguments
 	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, input, accountID, interceptors)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyAddSectionInput, interceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, input, accountID)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyAddSectionInput)
 	}
 	ret := tmpRet
 
@@ -55,18 +55,18 @@ func (_mock *SocketBypassSectionClient) PolicySocketBypassAddSection(ctx context
 
 	var r0 *cato_go_sdk.PolicySocketBypassAddSection
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyAddSectionInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassAddSection, error)); ok {
-		return returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyAddSectionInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassAddSection, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyAddSectionInput, interceptors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyAddSectionInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassAddSection); ok {
-		r0 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyAddSectionInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassAddSection); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyAddSectionInput, interceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassAddSection)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, cato_models.PolicyAddSectionInput, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyAddSectionInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyAddSectionInput, interceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -80,39 +80,45 @@ type SocketBypassSectionClient_PolicySocketBypassAddSection_Call struct {
 
 // PolicySocketBypassAddSection is a helper method to define mock.On call
 //   - ctx context.Context
-//   - input cato_models.PolicyAddSectionInput
 //   - accountID string
+//   - socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput
+//   - policyAddSectionInput cato_models.PolicyAddSectionInput
 //   - interceptors ...clientv2.RequestInterceptor
-func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassAddSection(ctx interface{}, input interface{}, accountID interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassAddSection_Call {
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassAddSection(ctx interface{}, accountID interface{}, socketBypassPolicyMutationInput interface{}, policyAddSectionInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassAddSection_Call {
 	return &SocketBypassSectionClient_PolicySocketBypassAddSection_Call{Call: _e.mock.On("PolicySocketBypassAddSection",
-		append([]interface{}{ctx, input, accountID}, interceptors...)...)}
+		append([]interface{}{ctx, accountID, socketBypassPolicyMutationInput, policyAddSectionInput}, interceptors...)...)}
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassAddSection_Call) Run(run func(ctx context.Context, input cato_models.PolicyAddSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassAddSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassAddSection_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyAddSectionInput cato_models.PolicyAddSectionInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassAddSection_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 cato_models.PolicyAddSectionInput
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(cato_models.PolicyAddSectionInput)
+			arg1 = args[1].(string)
 		}
-		var arg2 string
+		var arg2 *cato_models.SocketBypassPolicyMutationInput
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(*cato_models.SocketBypassPolicyMutationInput)
 		}
-		var arg3 []clientv2.RequestInterceptor
+		var arg3 cato_models.PolicyAddSectionInput
+		if args[3] != nil {
+			arg3 = args[3].(cato_models.PolicyAddSectionInput)
+		}
+		var arg4 []clientv2.RequestInterceptor
 		var variadicArgs []clientv2.RequestInterceptor
-		if len(args) > 3 {
-			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
 		}
-		arg3 = variadicArgs
+		arg4 = variadicArgs
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3...,
+			arg3,
+			arg4...,
 		)
 	})
 	return _c
@@ -123,18 +129,208 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassAddSection_Call) Return(po
 	return _c
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassAddSection_Call) RunAndReturn(run func(ctx context.Context, input cato_models.PolicyAddSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassAddSection, error)) *SocketBypassSectionClient_PolicySocketBypassAddSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassAddSection_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyAddSectionInput cato_models.PolicyAddSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassAddSection, error)) *SocketBypassSectionClient_PolicySocketBypassAddSection_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PolicySocketBypassCreatePolicyRevision provides a mock function for the type SocketBypassSectionClient
+func (_mock *SocketBypassSectionClient) PolicySocketBypassCreatePolicyRevision(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyCreateRevisionInput cato_models.PolicyCreateRevisionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassCreatePolicyRevision, error) {
+	var tmpRet mock.Arguments
+	if len(interceptors) > 0 {
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyCreateRevisionInput, interceptors)
+	} else {
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyCreateRevisionInput)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for PolicySocketBypassCreatePolicyRevision")
+	}
+
+	var r0 *cato_go_sdk.PolicySocketBypassCreatePolicyRevision
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyCreateRevisionInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassCreatePolicyRevision, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyCreateRevisionInput, interceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyCreateRevisionInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassCreatePolicyRevision); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyCreateRevisionInput, interceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassCreatePolicyRevision)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyCreateRevisionInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyCreateRevisionInput, interceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicySocketBypassCreatePolicyRevision'
+type SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call struct {
+	*mock.Call
+}
+
+// PolicySocketBypassCreatePolicyRevision is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+//   - socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput
+//   - policyCreateRevisionInput cato_models.PolicyCreateRevisionInput
+//   - interceptors ...clientv2.RequestInterceptor
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassCreatePolicyRevision(ctx interface{}, accountID interface{}, socketBypassPolicyMutationInput interface{}, policyCreateRevisionInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call {
+	return &SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call{Call: _e.mock.On("PolicySocketBypassCreatePolicyRevision",
+		append([]interface{}{ctx, accountID, socketBypassPolicyMutationInput, policyCreateRevisionInput}, interceptors...)...)}
+}
+
+func (_c *SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyCreateRevisionInput cato_models.PolicyCreateRevisionInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *cato_models.SocketBypassPolicyMutationInput
+		if args[2] != nil {
+			arg2 = args[2].(*cato_models.SocketBypassPolicyMutationInput)
+		}
+		var arg3 cato_models.PolicyCreateRevisionInput
+		if args[3] != nil {
+			arg3 = args[3].(cato_models.PolicyCreateRevisionInput)
+		}
+		var arg4 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
+		}
+		arg4 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4...,
+		)
+	})
+	return _c
+}
+
+func (_c *SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call) Return(policySocketBypassCreatePolicyRevision *cato_go_sdk.PolicySocketBypassCreatePolicyRevision, err error) *SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call {
+	_c.Call.Return(policySocketBypassCreatePolicyRevision, err)
+	return _c
+}
+
+func (_c *SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyCreateRevisionInput cato_models.PolicyCreateRevisionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassCreatePolicyRevision, error)) *SocketBypassSectionClient_PolicySocketBypassCreatePolicyRevision_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PolicySocketBypassDiscardPolicyRevision provides a mock function for the type SocketBypassSectionClient
+func (_mock *SocketBypassSectionClient) PolicySocketBypassDiscardPolicyRevision(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassDiscardPolicyRevision, error) {
+	var tmpRet mock.Arguments
+	if len(interceptors) > 0 {
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyDiscardRevisionInput, interceptors)
+	} else {
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyDiscardRevisionInput)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for PolicySocketBypassDiscardPolicyRevision")
+	}
+
+	var r0 *cato_go_sdk.PolicySocketBypassDiscardPolicyRevision
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, *cato_models.PolicyDiscardRevisionInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassDiscardPolicyRevision, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyDiscardRevisionInput, interceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, *cato_models.PolicyDiscardRevisionInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassDiscardPolicyRevision); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyDiscardRevisionInput, interceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassDiscardPolicyRevision)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, *cato_models.PolicyDiscardRevisionInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyDiscardRevisionInput, interceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicySocketBypassDiscardPolicyRevision'
+type SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call struct {
+	*mock.Call
+}
+
+// PolicySocketBypassDiscardPolicyRevision is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+//   - socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput
+//   - policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput
+//   - interceptors ...clientv2.RequestInterceptor
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassDiscardPolicyRevision(ctx interface{}, accountID interface{}, socketBypassPolicyMutationInput interface{}, policyDiscardRevisionInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call {
+	return &SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call{Call: _e.mock.On("PolicySocketBypassDiscardPolicyRevision",
+		append([]interface{}{ctx, accountID, socketBypassPolicyMutationInput, policyDiscardRevisionInput}, interceptors...)...)}
+}
+
+func (_c *SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *cato_models.SocketBypassPolicyMutationInput
+		if args[2] != nil {
+			arg2 = args[2].(*cato_models.SocketBypassPolicyMutationInput)
+		}
+		var arg3 *cato_models.PolicyDiscardRevisionInput
+		if args[3] != nil {
+			arg3 = args[3].(*cato_models.PolicyDiscardRevisionInput)
+		}
+		var arg4 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
+		}
+		arg4 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4...,
+		)
+	})
+	return _c
+}
+
+func (_c *SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call) Return(policySocketBypassDiscardPolicyRevision *cato_go_sdk.PolicySocketBypassDiscardPolicyRevision, err error) *SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call {
+	_c.Call.Return(policySocketBypassDiscardPolicyRevision, err)
+	return _c
+}
+
+func (_c *SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassDiscardPolicyRevision, error)) *SocketBypassSectionClient_PolicySocketBypassDiscardPolicyRevision_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // PolicySocketBypassMoveSection provides a mock function for the type SocketBypassSectionClient
-func (_mock *SocketBypassSectionClient) PolicySocketBypassMoveSection(ctx context.Context, input cato_models.PolicyMoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassMoveSection, error) {
+func (_mock *SocketBypassSectionClient) PolicySocketBypassMoveSection(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyMoveSectionInput cato_models.PolicyMoveSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassMoveSection, error) {
 	var tmpRet mock.Arguments
 	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, input, accountID, interceptors)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyMoveSectionInput, interceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, input, accountID)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyMoveSectionInput)
 	}
 	ret := tmpRet
 
@@ -144,18 +340,18 @@ func (_mock *SocketBypassSectionClient) PolicySocketBypassMoveSection(ctx contex
 
 	var r0 *cato_go_sdk.PolicySocketBypassMoveSection
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyMoveSectionInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassMoveSection, error)); ok {
-		return returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyMoveSectionInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassMoveSection, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyMoveSectionInput, interceptors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyMoveSectionInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassMoveSection); ok {
-		r0 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyMoveSectionInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassMoveSection); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyMoveSectionInput, interceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassMoveSection)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, cato_models.PolicyMoveSectionInput, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyMoveSectionInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyMoveSectionInput, interceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -169,39 +365,45 @@ type SocketBypassSectionClient_PolicySocketBypassMoveSection_Call struct {
 
 // PolicySocketBypassMoveSection is a helper method to define mock.On call
 //   - ctx context.Context
-//   - input cato_models.PolicyMoveSectionInput
 //   - accountID string
+//   - socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput
+//   - policyMoveSectionInput cato_models.PolicyMoveSectionInput
 //   - interceptors ...clientv2.RequestInterceptor
-func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassMoveSection(ctx interface{}, input interface{}, accountID interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call {
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassMoveSection(ctx interface{}, accountID interface{}, socketBypassPolicyMutationInput interface{}, policyMoveSectionInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call {
 	return &SocketBypassSectionClient_PolicySocketBypassMoveSection_Call{Call: _e.mock.On("PolicySocketBypassMoveSection",
-		append([]interface{}{ctx, input, accountID}, interceptors...)...)}
+		append([]interface{}{ctx, accountID, socketBypassPolicyMutationInput, policyMoveSectionInput}, interceptors...)...)}
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call) Run(run func(ctx context.Context, input cato_models.PolicyMoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyMoveSectionInput cato_models.PolicyMoveSectionInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 cato_models.PolicyMoveSectionInput
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(cato_models.PolicyMoveSectionInput)
+			arg1 = args[1].(string)
 		}
-		var arg2 string
+		var arg2 *cato_models.SocketBypassPolicyMutationInput
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(*cato_models.SocketBypassPolicyMutationInput)
 		}
-		var arg3 []clientv2.RequestInterceptor
+		var arg3 cato_models.PolicyMoveSectionInput
+		if args[3] != nil {
+			arg3 = args[3].(cato_models.PolicyMoveSectionInput)
+		}
+		var arg4 []clientv2.RequestInterceptor
 		var variadicArgs []clientv2.RequestInterceptor
-		if len(args) > 3 {
-			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
 		}
-		arg3 = variadicArgs
+		arg4 = variadicArgs
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3...,
+			arg3,
+			arg4...,
 		)
 	})
 	return _c
@@ -212,18 +414,18 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call) Return(p
 	return _c
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call) RunAndReturn(run func(ctx context.Context, input cato_models.PolicyMoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassMoveSection, error)) *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyMoveSectionInput cato_models.PolicyMoveSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassMoveSection, error)) *SocketBypassSectionClient_PolicySocketBypassMoveSection_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // PolicySocketBypassPolicy provides a mock function for the type SocketBypassSectionClient
-func (_mock *SocketBypassSectionClient) PolicySocketBypassPolicy(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPolicy, error) {
+func (_mock *SocketBypassSectionClient) PolicySocketBypassPolicy(ctx context.Context, accountID string, socketBypassPolicyInput *cato_models.SocketBypassPolicyInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPolicy, error) {
 	var tmpRet mock.Arguments
 	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, accountID, interceptors)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyInput, interceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, accountID)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyInput)
 	}
 	ret := tmpRet
 
@@ -233,18 +435,18 @@ func (_mock *SocketBypassSectionClient) PolicySocketBypassPolicy(ctx context.Con
 
 	var r0 *cato_go_sdk.PolicySocketBypassPolicy
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPolicy, error)); ok {
-		return returnFunc(ctx, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPolicy, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyInput, interceptors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassPolicy); ok {
-		r0 = returnFunc(ctx, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassPolicy); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyInput, interceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassPolicy)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyInput, interceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -259,13 +461,14 @@ type SocketBypassSectionClient_PolicySocketBypassPolicy_Call struct {
 // PolicySocketBypassPolicy is a helper method to define mock.On call
 //   - ctx context.Context
 //   - accountID string
+//   - socketBypassPolicyInput *cato_models.SocketBypassPolicyInput
 //   - interceptors ...clientv2.RequestInterceptor
-func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassPolicy(ctx interface{}, accountID interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassPolicy_Call {
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassPolicy(ctx interface{}, accountID interface{}, socketBypassPolicyInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassPolicy_Call {
 	return &SocketBypassSectionClient_PolicySocketBypassPolicy_Call{Call: _e.mock.On("PolicySocketBypassPolicy",
-		append([]interface{}{ctx, accountID}, interceptors...)...)}
+		append([]interface{}{ctx, accountID, socketBypassPolicyInput}, interceptors...)...)}
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassPolicy_Call) Run(run func(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassPolicy_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassPolicy_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyInput *cato_models.SocketBypassPolicyInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassPolicy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -275,16 +478,21 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassPolicy_Call) Run(run func(
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 []clientv2.RequestInterceptor
-		var variadicArgs []clientv2.RequestInterceptor
-		if len(args) > 2 {
-			variadicArgs = args[2].([]clientv2.RequestInterceptor)
+		var arg2 *cato_models.SocketBypassPolicyInput
+		if args[2] != nil {
+			arg2 = args[2].(*cato_models.SocketBypassPolicyInput)
 		}
-		arg2 = variadicArgs
+		var arg3 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 3 {
+			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		}
+		arg3 = variadicArgs
 		run(
 			arg0,
 			arg1,
-			arg2...,
+			arg2,
+			arg3...,
 		)
 	})
 	return _c
@@ -295,18 +503,18 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassPolicy_Call) Return(policy
 	return _c
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassPolicy_Call) RunAndReturn(run func(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPolicy, error)) *SocketBypassSectionClient_PolicySocketBypassPolicy_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassPolicy_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyInput *cato_models.SocketBypassPolicyInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPolicy, error)) *SocketBypassSectionClient_PolicySocketBypassPolicy_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // PolicySocketBypassPublishPolicyRevision provides a mock function for the type SocketBypassSectionClient
-func (_mock *SocketBypassSectionClient) PolicySocketBypassPublishPolicyRevision(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPublishPolicyRevision, error) {
+func (_mock *SocketBypassSectionClient) PolicySocketBypassPublishPolicyRevision(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPublishPolicyRevision, error) {
 	var tmpRet mock.Arguments
 	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, accountID, interceptors)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyPublishRevisionInput, interceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, accountID)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyPublishRevisionInput)
 	}
 	ret := tmpRet
 
@@ -316,18 +524,18 @@ func (_mock *SocketBypassSectionClient) PolicySocketBypassPublishPolicyRevision(
 
 	var r0 *cato_go_sdk.PolicySocketBypassPublishPolicyRevision
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPublishPolicyRevision, error)); ok {
-		return returnFunc(ctx, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, *cato_models.PolicyPublishRevisionInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPublishPolicyRevision, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyPublishRevisionInput, interceptors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassPublishPolicyRevision); ok {
-		r0 = returnFunc(ctx, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, *cato_models.PolicyPublishRevisionInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassPublishPolicyRevision); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyPublishRevisionInput, interceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassPublishPolicyRevision)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, *cato_models.PolicyPublishRevisionInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyPublishRevisionInput, interceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -342,13 +550,15 @@ type SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call stru
 // PolicySocketBypassPublishPolicyRevision is a helper method to define mock.On call
 //   - ctx context.Context
 //   - accountID string
+//   - socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput
+//   - policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput
 //   - interceptors ...clientv2.RequestInterceptor
-func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassPublishPolicyRevision(ctx interface{}, accountID interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call {
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassPublishPolicyRevision(ctx interface{}, accountID interface{}, socketBypassPolicyMutationInput interface{}, policyPublishRevisionInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call {
 	return &SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call{Call: _e.mock.On("PolicySocketBypassPublishPolicyRevision",
-		append([]interface{}{ctx, accountID}, interceptors...)...)}
+		append([]interface{}{ctx, accountID, socketBypassPolicyMutationInput, policyPublishRevisionInput}, interceptors...)...)}
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call) Run(run func(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -358,16 +568,26 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 []clientv2.RequestInterceptor
-		var variadicArgs []clientv2.RequestInterceptor
-		if len(args) > 2 {
-			variadicArgs = args[2].([]clientv2.RequestInterceptor)
+		var arg2 *cato_models.SocketBypassPolicyMutationInput
+		if args[2] != nil {
+			arg2 = args[2].(*cato_models.SocketBypassPolicyMutationInput)
 		}
-		arg2 = variadicArgs
+		var arg3 *cato_models.PolicyPublishRevisionInput
+		if args[3] != nil {
+			arg3 = args[3].(*cato_models.PolicyPublishRevisionInput)
+		}
+		var arg4 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
+		}
+		arg4 = variadicArgs
 		run(
 			arg0,
 			arg1,
-			arg2...,
+			arg2,
+			arg3,
+			arg4...,
 		)
 	})
 	return _c
@@ -378,18 +598,18 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call
 	return _c
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call) RunAndReturn(run func(ctx context.Context, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPublishPolicyRevision, error)) *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassPublishPolicyRevision, error)) *SocketBypassSectionClient_PolicySocketBypassPublishPolicyRevision_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // PolicySocketBypassRemoveSection provides a mock function for the type SocketBypassSectionClient
-func (_mock *SocketBypassSectionClient) PolicySocketBypassRemoveSection(ctx context.Context, input cato_models.PolicyRemoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassRemoveSection, error) {
+func (_mock *SocketBypassSectionClient) PolicySocketBypassRemoveSection(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyRemoveSectionInput cato_models.PolicyRemoveSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassRemoveSection, error) {
 	var tmpRet mock.Arguments
 	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, input, accountID, interceptors)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyRemoveSectionInput, interceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, input, accountID)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyRemoveSectionInput)
 	}
 	ret := tmpRet
 
@@ -399,18 +619,18 @@ func (_mock *SocketBypassSectionClient) PolicySocketBypassRemoveSection(ctx cont
 
 	var r0 *cato_go_sdk.PolicySocketBypassRemoveSection
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyRemoveSectionInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassRemoveSection, error)); ok {
-		return returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyRemoveSectionInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassRemoveSection, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyRemoveSectionInput, interceptors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyRemoveSectionInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassRemoveSection); ok {
-		r0 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyRemoveSectionInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassRemoveSection); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyRemoveSectionInput, interceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassRemoveSection)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, cato_models.PolicyRemoveSectionInput, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyRemoveSectionInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyRemoveSectionInput, interceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -424,39 +644,45 @@ type SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call struct {
 
 // PolicySocketBypassRemoveSection is a helper method to define mock.On call
 //   - ctx context.Context
-//   - input cato_models.PolicyRemoveSectionInput
 //   - accountID string
+//   - socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput
+//   - policyRemoveSectionInput cato_models.PolicyRemoveSectionInput
 //   - interceptors ...clientv2.RequestInterceptor
-func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassRemoveSection(ctx interface{}, input interface{}, accountID interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call {
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassRemoveSection(ctx interface{}, accountID interface{}, socketBypassPolicyMutationInput interface{}, policyRemoveSectionInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call {
 	return &SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call{Call: _e.mock.On("PolicySocketBypassRemoveSection",
-		append([]interface{}{ctx, input, accountID}, interceptors...)...)}
+		append([]interface{}{ctx, accountID, socketBypassPolicyMutationInput, policyRemoveSectionInput}, interceptors...)...)}
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call) Run(run func(ctx context.Context, input cato_models.PolicyRemoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyRemoveSectionInput cato_models.PolicyRemoveSectionInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 cato_models.PolicyRemoveSectionInput
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(cato_models.PolicyRemoveSectionInput)
+			arg1 = args[1].(string)
 		}
-		var arg2 string
+		var arg2 *cato_models.SocketBypassPolicyMutationInput
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(*cato_models.SocketBypassPolicyMutationInput)
 		}
-		var arg3 []clientv2.RequestInterceptor
+		var arg3 cato_models.PolicyRemoveSectionInput
+		if args[3] != nil {
+			arg3 = args[3].(cato_models.PolicyRemoveSectionInput)
+		}
+		var arg4 []clientv2.RequestInterceptor
 		var variadicArgs []clientv2.RequestInterceptor
-		if len(args) > 3 {
-			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
 		}
-		arg3 = variadicArgs
+		arg4 = variadicArgs
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3...,
+			arg3,
+			arg4...,
 		)
 	})
 	return _c
@@ -467,18 +693,18 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call) Return
 	return _c
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call) RunAndReturn(run func(ctx context.Context, input cato_models.PolicyRemoveSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassRemoveSection, error)) *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyRemoveSectionInput cato_models.PolicyRemoveSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassRemoveSection, error)) *SocketBypassSectionClient_PolicySocketBypassRemoveSection_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // PolicySocketBypassUpdateSection provides a mock function for the type SocketBypassSectionClient
-func (_mock *SocketBypassSectionClient) PolicySocketBypassUpdateSection(ctx context.Context, input cato_models.PolicyUpdateSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassUpdateSection, error) {
+func (_mock *SocketBypassSectionClient) PolicySocketBypassUpdateSection(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyUpdateSectionInput cato_models.PolicyUpdateSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassUpdateSection, error) {
 	var tmpRet mock.Arguments
 	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, input, accountID, interceptors)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyUpdateSectionInput, interceptors)
 	} else {
-		tmpRet = _mock.Called(ctx, input, accountID)
+		tmpRet = _mock.Called(ctx, accountID, socketBypassPolicyMutationInput, policyUpdateSectionInput)
 	}
 	ret := tmpRet
 
@@ -488,18 +714,18 @@ func (_mock *SocketBypassSectionClient) PolicySocketBypassUpdateSection(ctx cont
 
 	var r0 *cato_go_sdk.PolicySocketBypassUpdateSection
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyUpdateSectionInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassUpdateSection, error)); ok {
-		return returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyUpdateSectionInput, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassUpdateSection, error)); ok {
+		return returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyUpdateSectionInput, interceptors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyUpdateSectionInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassUpdateSection); ok {
-		r0 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyUpdateSectionInput, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicySocketBypassUpdateSection); ok {
+		r0 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyUpdateSectionInput, interceptors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cato_go_sdk.PolicySocketBypassUpdateSection)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, cato_models.PolicyUpdateSectionInput, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, input, accountID, interceptors...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *cato_models.SocketBypassPolicyMutationInput, cato_models.PolicyUpdateSectionInput, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, accountID, socketBypassPolicyMutationInput, policyUpdateSectionInput, interceptors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -513,39 +739,45 @@ type SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call struct {
 
 // PolicySocketBypassUpdateSection is a helper method to define mock.On call
 //   - ctx context.Context
-//   - input cato_models.PolicyUpdateSectionInput
 //   - accountID string
+//   - socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput
+//   - policyUpdateSectionInput cato_models.PolicyUpdateSectionInput
 //   - interceptors ...clientv2.RequestInterceptor
-func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassUpdateSection(ctx interface{}, input interface{}, accountID interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call {
+func (_e *SocketBypassSectionClient_Expecter) PolicySocketBypassUpdateSection(ctx interface{}, accountID interface{}, socketBypassPolicyMutationInput interface{}, policyUpdateSectionInput interface{}, interceptors ...interface{}) *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call {
 	return &SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call{Call: _e.mock.On("PolicySocketBypassUpdateSection",
-		append([]interface{}{ctx, input, accountID}, interceptors...)...)}
+		append([]interface{}{ctx, accountID, socketBypassPolicyMutationInput, policyUpdateSectionInput}, interceptors...)...)}
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call) Run(run func(ctx context.Context, input cato_models.PolicyUpdateSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call) Run(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyUpdateSectionInput cato_models.PolicyUpdateSectionInput, interceptors ...clientv2.RequestInterceptor)) *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 cato_models.PolicyUpdateSectionInput
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(cato_models.PolicyUpdateSectionInput)
+			arg1 = args[1].(string)
 		}
-		var arg2 string
+		var arg2 *cato_models.SocketBypassPolicyMutationInput
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(*cato_models.SocketBypassPolicyMutationInput)
 		}
-		var arg3 []clientv2.RequestInterceptor
+		var arg3 cato_models.PolicyUpdateSectionInput
+		if args[3] != nil {
+			arg3 = args[3].(cato_models.PolicyUpdateSectionInput)
+		}
+		var arg4 []clientv2.RequestInterceptor
 		var variadicArgs []clientv2.RequestInterceptor
-		if len(args) > 3 {
-			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		if len(args) > 4 {
+			variadicArgs = args[4].([]clientv2.RequestInterceptor)
 		}
-		arg3 = variadicArgs
+		arg4 = variadicArgs
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3...,
+			arg3,
+			arg4...,
 		)
 	})
 	return _c
@@ -556,7 +788,7 @@ func (_c *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call) Return
 	return _c
 }
 
-func (_c *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call) RunAndReturn(run func(ctx context.Context, input cato_models.PolicyUpdateSectionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassUpdateSection, error)) *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call {
+func (_c *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call) RunAndReturn(run func(ctx context.Context, accountID string, socketBypassPolicyMutationInput *cato_models.SocketBypassPolicyMutationInput, policyUpdateSectionInput cato_models.PolicyUpdateSectionInput, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicySocketBypassUpdateSection, error)) *SocketBypassSectionClient_PolicySocketBypassUpdateSection_Call {
 	_c.Call.Return(run)
 	return _c
 }

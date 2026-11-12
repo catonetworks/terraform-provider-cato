@@ -1,54 +1,92 @@
-terraform {
-  required_providers {
-    cato = { source = "catonetworks/cato" }
+
+
+// route selected destinations through the tunnel
+resource "cato_split_tunnel_rule" "route_selected" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  rule = {
+    name             = "Route Selected Destinations"
+    enabled          = true
+    action           = "ROUTE_ONLY_SELECTED"
+    routing_priority = "LAN"
   }
 }
 
-variable "token" {
-  type        = string
-  sensitive   = true
-  description = "API token supplied through TF_VAR_token."
+resource "cato_split_tunnel_section" "st_section" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "Split Tunnel Section"
+  }
 }
 
-variable "account_id" {
-  type        = string
-  description = "Cato account ID supplied through TF_VAR_account_id."
-}
-
-provider "cato" {
-  token      = var.token
-  account_id = var.account_id
-}
-
-# Changes are automatically published. Use a test account when evaluating beta APIs.
-# Explicit empty filters remain empty in state even when omitted by the API.
-resource "cato_split_tunnel_rule" "example" {
-  at = { position = "LAST_IN_POLICY" }
+# cato_split_tunnel_rule.kitchen_sink:
+resource "cato_split_tunnel_rule" "kitchen_sink" {
+  at = {
+    position = "FIRST_IN_SECTION"
+    ref      = cato_split_tunnel_section.st_section.section.id
+  }
   rule = {
-    action      = "ROUTE_ONLY_SELECTED"
-    country     = [{ id = "replace-with-object-id" }]
-    coverage    = "ALL"
-    description = "Managed by Terraform"
-    destination = {
-      application     = [{ id = "replace-with-object-id" }]
-      domain          = ["example.com"]
-      fqdn            = ["example.com"]
-      global_ip_range = [{ id = "replace-with-object-id" }]
-    }
-    # Removing dns_exclusion clears previously configured exclusions.
-    dns_exclusion = {
-      domain = ["example.com"]
-    }
+    name             = "Split Tunnel Kitchen Sink"
+    description      = "test"
     enabled          = true
-    name             = "terraform-split-tunnel-rule"
-    platform         = ["WINDOWS"]
+    action           = "ROUTE_ONLY_SELECTED"
     routing_priority = "LAN"
+    coverage         = "ALL"
+    platform = [
+      "WINDOWS",
+      "MACOS",
+    ]
+    country = [
+      {
+        # id   = "AG"
+        name = "Antigua and Barbuda"
+      },
+    ]
+    destination = {
+      application = [
+        {
+          # id   = "appboy"
+          name = "AppBoy By Braze, Inc."
+        },
+      ]
+      domain = [
+        "something.com",
+        "something2.com",
+      ]
+      fqdn = [
+        "www.something.com",
+      ]
+      global_ip_range = [
+        {
+          # id   = "1757826"
+          name = "global_ip_range"
+        },
+      ]
+    }
+    dns_exclusion = {
+      domain = [
+        "excluded.something.com",
+      ]
+    }
     source = {
-      user        = [{ id = "replace-with-object-id" }]
-      users_group = [{ id = "replace-with-object-id" }]
+      user = [
+        {
+          # id   = "0"
+          name = "test user"
+        },
+      ]
+      users_group = [
+        {
+          # id   = "500000000"
+          name = "Test User Group"
+        },
+      ]
     }
     source_network = {
-      source_network_type = "ANY"
+      source_network_type = "ANY_MANAGED_NETWORK"
     }
   }
 }

@@ -13,157 +13,86 @@ The cato_always_on_rule resource manages an Always On policy rule in the Cato pl
 ## Example Usage
 
 ```terraform
-# Terraform provider configuration
-terraform {
-  required_providers {
-    cato = {
-      source = "registry.terraform.io/catonetworks/cato"
+// enforce Always On for a single user
+resource "cato_always_on_rule" "enforce_user" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  rule = {
+    name              = "Enforce Always On for jdoe"
+    enabled           = true
+    action            = "ENFORCE"
+    allow_fail_open   = false
+    allow_user_bypass = false
+    anti_tamper_mode  = "OFF"
+    bypass_duration = {
+      time = 30
+      unit = "MINUTES"
+    }
+    source = {
+      users = [
+        {
+          # id   = "123456"
+          name = "jdoe"
+        },
+      ]
     }
   }
 }
 
-variable "account_id" {
-  description = "Cato account ID"
-  type        = string
-}
-
-variable "cato_token" {
-  description = "Cato API token"
-  type    = string
-}
-
-variable "baseurl" {
-  description = "Cato API base URL"
-  type    = string
-}
-
-provider "cato" {
-  baseurl    = var.baseurl
-  account_id = var.account_id
-  token      = var.cato_token
-}
-
-
-# Local data from the JSON file
-locals {
-  always_on_defs = jsondecode(file("${path.module}/data/rules.json"))
-  section_data = {
-    for section_name, data in local.always_on_defs.sections :
-    section_name => {
-      section_index = data.location.index_in_policy
-    }
-  }
-  rule_data = {
-    for rule_name, data in local.always_on_defs.rules :
-    rule_name => {
-      rule         = merge(data.input.rule, { "name" : rule_name })
-      section_name = data.location.section_name
-    }
-  }
-  reorder_data = {
-    for rule_name, data in local.always_on_defs.rules :
-    rule_name => {
-      index_in_section = data.location.index_in_section,
-      section_name     = data.location.section_name
-    }
-  }
-}
-
-# Enable or disable always-on policy
-resource "cato_always_on_policy" "this" {
-  enabled = "true"
-}
-
-# Always-on policy Sections 
-resource "cato_always_on_section" "all" {
-  depends_on   = [cato_always_on_policy.this]
-  for_each = local.section_data
+resource "cato_always_on_section" "ao_section" {
   at = {
     position = "LAST_IN_POLICY"
   }
   section = {
-    name = each.key
+    name = "Always-On Section"
   }
 }
 
-# Always-on policy rules
-resource "cato_always_on_rule" "all" {
-  depends_on   = [cato_always_on_section.all]
-  for_each = local.rule_data
+# cato_always_on_rule.kitchen_sink:
+resource "cato_always_on_rule" "kitchen_sink" {
   at = {
-    position = "LAST_IN_SECTION"
-    ref      = cato_always_on_section.all[each.value.section_name].section.id
+    position = "FIRST_IN_SECTION"
+    ref      = cato_always_on_section.ao_section.section.id
   }
-  rule = each.value.rule
+  rule = {
+    name              = "Always-On Kitchen Sink"
+    description       = "test"
+    enabled           = true
+    action            = "ENFORCE"
+    allow_fail_open   = true
+    allow_user_bypass = true
+    anti_tamper_mode  = "PROTECT"
+    bypass_duration = {
+      time = 1
+      unit = "HOURS"
+    }
+    platform = [
+      "WINDOWS",
+      "MACOS",
+    ]
+    device_posture_profile = [
+      {
+        # id   = "4202"
+        name = "Test Device Posture Profile"
+      },
+    ]
+    source = {
+      users = [
+        {
+          # id   = "0"
+          name = "test user"
+        },
+      ]
+      user_groups = [
+        {
+          # id   = "500000000"
+          name = "Test User Group"
+        },
+      ]
+    }
+  }
 }
-
-# Ordering and publishing
-resource "cato_always_on_rule_bulk" "reorder" {
-  depends_on   = [cato_always_on_section.all, cato_always_on_rule.all]
-  section_data = local.section_data
-  rule_data    = local.reorder_data
-
-  # Publish rule content changes even when section and rule positions stay the same.
-  publish_trigger = sha256(jsonencode(local.always_on_defs))
-}
-
-# --------------------------------------------------------------------------------
-# Example of rules.json file
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 
-# {
-#   "sections": {
-#     "Section-1": {
-#       "location": {
-#         "index_in_policy": 1
-#       }
-#     }
-#   },
-#   "rules": {
-#     "Example Always On rule": {
-#       "input": {
-#         "rule": {
-#           "action": "ENFORCE",
-#           "allow_fail_open": false,
-#           "allow_user_bypass": false,
-#           "anti_tamper_mode": "PROTECT",
-#           "bypass_duration": {
-#             "time": 30,
-#             "unit": "MINUTES"
-#           },
-#           "description": "Enforce Always On for Windows and macOS devices",
-#           "device_posture_profile": [
-#             { "name": "Example device posture 1" }
-#           ],
-#           "enabled": true,
-#           "platform": [ "WINDOWS", "MACOS" ],
-#           "source": {
-#             "user_groups": [
-#               { "name": "user_group_1" },
-#               { "name": "user_group_2" }
-#             ],
-#             "users": [
-#               { "name": "user_1" }
-#             ]
-#           }
-#         }
-#       },
-#       "location": {
-#         "index_in_section": 1,
-#         "section_name": "Section-1"
-#       }
-#     }
-#   }
-# }
-
-# For an existing policy, either ordering map may be omitted to retain its live order.
-# A publish-only resource can use only publish_trigger and depends_on:
-# resource "cato_always_on_rule_bulk" "publish_only" {
-#   publish_trigger = sha256(jsonencode(local.always_on_defs))
-#   depends_on      = [cato_always_on_rule.all, cato_always_on_section.all]
-# }
-# Use one ordering/publishing resource per policy. When rule_data is configured,
-# include every live rule exactly once; changing section_name moves the rule.
 ```
 
 <!-- schema generated by tfplugindocs -->
