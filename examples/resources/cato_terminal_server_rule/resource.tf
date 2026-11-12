@@ -1,34 +1,48 @@
-terraform {
-  required_providers {
-    cato = { source = "catonetworks/cato" }
+
+
+// allow a single global IP range as the terminal server host
+resource "cato_terminal_server_rule" "allow_host" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  rule = {
+    name    = "Allow Terminal Server Host"
+    enabled = true
+    allowed_host_ip = {
+      # id   = "1757826"
+      name = "global_ip_range"
+    }
   }
 }
 
-variable "token" {
-  type        = string
-  sensitive   = true
-  description = "API token supplied through TF_VAR_token."
+resource "cato_terminal_server_section" "ts_section" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "Terminal Server Section"
+  }
 }
 
-variable "account_id" {
-  type        = string
-  description = "Cato account ID supplied through TF_VAR_account_id."
-}
-
-provider "cato" {
-  token      = var.token
-  account_id = var.account_id
-}
-
-# Changes are automatically published. Use a test account when evaluating beta APIs.
-resource "cato_terminal_server_rule" "example" {
-  # Optional placement; omission on update preserves the current position.
-  # at = { position = "LAST_IN_POLICY" }
+# cato_terminal_server_rule.kitchen_sink:
+resource "cato_terminal_server_rule" "kitchen_sink" {
+  at = {
+    position = "FIRST_IN_SECTION"
+    ref      = cato_terminal_server_section.ts_section.section.id
+  }
   rule = {
-    allowed_host_ip = { id = "replace-with-object-id" }
-    description     = "Managed by Terraform"
-    enabled         = true
-    exclude_traffic = [{ id = "replace-with-object-id" }]
-    name            = "terraform-terminal-server-rule"
+    name        = "Terminal Server Kitchen Sink"
+    description = "test"
+    enabled     = true
+    allowed_host_ip = {
+      # id   = "1757826"
+      name = "global_ip_range"
+    }
+    exclude_traffic = [
+      {
+        # id   = "1910542"
+        name = "global_ip_range2"
+      },
+    ]
   }
 }
