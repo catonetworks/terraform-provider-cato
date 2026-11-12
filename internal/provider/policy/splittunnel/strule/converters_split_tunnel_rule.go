@@ -392,7 +392,12 @@ func hydrateSplitTunnelRuleStateFromClient(
 		out.Platform = convert.ParseList(ctx, types.StringType, plats, "rule.platform")
 	}
 
-	if dst := r.GetDestination(); dst != nil {
+	// Only build a non-null destination when the API actually returned members
+	// -- otherwise a rule with no destination yields a non-null object full of
+	// nulls while the plan had destination=null, an inconsistent result after
+	// apply. Mirrors the content guards on Source / DNSExclusion / SourceNetwork.
+	if dst := r.GetDestination(); dst != nil && (len(dst.GetApplication()) > 0 ||
+		len(dst.GetDomain()) > 0 || len(dst.GetFqdn()) > 0 || len(dst.GetGlobalIPRange()) > 0) {
 		dstObj, d := types.ObjectValue(SplitTunnelDestinationAttrTypes, map[string]attr.Value{
 			"application":     oldidname.ParseNameIDList(ctx, dst.GetApplication(), "rule.destination.application"),
 			"domain":          convert.ParseList(ctx, types.StringType, dst.GetDomain(), "rule.destination.domain"),

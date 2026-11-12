@@ -20,6 +20,8 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/appconnector"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectorgroup"
+	appconnectorsds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectors"
+	privateappsds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/privateapps"
 	usersds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/users"
 	usersgroupds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/usersgroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/privateapp"
@@ -32,11 +34,14 @@ import (
 	roleds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/roles"
 	subscriptiongroupds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/subscriptiongroup"
+	webhookds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/webhook"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/license"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/mailinglist"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/rbacassignment"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/subscriptiongroup"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/webhook"
+	allocatedipres "github.com/catonetworks/terraform-provider-cato/internal/provider/network/allocatedip"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectphysicalconnection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
@@ -705,9 +710,12 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		customapplicationsds.DataSource,
 		mailinglistds.NewDataSource,
 		subscriptiongroupds.NewDataSource,
+		webhookds.NewDataSource,
 		fqdncontainerds.DataSource,
 		iprangecontainerds.DataSource,
 		appconnectorgroup.GroupDataSource,
+		privateappsds.DataSource,
+		appconnectorsds.DataSource,
 	}
 }
 
@@ -724,6 +732,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		role.NewResource,
 		mailinglist.NewResource,
 		subscriptiongroup.NewResource,
+		webhook.NewResource,
 		cloudinterconnectsite.NewResource,
 		secondaryawsvsocket.NewResource,
 		secondaryazurevsocket.NewResource,
@@ -767,6 +776,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		laninterfacelagmember.NewLanInterfaceLagMemberResource,
 		license.NewLicenseResource,
 		networkrange.NewNetworkRangeResource,
+		allocatedipres.NewAllocatedIPResource,
 		groupmembers.NewGroupMembersResource,
 		ipsecsite.NewSiteIpsecResource,
 		socketsite.NewSocketSiteResource,

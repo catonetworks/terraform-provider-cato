@@ -180,12 +180,17 @@ func hydrateACApplicationRuleAdd(
 		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
 	}
 	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	out.ApplicationCriteria, diags = acCriteriaInputFromPlan(ctx, p.ApplicationCriteria, "application_rule.application_criteria", diags)
+	if cs := p.ApplicationCriteriaSatisfy; !cs.IsNull() && !cs.IsUnknown() && cs.ValueString() != "" {
+		out.ApplicationCriteriaSatisfy = cato_models.ApplicationControlSatisfy(cs.ValueString())
+	}
 	diags.Append(acFillCommonAdd(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
 	if out.ActionConfig == nil {
 		out.ActionConfig = acEmptyApplicationControlActionConfigInput()
 	}
+	acRequireApplicationSelection(out.Application, "application_rule", &diags)
 	return out, diags
 }
 
@@ -207,6 +212,20 @@ func hydrateACApplicationRuleUpdate(
 	if !p.Severity.IsNull() {
 		v := cato_models.ApplicationControlSeverity(p.Severity.ValueString())
 		out.Severity = &v
+	}
+	crit, diags := acCriteriaInputFromPlan(ctx, p.ApplicationCriteria, "application_rule.application_criteria", diags)
+	out.ApplicationCriteria = acCriteriaUpdateFromInput(crit)
+	if cs := p.ApplicationCriteriaSatisfy; !cs.IsNull() && !cs.IsUnknown() && cs.ValueString() != "" {
+		v := cato_models.ApplicationControlSatisfy(cs.ValueString())
+		out.ApplicationCriteriaSatisfy = &v
+	}
+	// activities must be sent on update too — omitting them leaves the live
+	// rows (incl. granular conditions) unchanged and the refreshed state then
+	// mismatches the plan ("inconsistent result after apply").
+	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	if s := p.ApplicationActivitySatisfy; !s.IsNull() && !s.IsUnknown() && s.ValueString() != "" {
+		v := cato_models.ApplicationControlSatisfy(s.ValueString())
+		out.ApplicationActivitySatisfy = &v
 	}
 	diags.Append(acFillCommonUpdate(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
@@ -239,35 +258,41 @@ func hydrateACDataRuleAdd(
 		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
 	}
 	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	out.ApplicationCriteria, diags = acCriteriaInputFromPlan(ctx, p.ApplicationCriteria, "data_rule.application_criteria", diags)
+	if cs := p.ApplicationCriteriaSatisfy; !cs.IsNull() && !cs.IsUnknown() && cs.ValueString() != "" {
+		out.ApplicationCriteriaSatisfy = cato_models.ApplicationControlSatisfy(cs.ValueString())
+	}
 	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		out.FileAttributeSatisfy = cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 	}
 	diags.Append(acFillCommonAdd(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
+	// dlpProfile is a non-nullable input, but EMPTY profile lists are valid —
+	// live tenants carry data rules with {contentProfile: [], edmProfile: []}
+	// (selection by activity/criteria only). Send an empty input when unset.
 	if p.DlpProfile.IsNull() || p.DlpProfile.IsUnknown() {
-		diags.AddError(
-			"data_rule.dlp_profile required",
-			"The Cato API requires a data rule to include dlp_profile with at least one content_profile or edm_profile reference.",
-		)
-		return nil, diags
+		out.DlpProfile = &cato_models.ApplicationControlDlpProfileInput{
+			ContentProfile: []*cato_models.DlpContentProfileRefInput{},
+			EdmProfile:     []*cato_models.DlpEdmProfileRefInput{},
+		}
+	} else {
+		dlp, dlpDiags := acDlpProfileAdd(ctx, p.DlpProfile, diags)
+		diags.Append(dlpDiags...)
+		out.DlpProfile = dlp
 	}
-	dlp, dlpDiags := acDlpProfileAdd(ctx, p.DlpProfile, diags)
-	diags.Append(dlpDiags...)
-	if len(dlp.ContentProfile) == 0 && len(dlp.EdmProfile) == 0 {
-		diags.AddError(
-			"data_rule.dlp_profile invalid",
-			"dlp_profile must contain at least one content_profile or edm_profile entry.",
-		)
-		return nil, diags
-	}
-	out.DlpProfile = dlp
 	if !p.FileAttribute.IsNull() && !p.FileAttribute.IsUnknown() {
 		out.FileAttribute, diags = acFileAttributesAdd(ctx, p.FileAttribute, diags)
+	}
+	if out.Application == nil {
+		// non-nullable input; an absent block means "any app" for data/file
+		// rules (selection comes from activities/file attributes/dlp).
+		out.Application = &cato_models.ApplicationControlApplicationInput{}
 	}
 	return out, diags
 }
 
+//nolint:gocyclo
 func hydrateACDataRuleUpdate(
 	ctx context.Context,
 	o types.Object,
@@ -290,6 +315,17 @@ func hydrateACDataRuleUpdate(
 	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		v := cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 		out.FileAttributeSatisfy = &v
+	}
+	crit, diags := acCriteriaInputFromPlan(ctx, p.ApplicationCriteria, "data_rule.application_criteria", diags)
+	out.ApplicationCriteria = acCriteriaUpdateFromInput(crit)
+	if cs := p.ApplicationCriteriaSatisfy; !cs.IsNull() && !cs.IsUnknown() && cs.ValueString() != "" {
+		v := cato_models.ApplicationControlSatisfy(cs.ValueString())
+		out.ApplicationCriteriaSatisfy = &v
+	}
+	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	if s := p.ApplicationActivitySatisfy; !s.IsNull() && !s.IsUnknown() && s.ValueString() != "" {
+		v := cato_models.ApplicationControlSatisfy(s.ValueString())
+		out.ApplicationActivitySatisfy = &v
 	}
 	diags.Append(acFillCommonUpdate(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
@@ -330,6 +366,10 @@ func hydrateACFileRuleAdd(
 		out.ApplicationActivitySatisfy = cato_models.ApplicationControlSatisfy(p.ApplicationActivitySatisfy.ValueString())
 	}
 	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	out.ApplicationCriteria, diags = acCriteriaInputFromPlan(ctx, p.ApplicationCriteria, "file_rule.application_criteria", diags)
+	if cs := p.ApplicationCriteriaSatisfy; !cs.IsNull() && !cs.IsUnknown() && cs.ValueString() != "" {
+		out.ApplicationCriteriaSatisfy = cato_models.ApplicationControlSatisfy(cs.ValueString())
+	}
 	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		out.FileAttributeSatisfy = cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 	}
@@ -338,6 +378,9 @@ func hydrateACFileRuleAdd(
 	)...)
 	if !p.FileAttribute.IsNull() && !p.FileAttribute.IsUnknown() {
 		out.FileAttribute, diags = acFileAttributesAdd(ctx, p.FileAttribute, diags)
+	}
+	if out.Application == nil {
+		out.Application = &cato_models.ApplicationControlApplicationInput{}
 	}
 	return out, diags
 }
@@ -364,6 +407,17 @@ func hydrateACFileRuleUpdate(
 	if !p.FileAttributeSatisfy.IsNull() && !p.FileAttributeSatisfy.IsUnknown() && p.FileAttributeSatisfy.ValueString() != "" {
 		v := cato_models.ApplicationControlSatisfy(p.FileAttributeSatisfy.ValueString())
 		out.FileAttributeSatisfy = &v
+	}
+	crit, diags := acCriteriaInputFromPlan(ctx, p.ApplicationCriteria, "file_rule.application_criteria", diags)
+	out.ApplicationCriteria = acCriteriaUpdateFromInput(crit)
+	if cs := p.ApplicationCriteriaSatisfy; !cs.IsNull() && !cs.IsUnknown() && cs.ValueString() != "" {
+		v := cato_models.ApplicationControlSatisfy(cs.ValueString())
+		out.ApplicationCriteriaSatisfy = &v
+	}
+	out.ApplicationActivity, diags = acApplicationActivityFromPlan(ctx, p, diags)
+	if s := p.ApplicationActivitySatisfy; !s.IsNull() && !s.IsUnknown() && s.ValueString() != "" {
+		v := cato_models.ApplicationControlSatisfy(s.ValueString())
+		out.ApplicationActivitySatisfy = &v
 	}
 	diags.Append(acFillCommonUpdate(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
@@ -435,6 +489,7 @@ func acDlpProfileUpdate(
 	}, diags
 }
 
+//nolint:gocyclo
 func acApplicationActivityFromPlan(
 	ctx context.Context,
 	p ApplicationControlTypedRulePlan,
@@ -456,12 +511,49 @@ func acApplicationActivityFromPlan(
 			diags.AddError("application_activity", err.Error())
 			return out, diags
 		}
-		out = append(out, &cato_models.ApplicationControlActivityInput{
+		in := &cato_models.ApplicationControlActivityInput{
 			Activity: &cato_models.ApplicationControlActivityRefInput{
 				By:    cato_models.ObjectRefBy(ref.By),
 				Input: ref.Input,
 			},
-		})
+		}
+		// Granular activity conditions. Some catalog activities (e.g.
+		// full_path_url) REQUIRE a value — the API rejects a bare ref with
+		// "activity: <name> must have a value".
+		if !row.Field.IsNull() && !row.Field.IsUnknown() {
+			var fld ifrule.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+			diags.Append(row.Field.As(ctx, &fld, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+			fref, ferr := utils.TransformObjectRefInput(fld)
+			if ferr != nil {
+				diags.AddError("application_activity.field", ferr.Error())
+				return out, diags
+			}
+			in.Field = &cato_models.ApplicationControlActivityFieldRefInput{
+				By:    cato_models.ObjectRefBy(fref.By),
+				Input: fref.Input,
+			}
+		}
+		if !row.Operator.IsNull() && !row.Operator.IsUnknown() && row.Operator.ValueString() != "" {
+			op := cato_models.ApplicationControlOperator(row.Operator.ValueString())
+			in.Operator = &op
+		}
+		if !row.Value.IsNull() && !row.Value.IsUnknown() && row.Value.ValueString() != "" {
+			in.Value = row.Value.ValueStringPointer()
+		}
+		if !row.ValueSet.IsNull() && !row.ValueSet.IsUnknown() {
+			var vs ifrule.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+			diags.Append(row.ValueSet.As(ctx, &vs, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+			vref, verr := utils.TransformObjectRefInput(vs)
+			if verr != nil {
+				diags.AddError("application_activity.value_set", verr.Error())
+				return out, diags
+			}
+			in.ValueSet = &cato_models.StringValueSetRefInput{
+				By:    cato_models.ObjectRefBy(vref.By),
+				Input: vref.Input,
+			}
+		}
+		out = append(out, in)
 	}
 	return out, diags
 }
@@ -478,17 +570,53 @@ func acFileAttributesAdd(
 	objs := make([]types.Object, 0, len(list.Elements()))
 	diags.Append(list.ElementsAs(ctx, &objs, false)...)
 	var row struct {
-		FileAttribute types.String `tfsdk:"file_attribute"`
-		Operator      types.String `tfsdk:"operator"`
-		Value         types.String `tfsdk:"value"`
+		FileAttribute          types.String `tfsdk:"file_attribute"`
+		Operator               types.String `tfsdk:"operator"`
+		Value                  types.String `tfsdk:"value"`
+		ContentTypeValues      types.Set    `tfsdk:"content_type_values"`
+		ContentTypeGroupValues types.Set    `tfsdk:"content_type_group_values"`
+	}
+	refList := func(set types.Set, attrName string) []utils.ObjectRefOutput {
+		if set.IsNull() || set.IsUnknown() {
+			return nil
+		}
+		els := make([]types.Object, 0, len(set.Elements()))
+		diags.Append(set.ElementsAs(ctx, &els, false)...)
+		refs := make([]utils.ObjectRefOutput, 0, len(els))
+		for _, el := range els {
+			var item ifrule.PolicyPolicyInternetFirewallPolicyRulesRuleSourceHost
+			diags.Append(el.As(ctx, &item, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+			ref, err := utils.TransformObjectRefInput(item)
+			if err != nil {
+				diags.AddError(attrName, err.Error())
+				continue
+			}
+			refs = append(refs, ref)
+		}
+		return refs
 	}
 	for _, el := range objs {
-		diags.Append(el.As(ctx, &row, basetypes.ObjectAsOptions{})...)
-		out = append(out, &cato_models.ApplicationControlFileAttributeInput{
+		diags.Append(el.As(ctx, &row, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+		in := &cato_models.ApplicationControlFileAttributeInput{
 			FileAttribute: cato_models.ApplicationControlFileAttributeType(row.FileAttribute.ValueString()),
 			Operator:      cato_models.ApplicationControlOperator(row.Operator.ValueString()),
-			Value:         row.Value.ValueStringPointer(),
-		})
+		}
+		// CONTENT_TYPE rows select via the content-type ref sets and the API
+		// REQUIRES value to stay null for them — only pass value when set.
+		if !row.Value.IsNull() && !row.Value.IsUnknown() && row.Value.ValueString() != "" {
+			in.Value = row.Value.ValueStringPointer()
+		}
+		for _, ref := range refList(row.ContentTypeValues, "file_attribute.content_type_values") {
+			in.ContentTypeValues = append(in.ContentTypeValues, &cato_models.ApplicationControlContentTypeRefInput{
+				By: cato_models.ObjectRefBy(ref.By), Input: ref.Input,
+			})
+		}
+		for _, ref := range refList(row.ContentTypeGroupValues, "file_attribute.content_type_group_values") {
+			in.ContentTypeGroupValues = append(in.ContentTypeGroupValues, &cato_models.ApplicationControlContentTypeGroupRefInput{
+				By: cato_models.ObjectRefBy(ref.By), Input: ref.Input,
+			})
+		}
+		out = append(out, in)
 	}
 	return out, diags
 }
@@ -544,6 +672,12 @@ func acFillCommonAdd(
 		add, _, sdiags := applicationcontrol.ApplicationControlSourcePairFromTerraformObject(ctx, p.Source)
 		diags.Append(sdiags...)
 		*source = add
+	}
+	// source is a non-nullable input (ApplicationControlSourceInput!) — an
+	// omitted block means "any source" and must be sent as an empty object,
+	// never null (same API class as the application-null rejection).
+	if *source == nil {
+		*source = &cato_models.ApplicationControlSourceInput{}
 	}
 	if !p.Tracking.IsNull() && !p.Tracking.IsUnknown() {
 		*tracking, diags = acTrackingAdd(ctx, p.Tracking, diags)
@@ -719,9 +853,10 @@ func acApplicationInputFromWanShape(
 	o types.Object,
 	diags diag.Diagnostics,
 ) (*cato_models.ApplicationControlApplicationInput, diag.Diagnostics) {
-	wan := wfrule.PolicyPolicyWanFirewallPolicyRulesRuleApplication{}
+	wan := acApplicationPlan{}
 	diags.Append(o.As(ctx, &wan, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
 	out := &cato_models.ApplicationControlApplicationInput{}
+	out.ApplicationType = acApplicationTypesFromPlan(ctx, wan.ApplicationType, &diags)
 	appendFirst := func(set types.Set, setter func(*cato_models.ApplicationRefInput)) {
 		if set.IsNull() || set.IsUnknown() {
 			return
@@ -910,6 +1045,8 @@ func applicationControlTypedRuleStateFromApplicationRule(
 		"application":                  appObj,
 		"application_activity":         activityList,
 		"application_activity_satisfy": actSatisfy,
+		"application_criteria":         acCriteriaObjectFromApplicationRule(ar.GetApplicationCriteria(), &diags),
+		"application_criteria_satisfy": acSatisfyStateValue(ar.ApplicationCriteriaSatisfy),
 		"action_config":                actionCfg,
 		"file_attribute":               types.ListNull(types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}),
 		"file_attribute_satisfy":       types.StringNull(),
@@ -973,6 +1110,8 @@ func applicationControlTypedRuleStateFromDataRule(
 		"application":                  appObj,
 		"application_activity":         activityList,
 		"application_activity_satisfy": actSatisfy,
+		"application_criteria":         acCriteriaObjectFromDataRule(dr.GetApplicationCriteria(), &diags),
+		"application_criteria_satisfy": acSatisfyStateValue(dr.ApplicationCriteriaSatisfy),
 		"action_config":                actionCfg,
 		"file_attribute":               faList,
 		"file_attribute_satisfy":       types.StringValue(dr.GetFileAttributeSatisfy().String()),
@@ -1026,6 +1165,8 @@ func applicationControlTypedRuleStateFromFileRule(
 		"application":                  appObj,
 		"application_activity":         activityList,
 		"application_activity_satisfy": actSatisfy,
+		"application_criteria":         acCriteriaObjectFromFileRule(fr.GetApplicationCriteria(), &diags),
+		"application_criteria_satisfy": acSatisfyStateValue(fr.ApplicationCriteriaSatisfy),
 		"action_config":                actionCfg,
 		"file_attribute":               faList,
 		"file_attribute_satisfy":       types.StringValue(fr.GetFileAttributeSatisfy().String()),
@@ -1420,7 +1561,7 @@ func wanApplicationObjectFromApplicationRuleApplication(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if a == nil {
-		return types.ObjectNull(wfrule.WanApplicationAttrTypes)
+		return types.ObjectNull(acApplicationAttrTypes)
 	}
 	var apps []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_ApplicationRule_Application_Application
 	if p := a.GetApplication(); p != nil {
@@ -1457,8 +1598,9 @@ func wanApplicationObjectFromApplicationRuleApplication(
 		"subnet":                   emptyStrList,
 		"ip_range":                 emptyIPRangeList,
 		"global_ip_range":          emptyNameIDSet,
+		"application_type": acApplicationTypeListValue(a.GetApplicationType(), diags),
 	}
-	o, d := types.ObjectValue(wfrule.WanApplicationAttrTypes, attrs)
+	o, d := types.ObjectValue(acApplicationAttrTypes, attrs)
 	diags.Append(d...)
 	return o
 }
@@ -1469,7 +1611,7 @@ func wanApplicationObjectFromDataRuleApplication(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if a == nil {
-		return types.ObjectNull(wfrule.WanApplicationAttrTypes)
+		return types.ObjectNull(acApplicationAttrTypes)
 	}
 	var apps []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_DataRule_Application_Application
 	if p := a.GetApplication(); p != nil {
@@ -1506,8 +1648,9 @@ func wanApplicationObjectFromDataRuleApplication(
 		"subnet":                   emptyStrList2,
 		"ip_range":                 emptyIPRangeList2,
 		"global_ip_range":          emptyNameIDSet2,
+		"application_type":         acApplicationTypeListValue(a.GetApplicationType(), diags),
 	}
-	o, d := types.ObjectValue(wfrule.WanApplicationAttrTypes, attrs)
+	o, d := types.ObjectValue(acApplicationAttrTypes, attrs)
 	diags.Append(d...)
 	return o
 }
@@ -1518,7 +1661,7 @@ func wanApplicationObjectFromFileRuleApplication(
 	diags *diag.Diagnostics,
 ) types.Object {
 	if a == nil {
-		return types.ObjectNull(wfrule.WanApplicationAttrTypes)
+		return types.ObjectNull(acApplicationAttrTypes)
 	}
 	var apps []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_FileRule_Application_Application
 	if p := a.GetApplication(); p != nil {
@@ -1555,8 +1698,9 @@ func wanApplicationObjectFromFileRuleApplication(
 		"subnet":                   emptyStrList3,
 		"ip_range":                 emptyIPRangeList3,
 		"global_ip_range":          emptyNameIDSet3,
+		"application_type":         acApplicationTypeListValue(a.GetApplicationType(), diags),
 	}
-	o, d := types.ObjectValue(wfrule.WanApplicationAttrTypes, attrs)
+	o, d := types.ObjectValue(acApplicationAttrTypes, attrs)
 	diags.Append(d...)
 	return o
 }
@@ -1711,10 +1855,24 @@ func acFileAttributeListFromDataRule(
 		if row.GetValue() != nil {
 			val = types.StringValue(string(*row.GetValue()))
 		}
+		ctv := make([]acNameIDState, 0, len(row.GetContentTypeValues()))
+		for _, x := range row.GetContentTypeValues() {
+			if x != nil {
+				ctv = append(ctv, acNameIDState{ID: x.GetID(), Name: x.GetName()})
+			}
+		}
+		ctgv := make([]acNameIDState, 0, len(row.GetContentTypeGroupValues()))
+		for _, x := range row.GetContentTypeGroupValues() {
+			if x != nil {
+				ctgv = append(ctgv, acNameIDState{ID: x.GetID(), Name: x.GetName()})
+			}
+		}
 		o, d := types.ObjectValue(applicationControlFileAttributeAttrTypes, map[string]attr.Value{
-			"file_attribute": types.StringValue(row.GetFileAttribute().String()),
-			"operator":       types.StringValue(row.GetOperator().String()),
-			"value":          val,
+			"file_attribute":            types.StringValue(row.GetFileAttribute().String()),
+			"operator":                  types.StringValue(row.GetOperator().String()),
+			"value":                     val,
+			"content_type_values":       acNameIDSetValue(ctv, diags),
+			"content_type_group_values": acNameIDSetValue(ctgv, diags),
 		})
 		diags.Append(d...)
 		elems = append(elems, o)
@@ -1738,10 +1896,24 @@ func acFileAttributeListFromFileRule(
 		if row.GetValue() != nil {
 			val = types.StringValue(string(*row.GetValue()))
 		}
+		ctv := make([]acNameIDState, 0, len(row.GetContentTypeValues()))
+		for _, x := range row.GetContentTypeValues() {
+			if x != nil {
+				ctv = append(ctv, acNameIDState{ID: x.GetID(), Name: x.GetName()})
+			}
+		}
+		ctgv := make([]acNameIDState, 0, len(row.GetContentTypeGroupValues()))
+		for _, x := range row.GetContentTypeGroupValues() {
+			if x != nil {
+				ctgv = append(ctgv, acNameIDState{ID: x.GetID(), Name: x.GetName()})
+			}
+		}
 		o, d := types.ObjectValue(applicationControlFileAttributeAttrTypes, map[string]attr.Value{
-			"file_attribute": types.StringValue(row.GetFileAttribute().String()),
-			"operator":       types.StringValue(row.GetOperator().String()),
-			"value":          val,
+			"file_attribute":            types.StringValue(row.GetFileAttribute().String()),
+			"operator":                  types.StringValue(row.GetOperator().String()),
+			"value":                     val,
+			"content_type_values":       acNameIDSetValue(ctv, diags),
+			"content_type_group_values": acNameIDSetValue(ctgv, diags),
 		})
 		diags.Append(d...)
 		elems = append(elems, o)
@@ -1751,17 +1923,60 @@ func acFileAttributeListFromFileRule(
 	return lst
 }
 
-// acBuildActivityList builds the application_activity list from pre-extracted (id, name) pairs.
-func acBuildActivityList(pairs [][2]string, diags *diag.Diagnostics) types.List {
-	elems := make([]attr.Value, 0, len(pairs))
-	for _, p := range pairs {
+// acActivityRowState is the rule-type-agnostic read shape of one
+// application_activity row (the generated response structs are identical in
+// shape but distinct Go types).
+type acActivityRowState struct {
+	ID, Name                 string
+	HasField                 bool
+	FieldID, FieldName       string
+	Operator                 string // "" = absent
+	Value                    string // "" = absent
+	HasValueSet              bool
+	ValueSetID, ValueSetName string
+}
+
+// acBuildActivityList builds the application_activity list from extracted rows.
+func acBuildActivityList(rows []acActivityRowState, diags *diag.Diagnostics) types.List {
+	elems := make([]attr.Value, 0, len(rows))
+	for _, p := range rows {
 		actObj, d := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
-			"id":   types.StringValue(p[0]),
-			"name": types.StringValue(p[1]),
+			"id":   types.StringValue(p.ID),
+			"name": types.StringValue(p.Name),
 		})
 		diags.Append(d...)
+		fieldObj := types.ObjectNull(idname.RefAttrTypes)
+		if p.HasField {
+			o, fd := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
+				"id":   types.StringValue(p.FieldID),
+				"name": types.StringValue(p.FieldName),
+			})
+			diags.Append(fd...)
+			fieldObj = o
+		}
+		valueSetObj := types.ObjectNull(idname.RefAttrTypes)
+		if p.HasValueSet {
+			o, vd := types.ObjectValue(idname.RefAttrTypes, map[string]attr.Value{
+				"id":   types.StringValue(p.ValueSetID),
+				"name": types.StringValue(p.ValueSetName),
+			})
+			diags.Append(vd...)
+			valueSetObj = o
+		}
+		operator := types.StringNull()
+		if p.Operator != "" {
+			operator = types.StringValue(p.Operator)
+		}
+		value := types.StringNull()
+		if p.Value != "" {
+			value = types.StringValue(p.Value)
+		}
 		outer, d2 := types.ObjectValue(applicationControlActivityAttrTypes, map[string]attr.Value{
-			"activity": actObj,
+			"activity":  actObj,
+			"field":     fieldObj,
+			"operator":  operator,
+			"value":     value,
+			"value_set": valueSetObj,
 		})
 		diags.Append(d2...)
 		elems = append(elems, outer)
@@ -1775,45 +1990,84 @@ func acApplicationActivityListFromApplicationRule(
 	rows []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_ApplicationRule_ApplicationActivity,
 	diags *diag.Diagnostics,
 ) types.List {
-	pairs := make([][2]string, 0, len(rows))
+	out := make([]acActivityRowState, 0, len(rows))
 	for _, r := range rows {
 		if r == nil {
 			continue
 		}
 		a := r.GetActivity()
-		pairs = append(pairs, [2]string{a.GetID(), a.GetName()})
+		row := acActivityRowState{ID: a.GetID(), Name: a.GetName()}
+		if f := r.GetField(); f != nil {
+			row.HasField, row.FieldID, row.FieldName = true, f.GetID(), f.GetName()
+		}
+		if op := r.GetOperator(); op != nil {
+			row.Operator = string(*op)
+		}
+		if v := r.GetValue(); v != nil {
+			row.Value = string(*v)
+		}
+		if vs := r.GetValueSet(); vs != nil {
+			row.HasValueSet, row.ValueSetID, row.ValueSetName = true, vs.GetID(), vs.GetName()
+		}
+		out = append(out, row)
 	}
-	return acBuildActivityList(pairs, diags)
+	return acBuildActivityList(out, diags)
 }
 
 func acApplicationActivityListFromDataRule(
 	rows []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_DataRule_ApplicationActivity,
 	diags *diag.Diagnostics,
 ) types.List {
-	pairs := make([][2]string, 0, len(rows))
+	out := make([]acActivityRowState, 0, len(rows))
 	for _, r := range rows {
 		if r == nil {
 			continue
 		}
 		a := r.GetActivity()
-		pairs = append(pairs, [2]string{a.GetID(), a.GetName()})
+		row := acActivityRowState{ID: a.GetID(), Name: a.GetName()}
+		if f := r.GetField(); f != nil {
+			row.HasField, row.FieldID, row.FieldName = true, f.GetID(), f.GetName()
+		}
+		if op := r.GetOperator(); op != nil {
+			row.Operator = string(*op)
+		}
+		if v := r.GetValue(); v != nil {
+			row.Value = string(*v)
+		}
+		if vs := r.GetValueSet(); vs != nil {
+			row.HasValueSet, row.ValueSetID, row.ValueSetName = true, vs.GetID(), vs.GetName()
+		}
+		out = append(out, row)
 	}
-	return acBuildActivityList(pairs, diags)
+	return acBuildActivityList(out, diags)
 }
 
 func acApplicationActivityListFromFileRule(
 	rows []*cato_go_sdk.ApplicationControlPolicy_Policy_ApplicationControl_Policy_Rules_Rule_FileRule_ApplicationActivity,
 	diags *diag.Diagnostics,
 ) types.List {
-	pairs := make([][2]string, 0, len(rows))
+	out := make([]acActivityRowState, 0, len(rows))
 	for _, r := range rows {
 		if r == nil {
 			continue
 		}
 		a := r.GetActivity()
-		pairs = append(pairs, [2]string{a.GetID(), a.GetName()})
+		row := acActivityRowState{ID: a.GetID(), Name: a.GetName()}
+		if f := r.GetField(); f != nil {
+			row.HasField, row.FieldID, row.FieldName = true, f.GetID(), f.GetName()
+		}
+		if op := r.GetOperator(); op != nil {
+			row.Operator = string(*op)
+		}
+		if v := r.GetValue(); v != nil {
+			row.Value = string(*v)
+		}
+		if vs := r.GetValueSet(); vs != nil {
+			row.HasValueSet, row.ValueSetID, row.ValueSetName = true, vs.GetID(), vs.GetName()
+		}
+		out = append(out, row)
 	}
-	return acBuildActivityList(pairs, diags)
+	return acBuildActivityList(out, diags)
 }
 
 func applicationControlRuleRuleObjectFromPlan(p ApplicationControlRuleRulePlan) (types.Object, diag.Diagnostics) {

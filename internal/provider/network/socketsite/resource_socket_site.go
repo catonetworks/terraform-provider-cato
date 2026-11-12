@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
@@ -676,6 +677,12 @@ func (r *socketSiteResource) hydrateSocketSiteState(ctx context.Context, cfg *So
 	siteDetails, err := r.resourceAPI().SiteGeneralDetails(ctx,
 		cato_models.SiteRefInput{By: cato_models.ObjectRefByID, Input: siteID}, r.client.AccountId)
 	if err != nil {
+		// A deleted site surfaces as a GraphQL "Site <id> not found" error, not
+		// a nil payload -- treat it like the nil-payload branch below so Read
+		// drops the resource from state instead of failing the whole refresh.
+		if strings.Contains(err.Error(), "not found") {
+			return state, false
+		}
 		diags.AddError(fmt.Sprintf("failed to fetch SiteGeneralDetails for site '%s'", siteID), err.Error())
 		return state, false
 	}
