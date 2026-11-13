@@ -164,7 +164,7 @@ func identityState(plan resourceModel, id string) resourceModel {
 // carried forward from `prior` (the existing state/plan) rather than the API response --
 // see model_webhook.go and client_webhook.go for why those three are write-only/non-
 // round-trippable. Every other field is refreshed from the API as normal.
-func parseWebhook(ctx context.Context, item *m.Webhook, prior resourceModel, diags *diag.Diagnostics) resourceModel {
+func parseWebhook(_ context.Context, item *m.Webhook, prior resourceModel, diags *diag.Diagnostics) resourceModel {
 	header := make([]attr.Value, 0, len(item.Header))
 	for _, h := range item.Header {
 		if h == nil {

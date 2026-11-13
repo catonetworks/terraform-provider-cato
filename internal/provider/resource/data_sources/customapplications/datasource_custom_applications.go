@@ -105,24 +105,8 @@ func (d *customApplicationsDataSource) Read(ctx context.Context, req datasource.
 		return
 	}
 
-	// Build filter maps
-	filterByID := !config.IDFilter.IsNull() && config.IDFilter.Elements() != nil
-	idsMap := make(map[string]struct{})
-	if filterByID {
-		for _, value := range config.IDFilter.Elements() {
-			valueStr := strings.Trim(value.String(), "\"")
-			idsMap[valueStr] = struct{}{}
-		}
-	}
-
-	filterByName := !config.NameFilter.IsNull() && config.NameFilter.Elements() != nil
-	namesMap := make(map[string]struct{})
-	if filterByName {
-		for _, value := range config.NameFilter.Elements() {
-			valueStr := strings.Trim(value.String(), "\"")
-			namesMap[valueStr] = struct{}{}
-		}
-	}
+	idsMap, filterByID := filterSet(config.IDFilter)
+	namesMap, filterByName := filterSet(config.NameFilter)
 
 	// Process custom applications and apply filters
 	var appObjects []attr.Value
@@ -219,4 +203,15 @@ func (d *customApplicationsDataSource) fetchAllCustomApplications(
 	}
 
 	return allItems, nil
+}
+
+func filterSet(value types.List) (map[string]struct{}, bool) {
+	active := !value.IsNull() && value.Elements() != nil
+	values := make(map[string]struct{})
+	if active {
+		for _, element := range value.Elements() {
+			values[strings.Trim(element.String(), "\"")] = struct{}{}
+		}
+	}
+	return values, active
 }

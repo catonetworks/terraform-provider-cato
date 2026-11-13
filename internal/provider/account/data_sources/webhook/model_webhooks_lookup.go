@@ -12,11 +12,11 @@ type Lookup struct {
 	Items      types.List `tfsdk:"items"`
 }
 
-// HeaderAttrTypes/HeaderObjectType describe one `header` list element.
+// HeaderAttrTypes and HeaderObjectType describe one `header` list element.
 var HeaderAttrTypes = map[string]attr.Type{"name": types.StringType, "value": types.StringType}
 var HeaderObjectType = types.ObjectType{AttrTypes: HeaderAttrTypes}
 
-// ResponseMapAttrTypes/ResponseMapObjectType describe one `response_mapping` list element.
+// ResponseMapAttrTypes and ResponseMapObjectType describe one `response_mapping` list element.
 var ResponseMapAttrTypes = map[string]attr.Type{"key": types.StringType, "value": types.StringType}
 var ResponseMapObjectType = types.ObjectType{AttrTypes: ResponseMapAttrTypes}
 

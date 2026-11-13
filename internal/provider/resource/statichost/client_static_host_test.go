@@ -136,11 +136,12 @@ func TestStaticHostCreateSiteResolutionErrors(t *testing.T) {
 			tc.setup(api)
 			// SiteAddStaticHost must NOT be called -- resolution fails first.
 			model := StaticHost{ID: types.StringUnknown(), Name: types.StringValue("host"), IP: types.StringValue("192.0.2.10"), MacAddress: types.StringNull()}
-			if tc.want == "No site with ID" {
+			switch tc.want {
+			case "No site with ID":
 				model.SiteID, model.SiteName = types.StringValue("missing"), types.StringNull()
-			} else if tc.want == "Ambiguous site name" {
+			case "Ambiguous site name":
 				model.SiteID, model.SiteName = types.StringNull(), types.StringValue("Dup Site")
-			} else {
+			default:
 				model.SiteID, model.SiteName = types.StringNull(), types.StringValue("HQ Site")
 			}
 			plan := tfsdk.Plan{Schema: getStaticHostSchema(ctx, t)}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -132,7 +133,6 @@ func (d *allocatedIPDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	// EntityLookup has no description field; join PopLocationsAllocatedIPList
 	// (keyed by ip) to enrich items with the stable allocation description.
-	descByIP := make(map[string]string)
 	listResult, err := d.client.Catov2.PopLocationsAllocatedIPList(ctx, d.client.AccountId,
 		&cato_models.PopLocationAllocatedIPInput{})
 	tflog.Debug(ctx, "Read.PopLocationsAllocatedIPList.response", map[string]interface{}{
@@ -142,16 +142,7 @@ func (d *allocatedIPDataSource) Read(ctx context.Context, req datasource.ReadReq
 		resp.Diagnostics.AddError("Catov2 API PopLocationsAllocatedIPList error", err.Error())
 		return
 	}
-	if list := listResult.GetPopLocations().GetAllocatedIPList(); list != nil {
-		for _, item := range list.AllocatedIP {
-			if item == nil {
-				continue
-			}
-			if desc := item.GetDescription(); desc != nil {
-				descByIP[item.GetIP()] = *desc
-			}
-		}
-	}
+	descByIP := allocationDescriptions(listResult)
 
 	namesSet, filterByName := listFilterSet(allocatedIPLookup.NameFilter)
 	descSet, filterByDesc := listFilterSet(allocatedIPLookup.DescriptionFilter)
@@ -215,4 +206,20 @@ func (d *allocatedIPDataSource) Read(ctx context.Context, req datasource.ReadReq
 	if diags := resp.State.Set(ctx, &allocatedIPLookup); diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 	}
+}
+
+func allocationDescriptions(result *cato.PopLocationsAllocatedIPList) map[string]string {
+	descByIP := make(map[string]string)
+	if list := result.GetPopLocations().GetAllocatedIPList(); list != nil {
+		for _, item := range list.AllocatedIP {
+			if item == nil {
+				continue
+			}
+			if desc := item.GetDescription(); desc != nil {
+				descByIP[item.GetIP()] = *desc
+			}
+		}
+	}
+
+	return descByIP
 }

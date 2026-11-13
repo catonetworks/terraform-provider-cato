@@ -63,7 +63,8 @@ func validateRelatedWebhookRef(ctx context.Context, ref types.Object, diags *dia
 		return
 	}
 	var value relatedWebhookRefModel
-	if diags.Append(ref.As(ctx, &value, basetypes.ObjectAsOptions{})...); diags.HasError() {
+	diags.Append(ref.As(ctx, &value, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
 		return
 	}
 	if value.By.ValueString() != "ID" && value.By.ValueString() != "NAME" {

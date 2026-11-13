@@ -118,18 +118,7 @@ func (d *usersGroupDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	var apiFilter *cato_models.UsersGroupFilterInput
-	if !groupLookup.ImportTypeFilter.IsNull() && groupLookup.ImportTypeFilter.ValueString() != "" {
-		apiFilter = &cato_models.UsersGroupFilterInput{
-			ImportType: []*cato_models.UsersGroupImportTypeFilterInput{
-				{
-					In: []cato_models.UsersGroupImportType{
-						cato_models.UsersGroupImportType(groupLookup.ImportTypeFilter.ValueString()),
-					},
-				},
-			},
-		}
-	}
+	apiFilter := importTypeFilter(groupLookup.ImportTypeFilter)
 
 	var allItems []*cato_go_sdk.UserUsersGroupList_User_UsersGroupList_Items
 	from := int64(0)
@@ -235,4 +224,21 @@ func (f *usersGroupFilter) accept(name string) bool {
 	}
 	_, ok := f.namesMap[name]
 	return ok
+}
+
+func importTypeFilter(value types.String) *cato_models.UsersGroupFilterInput {
+	var apiFilter *cato_models.UsersGroupFilterInput
+	if !value.IsNull() && value.ValueString() != "" {
+		apiFilter = &cato_models.UsersGroupFilterInput{
+			ImportType: []*cato_models.UsersGroupImportTypeFilterInput{
+				{
+					In: []cato_models.UsersGroupImportType{
+						cato_models.UsersGroupImportType(value.ValueString()),
+					},
+				},
+			},
+		}
+	}
+
+	return apiFilter
 }

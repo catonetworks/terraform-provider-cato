@@ -10,7 +10,7 @@ import (
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato "github.com/catonetworks/cato-go-sdk"
-	m "github.com/catonetworks/cato-go-sdk/models"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -280,7 +280,7 @@ func TestValidationAndImport(t *testing.T) {
 func TestPartialCreateRetainsIdentity(t *testing.T) {
 	ctx := context.Background()
 	api := mocks.NewWebhookClient(t)
-	result := &m.Webhook{ID: "1001", Name: "test"}
+	result := &cato_models.Webhook{ID: "1001", Name: "test"}
 	api.EXPECT().CreateWebhook(mock.Anything, "account-123", mock.Anything).Return(result, errors.New("partial failure")).Once()
 	r := &webhookResource{client: &catoclient.Service{AccountId: "account-123"}, apiClient: api}
 	m := model()

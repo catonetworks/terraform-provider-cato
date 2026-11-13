@@ -130,18 +130,7 @@ func (d *usersDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	var apiFilter *cato_models.UserFilterInput
-	if !userLookup.ImportTypeFilter.IsNull() && userLookup.ImportTypeFilter.ValueString() != "" {
-		apiFilter = &cato_models.UserFilterInput{
-			UserImportType: []*cato_models.UserImportTypeFilterInput{
-				{
-					In: []cato_models.UserImportType{
-						cato_models.UserImportType(userLookup.ImportTypeFilter.ValueString()),
-					},
-				},
-			},
-		}
-	}
+	apiFilter := importTypeFilter(userLookup.ImportTypeFilter)
 
 	var allItems []*cato_go_sdk.UserUserList_User_UserList_Items
 	from := int64(0)
@@ -171,10 +160,7 @@ func (d *usersDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		items := userList.GetItems()
 		allItems = append(allItems, items...)
 
-		total := int64(0)
-		if pageInfo := userList.GetPageInfo(); pageInfo != nil {
-			total = pageInfo.GetTotal()
-		}
+		total := userList.GetPageInfo().GetTotal()
 		from += int64(len(items))
 		if len(items) == 0 || from >= total {
 			break
@@ -277,4 +263,21 @@ func (f *userFilter) accept(name, email string) bool {
 		return true // name matches the filter
 	}
 	return false // nor email nor name matched
+}
+
+func importTypeFilter(value types.String) *cato_models.UserFilterInput {
+	var apiFilter *cato_models.UserFilterInput
+	if !value.IsNull() && value.ValueString() != "" {
+		apiFilter = &cato_models.UserFilterInput{
+			UserImportType: []*cato_models.UserImportTypeFilterInput{
+				{
+					In: []cato_models.UserImportType{
+						cato_models.UserImportType(value.ValueString()),
+					},
+				},
+			},
+		}
+	}
+
+	return apiFilter
 }

@@ -104,15 +104,19 @@ func wanApplicationSchemaAttributes() map[string]schema.Attribute {
 			NestedObject:  schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global IP range")},
 			PlanModifiers: []planmodifier.Set{idname.SetPlanModifier()},
 		},
-		"application_type": schema.ListAttribute{
-			Description: "Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). " +
-				"Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).",
-			ElementType: types.StringType,
-			Optional:    true,
-			Computed:    true,
-			PlanModifiers: []planmodifier.List{
-				listplanmodifier.UseStateForUnknown(),
-			},
+		"application_type": applicationTypeSchema(),
+	}
+}
+
+func applicationTypeSchema() schema.ListAttribute {
+	return schema.ListAttribute{
+		Description: "Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). " +
+			"Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).",
+		ElementType: types.StringType,
+		Optional:    true,
+		Computed:    true,
+		PlanModifiers: []planmodifier.List{
+			listplanmodifier.UseStateForUnknown(),
 		},
 	}
 }
