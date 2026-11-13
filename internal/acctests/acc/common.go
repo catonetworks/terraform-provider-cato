@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/accmock"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider"
 )
 
 // env. variables
@@ -28,7 +30,54 @@ const (
 	envCatoToken     = "CATO_TOKEN"
 	envCatoAccountID = "CATO_ACCOUNT_ID"
 	envCatoEndpoint  = "CATO_BASEURL"
+	// envCatoProfile, when set, makes the acceptance-test harness resolve its
+	// credentials from that named catocli profile in ~/.cato/credentials
+	// (CATO_CREDENTIALS_FILE overrides the path) instead of the CATO_TOKEN /
+	// CATO_ACCOUNT_ID / CATO_BASEURL env vars. Profile takes precedence when set.
+	envCatoProfile = "CATO_PROFILE"
+	// envCatoCredentialsFile mirrors the provider's override for the credentials file path.
+	envCatoCredentialsFile = "CATO_CREDENTIALS_FILE"
 )
+
+// resolvedCreds holds the credentials the harness and the provider-under-test use.
+type resolvedCreds struct {
+	token     string
+	accountID string
+	endpoint  string
+	profile   string // non-empty when profile-based auth is active
+}
+
+// credsFilePath mirrors the provider's credentialsFilePath resolution: the
+// CATO_CREDENTIALS_FILE override, else ~/.cato/credentials.
+func credsFilePath() string {
+	if v := os.Getenv(envCatoCredentialsFile); v != "" {
+		return v
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".cato", "credentials")
+}
+
+// resolveCredentials picks the credential source: if CATO_PROFILE is set, the named
+// catocli profile is used (reusing the provider's ResolveProfileCredentials); otherwise
+// the CATO_TOKEN / CATO_ACCOUNT_ID / CATO_BASEURL env vars are used. Resolution failures
+// are left empty here and surfaced by CheckCMAVars at test setup.
+func resolveCredentials() resolvedCreds {
+	if profile := os.Getenv(envCatoProfile); profile != "" {
+		token, accountID, endpoint, err := provider.ResolveProfileCredentials(profile, credsFilePath())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: CATO_PROFILE=%q set but credential resolution failed: %v\n", profile, err)
+		}
+		return resolvedCreds{token: token, accountID: accountID, endpoint: endpoint, profile: profile}
+	}
+	return resolvedCreds{
+		token:     os.Getenv(envCatoToken),
+		accountID: os.Getenv(envCatoAccountID),
+		endpoint:  os.Getenv(envCatoEndpoint),
+	}
+}
 
 // named references to resources
 const (
@@ -57,8 +106,10 @@ const (
 )
 
 var (
-	CatoAccountID = os.Getenv(envCatoAccountID)
-	CatoToken     = os.Getenv(envCatoToken)
+	creds         = resolveCredentials()
+	CatoAccountID = creds.accountID
+	CatoToken     = creds.token
+	CatoEndpoint  = creds.endpoint
 	httpClient    = &http.Client{}
 )
 
@@ -120,11 +171,25 @@ func GetRandName(resource string) string {
 
 func CheckCMAVars(t *testing.T) func() {
 	return func() {
-		for _, envVar := range []string{envCatoToken, envCatoAccountID, envCatoEndpoint} {
-			if os.Getenv(envVar) == "" {
-				t.Fatalf("ERROR: env variable '%s' not set", envVar)
-			}
+		missing := []string{}
+		if CatoToken == "" {
+			missing = append(missing, "token")
 		}
+		if CatoAccountID == "" {
+			missing = append(missing, "account_id")
+		}
+		if CatoEndpoint == "" {
+			missing = append(missing, "endpoint")
+		}
+		if len(missing) == 0 {
+			return
+		}
+		if creds.profile != "" {
+			t.Fatalf("ERROR: CATO_PROFILE=%q did not provide [%s] (checked %s)",
+				creds.profile, strings.Join(missing, ", "), credsFilePath())
+		}
+		t.Fatalf("ERROR: missing credentials [%s]: set %s/%s/%s or CATO_PROFILE",
+			strings.Join(missing, ", "), envCatoToken, envCatoAccountID, envCatoEndpoint)
 	}
 }
 
@@ -168,7 +233,7 @@ func GetClient(t *testing.T) *cato.Client {
 	mu.Lock()
 	defer mu.Unlock()
 	if catoClient == nil {
-		newCatoClient, err := cato.New(os.Getenv(envCatoEndpoint), CatoToken, CatoAccountID, nil,
+		newCatoClient, err := cato.New(CatoEndpoint, CatoToken, CatoAccountID, nil,
 			map[string]string{"User-Agent": "cato-terraform-test"})
 		if err != nil {
 			t.Fatalf("ERROR creating cato client: %s", err)
@@ -318,7 +383,11 @@ func GetAdvancedGroups(t *testing.T) []Ref {
 			ctx,
 			createGroupInput,
 			CatoAccountID,
-			cato_models.GroupMembersListInput{},
+			cato_models.GroupMembersListInput{
+				// paging and sort are non-nullable inputs on the live schema
+				Paging: &cato_models.PagingInput{Limit: 50, From: 0},
+				Sort:   &cato_models.GroupMembersListSortInput{},
+			},
 		)
 		if err != nil {
 			t.Fatalf("ERROR creating test group: %v", err)
@@ -414,8 +483,21 @@ func DeleteGlobalIPRanges(t *testing.T) {
 	}
 }
 
+// ProviderAuthAttr returns the provider-block auth attribute line for the active credential
+// mode: `profile = "<name>"` when CATO_PROFILE is set (the provider then resolves token,
+// account_id, and baseurl from the catocli credentials file), otherwise `account_id = "<id>"`
+// (token/baseurl come from the CATO_* env vars). Use this inside any hand-rolled provider
+// block so profile mode works everywhere, not just via ProviderCfg.
+func ProviderAuthAttr() string {
+	if creds.profile != "" {
+		return fmt.Sprintf("profile = %q", creds.profile)
+	}
+	return fmt.Sprintf("account_id = %q", CatoAccountID)
+}
+
+// ProviderCfg renders the provider block for the provider-under-test, auth-mode aware.
 func ProviderCfg() string {
-	return fmt.Sprintf("provider \"cato\" {\n  account_id = %q\n}\n", CatoAccountID)
+	return fmt.Sprintf("provider \"cato\" {\n  %s\n}\n", ProviderAuthAttr())
 }
 
 // getEntities is a generic function to call entityLookup API and return a []Ref (name and ID of the entities)
@@ -427,13 +509,13 @@ func getEntities(t *testing.T, entityType string) (refs []Ref) {
 			"operationName": "entityLookup"}`
 
 	// Create request
-	req, err := http.NewRequest(http.MethodPost, os.Getenv(envCatoEndpoint), strings.NewReader(query)) //nolint:gosec
+	req, err := http.NewRequest(http.MethodPost, CatoEndpoint, strings.NewReader(query))
 	if err != nil {
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", CatoToken)
-	resp, err := httpClient.Do(req) //nolint:gosec
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		t.Fatalf("ERROR fetching %q: %v", entityType, err)
 	}

@@ -12,10 +12,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 	applicationcontrol2 "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
+	iprange "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/iprange"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyschedule"
 )
@@ -181,16 +181,33 @@ func newMinimalApplicationControlRulePlan(
 	typedRuleAttribute string,
 ) ApplicationControlRule {
 	typedRule := types.ObjectValueMust(applicationControlTypedRuleAttrTypes, map[string]attr.Value{
-		"action":                       types.StringValue(string(cato_models.ApplicationControlActionMonitor)),
-		"severity":                     types.StringValue(string(cato_models.ApplicationControlSeverityMedium)),
-		"schedule":                     types.ObjectNull(policyschedule.ScheduleAttrTypes),
-		"source":                       types.ObjectNull(applicationcontrol2.ApplicationControlSourceAttrTypes),
-		"tracking":                     types.ObjectNull(policyrule.TrackingAttrTypes),
-		"device":                       types.SetNull(idname.RefObjectType),
-		"access_method":                types.ListNull(types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}),
-		"application":                  types.ObjectNull(wfrule.WanApplicationAttrTypes),
+		"action":        types.StringValue(string(cato_models.ApplicationControlActionMonitor)),
+		"severity":      types.StringValue(string(cato_models.ApplicationControlSeverityMedium)),
+		"schedule":      types.ObjectNull(policyschedule.ScheduleAttrTypes),
+		"source":        types.ObjectNull(applicationcontrol2.ApplicationControlSourceAttrTypes),
+		"tracking":      types.ObjectNull(policyrule.TrackingAttrTypes),
+		"device":        types.SetNull(idname.RefObjectType),
+		"access_method": types.ListNull(types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}),
+		"application": types.ObjectValueMust(acApplicationAttrTypes, map[string]attr.Value{
+			"application":              types.SetNull(idname.RefObjectType),
+			"custom_app":               types.SetNull(idname.RefObjectType),
+			"app_category":             types.SetNull(idname.RefObjectType),
+			"custom_category":          types.SetNull(idname.RefObjectType),
+			"sanctioned_apps_category": types.SetNull(idname.RefObjectType),
+			"domain":                   types.ListNull(types.StringType),
+			"fqdn":                     types.ListNull(types.StringType),
+			"ip":                       types.ListNull(types.StringType),
+			"subnet":                   types.ListNull(types.StringType),
+			"ip_range":                 types.ListNull(iprange.RangeObjectType),
+			"global_ip_range":          types.SetNull(idname.RefObjectType),
+			"application_type": types.ListValueMust(types.StringType, []attr.Value{
+				types.StringValue(string(cato_models.ApplicationTypeCloudApplication)),
+			}),
+		}),
 		"application_activity":         types.ListNull(types.ObjectType{AttrTypes: applicationControlActivityAttrTypes}),
 		"application_activity_satisfy": types.StringNull(),
+		"application_criteria":         types.ObjectNull(acCriteriaAttrTypes),
+		"application_criteria_satisfy": types.StringNull(),
 		"action_config":                types.ObjectNull(applicationControlActionConfigAttrTypes),
 		"file_attribute":               types.ListNull(types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}),
 		"file_attribute_satisfy":       types.StringNull(),

@@ -1,60 +1,131 @@
-terraform {
-  required_providers {
-    cato = { source = "catonetworks/cato" }
+# NOTE: cato_remote_port_forward_rule requires description, remote_ips, and tracking
+# to be fully populated (all Required in this resource's schema) — unlike some sibling
+# policy families where those blocks are optional. See schema_remote_port_forward_rule.go.
+
+resource "cato_remote_port_forward_section" "example" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "Remote Port Forward Example Rules"
   }
 }
 
-variable "token" {
-  type = string
-  sensitive = true
-  description = "API token supplied through TF_VAR_token."
-}
-
-variable "account_id" {
-  type = string
-  description = "Cato account ID supplied through TF_VAR_account_id."
-}
-
-provider "cato" {
-  token = var.token
-  account_id = var.account_id
-}
-
-# Changes are automatically published. Use a test account when evaluating beta APIs.
-resource "cato_remote_port_forward_rule" "example" {
-  # Optional placement; omission on update preserves the current position.
-  # at = { position = "LAST_IN_POLICY" }
+# Minimal rule — only required fields populated.
+resource "cato_remote_port_forward_rule" "simple" {
+  at = {
+    position = "FIRST_IN_SECTION"
+    ref      = cato_remote_port_forward_section.example.section.id
+  }
   rule = {
+    name        = "Forward RDP"
     description = "Managed by Terraform"
-    enabled = false
-    external_ip = { id = "replace-with-object-id" }
-    external_port_range = {
-      from = "443"
-      to = "443"
+    enabled     = true
+    external_ip = {
+      # id   = "1234567"
+      name = "my-allocated-ip"
     }
-    forward_icmp = false
-    internal_ip = "192.0.2.241"
+    external_port_range = {
+      from = "10000"
+      to   = "10001"
+    }
+    internal_ip = "192.0.2.10"
     internal_port_range = {
       from = "443"
-      to = "443"
+      to   = "443"
     }
-    name = "terraform-remote-port-forward-rule"
+    forward_icmp     = false
+    restriction_type = "ALLOW_LIST" # ALLOW_LIST | BLOCK_LIST
     remote_ips = {
-      global_ip_range = [{ id = "replace-with-object-id" }]
-      ip = ["192.0.2.100"]
-      ip_range = [{
-        from = "192.0.2.101"
-        to = "192.0.2.102"
-      }]
-      subnet = ["198.51.100.0/24"]
+      global_ip_range = []
+      ip = [
+        "192.0.2.100",
+      ]
+      ip_range = []
+      subnet   = []
     }
-    restriction_type = "ALLOW_LIST"
     tracking = {
-      enabled = false
+      enabled            = false
+      frequency          = "DAILY" # HOURLY | DAILY | WEEKLY | IMMEDIATE
+      mailing_list       = []
+      subscription_group = []
+      webhook            = []
+    }
+  }
+}
+
+# Kitchen sink — every predicate the schema supports, referenced by name with the
+# matching id commented above each.
+resource "cato_remote_port_forward_rule" "kitchen_sink" {
+  at = {
+    position = "LAST_IN_SECTION"
+    ref      = cato_remote_port_forward_section.example.section.id
+  }
+  rule = {
+    name        = "Remote Port Forwarding Kitchen Sink"
+    description = "Kitchen sink example covering every rule-schema field"
+    enabled     = true
+    external_ip = {
+      # id   = "7654321"
+      name = "my-allocated-ip-2"
+    }
+    external_port_range = {
+      from = "20000"
+      to   = "20010"
+    }
+    internal_ip = "192.0.2.21"
+    internal_port_range = {
+      from = "8080"
+      to   = "8090"
+    }
+    forward_icmp     = true
+    restriction_type = "BLOCK_LIST"
+    remote_ips = {
+      global_ip_range = [
+        {
+          # id   = "1757826"
+          name = "global_ip_range"
+        },
+        {
+          # id   = "1910542"
+          name = "global_ip_range2"
+        },
+      ]
+      ip = [
+        "1.2.3.4",
+        "1.2.3.5",
+      ]
+      ip_range = [
+        {
+          from = "1.2.3.10"
+          to   = "1.2.3.20"
+        },
+      ]
+      subnet = [
+        "1.2.3.0/24",
+      ]
+    }
+    tracking = {
+      enabled   = true
       frequency = "DAILY"
-      mailing_list = [{ id = "replace-with-object-id" }]
-      subscription_group = [{ id = "replace-with-object-id" }]
-      webhook = [{ id = "replace-with-object-id" }]
+      mailing_list = [
+        {
+          # id   = "-100"
+          name = "All Admins"
+        },
+      ]
+      subscription_group = [
+        {
+          # id   = "12345"
+          name = "SOC Alerts"
+        },
+      ]
+      webhook = [
+        {
+          # id   = "12345"
+          name = "PagerDuty Hook"
+        },
+      ]
     }
   }
 }

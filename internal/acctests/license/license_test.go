@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"text/template"
 
@@ -64,7 +63,7 @@ func TestAccLicense(t *testing.T) {
 }
 
 func testAccLicenseDestroy(st *terraform.State) error {
-	client, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, nil, map[string]string{
+	client, err := cato.New(acc.CatoEndpoint, acc.CatoToken, acc.CatoAccountID, nil, map[string]string{
 		"User-Agent": "cato-terraform-test",
 	})
 	if err != nil {

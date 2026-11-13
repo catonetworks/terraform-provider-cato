@@ -52,6 +52,12 @@ type ResourceClient interface {
 		updateZtnaAppConnectorBwLicenseInput cato_models.UpdateZtnaAppConnectorBwLicenseInput,
 		interceptors ...clientv2.RequestInterceptor,
 	) (*cato_go_sdk.ZtnaAppConnectorUpdateZtnaAppConnectorBwLicense, error)
+	AppConnectorListConnectors(
+		ctx context.Context,
+		accountID string,
+		input cato_models.ZtnaAppConnectorListInput,
+		interceptors ...clientv2.RequestInterceptor,
+	) (*cato_go_sdk.ZtnaAppConnectorZtnaAppConnectorList, error)
 }
 
 func (r *appConnectorResource) resourceAPI() ResourceClient {
@@ -143,3 +149,14 @@ func (c *sdkClient) ZtnaAppConnectorUpdateZtnaAppConnectorBwLicense(
 type sdkClient struct{ resource *appConnectorResource }
 
 var _ ResourceClient = (*sdkClient)(nil)
+
+// AppConnectorListConnectors lists connectors (used by the create-or-adopt path
+// to resolve a live connector id by name).
+func (c *sdkClient) AppConnectorListConnectors(
+	ctx context.Context,
+	accountID string,
+	input cato_models.ZtnaAppConnectorListInput,
+	interceptors ...clientv2.RequestInterceptor,
+) (*cato_go_sdk.ZtnaAppConnectorZtnaAppConnectorList, error) {
+	return c.resource.client.Catov2.ZtnaAppConnectorZtnaAppConnectorList(ctx, accountID, input, interceptors...)
+}

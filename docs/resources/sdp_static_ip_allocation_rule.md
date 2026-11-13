@@ -13,40 +13,49 @@ Manages a rule in the Cato SDP static IP allocation policy. Underlying GraphQL i
 ## Example Usage
 
 ```terraform
-# The IP must belong to a static IP range configured on the account.
-terraform {
-  required_providers {
-    cato = { source = "catonetworks/cato" }
+// allocate a static IP to a single user
+resource "cato_sdp_static_ip_allocation_rule" "allocate_user_ip" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  rule = {
+    name    = "Allocate Static IP to jdoe"
+    enabled = true
+    ip      = "192.0.2.241"
+    source = {
+      user = {
+        # id   = "123456"
+        name = "jdoe"
+      }
+    }
   }
 }
 
-variable "token" {
-  type = string
-  sensitive = true
-  description = "API token supplied through TF_VAR_token."
+resource "cato_sdp_static_ip_allocation_section" "ssia_section" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "SSIA Section"
+  }
 }
 
-variable "account_id" {
-  type = string
-  description = "Cato account ID supplied through TF_VAR_account_id."
-}
-
-provider "cato" {
-  token = var.token
-  account_id = var.account_id
-}
-
-# Changes are automatically published. Use a test account when evaluating beta APIs.
-resource "cato_sdp_static_ip_allocation_rule" "example" {
-  # Optional placement; omission on update preserves the current position.
-  # at = { position = "LAST_IN_POLICY" }
+# cato_sdp_static_ip_allocation_rule.kitchen_sink:
+resource "cato_sdp_static_ip_allocation_rule" "kitchen_sink" {
+  at = {
+    position = "FIRST_IN_SECTION"
+    ref      = cato_sdp_static_ip_allocation_section.ssia_section.section.id
+  }
   rule = {
-    description = "Managed by Terraform"
-    enabled = true
-    ip = "192.0.2.241"
-    name = "terraform-sdp-static-ip-allocation-rule"
+    name        = "SDP Static IP Allocation Kitchen Sink"
+    description = "test"
+    enabled     = true
+    ip          = "192.0.2.242"
     source = {
-      user = { id = "replace-with-object-id" }
+      user = {
+        # id   = "123457"
+        name = "Test User"
+      }
     }
   }
 }

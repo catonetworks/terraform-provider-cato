@@ -50,6 +50,42 @@ export CATO_RETRY_WAIT_MIN_SECONDS="1"
 export CATO_RETRY_WAIT_MAX_SECONDS="30"
 ```
 
+### Authentication
+
+Choose one authentication method:
+
+1. **Explicit credentials:** set `token` and `account_id` in the provider block, or use `CATO_TOKEN` and `CATO_ACCOUNT_ID`. Configure `baseurl` in the provider block or through `CATO_BASEURL`. Provider attributes override their environment values.
+2. **catocli profile:** set `profile` in the provider block or `CATO_PROFILE` in the environment. The provider reads `cato_token`, `account_id`, and `endpoint` from that profile in `~/.cato/credentials`. Override the file path with `CATO_CREDENTIALS_FILE`. A selected profile overrides ambient credential environment variables; an explicit `baseurl` attribute overrides its endpoint.
+
+A selected profile cannot be combined with `token` or `account_id` attributes in the provider block. This produces a diagnostic instead of silently switching accounts. For CI, use explicit credentials through environment variables and leave `CATO_PROFILE` unset.
+
+```hcl
+# explicit (unchanged)
+provider "cato" {
+  baseurl    = "..."
+  token      = "..."
+  account_id = "..."
+}
+
+# catocli profile
+provider "cato" {
+  profile = "refarch-dev"
+}
+```
+
+```sh
+# or via env, with no provider block attribute needed at all
+export CATO_PROFILE=refarch-dev
+terraform plan
+```
+
+Why use a profile: it's the same `~/.cato/credentials` store `catocli` itself reads and writes, so there's one shared credential store instead of two — no API tokens need to live in `*.tfvars` files or shell `export`s, and switching between tenants/accounts is just a matter of pointing `profile` (or `CATO_PROFILE`) at a different profile name.
+
+To point at a credentials file somewhere other than `~/.cato/credentials` (useful in CI, or for tests that shouldn't depend on the invoking user's real credentials), set:
+```
+export CATO_CREDENTIALS_FILE="/path/to/alternate/credentials"
+```
+
 ### Debugging GraphQL API Traffic
 
 When Terraform debug logging is enabled, the provider logs each GraphQL API

@@ -34,8 +34,8 @@ resource "cato_subscription_group" "example" {
 
 ### Optional
 
-- `integration` (Attributes Set) Integration references (see [below for nested schema](#nestedatt--integration))
-- `mailing_list` (Attributes Set) Mailing list references (see [below for nested schema](#nestedatt--mailing_list))
+- `integration` (Attributes List) Integration references (see [below for nested schema](#nestedatt--integration))
+- `mailing_list` (Attributes List) Mailing list references (see [below for nested schema](#nestedatt--mailing_list))
 
 ### Read-Only
 

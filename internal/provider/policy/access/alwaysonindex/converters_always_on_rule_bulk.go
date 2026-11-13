@@ -80,9 +80,27 @@ func parseRules(ctx context.Context, policy *cato.PolicyZtnaAlwaysOnPolicy_Polic
 	for _, row := range policy.GetRules() {
 		rule := row.GetRule()
 		id, name := rule.GetID(), rule.GetName()
+		// A malformed rule (missing or duplicate id/name) is always invalid,
+		// whether it is sectioned or at the policy root.
+		if id == "" || name == "" || rules[name] != nil || ruleIDs[id] {
+			diags.AddError("Invalid Always On policy response", "API returned a rule with a missing or duplicate ID/name or missing parent section")
+			return nil
+		}
 		parentID := rule.GetSection().GetID()
+		// Rules in the implicit default section (section.id == "") live at the
+		// policy root. cato_always_on_rule_bulk is an ordering/publishing mover
+		// and does NOT manage root rules: the module excludes section_name ""
+		// rows from rule_data (they are created at LAST_IN_POLICY by
+		// cato_always_on_rule and left in creation order). Skip them here so the
+		// read-back rule set matches the module's rule_data; otherwise the
+		// section/rule counts won't align and validation fails.
+		if parentID == "" {
+			continue
+		}
+		// A non-empty parent section that does not resolve to a known section is
+		// a genuine dangling reference.
 		parentName := sectionNames[parentID]
-		if id == "" || name == "" || rules[name] != nil || ruleIDs[id] || parentName == "" {
+		if parentName == "" {
 			diags.AddError("Invalid Always On policy response", "API returned a rule with a missing or duplicate ID/name or missing parent section")
 			return nil
 		}

@@ -109,7 +109,7 @@ func stateFor(t *testing.T, m resourceModel) tfsdk.State {
 	return s
 }
 func model() resourceModel {
-	return resourceModel{ID: types.StringUnknown(), Name: types.StringValue("test"), Integration: types.SetValueMust(idname.RefObjectType, nil), MailingList: types.SetValueMust(idname.RefObjectType, []attr.Value{types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": types.StringValue("42"), "name": types.StringUnknown()})})}
+	return resourceModel{ID: types.StringUnknown(), Name: types.StringValue("test"), Integration: types.ListValueMust(idname.RefObjectType, nil), MailingList: types.ListValueMust(idname.RefObjectType, []attr.Value{types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": types.StringValue("42"), "name": types.StringUnknown()})})}
 }
 func TestCRUD(t *testing.T) {
 	ctx := context.Background()
@@ -127,8 +127,8 @@ func TestCRUD(t *testing.T) {
 	require.False(t, read.Diagnostics.HasError(), read.Diagnostics)
 	p.ID = current.ID
 	p.Name = types.StringValue("updated")
-	p.Integration = types.SetNull(idname.RefObjectType)
-	p.MailingList = types.SetValueMust(idname.RefObjectType, []attr.Value{types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": types.StringValue("42"), "name": types.StringUnknown()})})
+	p.Integration = types.ListNull(idname.RefObjectType)
+	p.MailingList = types.ListValueMust(idname.RefObjectType, []attr.Value{types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": types.StringValue("42"), "name": types.StringUnknown()})})
 	update := resource.UpdateResponse{State: read.State}
 	r.Update(ctx, resource.UpdateRequest{Plan: planFor(t, p), State: read.State}, &update)
 	require.False(t, update.Diagnostics.HasError(), update.Diagnostics)
@@ -206,9 +206,9 @@ func TestValidationAndImport(t *testing.T) {
 			case "name":
 				m.Name = types.StringUnknown()
 			case "integration":
-				m.Integration = types.SetUnknown(idname.RefObjectType)
+				m.Integration = types.ListUnknown(idname.RefObjectType)
 			case "mailing_list":
-				m.MailingList = types.SetUnknown(idname.RefObjectType)
+				m.MailingList = types.ListUnknown(idname.RefObjectType)
 			}
 			resp := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
 			r.Create(ctx, resource.CreateRequest{Plan: planFor(t, m)}, &resp)
@@ -216,7 +216,7 @@ func TestValidationAndImport(t *testing.T) {
 			require.Empty(t, b.calls)
 		})
 	}
-	resp := resource.ImportStateResponse{State: stateFor(t, resourceModel{ID: types.StringNull(), Name: types.StringNull(), Integration: types.SetNull(idname.RefObjectType), MailingList: types.SetNull(idname.RefObjectType)})}
+	resp := resource.ImportStateResponse{State: stateFor(t, resourceModel{ID: types.StringNull(), Name: types.StringNull(), Integration: types.ListNull(idname.RefObjectType), MailingList: types.ListNull(idname.RefObjectType)})}
 	NewResource().(*subscriptionGroupResource).ImportState(ctx, resource.ImportStateRequest{ID: "1001"}, &resp)
 	require.False(t, resp.Diagnostics.HasError())
 	var id types.String
@@ -230,12 +230,14 @@ func TestClearUsesFreshMembership(t *testing.T) {
 	r := setup(t, b)
 	prior := model()
 	prior.ID = types.StringValue("1001")
-	prior.MailingList = types.SetValueMust(idname.RefObjectType, nil)
+	prior.MailingList = types.ListValueMust(idname.RefObjectType, nil)
 	desired := prior
 	response := resource.UpdateResponse{State: stateFor(t, prior)}
 	r.Update(ctx, resource.UpdateRequest{State: stateFor(t, prior), Plan: planFor(t, desired)}, &response)
 	require.False(t, response.Diagnostics.HasError(), response.Diagnostics)
-	require.Equal(t, []string{"subscriptionGroup", "updateSubscriptionGroup"}, b.calls)
+	// Update re-reads via the query after the mutation (the mutation response does not
+	// echo back membership), so the trailing "subscriptionGroup" read is expected.
+	require.Equal(t, []string{"subscriptionGroup", "updateSubscriptionGroup", "subscriptionGroup"}, b.calls)
 	require.Equal(t, []any{map[string]any{"by": "ID", "input": "42"}}, b.inputs[0]["mailingListToRemove"])
 	var actual resourceModel
 	require.False(t, response.State.Get(ctx, &actual).HasError())
@@ -250,7 +252,7 @@ func TestPartialCreateRetainsIdentity(t *testing.T) {
 	api.EXPECT().NotificationCreateSubscriptionGroup(mock.Anything, "account-123", mock.Anything).Return(result, errors.New("partial failure")).Once()
 	r := &subscriptionGroupResource{client: &catoclient.Service{AccountId: "account-123"}, apiClient: api}
 	m := model()
-	m.MailingList = types.SetValueMust(idname.RefObjectType, []attr.Value{types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": types.StringValue("42"), "name": types.StringUnknown()})})
+	m.MailingList = types.ListValueMust(idname.RefObjectType, []attr.Value{types.ObjectValueMust(idname.RefAttrTypes, map[string]attr.Value{"id": types.StringValue("42"), "name": types.StringUnknown()})})
 	resp := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: planFor(t, m)}, &resp)
 	require.True(t, resp.Diagnostics.HasError())
@@ -296,7 +298,7 @@ func TestClearIntegrationUsesFreshMembership(t *testing.T) {
 	r := setup(t, b)
 	prior := model()
 	prior.ID = types.StringValue("1001")
-	prior.MailingList = types.SetValueMust(idname.RefObjectType, nil)
+	prior.MailingList = types.ListValueMust(idname.RefObjectType, nil)
 	response := resource.UpdateResponse{State: stateFor(t, prior)}
 	r.Update(ctx, resource.UpdateRequest{State: stateFor(t, prior), Plan: planFor(t, prior)}, &response)
 	require.False(t, response.Diagnostics.HasError(), response.Diagnostics)
@@ -310,7 +312,7 @@ func TestEmptyCreateAndDrift(t *testing.T) {
 	b := &backend{}
 	r := setup(t, b)
 	p := model()
-	p.MailingList = types.SetNull(idname.RefObjectType)
+	p.MailingList = types.ListNull(idname.RefObjectType)
 	create := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
 	r.Create(ctx, resource.CreateRequest{Plan: planFor(t, p)}, &create)
 	require.True(t, create.Diagnostics.HasError())

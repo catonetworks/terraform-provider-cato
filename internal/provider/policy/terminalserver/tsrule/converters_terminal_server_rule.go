@@ -265,6 +265,8 @@ func hydrateTerminalServerRuleStateFromClient(
 	}
 
 	out.AllowedHostIP = types.ObjectNull(idname.RefAttrTypes)
+	// PreserveEmptyValues restores a configured [] from prior plan/state, while
+	// an omitted optional collection must remain null after hydration.
 	out.ExcludeTraffic = types.SetNull(idname.RefObjectType)
 
 	out.ID = types.StringValue(r.GetID())

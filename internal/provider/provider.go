@@ -20,19 +20,28 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/appconnector"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectorgroup"
+	appconnectorsds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/appconnectors"
+	privateappsds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/privateapps"
+	usersds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/users"
+	usersgroupds "github.com/catonetworks/terraform-provider-cato/internal/provider/access/data_sources/usersgroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/privateapp"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/access/user"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/account"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/admin"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/licensinginfo"
+	mailinglistds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/mailinglist"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/permissioncatalog"
 	roleds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/roles"
+	subscriptiongroupds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/subscriptiongroup"
+	webhookds "github.com/catonetworks/terraform-provider-cato/internal/provider/account/data_sources/webhook"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/license"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/mailinglist"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/rbacassignment"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/role"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/subscriptiongroup"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/account/webhook"
+	allocatedipres "github.com/catonetworks/terraform-provider-cato/internal/provider/network/allocatedip"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectphysicalconnection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectsite"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/accountsnapshotsite"
@@ -42,6 +51,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkinterfaces"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/networkranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/sitelocation"
+	sitesds "github.com/catonetworks/terraform-provider-cato/internal/provider/network/data_sources/sites"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpoption"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcprelaygroup"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/network/dhcpsettings"
@@ -135,7 +145,11 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wnwsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/bgppeer"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/customapplication"
+	customapplicationsds "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/customapplications"
+	fqdncontainerds "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/fqdncontainer"
+	globaliprangesds "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/globalipranges"
 	groupdata "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/group"
+	iprangecontainerds "github.com/catonetworks/terraform-provider-cato/internal/provider/resource/data_sources/ipaddressrangecontainer"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/fqdncontainer"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/globalipranges"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/resource/group"
@@ -189,13 +203,28 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 				Optional:    true,
 			},
 			"token": schema.StringAttribute{
-				Description: "API Key for the Cato API. Can be provided using CATO_BASEURL environment variable.",
-				Optional:    true,
-				Sensitive:   true,
+				Description: "API Key for the Cato API (can be provided via the CATO_TOKEN environment " +
+					"variable). Part of the explicit-credentials method; mutually exclusive with `profile`.",
+				Optional:  true,
+				Sensitive: true,
 			},
 			"account_id": schema.StringAttribute{
-				Description: "AccountId for the Cato API",
-				Required:    true,
+				Description: "AccountId for the Cato API (can be provided via the CATO_ACCOUNT_ID " +
+					"environment variable). Part of the explicit-credentials method; mutually exclusive " +
+					"with `profile`.",
+				Optional: true,
+			},
+			"profile": schema.StringAttribute{
+				Description: "Name of a catocli profile to source credentials from. When set (or when " +
+					"CATO_PROFILE is set), the provider reads token, account_id, and endpoint from the " +
+					"named section of the catocli credentials file (~/.cato/credentials by default; " +
+					"override the path with the CATO_CREDENTIALS_FILE environment variable). This is the " +
+					"local-development auth method and is MUTUALLY EXCLUSIVE with token/account_id " +
+					"attributes in the provider block. A selected profile overrides ambient CATO_TOKEN, " +
+					"CATO_ACCOUNT_ID, and CATO_BASEURL values; an explicit baseurl attribute still wins. For CI use " +
+					"the explicit-credentials env vars instead. See the provider README's Authentication " +
+					"section.",
+				Optional: true,
 			},
 			"retry_max": schema.Int64Attribute{
 				Description: "Maximum number of retries for retryable API requests. " +
@@ -256,6 +285,14 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 			path.Root("account_id"),
 			"Unknown Cato API account_id",
 			"The provider cannot create the CATO API client as there is an unknown configuration value for the CATO API account_id. ",
+		)
+	}
+
+	if config.Profile.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("profile"),
+			"Unknown Cato CLI Profile",
+			"The provider cannot resolve credentials as there is an unknown configuration value for profile.",
 		)
 	}
 
@@ -363,22 +400,102 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		versionCheckTimeoutSeconds = &value
 	}
 
-	accountID := config.AccountID.ValueString()
-
-	if baseurl == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("baseurl"),
-			"Missing Cato API Base URL ",
-			"The provider cannot create the CATO API client as there is a missing or empty value for the CATO API URL. ",
-		)
+	accountID := os.Getenv("CATO_ACCOUNT_ID")
+	if !config.AccountID.IsNull() {
+		accountID = config.AccountID.ValueString()
 	}
 
-	if token == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("token"),
-			"Missing Cato API Token ",
-			"The provider cannot create the CATO API client as there is a missing or empty value for the CATO API Token. ",
+	// A configured `profile` is AUTHORITATIVE. An explicitly-set profile (the
+	// provider-block `profile` attribute, or CATO_PROFILE) wins over ambient
+	// CATO_TOKEN / CATO_ACCOUNT_ID / CATO_BASEURL environment variables -- a stray
+	// shell credential (e.g. a leftover export for another tenant) must never
+	// override or conflict with the profile the configuration intentionally
+	// selected. The mutual-exclusion ERROR is reserved for a genuine CONFIG
+	// conflict: a selected profile and explicit `token`/`account_id` attributes.
+	profileName := ""
+	if !config.Profile.IsNull() {
+		profileName = config.Profile.ValueString()
+	} else if envProfile := os.Getenv("CATO_PROFILE"); envProfile != "" {
+		profileName = envProfile
+	}
+	hasProfile := profileName != ""
+	explicitAttrSet := !config.Token.IsNull() || !config.AccountID.IsNull()
+
+	const authHelp = "Authenticate using exactly ONE of: (A) explicit credentials -- set " +
+		"`token` and `account_id` in the provider block, or the CATO_TOKEN / CATO_ACCOUNT_ID " +
+		"(and CATO_BASEURL) environment variables (use this for CI such as Azure DevOps or " +
+		"Terraform Cloud, where there is no local credentials file); or (B) a catocli profile " +
+		"-- set `profile` in the provider block (or the CATO_PROFILE environment variable) to a " +
+		"profile name from the catocli credentials file (~/.cato/credentials by default, " +
+		"overridable with CATO_CREDENTIALS_FILE)."
+
+	// A selected profile conflicts with explicit credential attributes.
+	// Ambient CATO_TOKEN/CATO_ACCOUNT_ID env vars are NOT a conflict --
+	// the profile wins and they are ignored.
+	if hasProfile && explicitAttrSet {
+		resp.Diagnostics.AddError(
+			"Conflicting Cato API Credentials",
+			"A profile is selected through `profile` or CATO_PROFILE, and the provider block sets `token`/`account_id`. These "+
+				"authentication methods are mutually exclusive -- set only one in the "+
+				"provider block. "+authHelp,
 		)
+		return
+	}
+
+	// Profile wins: resolve it and REPLACE any ambient token/account_id/baseurl
+	// (an explicit `baseurl` attribute still overrides the profile endpoint).
+	if hasProfile {
+		credsPath := credentialsFilePath()
+		profileToken, profileAccountID, profileEndpoint, profileErr := ResolveProfileCredentials(profileName, credsPath)
+		if profileErr != nil {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("profile"),
+				"Unable to Resolve Cato CLI Profile",
+				profileErr.Error(),
+			)
+		} else {
+			token = profileToken
+			accountID = profileAccountID
+			baseurl = profileEndpoint
+			if !config.BaseURL.IsNull() {
+				baseurl = config.BaseURL.ValueString()
+			}
+		}
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if token == "" && accountID == "" {
+		resp.Diagnostics.AddError(
+			"Unable to Authenticate to the Cato API",
+			"No Cato API credentials were found in the provider configuration or environment. "+authHelp,
+		)
+	} else {
+		if baseurl == "" {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("baseurl"),
+				"Missing Cato API Base URL ",
+				"The provider cannot create the CATO API client as there is a missing or empty value for the CATO API URL. "+authHelp,
+			)
+		}
+
+		if token == "" {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("token"),
+				"Missing Cato API Token ",
+				"The provider cannot create the CATO API client as there is a missing or empty value for the CATO API Token. "+authHelp,
+			)
+		}
+
+		if accountID == "" {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("account_id"),
+				"Missing Cato API account_id",
+				"The provider cannot create the CATO API client as there is a missing or empty value for account_id. "+authHelp,
+			)
+		}
 	}
 
 	if resp.Diagnostics.HasError() {
@@ -583,7 +700,19 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 		wfrulesections.WfRuleSectionsDataSource,
 		networkranges.DataSource,
 		host.DataSource,
+		sitesds.DataSource,
+		usersds.DataSource,
+		usersgroupds.DataSource,
+		globaliprangesds.DataSource,
+		customapplicationsds.DataSource,
+		mailinglistds.NewDataSource,
+		subscriptiongroupds.NewDataSource,
+		webhookds.NewDataSource,
+		fqdncontainerds.DataSource,
+		iprangecontainerds.DataSource,
 		appconnectorgroup.GroupDataSource,
+		privateappsds.DataSource,
+		appconnectorsds.DataSource,
 	}
 }
 
@@ -600,6 +729,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		role.NewResource,
 		mailinglist.NewResource,
 		subscriptiongroup.NewResource,
+		webhook.NewResource,
 		cloudinterconnectsite.NewResource,
 		secondaryawsvsocket.NewResource,
 		secondaryazurevsocket.NewResource,
@@ -643,6 +773,7 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		laninterfacelagmember.NewLanInterfaceLagMemberResource,
 		license.NewLicenseResource,
 		networkrange.NewNetworkRangeResource,
+		allocatedipres.NewAllocatedIPResource,
 		groupmembers.NewGroupMembersResource,
 		ipsecsite.NewSiteIpsecResource,
 		socketsite.NewSocketSiteResource,

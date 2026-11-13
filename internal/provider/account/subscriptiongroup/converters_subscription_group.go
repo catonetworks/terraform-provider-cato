@@ -13,8 +13,8 @@ import (
 
 func buildMembers(ctx context.Context, plan resourceModel, diags *diag.Diagnostics) m.CreateSubscriptionGroupInput {
 	validateValues(plan, diags)
-	lists := idname.PrepareIDNameSet[m.MailingListRefInput](ctx, plan.MailingList, diags)
-	integrations := idname.PrepareIDNameSet[m.IntegrationRefInput](ctx, plan.Integration, diags)
+	lists := idname.PrepareIDNameList[m.MailingListRefInput](ctx, plan.MailingList, diags)
+	integrations := idname.PrepareIDNameList[m.IntegrationRefInput](ctx, plan.Integration, diags)
 	validateNullMembers(plan.MailingList, diags)
 	validateNullMembers(plan.Integration, diags)
 
@@ -34,14 +34,14 @@ func buildUpdate(ctx context.Context, plan, current resourceModel, diags *diag.D
 	// The backend treats empty set lists as absent. Remove every currently observed
 	// member of a cleared collection, including members introduced outside Terraform.
 	if len(in.MailingList) == 0 {
-		result.MailingListToRemove = idname.PrepareIDNameSet[m.MailingListRefInput](ctx, current.MailingList, diags)
+		result.MailingListToRemove = idname.PrepareIDNameList[m.MailingListRefInput](ctx, current.MailingList, diags)
 	}
 	if len(in.Integration) == 0 {
-		result.IntegrationToRemove = idname.PrepareIDNameSet[m.IntegrationRefInput](ctx, current.Integration, diags)
+		result.IntegrationToRemove = idname.PrepareIDNameList[m.IntegrationRefInput](ctx, current.Integration, diags)
 	}
 	return result
 }
-func validateNullMembers(set types.Set, diags *diag.Diagnostics) {
+func validateNullMembers(set types.List, diags *diag.Diagnostics) {
 	for _, item := range set.Elements() {
 		if item.IsNull() {
 			diags.AddError("Invalid member reference", "Members must be non-null references.")
@@ -54,7 +54,7 @@ func identityState(plan resourceModel, id string) resourceModel {
 	plan.Integration = knownMembers(plan.Integration)
 	return plan
 }
-func knownMembers(set types.Set) types.Set {
+func knownMembers(set types.List) types.List {
 	members := make([]attr.Value, 0, len(set.Elements()))
 	for _, member := range set.Elements() {
 		if member.IsNull() || member.IsUnknown() {
@@ -68,7 +68,7 @@ func knownMembers(set types.Set) types.Set {
 		}
 		members = append(members, types.ObjectValueMust(idname.RefAttrTypes, attrs))
 	}
-	return types.SetValueMust(idname.RefObjectType, members)
+	return types.ListValueMust(idname.RefObjectType, members)
 }
 
 type remoteGroup interface {
@@ -86,7 +86,7 @@ func parseSubscriptionGroup[L remoteMember, I remoteMember](ctx context.Context,
 	return resourceModel{ID: types.StringValue(item.GetID()), Name: types.StringValue(item.GetName()),
 		MailingList: parseMembers(ctx, lists, diags), Integration: parseMembers(ctx, integrations, diags)}
 }
-func parseMembers[T remoteMember](ctx context.Context, items []T, diags *diag.Diagnostics) types.Set {
+func parseMembers[T remoteMember](ctx context.Context, items []T, diags *diag.Diagnostics) types.List {
 	members := make([]attr.Value, 0, len(items))
 	for _, item := range items {
 		if item.GetID() == "" {
@@ -98,7 +98,62 @@ func parseMembers[T remoteMember](ctx context.Context, items []T, diags *diag.Di
 		diags.Append(d...)
 		members = append(members, value)
 	}
-	set, d := types.SetValue(idname.RefObjectType, members)
+	list, d := types.ListValue(idname.RefObjectType, members)
 	diags.Append(d...)
-	return set
+	return list
+}
+
+// orderLike reorders members to match the order of reference by matching each reference
+// element on its configured selector (name when set, otherwise id). Membership is
+// unordered on the API side, but the schema models it as a List (so a name-only ref whose
+// Computed id is Unknown correlates by index); re-reads can return members in a different
+// order than configured, so align to the desired order to keep apply/refresh plans empty.
+// Any members not present in reference are appended in their existing order.
+func orderLike(members, reference types.List) types.List {
+	if members.IsNull() || members.IsUnknown() || reference.IsNull() || reference.IsUnknown() {
+		return members
+	}
+	remaining := append([]attr.Value{}, members.Elements()...)
+	ordered := make([]attr.Value, 0, len(remaining))
+	for _, ref := range reference.Elements() {
+		robj, ok := ref.(types.Object)
+		if !ok || robj.IsNull() || robj.IsUnknown() {
+			continue
+		}
+		ra := robj.Attributes()
+		rName, _ := ra["name"].(types.String)
+		rID, _ := ra["id"].(types.String)
+		byName := !rName.IsNull() && !rName.IsUnknown() && rName.ValueString() != ""
+		for i, cand := range remaining {
+			hit := memberMatches(cand.(types.Object), rName, rID, byName)
+			if hit {
+				ordered = append(ordered, cand)
+				remaining = append(remaining[:i], remaining[i+1:]...)
+				break
+			}
+		}
+	}
+	ordered = append(ordered, remaining...)
+	return types.ListValueMust(idname.RefObjectType, ordered)
+}
+
+// orderMembersLike aligns a freshly-parsed state's member lists to the order of a
+// reference model (the plan on create/update, or the prior state on read).
+func orderMembersLike(current, reference resourceModel) resourceModel {
+	current.MailingList = orderLike(current.MailingList, reference.MailingList)
+	current.Integration = orderLike(current.Integration, reference.Integration)
+	return current
+}
+
+func memberMatches(candidate types.Object, name, id types.String, byName bool) bool {
+	ca := candidate.Attributes()
+	cName := ca["name"].(types.String)
+	cID := ca["id"].(types.String)
+	hit := false
+	if byName {
+		hit = !cName.IsNull() && cName.ValueString() == name.ValueString()
+	} else if !id.IsNull() && !id.IsUnknown() {
+		hit = !cID.IsNull() && cID.ValueString() == id.ValueString()
+	}
+	return hit
 }

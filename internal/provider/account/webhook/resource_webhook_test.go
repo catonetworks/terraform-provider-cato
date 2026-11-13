@@ -1,0 +1,348 @@
+package webhook
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
+	cato "github.com/catonetworks/cato-go-sdk"
+	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/gqlerror"
+
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/mocks"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+)
+
+type backend struct {
+	object    map[string]any
+	fail      string
+	malformed bool
+	calls     []string
+	inputs    []map[string]any
+}
+
+func setup(t *testing.T, b *backend) *webhookResource {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		defer func() { require.NoError(t, req.Body.Close()) }()
+		var body struct {
+			OperationName string         `json:"operationName"`
+			Query         string         `json:"query"`
+			Variables     map[string]any `json:"variables"`
+		}
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+		require.Equal(t, "account-123", body.Variables["accountId"])
+		op := body.OperationName
+		b.calls = append(b.calls, op)
+		w.Header().Set("Content-Type", "application/json")
+		if b.fail == op {
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": "denied"}}}))
+			return
+		}
+		if b.malformed {
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}}))
+			return
+		}
+		var integration map[string]any
+		switch op {
+		case "notificationIntegrationCreateWebhook", "notificationIntegrationUpdateWebhook":
+			inputKey := "createWebhookInput"
+			if op == "notificationIntegrationUpdateWebhook" {
+				inputKey = "updateWebhookInput"
+			}
+			in, _ := body.Variables[inputKey].(map[string]any)
+			b.inputs = append(b.inputs, in)
+			if op == "notificationIntegrationCreateWebhook" {
+				b.object = map[string]any{"id": "1001"}
+			}
+			for _, k := range []string{"name"} {
+				if v, ok := in[k]; ok {
+					b.object[k] = v
+				}
+			}
+			field := "createWebhook"
+			if op == "notificationIntegrationUpdateWebhook" {
+				field = "updateWebhook"
+			}
+			integration = map[string]any{field: map[string]any{"webhook": map[string]any{"id": b.object["id"], "name": b.object["name"]}}}
+		case "notificationIntegrationWebhook":
+			require.Equal(t, map[string]any{"by": "ID", "input": "1001"}, body.Variables["webhookIntegrationRefInput"])
+			integration = map[string]any{"webhook": b.object}
+		case "notificationIntegrationDeleteWebhook":
+			require.Equal(t, map[string]any{"by": "ID", "input": "1001"}, body.Variables["webhookIntegrationRefInput"])
+			integration = map[string]any{"deleteWebhook": map[string]any{"webhook": map[string]any{"id": b.object["id"]}}}
+			b.object = nil
+		default:
+			t.Fatalf("unexpected operation: %s", op)
+		}
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"notification": map[string]any{"integration": integration}}}))
+	}))
+	t.Cleanup(server.Close)
+	sdk, err := cato.New(server.URL, "test-token", "wrong-default", nil, nil)
+	require.NoError(t, err)
+	return &webhookResource{client: &catoclient.Service{AccountId: "account-123", Catov2: catoclient.NewProviderSDKClient(sdk)}}
+}
+
+func schemaFor(t *testing.T) schema.Schema {
+	t.Helper()
+	var resp resource.SchemaResponse
+	NewResource().Schema(context.Background(), resource.SchemaRequest{}, &resp)
+	return resp.Schema
+}
+func planFor(t *testing.T, m resourceModel) tfsdk.Plan {
+	t.Helper()
+	p := tfsdk.Plan{Schema: schemaFor(t)}
+	require.False(t, p.Set(context.Background(), m).HasError())
+	return p
+}
+func stateFor(t *testing.T, m resourceModel) tfsdk.State {
+	t.Helper()
+	s := tfsdk.State{Schema: schemaFor(t)}
+	require.False(t, s.Set(context.Background(), m).HasError())
+	return s
+}
+
+func bearerAuth(token string) types.Object {
+	return types.ObjectValueMust(AuthAttrTypes, map[string]attr.Value{
+		"basic":  types.ObjectNull(BasicAuthAttrTypes),
+		"bearer": types.ObjectValueMust(BearerAuthAttrTypes, map[string]attr.Value{"bearer_token": types.StringValue(token)}),
+		"custom": types.ObjectNull(CustomAuthAttrTypes),
+	})
+}
+
+func model() resourceModel {
+	return resourceModel{
+		ID:                types.StringUnknown(),
+		Name:              types.StringValue("test"),
+		URL:               types.StringValue("https://example.invalid/webhook"),
+		Enabled:           types.BoolValue(true),
+		RequestMethod:     types.StringValue("POST"),
+		Body:              types.StringValue(`{"text":"hello"}`),
+		Auth:              bearerAuth("secret-token"),
+		Header:            types.ListNull(HeaderObjectType),
+		ResponseMapping:   types.ListNull(ResponseMapObjectType),
+		RelatedWebhookRef: types.ObjectNull(RelatedWebhookRefAttrTypes),
+	}
+}
+
+func TestCRUD(t *testing.T) {
+	ctx := context.Background()
+	b := &backend{}
+	r := setup(t, b)
+	p := model()
+	create := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: planFor(t, p)}, &create)
+	require.False(t, create.Diagnostics.HasError(), create.Diagnostics)
+	var current resourceModel
+	require.False(t, create.State.Get(ctx, &current).HasError())
+	require.Equal(t, "1001", current.ID.ValueString())
+
+	read := resource.ReadResponse{State: create.State}
+	r.Read(ctx, resource.ReadRequest{State: create.State}, &read)
+	require.False(t, read.Diagnostics.HasError(), read.Diagnostics)
+	require.False(t, read.State.Get(ctx, &current).HasError())
+	// write-only fields are carried forward, not refreshed from the API response
+	require.Equal(t, p.Body.ValueString(), current.Body.ValueString())
+
+	p.ID = current.ID
+	p.Name = types.StringValue("updated")
+	update := resource.UpdateResponse{State: read.State}
+	r.Update(ctx, resource.UpdateRequest{Plan: planFor(t, p), State: read.State}, &update)
+	require.False(t, update.Diagnostics.HasError(), update.Diagnostics)
+	require.False(t, update.State.Get(ctx, &current).HasError())
+	require.Equal(t, "updated", current.Name.ValueString())
+
+	del := resource.DeleteResponse{State: update.State}
+	r.Delete(ctx, resource.DeleteRequest{State: update.State}, &del)
+	require.False(t, del.Diagnostics.HasError(), del.Diagnostics)
+	require.True(t, del.State.Raw.IsNull())
+}
+
+func TestReadMissingAndFailures(t *testing.T) {
+	for _, kind := range []string{"missing", "denied", "malformed", "different"} {
+		t.Run(kind, func(t *testing.T) {
+			b := &backend{}
+			r := setup(t, b)
+			p := model()
+			p.ID = types.StringValue("1001")
+			s := stateFor(t, p)
+			switch kind {
+			case "missing":
+				// leave b.object nil: the backend returns {"webhook": null}
+			case "denied":
+				b.fail = "notificationIntegrationWebhook"
+			case "malformed":
+				b.malformed = true
+			case "different":
+				b.object = map[string]any{"id": "different", "name": "test"}
+			default:
+				b.object = map[string]any{"id": "1001", "name": "test", "enabled": true, "url": "https://example.invalid/webhook", "requestMethod": "POST"}
+			}
+			resp := resource.ReadResponse{State: s}
+			r.Read(context.Background(), resource.ReadRequest{State: s}, &resp)
+			require.Equal(t, kind != "missing", resp.Diagnostics.HasError(), resp.Diagnostics)
+			require.Equal(t, kind == "missing", resp.State.Raw.IsNull())
+		})
+	}
+}
+
+func TestMutationFailures(t *testing.T) {
+	for _, op := range []string{"notificationIntegrationCreateWebhook", "notificationIntegrationUpdateWebhook", "notificationIntegrationDeleteWebhook"} {
+		t.Run(op, func(t *testing.T) {
+			b := &backend{fail: op, object: map[string]any{"id": "1001", "name": "test", "enabled": true, "url": "https://example.invalid/webhook", "requestMethod": "POST"}}
+			r := setup(t, b)
+			m := model()
+			m.ID = types.StringValue("1001")
+			s := stateFor(t, m)
+			ctx := context.Background()
+			switch op {
+			case "notificationIntegrationCreateWebhook":
+				resp := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
+				r.Create(ctx, resource.CreateRequest{Plan: planFor(t, m)}, &resp)
+				require.True(t, resp.Diagnostics.HasError())
+			case "notificationIntegrationUpdateWebhook":
+				resp := resource.UpdateResponse{State: s}
+				r.Update(ctx, resource.UpdateRequest{Plan: planFor(t, m), State: s}, &resp)
+				require.True(t, resp.Diagnostics.HasError())
+				require.Equal(t, s.Raw, resp.State.Raw)
+			case "notificationIntegrationDeleteWebhook":
+				resp := resource.DeleteResponse{State: s}
+				r.Delete(ctx, resource.DeleteRequest{State: s}, &resp)
+				require.True(t, resp.Diagnostics.HasError())
+				require.False(t, resp.State.Raw.IsNull())
+			}
+		})
+	}
+}
+
+func TestValidationAndImport(t *testing.T) {
+	ctx := context.Background()
+	for _, field := range []string{"name", "url", "auth_none", "auth_both", "related_ref_bad_by"} {
+		t.Run(field, func(t *testing.T) {
+			b := &backend{}
+			r := setup(t, b)
+			m := model()
+			switch field {
+			case "name":
+				m.Name = types.StringUnknown()
+			case "url":
+				m.URL = types.StringUnknown()
+			case "auth_none":
+				m.Auth = types.ObjectValueMust(AuthAttrTypes, map[string]attr.Value{
+					"basic":  types.ObjectNull(BasicAuthAttrTypes),
+					"bearer": types.ObjectNull(BearerAuthAttrTypes),
+					"custom": types.ObjectNull(CustomAuthAttrTypes),
+				})
+			case "auth_both":
+				m.Auth = types.ObjectValueMust(AuthAttrTypes, map[string]attr.Value{
+					"basic":  types.ObjectValueMust(BasicAuthAttrTypes, map[string]attr.Value{"username": types.StringValue("u"), "password": types.StringValue("p")}),
+					"bearer": types.ObjectValueMust(BearerAuthAttrTypes, map[string]attr.Value{"bearer_token": types.StringValue("t")}),
+					"custom": types.ObjectNull(CustomAuthAttrTypes),
+				})
+			case "related_ref_bad_by":
+				m.RelatedWebhookRef = types.ObjectValueMust(RelatedWebhookRefAttrTypes, map[string]attr.Value{
+					"by": types.StringValue("BOGUS"), "input": types.StringValue("x"),
+				})
+			}
+			resp := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
+			r.Create(ctx, resource.CreateRequest{Plan: planFor(t, m)}, &resp)
+			require.True(t, resp.Diagnostics.HasError())
+			require.Empty(t, b.calls)
+		})
+	}
+
+	resp := resource.ImportStateResponse{State: stateFor(t, resourceModel{
+		ID: types.StringNull(), Name: types.StringNull(), URL: types.StringNull(),
+		Enabled: types.BoolNull(), RequestMethod: types.StringNull(), Body: types.StringNull(),
+		Auth: types.ObjectNull(AuthAttrTypes), Header: types.ListNull(HeaderObjectType),
+		ResponseMapping: types.ListNull(ResponseMapObjectType), RelatedWebhookRef: types.ObjectNull(RelatedWebhookRefAttrTypes),
+	})}
+	NewResource().(*webhookResource).ImportState(ctx, resource.ImportStateRequest{ID: "1001"}, &resp)
+	require.False(t, resp.Diagnostics.HasError())
+	var id types.String
+	require.False(t, resp.State.GetAttribute(ctx, path.Root("id"), &id).HasError())
+	require.Equal(t, "1001", id.ValueString())
+}
+
+func TestPartialCreateRetainsIdentity(t *testing.T) {
+	ctx := context.Background()
+	api := mocks.NewWebhookClient(t)
+	result := &cato_models.Webhook{ID: "1001", Name: "test"}
+	api.EXPECT().CreateWebhook(mock.Anything, "account-123", mock.Anything).Return(result, errors.New("partial failure")).Once()
+	r := &webhookResource{client: &catoclient.Service{AccountId: "account-123"}, apiClient: api}
+	m := model()
+	resp := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: planFor(t, m)}, &resp)
+	require.True(t, resp.Diagnostics.HasError())
+	var state resourceModel
+	require.False(t, resp.State.Get(ctx, &state).HasError())
+	require.Equal(t, "1001", state.ID.ValueString())
+}
+
+func TestMissingWebhookClassification(t *testing.T) {
+	missing := func(message string) error {
+		list := gqlerror.List{&gqlerror.Error{Message: message}}
+		return &clientv2.ErrorResponse{GqlErrors: &list}
+	}
+	exact := "GQL-User-Error: Account ID [account-123] subscription [1001] not found"
+	require.True(t, missingWebhook(missing(exact), "account-123", "1001"))
+	require.False(t, missingWebhook(missing(exact), "another", "1001"))
+	require.False(t, missingWebhook(missing("permission denied"), "account-123", "1001"))
+	require.False(t, missingWebhook(errors.New(exact), "account-123", "1001"))
+}
+
+func TestMetadataConfigure(t *testing.T) {
+	ctx := context.Background()
+	r := NewResource().(*webhookResource)
+	var meta resource.MetadataResponse
+	r.Metadata(ctx, resource.MetadataRequest{ProviderTypeName: "cato"}, &meta)
+	require.Equal(t, "cato_webhook", meta.TypeName)
+	var resp resource.ConfigureResponse
+	r.Configure(ctx, resource.ConfigureRequest{}, &resp)
+	require.False(t, resp.Diagnostics.HasError())
+	r.Configure(ctx, resource.ConfigureRequest{ProviderData: "invalid"}, &resp)
+	require.True(t, resp.Diagnostics.HasError())
+	resp = resource.ConfigureResponse{}
+	r.Configure(ctx, resource.ConfigureRequest{ProviderData: &catoclient.Service{AccountId: "account-123"}}, &resp)
+	require.False(t, resp.Diagnostics.HasError())
+}
+
+func TestBuildCreateValidation(t *testing.T) {
+	for _, kind := range []string{"empty_url", "empty_name"} {
+		t.Run(kind, func(t *testing.T) {
+			m := model()
+			switch kind {
+			case "empty_url":
+				m.URL = types.StringValue("")
+			case "empty_name":
+				m.Name = types.StringValue("")
+			}
+			var diags diag.Diagnostics
+			buildCreate(context.Background(), m, &diags)
+			require.True(t, diags.HasError())
+		})
+	}
+}
+
+func TestWebhookDiagnosticsOmitSensitiveRequestBody(t *testing.T) {
+	err := &cato.APIError{Err: errors.New("request failed"), TraceID: "trace-123",
+		RequestBody: `{"auth":{"password":"test-only-sensitive-value"}}`}
+	detail := webhookErrorDetail(err)
+	require.Contains(t, detail, "request failed")
+	require.Contains(t, detail, "trace-123")
+	require.NotContains(t, detail, "test-only-sensitive-value")
+	require.NotContains(t, detail, "requestBody")
+}
