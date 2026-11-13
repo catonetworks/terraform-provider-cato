@@ -76,7 +76,7 @@ func (r *webhookResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Additional HTTP headers sent with the request.", Optional: true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 					"name":  schema.StringAttribute{Description: "Header name", Required: true},
-					"value": schema.StringAttribute{Description: "Header value", Required: true},
+					"value": schema.StringAttribute{Description: "Header value", Required: true, Sensitive: true},
 				}},
 			},
 			"response_mapping": schema.ListNestedAttribute{

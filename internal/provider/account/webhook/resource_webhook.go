@@ -2,8 +2,10 @@ package webhook
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	m "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -75,7 +77,7 @@ func (r *webhookResource) resolveRelatedWebhookRefToID(
 	}
 	id, found, err := r.getClient().WebhookIDByName(ctx, r.client.AccountId, ref.Input)
 	if err != nil {
-		diags.AddError("Failed to resolve related webhook", err.Error())
+		diags.AddError("Failed to resolve related webhook", webhookErrorDetail(err))
 		return ref
 	}
 	if !found {
@@ -112,7 +114,7 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 		resp.Diagnostics.Append(resp.State.Set(ctx, identityState(plan, id))...)
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create webhook", err.Error())
+		resp.Diagnostics.AddError("Failed to create webhook", webhookErrorDetail(err))
 		return
 	}
 	if !validID(types.StringValue(id), &resp.Diagnostics) {
@@ -131,7 +133,7 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 	item, err := r.find(ctx, state.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to read webhook", err.Error())
+		resp.Diagnostics.AddError("Failed to read webhook", webhookErrorDetail(err))
 		return
 	}
 	if item == nil {
@@ -160,7 +162,7 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	result, err := r.getClient().UpdateWebhook(ctx, r.client.AccountId, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to update webhook", err.Error())
+		resp.Diagnostics.AddError("Failed to update webhook", webhookErrorDetail(err))
 		return
 	}
 	if result == nil || result.ID != state.ID.ValueString() {
@@ -180,7 +182,7 @@ func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 	item, err := r.find(ctx, state.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to read webhook before deletion", err.Error())
+		resp.Diagnostics.AddError("Failed to read webhook before deletion", webhookErrorDetail(err))
 		return
 	}
 	if item == nil {
@@ -189,7 +191,7 @@ func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 	result, err := r.getClient().DeleteWebhook(ctx, r.client.AccountId, webhookRef(state.ID.ValueString()))
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to delete webhook", err.Error())
+		resp.Diagnostics.AddError("Failed to delete webhook", webhookErrorDetail(err))
 		return
 	}
 	if result == nil || result.ID != state.ID.ValueString() {
@@ -197,4 +199,14 @@ func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 	resp.State.RemoveResource(ctx)
+}
+
+// The SDK attaches GraphQL variables to APIError.RequestBody. Webhook inputs
+// contain write-only credentials, so diagnostics must omit that request body.
+func webhookErrorDetail(err error) string {
+	var apiErr *cato.APIError
+	if errors.As(err, &apiErr) {
+		return (&cato.APIError{Err: apiErr.Err, TraceID: apiErr.TraceID}).Error()
+	}
+	return err.Error()
 }

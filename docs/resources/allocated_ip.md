@@ -3,12 +3,12 @@
 page_title: "cato_allocated_ip Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Allocates an IP address from a Cato PoP location. Cato assigns the IP -- the configuration chooses the PoP location, description, and type; the resulting ip and display name (" - ") are computed and tenant-specific.
+  Allocates an IP address from a Cato PoP location. Cato assigns the IP -- the configuration chooses the PoP location, description, and type; the resulting ip and display name ("Portland - 192.0.2.1") are computed and tenant-specific.
 ---
 
 # cato_allocated_ip (Resource)
 
-Allocates an IP address from a Cato PoP location. Cato assigns the IP -- the configuration chooses the PoP location, description, and type; the resulting ip and display name ("<pop> - <ip>") are computed and tenant-specific.
+Allocates an IP address from a Cato PoP location. Cato assigns the IP -- the configuration chooses the PoP location, description, and type; the resulting ip and display name ("Portland - 192.0.2.1") are computed and tenant-specific.
 
 ## Example Usage
 
@@ -54,7 +54,7 @@ output "portland_allocation_name" {
 
 - `id` (String) Allocated IP identifier
 - `ip` (String) The IP address Cato assigned to this allocation
-- `name` (String) Display name of the allocation ("<pop location> - <ip>") as shown in entity lookups and referenced by policy rules
+- `name` (String) Display name of the allocation ("Portland - 192.0.2.1") as shown in entity lookups and referenced by policy rules
 
 ## Import
 
@@ -63,5 +63,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import cato_allocated_ip.example 199.27.34.88
+terraform import cato_allocated_ip.portland 199.27.34.88
 ```

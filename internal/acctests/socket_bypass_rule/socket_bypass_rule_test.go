@@ -31,7 +31,7 @@ func TestAccSocketBypassRule(t *testing.T) {
 		}()).Replace(`resource "cato_socket_bypass_rule" "test" {
 at = { position = "${position}" }
 rule = {
- action = { port = "AUTOMATIC", event_enabled = false }
+ action = { port = "AUTOMATIC", event = { enabled = false } }
  description = "${description}"
  destination = {
   application = [], custom_app = [], domain = [], fqdn = [], global_ip_range = []

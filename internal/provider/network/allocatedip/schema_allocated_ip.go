@@ -16,7 +16,7 @@ func (r *allocatedIPResource) Schema(_ context.Context, _ resource.SchemaRequest
 	resp.Schema = schema.Schema{
 		Description: "Allocates an IP address from a Cato PoP location. Cato assigns the IP -- " +
 			"the configuration chooses the PoP location, description, and type; the resulting " +
-			"ip and display name (\"<pop> - <ip>\") are computed and tenant-specific.",
+			"ip and display name (\"Portland - 192.0.2.1\") are computed and tenant-specific.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Allocated IP identifier",
@@ -57,7 +57,7 @@ func (r *allocatedIPResource) Schema(_ context.Context, _ resource.SchemaRequest
 				},
 			},
 			"name": schema.StringAttribute{
-				Description: "Display name of the allocation (\"<pop location> - <ip>\") as shown in " +
+				Description: "Display name of the allocation (\"Portland - 192.0.2.1\") as shown in " +
 					"entity lookups and referenced by policy rules",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{

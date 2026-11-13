@@ -265,10 +265,9 @@ func hydrateTerminalServerRuleStateFromClient(
 	}
 
 	out.AllowedHostIP = types.ObjectNull(idname.RefAttrTypes)
-	// The API returns an empty exclude_traffic list as absent; render it as an empty set (not
-	// null) so a configured empty collection ([]) round-trips consistently on apply and import,
-	// matching the sibling terminal-server converter's behavior.
-	out.ExcludeTraffic = types.SetValueMust(idname.RefObjectType, []attr.Value{})
+	// PreserveEmptyValues restores a configured [] from prior plan/state, while
+	// an omitted optional collection must remain null after hydration.
+	out.ExcludeTraffic = types.SetNull(idname.RefObjectType)
 
 	out.ID = types.StringValue(r.GetID())
 	out.Name = types.StringValue(r.GetName())

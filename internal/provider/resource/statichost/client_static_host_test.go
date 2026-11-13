@@ -186,3 +186,13 @@ func TestStaticHostUpdateUsesInjectedClientAndPreservesErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveSiteRejectsMissingOrUnknownID(t *testing.T) {
+	for _, id := range []types.String{types.StringNull(), types.StringUnknown(), types.StringValue("")} {
+		api := mocks.NewStaticHostResourceClient(t)
+		r := &staticHostResource{client: &catoclient.Service{AccountId: "account-123"}, apiClient: api}
+		got, diags := r.resolveSiteID(context.Background(), StaticHost{SiteID: id, SiteName: types.StringNull()})
+		require.Empty(t, got)
+		require.True(t, diags.HasError())
+	}
+}

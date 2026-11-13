@@ -336,3 +336,13 @@ func TestBuildCreateValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestWebhookDiagnosticsOmitSensitiveRequestBody(t *testing.T) {
+	err := &cato.APIError{Err: errors.New("request failed"), TraceID: "trace-123",
+		RequestBody: `{"auth":{"password":"test-only-sensitive-value"}}`}
+	detail := webhookErrorDetail(err)
+	require.Contains(t, detail, "request failed")
+	require.Contains(t, detail, "trace-123")
+	require.NotContains(t, detail, "test-only-sensitive-value")
+	require.NotContains(t, detail, "requestBody")
+}
