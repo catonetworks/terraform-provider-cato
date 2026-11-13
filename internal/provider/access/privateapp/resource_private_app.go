@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	diag "github.com/hashicorp/terraform-plugin-framework/diag"
@@ -12,6 +13,7 @@ import (
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/vektah/gqlparser/v2/ast"
 
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	convert "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/convert"
@@ -245,7 +247,7 @@ func (r *privateAppResource) hydratePrivateAppState(
 		// A deleted app surfaces as a GraphQL NOT_FOUND error (not a nil
 		// payload) -- map it so Read can drop the resource from state instead
 		// of failing the whole refresh.
-		if strings.Contains(err.Error(), "NOT_FOUND") {
+		if privateAppNotFound(err) {
 			return nil, diags, ErrPrivateAppNotFound
 		}
 		return nil, diags, err
@@ -271,4 +273,20 @@ func (r *privateAppResource) hydratePrivateAppState(
 		PublishedAppDomain: r.parsePublishedAppDomain(ctx, app.PublishedAppDomain, &diags),
 	}
 	return state, diags, nil
+}
+
+// Only a structured leaf-level NOT_FOUND proves this app is absent. Account
+// errors, transport failures, and mixed GraphQL errors must preserve state.
+func privateAppNotFound(err error) bool {
+	var response *clientv2.ErrorResponse
+	if !errors.As(err, &response) || response.NetworkError != nil || response.GqlErrors == nil || len(*response.GqlErrors) == 0 {
+		return false
+	}
+	for _, item := range *response.GqlErrors {
+		if item == nil || item.Extensions["code"] != "NOT_FOUND" || len(item.Path) != 2 ||
+			item.Path[0] != ast.PathName("privateApplication") || item.Path[1] != ast.PathName("privateApplication") {
+			return false
+		}
+	}
+	return true
 }

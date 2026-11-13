@@ -4,13 +4,17 @@ package acc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 )
 
 var acctestRE = regexp.MustCompile(`^acctest_`)
@@ -22,6 +26,7 @@ func TestCleanupAccTestResources(t *testing.T) {
 	}
 	var errors []error
 	var helpers = []func(t *testing.T) error{
+		deleteTerminalServerRules,
 		deletePrivateAccessRules,
 		deleteAlwaysOnRulesAndSections,
 		deleteSocketLanPolicyResources,
@@ -320,4 +325,64 @@ func deletePrivateAccessRules(t *testing.T) error {
 	}
 
 	return nil
+}
+
+// Remove only acceptance-owned Terminal Server rules, which may retain global
+// IP-range references after an interrupted test. Publish before object cleanup.
+func deleteTerminalServerRules(t *testing.T) error {
+	client := GetClient(t)
+	result, err := client.PolicyTerminalServerPolicy(ctx, CatoAccountID, nil)
+	if err != nil {
+		return fmt.Errorf("reading Terminal Server policy for cleanup: %w", err)
+	}
+	ids := terminalServerCleanupIDs(result)
+	for _, id := range ids {
+		response, err := client.PolicyTerminalServerRemoveRule(ctx, CatoAccountID, nil, cato_models.TerminalServerRemoveRuleInput{ID: id})
+		if err != nil {
+			return fmt.Errorf("removing Terminal Server test rule: %w", err)
+		}
+		payload := response.GetPolicy().GetTerminalServer().GetRemoveRule()
+		if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
+			return err
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	response, err := client.PolicyTerminalServerPublishPolicyRevision(ctx, CatoAccountID, nil, nil)
+	if err != nil {
+		return fmt.Errorf("publishing Terminal Server test cleanup: %w", err)
+	}
+	payload := response.GetPolicy().GetTerminalServer().GetPublishPolicyRevision()
+	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
+}
+
+func terminalServerCleanupIDs(result *cato.PolicyTerminalServerPolicy) []string {
+	var ids []string
+	for _, entry := range result.GetPolicy().GetTerminalServer().GetPolicy().GetRules() {
+		rule := entry.GetRule()
+		if rule.GetID() != "" && (strings.HasPrefix(rule.GetName(), "acctest_") || strings.HasPrefix(rule.GetName(), "acctest-")) {
+			ids = append(ids, rule.GetID())
+		}
+	}
+	return ids
+}
+
+func TestTerminalServerCleanupSelectsOnlyAcceptanceRules(t *testing.T) {
+	var result cato.PolicyTerminalServerPolicy
+	if err := json.Unmarshal([]byte(`{"policy":{"terminalServer":{"policy":{"rules":[
+		{"rule":{"id":"one","name":"acctest_terminal"}},
+		{"rule":{"id":"two","name":"acctest-terminal"}},
+		{"rule":{"id":"manual","name":"production-rule"}},
+		{"rule":{"id":"other","name":"my-acctest-rule"}}
+	]}}}}`), &result); err != nil {
+		t.Fatal(err)
+	}
+	ids := terminalServerCleanupIDs(&result)
+	if len(ids) != 2 || ids[0] != "one" || ids[1] != "two" {
+		t.Fatalf("unexpected cleanup IDs: %v", ids)
+	}
+	if ids := terminalServerCleanupIDs(nil); len(ids) != 0 {
+		t.Fatalf("nil response selected rules: %v", ids)
+	}
 }

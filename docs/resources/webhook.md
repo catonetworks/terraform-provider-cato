@@ -76,7 +76,7 @@ Required:
 Required:
 
 - `name` (String) Header name
-- `value` (String) Header value
+- `value` (String, Sensitive) Header value
 
 
 <a id="nestedatt--related_webhook_ref"></a>

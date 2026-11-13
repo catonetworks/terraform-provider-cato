@@ -61,7 +61,7 @@ func (d *webhooksDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							Description: "Additional HTTP headers sent with the request", Computed: true,
 							NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 								"name":  schema.StringAttribute{Computed: true},
-								"value": schema.StringAttribute{Computed: true},
+								"value": schema.StringAttribute{Computed: true, Sensitive: true},
 							}},
 						},
 						"response_mapping": schema.ListNestedAttribute{

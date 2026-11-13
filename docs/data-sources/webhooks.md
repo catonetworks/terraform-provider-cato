@@ -44,7 +44,7 @@ Read-Only:
 Read-Only:
 
 - `name` (String)
-- `value` (String)
+- `value` (String, Sensitive)
 
 
 <a id="nestedatt--items--response_mapping"></a>

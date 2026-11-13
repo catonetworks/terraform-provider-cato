@@ -75,7 +75,11 @@ func (r *staticHostResource) resolveSiteID(ctx context.Context, model StaticHost
 		return matchID, diags
 	}
 
-	// site_id path: validate the id resolves to exactly one existing site.
+	// site_id path: reject unresolved configuration before making an API call.
+	if model.SiteID.IsNull() || model.SiteID.IsUnknown() || model.SiteID.ValueString() == "" {
+		diags.AddError("Missing or unknown site reference", "Set a known, non-empty site_id or site_name before creating a static host.")
+		return "", diags
+	}
 	id := model.SiteID.ValueString()
 	res, err := api.EntityLookup(
 		ctx,
