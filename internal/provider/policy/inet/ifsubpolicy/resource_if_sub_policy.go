@@ -443,5 +443,10 @@ func (r *ifSubPolicyResource) publish(ctx context.Context) error {
 		return err
 	}
 	payload := response.GetPolicy().GetInternetFirewall().GetPublishPolicyRevision()
-	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
+	// Use PublishResult (not MutationResult): the IFW draft is shared account-wide,
+	// so a publish can legitimately find nothing to publish -- the API returns a
+	// no-op FAILURE with a single PolicyRevisionNotFound error. PublishResult
+	// treats that lone code as success (matching how cato_if_rule/cato_if_section
+	// tolerate the no-draft publish) while still surfacing genuine publish errors.
+	return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 }
