@@ -416,5 +416,10 @@ func (r *wfSubPolicyResource) publish(ctx context.Context) error {
 		return err
 	}
 	payload := response.GetPolicy().GetWanFirewall().GetPublishPolicyRevision()
-	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
+	// Use PublishResult (not MutationResult): the WAN FW draft is shared account-wide,
+	// so a publish can legitimately find nothing to publish -- the API returns a no-op
+	// FAILURE with a single PolicyRevisionNotFound error. PublishResult treats that
+	// lone code as success (as cato_wf_rule/cato_wf_section tolerate the no-draft
+	// publish) while still surfacing genuine publish errors.
+	return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 }
