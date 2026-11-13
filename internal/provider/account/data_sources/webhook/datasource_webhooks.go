@@ -201,7 +201,8 @@ func (d *webhooksDataSource) Read(ctx context.Context, req datasource.ReadReques
 			headerValues = append(headerValues, obj)
 		}
 		headerList, diags := types.ListValue(HeaderObjectType, headerValues)
-		if resp.Diagnostics.Append(diags...); resp.Diagnostics.HasError() {
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 
@@ -214,7 +215,8 @@ func (d *webhooksDataSource) Read(ctx context.Context, req datasource.ReadReques
 			responseMapValues = append(responseMapValues, obj)
 		}
 		responseMapList, diags := types.ListValue(ResponseMapObjectType, responseMapValues)
-		if resp.Diagnostics.Append(diags...); resp.Diagnostics.HasError() {
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 
@@ -233,14 +235,16 @@ func (d *webhooksDataSource) Read(ctx context.Context, req datasource.ReadReques
 			"response_mapping":   responseMapList,
 			"related_webhook_id": relatedID,
 		})
-		if resp.Diagnostics.Append(diags...); resp.Diagnostics.HasError() {
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 		listObjects = append(listObjects, listObj)
 	}
 
 	itemsList, diags := types.ListValue(types.ObjectType{AttrTypes: ItemAttrTypes}, listObjects)
-	if resp.Diagnostics.Append(diags...); resp.Diagnostics.HasError() {
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 

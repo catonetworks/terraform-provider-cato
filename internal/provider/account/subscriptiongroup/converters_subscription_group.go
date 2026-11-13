@@ -125,15 +125,7 @@ func orderLike(members, reference types.List) types.List {
 		rID, _ := ra["id"].(types.String)
 		byName := !rName.IsNull() && !rName.IsUnknown() && rName.ValueString() != ""
 		for i, cand := range remaining {
-			ca := cand.(types.Object).Attributes()
-			cName := ca["name"].(types.String)
-			cID := ca["id"].(types.String)
-			hit := false
-			if byName {
-				hit = !cName.IsNull() && cName.ValueString() == rName.ValueString()
-			} else if !rID.IsNull() && !rID.IsUnknown() {
-				hit = !cID.IsNull() && cID.ValueString() == rID.ValueString()
-			}
+			hit := memberMatches(cand.(types.Object), rName, rID, byName)
 			if hit {
 				ordered = append(ordered, cand)
 				remaining = append(remaining[:i], remaining[i+1:]...)
@@ -151,4 +143,17 @@ func orderMembersLike(current, reference resourceModel) resourceModel {
 	current.MailingList = orderLike(current.MailingList, reference.MailingList)
 	current.Integration = orderLike(current.Integration, reference.Integration)
 	return current
+}
+
+func memberMatches(candidate types.Object, name, id types.String, byName bool) bool {
+	ca := candidate.Attributes()
+	cName := ca["name"].(types.String)
+	cID := ca["id"].(types.String)
+	hit := false
+	if byName {
+		hit = !cName.IsNull() && cName.ValueString() == name.ValueString()
+	} else if !id.IsNull() && !id.IsUnknown() {
+		hit = !cID.IsNull() && cID.ValueString() == id.ValueString()
+	}
+	return hit
 }

@@ -166,16 +166,10 @@ func (d *appConnectorsDataSource) Read(ctx context.Context, req datasource.ReadR
 			if item == nil {
 				continue
 			}
-			if nameFilter != nil {
-				if _, ok := nameFilter[item.Name]; !ok {
-					continue
-				}
+			if !matchesFilters(item.Name, item.GroupName, nameFilter, groupFilter) {
+				continue
 			}
-			if groupFilter != nil {
-				if _, ok := groupFilter[item.GroupName]; !ok {
-					continue
-				}
-			}
+
 			obj, diags := types.ObjectValue(
 				attrTypes,
 				map[string]attr.Value{
@@ -233,4 +227,18 @@ func strValue(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func matchesFilters(name, group string, names, groups map[string]struct{}) bool {
+	if names != nil {
+		if _, ok := names[name]; !ok {
+			return false
+		}
+	}
+	if groups != nil {
+		if _, ok := groups[group]; !ok {
+			return false
+		}
+	}
+	return true
 }

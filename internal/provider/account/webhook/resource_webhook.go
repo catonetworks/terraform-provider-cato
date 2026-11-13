@@ -67,7 +67,9 @@ func (r *webhookResource) ImportState(ctx context.Context, req resource.ImportSt
 // live-verified on badev4). A ref already by ID, or absent, is returned
 // unchanged. Not-found yields a clear diagnostic (the referenced webhook may be
 // created later in the same apply -- a convergence re-apply resolves it).
-func (r *webhookResource) resolveRelatedWebhookRefToID(ctx context.Context, ref *m.WebhookIntegrationRefInput, diags *diag.Diagnostics) *m.WebhookIntegrationRefInput {
+func (r *webhookResource) resolveRelatedWebhookRefToID(
+	ctx context.Context, ref *m.WebhookIntegrationRefInput, diags *diag.Diagnostics,
+) *m.WebhookIntegrationRefInput {
 	if ref == nil || ref.By != m.ObjectRefByName {
 		return ref
 	}
