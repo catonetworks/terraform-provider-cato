@@ -1,241 +1,408 @@
 {
-  "source_job_url": "https://github.com/catonetworks/terraform-provider-cato/actions/runs/42022493205/job/127228450392",
-  "source_commit": "c064c4c586af0075bebcca8f05a0282cbbd7059b",
+  "source_commit": "8e5f124363427d94ce9bb319ec123c17dae08add",
   "invocation_overhead_seconds": 3.0,
   "packages": {
     "account": {
-      "seconds": 0.68
+      "seconds": 7.5,
+      "observed_seconds": 1.34,
+      "measurement_status": "estimated_skipped"
     },
     "admin": {
-      "seconds": 10.09
+      "seconds": 6.57
     },
     "always_on_policy": {
-      "seconds": 6.11
+      "seconds": 4.48
     },
     "always_on_rule": {
-      "seconds": 6.36
+      "seconds": 4.43
     },
     "always_on_rule_bulk": {
-      "seconds": 12.19
+      "seconds": 11.77
     },
     "always_on_section": {
-      "seconds": 9.93
+      "seconds": 6.5
     },
     "anti_malware_file_hash_rule": {
-      "seconds": 11.43
-    },
-    "anti_malware_file_hash_section": {
-      "seconds": 11.15
-    },
-    "app_connector": {
-      "seconds": 10.66
-    },
-    "app_tenant_restriction_rule": {
-      "seconds": 16.82
-    },
-    "app_tenant_restriction_section": {
-      "seconds": 5.82
-    },
-    "application_control_policy": {
-      "seconds": 10.36
-    },
-    "application_control_rule": {
-      "seconds": 24.85
-    },
-    "application_control_section": {
-      "seconds": 7.62
-    },
-    "bgp_peer": {
-      "seconds": 0.69
-    },
-    "client_connectivity_rule": {
-      "seconds": 12.44
-    },
-    "client_connectivity_section": {
-      "seconds": 12.88
-    },
-    "cloud_interconnect_physical_connection": {
-      "seconds": 0.68
-    },
-    "cloud_interconnect_site": {
-      "seconds": 22.25
-    },
-    "custom_application": {
-      "seconds": 8.97
-    },
-    "dns_dhcp": {
-      "seconds": 0.67
-    },
-    "dynamic_ip_allocation_rule": {
-      "seconds": 20.04
-    },
-    "dynamic_ip_allocation_section": {
-      "seconds": 10.26
-    },
-    "firewall_sub_policy": {
-      "seconds": 55.16
-    },
-    "fqdn_container": {
-      "seconds": 14.23
-    },
-    "global_ip_ranges": {
-      "seconds": 20.34
-    },
-    "group": {
-      "seconds": 6.58
-    },
-    "group_members": {
-      "seconds": 6.01
-    },
-    "if_rule": {
-      "seconds": 72.76
-    },
-    "if_rules_index": {
-      "seconds": 43.96
-    },
-    "if_section": {
-      "seconds": 14.25
-    },
-    "ip_address_range_container": {
-      "seconds": 13.91
-    },
-    "ipsec_site": {
-      "seconds": 18.39
-    },
-    "lan_interface": {
-      "seconds": 21.78
-    },
-    "lan_interface_lag_member": {
-      "seconds": 26.29
-    },
-    "license": {
-      "seconds": 0.67
-    },
-    "mailing_list": {
-      "seconds": 10.24
-    },
-    "network_range": {
-      "seconds": 35.33
-    },
-    "private_access_policy": {
-      "seconds": 24.16
-    },
-    "private_access_section": {
-      "seconds": 10.43
-    },
-    "private_app": {
-      "seconds": 5.31
-    },
-    "rbac_assignment": {
-      "seconds": 7.47
-    },
-    "remote_port_forward_rule": {
-      "seconds": 12.5
-    },
-    "remote_port_forward_section": {
-      "seconds": 11.18
-    },
-    "role": {
-      "seconds": 12.23
-    },
-    "sdp_static_ip_allocation_rule": {
-      "seconds": 0.71
-    },
-    "sdp_static_ip_allocation_section": {
-      "seconds": 10.61
-    },
-    "secondary_aws_vsocket": {
-      "seconds": 0.67
-    },
-    "secondary_azure_vsocket": {
-      "seconds": 0.7
-    },
-    "site_web_proxy_section": {
-      "seconds": 0.9
-    },
-    "socket_bypass_rule": {
-      "seconds": 0.83
-    },
-    "socket_bypass_section": {
-      "seconds": 0.83
-    },
-    "socket_lan_firewall_rule": {
-      "seconds": 22.13
-    },
-    "socket_lan_network_rule": {
-      "seconds": 33.59
-    },
-    "socket_lan_section": {
-      "seconds": 6.26
-    },
-    "socket_site": {
-      "seconds": 173.38,
-      "tests": {
-        "TestAccSocketSite_ConnType": 71.68,
-        "TestAccSocketSite_DHCP": 29.28,
-        "TestAccSocketSite_DhcpSettingsNull": 24.56,
-        "TestAccSocketSite_Basic": 19.39,
-        "TestAccSocketSite_LocationEmptyCity": 15.62,
-        "TestAccSocketSite_Interface": 12.13,
-        "TestAccSocketSite_Location": 0.0
-      }
-    },
-    "split_tunnel_rule": {
-      "seconds": 22.57
-    },
-    "split_tunnel_section": {
-      "seconds": 11.06
-    },
-    "static_host": {
-      "seconds": 19.95
-    },
-    "subscription_group": {
-      "seconds": 10.92
-    },
-    "terminal_server_rule": {
-      "seconds": 0.85
-    },
-    "terminal_server_section": {
-      "seconds": 0.87
-    },
-    "tls_inspection_section": {
-      "seconds": 5.85
-    },
-    "tls_rule": {
-      "seconds": 6.67
-    },
-    "tls_rules_index": {
-      "seconds": 16.67
-    },
-    "user": {
-      "seconds": 8.75
-    },
-    "wan_interface": {
-      "seconds": 22.19
-    },
-    "wan_network_section": {
       "seconds": 7.15
     },
+    "anti_malware_file_hash_section": {
+      "seconds": 6.24
+    },
+    "app_connector": {
+      "seconds": 12.99
+    },
+    "app_tenant_restriction_rule": {
+      "seconds": 10.44
+    },
+    "app_tenant_restriction_section": {
+      "seconds": 4.61
+    },
+    "application_control_policy": {
+      "seconds": 7.09
+    },
+    "application_control_rule": {
+      "seconds": 15.96
+    },
+    "application_control_section": {
+      "seconds": 5.23
+    },
+    "bgp_peer": {
+      "seconds": 14.04,
+      "measurement_status": "measured_local"
+    },
+    "bulk_policy_families": {
+      "seconds": 49.64,
+      "tests": {
+        "TestAccBulkPolicyFamilies_AntiMalwareFileHash": 5.17,
+        "TestAccBulkPolicyFamilies_ClientConnectivity": 5.52,
+        "TestAccBulkPolicyFamilies_SplitTunnel": 4.8,
+        "TestAccBulkPolicyFamilies_DynamicIPAllocation": 5.15,
+        "TestAccBulkPolicyFamilies_TerminalServer": 5.27,
+        "TestAccBulkPolicyFamilies_SiteWebProxy": 5.64,
+        "TestAccBulkPolicyFamilies_SocketBypass": 5.64,
+        "TestAccBulkPolicyFamilies_SDPStaticIPAllocation": 5.85,
+        "TestAccBulkPolicyFamilies_RemotePortForward": 6.6
+      },
+      "estimated_tests": [
+        "TestAccBulkPolicyFamilies_SiteWebProxy"
+      ],
+      "measurement_status": "partial_local_backend_failure"
+    },
+    "client_connectivity_rule": {
+      "seconds": 6.6
+    },
+    "client_connectivity_section": {
+      "seconds": 6.34
+    },
+    "cloud_interconnect_physical_connection": {
+      "seconds": 7.5,
+      "observed_seconds": 1.38,
+      "measurement_status": "estimated_skipped"
+    },
+    "cloud_interconnect_site": {
+      "seconds": 15.39
+    },
+    "custom_application": {
+      "seconds": 6.14
+    },
+    "dns_dhcp": {
+      "seconds": 79.93,
+      "measurement_status": "measured_local"
+    },
+    "dynamic_ip_allocation_rule": {
+      "seconds": 13.36
+    },
+    "dynamic_ip_allocation_section": {
+      "seconds": 6.46
+    },
+    "firewall_sub_policy": {
+      "seconds": 55.16,
+      "measurement_status": "retained_failed"
+    },
+    "fqdn_container": {
+      "seconds": 12.65,
+      "measurement_status": "measured_local"
+    },
+    "global_ip_ranges": {
+      "seconds": 11.92
+    },
+    "group": {
+      "seconds": 4.7
+    },
+    "group_members": {
+      "seconds": 4.53
+    },
+    "if_rule": {
+      "seconds": 72.76,
+      "measurement_status": "retained_failed"
+    },
+    "if_rules_index": {
+      "seconds": 34.21
+    },
+    "if_section": {
+      "seconds": 8.82
+    },
+    "ip_address_range_container": {
+      "seconds": 12.58,
+      "measurement_status": "measured_local"
+    },
+    "ipsec_site": {
+      "seconds": 16.47,
+      "measurement_status": "measured_local"
+    },
+    "lan_interface": {
+      "seconds": 18.49
+    },
+    "lan_interface_lag_member": {
+      "seconds": 21.13
+    },
+    "license": {
+      "seconds": 7.5,
+      "observed_seconds": 1.84,
+      "measurement_status": "estimated_skipped"
+    },
+    "mailing_list": {
+      "seconds": 7.38
+    },
+    "network_range": {
+      "seconds": 30.46
+    },
+    "private_access_policy": {
+      "seconds": 16.43
+    },
+    "private_access_section": {
+      "seconds": 7.5
+    },
+    "private_app": {
+      "seconds": 3.75
+    },
+    "rbac_assignment": {
+      "seconds": 5.19
+    },
+    "remote_port_forward_rule": {
+      "seconds": 9.87,
+      "measurement_status": "measured_local"
+    },
+    "remote_port_forward_section": {
+      "seconds": 7.5
+    },
+    "role": {
+      "seconds": 7.2
+    },
+    "sdp_static_ip_allocation_rule": {
+      "seconds": 9.37,
+      "measurement_status": "measured_local"
+    },
+    "sdp_static_ip_allocation_section": {
+      "seconds": 6.65
+    },
+    "secondary_aws_vsocket": {
+      "seconds": 10.94,
+      "measurement_status": "measured_local"
+    },
+    "secondary_azure_vsocket": {
+      "seconds": 10.84,
+      "measurement_status": "measured_local"
+    },
+    "site_web_proxy_section": {
+      "seconds": 7.53,
+      "measurement_status": "measured_local"
+    },
+    "socket_bypass_rule": {
+      "seconds": 7.78
+    },
+    "socket_bypass_section": {
+      "seconds": 6.63
+    },
+    "socket_lan_firewall_rule": {
+      "seconds": 17.95
+    },
+    "socket_lan_network_rule": {
+      "seconds": 29.36
+    },
+    "socket_lan_section": {
+      "seconds": 4.46
+    },
+    "socket_site": {
+      "seconds": 177.61,
+      "tests": {
+        "TestAccSocketSite_ConnType": 65.42,
+        "TestAccSocketSite_DHCP": 27.7,
+        "TestAccSocketSite_DhcpSettingsNull": 22.98,
+        "TestAccSocketSite_Basic": 16.98,
+        "TestAccSocketSite_LocationEmptyCity": 13.93,
+        "TestAccSocketSite_Interface": 10.62,
+        "TestAccSocketSite_Location": 19.98
+      },
+      "measurement_status": "partial_failed",
+      "observed_seconds": 170.62,
+      "estimated_tests": [
+        "TestAccSocketSite_Location"
+      ]
+    },
+    "split_tunnel_rule": {
+      "seconds": 15.72
+    },
+    "split_tunnel_section": {
+      "seconds": 6.59
+    },
+    "static_host": {
+      "seconds": 18.59
+    },
+    "subscription_group": {
+      "seconds": 8.49
+    },
+    "terminal_server_rule": {
+      "seconds": 15.05,
+      "measurement_status": "measured_local"
+    },
+    "terminal_server_section": {
+      "seconds": 6.83,
+      "measurement_status": "measured_local"
+    },
+    "tls_inspection_section": {
+      "seconds": 4.28
+    },
+    "tls_rule": {
+      "seconds": 5.01
+    },
+    "tls_rules_index": {
+      "seconds": 10.16
+    },
+    "user": {
+      "seconds": 6.0
+    },
+    "wan_interface": {
+      "seconds": 19.64
+    },
+    "wan_network_section": {
+      "seconds": 5.09
+    },
     "wf_rule": {
-      "seconds": 7.34
+      "seconds": 5.1
     },
     "wf_rules_index": {
-      "seconds": 23.08
+      "seconds": 13.6
     },
     "wf_rules_index_with_rule_data": {
-      "seconds": 13.85
+      "seconds": 9.05
     },
     "wf_section": {
-      "seconds": 13.58
+      "seconds": 8.37
     },
     "wifi_ssid": {
-      "seconds": 16.68
+      "seconds": 14.34
     },
     "wnw_rule": {
-      "seconds": 7.83
+      "seconds": 6.16
     },
     "wnw_rules_index": {
-      "seconds": 21.83
+      "seconds": 16.6
+    }
+  },
+  "measurement_source": {
+    "kind": "local_partial",
+    "date": "2026-11-06",
+    "command": "make acctest-flaky",
+    "platform": "darwin/arm64",
+    "started_commit": "4cd48c8798d95704ee2a6998f5c9911ed67145c4",
+    "previous_baseline": {
+      "source_job_url": "https://github.com/catonetworks/terraform-provider-cato/actions/runs/42022493205/job/127228450392",
+      "source_commit": "c064c4c586af0075bebcca8f05a0282cbbd7059b"
+    },
+    "skipped_estimates": "Skipped-only packages retain the greater of their previous estimate and the median measured package duration. Skipped split tests retain the greater of their previous estimate and the median measured test duration.",
+    "followup_command": "go test -tags=acctest -count=1 -parallel=1 -p=1 -timeout=8m -run ^TestAccSocketBypassRule$ -json ./internal/acctests/socket_bypass_rule",
+    "followup_packages": [
+      "socket_bypass_rule"
+    ],
+    "profile": "Full local suite without TFACC_TEST_SKIP; failed tests are listed separately, including tests excluded by CI."
+  },
+  "failed_tests": {
+    "firewall_sub_policy": [
+      "TestAccLfSubPolicy"
+    ],
+    "if_rule": [
+      "TestAccInternetFw_IDName",
+      "TestAccInternetFw_Timeframe",
+      "TestAccInternetFw_Full"
+    ],
+    "socket_site": [
+      "TestAccSocketSite_Location"
+    ]
+  },
+  "skipped_tests": {
+    "account": [
+      "TestAccAccount",
+      "TestAccAccount_ImmutableFieldValidation"
+    ],
+    "app_connector": [
+      "TestAccAppConnector_BWAllocation"
+    ],
+    "bgp_peer": [
+      "TestAccBgpPeer",
+      "TestAccBgpPeer_InvalidDefaultAction"
+    ],
+    "bulk_policy_families": [
+      "TestAccBulkPolicyFamilies_TerminalServer/terminal_server",
+      "TestAccBulkPolicyFamilies_SiteWebProxy/site_web_proxy",
+      "TestAccBulkPolicyFamilies_SDPStaticIPAllocation/sdp_static_ip_allocation",
+      "TestAccBulkPolicyFamilies_RemotePortForward/remote_port_fwd"
+    ],
+    "cloud_interconnect_physical_connection": [
+      "TestAccCloudInterconnectPhysicalConnection"
+    ],
+    "dns_dhcp": [
+      "TestAccDNSDHCPDeletedParent",
+      "TestAccDNSDHCP"
+    ],
+    "fqdn_container": [
+      "TestAccFQDNContainerURL"
+    ],
+    "ip_address_range_container": [
+      "TestAccIPAddressRangeContainerURL"
+    ],
+    "ipsec_site": [
+      "TestAccIpsecSite_Basic"
+    ],
+    "license": [
+      "TestAccLicense"
+    ],
+    "remote_port_forward_rule": [
+      "TestAccRemotePortFwdRule"
+    ],
+    "sdp_static_ip_allocation_rule": [
+      "TestAccSdpStaticIPAllocationRule"
+    ],
+    "secondary_aws_vsocket": [
+      "TestAccSecondaryAWSVSocket"
+    ],
+    "secondary_azure_vsocket": [
+      "TestAccSecondaryAzureVSocket"
+    ],
+    "site_web_proxy_section": [
+      "TestAccSiteWebProxySection"
+    ],
+    "terminal_server_rule": [
+      "TestAccTerminalServerRule"
+    ],
+    "terminal_server_section": [
+      "TestAccTerminalServerSection"
+    ]
+  },
+  "local_followup": {
+    "date": "2026-11-06",
+    "source_commit": "486e8dc6411e875d5e757851fcbe0b23e206f2f4",
+    "working_tree_fixes": [
+      "BGP omitted password hydration",
+      "Terminal Server explicit empty set hydration",
+      "Socket Bypass nested import ID"
+    ],
+    "measured_packages": [
+      "bgp_peer",
+      "dns_dhcp",
+      "terminal_server_rule",
+      "terminal_server_section",
+      "site_web_proxy_section",
+      "ipsec_site",
+      "remote_port_forward_rule",
+      "sdp_static_ip_allocation_rule",
+      "secondary_aws_vsocket",
+      "secondary_azure_vsocket",
+      "fqdn_container",
+      "ip_address_range_container"
+    ],
+    "measured_bulk_tests": [
+      "TestAccBulkPolicyFamilies_AntiMalwareFileHash",
+      "TestAccBulkPolicyFamilies_ClientConnectivity",
+      "TestAccBulkPolicyFamilies_SplitTunnel",
+      "TestAccBulkPolicyFamilies_DynamicIPAllocation",
+      "TestAccBulkPolicyFamilies_TerminalServer",
+      "TestAccBulkPolicyFamilies_SocketBypass",
+      "TestAccBulkPolicyFamilies_SDPStaticIPAllocation",
+      "TestAccBulkPolicyFamilies_RemotePortForward"
+    ],
+    "blocked_bulk_tests": {
+      "TestAccBulkPolicyFamilies_SiteWebProxy": "backend rejects transportProtocol on addRule"
     }
   }
 }

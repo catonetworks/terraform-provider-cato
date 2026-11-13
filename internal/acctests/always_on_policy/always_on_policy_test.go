@@ -38,6 +38,8 @@ func TestAccAlwaysOnPolicy(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.PrintAttributes(res),
 					resource.TestCheckResourceAttr(res, "enabled", strconv.FormatBool(!cfg.originalEnabled)),
+					resource.TestCheckResourceAttrSet(res, "published_time"),
+					resource.TestCheckResourceAttrSet(res, "published_by"),
 				),
 			},
 			{

@@ -83,7 +83,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationCreatePolicyRevision(
 	policyCreateRevisionInput cato_models.PolicyCreateRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationCreatePolicyRevision, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationCreatePolicyRevision(
+	return c.client.V2().PolicySdpStaticIPAllocationCreatePolicyRevision(
 		ctx,
 		accountID,
 		policyCreateRevisionInput,
@@ -99,7 +99,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationAddRule(
 	sdpStaticIPAllocationAddRuleInput cato_models.SdpStaticIPAllocationAddRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationAddRule, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationAddRule(
+	return c.client.V2().PolicySdpStaticIPAllocationAddRule(
 		ctx,
 		accountID,
 		sdpStaticIPAllocationAddRuleInput,
@@ -114,7 +114,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationPolicy(
 	sdpStaticIPAllocationPolicyInput *cato_models.SdpStaticIPAllocationPolicyInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationPolicy, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationPolicy(
+	return c.client.V2().PolicySdpStaticIPAllocationPolicy(
 		ctx,
 		accountID,
 		sdpStaticIPAllocationPolicyInput,
@@ -129,7 +129,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationUpdateRule(
 	sdpStaticIPAllocationUpdateRuleInput cato_models.SdpStaticIPAllocationUpdateRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationUpdateRule, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationUpdateRule(
+	return c.client.V2().PolicySdpStaticIPAllocationUpdateRule(
 		ctx,
 		accountID,
 		sdpStaticIPAllocationPolicyMutationInput,
@@ -145,7 +145,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationMoveRule(
 	policyMoveRuleInput cato_models.PolicyMoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationMoveRule, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationMoveRule(
+	return c.client.V2().PolicySdpStaticIPAllocationMoveRule(
 		ctx,
 		accountID,
 		policyMoveRuleInput,
@@ -161,7 +161,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationRemoveRule(
 	sdpStaticIPAllocationRemoveRuleInput cato_models.SdpStaticIPAllocationRemoveRuleInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationRemoveRule, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationRemoveRule(
+	return c.client.V2().PolicySdpStaticIPAllocationRemoveRule(
 		ctx,
 		accountID,
 		sdpStaticIPAllocationPolicyMutationInput,
@@ -177,7 +177,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationPublishPolicyRevision(
 	policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationPublishPolicyRevision, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationPublishPolicyRevision(
+	return c.client.V2().PolicySdpStaticIPAllocationPublishPolicyRevision(
 		ctx,
 		accountID,
 		policyPublishRevisionInput,
@@ -193,7 +193,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationDiscardPolicyRevision(
 	policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationDiscardPolicyRevision, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationDiscardPolicyRevision(
+	return c.client.V2().PolicySdpStaticIPAllocationDiscardPolicyRevision(
 		ctx,
 		accountID,
 		policyDiscardRevisionInput,

@@ -2,7 +2,9 @@ package alwaysonindex
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -14,12 +16,14 @@ import (
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/apperror"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
 var (
-	_ resource.Resource              = &alwaysOnRuleBulkResource{}
-	_ resource.ResourceWithConfigure = &alwaysOnRuleBulkResource{}
+	_ resource.Resource               = &alwaysOnRuleBulkResource{}
+	_ resource.ResourceWithModifyPlan = &alwaysOnRuleBulkResource{}
+	_ resource.ResourceWithConfigure  = &alwaysOnRuleBulkResource{}
 )
 
 type alwaysOnRuleBulkResource struct {
@@ -159,6 +163,20 @@ func (r *alwaysOnRuleBulkResource) reorderAll(ctx context.Context, state, config
 }
 
 func (r *alwaysOnRuleBulkResource) moveRules(ctx context.Context, orders map[string]ruleOrder, diags *diag.Diagnostics) {
+	owners := map[string]string{}
+	for section, order := range orders {
+		for _, rule := range order.current {
+			owners[rule.id] = section
+		}
+	}
+	for section, order := range orders {
+		for _, rule := range order.target {
+			if owners[rule.id] != section {
+				r.relocateRules(ctx, orders, diags)
+				return
+			}
+		}
+	}
 	// we need to loop backwards because the API does not support moving to the beginning
 	for secName, rules := range orders {
 		for i := len(rules.target) - 1; i >= 0; i-- {
@@ -173,7 +191,50 @@ func (r *alwaysOnRuleBulkResource) moveRules(ctx context.Context, orders map[str
 	}
 }
 
+// relocateRules appends each target sequence in order, which also works when rules change sections.
+func (r *alwaysOnRuleBulkResource) relocateRules(ctx context.Context, orders map[string]ruleOrder, diags *diag.Diagnostics) {
+	sections := make([]string, 0, len(orders))
+	for section := range orders {
+		sections = append(sections, section)
+	}
+	sort.Strings(sections)
+	for _, section := range sections {
+		order := orders[section]
+		for _, rule := range order.target {
+			position := cato_models.PolicyRulePositionEnumLastInSection
+			input := cato_models.PolicyMoveRuleInput{
+				ID: rule.id,
+				To: &cato_models.PolicyRulePositionInput{Position: &position, Ref: &order.sectionID},
+			}
+			result, err := r.getClient().PolicyZtnaAlwaysOnMoveRule(ctx, r.client.AccountId, nil, input)
+			payload := result.GetPolicy().GetZtnaAlwaysOn().GetMoveRule()
+			if utils.CheckAPIErrors(err, payload.GetErrors(), "Failed to relocate Always On rule", diags) {
+				return
+			}
+			status := payload.Status
+			if !checkMutationStatus(&status, "Failed to relocate Always On rule", diags) {
+				return
+			}
+		}
+	}
+}
+
 func (r *alwaysOnRuleBulkResource) publish(ctx context.Context, diags *diag.Diagnostics) {
+	err := policy.WithPolicyRevisionConflictRetry(ctx, "Publish Always On ordering", func() error {
+		var attempt diag.Diagnostics
+		r.publishOnce(ctx, &attempt)
+		var failures []error
+		for _, diagnostic := range attempt.Errors() {
+			failures = append(failures, errors.New(diagnostic.Detail()))
+		}
+		return errors.Join(failures...)
+	})
+	if err != nil {
+		diags.AddError("Failed to publish Always On policy ordering", err.Error())
+	}
+}
+
+func (r *alwaysOnRuleBulkResource) publishOnce(ctx context.Context, diags *diag.Diagnostics) {
 	const summary = "Failed to publish Always On policy ordering"
 	result, err := r.getClient().PolicyZtnaAlwaysOnPublishPolicyRevision(ctx, r.client.AccountId, nil, nil)
 	if err != nil {
@@ -181,8 +242,8 @@ func (r *alwaysOnRuleBulkResource) publish(ctx context.Context, diags *diag.Diag
 		return
 	}
 	payload := result.GetPolicy().GetZtnaAlwaysOn().GetPublishPolicyRevision()
-	if errors := payload.GetErrors(); len(errors) == 1 {
-		if errors[0].ErrorCode != nil && *errors[0].ErrorCode == apperror.PolicyRevisionNotFound {
+	if apiErrors := payload.GetErrors(); len(apiErrors) == 1 {
+		if apiErrors[0].ErrorCode != nil && *apiErrors[0].ErrorCode == apperror.PolicyRevisionNotFound {
 			return // no policy draft to discard; OK
 		}
 	}

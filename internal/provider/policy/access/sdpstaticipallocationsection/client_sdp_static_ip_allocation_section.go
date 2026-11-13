@@ -83,7 +83,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationCreatePolicyRevision(
 	policyCreateRevisionInput cato_models.PolicyCreateRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationCreatePolicyRevision, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationCreatePolicyRevision(
+	return c.client.V2().PolicySdpStaticIPAllocationCreatePolicyRevision(
 		ctx,
 		accountID,
 		policyCreateRevisionInput,
@@ -99,7 +99,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationAddSection(
 	policyAddSectionInput cato_models.PolicyAddSectionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationAddSection, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationAddSection(
+	return c.client.V2().PolicySdpStaticIPAllocationAddSection(
 		ctx,
 		accountID,
 		policyAddSectionInput,
@@ -114,7 +114,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationPolicy(
 	sdpStaticIPAllocationPolicyInput *cato_models.SdpStaticIPAllocationPolicyInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationPolicy, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationPolicy(
+	return c.client.V2().PolicySdpStaticIPAllocationPolicy(
 		ctx,
 		accountID,
 		sdpStaticIPAllocationPolicyInput,
@@ -129,7 +129,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationUpdateSection(
 	policyUpdateSectionInput cato_models.PolicyUpdateSectionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationUpdateSection, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationUpdateSection(
+	return c.client.V2().PolicySdpStaticIPAllocationUpdateSection(
 		ctx,
 		accountID,
 		policyUpdateSectionInput,
@@ -145,7 +145,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationMoveSection(
 	policyMoveSectionInput cato_models.PolicyMoveSectionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationMoveSection, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationMoveSection(
+	return c.client.V2().PolicySdpStaticIPAllocationMoveSection(
 		ctx,
 		accountID,
 		policyMoveSectionInput,
@@ -161,7 +161,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationRemoveSection(
 	policyRemoveSectionInput cato_models.PolicyRemoveSectionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationRemoveSection, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationRemoveSection(
+	return c.client.V2().PolicySdpStaticIPAllocationRemoveSection(
 		ctx,
 		accountID,
 		policyRemoveSectionInput,
@@ -177,7 +177,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationPublishPolicyRevision(
 	policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationPublishPolicyRevision, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationPublishPolicyRevision(
+	return c.client.V2().PolicySdpStaticIPAllocationPublishPolicyRevision(
 		ctx,
 		accountID,
 		policyPublishRevisionInput,
@@ -193,7 +193,7 @@ func (c *sdkClient) PolicySdpStaticIPAllocationDiscardPolicyRevision(
 	policyDiscardRevisionInput *cato_models.PolicyDiscardRevisionInput,
 	interceptors ...clientv2.RequestInterceptor,
 ) (*cato.PolicySdpStaticIPAllocationDiscardPolicyRevision, error) {
-	return c.client.Catov2.PolicySdpStaticIPAllocationDiscardPolicyRevision(
+	return c.client.V2().PolicySdpStaticIPAllocationDiscardPolicyRevision(
 		ctx,
 		accountID,
 		policyDiscardRevisionInput,

@@ -3,12 +3,12 @@
 page_title: "cato_split_tunnel_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Manages a split tunnel rule. Changes are automatically published. Omitting at on update preserves placement.
+  Manages a rule in the Cato split tunnel policy. Underlying GraphQL is marked @beta; behavior and fields may change. Explicitly configured empty filters are preserved in state when the API omits them.
 ---
 
 # cato_split_tunnel_rule (Resource)
 
-Manages a split tunnel rule. Changes are automatically published. Omitting at on update preserves placement.
+Manages a rule in the Cato split tunnel policy. Underlying GraphQL is marked @beta; behavior and fields may change. Explicitly configured empty filters are preserved in state when the API omits them.
 
 ## Example Usage
 
@@ -36,9 +36,9 @@ provider "cato" {
 }
 
 # Changes are automatically published. Use a test account when evaluating beta APIs.
+# Explicit empty filters remain empty in state even when omitted by the API.
 resource "cato_split_tunnel_rule" "example" {
-  # Optional placement; omission on update preserves the current position.
-  # at = { position = "LAST_IN_POLICY" }
+  at = { position = "LAST_IN_POLICY" }
   rule = {
     action      = "ROUTE_ONLY_SELECTED"
     country     = [{ id = "replace-with-object-id" }]
@@ -50,6 +50,7 @@ resource "cato_split_tunnel_rule" "example" {
       fqdn            = ["example.com"]
       global_ip_range = [{ id = "replace-with-object-id" }]
     }
+    # Removing dns_exclusion clears previously configured exclusions.
     dns_exclusion = {
       domain = ["example.com"]
     }
@@ -73,65 +74,76 @@ resource "cato_split_tunnel_rule" "example" {
 
 ### Required
 
-- `rule` (Attributes) Parameters for the rule you are adding (see [below for nested schema](#nestedatt--rule))
+- `at` (Attributes) Where to insert the rule (see [below for nested schema](#nestedatt--at))
+- `rule` (Attributes) Rule definition (see [below for nested schema](#nestedatt--rule))
 
-### Optional
+### Read-Only
 
-- `at` (Attributes) Position of the rule in the policy (see [below for nested schema](#nestedatt--at))
+- `id` (String) Rule ID
+
+<a id="nestedatt--at"></a>
+### Nested Schema for `at`
+
+Required:
+
+- `position` (String) Position relative to policy, section, or another rule
+
+Optional:
+
+- `ref` (String) Reference rule or section ID when required by position
+
 
 <a id="nestedatt--rule"></a>
 ### Nested Schema for `rule`
 
 Required:
 
-- `action` (String) The action applied by the split tunnel if the rule is matched
-- `country` (Attributes Set) Country traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--country))
-- `coverage` (String) Coverage
-- `description` (String) Description
-- `destination` (Attributes) Destination traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--destination))
-- `enabled` (Boolean) Enabled
-- `name` (String) Name
-- `platform` (Set of String) Source device Operating System traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets.
-- `routing_priority` (String) Routing priority
-- `source` (Attributes) Source traffic matching criteria. Logical ‘OR’ is applied within the criteria set. Logical ‘AND’ is applied between criteria sets. (see [below for nested schema](#nestedatt--rule--source))
-- `source_network` (Attributes) Source network (see [below for nested schema](#nestedatt--rule--source_network))
+- `action` (String) Rule action
+- `enabled` (Boolean) Whether the rule is enabled
+- `name` (String) Rule name
+- `routing_priority` (String) Routing priority (LAN or TUNNEL)
 
 Optional:
 
-- `dns_exclusion` (Attributes) Dns exclusion (see [below for nested schema](#nestedatt--rule--dns_exclusion))
+- `country` (Attributes Set) Countries the rule applies to (see [below for nested schema](#nestedatt--rule--country))
+- `coverage` (String) Traffic coverage (ALL or WEB_ONLY)
+- `description` (String) Rule description
+- `destination` (Attributes) Destinations the rule applies to (see [below for nested schema](#nestedatt--rule--destination))
+- `dns_exclusion` (Attributes) Domains excluded from DNS tunneling. Removing this block clears previously configured exclusions. (see [below for nested schema](#nestedatt--rule--dns_exclusion))
+- `platform` (List of String) Operating systems the rule applies to
+- `source` (Attributes) Users and user groups the rule applies to (see [below for nested schema](#nestedatt--rule--source))
+- `source_network` (Attributes) Source network the rule applies to (see [below for nested schema](#nestedatt--rule--source_network))
 
 Read-Only:
 
 - `id` (String) Rule ID
-- `index` (Number) Current rule index
-- `section` (Attributes) Policy section containing the rule (see [below for nested schema](#nestedatt--rule--section))
 
 <a id="nestedatt--rule--country"></a>
 ### Nested Schema for `rule.country`
 
 Optional:
 
-- `id` (String) Country ID
-- `name` (String) Country name
+- `id` (String)
+- `name` (String)
 
 
 <a id="nestedatt--rule--destination"></a>
 ### Nested Schema for `rule.destination`
 
-Required:
+Optional:
 
-- `application` (Attributes Set) Applications for the rule (pre-defined) (see [below for nested schema](#nestedatt--rule--destination--application))
-- `domain` (Set of String) A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.
-- `fqdn` (Set of String) An exact match of the fully qualified domain (FQDN). Example: www.my.example.com.
-- `global_ip_range` (Attributes Set) Globally defined IP range (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
+- `application` (Attributes Set) Application references (see [below for nested schema](#nestedatt--rule--destination--application))
+- `domain` (List of String) Domains
+- `fqdn` (List of String) FQDNs
+- `global_ip_range` (Attributes Set) Global IP range references (see [below for nested schema](#nestedatt--rule--destination--global_ip_range))
 
 <a id="nestedatt--rule--destination--application"></a>
 ### Nested Schema for `rule.destination.application`
 
 Optional:
 
-- `id` (String) Application ID
-- `name` (String) Application name
+- `id` (String)
+- `name` (String)
 
 
 <a id="nestedatt--rule--destination--global_ip_range"></a>
@@ -139,26 +151,34 @@ Optional:
 
 Optional:
 
-- `id` (String) Global ip range ID
-- `name` (String) Global ip range name
+- `id` (String)
+- `name` (String)
 
+
+
+<a id="nestedatt--rule--dns_exclusion"></a>
+### Nested Schema for `rule.dns_exclusion`
+
+Optional:
+
+- `domain` (List of String) Domains
 
 
 <a id="nestedatt--rule--source"></a>
 ### Nested Schema for `rule.source`
 
-Required:
+Optional:
 
-- `user` (Attributes Set) Individual users defined for the account (see [below for nested schema](#nestedatt--rule--source--user))
-- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--rule--source--users_group))
+- `user` (Attributes Set) User references (see [below for nested schema](#nestedatt--rule--source--user))
+- `users_group` (Attributes Set) User group references (see [below for nested schema](#nestedatt--rule--source--users_group))
 
 <a id="nestedatt--rule--source--user"></a>
 ### Nested Schema for `rule.source.user`
 
 Optional:
 
-- `id` (String) User ID
-- `name` (String) User name
+- `id` (String)
+- `name` (String)
 
 
 <a id="nestedatt--rule--source--users_group"></a>
@@ -166,8 +186,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Users group ID
-- `name` (String) Users group name
+- `id` (String)
+- `name` (String)
 
 
 
@@ -176,37 +196,7 @@ Optional:
 
 Required:
 
-- `source_network_type` (String) Source network type
-
-
-<a id="nestedatt--rule--dns_exclusion"></a>
-### Nested Schema for `rule.dns_exclusion`
-
-Required:
-
-- `domain` (Set of String) A Second-Level Domain (SLD). It matches all Top-Level Domains (TLD), and subdomains that include the Domain. Example: example.com.
-
-
-<a id="nestedatt--rule--section"></a>
-### Nested Schema for `rule.section`
-
-Read-Only:
-
-- `id` (String) Section ID
-- `name` (String) Section name
-
-
-
-<a id="nestedatt--at"></a>
-### Nested Schema for `at`
-
-Required:
-
-- `position` (String) Position relative to a policy, a section or another rule
-
-Optional:
-
-- `ref` (String) The identifier of the object (e.g. a rule, a section) relative to which the position of the added rule is defined
+- `source_network_type` (String) Source network type (ANY, ANY_MANAGED_NETWORK, ANY_UNMANAGED_NETWORK)
 
 ## Import
 

@@ -101,6 +101,7 @@ mocks: ## Generate mockery mocks
 test: ## Run unit tests
 	@python3 -m unittest discover -s test_data -p '*_test.py'
 	@bash test_data/acctest_retry_test.sh
+	@go test -tags=acctest ./internal/acctests/acc -run '^TestSkipByEnvUsesTestIdentity$$'
 	@unset TF_ACC; go test -json $$(go list ./... | grep -v terraform-provider-cato/internal/acctests) | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 
 acctest-clean: ## Delete stale acctest resources
@@ -108,10 +109,10 @@ acctest-clean: ## Delete stale acctest resources
 acctest: acctest-clean ## Run acceptance tests (real API calls)
 	TF_ACC=1 DISABLE_POLICY_RULE_CLEANUP=true go test -tags acctest -count=1 -json --timeout=10m -parallel=1 -p=1 ./internal/acctests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 acctest-flaky: ## Run acceptance tests - retry on error (real API calls) [ t=<test_dir> ] [ group=<0-9> ] [ coverage=true ]
-	@TFACC_ENABLE_ACCOUNT_CRUD=$${TFACC_ENABLE_ACCOUNT_CRUD:-false} \
+	@export TFACC_ENABLE_ACCOUNT_CRUD=$${TFACC_ENABLE_ACCOUNT_CRUD:-false} \
 	TFACC_ACCOUNT_CRUD_ALLOWED=$${TFACC_ACCOUNT_CRUD_ALLOWED:-false} \
 	TFACC_ENABLE_BGP_PEER_CRUD=$${TFACC_ENABLE_BGP_PEER_CRUD:-true} \
-	TFACC_ENABLE_RULES_INDEX_CRUD=$${TFACC_ENABLE_RULES_INDEX_CRUD:-true} \
+	TFACC_ENABLE_RULES_INDEX_CRUD=$${TFACC_ENABLE_RULES_INDEX_CRUD:-true}; \
 	enable_coverage=''; if [ "$(coverage)" = true ]; then enable_coverage='--coverage'; fi; \
 	test_data/flaky_acctest.sh $$enable_coverage $(if $(group),--group "$(group)") $(t)
 

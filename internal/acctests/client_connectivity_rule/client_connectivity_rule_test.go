@@ -46,6 +46,17 @@ rule = {"action": "ALLOW", "confidence_level": "HIGH", "connection_origin": [], 
 	}
 	resourceName := "cato_client_connectivity_rule.test"
 
+	// Assert configured empties survive the read after apply.
+	checkEmptyFilters := resource.ComposeTestCheckFunc(
+		resource.TestCheckResourceAttr(resourceName, "rule.country.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.device.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.connection_origin.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.platform.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.source.user.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.source.users_group.#", "0"),
+		resource.TestCheckResourceAttr(resourceName, "rule.source_range.#", "0"),
+	)
+
 	published := func(state *terraform.State) error {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
@@ -81,8 +92,10 @@ rule = {"action": "ALLOW", "confidence_level": "HIGH", "connection_origin": [], 
 			return nil
 		},
 		PreCheck: acc.CheckCMAVars(t),
+		// Import cannot recover the configured empty source object from the API.
+		// Ignore only its container marker; user and group values remain verified.
 		Steps: acc.WithStableResourceID([]resource.TestStep{
-			{Config: config(name, "initial"), Check: resource.TestCheckResourceAttrSet(resourceName, "rule.id")},
+			{Config: config(name, "initial"), Check: resource.ComposeTestCheckFunc(checkEmptyFilters, resource.TestCheckResourceAttrSet(resourceName, "rule.id"))},
 			{Config: config(name, "initial"), PlanOnly: true, ExpectNonEmptyPlan: false},
 			{ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
 				object := state.RootModule().Resources[resourceName]
@@ -90,7 +103,7 @@ rule = {"action": "ALLOW", "confidence_level": "HIGH", "connection_origin": [], 
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.source.%"}},
 			{Config: config(name+"-updated", "updated"), Check: resource.TestCheckResourceAttr(resourceName, "rule.name", "acctest-client_connectivity_rule-"+name+"-updated")},
 			{Config: config(name+"-updated", "updated"), PlanOnly: true, ExpectNonEmptyPlan: false}, {ResourceName: resourceName, ImportState: true, ImportStateVerify: true, ImportStateVerifyIdentifierAttribute: "rule.id", ImportStateIdFunc: func(state *terraform.State) (string, error) {
 				object := state.RootModule().Resources[resourceName]
@@ -98,7 +111,7 @@ rule = {"action": "ALLOW", "confidence_level": "HIGH", "connection_origin": [], 
 					return "", fmt.Errorf("missing resource state")
 				}
 				return object.Primary.Attributes["rule.id"], nil
-			}, ImportStateVerifyIgnore: []string{"at"}},
+			}, ImportStateVerifyIgnore: []string{"at", "rule.source.%"}},
 		}, resourceName, "rule.id", published),
 	})
 }

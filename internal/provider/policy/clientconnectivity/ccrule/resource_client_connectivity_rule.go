@@ -1,0 +1,330 @@
+package ccrule
+
+import (
+	"context"
+
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
+	path "github.com/hashicorp/terraform-plugin-framework/path"
+	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
+
+	clientconnectivity "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity"
+	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
+	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
+)
+
+var (
+	_ resource.Resource                = &clientConnectivityRuleResource{}
+	_ resource.ResourceWithConfigure   = &clientConnectivityRuleResource{}
+	_ resource.ResourceWithImportState = &clientConnectivityRuleResource{}
+)
+
+func NewClientConnectivityRuleResource() resource.Resource {
+	return &clientConnectivityRuleResource{}
+}
+
+type clientConnectivityRuleResource struct {
+	client *catoclient.Service
+
+	apiClient ResourceClient
+}
+
+func (r *clientConnectivityRuleResource) Metadata(
+	_ context.Context,
+	req resource.MetadataRequest,
+	resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + "_client_connectivity_rule"
+}
+
+func (r *clientConnectivityRuleResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	_ *resource.ConfigureResponse,
+) {
+	if req.ProviderData == nil {
+		return
+	}
+	r.client = req.ProviderData.(*catoclient.Service)
+}
+
+func (r *clientConnectivityRuleResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
+	resource.ImportStatePassthroughID(ctx, path.Root("rule").AtName("id"), req, resp)
+}
+
+//nolint:gocyclo,funlen
+func (r *clientConnectivityRuleResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
+	var plan ClientConnectivityRule
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	input, diags := hydrateClientConnectivityAddRuleInput(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	tflog.Debug(ctx, "Create.PolicyClientConnectivityAddRule", map[string]interface{}{"request": utils.InterfaceToJSONString(input)})
+	res, err := r.resourceAPI().PolicyClientConnectivityAddRule(ctx, input, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityAddRule error", err.Error())
+		return
+	}
+	add := res.GetPolicy().GetClientConnectivity().GetAddRule()
+	for _, e := range add.GetErrors() {
+		if e != nil && e.GetErrorCode() != nil {
+			resp.Diagnostics.AddError("API error: "+*e.GetErrorCode(), *e.GetErrorMessage())
+			return
+		}
+	}
+	if err := sharedpolicy.MutationResult(add.GetStatus(), add.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
+	}
+
+	resp.Diagnostics.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	body, err := r.resourceAPI().PolicyClientConnectivityPolicy(ctx, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityPolicy error", err.Error())
+		return
+	}
+
+	newID := ""
+	if add.GetRule() != nil && add.GetRule().GetRule() != nil {
+		newID = add.GetRule().GetRule().GetID()
+	}
+	if newID == "" {
+		resp.Diagnostics.AddError("Read after create failed", "addRule response did not return rule id")
+		return
+	}
+	var cur *cato_go_sdk.PolicyClientConnectivityPolicy_Policy_ClientConnectivity_Policy_Rules_Rule
+	for _, item := range body.GetPolicy().GetClientConnectivity().GetPolicy().GetRules() {
+		if item != nil && item.GetRule() != nil && item.GetRule().GetID() == newID {
+			cur = item.GetRule()
+			break
+		}
+	}
+	if cur == nil {
+		resp.Diagnostics.AddError("Read after create failed", "rule not found in policy response")
+		return
+	}
+
+	rulePlan, hdiags := hydrateClientConnectivityRuleStateFromClient(ctx, cur)
+	resp.Diagnostics.Append(hdiags...)
+
+	// Merge plan-only attributes the API does not echo back.
+	var planRule ClientConnectivityRuleRulePlan
+	resp.Diagnostics.Append(plan.Rule.As(
+		ctx,
+		&planRule,
+		basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true},
+	)...)
+	ruleObj, odiags := convertCreateInput(ctx, &rulePlan, planRule)
+	resp.Diagnostics.Append(odiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	convertCreateInput2(&plan, newID, ruleObj)
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
+}
+
+func (r *clientConnectivityRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state ClientConnectivityRule
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	body, err := r.resourceAPI().PolicyClientConnectivityPolicy(ctx, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityPolicy error", err.Error())
+		return
+	}
+
+	rulePlan := ClientConnectivityRuleRulePlan{}
+	resp.Diagnostics.Append(state.Rule.As(ctx, &rulePlan, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	pol := body.GetPolicy().GetClientConnectivity().GetPolicy()
+	if pol == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	var cur *cato_go_sdk.PolicyClientConnectivityPolicy_Policy_ClientConnectivity_Policy_Rules_Rule
+	for _, item := range pol.GetRules() {
+		if item != nil && item.GetRule() != nil && item.GetRule().GetID() == rulePlan.ID.ValueString() {
+			cur = item.GetRule()
+			break
+		}
+	}
+	if cur == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	hydrated, hdiags := hydrateClientConnectivityRuleStateFromClient(ctx, cur)
+	resp.Diagnostics.Append(hdiags...)
+
+	// Merge state-only attributes the API does not echo back.
+	ruleObj, odiags := convertReadState(ctx, rulePlan, &hydrated)
+	resp.Diagnostics.Append(odiags...)
+
+	// Preserve the 'at' block from state — the API does not return placement
+	// information, so we keep whatever was previously configured. On import the
+	// state has no 'at', so we fall back to the safe default LAST_IN_POLICY.
+	convertReadState2(&state, cur, ruleObj, &resp.Diagnostics)
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+}
+
+//nolint:gocyclo,funlen
+func (r *clientConnectivityRuleResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
+	var plan ClientConnectivityRule
+	var state ClientConnectivityRule
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var rule ClientConnectivityRuleRulePlan
+	move, atAsOpts := convertUpdateInput(ctx, plan, &resp.Diagnostics)
+	resp.Diagnostics.Append(plan.Rule.As(ctx, &rule, atAsOpts)...)
+	move.ID = rule.ID.ValueString()
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !plan.At.Equal(state.At) {
+		moveRes, err := r.resourceAPI().PolicyClientConnectivityMoveRule(ctx, move, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Cato API PolicyClientConnectivityMoveRule error", err.Error())
+			return
+		}
+		mv := moveRes.GetPolicy().GetClientConnectivity().GetMoveRule()
+		if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+			return
+		}
+	}
+
+	upd, diags := hydrateClientConnectivityUpdateRuleInput(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updRes, err := r.resourceAPI().PolicyClientConnectivityUpdateRule(ctx, upd, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityUpdateRule error", err.Error())
+		return
+	}
+	ur := updRes.GetPolicy().GetClientConnectivity().GetUpdateRule()
+	if err := sharedpolicy.MutationResult(ur.GetStatus(), ur.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy mutation failed", err.Error())
+		return
+	}
+
+	resp.Diagnostics.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	body, err := r.resourceAPI().PolicyClientConnectivityPolicy(ctx, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityPolicy error", err.Error())
+		return
+	}
+
+	var cur *cato_go_sdk.PolicyClientConnectivityPolicy_Policy_ClientConnectivity_Policy_Rules_Rule
+	for _, item := range body.GetPolicy().GetClientConnectivity().GetPolicy().GetRules() {
+		if item != nil && item.GetRule() != nil && item.GetRule().GetID() == rule.ID.ValueString() {
+			cur = item.GetRule()
+			break
+		}
+	}
+	if cur == nil {
+		resp.Diagnostics.AddError("Read after update failed", "rule not found in policy response")
+		return
+	}
+
+	rulePlan, hdiags := hydrateClientConnectivityRuleStateFromClient(ctx, cur)
+	resp.Diagnostics.Append(hdiags...)
+
+	// Merge plan-only attributes the API does not echo back.
+	ruleObj, odiags := convertUpdateInput2(ctx, rule, &rulePlan)
+	resp.Diagnostics.Append(odiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var pos policyrule.Position
+	resp.Diagnostics.Append(plan.At.As(ctx, &pos, atAsOpts)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	atObj, adiags := convertUpdateInput3(pos)
+	resp.Diagnostics.Append(adiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	st := convertUpdateInput4(rule, ruleObj, atObj)
+	resp.Diagnostics.Append(resp.State.Set(ctx, st)...)
+}
+
+func (r *clientConnectivityRuleResource) Delete(
+	ctx context.Context,
+	req resource.DeleteRequest,
+	resp *resource.DeleteResponse,
+) {
+	var state ClientConnectivityRule
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	rule := ClientConnectivityRuleRulePlan{}
+	resp.Diagnostics.Append(state.Rule.As(ctx, &rule, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	rm := convertDeleteInput(rule)
+	removed, err := r.resourceAPI().PolicyClientConnectivityRemoveRule(ctx, rm, r.client.AccountId)
+	if err != nil {
+		resp.Diagnostics.AddError("Cato API PolicyClientConnectivityRemoveRule error", err.Error())
+		return
+	}
+	payload := removed.GetPolicy().GetClientConnectivity().GetRemoveRule()
+	if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Policy deletion failed", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(clientconnectivity.PublishClientConnectivityPolicyRevision(ctx, r.resourceAPI(), r.client.AccountId)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}

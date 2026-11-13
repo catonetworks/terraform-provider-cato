@@ -116,6 +116,7 @@ func (r *bgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	bgpPeer := result.GetSite().GetBgpPeer()
 	bgpPeerInput := ConvertToBgpPeer(*bgpPeer)
+	preserveOmittedBgpPassword(&bgpPeerInput, state)
 
 	diags = resp.State.Set(ctx, &bgpPeerInput)
 	resp.Diagnostics.Append(diags...)

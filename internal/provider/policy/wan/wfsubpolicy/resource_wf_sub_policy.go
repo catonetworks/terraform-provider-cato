@@ -5,13 +5,16 @@ import (
 	"fmt"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
+	attr "github.com/hashicorp/terraform-plugin-framework/attr"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
-	wan "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan"
 	wfrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
+	policyrule "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -51,6 +54,7 @@ func (r *wfSubPolicyResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+//nolint:gocyclo,funlen // Validate scope and cleanup mutations together.
 func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan WanFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -66,6 +70,7 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// Reuse the rule hydrator to build the scope rule data + position.
 	scopeRule := wfrule.Rule{Rule: createScope, At: plan.At}
 	hydrated, diags := wfrule.HydrateWanRuleAPI(ctx, scopeRule)
 	resp.Diagnostics.Append(diags...)
@@ -73,6 +78,7 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// Snapshot existing sub-policy ids to identify the new one after creation.
 	before, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
@@ -80,19 +86,18 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	existing, addInput := convertCreateInput2(plan, hydrated, before)
 
-	addResp, err := r.resourceAPI().PolicyWanFirewallAddSubPolicy(ctx, addInput, r.client.AccountId)
+	addResp, err := r.resourceAPI().PolicyWanFirewallAddSubPolicy(
+		ctx,
+		addInput,
+		r.client.AccountId,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallAddSubPolicy error", err.Error())
 		return
 	}
 	addPayload := addResp.GetPolicy().GetWanFirewall().GetAddSubPolicy()
-	if addPayload.GetStatus() == nil || *addPayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range addPayload.GetErrors() {
-			resp.Diagnostics.AddError(
-				"API Error Creating Sub-Policy",
-				fmt.Sprintf("%s : %s", derefStr(e.ErrorCode), derefStr(e.ErrorMessage)),
-			)
-		}
+	if err := sharedpolicy.MutationResult(addPayload.GetStatus(), addPayload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Sub-Policy Mutation Failed", err.Error())
 		return
 	}
 
@@ -101,22 +106,82 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// Locate the new sub-policy + its scope rule.
 	after, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 		return
 	}
-	scope, scopeState := wanSubPolicyStateFromPolicy(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
+	scopeObj := wanFirewallSubPolicyStateFromPolicy(ctx, &plan, &diags, scopeRule, existing, after, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(diags...)
-	scopeObj := convertCreateInput4(ctx, &diags, scope, &scopeState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	plan.Scope = scopeObj
+
+	// addSubPolicy auto-created the sub-policy's cleanup rule (its only rule at
+	// this point). Capture it, apply any configured cleanup settings, and manage
+	// it as part of this resource — like a socket site's default interface.
+	cleanup := wanCleanupRule(after, plan.ID.ValueString(), "")
+	if cleanup == nil {
+		resp.Diagnostics.AddError(
+			"Cleanup Rule Not Found",
+			fmt.Sprintf("No API-created cleanup rule found for sub-policy %s.", plan.ID.ValueString()),
+		)
+		return
+	}
+	plan.CleanupRuleID = types.StringValue(cleanup.GetID())
+	if !plan.CleanupRule.IsNull() && !plan.CleanupRule.IsUnknown() {
+		cleanupRule := wfrule.Rule{Rule: plan.CleanupRule, At: plan.At}
+		hydratedCleanup, cuDiags := wfrule.HydrateWanRuleAPI(ctx, cleanupRule)
+		resp.Diagnostics.Append(cuDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		hydratedCleanup.Update.ID = cleanup.GetID()
+		// Keep the API-generated name unless the config customizes it.
+		if !cleanupNameConfigured(plan.CleanupRule) {
+			cleanupName := cleanup.GetName()
+			hydratedCleanup.Update.Rule.Name = &cleanupName
+		}
+		updateResp, err := r.resourceAPI().PolicyWanFirewallUpdateRule(
+			ctx,
+			hydratedCleanup.Update,
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallUpdateRule error", err.Error())
+			return
+		}
+		mutationPayload := updateResp.GetPolicy().GetWanFirewall().GetUpdateRule()
+		if err := sharedpolicy.MutationResult(mutationPayload.GetStatus(), mutationPayload.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Sub-Policy Rule Mutation Failed", err.Error())
+			return
+		}
+		if err := r.publish(ctx); err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallPublishPolicyRevision error", err.Error())
+			return
+		}
+		after, err = r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
+			return
+		}
+		cleanup = wanCleanupRule(after, plan.ID.ValueString(), plan.CleanupRuleID.ValueString())
+		if cleanup == nil {
+			resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule not found after update.")
+			return
+		}
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &plan, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.CleanupRule = cleanupObj
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
@@ -134,7 +199,7 @@ func (r *wfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	info := wan.SubPolicyInfo(body, state.ID.ValueString())
+	info := wanSubPolicyInfo(body, state.ID.ValueString())
 	if info == nil {
 		tflog.Warn(ctx, "wan firewall sub-policy not found, resource removed")
 		resp.State.RemoveResource(ctx)
@@ -142,23 +207,52 @@ func (r *wfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 	scope := wanScopeRule(body, state.ID.ValueString())
 	if scope == nil {
-		tflog.Warn(ctx, "wan firewall sub-policy scope rule not found, resource removed")
-		resp.State.RemoveResource(ctx)
+		resp.Diagnostics.AddError("Sub-Policy Child Missing",
+			"The sub-policy still exists but its scope rule is missing. Reconcile the remote policy before applying changes.")
 		return
 	}
 
-	scopeState, diags := convertReadState(ctx, &state, info, scope)
-	resp.Diagnostics.Append(diags...)
-	scopeObj := convertReadState2(ctx, scope, &scopeState, &diags)
+	scopeObj, diags := convertReadState(ctx, &state, info, scope)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	state.Scope = scopeObj
 
+	// Cleanup rule: matched by stored id, falling back to the sub-policy's last
+	// rule — the fallback is what populates it on `terraform import`.
+	cleanup := wanCleanupRule(body, state.ID.ValueString(), state.CleanupRuleID.ValueString())
+	if cleanup == nil {
+		resp.Diagnostics.AddError("Sub-Policy Child Missing",
+			"The sub-policy still exists but its cleanup rule is missing. Reconcile the remote policy before applying changes.")
+		return
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &state, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.CleanupRule = cleanupObj
+
+	// `at` is input-only (the API never returns a position): preserve the stored
+	// value, defaulting a null one (fresh import) to LAST_IN_POLICY — the same
+	// normalization the cato_wf_rule Read applies.
+	if state.At.IsNull() || state.At.IsUnknown() {
+		atObj, atDiags := types.ObjectValue(policyrule.PositionAttrTypes, map[string]attr.Value{
+			"position": types.StringValue(string(cato_models.PolicySectionPositionEnumLastInPolicy)),
+			"ref":      types.StringNull(),
+		})
+		resp.Diagnostics.Append(atDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.At = atObj
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+//nolint:gocyclo,funlen // Validate scope and cleanup mutations together.
 func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan WanFirewallSubPolicy
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -174,7 +268,9 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	scopeRuleID := state.ScopeRuleID.ValueString()
 	plan.ID = state.ID
 	plan.ScopeRuleID = state.ScopeRuleID
+	plan.CleanupRuleID = state.CleanupRuleID
 
+	// name/description are RequiresReplace, so only the scope can change here.
 	scopeRule := wfrule.Rule{Rule: plan.Scope, At: plan.At}
 	hydrated, diags := wfrule.HydrateWanRuleAPI(ctx, scopeRule)
 	resp.Diagnostics.Append(diags...)
@@ -186,16 +282,60 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	hydrated.Update.Rule.Name = state.Name.ValueStringPointer()
 	hydrated.Update.Rule.Description = state.Description.ValueStringPointer()
 
-	updateResp, err := r.resourceAPI().PolicyWanFirewallUpdateRule(ctx, hydrated.Update, r.client.AccountId)
+	updateResp, err := r.resourceAPI().PolicyWanFirewallUpdateRule(
+		ctx,
+		hydrated.Update,
+		r.client.AccountId,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallUpdateRule error", err.Error())
 		return
 	}
-	if updateResp.Policy.WanFirewall.UpdateRule.Status != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range updateResp.Policy.WanFirewall.UpdateRule.GetErrors() {
-			resp.Diagnostics.AddError("API Error Updating Sub-Policy Scope", fmt.Sprintf("%s : %s", derefStr(e.ErrorCode), derefStr(e.ErrorMessage)))
-		}
+	mutationPayload := updateResp.GetPolicy().GetWanFirewall().GetUpdateRule()
+	if err := sharedpolicy.MutationResult(mutationPayload.GetStatus(), mutationPayload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Sub-Policy Rule Mutation Failed", err.Error())
 		return
+	}
+
+	// Apply cleanup rule changes in the same revision, before the single publish.
+	if !plan.CleanupRule.IsNull() && !plan.CleanupRule.IsUnknown() && !plan.CleanupRule.Equal(state.CleanupRule) {
+		cleanupID := state.CleanupRuleID.ValueString()
+		if cleanupID == "" {
+			// Legacy state (pre-cleanup_rule): resolve via the last-rule lookup.
+			body0, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
+			if err != nil {
+				resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
+				return
+			}
+			if cr := wanCleanupRule(body0, plan.ID.ValueString(), ""); cr != nil {
+				cleanupID = cr.GetID()
+			}
+		}
+		if cleanupID == "" {
+			resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule could not be resolved for update.")
+			return
+		}
+		cleanupRule := wfrule.Rule{Rule: plan.CleanupRule, At: plan.At}
+		hydratedCleanup, cuDiags := wfrule.HydrateWanRuleAPI(ctx, cleanupRule)
+		resp.Diagnostics.Append(cuDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		hydratedCleanup.Update.ID = cleanupID
+		cleanupUpdateResp, err := r.resourceAPI().PolicyWanFirewallUpdateRule(
+			ctx,
+			hydratedCleanup.Update,
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallUpdateRule error", err.Error())
+			return
+		}
+		mutationPayload := cleanupUpdateResp.GetPolicy().GetWanFirewall().GetUpdateRule()
+		if err := sharedpolicy.MutationResult(mutationPayload.GetStatus(), mutationPayload.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("Sub-Policy Rule Mutation Failed", err.Error())
+			return
+		}
 	}
 
 	if err := r.publish(ctx); err != nil {
@@ -203,24 +343,33 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
+	// Re-read scope for consistent state.
 	body, err := r.resourceAPI().PolicyWanFirewall(ctx, &cato_models.WanFirewallPolicyInput{}, r.client.AccountId)
 	if err != nil {
 		resp.Diagnostics.AddError("Catov2 API PolicyWanFirewall error", err.Error())
 		return
 	}
-	scope := wanScopeRule(body, plan.ID.ValueString())
-	if scope == nil {
-		resp.Diagnostics.AddError("Scope Rule Not Found", "Sub-policy scope rule not found after update.")
+	scopeObj := convertUpdateInput(ctx, plan, scopeRule, &diags, body, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	scopeState, diags := wfrule.HydrateWanRuleState(ctx, scopeRule, scope)
-	resp.Diagnostics.Append(diags...)
-	scopeObj := convertUpdateInput(ctx, &diags, scope, &scopeState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	plan.Scope = scopeObj
+
+	cleanup := wanCleanupRule(body, plan.ID.ValueString(), plan.CleanupRuleID.ValueString())
+	if cleanup == nil {
+		resp.Diagnostics.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule not found after update.")
+		return
+	}
+	cleanupObj, cuDiags := hydrateCleanupState(ctx, &plan, cleanup)
+	resp.Diagnostics.Append(cuDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.CleanupRule = cleanupObj
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
@@ -233,7 +382,11 @@ func (r *wfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 
 	removeInput := convertDeleteInput(state)
-	removeResp, err := r.resourceAPI().PolicyWanFirewallRemoveSubPolicy(ctx, removeInput, r.client.AccountId)
+	removeResp, err := r.resourceAPI().PolicyWanFirewallRemoveSubPolicy(
+		ctx,
+		removeInput,
+		r.client.AccountId,
+	)
 	tflog.Debug(ctx, "Delete.PolicyWanFirewallRemoveSubPolicy.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(removeResp),
 	})
@@ -242,13 +395,8 @@ func (r *wfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 	removePayload := removeResp.GetPolicy().GetWanFirewall().GetRemoveSubPolicy()
-	if removePayload.GetStatus() != nil && *removePayload.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-		for _, e := range removePayload.GetErrors() {
-			resp.Diagnostics.AddError(
-				"API Error Removing Sub-Policy",
-				fmt.Sprintf("%s : %s", derefStr(e.ErrorCode), derefStr(e.ErrorMessage)),
-			)
-		}
+	if err := sharedpolicy.MutationResult(removePayload.GetStatus(), removePayload.GetErrors()); err != nil {
+		resp.Diagnostics.AddError("Sub-Policy Mutation Failed", err.Error())
 		return
 	}
 
@@ -258,11 +406,15 @@ func (r *wfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 }
 
+// subPolicyScopeRuleType is the ruleType value the API assigns to the scope rule
+// that a sub-policy is created with.
+const subPolicyScopeRuleType = cato_models.PolicyRuleTypeEnumSubPolicyScope
+
 func (r *wfSubPolicyResource) publish(ctx context.Context) error {
-	_, err := r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(
-		ctx,
-		&cato_models.PolicyPublishRevisionInput{},
-		r.client.AccountId,
-	)
-	return err
+	response, err := r.resourceAPI().PolicyWanFirewallPublishPolicyRevision(ctx, &cato_models.PolicyPublishRevisionInput{}, r.client.AccountId)
+	if err != nil {
+		return err
+	}
+	payload := response.GetPolicy().GetWanFirewall().GetPublishPolicyRevision()
+	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
 }
