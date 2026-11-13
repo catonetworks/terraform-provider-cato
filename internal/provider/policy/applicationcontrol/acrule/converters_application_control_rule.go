@@ -1598,7 +1598,7 @@ func wanApplicationObjectFromApplicationRuleApplication(
 		"subnet":                   emptyStrList,
 		"ip_range":                 emptyIPRangeList,
 		"global_ip_range":          emptyNameIDSet,
-		"application_type": acApplicationTypeListValue(a.GetApplicationType(), diags),
+		"application_type":         acApplicationTypeListValue(a.GetApplicationType(), diags),
 	}
 	o, d := types.ObjectValue(acApplicationAttrTypes, attrs)
 	diags.Append(d...)

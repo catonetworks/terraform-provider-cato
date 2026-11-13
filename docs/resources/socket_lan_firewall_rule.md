@@ -328,7 +328,7 @@ resource "cato_socket_lan_firewall_rule" "kitchen_sink" {
 
 Required:
 
-- `position` (String) Position relative to the parent rule (FIRST_IN_RULE, LAST_IN_RULE, AFTER_RULE, BEFORE_RULE)
+- `position` (String) Position relative to the parent rule (FIRST_IN_RULE, LAST_IN_RULE, AFTER_SUB_RULE, BEFORE_SUB_RULE)
 - `ref` (String) The parent network rule ID or sibling firewall rule ID
 
 
@@ -378,8 +378,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Floating subnet ID
-- `name` (String) Floating subnet name
+- `id` (String) floating_subnet ID
+- `name` (String) floating_subnet name
 
 
 <a id="nestedatt--rule--destination--global_ip_range"></a>
@@ -387,8 +387,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Global IP range ID
-- `name` (String) Global IP range name
+- `id` (String) global_ip_range ID
+- `name` (String) global_ip_range name
 
 
 <a id="nestedatt--rule--destination--group"></a>
@@ -396,8 +396,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Group ID
-- `name` (String) Group name
+- `id` (String) group ID
+- `name` (String) group name
 
 
 <a id="nestedatt--rule--destination--host"></a>
@@ -405,8 +405,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Host ID
-- `name` (String) Host name
+- `id` (String) host ID
+- `name` (String) host name
 
 
 <a id="nestedatt--rule--destination--ip_range"></a>
@@ -423,8 +423,8 @@ Required:
 
 Optional:
 
-- `id` (String) Network interface ID
-- `name` (String) Network interface name
+- `id` (String) network_interface ID
+- `name` (String) network_interface name
 
 
 <a id="nestedatt--rule--destination--site"></a>
@@ -432,8 +432,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site ID
-- `name` (String) Site name
+- `id` (String) site ID
+- `name` (String) site name
 
 
 <a id="nestedatt--rule--destination--site_network_subnet"></a>
@@ -441,8 +441,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site network subnet ID
-- `name` (String) Site network subnet name
+- `id` (String) site_network_subnet ID
+- `name` (String) site_network_subnet name
 
 
 <a id="nestedatt--rule--destination--system_group"></a>
@@ -450,8 +450,8 @@ Optional:
 
 Optional:
 
-- `id` (String) System group ID
-- `name` (String) System group name
+- `id` (String) system_group ID
+- `name` (String) system_group name
 
 
 
@@ -479,8 +479,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Floating subnet ID
-- `name` (String) Floating subnet name
+- `id` (String) floating_subnet ID
+- `name` (String) floating_subnet name
 
 
 <a id="nestedatt--rule--source--global_ip_range"></a>
@@ -488,8 +488,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Global IP range ID
-- `name` (String) Global IP range name
+- `id` (String) global_ip_range ID
+- `name` (String) global_ip_range name
 
 
 <a id="nestedatt--rule--source--group"></a>
@@ -497,8 +497,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Group ID
-- `name` (String) Group name
+- `id` (String) group ID
+- `name` (String) group name
 
 
 <a id="nestedatt--rule--source--host"></a>
@@ -506,8 +506,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Host ID
-- `name` (String) Host name
+- `id` (String) host ID
+- `name` (String) host name
 
 
 <a id="nestedatt--rule--source--ip_range"></a>
@@ -524,8 +524,8 @@ Required:
 
 Optional:
 
-- `id` (String) Network interface ID
-- `name` (String) Network interface name
+- `id` (String) network_interface ID
+- `name` (String) network_interface name
 
 
 <a id="nestedatt--rule--source--site"></a>
@@ -533,8 +533,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site ID
-- `name` (String) Site name
+- `id` (String) site ID
+- `name` (String) site name
 
 
 <a id="nestedatt--rule--source--site_network_subnet"></a>
@@ -542,8 +542,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Site network subnet ID
-- `name` (String) Site network subnet name
+- `id` (String) site_network_subnet ID
+- `name` (String) site_network_subnet name
 
 
 <a id="nestedatt--rule--source--system_group"></a>
@@ -551,8 +551,8 @@ Optional:
 
 Optional:
 
-- `id` (String) System group ID
-- `name` (String) System group name
+- `id` (String) system_group ID
+- `name` (String) system_group name
 
 
 
@@ -591,8 +591,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Mailing List ID
-- `name` (String) Mailing List Name
+- `id` (String) mailing_list ID
+- `name` (String) mailing_list name
 
 
 <a id="nestedatt--rule--tracking--alert--subscription_group"></a>
@@ -600,8 +600,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Subscription Group ID
-- `name` (String) Subscription Group Name
+- `id` (String) subscription_group ID
+- `name` (String) subscription_group name
 
 
 <a id="nestedatt--rule--tracking--alert--webhook"></a>
@@ -609,8 +609,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Webhook ID
-- `name` (String) Webhook Name
+- `id` (String) webhook ID
+- `name` (String) webhook name
 
 
 
@@ -634,8 +634,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Application ID
-- `name` (String) Application name
+- `id` (String) application ID
+- `name` (String) application name
 
 
 <a id="nestedatt--rule--application--custom_app"></a>
@@ -643,8 +643,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Custom app ID
-- `name` (String) Custom app name
+- `id` (String) custom_app ID
+- `name` (String) custom_app name
 
 
 <a id="nestedatt--rule--application--global_ip_range"></a>
@@ -652,8 +652,8 @@ Optional:
 
 Optional:
 
-- `id` (String) Global IP range ID
-- `name` (String) Global IP range name
+- `id` (String) global_ip_range ID
+- `name` (String) global_ip_range name
 
 
 <a id="nestedatt--rule--application--ip_range"></a>
@@ -707,5 +707,5 @@ Required:
 
 Optional:
 
-- `id` (String) Service ID
-- `name` (String) Service name
+- `id` (String) standard ID
+- `name` (String) standard name
