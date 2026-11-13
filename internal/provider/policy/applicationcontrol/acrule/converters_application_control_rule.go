@@ -268,19 +268,10 @@ func hydrateACDataRuleAdd(
 	diags.Append(acFillCommonAdd(
 		ctx, p, &out.Schedule, &out.Source, &out.Tracking, &out.Device, &out.AccessMethod, &out.Application, &out.ActionConfig,
 	)...)
-	// dlpProfile is a non-nullable input, but EMPTY profile lists are valid —
-	// live tenants carry data rules with {contentProfile: [], edmProfile: []}
-	// (selection by activity/criteria only). Send an empty input when unset.
-	if p.DlpProfile.IsNull() || p.DlpProfile.IsUnknown() {
-		out.DlpProfile = &cato_models.ApplicationControlDlpProfileInput{
-			ContentProfile: []*cato_models.DlpContentProfileRefInput{},
-			EdmProfile:     []*cato_models.DlpEdmProfileRefInput{},
-		}
-	} else {
-		dlp, dlpDiags := acDlpProfileAdd(ctx, p.DlpProfile, diags)
-		diags.Append(dlpDiags...)
-		out.DlpProfile = dlp
-	}
+	dlp, dlpDiags := acDlpProfileAddOrEmpty(ctx, p.DlpProfile, diags)
+	diags.Append(dlpDiags...)
+	out.DlpProfile = dlp
+
 	if !p.FileAttribute.IsNull() && !p.FileAttribute.IsUnknown() {
 		out.FileAttribute, diags = acFileAttributesAdd(ctx, p.FileAttribute, diags)
 	}
@@ -2225,4 +2216,17 @@ func hydrateApplicationControlRuleStateFromClient(
 	}
 
 	return out, diags
+}
+
+func acDlpProfileAddOrEmpty(
+	ctx context.Context, value types.Object, diags diag.Diagnostics,
+) (*cato_models.ApplicationControlDlpProfileInput, diag.Diagnostics) {
+	// An omitted DLP profile still requires a non-null API input with empty lists.
+	if value.IsNull() || value.IsUnknown() {
+		return &cato_models.ApplicationControlDlpProfileInput{
+			ContentProfile: []*cato_models.DlpContentProfileRefInput{},
+			EdmProfile:     []*cato_models.DlpEdmProfileRefInput{},
+		}, nil
+	}
+	return acDlpProfileAdd(ctx, value, diags)
 }

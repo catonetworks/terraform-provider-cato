@@ -109,7 +109,9 @@ integration {
 updateWebhook(input: $updateWebhookInput) {
 webhook { id name } } } } }`
 
-const deleteDocument = `mutation notificationIntegrationDeleteWebhook($accountId: ID!, $webhookIntegrationRefInput: WebhookIntegrationRefInput!) {
+const deleteDocument = `mutation notificationIntegrationDeleteWebhook(
+  $accountId: ID!, $webhookIntegrationRefInput: WebhookIntegrationRefInput!
+) {
 notification(accountId: $accountId) {
 integration {
 deleteWebhook(input: $webhookIntegrationRefInput) {
@@ -166,7 +168,7 @@ func (c *sdkClient) NotificationIntegrationWebhook(
 	return result.Notification.Integration.Webhook, nil
 }
 
-func (c *sdkClient) WebhookIDByName(ctx context.Context, account, name string) (string, bool, error) {
+func (c *sdkClient) WebhookIDByName(ctx context.Context, account, name string) (id string, found bool, err error) {
 	list, err := c.client.Catov2.NotificationIntegrationWebhookList(ctx, account)
 	if err != nil {
 		return "", false, err

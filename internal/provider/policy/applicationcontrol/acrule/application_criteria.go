@@ -666,7 +666,7 @@ func acRefObjectPlanModifier() planmodifier.Object {
 	return acRefObjectModifier{inner: planmodifiers.IDNamePlanModifier()}
 }
 
-func (m acRefObjectModifier) Description(ctx context.Context) string {
+func (m acRefObjectModifier) Description(_ context.Context) string {
 	return "null config plans null; configured id/name refs resolve via the IDName modifier"
 }
 func (m acRefObjectModifier) MarkdownDescription(ctx context.Context) string {
@@ -687,7 +687,7 @@ func acRefSetPlanModifier() planmodifier.Set {
 	return acRefSetModifier{inner: planmodifiers.IDNameSetPlanModifier()}
 }
 
-func (m acRefSetModifier) Description(ctx context.Context) string {
+func (m acRefSetModifier) Description(_ context.Context) string {
 	return "null config plans null; configured id/name ref sets resolve via the IDNameSet modifier"
 }
 func (m acRefSetModifier) MarkdownDescription(ctx context.Context) string { return m.Description(ctx) }
