@@ -75,9 +75,6 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	preExisting := r.subPolicyIDsByName(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -114,9 +111,6 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 			"Recovered LAN sub-policy from unreadable addSubPolicy response",
 			fmt.Sprintf("policy.socketLan.addSubPolicy returned an unreadable payload for sub-policy '%s'; "+
 				"the created sub-policy (ID %s) was recovered by re-reading the policy.", plan.Name, policyID))
-	}
-	if resp.Diagnostics.HasError() {
-		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
@@ -291,9 +285,10 @@ func (r *lfSubPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	// Cleanup rule: matched positionally (the sub-policy's last rule) - the
-	// fallback is what populates it on `terraform import`.
-	r.reconcileCleanup(ctx, state.ID.ValueString(), types.ObjectNull(LanFirewallSubPolicyCleanupRuleTypes), hydratedState, false, &resp.Diagnostics)
+	// Preserve cleanup-rule identity across external reorders; use positional
+	// discovery only for an initial read or import.
+	r.reconcileCleanup(ctx, state.ID.ValueString(),
+		types.ObjectNull(LanFirewallSubPolicyCleanupRuleTypes), hydratedState, false, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -428,11 +423,11 @@ func (r *lfSubPolicyResource) reconcileCleanup(
 		return
 	}
 	policy := result.GetPolicy().GetSocketLan().GetPolicy()
-	cleanup := lanCleanupRule(policy, subPolicyID)
+	cleanup := lanCleanupRule(policy, subPolicyID, st.CleanupRuleID.ValueString())
 	if cleanup == nil {
 		// Only an error when the config actually manages the cleanup rule;
 		// otherwise surface it as informational and leave the fields null.
-		if apply && !desired.IsNull() && !desired.IsUnknown() {
+		if st.CleanupRuleID.ValueString() != "" || (apply && !desired.IsNull() && !desired.IsUnknown()) {
 			diags.AddError("Cleanup Rule Not Found",
 				"cleanup_rule is configured but no API-created cleanup rule was found for sub-policy "+subPolicyID+".")
 			return
@@ -463,7 +458,7 @@ func (r *lfSubPolicyResource) reconcileCleanup(
 				diags.AddError("failed to re-read sub-policy cleanup rule", err.Error())
 				return
 			}
-			cleanup = lanCleanupRule(result.GetPolicy().GetSocketLan().GetPolicy(), subPolicyID)
+			cleanup = lanCleanupRule(result.GetPolicy().GetSocketLan().GetPolicy(), subPolicyID, cleanup.GetID())
 			if cleanup == nil {
 				diags.AddError("Cleanup Rule Not Found", "Sub-policy cleanup rule not found after update.")
 				return

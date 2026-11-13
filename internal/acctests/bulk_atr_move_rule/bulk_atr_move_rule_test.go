@@ -30,7 +30,7 @@ func TestAccBulkAtrMoveRule(t *testing.T) {
 	ruleA := "acctest-bulk_atr_move_rule-A-" + name
 	ruleB := "acctest-bulk_atr_move_rule-B-" + name
 
-	ruleBlock := func(resName, ruleName string, first bool) string {
+	ruleBlock := func(resName, ruleName string, _ bool) string {
 		return strings.NewReplacer(
 			"${res}", resName,
 			"${rule_name}", ruleName,

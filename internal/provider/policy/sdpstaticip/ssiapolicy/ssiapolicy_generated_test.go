@@ -9,9 +9,9 @@ import (
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestSdpStaticIpAllocationPolicyMetadataAndSchema(t *testing.T) {
+func TestSdpStaticIPAllocationPolicyMetadataAndSchema(t *testing.T) {
 	t.Parallel()
-	r := NewSdpStaticIpAllocationPolicyResource()
+	r := NewSdpStaticIPAllocationPolicyResource()
 	meta := &resource.MetadataResponse{}
 	r.Metadata(context.Background(), resource.MetadataRequest{ProviderTypeName: "cato"}, meta)
 	if meta.TypeName != "cato_sdp_static_ip_allocation_policy" {
@@ -26,13 +26,13 @@ func TestSdpStaticIpAllocationPolicyMetadataAndSchema(t *testing.T) {
 	}
 }
 
-func TestSdpStaticIpAllocationPolicyUpdateInputMapsToggle(t *testing.T) {
+func TestSdpStaticIPAllocationPolicyUpdateInputMapsToggle(t *testing.T) {
 	t.Parallel()
-	in := convertUpdatePolicyValues(SdpStaticIpAllocationPolicyModel{Enabled: types.BoolValue(true)})
+	in := convertUpdatePolicyValues(SdpStaticIPAllocationPolicyModel{Enabled: types.BoolValue(true)})
 	if in.State == nil || *in.State != cato_models.PolicyToggleStateEnabled {
 		t.Fatalf("enabled=true mapped to %+v, want ENABLED", in.State)
 	}
-	in = convertUpdatePolicyValues(SdpStaticIpAllocationPolicyModel{Enabled: types.BoolValue(false)})
+	in = convertUpdatePolicyValues(SdpStaticIPAllocationPolicyModel{Enabled: types.BoolValue(false)})
 	if in.State == nil || *in.State != cato_models.PolicyToggleStateDisabled {
 		t.Fatalf("enabled=false mapped to %+v, want DISABLED", in.State)
 	}

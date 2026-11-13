@@ -218,6 +218,95 @@ func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallAddSubPolicy_Call) RunAndR
 	return _c
 }
 
+// PolicyWanFirewallMoveRule provides a mock function for the type WanFirewallSubPolicyClient
+func (_mock *WanFirewallSubPolicyClient) PolicyWanFirewallMoveRule(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallMoveRule, error) {
+	var tmpRet mock.Arguments
+	if len(interceptors) > 0 {
+		tmpRet = _mock.Called(ctx, policyMoveRuleInput, accountID, interceptors)
+	} else {
+		tmpRet = _mock.Called(ctx, policyMoveRuleInput, accountID)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for PolicyWanFirewallMoveRule")
+	}
+
+	var r0 *cato_go_sdk.PolicyWanFirewallMoveRule
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallMoveRule, error)); ok {
+		return returnFunc(ctx, policyMoveRuleInput, accountID, interceptors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicyWanFirewallMoveRule); ok {
+		r0 = returnFunc(ctx, policyMoveRuleInput, accountID, interceptors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cato_go_sdk.PolicyWanFirewallMoveRule)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) error); ok {
+		r1 = returnFunc(ctx, policyMoveRuleInput, accountID, interceptors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicyWanFirewallMoveRule'
+type WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call struct {
+	*mock.Call
+}
+
+// PolicyWanFirewallMoveRule is a helper method to define mock.On call
+//   - ctx context.Context
+//   - policyMoveRuleInput cato_models.PolicyMoveRuleInput
+//   - accountID string
+//   - interceptors ...clientv2.RequestInterceptor
+func (_e *WanFirewallSubPolicyClient_Expecter) PolicyWanFirewallMoveRule(ctx interface{}, policyMoveRuleInput interface{}, accountID interface{}, interceptors ...interface{}) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
+	return &WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call{Call: _e.mock.On("PolicyWanFirewallMoveRule",
+		append([]interface{}{ctx, policyMoveRuleInput, accountID}, interceptors...)...)}
+}
+
+func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call) Run(run func(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 cato_models.PolicyMoveRuleInput
+		if args[1] != nil {
+			arg1 = args[1].(cato_models.PolicyMoveRuleInput)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 []clientv2.RequestInterceptor
+		var variadicArgs []clientv2.RequestInterceptor
+		if len(args) > 3 {
+			variadicArgs = args[3].([]clientv2.RequestInterceptor)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
+	})
+	return _c
+}
+
+func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call) Return(policyWanFirewallMoveRule *cato_go_sdk.PolicyWanFirewallMoveRule, err error) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
+	_c.Call.Return(policyWanFirewallMoveRule, err)
+	return _c
+}
+
+func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call) RunAndReturn(run func(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallMoveRule, error)) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PolicyWanFirewallPublishPolicyRevision provides a mock function for the type WanFirewallSubPolicyClient
 func (_mock *WanFirewallSubPolicyClient) PolicyWanFirewallPublishPolicyRevision(ctx context.Context, policyPublishRevisionInput *cato_models.PolicyPublishRevisionInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallPublishPolicyRevision, error) {
 	var tmpRet mock.Arguments
@@ -430,40 +519,6 @@ func (_mock *WanFirewallSubPolicyClient) PolicyWanFirewallUpdateRule(ctx context
 	return r0, r1
 }
 
-// PolicyWanFirewallMoveRule provides a mock function for the type WanFirewallSubPolicyClient
-func (_mock *WanFirewallSubPolicyClient) PolicyWanFirewallMoveRule(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallMoveRule, error) {
-	var tmpRet mock.Arguments
-	if len(interceptors) > 0 {
-		tmpRet = _mock.Called(ctx, policyMoveRuleInput, accountID, interceptors)
-	} else {
-		tmpRet = _mock.Called(ctx, policyMoveRuleInput, accountID)
-	}
-	ret := tmpRet
-
-	if len(ret) == 0 {
-		panic("no return value specified for PolicyWanFirewallMoveRule")
-	}
-
-	var r0 *cato_go_sdk.PolicyWanFirewallMoveRule
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallMoveRule, error)); ok {
-		return returnFunc(ctx, policyMoveRuleInput, accountID, interceptors...)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) *cato_go_sdk.PolicyWanFirewallMoveRule); ok {
-		r0 = returnFunc(ctx, policyMoveRuleInput, accountID, interceptors...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*cato_go_sdk.PolicyWanFirewallMoveRule)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, cato_models.PolicyMoveRuleInput, string, ...clientv2.RequestInterceptor) error); ok {
-		r1 = returnFunc(ctx, policyMoveRuleInput, accountID, interceptors...)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
 // WanFirewallSubPolicyClient_PolicyWanFirewallUpdateRule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicyWanFirewallUpdateRule'
 type WanFirewallSubPolicyClient_PolicyWanFirewallUpdateRule_Call struct {
 	*mock.Call
@@ -515,61 +570,6 @@ func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallUpdateRule_Call) Return(po
 }
 
 func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallUpdateRule_Call) RunAndReturn(run func(ctx context.Context, wanFirewallUpdateRuleInput cato_models.WanFirewallUpdateRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallUpdateRule, error)) *WanFirewallSubPolicyClient_PolicyWanFirewallUpdateRule_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PolicyWanFirewallMoveRule'
-type WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call struct {
-	*mock.Call
-}
-
-// PolicyWanFirewallMoveRule is a helper method to define mock.On call
-//   - ctx context.Context
-//   - policyMoveRuleInput cato_models.PolicyMoveRuleInput
-//   - accountID string
-//   - interceptors ...clientv2.RequestInterceptor
-func (_e *WanFirewallSubPolicyClient_Expecter) PolicyWanFirewallMoveRule(ctx interface{}, policyMoveRuleInput interface{}, accountID interface{}, interceptors ...interface{}) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
-	return &WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call{Call: _e.mock.On("PolicyWanFirewallMoveRule",
-		append([]interface{}{ctx, policyMoveRuleInput, accountID}, interceptors...)...)}
-}
-
-func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call) Run(run func(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor)) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 cato_models.PolicyMoveRuleInput
-		if args[1] != nil {
-			arg1 = args[1].(cato_models.PolicyMoveRuleInput)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		var arg3 []clientv2.RequestInterceptor
-		var variadicArgs []clientv2.RequestInterceptor
-		if len(args) > 3 {
-			variadicArgs = args[3].([]clientv2.RequestInterceptor)
-		}
-		arg3 = variadicArgs
-		run(
-			arg0,
-			arg1,
-			arg2,
-			arg3...,
-		)
-	})
-	return _c
-}
-
-func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call) Return(policyWanFirewallUpdateRule *cato_go_sdk.PolicyWanFirewallMoveRule, err error) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
-	_c.Call.Return(policyWanFirewallUpdateRule, err)
-	return _c
-}
-
-func (_c *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call) RunAndReturn(run func(ctx context.Context, policyMoveRuleInput cato_models.PolicyMoveRuleInput, accountID string, interceptors ...clientv2.RequestInterceptor) (*cato_go_sdk.PolicyWanFirewallMoveRule, error)) *WanFirewallSubPolicyClient_PolicyWanFirewallMoveRule_Call {
 	_c.Call.Return(run)
 	return _c
 }

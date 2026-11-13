@@ -60,14 +60,15 @@ func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"scope": r.policyScopeSchema(),
 			"cleanup_rule_id": schema.StringAttribute{
-				Description:   "ID of the cleanup rule the API auto-created inside the sub-policy (positional identity: the sub-policy's last rule).",
+				Description:   "ID of the API-created cleanup rule, preserved across external reorders after initial discovery.",
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"cleanup_rule": schema.SingleNestedAttribute{
-				Description: "The sub-policy's cleanup rule - auto-created by the API with the sub-policy and managed as part of this resource. Omit to keep the API defaults.",
-				Optional:    true,
-				Computed:    true,
+				Description: "The API-created cleanup rule, managed as part of the sub-policy. " +
+					"Omit to keep the API defaults.",
+				Optional: true,
+				Computed: true,
 				PlanModifiers: []planmodifier.Object{
 					objectplanmodifier.UseStateForUnknown(),
 				},

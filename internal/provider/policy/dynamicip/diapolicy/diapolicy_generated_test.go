@@ -9,9 +9,9 @@ import (
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestDynamicIpAllocationPolicyMetadataAndSchema(t *testing.T) {
+func TestDynamicIPAllocationPolicyMetadataAndSchema(t *testing.T) {
 	t.Parallel()
-	r := NewDynamicIpAllocationPolicyResource()
+	r := NewDynamicIPAllocationPolicyResource()
 	meta := &resource.MetadataResponse{}
 	r.Metadata(context.Background(), resource.MetadataRequest{ProviderTypeName: "cato"}, meta)
 	if meta.TypeName != "cato_dynamic_ip_allocation_policy" {
@@ -26,13 +26,13 @@ func TestDynamicIpAllocationPolicyMetadataAndSchema(t *testing.T) {
 	}
 }
 
-func TestDynamicIpAllocationPolicyUpdateInputMapsToggle(t *testing.T) {
+func TestDynamicIPAllocationPolicyUpdateInputMapsToggle(t *testing.T) {
 	t.Parallel()
-	in := convertUpdatePolicyValues(DynamicIpAllocationPolicyModel{Enabled: types.BoolValue(true)})
+	in := convertUpdatePolicyValues(DynamicIPAllocationPolicyModel{Enabled: types.BoolValue(true)})
 	if in.State == nil || *in.State != cato_models.PolicyToggleStateEnabled {
 		t.Fatalf("enabled=true mapped to %+v, want ENABLED", in.State)
 	}
-	in = convertUpdatePolicyValues(DynamicIpAllocationPolicyModel{Enabled: types.BoolValue(false)})
+	in = convertUpdatePolicyValues(DynamicIPAllocationPolicyModel{Enabled: types.BoolValue(false)})
 	if in.State == nil || *in.State != cato_models.PolicyToggleStateDisabled {
 		t.Fatalf("enabled=false mapped to %+v, want DISABLED", in.State)
 	}

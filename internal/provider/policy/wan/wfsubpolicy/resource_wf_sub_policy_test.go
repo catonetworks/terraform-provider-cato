@@ -3,9 +3,9 @@ package wfsubpolicy
 import (
 	"context"
 	"encoding/json"
-	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	"testing"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -500,7 +500,7 @@ func TestWfSubPolicyUpdateAtChangeMovesScope(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyWanFirewallMoveRule(mock.Anything, mock.Anything, "account-123").
-		Run(func(ctx context.Context, in cato_models.PolicyMoveRuleInput, accountID string, _ ...clientv2.RequestInterceptor) {
+		Run(func(_ context.Context, in cato_models.PolicyMoveRuleInput, _ string, _ ...clientv2.RequestInterceptor) {
 			if in.ID != "scope-1" {
 				t.Fatalf("moveRule targeted %q, want scope-1", in.ID)
 			}
@@ -512,9 +512,9 @@ func TestWfSubPolicyUpdateAtChangeMovesScope(t *testing.T) {
 	mockClient.EXPECT().PolicyWanFirewallUpdateRule(mock.Anything, mock.Anything, "account-123").
 		Return(wfrule.SuccessfulUpdateRuleResponse("scope-1"), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
-		Return(nil, nil).Once()
+		Return(successfulSubPolicyPublish(t), nil).Once()
 	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
-		Return(ifSubPolicyResponse("sub-1", "test-sub", "desc", "scope-1", "scope-name"), nil).Once()
+		Return(ifSubPolicyResponse("test-sub", "desc", "scope-name"), nil).Once()
 
 	m := newIfSubPolicyModel("sub-1")
 	m.ScopeRuleID = types.StringValue("scope-1")

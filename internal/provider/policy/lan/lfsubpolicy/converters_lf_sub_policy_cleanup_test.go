@@ -7,7 +7,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 )
 
-// The cleanup rule is ALWAYS the sub-policy's LAST rule (max index), with the
+// Initial cleanup discovery selects the sub-policy's LAST rule (max index), with the
 // SUB_POLICY_SCOPE row and other sub-policies' rules excluded.
 func TestLanCleanupRulePositionalSelection(t *testing.T) {
 	scopeType := cato_models.PolicyRuleTypeEnumSubPolicyScope
@@ -29,11 +29,20 @@ func TestLanCleanupRulePositionalSelection(t *testing.T) {
 			mk("other", 9, "sub-2", ruleType),
 		},
 	}
-	got := lanCleanupRule(policy, "sub-1")
+	got := lanCleanupRule(policy, "sub-1", "")
 	if got == nil || got.GetID() != "last" {
 		t.Fatalf("lanCleanupRule = %+v, want rule id last", got)
 	}
-	if lanCleanupRule(policy, "missing") != nil {
+	if got := lanCleanupRule(policy, "sub-1", "mid"); got == nil || got.GetID() != "mid" {
+		t.Fatal("external reorder must preserve tracked cleanup identity")
+	}
+	if lanCleanupRule(policy, "sub-1", "deleted") != nil {
+		t.Fatal("missing tracked cleanup must not adopt a different rule")
+	}
+	if lanCleanupRule(policy, "sub-1", "other") != nil {
+		t.Fatal("tracked cleanup must belong to the requested sub-policy")
+	}
+	if lanCleanupRule(policy, "missing", "") != nil {
 		t.Fatal("expected nil for unknown sub-policy")
 	}
 }

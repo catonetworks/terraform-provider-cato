@@ -296,13 +296,8 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 		mv := moveResp.GetPolicy().GetWanFirewall().GetMoveRule()
-		if mv.GetStatus() == nil || *mv.GetStatus() != cato_models.PolicyMutationStatusSuccess {
-			for _, e := range mv.GetErrors() {
-				resp.Diagnostics.AddError(
-					"API Error Moving Sub-Policy Scope",
-					fmt.Sprintf("%s : %s", derefStr(e.ErrorCode), derefStr(e.ErrorMessage)),
-				)
-			}
+		if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("API Error Moving Sub-Policy Scope", err.Error())
 			return
 		}
 	}

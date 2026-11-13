@@ -11,14 +11,11 @@ import (
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
-// lanCleanupRule returns the sub-policy's cleanup rule: ALWAYS the LAST rule
-// (max rule.index) inside the sub-policy, excluding the SUB_POLICY_SCOPE row.
-// The API auto-creates the cleanup rule at the bottom; its identity follows
-// the position, so every read/update re-resolves it (this is also what
-// populates the cleanup on `terraform import`).
+// lanCleanupRule preserves a previously discovered cleanup rule by ID. Only
+// initial discovery/import falls back to the last rule inside the sub-policy.
 func lanCleanupRule(
 	policy *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy,
-	subID string,
+	subID, trackedID string,
 ) *cato_go_sdk.PolicySocketLanPolicy_Policy_SocketLan_Policy_Rules_Rule {
 	if policy == nil || subID == "" {
 		return nil
@@ -33,6 +30,12 @@ func lanCleanupRule(
 			continue
 		}
 		rule := rp.GetRule()
+		if trackedID != "" {
+			if rule.GetID() == trackedID {
+				return rule
+			}
+			continue
+		}
 		if last == nil || rule.GetIndex() > last.GetIndex() {
 			last = rule
 		}

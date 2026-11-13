@@ -3,9 +3,9 @@ package ifsubpolicy
 import (
 	"context"
 	"encoding/json"
-	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	"testing"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -521,7 +521,7 @@ func TestIfSubPolicyUpdateAtChangeMovesScope(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallSubPolicyClient(t)
 	mockClient.EXPECT().PolicyInternetFirewallMoveRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
-		Run(func(ctx context.Context, mutIn *cato_models.InternetFirewallPolicyMutationInput, in cato_models.PolicyMoveRuleInput, accountID string, _ ...clientv2.RequestInterceptor) {
+		Run(func(_ context.Context, _ *cato_models.InternetFirewallPolicyMutationInput, in cato_models.PolicyMoveRuleInput, _ string, _ ...clientv2.RequestInterceptor) {
 			if in.ID != "scope-1" {
 				t.Fatalf("moveRule targeted %q, want scope-1", in.ID)
 			}
