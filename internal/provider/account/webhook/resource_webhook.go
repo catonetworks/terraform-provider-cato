@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	m "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	m "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 )
 
@@ -60,6 +60,7 @@ func (r *webhookResource) Configure(_ context.Context, req resource.ConfigureReq
 func (r *webhookResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
+
 // resolveRelatedWebhookRefToID rewrites a related_webhook_ref given by NAME into
 // a by-ID ref (the backend's by-NAME relatedWebhookRef resolver is unreliable --
 // it reports an existing webhook "not found" -- while by-ID always resolves,

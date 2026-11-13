@@ -29,6 +29,7 @@ func (r *subscriptionGroupResource) Schema(_ context.Context, _ resource.SchemaR
 		},
 	}
 }
+
 // Modeled as a List (not a Set): elements accept name-only references whose Computed
 // `id` is Unknown at plan time. Terraform correlates List elements by index, so an
 // Unknown nested value resolves cleanly after apply (including the first create, when

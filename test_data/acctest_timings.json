@@ -258,6 +258,10 @@
     "wan_network_section": {
       "seconds": 5.09
     },
+    "webhook": {
+      "seconds": 15.0,
+      "measurement_status": "estimated_unmeasured"
+    },
     "wf_rule": {
       "seconds": 5.1
     },

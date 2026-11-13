@@ -6,14 +6,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"testing"
 
 	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/acctests/acc"
-
-	"testing"
 )
 
 // checkDestroyedDocument deliberately never selects `auth` (see
