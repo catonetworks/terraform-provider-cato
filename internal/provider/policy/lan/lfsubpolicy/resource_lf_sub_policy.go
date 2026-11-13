@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	diag "github.com/hashicorp/terraform-plugin-framework/diag"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/vektah/gqlparser/v2/ast"
 
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
@@ -75,42 +78,9 @@ func (r *lfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	preExisting := r.subPolicyIDsByName(ctx, &resp.Diagnostics)
+	policyID, recovered := r.addSubPolicy(ctx, input, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-	result, err := r.resourceAPI().PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
-	subpol := result.GetPolicy().GetSocketLan().GetAddSubPolicy()
-	var addDiags diag.Diagnostics
-	var policyID string
-	if !utils.CheckAPIErrors(err, subpol.GetErrors(),
-		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &addDiags) {
-		policyID = convertCreateInput2(&plan, subpol, &addDiags)
-	}
-	recovered := false
-	if policyID == "" {
-		// socketLan.addSubPolicy can violate its own response contract: the
-		// resolver returns null for the non-nullable policy.rules field, which
-		// nulls the whole socketLan payload (policy-platform
-		// DOWNSTREAM_SERVICE_ERROR) even though the sub-policy was created.
-		// Recover by publishing, re-reading the policy, and locating the new
-		// sub-policy by name among those that did not exist before the add.
-		var pubDiags diag.Diagnostics
-		r.publish(ctx, &pubDiags)
-		if !pubDiags.HasError() {
-			policyID = r.findCreatedSubPolicyID(ctx, plan.Name.ValueString(), preExisting, &pubDiags)
-		}
-		if policyID == "" || pubDiags.HasError() {
-			resp.Diagnostics.Append(addDiags...)
-			resp.Diagnostics.Append(pubDiags...)
-			return
-		}
-		recovered = true
-		plan.ID = types.StringValue(policyID)
-		resp.Diagnostics.AddWarning(
-			"Recovered LAN sub-policy from unreadable addSubPolicy response",
-			fmt.Sprintf("policy.socketLan.addSubPolicy returned an unreadable payload for sub-policy '%s'; "+
-				"the created sub-policy (ID %s) was recovered by re-reading the policy.", plan.Name, policyID))
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
@@ -249,7 +219,8 @@ func (r *lfSubPolicyResource) Delete(ctx context.Context, req resource.DeleteReq
 				alreadyRemoved = true
 			}
 		}
-		if !alreadyRemoved && !r.confirmSubPolicyRemoved(ctx, state.ID.ValueString()) {
+		if !alreadyRemoved && (!unreadableSocketLanMutation(err, "removeSubPolicy") ||
+			!r.confirmSubPolicyRemoved(ctx, state.ID.ValueString())) {
 			resp.Diagnostics.Append(removeDiags...)
 			return
 		}
@@ -541,4 +512,77 @@ func (r *lfSubPolicyResource) publish(ctx context.Context, diags *diag.Diagnosti
 		return
 	}
 	checkPolicyMutationStatus(publish.GetStatus(), summary, diags)
+}
+
+func (r *lfSubPolicyResource) addSubPolicy(
+	ctx context.Context,
+	input cato_models.SocketLanAddSubPolicyInput,
+	plan *LanFirewallSubPolicy,
+	diags *diag.Diagnostics,
+) (string, bool) {
+	preExisting := r.subPolicyIDsByName(ctx, diags)
+	if diags.HasError() {
+		return "", false
+	}
+	result, err := r.resourceAPI().PolicySocketLanAddSubPolicy(ctx, input, r.client.AccountId)
+	subpol := result.GetPolicy().GetSocketLan().GetAddSubPolicy()
+	var addDiags diag.Diagnostics
+	var policyID string
+	if !utils.CheckAPIErrors(err, subpol.GetErrors(),
+		fmt.Sprintf("failed to add LAN sub-policy '%s'", plan.Name), &addDiags) {
+		policyID = convertCreateInput2(plan, subpol, &addDiags)
+	}
+	recovered := false
+	if policyID == "" {
+		if !unreadableSocketLanMutation(err, "addSubPolicy") {
+			diags.Append(addDiags...)
+			return "", false
+		}
+		// socketLan.addSubPolicy can violate its own response contract: the
+		// resolver returns null for the non-nullable policy.rules field, which
+		// nulls the whole socketLan payload (policy-platform
+		// DOWNSTREAM_SERVICE_ERROR) even though the sub-policy was created.
+		// Recover by publishing, re-reading the policy, and locating the new
+		// sub-policy by name among those that did not exist before the add.
+		var pubDiags diag.Diagnostics
+		r.publish(ctx, &pubDiags)
+		if !pubDiags.HasError() {
+			policyID = r.findCreatedSubPolicyID(ctx, plan.Name.ValueString(), preExisting, &pubDiags)
+		}
+		if policyID == "" || pubDiags.HasError() {
+			diags.Append(addDiags...)
+			diags.Append(pubDiags...)
+			return "", false
+		}
+		recovered = true
+		plan.ID = types.StringValue(policyID)
+		diags.AddWarning(
+			"Recovered LAN sub-policy from unreadable addSubPolicy response",
+			fmt.Sprintf("policy.socketLan.addSubPolicy returned an unreadable payload for sub-policy '%s'; "+
+				"the created sub-policy (ID %s) was recovered by re-reading the policy.", plan.Name, policyID))
+	}
+	return policyID, recovered
+}
+
+// Recovery may publish the pending revision. Only the known structured null
+// payload failure proves recovery is appropriate; ordinary failures must stop.
+func unreadableSocketLanMutation(err error, operation string) bool {
+	var response *clientv2.ErrorResponse
+	if !errors.As(err, &response) || response.NetworkError != nil || response.GqlErrors == nil || len(*response.GqlErrors) == 0 {
+		return false
+	}
+	for _, item := range *response.GqlErrors {
+		if item == nil || len(item.Path) < 2 || item.Path[0] != ast.PathName("policy") || item.Path[1] != ast.PathName("socketLan") {
+			return false
+		}
+		message := strings.ToLower(item.Message)
+		if !strings.Contains(message, "non null") && !strings.Contains(message, "non-null") {
+			return false
+		}
+		if (len(item.Path) < 3 || item.Path[2] != ast.PathName(operation)) &&
+			!strings.Contains(item.Message, "/policy/socketLan/"+operation+"/") {
+			return false
+		}
+	}
+	return true
 }

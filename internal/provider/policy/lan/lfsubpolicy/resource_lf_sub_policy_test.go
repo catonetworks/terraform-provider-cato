@@ -2,6 +2,7 @@ package lfsubpolicy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -209,7 +210,7 @@ func TestLfSubPolicyCreateRecoversFromAddSubPolicyError(t *testing.T) {
 		},
 	}
 	client := &lfSubPolicyFakeClient{
-		addErr:        errors.New("graphql: The field at path '/policy/socketLan/addSubPolicy/policy/rules' was declared as a non null type"),
+		addErr:        unreadableAddSubPolicyError(t),
 		policyResults: []*cato_go_sdk.PolicySocketLanPolicy{nil, policyWithSubPolicy},
 	}
 	res := &lfSubPolicyResource{
@@ -243,7 +244,7 @@ func TestLfSubPolicyCreateReportsAddErrorWhenRecoveryFindsNothing(t *testing.T) 
 	resourceSchema := lfSubPolicySchema(ctx, t)
 	plan := tfsdk.Plan{Schema: resourceSchema}
 	require.False(t, plan.Set(ctx, lfSubPolicyPlan()).HasError())
-	client := &lfSubPolicyFakeClient{addErr: errors.New("DOWNSTREAM_SERVICE_ERROR")}
+	client := &lfSubPolicyFakeClient{addErr: unreadableAddSubPolicyError(t)}
 	res := &lfSubPolicyResource{
 		client:          &catoclient.Service{AccountId: "account-123"},
 		subPolicyClient: client,
@@ -505,4 +506,31 @@ func (c *lfSubPolicyFakeClient) PolicySocketLanPublishPolicyRevision(
 			},
 		},
 	}, nil
+}
+
+func unreadableAddSubPolicyError(t *testing.T) error {
+	t.Helper()
+	var response clientv2.ErrorResponse
+	require.NoError(t, json.Unmarshal([]byte(`{"graphqlErrors":[{"message":"The field at path '/policy/socketLan/addSubPolicy/policy/rules' was declared as a non null type","path":["policy","socketLan","addSubPolicy","policy","rules"],"extensions":{"code":"DOWNSTREAM_SERVICE_ERROR"}}]}`), &response))
+	return &response
+}
+
+func TestSocketLanRecoveryRequiresSpecificNullResponse(t *testing.T) {
+	require.True(t, unreadableSocketLanMutation(unreadableAddSubPolicyError(t), "addSubPolicy"))
+	require.False(t, unreadableSocketLanMutation(unreadableAddSubPolicyError(t), "removeSubPolicy"))
+	for _, err := range []error{nil, errors.New("permission denied"), errors.New("network timeout")} {
+		require.False(t, unreadableSocketLanMutation(err, "addSubPolicy"))
+	}
+}
+
+func TestAddSubPolicyDoesNotPublishAfterOrdinaryError(t *testing.T) {
+	client := &lfSubPolicyFakeClient{addErr: errors.New("permission denied")}
+	r := &lfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolicyClient: client}
+	var diags diag.Diagnostics
+	plan := LanFirewallSubPolicy{Name: types.StringValue("acctest-sub-policy")}
+	id, recovered := r.addSubPolicy(context.Background(), cato_models.SocketLanAddSubPolicyInput{}, &plan, &diags)
+	require.Empty(t, id)
+	require.False(t, recovered)
+	require.True(t, diags.HasError())
+	require.Equal(t, []string{"policy", "add"}, client.calls)
 }
