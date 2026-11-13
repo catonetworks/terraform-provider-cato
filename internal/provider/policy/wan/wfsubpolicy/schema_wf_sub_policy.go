@@ -163,14 +163,13 @@ func (r *wfSubPolicyResource) Schema(ctx context.Context, _ resource.SchemaReque
 }
 
 // wfSubPolicyAtAttribute defines the position of the sub-policy scope within the
-// main policy. Like the standard cato_wf_rule `at`, it is an input-only
-// placement parameter: the API never returns a position, Read preserves the
-// stored value instead of reconciling it, and changing it is a no-op in-place
-// update (actual ordering is owned by cato_bulk_wf_move_rule).
+// main policy. Changes move the scope rule in place. The API does not return
+// relative placement, so Read preserves the last applied value.
 func wfSubPolicyAtAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		Description: "Position of the sub-policy scope within the WAN Firewall policy. " +
-			"Input-only placement used at creation; ongoing ordering is managed by cato_bulk_wf_move_rule.",
+			"Changes move the scope rule without replacing the sub-policy. Refresh preserves the last applied placement. " +
+			"When cato_bulk_wf_move_rule owns ordering, keep at unchanged to avoid conflicting moves.",
 		Required: true,
 		Attributes: map[string]schema.Attribute{
 			"position": schema.StringAttribute{

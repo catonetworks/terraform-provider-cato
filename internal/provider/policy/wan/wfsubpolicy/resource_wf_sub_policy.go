@@ -9,6 +9,7 @@ import (
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
 	types "github.com/hashicorp/terraform-plugin-framework/types"
+	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
 	wfrule "github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
@@ -269,6 +270,37 @@ func (r *wfSubPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	plan.ID = state.ID
 	plan.ScopeRuleID = state.ScopeRuleID
 	plan.CleanupRuleID = state.CleanupRuleID
+
+	// `at` is an input-only placement hint on create/read, but when it CHANGES
+	// the scope rule must actually move — the same contract as cato_wf_rule and
+	// cato_wf_section, whose Updates reposition via moveRule/moveSection.
+	if !plan.At.IsNull() && !plan.At.IsUnknown() && !plan.At.Equal(state.At) {
+		pos := policyrule.Position{}
+		resp.Diagnostics.Append(plan.At.As(ctx, &pos, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		moveResp, err := r.resourceAPI().PolicyWanFirewallMoveRule(
+			ctx,
+			cato_models.PolicyMoveRuleInput{
+				ID: scopeRuleID,
+				To: &cato_models.PolicyRulePositionInput{
+					Position: (*cato_models.PolicyRulePositionEnum)(pos.Position.ValueStringPointer()),
+					Ref:      pos.Ref.ValueStringPointer(),
+				},
+			},
+			r.client.AccountId,
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API PolicyWanFirewallMoveRule error", err.Error())
+			return
+		}
+		mv := moveResp.GetPolicy().GetWanFirewall().GetMoveRule()
+		if err := sharedpolicy.MutationResult(mv.GetStatus(), mv.GetErrors()); err != nil {
+			resp.Diagnostics.AddError("API Error Moving Sub-Policy Scope", err.Error())
+			return
+		}
+	}
 
 	// name/description are RequiresReplace, so only the scope can change here.
 	scopeRule := wfrule.Rule{Rule: plan.Scope, At: plan.At}

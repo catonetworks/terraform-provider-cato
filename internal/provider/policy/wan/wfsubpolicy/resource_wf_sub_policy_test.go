@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	clientv2 "github.com/Yamashou/gqlgenc/clientv2"
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -489,5 +490,59 @@ func TestMissingTrackedCleanupPreservesSubPolicyState(t *testing.T) {
 	}
 	if !state.Raw.Equal(response.State.Raw) {
 		t.Fatal("existing sub-policy state must not be removed")
+	}
+}
+
+// Changing `at` must reposition the scope rule via moveRule — the same
+// contract as cato_wf_rule/cato_wf_section (input-only on read, applied on
+// update when modified).
+func TestWfSubPolicyUpdateAtChangeMovesScope(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewWanFirewallSubPolicyClient(t)
+	mockClient.EXPECT().PolicyWanFirewallMoveRule(mock.Anything, mock.Anything, "account-123").
+		Run(func(_ context.Context, in cato_models.PolicyMoveRuleInput, _ string, _ ...clientv2.RequestInterceptor) {
+			if in.ID != "scope-1" {
+				t.Fatalf("moveRule targeted %q, want scope-1", in.ID)
+			}
+			if in.To == nil || in.To.Position == nil || *in.To.Position != cato_models.PolicyRulePositionEnumFirstInPolicy {
+				t.Fatalf("moveRule position = %+v, want FIRST_IN_POLICY", in.To)
+			}
+		}).
+		Return(wfMoveRuleResponse(cato_models.PolicyMutationStatusSuccess), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewallUpdateRule(mock.Anything, mock.Anything, "account-123").
+		Return(wfrule.SuccessfulUpdateRuleResponse("scope-1"), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewallPublishPolicyRevision(mock.Anything, mock.Anything, "account-123").
+		Return(successfulSubPolicyPublish(t), nil).Once()
+	mockClient.EXPECT().PolicyWanFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(ifSubPolicyResponse("test-sub", "desc", "scope-name"), nil).Once()
+
+	m := newIfSubPolicyModel("sub-1")
+	m.ScopeRuleID = types.StringValue("scope-1")
+	m.At = types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
+		"position": types.StringValue("FIRST_IN_POLICY"),
+		"ref":      types.StringNull(),
+	})
+	plan := tfsdk.Plan{Schema: getIfSubPolicySchema(ctx, t)}
+	if diags := plan.Set(ctx, m); diags.HasError() {
+		t.Fatalf("unexpected plan diagnostics: %+v", diags)
+	}
+
+	r := &wfSubPolicyResource{client: &catoclient.Service{AccountId: "account-123"}, subPolyClient: mockClient}
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: getIfSubPolicySchema(ctx, t)}}
+	r.Update(ctx, resource.UpdateRequest{Plan: plan, State: newIfSubPolicyStateWithID(ctx, t)}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
+}
+
+func wfMoveRuleResponse(status cato_models.PolicyMutationStatus) *cato_go_sdk.PolicyWanFirewallMoveRule {
+	return &cato_go_sdk.PolicyWanFirewallMoveRule{
+		Policy: cato_go_sdk.PolicyWanFirewallMoveRule_Policy{
+			WanFirewall: &cato_go_sdk.PolicyWanFirewallMoveRule_Policy_WanFirewall{
+				MoveRule: cato_go_sdk.PolicyWanFirewallMoveRule_Policy_WanFirewall_MoveRule{
+					Status: status,
+				},
+			},
+		},
 	}
 }
