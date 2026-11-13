@@ -326,3 +326,9 @@ packages:
         config:
           filename: WanFirewallRuleClient.go
           structname: WanFirewallRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/allocatedip:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AllocatedIPResourceClient.go
+          structname: AllocatedIPResourceClient

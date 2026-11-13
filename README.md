@@ -52,13 +52,12 @@ export CATO_RETRY_WAIT_MAX_SECONDS="30"
 
 ### Authentication
 
-The provider supports two ways to authenticate, resolved in this order (first match wins, per field):
+Choose one authentication method:
 
-1. **Explicit configuration** — `token` and `account_id` (and optionally `baseurl`) set directly in the `provider` block. This is the existing behavior and always wins.
-2. **Environment variables** — `CATO_TOKEN` and `CATO_BASEURL` fill in those two fields when left unset in the provider block, exactly as before. (There is no `CATO_ACCOUNT_ID` environment variable — set `account_id` in the provider block, or use a profile below.)
-3. **catocli profile** — new. If `profile` is set in the provider block (or `CATO_PROFILE` is set in the environment) and `token`, `account_id`, or `baseurl` are still unresolved after steps 1–2, the provider looks up that profile's section in the catocli credentials file (`~/.cato/credentials` by default — the same AWS-CLI-style file `catocli configure set` writes) and uses its `cato_token`, `account_id`, and `endpoint` values to fill in whatever is still missing. Explicit values always take precedence; profile values never override them.
+1. **Explicit credentials:** set `token` and `account_id` in the provider block, or use `CATO_TOKEN` and `CATO_ACCOUNT_ID`. Configure `baseurl` in the provider block or through `CATO_BASEURL`. Provider attributes override their environment values.
+2. **catocli profile:** set `profile` in the provider block or `CATO_PROFILE` in the environment. The provider reads `cato_token`, `account_id`, and `endpoint` from that profile in `~/.cato/credentials`. Override the file path with `CATO_CREDENTIALS_FILE`. A selected profile overrides ambient credential environment variables; an explicit `baseurl` attribute overrides its endpoint.
 
-If nothing resolves from any of the above, `terraform plan`/`apply` fails with a single error listing all three options.
+A selected profile cannot be combined with `token` or `account_id` attributes in the provider block. This produces a diagnostic instead of silently switching accounts. For CI, use explicit credentials through environment variables and leave `CATO_PROFILE` unset.
 
 ```hcl
 # explicit (unchanged)

@@ -113,7 +113,7 @@ func (r *allocatedIPResource) findAllocation(ctx context.Context, ip, id string,
 
 // findByIdentity returns a live allocation matching (pop_location_name,
 // description) -- the cross-tenant identity pair -- or nil.
-func (r *allocatedIPResource) findByIdentity(ctx context.Context, popLocation, description string,
+func (r *allocatedIPResource) findByIdentity(ctx context.Context, popLocation, description, allocationType string,
 ) (*cato.PopLocationsAllocatedIpList_PopLocations_AllocatedIPList_AllocatedIP, error) {
 	result, err := r.resourceAPI().AllocatedIPList(ctx, r.client.AccountId,
 		&cato_models.PopLocationAllocatedIPInput{})
@@ -124,6 +124,7 @@ func (r *allocatedIPResource) findByIdentity(ctx context.Context, popLocation, d
 	if list == nil {
 		return nil, nil
 	}
+	var match *cato.PopLocationsAllocatedIpList_PopLocations_AllocatedIPList_AllocatedIP
 	for _, item := range list.AllocatedIP {
 		if item == nil {
 			continue
@@ -132,11 +133,14 @@ func (r *allocatedIPResource) findByIdentity(ctx context.Context, popLocation, d
 		if item.GetDescription() != nil {
 			itemDesc = *item.GetDescription()
 		}
-		if item.GetPopLocation().GetName() == popLocation && itemDesc == description {
-			return item, nil
+		if item.GetPopLocation().GetName() == popLocation && itemDesc == description && string(item.AllocationType) == allocationType {
+			if match != nil {
+				return nil, fmt.Errorf("multiple allocations match PoP %q, description and type; import the intended IP explicitly", popLocation)
+			}
+			match = item
 		}
 	}
-	return nil, nil
+	return match, nil
 }
 
 func (r *allocatedIPResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -151,8 +155,13 @@ func (r *allocatedIPResource) Create(ctx context.Context, req resource.CreateReq
 	// finite pool and Cato assigns the IPs, so re-allocating on every greenfield
 	// run would exhaust the license (or fail once it is exhausted). Adopt the
 	// existing allocation instead of allocating a duplicate.
-	existing, identityErr := r.findByIdentity(ctx, plan.PopLocationName.ValueString(), plan.Description.ValueString())
-	if identityErr == nil && existing != nil {
+	existing, identityErr := r.findByIdentity(ctx, plan.PopLocationName.ValueString(),
+		plan.Description.ValueString(), plan.Type.ValueString())
+	if identityErr != nil {
+		resp.Diagnostics.AddError("Failed to check existing allocated IPs", identityErr.Error())
+		return
+	}
+	if existing != nil {
 		tflog.Info(ctx, "adopting existing allocated IP with matching (popLocation, description)",
 			map[string]interface{}{"ip": existing.GetIP(), "id": existing.GetID()})
 		plan.ID = types.StringValue(existing.GetID())
