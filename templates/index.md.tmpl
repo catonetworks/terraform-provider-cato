@@ -17,13 +17,12 @@ Use the navigation to the left to read about the available resources.
 
 ## Authentication
 
-The provider supports two authentication methods, resolved in this order (first match wins, per field):
+Choose one authentication method:
 
-1. **Explicit configuration** -- `token` and `account_id` (and optionally `baseurl`) set directly in the `provider` block.
-2. **Environment variables** -- `CATO_TOKEN` and `CATO_BASEURL` fill in any of those two fields left unset in the provider block. (`account_id` has no equivalent environment variable; set it in the provider block or via a profile.)
-3. **catocli profile** -- if `profile` is set in the provider block (or the `CATO_PROFILE` environment variable is set) and any of `token`, `account_id`, or `baseurl` are still unresolved after steps 1 and 2, the provider reads the named section of the catocli credentials file (`~/.cato/credentials` by default) and uses its `cato_token`, `account_id`, and `endpoint` values to fill in whatever is still missing. Explicit values from steps 1-2 always win over profile values. Override the credentials file path with the `CATO_CREDENTIALS_FILE` environment variable.
+1. **Explicit credentials:** set `token` and `account_id` in the provider block, or use `CATO_TOKEN` and `CATO_ACCOUNT_ID`. Configure `baseurl` in the provider block or through `CATO_BASEURL`. Provider attributes override their environment values.
+2. **catocli profile:** set `profile` in the provider block or `CATO_PROFILE` in the environment. The provider reads `cato_token`, `account_id`, and `endpoint` from that profile in `~/.cato/credentials`. Override the file path with `CATO_CREDENTIALS_FILE`. A selected profile overrides ambient credential environment variables; an explicit `baseurl` attribute overrides its endpoint.
 
-If no credentials resolve from any of the above, `terraform plan`/`apply` fails with an error listing all three options.
+A selected profile cannot be combined with `token` or `account_id` attributes in the provider block. This produces a diagnostic instead of silently switching accounts. For CI, use explicit credentials through environment variables and leave `CATO_PROFILE` unset.
 
 ```terraform
 # Explicit configuration (unchanged)

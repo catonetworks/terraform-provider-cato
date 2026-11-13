@@ -219,9 +219,9 @@ func (p *catoProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 					"CATO_PROFILE is set), the provider reads token, account_id, and endpoint from the " +
 					"named section of the catocli credentials file (~/.cato/credentials by default; " +
 					"override the path with the CATO_CREDENTIALS_FILE environment variable). This is the " +
-					"local-development auth method and is MUTUALLY EXCLUSIVE with explicit credentials: " +
-					"the provider errors if both `profile` (or CATO_PROFILE) and token/account_id (or " +
-					"CATO_TOKEN/CATO_ACCOUNT_ID) are supplied. For CI (Azure DevOps, Terraform Cloud) use " +
+					"local-development auth method and is MUTUALLY EXCLUSIVE with token/account_id " +
+					"attributes in the provider block. A selected profile overrides ambient CATO_TOKEN, " +
+					"CATO_ACCOUNT_ID, and CATO_BASEURL values; an explicit baseurl attribute still wins. For CI use " +
 					"the explicit-credentials env vars instead. See the provider README's Authentication " +
 					"section.",
 				Optional: true,
@@ -411,13 +411,10 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	// shell credential (e.g. a leftover export for another tenant) must never
 	// override or conflict with the profile the configuration intentionally
 	// selected. The mutual-exclusion ERROR is reserved for a genuine CONFIG
-	// conflict: the provider block itself setting BOTH `profile` and explicit
-	// `token`/`account_id` attributes.
+	// conflict: a selected profile and explicit `token`/`account_id` attributes.
 	profileName := ""
-	profileFromAttr := false
 	if !config.Profile.IsNull() {
 		profileName = config.Profile.ValueString()
-		profileFromAttr = true
 	} else if envProfile := os.Getenv("CATO_PROFILE"); envProfile != "" {
 		profileName = envProfile
 	}
@@ -432,13 +429,13 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		"profile name from the catocli credentials file (~/.cato/credentials by default, " +
 		"overridable with CATO_CREDENTIALS_FILE)."
 
-	// Genuine config conflict only: the block sets a profile AND explicit creds
-	// attributes. Ambient CATO_TOKEN/CATO_ACCOUNT_ID env vars are NOT a conflict --
+	// A selected profile conflicts with explicit credential attributes.
+	// Ambient CATO_TOKEN/CATO_ACCOUNT_ID env vars are NOT a conflict --
 	// the profile wins and they are ignored.
-	if profileFromAttr && explicitAttrSet {
+	if hasProfile && explicitAttrSet {
 		resp.Diagnostics.AddError(
 			"Conflicting Cato API Credentials",
-			"The provider block sets both `profile` and `token`/`account_id`. These "+
+			"A profile is selected through `profile` or CATO_PROFILE, and the provider block sets `token`/`account_id`. These "+
 				"authentication methods are mutually exclusive -- set only one in the "+
 				"provider block. "+authHelp,
 		)

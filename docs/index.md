@@ -17,13 +17,12 @@ Use the navigation to the left to read about the available resources.
 
 ## Authentication
 
-The provider supports two authentication methods, resolved in this order (first match wins, per field):
+Choose one authentication method:
 
-1. **Explicit configuration** -- `token` and `account_id` (and optionally `baseurl`) set directly in the `provider` block.
-2. **Environment variables** -- `CATO_TOKEN` and `CATO_BASEURL` fill in any of those two fields left unset in the provider block. (`account_id` has no equivalent environment variable; set it in the provider block or via a profile.)
-3. **catocli profile** -- if `profile` is set in the provider block (or the `CATO_PROFILE` environment variable is set) and any of `token`, `account_id`, or `baseurl` are still unresolved after steps 1 and 2, the provider reads the named section of the catocli credentials file (`~/.cato/credentials` by default) and uses its `cato_token`, `account_id`, and `endpoint` values to fill in whatever is still missing. Explicit values from steps 1-2 always win over profile values. Override the credentials file path with the `CATO_CREDENTIALS_FILE` environment variable.
+1. **Explicit credentials:** set `token` and `account_id` in the provider block, or use `CATO_TOKEN` and `CATO_ACCOUNT_ID`. Configure `baseurl` in the provider block or through `CATO_BASEURL`. Provider attributes override their environment values.
+2. **catocli profile:** set `profile` in the provider block or `CATO_PROFILE` in the environment. The provider reads `cato_token`, `account_id`, and `endpoint` from that profile in `~/.cato/credentials`. Override the file path with `CATO_CREDENTIALS_FILE`. A selected profile overrides ambient credential environment variables; an explicit `baseurl` attribute overrides its endpoint.
 
-If no credentials resolve from any of the above, `terraform plan`/`apply` fails with an error listing all three options.
+A selected profile cannot be combined with `token` or `account_id` attributes in the provider block. This produces a diagnostic instead of silently switching accounts. For CI, use explicit credentials through environment variables and leave `CATO_PROFILE` unset.
 
 ```terraform
 # Explicit configuration (unchanged)
@@ -116,7 +115,7 @@ resource "cato_static_host" "host" {
 
 - `account_id` (String) AccountId for the Cato API (can be provided via the CATO_ACCOUNT_ID environment variable). Part of the explicit-credentials method; mutually exclusive with `profile`.
 - `baseurl` (String) URL for the Cato API. Can be provided using CATO_BASEURL environment variable.
-- `profile` (String) Name of a catocli profile to source credentials from. When set (or when CATO_PROFILE is set), the provider reads token, account_id, and endpoint from the named section of the catocli credentials file (~/.cato/credentials by default; override the path with the CATO_CREDENTIALS_FILE environment variable). This is the local-development auth method and is MUTUALLY EXCLUSIVE with explicit credentials: the provider errors if both `profile` (or CATO_PROFILE) and token/account_id (or CATO_TOKEN/CATO_ACCOUNT_ID) are supplied. For CI (Azure DevOps, Terraform Cloud) use the explicit-credentials env vars instead. See the provider README's Authentication section.
+- `profile` (String) Name of a catocli profile to source credentials from. When set (or when CATO_PROFILE is set), the provider reads token, account_id, and endpoint from the named section of the catocli credentials file (~/.cato/credentials by default; override the path with the CATO_CREDENTIALS_FILE environment variable). This is the local-development auth method and is MUTUALLY EXCLUSIVE with token/account_id attributes in the provider block. A selected profile overrides ambient CATO_TOKEN, CATO_ACCOUNT_ID, and CATO_BASEURL values; an explicit baseurl attribute still wins. For CI use the explicit-credentials env vars instead. See the provider README's Authentication section.
 - `retry_max` (Number) Maximum number of retries for retryable API requests. Defaults to 5. Can be provided using CATO_RETRY_MAX environment variable.
 - `retry_wait_max_seconds` (Number) Maximum backoff between retry attempts, in seconds. Defaults to 30. Can be provided using CATO_RETRY_WAIT_MAX_SECONDS environment variable.
 - `retry_wait_min_seconds` (Number) Minimum backoff between retry attempts, in seconds. Defaults to 1. Can be provided using CATO_RETRY_WAIT_MIN_SECONDS environment variable.

@@ -357,3 +357,16 @@ func TestCatoProviderConfigurePartialExplicitConfigErrorsOnMissingField(t *testi
 	}
 	require.True(t, foundAccountIDError, "expected a clear account_id-specific error, got: %v", resp.Diagnostics)
 }
+
+func TestCatoProviderConfigureEnvProfileCannotOverrideExplicitAttributes(t *testing.T) {
+	withoutProfileAuthEnv(t)
+	t.Setenv("CATO_PROFILE", "another-account")
+	resp := configureCatoProvider(context.Background(), t, catoProviderModel{
+		BaseURL:   types.StringValue("https://explicit.example.com/graphql2"),
+		Token:     types.StringValue("explicit-token"),
+		AccountID: types.StringValue("12345"),
+	})
+	require.True(t, resp.Diagnostics.HasError())
+	require.NotEmpty(t, conflictSummary(resp))
+	require.Nil(t, resp.ResourceData)
+}
