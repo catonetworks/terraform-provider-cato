@@ -100,7 +100,9 @@ To enable the additional suites on every randomly assigned account:
 - For DNS/DHCP, set `TFACC_ENABLE_DNS_DHCP_CRUD=true`,
   `TFACC_DNS_DHCP_ALLOWED_ACCOUNT_ID` to that record's ID, `CATO_TEST_SITE_ID` to
   its persistent fixture site, `TFACC_DNS_DHCP_SERVERS` to two test DNS addresses,
-  and `TFACC_DHCP_OPTION_TAG` to an unused option tag. The suite restores prior
+  and `TFACC_DHCP_OPTION_TAG` to a preferred unused option tag. If that tag is
+  occupied, the suite selects a free private-use tag (224–254) and preserves
+  existing options. The suite restores prior
   account settings and fixture-site collections. The explicit matching account
   permits dedicated HTTPS environments in addition to the original dev endpoint.
 - For URL containers, set `TFACC_FQDN_CONTAINER_URL` and
