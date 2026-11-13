@@ -20,6 +20,9 @@ import (
 )
 
 func TestAccDNSDHCPDeletedParent(t *testing.T) {
+	if os.Getenv("TF_ACC") != "1" {
+		t.Skip("TF_ACC=1 required before live fixture creation")
+	}
 	if os.Getenv(envEnableDNSDHCPCRUD) != "true" {
 		t.Skipf("set %s=true to run DNS/DHCP acceptance tests", envEnableDNSDHCPCRUD)
 	}

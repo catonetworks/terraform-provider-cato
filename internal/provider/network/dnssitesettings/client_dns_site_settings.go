@@ -126,3 +126,10 @@ func isSiteBackendError(err error, leaf string) bool {
 	}
 	return true
 }
+
+func acknowledgedSiteUpdate(result *cato.NetworkConfigDNSUpdateSiteSettings,
+	siteID string) bool {
+	items := result.GetNetworkConfig().GetDNS().GetUpdateSiteSettings().GetSiteSettings()
+	return len(items) == 1 &&
+		items[0].GetSiteID() == siteID
+}

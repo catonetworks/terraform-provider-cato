@@ -38,8 +38,8 @@ func (r *siteSettingsResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	r.write(ctx, &plan, &resp.Diagnostics)
-	if !resp.Diagnostics.HasError() {
+	owned := r.write(ctx, &plan, &resp.Diagnostics)
+	if owned {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	}
 }
@@ -114,25 +114,26 @@ func (r *siteSettingsResource) Delete(ctx context.Context, req resource.DeleteRe
 	nc.RequirePayload(result != nil && result.NetworkConfig != nil && result.NetworkConfig.DNS.RemoveSiteSettings != nil, &resp.Diagnostics)
 }
 
-func (r *siteSettingsResource) write(ctx context.Context, plan *SiteSettingsModel, diags *diag.Diagnostics) {
+// write reports whether the exact owned site override was acknowledged, even if the API also reports an error.
+func (r *siteSettingsResource) write(ctx context.Context, plan *SiteSettingsModel, diags *diag.Diagnostics) bool {
 	ref, input := buildSiteSettings(ctx, *plan, diags)
 	if ref == nil {
 		if !diags.HasError() {
 			diags.AddError("Invalid site reference", "A site ID or name is required.")
 		}
-		return
+		return false
 	}
 	if diags.HasError() {
-		return
+		return false
 	}
 	site, err := lookupSite(ctx, r.resourceAPI(), r.client.AccountId, *ref)
 	if err != nil {
 		nc.APIError(diags, "site reference", err)
-		return
+		return false
 	}
 	if !plan.ID.IsNull() && !plan.ID.IsUnknown() && plan.ID.ValueString() != site.ID {
 		diags.AddError("Site mismatch", "Changing site identity requires replacement.")
-		return
+		return false
 	}
 	result,
 		err := r.resourceAPI().UpdateDNSSiteSettings(ctx,
@@ -140,18 +141,24 @@ func (r *siteSettingsResource) write(ctx context.Context, plan *SiteSettingsMode
 		models.SiteRefInput{By: models.ObjectRefByID,
 			Input: site.ID},
 		input)
+	owned := acknowledgedSiteUpdate(result, site.ID)
+
+	if owned {
+		plan.ID = types.StringValue(site.ID)
+		plan.Site = idname.ParseIDName(ctx, *site, diags)
+	}
 	if err != nil {
 		nc.APIError(diags, "updateSiteSettings", err)
-		return
+		return owned
 	}
-	if !nc.RequirePayload(result != nil && result.NetworkConfig != nil && result.NetworkConfig.DNS.UpdateSiteSettings != nil, diags) {
-		return
+	if !nc.RequirePayload(owned, diags) {
+		return false
 	}
-	items := result.NetworkConfig.DNS.UpdateSiteSettings.SiteSettings
-	if !nc.RequirePayload(len(items) == 1 && items[0] != nil && items[0].SiteID == site.ID, diags) {
-		return
-	}
-	plan.ID = types.StringValue(site.ID)
-	plan.Site = idname.ParseIDName(ctx, *site, diags)
-	nc.ParseDNS(ctx, items[0], &plan.PrimaryServer, &plan.SecondaryServer, &plan.Suffix, diags)
+	nc.ParseDNS(ctx,
+		result.NetworkConfig.DNS.UpdateSiteSettings.SiteSettings[0],
+		&plan.PrimaryServer,
+		&plan.SecondaryServer,
+		&plan.Suffix,
+		diags)
+	return true
 }

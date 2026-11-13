@@ -15,7 +15,7 @@ type DNSClient struct{ *catoclient.ProviderSDKClient }
 
 // NewDNSClient returns the DNS-specific SDK adapter.
 func NewDNSClient(client *catoclient.ProviderSDKClient) *DNSClient {
-	return &DNSClient{ProviderSDKClient: client}
+	return &DNSClient{ProviderSDKClient: partialResponseClient(client)}
 }
 
 // DNSSettingsInput preserves explicit null servers and an empty suffix list.
@@ -97,10 +97,7 @@ func (c *DNSClient) UpdateDNSSiteSettings(ctx context.Context,
 	err := c.Client.Client.Post(ctx, "networkConfigDnsUpdateSiteSettings", dnsSiteSettingsDocument, &result,
 		map[string]any{"accountId": accountID,
 			"networkConfigDnsUpdateSiteSettingsInput": map[string]any{"siteSettings": []dnsSiteSettingsInput{settings}}})
-	if err != nil {
-		return nil, err
-	}
-	return &result, nil
+	return &result, err
 }
 
 func (c *DNSClient) NetworkConfigDNSSettings(ctx context.Context, accountID string,
