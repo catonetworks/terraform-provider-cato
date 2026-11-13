@@ -44,7 +44,7 @@ func TestAccPrivateApp(t *testing.T) {
 					resource.TestCheckResourceAttr(res, "private_app_probing.fault_threshold_down", "5"),
 					resource.TestCheckResourceAttrSet(res, "private_app_probing.id"),
 					resource.TestCheckResourceAttr(res, "private_app_probing.interval", "5"),
-					resource.TestCheckResourceAttr(res, "private_app_probing.type", "icmp_ping"),
+					resource.TestCheckResourceAttr(res, "private_app_probing.type", "ICMP_PING"),
 					resource.TestCheckResourceAttr(res, "probing_enabled", "true"),
 
 					resource.TestCheckResourceAttr(res, "protocol_ports.#", "3"),
