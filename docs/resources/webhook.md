@@ -26,7 +26,7 @@ Manages one webhook integration. `body` and `auth` are write-only: the API never
 
 - `enabled` (Boolean) Whether the webhook is enabled.
 - `header` (Attributes List) Additional HTTP headers sent with the request. (see [below for nested schema](#nestedatt--header))
-- `related_webhook_ref` (Attributes) Reference to a related webhook (e.g. the "create" webhook of an "update" webhook pair), by ID or name. Write-only: the API only returns the related webhook's ID on read (never its name), so this attribute is carried forward from the prior configuration instead of being refreshed from the API. (see [below for nested schema](#nestedatt--related_webhook_ref))
+- `related_webhook_ref` (Attributes) Reference to a related webhook (e.g. the "create" webhook of an "update" webhook pair), by ID or name. Write-only: the API only returns the related webhook's ID on read (never its name), so this attribute is carried forward from the prior configuration instead of being refreshed from the API. When creating both webhooks in Terraform, reference the related resource ID or declare depends_on to establish creation order. (see [below for nested schema](#nestedatt--related_webhook_ref))
 - `request_method` (String) HTTP request method.
 - `response_mapping` (Attributes List) Key/value pairs mapped out of the webhook response. (see [below for nested schema](#nestedatt--response_mapping))
 

@@ -90,7 +90,8 @@ func (r *webhookResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Reference to a related webhook (e.g. the \"create\" webhook of an " +
 					"\"update\" webhook pair), by ID or name. Write-only: the API only returns the " +
 					"related webhook's ID on read (never its name), so this attribute is carried forward " +
-					"from the prior configuration instead of being refreshed from the API.",
+					"from the prior configuration instead of being refreshed from the API. When creating both webhooks in Terraform, " +
+					"reference the related resource ID or declare depends_on to establish creation order.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"by": schema.StringAttribute{

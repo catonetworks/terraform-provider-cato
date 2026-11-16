@@ -20,3 +20,6 @@ check_retry 1 '{"Output":"DOWNSTREAM_SERVICE_ERROR: Access denied: Insufficient 
 check_retry 1 '{"Output":"DOWNSTREAM_SERVICE_ERROR: classification=ValidationError"}'
 check_retry 1 '{"Output":"skipping test: Internal server error"}'
 check_retry 1 '{"Output":"ordinary assertion failure"}'
+
+check_retry 1 ''
+check_retry 0 $'{"Output":"skipping test: Internal server error"}\n{"Output":"connection refused"}'

@@ -2,7 +2,7 @@
 # Classify the final package output, not transient codes echoed in skip reasons.
 should_retry() {
  local retry_log
- retry_log=$(grep -Ev '"Output":".*skipping test' "$1")
+ retry_log=$(grep -Ev '"Output":".*skipping test' "$1") || return 1
  # These are persistent prerequisite/input failures even if wrapped as downstream errors.
  if printf '%s\n' "$retry_log" | grep -Eqi '(Insufficient privileges|Access denied|ValidationError)'; then
   return 1

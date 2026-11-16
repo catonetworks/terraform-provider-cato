@@ -5,7 +5,7 @@ go 1.26.11
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Yamashou/gqlgenc v0.30.2
-	github.com/catonetworks/cato-go-sdk v1.1.5-0.20261113163727-142068929e01
+	github.com/catonetworks/cato-go-sdk v1.1.5-0.20261116095144-87782d00e393
 	github.com/gqlgo/gqlgenc v0.37.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
@@ -297,5 +297,3 @@ tool (
 	golang.org/x/tools/cmd/goimports
 	golang.org/x/vuln/cmd/govulncheck
 )
-
-replace github.com/catonetworks/cato-go-sdk => /Users/Shared/github.com/catonetworks/cato-go-sdk

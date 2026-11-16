@@ -3,6 +3,7 @@ package policy
 import (
 	"testing"
 
+	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/stretchr/testify/require"
 )
@@ -45,4 +46,18 @@ func TestPublishResultAllowsOnlyExplicitMissingRevision(t *testing.T) {
 	require.Error(t, PublishResult[testMutationError](nil, nil))
 	require.Error(t, PublishResult(&success, []testMutationError{missing}))
 	require.Error(t, PublishResult(&failure, []testMutationError{missing, {code: new("AccessDenied")}}))
+}
+
+// Generated SDK error getters accept nil pointers. A malformed error list must
+// still fail rather than turn an otherwise successful status into success.
+func TestMutationResultRejectsNilSDKError(t *testing.T) {
+	t.Parallel()
+	for _, status := range []cato_models.PolicyMutationStatus{
+		cato_models.PolicyMutationStatusSuccess,
+		cato_models.PolicyMutationStatusFailure,
+	} {
+		apiErrors := []*cato.PolicyInternetFirewallAddSubPolicy_Policy_InternetFirewall_AddSubPolicy_Errors{nil}
+		require.Error(t, MutationResult(&status, apiErrors))
+		require.Error(t, PublishResult(&status, apiErrors))
+	}
 }

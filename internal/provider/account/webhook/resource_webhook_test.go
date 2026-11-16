@@ -356,7 +356,7 @@ func TestRelatedWebhookResolution(t *testing.T) {
 		wantError bool
 	}{
 		{name: "found", id: "2002", found: true},
-		{name: "deferred"},
+		{name: "not found", wantError: true},
 		{name: "lookup failure", err: &cato.APIError{
 			Err: errors.New("lookup failed"), RequestBody: "test-only-sensitive-value",
 		}, wantError: true},
@@ -377,53 +377,35 @@ func TestRelatedWebhookResolution(t *testing.T) {
 			case tc.found:
 				require.Equal(t, &cato_models.WebhookIntegrationRefInput{By: cato_models.ObjectRefByID, Input: tc.id}, got)
 				require.Empty(t, diags)
-			default:
-				require.Nil(t, got)
-				require.Len(t, diags.Warnings(), 1)
 			}
 		})
 	}
 }
 
-func TestDeferredRelatedWebhookState(t *testing.T) {
+func TestMissingRelatedWebhookStopsMutation(t *testing.T) {
 	for _, update := range []bool{false, true} {
 		t.Run(map[bool]string{false: "create", true: "update"}[update], func(t *testing.T) {
 			ctx := context.Background()
 			api := mocks.NewWebhookClient(t)
-			api.EXPECT().WebhookIDByName(mock.Anything, "account-123", "related").
-				Return("", false, nil).Once()
-			result := &cato_models.Webhook{ID: "1001", Name: "test"}
+			api.EXPECT().WebhookIDByName(mock.Anything, "account-123", "related").Return("", false, nil).Once()
 			r := &webhookResource{client: &catoclient.Service{AccountId: "account-123"}, apiClient: api}
 			p := model()
 			p.RelatedWebhookRef = types.ObjectValueMust(RelatedWebhookRefAttrTypes, map[string]attr.Value{
 				"by": types.StringValue("NAME"), "input": types.StringValue("related"),
 			})
-			var state tfsdk.State
-			var diags diag.Diagnostics
 			if update {
 				p.ID = types.StringValue("1001")
-				api.EXPECT().UpdateWebhook(mock.Anything, "account-123",
-					mock.MatchedBy(func(input cato_models.UpdateWebhookInput) bool {
-						return input.RelatedWebhookRef == nil
-					})).Return(result, nil).Once()
-				resp := resource.UpdateResponse{State: stateFor(t, p)}
-				r.Update(ctx, resource.UpdateRequest{Plan: planFor(t, p), State: resp.State}, &resp)
-				state, diags = resp.State, resp.Diagnostics
+				prior := stateFor(t, p)
+				resp := resource.UpdateResponse{State: prior}
+				r.Update(ctx, resource.UpdateRequest{Plan: planFor(t, p), State: prior}, &resp)
+				require.True(t, resp.Diagnostics.HasError())
+				require.Equal(t, prior.Raw, resp.State.Raw)
 			} else {
-				api.EXPECT().CreateWebhook(mock.Anything, "account-123",
-					mock.MatchedBy(func(input cato_models.CreateWebhookInput) bool {
-						return input.RelatedWebhookRef == nil
-					})).Return(result, nil).Once()
 				resp := resource.CreateResponse{State: tfsdk.State{Schema: schemaFor(t)}}
 				r.Create(ctx, resource.CreateRequest{Plan: planFor(t, p)}, &resp)
-				state, diags = resp.State, resp.Diagnostics
+				require.True(t, resp.Diagnostics.HasError())
+				require.True(t, resp.State.Raw.IsNull())
 			}
-			require.False(t, diags.HasError(), diags)
-			require.Len(t, diags.Warnings(), 1)
-			var current resourceModel
-			require.False(t, state.Get(ctx, &current).HasError())
-			require.Equal(t, "1001", current.ID.ValueString())
-			require.True(t, current.RelatedWebhookRef.IsNull())
 		})
 	}
 }

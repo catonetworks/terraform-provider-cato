@@ -103,6 +103,10 @@ resource "cato_always_on_rule" "kitchen_sink" {
 - `at` (Attributes) Position of the section in the Always On policy (see [below for nested schema](#nestedatt--at))
 - `section` (Attributes) Parameters for the Always On policy section (see [below for nested schema](#nestedatt--section))
 
+### Read-Only
+
+- `id` (String) Always On policy section ID (mirrors section.id; provided for parity with the if/wf/lan section resources so bulk modules can reference .id uniformly).
+
 <a id="nestedatt--at"></a>
 ### Nested Schema for `at`
 
