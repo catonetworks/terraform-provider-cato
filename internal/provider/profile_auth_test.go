@@ -370,3 +370,41 @@ func TestCatoProviderConfigureEnvProfileCannotOverrideExplicitAttributes(t *test
 	require.NotEmpty(t, conflictSummary(resp))
 	require.Nil(t, resp.ResourceData)
 }
+
+func TestConfigureReportsResolvedAccountFirst(t *testing.T) {
+	for _, tc := range []struct {
+		name, profile, envProfile, want string
+		explicit                        bool
+	}{
+		{name: "explicit", want: "789", explicit: true},
+		{name: "environment", want: "123"},
+		{name: "profile attribute", profile: "selected", want: "456"},
+		{name: "profile environment", envProfile: "selected", want: "456"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			withoutProfileAuthEnv(t)
+			t.Setenv("CATO_BASEURL", "https://example.invalid/graphql2")
+			t.Setenv("CATO_TOKEN", "test-env-token")
+			t.Setenv("CATO_ACCOUNT_ID", "123")
+			t.Setenv("CATO_PROFILE", tc.envProfile)
+			writeProfileAuthCredsFile(t, "[selected]\ncato_token = test-profile-token\naccount_id = 456\nendpoint = https://example.invalid/graphql2\n")
+			model := catoProviderModel{}
+			if tc.profile != "" {
+				model.Profile = types.StringValue(tc.profile)
+			}
+			if tc.explicit {
+				model.Token = types.StringValue("test-explicit-token")
+				model.AccountID = types.StringValue(tc.want)
+			}
+			resp := configureCatoProvider(context.Background(), t, model)
+			require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+			require.NotEmpty(t, resp.Diagnostics)
+			require.Equal(t, "Cato account ID: \""+tc.want+"\"", resp.Diagnostics[0].Summary())
+			for _, d := range resp.Diagnostics {
+				for _, secret := range []string{"test-env-token", "test-profile-token", "test-explicit-token"} {
+					require.NotContains(t, d.Summary()+d.Detail(), secret)
+				}
+			}
+		})
+	}
+}

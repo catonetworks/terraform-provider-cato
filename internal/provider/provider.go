@@ -582,6 +582,13 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
+	// Keep the resolved target ahead of other Configure diagnostics. Terraform
+	// controls when diagnostics are rendered relative to its own CLI output.
+	resp.Diagnostics.AddWarning(
+		fmt.Sprintf("Cato account ID: %q", accountID),
+		"Provider operations in this configuration target this account.",
+	)
+
 	// newer client:
 	headers := map[string]string{}
 	headers["User-Agent"] = "cato-terraform-" + p.version

@@ -59,6 +59,28 @@ Choose one authentication method:
 
 A selected profile cannot be combined with `token` or `account_id` attributes in the provider block. This produces a diagnostic instead of silently switching accounts. For CI, use explicit credentials through environment variables and leave `CATO_PROFILE` unset.
 
+### Credential precedence when upgrading
+
+Before profile authentication was introduced, the provider ignored `CATO_PROFILE`. An existing shell export can now change how an otherwise unchanged Terraform configuration authenticates:
+
+- A selected `profile` or `CATO_PROFILE` combined with an explicit provider `token` or `account_id` is an error. Remove the profile selection to continue using explicit credentials, or remove those attributes to use the profile.
+- With credentials supplied only through environment variables, a selected profile replaces `CATO_TOKEN`, `CATO_ACCOUNT_ID`, and `CATO_BASEURL` with its token, account ID, and endpoint. This can select a different account.
+- An explicit provider `baseurl` still overrides the selected profile's endpoint.
+
+To retain explicit or environment-based authentication, remove any `profile` attribute from the provider block and unset the environment selection before running Terraform:
+
+```sh
+unset CATO_PROFILE
+terraform plan
+```
+
+### Target account message
+
+After resolving credentials and validating provider settings, the provider's first configuration diagnostic identifies the selected account, for example `Warning: Cato account ID: "12345"`. It reports the resolved account ID rather than an overridden environment value, and includes no API token. Each configured Cato provider, including aliases, reports its own target.
+
+Terraform controls diagnostic rendering and may display the message after plan or apply output; the provider cannot guarantee the first console line or a message before changes start. Commands that do not configure the provider, such as `terraform init`, `terraform fmt`, and `terraform validate`, do not emit this message.
+
+
 ```hcl
 # explicit (unchanged)
 provider "cato" {
