@@ -67,8 +67,9 @@ func (r *webhookResource) ImportState(ctx context.Context, req resource.ImportSt
 // a by-ID ref (the backend's by-NAME relatedWebhookRef resolver is unreliable --
 // it reports an existing webhook "not found" -- while by-ID always resolves,
 // live-verified on badev4). A ref already by ID, or absent, is returned
-// unchanged. Not-found yields a clear diagnostic (the referenced webhook may be
-// created later in the same apply -- a convergence re-apply resolves it).
+// unchanged. Not-found returns nil (create/update WITHOUT the related link) and
+// WARNS rather than erroring, so the referenced webhook being created later in
+// the same apply doesn't fail the run -- a convergence re-apply wires it.
 func (r *webhookResource) resolveRelatedWebhookRefToID(
 	ctx context.Context, ref *m.WebhookIntegrationRefInput, diags *diag.Diagnostics,
 ) *m.WebhookIntegrationRefInput {
@@ -81,12 +82,21 @@ func (r *webhookResource) resolveRelatedWebhookRefToID(
 		return ref
 	}
 	if !found {
-		diags.AddError(
-			"Related webhook not found",
-			fmt.Sprintf("related_webhook_ref references webhook %q by name, but no such webhook exists on this tenant. "+
-				"If it is created later in the same apply, re-apply to converge.", ref.Input),
+		// The referenced webhook may simply not exist YET -- a common case is two
+		// webhooks in the same for_each where one links the other by name: Terraform
+		// can't order for_each siblings by a name-string reference, so the linking one
+		// may be created first. Rather than hard-failing the whole apply (which, under
+		// parallelism=1, would also prevent the referenced webhook from ever being
+		// created and so make the documented "re-apply to converge" impossible), create
+		// this webhook WITHOUT the related ref and WARN. The config still carries the
+		// ref, so the next apply plans an update that wires it once the target exists.
+		diags.AddWarning(
+			"Related webhook not resolved yet",
+			fmt.Sprintf("related_webhook_ref references webhook %q by name, but it does not exist on this tenant yet. "+
+				"Created without the related link; re-apply once %q exists to wire it (expected when both are created in the same apply).",
+				ref.Input, ref.Input),
 		)
-		return ref
+		return nil
 	}
 	return &m.WebhookIntegrationRefInput{By: m.ObjectRefByID, Input: id}
 }
@@ -101,17 +111,23 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 	if resp.Diagnostics.HasError() || !r.configured(&resp.Diagnostics) {
 		return
 	}
+	hadRelatedRef := input.RelatedWebhookRef != nil
 	input.RelatedWebhookRef = r.resolveRelatedWebhookRefToID(ctx, input.RelatedWebhookRef, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// The related ref was dropped because its target doesn't exist yet (warned in
+	// resolveRelatedWebhookRefToID). Record it as unset in state so the NEXT plan
+	// shows a diff against the still-present config ref and converges -- otherwise
+	// state would claim a link the API never received.
+	droppedRelatedRef := hadRelatedRef && input.RelatedWebhookRef == nil
 	result, err := r.getClient().CreateWebhook(ctx, r.client.AccountId, input)
 	id := ""
 	if result != nil {
 		id = result.ID
 	}
 	if id != "" {
-		resp.Diagnostics.Append(resp.State.Set(ctx, identityState(plan, id))...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, identityStateRelated(plan, id, droppedRelatedRef))...)
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create webhook", webhookErrorDetail(err))
@@ -120,10 +136,21 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 	if !validID(types.StringValue(id), &resp.Diagnostics) {
 		return
 	}
-	current := identityState(plan, id)
+	current := identityStateRelated(plan, id, droppedRelatedRef)
 	if !resp.Diagnostics.HasError() {
 		resp.Diagnostics.Append(resp.State.Set(ctx, current)...)
 	}
+}
+
+// identityStateRelated is identityState plus: when the related ref was dropped
+// (target webhook not created yet), force related_webhook_ref to null in state so
+// the still-present config ref re-diffs and a convergence apply wires it.
+func identityStateRelated(plan resourceModel, id string, droppedRelatedRef bool) resourceModel {
+	state := identityState(plan, id)
+	if droppedRelatedRef {
+		state.RelatedWebhookRef = types.ObjectNull(RelatedWebhookRefAttrTypes)
+	}
+	return state
 }
 func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state resourceModel
@@ -156,10 +183,12 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() || !r.configured(&resp.Diagnostics) {
 		return
 	}
+	hadRelatedRef := input.RelatedWebhookRef != nil
 	input.RelatedWebhookRef = r.resolveRelatedWebhookRefToID(ctx, input.RelatedWebhookRef, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	droppedRelatedRef := hadRelatedRef && input.RelatedWebhookRef == nil
 	result, err := r.getClient().UpdateWebhook(ctx, r.client.AccountId, input)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update webhook", webhookErrorDetail(err))
@@ -169,7 +198,7 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 		resp.Diagnostics.AddError("Invalid API response", "Update did not return the requested webhook identity.")
 		return
 	}
-	current := identityState(plan, state.ID.ValueString())
+	current := identityStateRelated(plan, state.ID.ValueString(), droppedRelatedRef)
 	if !resp.Diagnostics.HasError() {
 		resp.Diagnostics.Append(resp.State.Set(ctx, current)...)
 	}

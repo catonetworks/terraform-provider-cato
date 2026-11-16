@@ -117,7 +117,7 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Invalid API response", "Create did not return a resource ID.")
 		return
 	}
-	plan.Rule = parseAdd(ctx, returned, &resp.Diagnostics)
+	plan.Rule = normalizeOptionalEmpties(ctx, parseAdd(ctx, returned, &resp.Diagnostics), &resp.Diagnostics).(types.Object)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -167,7 +167,7 @@ func (r *policyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		resp.State.RemoveResource(ctx)
 		return
 	}
-	state.Rule = parseRead(ctx, object, &resp.Diagnostics)
+	state.Rule = normalizeOptionalEmpties(ctx, parseRead(ctx, object, &resp.Diagnostics), &resp.Diagnostics).(types.Object)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -209,6 +209,10 @@ func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	}
+	plan.Rule = normalizeOptionalEmpties(ctx, plan.Rule, &resp.Diagnostics).(types.Object)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 	retained = true
 	if !r.publishOrReconcile(ctx, revision, id.ValueString(), plan.Rule, &resp.Diagnostics) {

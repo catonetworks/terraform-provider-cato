@@ -98,6 +98,20 @@ func (r *ifSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	addPayload := addResp.GetPolicy().GetInternetFirewall().GetAddSubPolicy()
 	if err := sharedpolicy.MutationResult(addPayload.GetStatus(), addPayload.GetErrors()); err != nil {
+		// A name collision does not prove ownership (mirrors cato_if_rule Create):
+		// a leftover sub-policy from a prior apply or an incomplete purge surfaces
+		// as ruleNameAlreadyExists. Point at an explicit import instead of a bare
+		// API error so it is recoverable without deleting the live sub-policy.
+		for _, e := range addPayload.GetErrors() {
+			if e != nil && e.GetErrorCode() != nil && *e.GetErrorCode() == "ruleNameAlreadyExists" {
+				resp.Diagnostics.AddError(
+					"API Error Creating Sub-Policy",
+					err.Error()+"; a sub-policy with this name already exists -- import it explicitly "+
+						"(terraform import cato_if_sub_policy.<name> <sub-policy-id>) to manage it with this resource",
+				)
+				return
+			}
+		}
 		resp.Diagnostics.AddError("API Error Creating Sub-Policy", err.Error())
 		return
 	}
@@ -443,5 +457,10 @@ func (r *ifSubPolicyResource) publish(ctx context.Context) error {
 		return err
 	}
 	payload := response.GetPolicy().GetInternetFirewall().GetPublishPolicyRevision()
-	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
+	// Use PublishResult (not MutationResult): the IFW draft is shared account-wide,
+	// so a publish can legitimately find nothing to publish — the API returns a
+	// no-op FAILURE with a single PolicyRevisionNotFound error. PublishResult
+	// treats that lone code as success (matching how cato_if_rule/cato_if_section
+	// tolerate the no-draft publish) while still surfacing genuine publish errors.
+	return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 }

@@ -78,6 +78,44 @@ func TestInternetFwRuleAppCategoryPlan(t *testing.T) {
 	}
 }
 
+// TestHydrateIfwRuleStateExceptionEmptyServiceStandard reproduces the
+// "Provider produced inconsistent result after apply" error on
+// .rule.exceptions. An exception with no service (e.g. the "Bypassed
+// Applications" exception on "Block QUIC services") is represented in the
+// plan with service.standard as an EMPTY set (the module/plan convention for
+// absent Set fields, matching the top-level rule.service hydration). Because
+// `exceptions` is a SetNestedAttribute, if hydration returns service.standard
+// as null instead of an empty set, the planned set element fails to correlate
+// with the hydrated element and Terraform core rejects the apply.
+func TestHydrateIfwRuleStateExceptionEmptyServiceStandard(t *testing.T) {
+	ctx := context.Background()
+	apiRule := MinimalAPIRule("test-ifw-rule", 1)
+	apiRule.Exceptions = []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions{
+		{
+			Name:             "Bypassed Applications",
+			ConnectionOrigin: cato_models.ConnectionOriginEnum("ANY"),
+			Destination: cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Exceptions_Destination{
+				Domain: []string{"lucidchart.com", "lucid.app"},
+			},
+			// Service left zero-value: Standard and Custom are nil (no service).
+		},
+	}
+
+	got := HydrateIfwRuleState(ctx, NewMinimalInternetFwRuleModel("rule-123"), &apiRule)
+
+	require.False(t, got.Exceptions.IsNull() || got.Exceptions.IsUnknown(),
+		"exceptions must not be null/unknown: %s", got.Exceptions)
+	elems := got.Exceptions.Elements()
+	require.Len(t, elems, 1)
+
+	service := elems[0].(types.Object).Attributes()["service"].(types.Object)
+	standard := service.Attributes()["standard"].(types.Set)
+	require.False(t, standard.IsNull(),
+		"exception service.standard must hydrate to an empty set, not null, to match the plan")
+	require.Equal(t, 0, len(standard.Elements()),
+		"exception service.standard should be empty when the API returns no standard services")
+}
+
 func TestHydrateIfwRuleStateDuplicateAppCategories(t *testing.T) {
 	apiRule := MinimalAPIRule("test-ifw-rule", 1)
 	apiRule.Destination.AppCategory = []*cato_go_sdk.Policy_Policy_InternetFirewall_Policy_Rules_Rule_Destination_AppCategory{

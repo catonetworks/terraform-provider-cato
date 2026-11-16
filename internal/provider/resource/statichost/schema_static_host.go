@@ -32,7 +32,11 @@ func (r *staticHostResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIf(
+						siteIDRequiresReplaceIf,
+						"Replace only when the parent site id changes to a different known value.",
+						"Replace only when the parent site id changes to a different known value.",
+					),
 				},
 			},
 			"site_name": schema.StringAttribute{
@@ -40,7 +44,11 @@ func (r *staticHostResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"via entityLookup at apply (site names are unique). Exactly one of `site_id` or `site_name` must be set.",
 				Optional: true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIf(
+						siteNameRequiresReplaceIf,
+						"Replace only when site_name changes between two concrete sites.",
+						"Replace only when site_name changes between two concrete sites.",
+					),
 				},
 				Validators: []validator.String{
 					stringvalidator.ExactlyOneOf(path.MatchRoot("site_id"), path.MatchRoot("site_name")),
@@ -60,4 +68,32 @@ func (r *staticHostResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 		},
 	}
+}
+
+// siteIDRequiresReplaceIf forces replacement only when the parent site id
+// actually changes to a different KNOWN value. During site_name adoption the
+// planned site_id is carried from prior state (UseStateForUnknown), so old ==
+// new and no replacement occurs -- the host is updated in place instead. A null
+// or unknown planned id (e.g. still to be resolved from site_name at apply)
+// never triggers a replace.
+func siteIDRequiresReplaceIf(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+	if req.PlanValue.IsUnknown() || req.PlanValue.IsNull() || req.StateValue.IsNull() || req.StateValue.IsUnknown() {
+		resp.RequiresReplace = false
+		return
+	}
+	resp.RequiresReplace = !req.PlanValue.Equal(req.StateValue)
+}
+
+// siteNameRequiresReplaceIf forces replacement only when site_name changes from
+// one concrete site to a DIFFERENT concrete site. First-time adoption (prior
+// state site_name null -> value, for a host whose state only carried site_id)
+// and switching back to the site_id form (value -> null) keep the host on the
+// same site, so they update in place rather than destroy-and-recreate (which
+// the API refuses while the host is referenced by a policy rule).
+func siteNameRequiresReplaceIf(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+	if req.StateValue.IsNull() || req.StateValue.IsUnknown() || req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
+		resp.RequiresReplace = false
+		return
+	}
+	resp.RequiresReplace = !req.PlanValue.Equal(req.StateValue)
 }

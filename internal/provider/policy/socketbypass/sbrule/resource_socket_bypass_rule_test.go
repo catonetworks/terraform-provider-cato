@@ -653,6 +653,86 @@ func TestClearCriteriaRequestShape(t *testing.T) {
 	require.Equal(t, "", object["description"])
 }
 
+// A rule authored without source/service blocks leaves those nested objects
+// null. addRule's input types SocketBypassSourceInput!/SocketBypassServiceInput!
+// are non-nullable, so the provider must serialize an omitted block as an empty
+// "match any" object, not null -- otherwise the API rejects the create with
+// "got invalid value null at ...rule.source; Expected non-nullable type".
+func TestCreateNullSourceServiceSendsEmptyObjects(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	backend := testBackendData(t)
+	r := testResource(t, backend)
+	model := testModel(t)
+	fields := model.Rule.Attributes()
+	fields["source"] = types.ObjectNull(fields["source"].(types.Object).AttributeTypes(ctx))
+	fields["service"] = types.ObjectNull(fields["service"].(types.Object).AttributeTypes(ctx))
+	model.Rule = types.ObjectValueMust(model.Rule.AttributeTypes(ctx), fields)
+
+	create := resource.CreateResponse{State: tfsdk.State{Schema: testSchema(t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, model)}, &create)
+	require.False(t, create.Diagnostics.HasError(), "%v", create.Diagnostics)
+
+	var input map[string]any
+	for _, variables := range backend.variables {
+		if value, ok := variables["socketBypassAddRuleInput"].(map[string]any); ok {
+			input = value
+		}
+	}
+	require.NotNil(t, input)
+	object := input["rule"].(map[string]any)
+	source, ok := object["source"].(map[string]any)
+	require.True(t, ok, "source must be a non-null object, got %T (%v)", object["source"], object["source"])
+	require.Equal(t, []any{}, source["group"], "source.group")
+	require.Equal(t, []any{}, source["ipRange"], "source.ipRange")
+	require.Equal(t, []any{}, source["vlan"], "source.vlan")
+	service, ok := object["service"].(map[string]any)
+	require.True(t, ok, "service must be a non-null object, got %T (%v)", object["service"], object["service"])
+	require.Equal(t, []any{}, service["simple"], "service.simple")
+	require.Equal(t, []any{}, service["custom"], "service.custom")
+}
+
+// Omitted criteria must round-trip as null, not the empty sets/objects the API
+// echoes back -- source/service/destination/site/exception are Optional-only, so
+// Terraform requires the applied value to equal the (null) configured one.
+// clearCriteria produces the all-empty shape the API returns for a rule that
+// matches on nothing; normalizeOptionalEmpties must collapse it to null.
+func TestNormalizeOptionalEmptiesCollapsesOmittedCriteria(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	cleared := clearCriteria(testModel(t).Rule)
+	var diags diag.Diagnostics
+	normalized := normalizeOptionalEmpties(ctx, cleared, &diags).(types.Object)
+	require.False(t, diags.HasError(), "%v", diags)
+	attrs := normalized.Attributes()
+	for _, key := range []string{"source", "service", "destination", "site", "exception", "description"} {
+		require.True(t, attrs[key].IsNull(), "%s should collapse to null, got %s", key, attrs[key])
+	}
+	// Required/identity fields always carry a value and must survive.
+	for _, key := range []string{"name", "enabled", "action", "id", "index"} {
+		require.False(t, attrs[key].IsNull(), "%s must be preserved", key)
+	}
+}
+
+// The inverse guard: populated criteria (and server-resolved ids) must pass
+// through untouched -- normalization only strips emptiness, never real data.
+func TestNormalizeOptionalEmptiesPreservesPopulatedCriteria(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	populated := testModel(t).Rule
+	var diags diag.Diagnostics
+	normalized := normalizeOptionalEmpties(ctx, populated, &diags).(types.Object)
+	require.False(t, diags.HasError(), "%v", diags)
+	attrs := normalized.Attributes()
+	for _, key := range []string{"source", "service", "destination", "site", "exception", "description"} {
+		require.False(t, attrs[key].IsNull(), "%s must be preserved when populated", key)
+	}
+	// A populated source keeps its non-empty member sets.
+	source := attrs["source"].(types.Object).Attributes()
+	require.False(t, source["group"].(types.Set).IsNull(), "source.group preserved")
+	require.NotEmpty(t, source["group"].(types.Set).Elements(), "source.group elements preserved")
+}
+
 // Port is a JSON number in GraphQL responses and a string alias in SDK inputs.
 func numericPorts(t *testing.T, value any) any {
 	t.Helper()

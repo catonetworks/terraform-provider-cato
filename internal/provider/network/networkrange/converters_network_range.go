@@ -108,7 +108,7 @@ func addNetworkRangeInputFromTerraform(
 	diags *diag.Diagnostics,
 	rangeType cato_models.SubnetType,
 ) cato_models.AddNetworkRangeInput {
-	return cato_models.AddNetworkRangeInput{
+	input := cato_models.AddNetworkRangeInput{
 		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, client, rangeType, plan.DhcpSettings, diags),
 		Gateway:          convert.KnownStringPointer(plan.Gateway),
 		InternetOnly:     convert.KnownBoolPointer(plan.InternetOnly),
@@ -120,6 +120,12 @@ func addNetworkRangeInputFromTerraform(
 		TranslatedSubnet: convert.TranslatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
 		Vlan:             convert.KnownInt64Pointer(plan.Vlan),
 	}
+	// Omit a no-op translated subnet (== subnet): the API rejects it when Static
+	// Range Translation is disabled on the account.
+	if input.TranslatedSubnet != nil && *input.TranslatedSubnet == plan.Subnet.ValueString() {
+		input.TranslatedSubnet = nil
+	}
+	return input
 }
 
 func hydrateUpdateNetworkRangeAPI(
@@ -130,7 +136,7 @@ func hydrateUpdateNetworkRangeAPI(
 ) cato_models.UpdateNetworkRangeInput {
 	rangeType := cato_models.SubnetType(plan.RangeType.ValueString())
 
-	return cato_models.UpdateNetworkRangeInput{
+	input := cato_models.UpdateNetworkRangeInput{
 		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, client, rangeType, plan.DhcpSettings, diags),
 		Gateway:          convert.KnownStringPointer(plan.Gateway),
 		InternetOnly:     convert.KnownBoolPointer(plan.InternetOnly),
@@ -142,6 +148,12 @@ func hydrateUpdateNetworkRangeAPI(
 		TranslatedSubnet: convert.TranslatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
 		Vlan:             convert.KnownInt64Pointer(plan.Vlan),
 	}
+	// Omit a no-op translated subnet (== subnet): the API rejects it when Static
+	// Range Translation is disabled on the account.
+	if input.TranslatedSubnet != nil && *input.TranslatedSubnet == plan.Subnet.ValueString() {
+		input.TranslatedSubnet = nil
+	}
+	return input
 }
 
 func hydrateAddNetworkRangeAPI(

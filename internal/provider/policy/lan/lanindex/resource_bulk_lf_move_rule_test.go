@@ -603,7 +603,33 @@ func TestLanFwPublishRejectsFailureStatusWithoutErrors(t *testing.T) {
 
 	r.publish(context.Background(), &diags)
 
-	requireDiagnosticContains(t, diags, `API mutation returned status "FAILURE"`)
+	requireDiagnosticContains(t, diags, `policy mutation returned status "FAILURE"`)
+}
+
+func TestLanFwPublishToleratesOnlyMissingDraft(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		code      string
+		wantError bool
+	}{
+		{code: "PolicyRevisionNotFound"},
+		{code: "PermissionDenied", wantError: true},
+	} {
+		t.Run(tc.code, func(t *testing.T) {
+			r := lanRulesIndexResource{
+				client: &catoclient.Service{AccountId: "testID"},
+				catov2Client: &lanPolicyMockClient{
+					mutationStatus: cato_models.PolicyMutationStatusFailure,
+					publishErrors: []*cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan_PublishPolicyRevision_Errors{
+						{ErrorCode: &tc.code},
+					},
+				},
+			}
+			var diags diag.Diagnostics
+			r.publish(context.Background(), &diags)
+			require.Equal(t, tc.wantError, diags.HasError(), diags)
+		})
+	}
 }
 
 func TestCreate(t *testing.T) {
@@ -722,6 +748,7 @@ type lanPolicyMockClient struct {
 	firewallMoveRuleCalls []lanPolicyFirewallMoveRuleCall
 	publishCalls          int
 	mutationStatus        cato_models.PolicyMutationStatus
+	publishErrors         []*cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan_PublishPolicyRevision_Errors
 }
 
 type lanPolicyMoveSectionCall struct {
@@ -811,6 +838,7 @@ func (m *lanPolicyMockClient) PolicySocketLanPublishPolicyRevision(_ context.Con
 			SocketLan: &cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan{
 				PublishPolicyRevision: cato_go_sdk.PolicySocketLanPublishPolicyRevision_Policy_SocketLan_PublishPolicyRevision{
 					Status: m.responseMutationStatus(),
+					Errors: m.publishErrors,
 				},
 			},
 		},

@@ -51,7 +51,7 @@ func prepareSocketSiteInput(ctx context.Context, plan *SocketSite, diags *diag.D
 		return nil
 	}
 
-	return &cato_models.AddSocketSiteInput{
+	input := &cato_models.AddSocketSiteInput{
 		ConnectionType:     cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString()),
 		Description:        convert.KnownStringPointer(plan.Description),
 		Name:               plan.Name.ValueString(),
@@ -61,6 +61,13 @@ func prepareSocketSiteInput(ctx context.Context, plan *SocketSite, diags *diag.D
 		TranslatedSubnet:   convert.StringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
 		Vlan:               (*scalars.Vlan)(convert.KnownInt64Pointer(tfNativeRange.Vlan)),
 	}
+	// Omit a no-op translated subnet (== subnet): the API rejects it when Static
+	// Range Translation is disabled on the account. See the same guard in
+	// convertPrepareNetworkRangeInputValues.
+	if input.TranslatedSubnet != nil && *input.TranslatedSubnet == tfNativeRange.NativeNetworkRange.ValueString() {
+		input.TranslatedSubnet = nil
+	}
+	return input
 }
 
 // vrrpDestTypeSuffix is the suffix the Cato API appends to a socket interface destination
@@ -172,11 +179,17 @@ func prepareSocketInterfaceInput(
 	}
 
 	if slices.Contains(lanDestTypes, interfaceDestType) && !isHA {
-		input.Lan = &cato_models.SocketInterfaceLanInput{
+		lan := &cato_models.SocketInterfaceLanInput{
 			LocalIP:          planNativeRange.LocalIP.ValueString(),
 			Subnet:           planNativeRange.NativeNetworkRange.ValueString(),
 			TranslatedSubnet: convert.TranslatedSubnetForAPIInput(configTranslatedSubnet, planNativeRange.TranslatedSubnet),
 		}
+		// Omit a no-op translated subnet (== subnet): the API rejects it when
+		// Static Range Translation is disabled on the account.
+		if lan.TranslatedSubnet != nil && *lan.TranslatedSubnet == lan.Subnet {
+			lan.TranslatedSubnet = nil
+		}
+		input.Lan = lan
 	}
 
 	interfaceIndex := cato_models.SocketInterfaceIDEnum(planNativeRange.InterfaceIndex.ValueString())
@@ -574,6 +587,15 @@ func convertPrepareNetworkRangeInputValues(
 		Vlan:             convert.KnownInt64Pointer(planNativeRange.Vlan),
 		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, client, cato_models.SubnetTypeNative, planNativeRange.DhcpSettings, diags),
 		// AzureFloatingIP must remain omitted until Azure HA support is implemented.
+	}
+	// A translated subnet equal to the subnet is a no-op translation. The API
+	// rejects it ("translatedSubnet is not supported when Static Range Translation
+	// is disabled") on accounts without Static Range Translation enabled, so omit
+	// it -- it conveys no real translation. Exports hydrate translated_subnet to
+	// the subnet value when the feature is off, which is how it reaches here.
+	if resultInput.TranslatedSubnet != nil &&
+		*resultInput.TranslatedSubnet == planNativeRange.NativeNetworkRange.ValueString() {
+		resultInput.TranslatedSubnet = nil
 	}
 
 	if !isHA { // for HA scenario, local IP is not allowed to be modified

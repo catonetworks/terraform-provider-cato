@@ -14,6 +14,21 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
+// requiresReplaceIfChanged forces replacement only when a Required identity
+// attribute (site_id / interface_id) changes between two KNOWN values. It does
+// NOT force replacement when the prior-state value is null/unknown -- that
+// happens during brownfield adoption/import-hydration, where the attribute is
+// simply being recorded in state for the first time and the interface is not
+// actually changing. Those cases update in place (SiteUpdateSocketInterface is
+// keyed on site_id + interface_id) instead of destroy-and-recreate.
+func requiresReplaceIfChanged(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+	if req.StateValue.IsNull() || req.StateValue.IsUnknown() || req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
+		resp.RequiresReplace = false
+		return
+	}
+	resp.RequiresReplace = !req.PlanValue.Equal(req.StateValue)
+}
+
 //nolint:lll
 func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
@@ -30,7 +45,11 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "Site ID",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIf(
+						requiresReplaceIfChanged,
+						"Replace only when site_id changes between two known values (not on brownfield hydration of a previously-null site_id).",
+						"Replace only when site_id changes between two known values (not on brownfield hydration of a previously-null site_id).",
+					),
 				},
 			},
 			"name": schema.StringAttribute{
@@ -41,7 +60,11 @@ func (r *lanInterfaceResource) Schema(_ context.Context, _ resource.SchemaReques
 				Description: "SocketInterface available ids, INT_# stands for 1,2,3...12 supported ids (https://api.catonetworks.com/documentation/#definition-SocketInterfaceIDEnum)",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIf(
+						requiresReplaceIfChanged,
+						"Replace only when interface_id changes between two known values (not on brownfield hydration of a previously-null interface_id).",
+						"Replace only when interface_id changes between two known values (not on brownfield hydration of a previously-null interface_id).",
+					),
 				},
 				Validators: []validator.String{
 					stringvalidator.OneOf(utils.ToStrings(cato_models.AllSocketInterfaceIDEnum)...),

@@ -15,6 +15,21 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/validators"
 )
 
+// requiresReplaceIfChanged forces replacement only when a Required identity
+// attribute (e.g. site_id) changes between two KNOWN values. It does NOT force
+// replacement when the prior-state value is null/unknown -- that happens during
+// brownfield adoption/import-hydration, where the attribute is simply being
+// recorded in state for the first time and the object is not actually moving.
+// Those cases update in place (SiteUpdateNetworkRange is keyed on the range id)
+// instead of destroy-and-recreate.
+func requiresReplaceIfChanged(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+	if req.StateValue.IsNull() || req.StateValue.IsUnknown() || req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
+		resp.RequiresReplace = false
+		return
+	}
+	resp.RequiresReplace = !req.PlanValue.Equal(req.StateValue)
+}
+
 // Schema defines the schema for the network range resource
 func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
@@ -79,9 +94,15 @@ func (r *networkRangeResource) Schema(_ context.Context, _ resource.SchemaReques
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"site_id": schema.StringAttribute{
-				Description:   "Site ID",
-				Required:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Description: "Site ID",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplaceIf(
+						requiresReplaceIfChanged,
+						"Replace only when site_id changes between two known values (not on brownfield hydration of a previously-null site_id).",
+						"Replace only when site_id changes between two known values (not on brownfield hydration of a previously-null site_id).",
+					),
+				},
 			},
 			"subnet": schema.StringAttribute{
 				Description: "Network range (CIDR)",

@@ -513,10 +513,16 @@ func convertHydrateIpsecSiteStateValues(
 
 	if description, ok := siteEntity.GetHelperFields()["description"]; ok && description != nil {
 		descStr := description.(string)
-		if descStr != "" {
+		switch {
+		case descStr != "":
 			state.Description = types.StringValue(descStr)
-		} else {
+		case state.Description.IsNull():
 			state.Description = types.StringNull()
+		default:
+			// The API reports an empty description, but the plan/prior state carried
+			// "" (not null). Preserve the empty string so Terraform does not see an
+			// inconsistent result after apply ("was \"\", but now null").
+			state.Description = types.StringValue("")
 		}
 	}
 

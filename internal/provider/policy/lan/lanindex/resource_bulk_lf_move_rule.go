@@ -11,6 +11,7 @@ import (
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
+	sharedpolicy "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policy"
 	utils "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
@@ -479,32 +480,24 @@ func (r *lanRulesIndexResource) hydrateLanFwRulesIndex(ctx context.Context, plan
 // publish calls the API to publish the draft policy revision
 func (r *lanRulesIndexResource) publish(ctx context.Context, diags *diag.Diagnostics) {
 	const summary = "failed to publish LAN firewall policy"
-	const notFound = "PolicyRevisionNotFound"
 	result, err := r.resourceAPI().PolicySocketLanPublishPolicyRevision(ctx, nil, nil, r.client.AccountId)
 	if err != nil {
 		diags.AddError(summary, err.Error())
 		return
 	}
 	publish := result.GetPolicy().GetSocketLan().GetPublishPolicyRevision()
-	errors := publish.GetErrors()
-	if len(errors) > 0 {
-		hasAPIError := false
-		for _, e := range errors {
-			if code := e.GetErrorCode(); code != nil && *code == notFound {
-				continue
-			}
-			hasAPIError = true
-			if msg := e.GetErrorMessage(); msg != nil {
-				diags.AddError(summary, *msg)
-			} else {
-				diags.AddError(summary, "unknown error")
-			}
-		}
-		if hasAPIError {
-			return
-		}
-	}
-	if err := lanPolicyMutationStatusError(publish.GetStatus()); err != nil {
-		diags.AddError(summary, err.Error())
+	// sharedpolicy.PublishResult tolerates a lone FAILURE+PolicyRevisionNotFound
+	// as a no-op (there is no draft to publish -- e.g. the preceding mutation
+	// already published, or nothing was staged), matching how WAN/Internet
+	// firewall publishes behave, while still surfacing genuine publish errors.
+	if err := sharedpolicy.PublishResult(publish.GetStatus(), publish.GetErrors()); err != nil {
+		// Genuine failure: dump the full raw publishPolicyRevision response so a
+		// bare status is diagnosable instead of a dead end.
+		raw := utils.InterfaceToJSONString(result)
+		tflog.Error(ctx, "LAN firewall publishPolicyRevision failed", map[string]interface{}{
+			"status":   publish.GetStatus(),
+			"response": raw,
+		})
+		diags.AddError(summary, fmt.Sprintf("%s\nraw publishPolicyRevision response: %s", err.Error(), raw))
 	}
 }

@@ -3,7 +3,8 @@ HOSTNAME=registry.terraform.io
 NAMESPACE=catonetworks
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
-VERSION=1.4.0
+# Keep the local mirror slot overridable for development wrappers.
+VERSION?=1.5.0-prerelease.3
 
 # Mac Intel Chip
 # OS_ARCH=darwin_amd64
@@ -24,7 +25,8 @@ default: install
 
 build: ## Build the terraform-provider
 	export GO111MODULE="on"
-	go build -o ${BINARY}
+	# The local SDK replacement is not represented in vendor/modules.txt.
+	go build -mod=mod -o ${BINARY}
 
 install: build ## Install the provider, update config
 	mkdir -p ${PLUGINS_DIR}
