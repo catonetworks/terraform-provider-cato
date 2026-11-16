@@ -98,6 +98,20 @@ func (r *wfSubPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	addPayload := addResp.GetPolicy().GetWanFirewall().GetAddSubPolicy()
 	if err := sharedpolicy.MutationResult(addPayload.GetStatus(), addPayload.GetErrors()); err != nil {
+		// A name collision does not prove ownership (mirrors cato_wf_rule Create):
+		// a leftover sub-policy from a prior apply or an incomplete purge surfaces
+		// as ruleNameAlreadyExists. Point at an explicit import instead of a bare
+		// API error so it is recoverable without deleting the live sub-policy.
+		for _, e := range addPayload.GetErrors() {
+			if e != nil && e.GetErrorCode() != nil && *e.GetErrorCode() == "ruleNameAlreadyExists" {
+				resp.Diagnostics.AddError(
+					"Sub-Policy Mutation Failed",
+					err.Error()+"; a sub-policy with this name already exists -- import it explicitly "+
+						"(terraform import cato_wf_sub_policy.<name> <sub-policy-id>) to manage it with this resource",
+				)
+				return
+			}
+		}
 		resp.Diagnostics.AddError("Sub-Policy Mutation Failed", err.Error())
 		return
 	}
@@ -448,5 +462,10 @@ func (r *wfSubPolicyResource) publish(ctx context.Context) error {
 		return err
 	}
 	payload := response.GetPolicy().GetWanFirewall().GetPublishPolicyRevision()
-	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
+	// Use PublishResult (not MutationResult): the WAN FW draft is shared account-wide,
+	// so a publish can legitimately find nothing to publish — the API returns a no-op
+	// FAILURE with a single PolicyRevisionNotFound error. PublishResult treats that
+	// lone code as success (as cato_wf_rule/cato_wf_section tolerate the no-draft
+	// publish) while still surfacing genuine publish errors.
+	return sharedpolicy.PublishResult(payload.GetStatus(), payload.GetErrors())
 }

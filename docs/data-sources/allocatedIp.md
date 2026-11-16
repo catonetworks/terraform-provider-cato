@@ -3,12 +3,12 @@
 page_title: "cato_allocatedIp Data Source - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Retrieves account allocated IPs.
+  Retrieves account allocated IPs. Filters compose (AND) and every filter is optional: name_filter matches the allocated IP address (back-compat); description_filter + pop_location_filter select by the stable cross-tenant identity (the display name embeds the Cato-assigned IP, so names differ per tenant).
 ---
 
 # cato_allocatedIp (Data Source)
 
-Retrieves account allocated IPs.
+Retrieves account allocated IPs. Filters compose (AND) and every filter is optional: name_filter matches the allocated IP address (back-compat); description_filter + pop_location_filter select by the stable cross-tenant identity (the display name embeds the Cato-assigned IP, so names differ per tenant).
 
 ## Example Usage
 
@@ -36,7 +36,9 @@ data "cato_allocatedIp" "ips" {
 
 ### Optional
 
-- `name_filter` (List of String) List of names to filter
+- `description_filter` (List of String) List of allocation descriptions to filter (stable cross-tenant identity, combined with pop_location_filter)
+- `name_filter` (List of String) List of allocated IP addresses to filter (matches the `name` item field)
+- `pop_location_filter` (List of String) List of PoP location names to filter (matches the `location` item field)
 
 ### Read-Only
 
@@ -48,6 +50,8 @@ data "cato_allocatedIp" "ips" {
 Read-Only:
 
 - `cc` (String) Country code
+- `description` (String) Allocation description (stable across tenants)
+- `display_name` (String) CMA display name ("<pop> - <ip>") -- the form policy rules reference
 - `id` (String) ID
 - `location` (String) Pop Location
-- `name` (String) Name
+- `name` (String) Allocated IP address

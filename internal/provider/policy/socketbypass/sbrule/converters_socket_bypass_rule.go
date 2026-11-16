@@ -32,14 +32,14 @@ func buildCreateObject(
 	}
 	validateValues(diags,
 		knownValue{"rule.action", model.Action, true},
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.destination", model.Destination, true},
+		knownValue{"rule.description", model.Description, false},
+		knownValue{"rule.destination", model.Destination, false},
 		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.exception", model.Exception, true},
+		knownValue{"rule.exception", model.Exception, false},
 		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.service", model.Service, true},
-		knownValue{"rule.site", model.Site, true},
-		knownValue{"rule.source", model.Source, true},
+		knownValue{"rule.service", model.Service, false},
+		knownValue{"rule.site", model.Site, false},
+		knownValue{"rule.source", model.Source, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -118,7 +118,21 @@ func buildCreateObjectDestination(
 	ctx context.Context, value types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketBypassDestinationInput {
 	if value.IsNull() {
-		return nil
+		// SocketBypassDestinationInput! is non-nullable on addRule: an omitted
+		// destination block must serialize as an empty "match any" object, not null,
+		// or the API rejects the create ("got invalid value null at
+		// ...rule.destination; Expected non-nullable type
+		// SocketBypassDestinationInput!"). Empty slices mirror the populated path.
+		return &cato_models.SocketBypassDestinationInput{
+			Application:   []*cato_models.ApplicationRefInput{},
+			CustomApp:     []*cato_models.CustomApplicationRefInput{},
+			Domain:        []string{},
+			Fqdn:          []string{},
+			GlobalIPRange: []*cato_models.GlobalIPRangeRefInput{},
+			IP:            []string{},
+			IPRange:       []*cato_models.IPAddressRangeInput{},
+			Subnet:        []string{},
+		}
 	}
 	if value.IsUnknown() {
 		diags.AddError("Unknown configuration", "rule.destination must be known before applying.")
@@ -130,14 +144,14 @@ func buildCreateObjectDestination(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.destination.application", model.Application, true},
-		knownValue{"rule.destination.custom_app", model.CustomApp, true},
-		knownValue{"rule.destination.domain", model.Domain, true},
-		knownValue{"rule.destination.fqdn", model.Fqdn, true},
-		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.destination.ip", model.IP, true},
-		knownValue{"rule.destination.ip_range", model.IPRange, true},
-		knownValue{"rule.destination.subnet", model.Subnet, true},
+		knownValue{"rule.destination.application", model.Application, false},
+		knownValue{"rule.destination.custom_app", model.CustomApp, false},
+		knownValue{"rule.destination.domain", model.Domain, false},
+		knownValue{"rule.destination.fqdn", model.Fqdn, false},
+		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.destination.ip", model.IP, false},
+		knownValue{"rule.destination.ip_range", model.IPRange, false},
+		knownValue{"rule.destination.subnet", model.Subnet, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -213,11 +227,11 @@ func buildCreateObjectException(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.destination", model.Destination, true},
+		knownValue{"rule.exception.destination", model.Destination, false},
 		knownValue{"rule.exception.name", model.Name, true},
-		knownValue{"rule.exception.service", model.Service, true},
-		knownValue{"rule.exception.site", model.Site, true},
-		knownValue{"rule.exception.source", model.Source, true},
+		knownValue{"rule.exception.service", model.Service, false},
+		knownValue{"rule.exception.site", model.Site, false},
+		knownValue{"rule.exception.source", model.Source, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -247,14 +261,14 @@ func buildCreateObjectExceptionDestination(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.destination.application", model.Application, true},
-		knownValue{"rule.exception.destination.custom_app", model.CustomApp, true},
-		knownValue{"rule.exception.destination.domain", model.Domain, true},
-		knownValue{"rule.exception.destination.fqdn", model.Fqdn, true},
-		knownValue{"rule.exception.destination.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.exception.destination.ip", model.IP, true},
-		knownValue{"rule.exception.destination.ip_range", model.IPRange, true},
-		knownValue{"rule.exception.destination.subnet", model.Subnet, true},
+		knownValue{"rule.exception.destination.application", model.Application, false},
+		knownValue{"rule.exception.destination.custom_app", model.CustomApp, false},
+		knownValue{"rule.exception.destination.domain", model.Domain, false},
+		knownValue{"rule.exception.destination.fqdn", model.Fqdn, false},
+		knownValue{"rule.exception.destination.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.exception.destination.ip", model.IP, false},
+		knownValue{"rule.exception.destination.ip_range", model.IPRange, false},
+		knownValue{"rule.exception.destination.subnet", model.Subnet, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -330,8 +344,8 @@ func buildCreateObjectExceptionService(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.service.custom", model.Custom, true},
-		knownValue{"rule.exception.service.simple", model.Simple, true},
+		knownValue{"rule.exception.service.custom", model.Custom, false},
+		knownValue{"rule.exception.service.simple", model.Simple, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -451,8 +465,8 @@ func buildCreateObjectExceptionSite(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.site.group", model.Group, true},
-		knownValue{"rule.exception.site.site", model.Site, true},
+		knownValue{"rule.exception.site.group", model.Group, false},
+		knownValue{"rule.exception.site.site", model.Site, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -479,16 +493,16 @@ func buildCreateObjectExceptionSource(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.source.floating_subnet", model.FloatingSubnet, true},
-		knownValue{"rule.exception.source.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.exception.source.group", model.Group, true},
-		knownValue{"rule.exception.source.host", model.Host, true},
-		knownValue{"rule.exception.source.ip", model.IP, true},
-		knownValue{"rule.exception.source.ip_range", model.IPRange, true},
-		knownValue{"rule.exception.source.network_interface", model.NetworkInterface, true},
-		knownValue{"rule.exception.source.site_network_subnet", model.SiteNetworkSubnet, true},
-		knownValue{"rule.exception.source.subnet", model.Subnet, true},
-		knownValue{"rule.exception.source.vlan", model.Vlan, true},
+		knownValue{"rule.exception.source.floating_subnet", model.FloatingSubnet, false},
+		knownValue{"rule.exception.source.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.exception.source.group", model.Group, false},
+		knownValue{"rule.exception.source.host", model.Host, false},
+		knownValue{"rule.exception.source.ip", model.IP, false},
+		knownValue{"rule.exception.source.ip_range", model.IPRange, false},
+		knownValue{"rule.exception.source.network_interface", model.NetworkInterface, false},
+		knownValue{"rule.exception.source.site_network_subnet", model.SiteNetworkSubnet, false},
+		knownValue{"rule.exception.source.subnet", model.Subnet, false},
+		knownValue{"rule.exception.source.vlan", model.Vlan, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -551,7 +565,15 @@ func buildCreateObjectService(
 	ctx context.Context, value types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketBypassServiceInput {
 	if value.IsNull() {
-		return nil
+		// SocketBypassServiceInput! is non-nullable on addRule: an omitted service
+		// block must serialize as an empty "match any" object, not null, or the API
+		// rejects the create ("got invalid value null at ...rule.service; Expected
+		// non-nullable type SocketBypassServiceInput!"). Empty slices mirror the
+		// populated path (Prepare*/make all yield []), which already sends [].
+		return &cato_models.SocketBypassServiceInput{
+			Custom: []*cato_models.CustomServiceInput{},
+			Simple: []*cato_models.SimpleServiceInput{},
+		}
 	}
 	if value.IsUnknown() {
 		diags.AddError("Unknown configuration", "rule.service must be known before applying.")
@@ -563,8 +585,8 @@ func buildCreateObjectService(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.service.custom", model.Custom, true},
-		knownValue{"rule.service.simple", model.Simple, true},
+		knownValue{"rule.service.custom", model.Custom, false},
+		knownValue{"rule.service.simple", model.Simple, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -672,7 +694,13 @@ func buildCreateObjectSite(
 	ctx context.Context, value types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketBypassSiteInput {
 	if value.IsNull() {
-		return nil
+		// SocketBypassSiteInput! is non-nullable on addRule: an omitted site block
+		// must serialize as an empty "match any" object, not null. Empty slices
+		// mirror the populated path.
+		return &cato_models.SocketBypassSiteInput{
+			Group: []*cato_models.GroupRefInput{},
+			Site:  []*cato_models.SiteRefInput{},
+		}
 	}
 	if value.IsUnknown() {
 		diags.AddError("Unknown configuration", "rule.site must be known before applying.")
@@ -684,8 +712,8 @@ func buildCreateObjectSite(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.site.group", model.Group, true},
-		knownValue{"rule.site.site", model.Site, true},
+		knownValue{"rule.site.group", model.Group, false},
+		knownValue{"rule.site.site", model.Site, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -700,7 +728,23 @@ func buildCreateObjectSource(
 	ctx context.Context, value types.Object, diags *diag.Diagnostics,
 ) *cato_models.SocketBypassSourceInput {
 	if value.IsNull() {
-		return nil
+		// SocketBypassSourceInput! is non-nullable on addRule: an omitted source
+		// block must serialize as an empty "match any" object, not null, or the API
+		// rejects the create ("got invalid value null at ...rule.source; Expected
+		// non-nullable type SocketBypassSourceInput!"). Empty slices mirror the
+		// populated path (PrepareIDNameSet/make all yield []), which already sends [].
+		return &cato_models.SocketBypassSourceInput{
+			FloatingSubnet:    []*cato_models.FloatingSubnetRefInput{},
+			GlobalIPRange:     []*cato_models.GlobalIPRangeRefInput{},
+			Group:             []*cato_models.GroupRefInput{},
+			Host:              []*cato_models.HostRefInput{},
+			IP:                []string{},
+			IPRange:           []*cato_models.IPAddressRangeInput{},
+			NetworkInterface:  []*cato_models.NetworkInterfaceRefInput{},
+			SiteNetworkSubnet: []*cato_models.SiteNetworkSubnetRefInput{},
+			Subnet:            []string{},
+			Vlan:              []scalars.Vlan{},
+		}
 	}
 	if value.IsUnknown() {
 		diags.AddError("Unknown configuration", "rule.source must be known before applying.")
@@ -712,16 +756,16 @@ func buildCreateObjectSource(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.source.floating_subnet", model.FloatingSubnet, true},
-		knownValue{"rule.source.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.source.group", model.Group, true},
-		knownValue{"rule.source.host", model.Host, true},
-		knownValue{"rule.source.ip", model.IP, true},
-		knownValue{"rule.source.ip_range", model.IPRange, true},
-		knownValue{"rule.source.network_interface", model.NetworkInterface, true},
-		knownValue{"rule.source.site_network_subnet", model.SiteNetworkSubnet, true},
-		knownValue{"rule.source.subnet", model.Subnet, true},
-		knownValue{"rule.source.vlan", model.Vlan, true},
+		knownValue{"rule.source.floating_subnet", model.FloatingSubnet, false},
+		knownValue{"rule.source.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.source.group", model.Group, false},
+		knownValue{"rule.source.host", model.Host, false},
+		knownValue{"rule.source.ip", model.IP, false},
+		knownValue{"rule.source.ip_range", model.IPRange, false},
+		knownValue{"rule.source.network_interface", model.NetworkInterface, false},
+		knownValue{"rule.source.site_network_subnet", model.SiteNetworkSubnet, false},
+		knownValue{"rule.source.subnet", model.Subnet, false},
+		knownValue{"rule.source.vlan", model.Vlan, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -797,14 +841,14 @@ func buildUpdateObject(
 	}
 	validateValues(diags,
 		knownValue{"rule.action", model.Action, true},
-		knownValue{"rule.description", model.Description, true},
-		knownValue{"rule.destination", model.Destination, true},
+		knownValue{"rule.description", model.Description, false},
+		knownValue{"rule.destination", model.Destination, false},
 		knownValue{"rule.enabled", model.Enabled, true},
-		knownValue{"rule.exception", model.Exception, true},
+		knownValue{"rule.exception", model.Exception, false},
 		knownValue{"rule.name", model.Name, true},
-		knownValue{"rule.service", model.Service, true},
-		knownValue{"rule.site", model.Site, true},
-		knownValue{"rule.source", model.Source, true},
+		knownValue{"rule.service", model.Service, false},
+		knownValue{"rule.site", model.Site, false},
+		knownValue{"rule.source", model.Source, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -900,14 +944,14 @@ func buildUpdateObjectDestination(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.destination.application", model.Application, true},
-		knownValue{"rule.destination.custom_app", model.CustomApp, true},
-		knownValue{"rule.destination.domain", model.Domain, true},
-		knownValue{"rule.destination.fqdn", model.Fqdn, true},
-		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.destination.ip", model.IP, true},
-		knownValue{"rule.destination.ip_range", model.IPRange, true},
-		knownValue{"rule.destination.subnet", model.Subnet, true},
+		knownValue{"rule.destination.application", model.Application, false},
+		knownValue{"rule.destination.custom_app", model.CustomApp, false},
+		knownValue{"rule.destination.domain", model.Domain, false},
+		knownValue{"rule.destination.fqdn", model.Fqdn, false},
+		knownValue{"rule.destination.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.destination.ip", model.IP, false},
+		knownValue{"rule.destination.ip_range", model.IPRange, false},
+		knownValue{"rule.destination.subnet", model.Subnet, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -983,11 +1027,11 @@ func buildUpdateObjectException(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.destination", model.Destination, true},
+		knownValue{"rule.exception.destination", model.Destination, false},
 		knownValue{"rule.exception.name", model.Name, true},
-		knownValue{"rule.exception.service", model.Service, true},
-		knownValue{"rule.exception.site", model.Site, true},
-		knownValue{"rule.exception.source", model.Source, true},
+		knownValue{"rule.exception.service", model.Service, false},
+		knownValue{"rule.exception.site", model.Site, false},
+		knownValue{"rule.exception.source", model.Source, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -1017,14 +1061,14 @@ func buildUpdateObjectExceptionDestination(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.destination.application", model.Application, true},
-		knownValue{"rule.exception.destination.custom_app", model.CustomApp, true},
-		knownValue{"rule.exception.destination.domain", model.Domain, true},
-		knownValue{"rule.exception.destination.fqdn", model.Fqdn, true},
-		knownValue{"rule.exception.destination.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.exception.destination.ip", model.IP, true},
-		knownValue{"rule.exception.destination.ip_range", model.IPRange, true},
-		knownValue{"rule.exception.destination.subnet", model.Subnet, true},
+		knownValue{"rule.exception.destination.application", model.Application, false},
+		knownValue{"rule.exception.destination.custom_app", model.CustomApp, false},
+		knownValue{"rule.exception.destination.domain", model.Domain, false},
+		knownValue{"rule.exception.destination.fqdn", model.Fqdn, false},
+		knownValue{"rule.exception.destination.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.exception.destination.ip", model.IP, false},
+		knownValue{"rule.exception.destination.ip_range", model.IPRange, false},
+		knownValue{"rule.exception.destination.subnet", model.Subnet, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -1100,8 +1144,8 @@ func buildUpdateObjectExceptionService(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.service.custom", model.Custom, true},
-		knownValue{"rule.exception.service.simple", model.Simple, true},
+		knownValue{"rule.exception.service.custom", model.Custom, false},
+		knownValue{"rule.exception.service.simple", model.Simple, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -1221,8 +1265,8 @@ func buildUpdateObjectExceptionSite(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.site.group", model.Group, true},
-		knownValue{"rule.exception.site.site", model.Site, true},
+		knownValue{"rule.exception.site.group", model.Group, false},
+		knownValue{"rule.exception.site.site", model.Site, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -1249,16 +1293,16 @@ func buildUpdateObjectExceptionSource(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.exception.source.floating_subnet", model.FloatingSubnet, true},
-		knownValue{"rule.exception.source.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.exception.source.group", model.Group, true},
-		knownValue{"rule.exception.source.host", model.Host, true},
-		knownValue{"rule.exception.source.ip", model.IP, true},
-		knownValue{"rule.exception.source.ip_range", model.IPRange, true},
-		knownValue{"rule.exception.source.network_interface", model.NetworkInterface, true},
-		knownValue{"rule.exception.source.site_network_subnet", model.SiteNetworkSubnet, true},
-		knownValue{"rule.exception.source.subnet", model.Subnet, true},
-		knownValue{"rule.exception.source.vlan", model.Vlan, true},
+		knownValue{"rule.exception.source.floating_subnet", model.FloatingSubnet, false},
+		knownValue{"rule.exception.source.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.exception.source.group", model.Group, false},
+		knownValue{"rule.exception.source.host", model.Host, false},
+		knownValue{"rule.exception.source.ip", model.IP, false},
+		knownValue{"rule.exception.source.ip_range", model.IPRange, false},
+		knownValue{"rule.exception.source.network_interface", model.NetworkInterface, false},
+		knownValue{"rule.exception.source.site_network_subnet", model.SiteNetworkSubnet, false},
+		knownValue{"rule.exception.source.subnet", model.Subnet, false},
+		knownValue{"rule.exception.source.vlan", model.Vlan, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -1333,8 +1377,8 @@ func buildUpdateObjectService(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.service.custom", model.Custom, true},
-		knownValue{"rule.service.simple", model.Simple, true},
+		knownValue{"rule.service.custom", model.Custom, false},
+		knownValue{"rule.service.simple", model.Simple, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -1454,8 +1498,8 @@ func buildUpdateObjectSite(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.site.group", model.Group, true},
-		knownValue{"rule.site.site", model.Site, true},
+		knownValue{"rule.site.group", model.Group, false},
+		knownValue{"rule.site.site", model.Site, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -1482,16 +1526,16 @@ func buildUpdateObjectSource(
 		return nil
 	}
 	validateValues(diags,
-		knownValue{"rule.source.floating_subnet", model.FloatingSubnet, true},
-		knownValue{"rule.source.global_ip_range", model.GlobalIPRange, true},
-		knownValue{"rule.source.group", model.Group, true},
-		knownValue{"rule.source.host", model.Host, true},
-		knownValue{"rule.source.ip", model.IP, true},
-		knownValue{"rule.source.ip_range", model.IPRange, true},
-		knownValue{"rule.source.network_interface", model.NetworkInterface, true},
-		knownValue{"rule.source.site_network_subnet", model.SiteNetworkSubnet, true},
-		knownValue{"rule.source.subnet", model.Subnet, true},
-		knownValue{"rule.source.vlan", model.Vlan, true},
+		knownValue{"rule.source.floating_subnet", model.FloatingSubnet, false},
+		knownValue{"rule.source.global_ip_range", model.GlobalIPRange, false},
+		knownValue{"rule.source.group", model.Group, false},
+		knownValue{"rule.source.host", model.Host, false},
+		knownValue{"rule.source.ip", model.IP, false},
+		knownValue{"rule.source.ip_range", model.IPRange, false},
+		knownValue{"rule.source.network_interface", model.NetworkInterface, false},
+		knownValue{"rule.source.site_network_subnet", model.SiteNetworkSubnet, false},
+		knownValue{"rule.source.subnet", model.Subnet, false},
+		knownValue{"rule.source.vlan", model.Vlan, false},
 	)
 	if diags.HasError() {
 		return nil
@@ -2129,6 +2173,66 @@ func parseReadSourceIPRange(
 }
 
 type add = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule
+
+// normalizeRule changes only configurable optional criteria. Computed section,
+// identity, and index fields must retain the API shape even during import.
+func normalizeRule(ctx context.Context, value, prior types.Object, diags *diag.Diagnostics) types.Object {
+	if value.IsNull() || value.IsUnknown() {
+		return value
+	}
+	fields := value.Attributes()
+	previous := prior.Attributes()
+	for _, name := range []string{"description", "destination", "exception", "service", "site", "source"} {
+		fields[name] = normalizeOptionalEmpties(ctx, fields[name], previous[name], diags)
+	}
+	result, d := types.ObjectValue(ruleAttrTypes, fields)
+	diags.Append(d...)
+	return result
+}
+
+// normalizeOptionalEmpties matches omitted API criteria to the prior plan/state.
+// Explicit empty collections, objects, and strings retain their configured shape;
+// populated API values are never replaced by prior values.
+func normalizeOptionalEmpties(ctx context.Context, value, prior attr.Value, diags *diag.Diagnostics) attr.Value {
+	if value.IsNull() || value.IsUnknown() {
+		return value
+	}
+	omitted := prior == nil || prior.IsNull()
+	switch typed := value.(type) {
+	case basetypes.ObjectValue:
+		return normalizeOptionalObject(ctx, typed, prior, diags)
+	case basetypes.SetValue:
+		if len(typed.Elements()) == 0 && omitted {
+			return types.SetNull(typed.ElementType(ctx))
+		}
+	case basetypes.StringValue:
+		if typed.ValueString() == "" && omitted {
+			return types.StringNull()
+		}
+	}
+	return value
+}
+
+func normalizeOptionalObject(ctx context.Context, value types.Object, prior attr.Value, diags *diag.Diagnostics) types.Object {
+	var priorAttrs map[string]attr.Value
+	if previous, ok := prior.(types.Object); ok && !previous.IsNull() && !previous.IsUnknown() {
+		priorAttrs = previous.Attributes()
+	}
+	normalized := value.Attributes()
+	allNull := true
+	for key, field := range normalized {
+		normalized[key] = normalizeOptionalEmpties(ctx, field, priorAttrs[key], diags)
+		if !normalized[key].IsNull() {
+			allNull = false
+		}
+	}
+	if allNull && (prior == nil || prior.IsNull()) {
+		return types.ObjectNull(value.AttributeTypes(ctx))
+	}
+	result, d := types.ObjectValue(value.AttributeTypes(ctx), normalized)
+	diags.Append(d...)
+	return result
+}
 
 func parseAdd(
 	ctx context.Context, value *add, diags *diag.Diagnostics,

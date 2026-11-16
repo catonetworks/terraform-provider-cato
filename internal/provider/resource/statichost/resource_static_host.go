@@ -7,6 +7,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	path "github.com/hashicorp/terraform-plugin-framework/path"
 	resource "github.com/hashicorp/terraform-plugin-framework/resource"
+	types "github.com/hashicorp/terraform-plugin-framework/types"
 	tflog "github.com/hashicorp/terraform-plugin-log/tflog"
 
 	catoclient "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
@@ -68,13 +69,23 @@ func (r *staticHostResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// Resolve the parent site (by site_name or site_id) to a concrete id and
+	// validate it exists; persist the resolved id into the plan so it lands in
+	// state regardless of which reference the config used.
+	siteID, siteDiags := r.resolveSiteID(ctx, plan)
+	resp.Diagnostics.Append(siteDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.SiteID = types.StringValue(siteID)
+
 	// setting input
 	input := convertCreateInput(plan)
 
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.request", map[string]interface{}{
 		"request": utils.InterfaceToJSONString(input),
 	})
-	body, err := r.resourceAPI().SiteAddStaticHost(ctx, plan.SiteID.ValueString(), input, r.client.AccountId)
+	body, err := r.resourceAPI().SiteAddStaticHost(ctx, siteID, input, r.client.AccountId)
 	tflog.Debug(ctx, "Create.SiteAddStaticHost.response", map[string]interface{}{
 		"response": utils.InterfaceToJSONString(body),
 	})
@@ -147,6 +158,17 @@ func (r *staticHostResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Re-resolve and validate the parent site, keeping state's site_id
+	// authoritative. The update mutation itself is keyed on the host id (the
+	// site is RequiresReplace), so this doesn't change the API call -- it only
+	// confirms the site still exists and keeps the stored id correct.
+	siteID, siteDiags := r.resolveSiteID(ctx, plan)
+	resp.Diagnostics.Append(siteDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.SiteID = types.StringValue(siteID)
 
 	// setting input
 	input := convertUpdateInput(plan)

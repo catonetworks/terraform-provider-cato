@@ -12,31 +12,67 @@ Manages a rule in the Cato Application Control (App & Data Inline Protection) po
 ## Example Usage
 
 ```terraform
-# Application Control rule — rule_type APPLICATION (most common).
-# Allows or blocks access to specific cloud applications.
-#
-# NOTE: For APPLICATION and DATA rules the `application` block must have exactly
-# one non-empty matcher (e.g. application, app_category, custom_app …).
-# An empty `application = {}` is only valid for FILE rules.
-resource "cato_application_control_rule" "application" {
-  # position values: LAST_IN_POLICY | LAST_IN_SECTION | AFTER_RULE | BEFORE_RULE
+# NOTE on schema shape: rule.application_rule / rule.data_rule / rule.file_rule are a
+# one-of selected by rule.rule_type (APPLICATION | DATA | FILE) — only one may be
+# populated per rule resource. All three share an identical field shape (source,
+# application, tracking, device, access_method, action_config, schedule, file_attribute,
+# application_activity); dlp_profile is DATA-only, and application = {} (matching all
+# cloud apps) is only valid for FILE rules.
+
+resource "cato_application_control_section" "example" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "Application Control Example Rules"
+  }
+}
+
+# Minimal rule — rule_type APPLICATION, only required/common fields.
+resource "cato_application_control_rule" "simple" {
+  at = {
+    position = "FIRST_IN_SECTION"
+    ref      = cato_application_control_section.example.section.id
+  }
+  rule = {
+    name      = "Block Slack"
+    enabled   = true
+    rule_type = "APPLICATION"
+    application_rule = {
+      action   = "BLOCK"
+      severity = "LOW"
+      application = {
+        application = [
+          {
+            # id   = "slack"
+            name = "Slack"
+          },
+        ]
+      }
+      tracking = {
+        event = {
+          enabled = true
+        }
+      }
+    }
+  }
+}
+
+# Kitchen sink — rule_type APPLICATION, every predicate/reference field referenced by
+# name with the matching id commented above each.
+resource "cato_application_control_rule" "kitchen_sink" {
   at = {
     position = "LAST_IN_SECTION"
     ref      = cato_application_control_section.example.section.id
   }
-
   rule = {
-    name        = "TF — Block Slack uploads"
-    description = "Managed by Terraform"
+    name        = "Application Control Kitchen Sink"
+    description = "Kitchen sink example covering every rule-schema field"
     enabled     = true
     rule_type   = "APPLICATION"
-
     application_rule = {
-      action   = "BLOCK" # ALLOW | BLOCK
-      severity = "MEDIUM"  # LOW | MEDIUM | HIGH
-
-      # schedule: ALWAYS | WORKING_HOURS | CUSTOM_TIMEFRAME | CUSTOM_RECURRING
-      # Omit schedule to default to ALWAYS.
+      action   = "BLOCK"
+      severity = "MEDIUM"
       schedule = {
         active_on = "CUSTOM_TIMEFRAME"
         custom_timeframe = {
@@ -50,52 +86,157 @@ resource "cato_application_control_rule" "application" {
         #   days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
         # }
       }
-
       source = {
-        ip       = ["198.51.100.10"]
-        subnet   = ["203.0.113.0/24"]
-        ip_range = [{ from = "10.0.0.1", to = "10.0.0.20" }]
-        # country             = [{ name = "France" }]
-        # host                = [{ name = "my-server" }]
-        # site                = [{ id = "site-uuid" }]
-        # global_ip_range     = [{ name = "Partner Ranges" }]
-        # network_interface   = [{ id = "nic-uuid" }]
-        # site_network_subnet = [{ name = "Branch LAN" }]
-        # floating_subnet     = [{ name = "Guest WiFi" }]
-        # user                = [{ name = "alice@example.com" }]
-        # users_group         = [{ name = "All Users" }]
-        # group               = [{ name = "Engineering" }]
-        # system_group        = [{ name = "Remote Users" }]
+        country = [
+          {
+            # id   = "FR"
+            name = "France"
+          },
+        ]
+        floating_subnet = [
+          {
+            # id   = "1474041"
+            name = "floating_range"
+          },
+        ]
+        global_ip_range = [
+          {
+            # id   = "1757826"
+            name = "global_ip_range"
+          },
+        ]
+        group = [
+          {
+            # id   = "623603"
+            name = "test group"
+          },
+        ]
+        host = [
+          {
+            # id   = "1778359"
+            name = "host31"
+          },
+        ]
+        ip = [
+          "1.2.3.4",
+        ]
+        ip_range = [
+          {
+            from = "1.2.3.4"
+            to   = "1.2.3.5"
+          },
+        ]
+        network_interface = [
+          {
+            # id   = "124986"
+            name = "main-site-default"
+          },
+        ]
+        site = [
+          {
+            # id   = "144905"
+            name = "my-site"
+          },
+        ]
+        site_network_subnet = [
+          {
+            # id   = "UzU4OTI1Mw=="
+            name = "branch-lan-direct-range"
+          },
+        ]
+        subnet = [
+          "1.2.3.0/24",
+        ]
+        system_group = [
+          {
+            # id   = "7S"
+            name = "All Floating Ranges"
+          },
+        ]
+        user = [
+          {
+            # id   = "0"
+            name = "test user"
+          },
+        ]
+        users_group = [
+          {
+            # id   = "500000000"
+            name = "Test User Group"
+          },
+        ]
       }
-
       application = {
-        application = [{ id = "slack" }]
-        # app_category             = [{ name = "Instant Messaging" }]
-        # custom_app               = [{ name = "My Internal App" }]
-        # custom_category          = [{ name = "My Category" }]
-        # sanctioned_apps_category = [{ name = "Cloud Storage" }]
-        # domain                   = ["example.com"]
-        # fqdn                     = ["app.example.com"]
-        # ip                       = ["203.0.113.5"]
-        # subnet                   = ["203.0.113.0/24"]
-        # ip_range                 = [{ from = "203.0.113.10", to = "203.0.113.20" }]
-        # global_ip_range          = [{ name = "Partner IPs" }]
+        app_category = [
+          {
+            # id   = "instant_messaging"
+            name = "Instant Messaging"
+          },
+        ]
+        application = [
+          {
+            # id   = "slack"
+            name = "Slack"
+          },
+        ]
+        custom_app = [
+          {
+            # id   = "CustomApp_11362_34188"
+            name = "Test Custom App"
+          },
+        ]
+        custom_category = [
+          {
+            # id   = "24255"
+            name = "Test Custom Category"
+          },
+        ]
+        domain = [
+          "something.com",
+        ]
+        fqdn = [
+          "www.something.com",
+        ]
+        global_ip_range = [
+          {
+            # id   = "1757826"
+            name = "global_ip_range"
+          },
+        ]
+        ip = [
+          "9.9.9.9",
+        ]
+        ip_range = [
+          {
+            from = "1.2.3.1"
+            to   = "1.2.3.4"
+          },
+        ]
+        sanctioned_apps_category = [
+          {
+            # id   = "cloud_storage"
+            name = "Cloud Storage"
+          },
+        ]
+        subnet = [
+          "1.2.3.0/24",
+        ]
       }
-
-      tracking = {
-        event = { enabled = true }
-        alert = {
-          enabled   = false
-          frequency = "HOURLY" # HOURLY | DAILY | WEEKLY | IMMEDIATE
-          # When enabled = true, at least one of the following is required:
-          # subscription_group = [{ name = "SOC Alerts" }]
-          # webhook            = [{ name = "PagerDuty Hook" }]
-          # mailing_list       = [{ name = "security@example.com" }]
-        }
-      }
-
-      # device = [{ name = "Corporate Laptops" }]
-
+      application_activity = [
+        {
+          activity = {
+            # id   = "content_transfer_action_upload"
+            name = "Content Transfer - Upload"
+          }
+        },
+      ]
+      application_activity_satisfy = "ANY" # ALL | ANY
+      device = [
+        {
+          # id   = "4202"
+          name = "Test Device Posture Profile"
+        },
+      ]
       access_method = [
         {
           access_method = "USER_AGENT" # USER_AGENT | CLIENT | CLIENTLESS | OTHER
@@ -103,138 +244,199 @@ resource "cato_application_control_rule" "application" {
           value         = "Mozilla"
         },
       ]
-
-      # action_config = {
-      #   user_notification = [{ name = "Default Notification" }]
-      # }
-    }
-  }
-}
-
-# Application Control rule — rule_type FILE.
-# Allows file transfers based on activity and file attributes.
-# FILE rules require at least one application_activity entry.
-resource "cato_application_control_rule" "file" {
-  at = {
-    position = "AFTER_RULE"
-    ref      = cato_application_control_rule.application.rule.id
-  }
-
-  rule = {
-    name        = "TF — Allow large file uploads"
-    description = "Allow uploads over 100 MB during working hours"
-    enabled     = true
-    rule_type   = "FILE"
-
-    file_rule = {
-      action   = "ALLOW" # ALLOW | BLOCK
-      severity = "MEDIUM"
-
-      schedule = {
-        active_on = "WORKING_HOURS"
-        # active_on = "CUSTOM_RECURRING"
-        # custom_recurring = {
-        #   from = "08:00"
-        #   to   = "18:00"
-        #   days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
-        # }
+      action_config = {
+        user_notification = [
+          {
+            # id   = "12345"
+            name = "Default Notification"
+          },
+        ]
       }
-
-      source = {
-        ip = ["198.51.100.30"]
-        # subnet  = ["10.0.0.0/8"]
-        # country = [{ name = "France" }]
-      }
-
-      # FILE rules accept application = {} to match all cloud apps.
-      # For APPLICATION and DATA rules a non-empty matcher is required.
-      application = {}
-
-      # content_transfer_action_upload / content_transfer_action_download are generic
-      # upload/download activities valid for FILE rules across all cloud applications.
-      application_activity = [
-        { activity = { id = "content_transfer_action_upload" } }
-        # { activity = { id = "content_transfer_action_download" } }
-      ]
-      application_activity_satisfy = "ANY" # ALL | ANY
-
       file_attribute = [
         {
           file_attribute = "CONTENT_SIZE" # CONTENT_SIZE | CONTENT_TYPE | FILE_EXTENSION | CONTENT_IS_ENCRYPTED (DATA only)
           operator       = "GREATER_THAN" # GREATER_THAN | LESS_THAN | IS | IS_NOT | CONTAINS | NOT_CONTAINS
           value          = "104857600"    # 100 MB in bytes
-        }
+        },
       ]
       file_attribute_satisfy = "ALL" # ALL | ANY
-
       tracking = {
-        event = { enabled = true }
+        event = {
+          enabled = true
+        }
         alert = {
           enabled   = false
-          frequency = "DAILY"
-          # subscription_group = [{ name = "SOC Alerts" }]
+          frequency = "HOURLY" # HOURLY | DAILY | WEEKLY | IMMEDIATE
+          mailing_list = [
+            {
+              # id   = "-100"
+              name = "All Admins"
+            },
+          ]
+          subscription_group = [
+            {
+              # id   = "12345"
+              name = "SOC Alerts"
+            },
+          ]
+          webhook = [
+            {
+              # id   = "12345"
+              name = "PagerDuty Hook"
+            },
+          ]
         }
       }
     }
   }
 }
 
-# Application Control rule — rule_type DATA (DLP).
-# Requires a dlp_profile with at least one content_profile or edm_profile configured
-# in your Cato account. Uncomment and configure before applying.
-#
-# resource "cato_application_control_rule" "data" {
-#   at = {
-#     position = "LAST_IN_POLICY"
-#   }
-#
-#   rule = {
-#     name      = "TF — Block sensitive data uploads"
-#     enabled   = true
-#     rule_type = "DATA"
-#
-#     data_rule = {
-#       action   = "BLOCK"  # ALLOW | BLOCK | MONITOR
-#       severity = "HIGH"
-#
-#       schedule = {
-#         active_on = "ALWAYS"
-#       }
-#
-#       source = {
-#         ip = ["198.51.100.20"]
-#       }
-#
-#       application = {
-#         application = [{ id = "slack" }]
-#       }
-#
-#       file_attribute = [
-#         {
-#           file_attribute = "CONTENT_TYPE"
-#           operator       = "CONTAINS"
-#           value          = "application/pdf"
-#         },
-#         {
-#           file_attribute = "CONTENT_SIZE"
-#           operator       = "GREATER_THAN"
-#           value          = "1048576"  # 1 MB in bytes
-#         },
-#       ]
-#       file_attribute_satisfy = "ANY"
-#
-#       tracking = {
-#         event = { enabled = true }
-#         alert = { enabled = false }
-#       }
-#
-#       dlp_profile = {
-#         content_profile = [{ name = "PCI Content Profile" }]
-#         edm_profile     = [{ name = "Customer PII" }]
-#       }
-#     }
-#   }
-# }
+# Kitchen sink — rule_type FILE specific leaves. FILE rules accept application = {} to
+# match all cloud apps (the only rule_type that allows an empty application matcher) and
+# require at least one application_activity entry.
+resource "cato_application_control_rule" "kitchen_sink_file" {
+  at = {
+    position = "LAST_IN_SECTION"
+    ref      = cato_application_control_section.example.section.id
+  }
+  rule = {
+    name        = "Application Control Kitchen Sink File"
+    description = "FILE rule_type example — allow large file uploads during working hours"
+    enabled     = true
+    rule_type   = "FILE"
+    file_rule = {
+      action   = "ALLOW"
+      severity = "MEDIUM"
+      schedule = {
+        active_on = "WORKING_HOURS"
+      }
+      source = {
+        ip = [
+          "198.51.100.30",
+        ]
+        subnet = [
+          "10.0.0.0/8",
+        ]
+      }
+      application = {}
+      application_activity = [
+        {
+          activity = {
+            # id   = "content_transfer_action_upload"
+            name = "Content Transfer - Upload"
+          }
+        },
+        {
+          activity = {
+            # id   = "content_transfer_action_download"
+            name = "Content Transfer - Download"
+          }
+        },
+      ]
+      application_activity_satisfy = "ANY"
+      device = [
+        {
+          # id   = "4202"
+          name = "Test Device Posture Profile"
+        },
+      ]
+      access_method = [
+        {
+          access_method = "USER_AGENT"
+          operator      = "IS"
+          value         = "curl/8.0"
+        },
+      ]
+      file_attribute = [
+        {
+          file_attribute = "FILE_EXTENSION"
+          operator       = "IS"
+          value          = "zip"
+        },
+      ]
+      file_attribute_satisfy = "ANY"
+      tracking = {
+        event = {
+          enabled = true
+        }
+        alert = {
+          enabled   = false
+          frequency = "IMMEDIATE"
+        }
+      }
+    }
+  }
+}
+
+# Kitchen sink — rule_type DATA specific leaves (dlp_profile, MONITOR action,
+# CONTENT_IS_ENCRYPTED file_attribute).
+resource "cato_application_control_rule" "kitchen_sink_data" {
+  at = {
+    position = "LAST_IN_SECTION"
+    ref      = cato_application_control_section.example.section.id
+  }
+  rule = {
+    name        = "Application Control Kitchen Sink Data"
+    description = "DATA (DLP) rule_type example — monitor sensitive data uploads"
+    enabled     = true
+    rule_type   = "DATA"
+    data_rule = {
+      action   = "MONITOR" # ALLOW | BLOCK | MONITOR
+      severity = "HIGH"
+      schedule = {
+        active_on = "ALWAYS"
+      }
+      source = {
+        ip = [
+          "198.51.100.20",
+        ]
+      }
+      application = {
+        application = [
+          {
+            # id   = "slack"
+            name = "Slack"
+          },
+        ]
+      }
+      file_attribute = [
+        {
+          file_attribute = "CONTENT_TYPE"
+          operator       = "CONTAINS"
+          value          = "application/pdf"
+        },
+        {
+          file_attribute = "CONTENT_IS_ENCRYPTED" # DATA rules only
+          operator       = "IS"
+          value          = "true"
+        },
+      ]
+      file_attribute_satisfy = "ANY"
+      tracking = {
+        event = {
+          enabled = true
+        }
+        alert = {
+          enabled = false
+        }
+      }
+      dlp_profile = {
+        content_profile = [
+          {
+            # id   = "12345"
+            name = "PCI Content Profile"
+          },
+        ]
+        edm_profile = [
+          {
+            # id   = "12345"
+            name = "Customer PII"
+          },
+        ]
+      }
+    }
+  }
+}
 ```
 
 ## Import
@@ -304,6 +506,8 @@ Optional:
 - `application` (Attributes) Application matching (WAN-shaped object) (see [below for nested schema](#nestedatt--rule--application_rule--application))
 - `application_activity` (Attributes List) Application activities to match (required for file/data rules when an application is specified) (see [below for nested schema](#nestedatt--rule--application_rule--application_activity))
 - `application_activity_satisfy` (String) How application activities are combined (ALL | ANY)
+- `application_criteria` (Attributes) Attribute-based application matching (compliance/security attributes, risk score, origin country, AI risk). Typically combined with application.application_type. Omitted attributes default to ANY. (see [below for nested schema](#nestedatt--rule--application_rule--application_criteria))
+- `application_criteria_satisfy` (String) How application criteria are combined (ALL | ANY)
 - `device` (Attributes Set) Device profiles (see [below for nested schema](#nestedatt--rule--application_rule--device))
 - `dlp_profile` (Attributes) DLP profile (data rules) (see [below for nested schema](#nestedatt--rule--application_rule--dlp_profile))
 - `file_attribute` (Attributes List) File attribute rows (data/file rules) (see [below for nested schema](#nestedatt--rule--application_rule--file_attribute))
@@ -349,6 +553,7 @@ Optional:
 
 - `app_category` (Attributes Set) Application categories (see [below for nested schema](#nestedatt--rule--application_rule--application--app_category))
 - `application` (Attributes Set) Predefined applications (logical OR within the set) (see [below for nested schema](#nestedatt--rule--application_rule--application--application))
+- `application_type` (List of String) Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).
 - `custom_app` (Attributes Set) Custom applications (see [below for nested schema](#nestedatt--rule--application_rule--application--custom_app))
 - `custom_category` (Attributes Set) Custom categories (see [below for nested schema](#nestedatt--rule--application_rule--application--custom_category))
 - `domain` (List of String) Second-level domains to match
@@ -430,6 +635,13 @@ Required:
 
 - `activity` (Attributes) (see [below for nested schema](#nestedatt--rule--application_rule--application_activity--activity))
 
+Optional:
+
+- `field` (Attributes) Activity condition field (e.g. URL) — some activities require a condition (see [below for nested schema](#nestedatt--rule--application_rule--application_activity--field))
+- `operator` (String) Activity condition operator (e.g. IS, CONTAINS)
+- `value` (String) Activity condition value (required by some activities, e.g. Full Path URL)
+- `value_set` (Attributes) Activity condition value set reference (see [below for nested schema](#nestedatt--rule--application_rule--application_activity--value_set))
+
 <a id="nestedatt--rule--application_rule--application_activity--activity"></a>
 ### Nested Schema for `rule.application_rule.application_activity.activity`
 
@@ -437,6 +649,54 @@ Optional:
 
 - `id` (String) Activity ID
 - `name` (String) Activity name
+
+
+<a id="nestedatt--rule--application_rule--application_activity--field"></a>
+### Nested Schema for `rule.application_rule.application_activity.field`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--application_rule--application_activity--value_set"></a>
+### Nested Schema for `rule.application_rule.application_activity.value_set`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--application_rule--application_criteria"></a>
+### Nested Schema for `rule.application_rule.application_criteria`
+
+Optional:
+
+- `ai_risk` (List of String) AI risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+- `compliance_attributes` (Map of String) Compliance attribute constraints keyed by API field name (hippa, isae3402, iso27001, pciDss, soc1, soc2, soc3, sox). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+- `origin_country` (Attributes Set) Application origin countries (see [below for nested schema](#nestedatt--rule--application_rule--application_criteria--origin_country))
+- `risk` (Attributes List) Risk score constraints (see [below for nested schema](#nestedatt--rule--application_rule--application_criteria--risk))
+- `security_attributes` (Map of String) Security attribute constraints keyed by API field name (auditTrail, encryptionAtRest, httpSecurityHeaders, mfa, rbac, rememberPassword, sso, tlsEnforcement, trustedCertificate). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+
+<a id="nestedatt--rule--application_rule--application_criteria--origin_country"></a>
+### Nested Schema for `rule.application_rule.application_criteria.origin_country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--application_rule--application_criteria--risk"></a>
+### Nested Schema for `rule.application_rule.application_criteria.risk`
+
+Required:
+
+- `risk` (String) Risk score (e.g. "7")
+- `risk_operator` (String) Comparison operator (e.g. GREATER_THAN, IS)
 
 
 
@@ -486,7 +746,27 @@ Required:
 
 Optional:
 
-- `value` (String)
+- `content_type_group_values` (Attributes Set) Content type GROUP references (CONTENT_TYPE rows, e.g. Binaries, Scripts) (see [below for nested schema](#nestedatt--rule--application_rule--file_attribute--content_type_group_values))
+- `content_type_values` (Attributes Set) Content type references (CONTENT_TYPE rows) (see [below for nested schema](#nestedatt--rule--application_rule--file_attribute--content_type_values))
+- `value` (String) Attribute value (e.g. a size threshold). MUST be omitted for CONTENT_TYPE rows — use the content-type ref sets instead.
+
+<a id="nestedatt--rule--application_rule--file_attribute--content_type_group_values"></a>
+### Nested Schema for `rule.application_rule.file_attribute.content_type_group_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--application_rule--file_attribute--content_type_values"></a>
+### Nested Schema for `rule.application_rule.file_attribute.content_type_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
 
 
 <a id="nestedatt--rule--application_rule--schedule"></a>
@@ -719,6 +999,8 @@ Optional:
 - `application` (Attributes) Application matching (WAN-shaped object) (see [below for nested schema](#nestedatt--rule--data_rule--application))
 - `application_activity` (Attributes List) Application activities to match (required for file/data rules when an application is specified) (see [below for nested schema](#nestedatt--rule--data_rule--application_activity))
 - `application_activity_satisfy` (String) How application activities are combined (ALL | ANY)
+- `application_criteria` (Attributes) Attribute-based application matching (compliance/security attributes, risk score, origin country, AI risk). Typically combined with application.application_type. Omitted attributes default to ANY. (see [below for nested schema](#nestedatt--rule--data_rule--application_criteria))
+- `application_criteria_satisfy` (String) How application criteria are combined (ALL | ANY)
 - `device` (Attributes Set) Device profiles (see [below for nested schema](#nestedatt--rule--data_rule--device))
 - `dlp_profile` (Attributes) DLP profile (data rules) (see [below for nested schema](#nestedatt--rule--data_rule--dlp_profile))
 - `file_attribute` (Attributes List) File attribute rows (data/file rules) (see [below for nested schema](#nestedatt--rule--data_rule--file_attribute))
@@ -764,6 +1046,7 @@ Optional:
 
 - `app_category` (Attributes Set) Application categories (see [below for nested schema](#nestedatt--rule--data_rule--application--app_category))
 - `application` (Attributes Set) Predefined applications (logical OR within the set) (see [below for nested schema](#nestedatt--rule--data_rule--application--application))
+- `application_type` (List of String) Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).
 - `custom_app` (Attributes Set) Custom applications (see [below for nested schema](#nestedatt--rule--data_rule--application--custom_app))
 - `custom_category` (Attributes Set) Custom categories (see [below for nested schema](#nestedatt--rule--data_rule--application--custom_category))
 - `domain` (List of String) Second-level domains to match
@@ -845,6 +1128,13 @@ Required:
 
 - `activity` (Attributes) (see [below for nested schema](#nestedatt--rule--data_rule--application_activity--activity))
 
+Optional:
+
+- `field` (Attributes) Activity condition field (e.g. URL) — some activities require a condition (see [below for nested schema](#nestedatt--rule--data_rule--application_activity--field))
+- `operator` (String) Activity condition operator (e.g. IS, CONTAINS)
+- `value` (String) Activity condition value (required by some activities, e.g. Full Path URL)
+- `value_set` (Attributes) Activity condition value set reference (see [below for nested schema](#nestedatt--rule--data_rule--application_activity--value_set))
+
 <a id="nestedatt--rule--data_rule--application_activity--activity"></a>
 ### Nested Schema for `rule.data_rule.application_activity.activity`
 
@@ -852,6 +1142,54 @@ Optional:
 
 - `id` (String) Activity ID
 - `name` (String) Activity name
+
+
+<a id="nestedatt--rule--data_rule--application_activity--field"></a>
+### Nested Schema for `rule.data_rule.application_activity.field`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--data_rule--application_activity--value_set"></a>
+### Nested Schema for `rule.data_rule.application_activity.value_set`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--data_rule--application_criteria"></a>
+### Nested Schema for `rule.data_rule.application_criteria`
+
+Optional:
+
+- `ai_risk` (List of String) AI risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+- `compliance_attributes` (Map of String) Compliance attribute constraints keyed by API field name (hippa, isae3402, iso27001, pciDss, soc1, soc2, soc3, sox). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+- `origin_country` (Attributes Set) Application origin countries (see [below for nested schema](#nestedatt--rule--data_rule--application_criteria--origin_country))
+- `risk` (Attributes List) Risk score constraints (see [below for nested schema](#nestedatt--rule--data_rule--application_criteria--risk))
+- `security_attributes` (Map of String) Security attribute constraints keyed by API field name (auditTrail, encryptionAtRest, httpSecurityHeaders, mfa, rbac, rememberPassword, sso, tlsEnforcement, trustedCertificate). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+
+<a id="nestedatt--rule--data_rule--application_criteria--origin_country"></a>
+### Nested Schema for `rule.data_rule.application_criteria.origin_country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--data_rule--application_criteria--risk"></a>
+### Nested Schema for `rule.data_rule.application_criteria.risk`
+
+Required:
+
+- `risk` (String) Risk score (e.g. "7")
+- `risk_operator` (String) Comparison operator (e.g. GREATER_THAN, IS)
 
 
 
@@ -901,7 +1239,27 @@ Required:
 
 Optional:
 
-- `value` (String)
+- `content_type_group_values` (Attributes Set) Content type GROUP references (CONTENT_TYPE rows, e.g. Binaries, Scripts) (see [below for nested schema](#nestedatt--rule--data_rule--file_attribute--content_type_group_values))
+- `content_type_values` (Attributes Set) Content type references (CONTENT_TYPE rows) (see [below for nested schema](#nestedatt--rule--data_rule--file_attribute--content_type_values))
+- `value` (String) Attribute value (e.g. a size threshold). MUST be omitted for CONTENT_TYPE rows — use the content-type ref sets instead.
+
+<a id="nestedatt--rule--data_rule--file_attribute--content_type_group_values"></a>
+### Nested Schema for `rule.data_rule.file_attribute.content_type_group_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--data_rule--file_attribute--content_type_values"></a>
+### Nested Schema for `rule.data_rule.file_attribute.content_type_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
 
 
 <a id="nestedatt--rule--data_rule--schedule"></a>
@@ -1134,6 +1492,8 @@ Optional:
 - `application` (Attributes) Application matching (WAN-shaped object) (see [below for nested schema](#nestedatt--rule--file_rule--application))
 - `application_activity` (Attributes List) Application activities to match (required for file/data rules when an application is specified) (see [below for nested schema](#nestedatt--rule--file_rule--application_activity))
 - `application_activity_satisfy` (String) How application activities are combined (ALL | ANY)
+- `application_criteria` (Attributes) Attribute-based application matching (compliance/security attributes, risk score, origin country, AI risk). Typically combined with application.application_type. Omitted attributes default to ANY. (see [below for nested schema](#nestedatt--rule--file_rule--application_criteria))
+- `application_criteria_satisfy` (String) How application criteria are combined (ALL | ANY)
 - `device` (Attributes Set) Device profiles (see [below for nested schema](#nestedatt--rule--file_rule--device))
 - `dlp_profile` (Attributes) DLP profile (data rules) (see [below for nested schema](#nestedatt--rule--file_rule--dlp_profile))
 - `file_attribute` (Attributes List) File attribute rows (data/file rules) (see [below for nested schema](#nestedatt--rule--file_rule--file_attribute))
@@ -1179,6 +1539,7 @@ Optional:
 
 - `app_category` (Attributes Set) Application categories (see [below for nested schema](#nestedatt--rule--file_rule--application--app_category))
 - `application` (Attributes Set) Predefined applications (logical OR within the set) (see [below for nested schema](#nestedatt--rule--file_rule--application--application))
+- `application_type` (List of String) Match applications by type instead of by reference (APPLICATION, CLOUD_APPLICATION, SERVICE). Combine with application_criteria on the rule to match by attributes (e.g. all CLOUD_APPLICATIONs supporting PCI DSS).
 - `custom_app` (Attributes Set) Custom applications (see [below for nested schema](#nestedatt--rule--file_rule--application--custom_app))
 - `custom_category` (Attributes Set) Custom categories (see [below for nested schema](#nestedatt--rule--file_rule--application--custom_category))
 - `domain` (List of String) Second-level domains to match
@@ -1260,6 +1621,13 @@ Required:
 
 - `activity` (Attributes) (see [below for nested schema](#nestedatt--rule--file_rule--application_activity--activity))
 
+Optional:
+
+- `field` (Attributes) Activity condition field (e.g. URL) — some activities require a condition (see [below for nested schema](#nestedatt--rule--file_rule--application_activity--field))
+- `operator` (String) Activity condition operator (e.g. IS, CONTAINS)
+- `value` (String) Activity condition value (required by some activities, e.g. Full Path URL)
+- `value_set` (Attributes) Activity condition value set reference (see [below for nested schema](#nestedatt--rule--file_rule--application_activity--value_set))
+
 <a id="nestedatt--rule--file_rule--application_activity--activity"></a>
 ### Nested Schema for `rule.file_rule.application_activity.activity`
 
@@ -1267,6 +1635,54 @@ Optional:
 
 - `id` (String) Activity ID
 - `name` (String) Activity name
+
+
+<a id="nestedatt--rule--file_rule--application_activity--field"></a>
+### Nested Schema for `rule.file_rule.application_activity.field`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--file_rule--application_activity--value_set"></a>
+### Nested Schema for `rule.file_rule.application_activity.value_set`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+
+<a id="nestedatt--rule--file_rule--application_criteria"></a>
+### Nested Schema for `rule.file_rule.application_criteria`
+
+Optional:
+
+- `ai_risk` (List of String) AI risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+- `compliance_attributes` (Map of String) Compliance attribute constraints keyed by API field name (hippa, isae3402, iso27001, pciDss, soc1, soc2, soc3, sox). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+- `origin_country` (Attributes Set) Application origin countries (see [below for nested schema](#nestedatt--rule--file_rule--application_criteria--origin_country))
+- `risk` (Attributes List) Risk score constraints (see [below for nested schema](#nestedatt--rule--file_rule--application_criteria--risk))
+- `security_attributes` (Map of String) Security attribute constraints keyed by API field name (auditTrail, encryptionAtRest, httpSecurityHeaders, mfa, rbac, rememberPassword, sso, tlsEnforcement, trustedCertificate). Values: SUPPORTED or NOT_SUPPORTED — omit a key for ANY.
+
+<a id="nestedatt--rule--file_rule--application_criteria--origin_country"></a>
+### Nested Schema for `rule.file_rule.application_criteria.origin_country`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--file_rule--application_criteria--risk"></a>
+### Nested Schema for `rule.file_rule.application_criteria.risk`
+
+Required:
+
+- `risk` (String) Risk score (e.g. "7")
+- `risk_operator` (String) Comparison operator (e.g. GREATER_THAN, IS)
 
 
 
@@ -1316,7 +1732,27 @@ Required:
 
 Optional:
 
-- `value` (String)
+- `content_type_group_values` (Attributes Set) Content type GROUP references (CONTENT_TYPE rows, e.g. Binaries, Scripts) (see [below for nested schema](#nestedatt--rule--file_rule--file_attribute--content_type_group_values))
+- `content_type_values` (Attributes Set) Content type references (CONTENT_TYPE rows) (see [below for nested schema](#nestedatt--rule--file_rule--file_attribute--content_type_values))
+- `value` (String) Attribute value (e.g. a size threshold). MUST be omitted for CONTENT_TYPE rows — use the content-type ref sets instead.
+
+<a id="nestedatt--rule--file_rule--file_attribute--content_type_group_values"></a>
+### Nested Schema for `rule.file_rule.file_attribute.content_type_group_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
+
+<a id="nestedatt--rule--file_rule--file_attribute--content_type_values"></a>
+### Nested Schema for `rule.file_rule.file_attribute.content_type_values`
+
+Optional:
+
+- `id` (String)
+- `name` (String)
+
 
 
 <a id="nestedatt--rule--file_rule--schedule"></a>

@@ -2339,11 +2339,17 @@ func HydrateIfwRuleState(
 			diags = append(diags, diagstmp...)
 
 			// /// /// /// /// start Rule -> Service // /// /// /// /// /
-			// Initialize Service object with null values (matching WAN pattern)
+			// Hydrate service.standard as a (possibly empty) set rather than null,
+			// matching the top-level rule.service hydration above and the module/plan
+			// convention that absent Set fields are empty sets. Because `exceptions`
+			// is a SetNestedAttribute, a null-vs-empty mismatch here prevents the
+			// planned set element from correlating with the hydrated element after
+			// apply ("Provider produced inconsistent result after apply"). `custom`
+			// is a List and stays null when absent, matching the plan convention.
 			curExceptionServiceObj, diagstmp := types.ObjectValue(
 				IfwServiceAttrTypes,
 				map[string]attr.Value{
-					"standard": types.SetNull(idname.RefObjectType),
+					"standard": idname.ParseIDNameSet(ctx, ruleException.Service.Standard, &diags),
 					"custom":   types.ListNull(customservice.CustomServiceObjectType),
 				},
 			)

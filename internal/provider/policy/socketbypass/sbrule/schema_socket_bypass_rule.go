@@ -20,6 +20,19 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/utils"
 )
 
+// Optionality mirrors the canonical Internet Firewall rule schema
+// (schema_if_rule.go): every traffic match / scope CRITERION (source,
+// destination, service, exception, site, and their nested set fields) is
+// Optional, because a socket bypass rule matches on one of them, not all --
+// the export emits only the fields a given rule actually uses, so marking them
+// Required produced "Inappropriate value for attribute rule: attributes ... are
+// required" type-conformance errors in the bulk module. Only structural/control
+// fields stay Required: action (+ event/port), enabled, name, and the leaf
+// fields that are mandatory once their parent object is instantiated (ip_range
+// from/to, custom-service protocol, port_range from/to, simple-service name).
+// The converter already tolerates nulls on every criterion (buildCreateObject*
+// each short-circuit on value.IsNull()), so this is a schema-only change.
+
 func (r *policyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a socket bypass rule. Changes are automatically published. " +
@@ -53,11 +66,11 @@ func schemaResourceRule() map[string]schema.Attribute {
 		},
 		"description": schema.StringAttribute{
 			Description: "Description",
-			Required:    true,
+			Optional:    true,
 		},
 		"destination": schema.SingleNestedAttribute{
 			Description: "Destination",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleDestination(),
 		},
 		"enabled": schema.BoolAttribute{
@@ -65,8 +78,14 @@ func schemaResourceRule() map[string]schema.Attribute {
 			Required:    true,
 		},
 		"exception": schema.SetNestedAttribute{
-			Description:  "Exception",
-			Required:     true,
+			Description: "Exception",
+			Optional:    true,
+			// Optional-only (NOT Computed): the converter's validateValues rejects
+			// unknown values (validators_socket_bypass_rule.go), so a Computed
+			// exception left unset in config would surface as "must contain a known
+			// value". IFW marks exceptions Computed for drift-suppression, but that
+			// relies on its own hydration guarantees; keep SB at Optional to avoid a
+			// known/unknown apply error.
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleException()},
 		},
 		"id": schema.StringAttribute{
@@ -90,17 +109,17 @@ func schemaResourceRule() map[string]schema.Attribute {
 		},
 		"service": schema.SingleNestedAttribute{
 			Description: "Service",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleService(),
 		},
 		"site": schema.SingleNestedAttribute{
 			Description: "Site",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleSite(),
 		},
 		"source": schema.SingleNestedAttribute{
 			Description: "Source",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleSource(),
 		},
 	}
@@ -134,48 +153,48 @@ func schemaResourceRuleDestination() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"application": schema.SetNestedAttribute{
 			Description: "Application",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Application"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"custom_app": schema.SetNestedAttribute{
 			Description: "Custom app",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom app"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"domain": schema.SetAttribute{
 			Description: "Domain",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"fqdn": schema.SetAttribute{
 			Description: "Fqdn",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"global_ip_range": schema.SetNestedAttribute{
 			Description: "Global ip range",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
 			Description: "Ip",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"ip_range": schema.SetNestedAttribute{
 			Description:  "Ip range",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleDestinationIPRange()},
 		},
 		"subnet": schema.SetAttribute{
 			Description: "Subnet",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 	}
@@ -198,7 +217,7 @@ func schemaResourceRuleException() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"destination": schema.SingleNestedAttribute{
 			Description: "Destination",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleExceptionDestination(),
 		},
 		"name": schema.StringAttribute{
@@ -208,17 +227,17 @@ func schemaResourceRuleException() map[string]schema.Attribute {
 		},
 		"service": schema.SingleNestedAttribute{
 			Description: "Service",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleExceptionService(),
 		},
 		"site": schema.SingleNestedAttribute{
 			Description: "Site",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleExceptionSite(),
 		},
 		"source": schema.SingleNestedAttribute{
 			Description: "Source",
-			Required:    true,
+			Optional:    true,
 			Attributes:  schemaResourceRuleExceptionSource(),
 		},
 	}
@@ -228,48 +247,48 @@ func schemaResourceRuleExceptionDestination() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"application": schema.SetNestedAttribute{
 			Description: "Application",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Application"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"custom_app": schema.SetNestedAttribute{
 			Description: "Custom app",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom app"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"domain": schema.SetAttribute{
 			Description: "Domain",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"fqdn": schema.SetAttribute{
 			Description: "Fqdn",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"global_ip_range": schema.SetNestedAttribute{
 			Description: "Global ip range",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
 			Description: "Ip",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"ip_range": schema.SetNestedAttribute{
 			Description:  "Ip range",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleExceptionDestinationIPRange()},
 		},
 		"subnet": schema.SetAttribute{
 			Description: "Subnet",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 	}
@@ -292,12 +311,12 @@ func schemaResourceRuleExceptionService() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"custom": schema.SetNestedAttribute{
 			Description:  "Custom",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleExceptionServiceCustom()},
 		},
 		"simple": schema.SetNestedAttribute{
 			Description:  "Simple",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleExceptionServiceSimple()},
 		},
 	}
@@ -352,14 +371,14 @@ func schemaResourceRuleExceptionSite() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"group": schema.SetNestedAttribute{
 			Description: "Group",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"site": schema.SetNestedAttribute{
 			Description: "Site",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
@@ -371,64 +390,64 @@ func schemaResourceRuleExceptionSource() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"floating_subnet": schema.SetNestedAttribute{
 			Description: "Floating subnet",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Floating subnet"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"global_ip_range": schema.SetNestedAttribute{
 			Description: "Global ip range",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"group": schema.SetNestedAttribute{
 			Description: "Group",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"host": schema.SetNestedAttribute{
 			Description: "Host",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Host"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
 			Description: "Ip",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"ip_range": schema.SetNestedAttribute{
 			Description:  "Ip range",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleExceptionSourceIPRange()},
 		},
 		"network_interface": schema.SetNestedAttribute{
 			Description: "Network interface",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Network interface"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"site_network_subnet": schema.SetNestedAttribute{
 			Description: "Site network subnet",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site network subnet"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"subnet": schema.SetAttribute{
 			Description: "Subnet",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"vlan": schema.SetAttribute{
 			Description: "Vlan",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.Int64Type,
 			Validators:  []validator.Set{setvalidator.ValueInt64sAre(int64validator.Between(1, 4094))},
 		},
@@ -452,12 +471,12 @@ func schemaResourceRuleService() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"custom": schema.SetNestedAttribute{
 			Description:  "Custom",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleServiceCustom()},
 		},
 		"simple": schema.SetNestedAttribute{
 			Description:  "Simple",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleServiceSimple()},
 		},
 	}
@@ -512,14 +531,14 @@ func schemaResourceRuleSite() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"group": schema.SetNestedAttribute{
 			Description: "Group",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"site": schema.SetNestedAttribute{
 			Description: "Site",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
@@ -531,64 +550,64 @@ func schemaResourceRuleSource() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"floating_subnet": schema.SetNestedAttribute{
 			Description: "Floating subnet",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Floating subnet"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"global_ip_range": schema.SetNestedAttribute{
 			Description: "Global ip range",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"group": schema.SetNestedAttribute{
 			Description: "Group",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"host": schema.SetNestedAttribute{
 			Description: "Host",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Host"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
 			Description: "Ip",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"ip_range": schema.SetNestedAttribute{
 			Description:  "Ip range",
-			Required:     true,
+			Optional:     true,
 			NestedObject: schema.NestedAttributeObject{Attributes: schemaResourceRuleSourceIPRange()},
 		},
 		"network_interface": schema.SetNestedAttribute{
 			Description: "Network interface",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Network interface"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"site_network_subnet": schema.SetNestedAttribute{
 			Description: "Site network subnet",
-			Required:    true,
+			Optional:    true,
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site network subnet"),
 				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
 			},
 		},
 		"subnet": schema.SetAttribute{
 			Description: "Subnet",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.StringType,
 		},
 		"vlan": schema.SetAttribute{
 			Description: "Vlan",
-			Required:    true,
+			Optional:    true,
 			ElementType: types.Int64Type,
 			Validators:  []validator.Set{setvalidator.ValueInt64sAre(int64validator.Between(1, 4094))},
 		},

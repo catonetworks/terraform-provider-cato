@@ -19,6 +19,14 @@ func (r *alwaysOnSectionResource) Schema(_ context.Context, _ resource.SchemaReq
 	resp.Schema = schema.Schema{
 		Description: "Manages a section in the Cato Always On policy.",
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "Always On policy section ID (mirrors section.id; provided for parity with the if/wf/lan section resources " +
+					"so bulk modules can reference .id uniformly).",
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"at": schema.SingleNestedAttribute{
 				Description: "Position of the section in the Always On policy",
 				Required:    true,

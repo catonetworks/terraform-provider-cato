@@ -96,7 +96,7 @@ func TestAccBgpPeer_InvalidDefaultAction(t *testing.T) {
 }
 
 func testAccBgpPeerDestroy(st *terraform.State) error {
-	client, err := cato.New(os.Getenv("CATO_BASEURL"), os.Getenv("CATO_TOKEN"), acc.CatoAccountID, nil, map[string]string{
+	client, err := cato.New(acc.CatoEndpoint, acc.CatoToken, acc.CatoAccountID, nil, map[string]string{
 		"User-Agent": "cato-terraform-test",
 	})
 	if err != nil {
@@ -307,8 +307,8 @@ var bgpPeerTFs = []string{
 }
 
 func getAllocatedIPIDs(t *testing.T) []string {
-	if os.Getenv("CATO_BASEURL") == "" || os.Getenv("CATO_TOKEN") == "" || os.Getenv("CATO_ACCOUNT_ID") == "" {
-		t.Skip("skipping bgp_peer acceptance test: required CATO_* variables are not set")
+	if acc.CatoEndpoint == "" || acc.CatoToken == "" || acc.CatoAccountID == "" {
+		t.Skip("skipping bgp_peer acceptance test: no credentials (set CATO_TOKEN/CATO_ACCOUNT_ID/CATO_BASEURL or CATO_PROFILE)")
 	}
 
 	client := acc.GetClient(t)

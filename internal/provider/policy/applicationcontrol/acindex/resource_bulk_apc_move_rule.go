@@ -222,21 +222,31 @@ func (r *apcRulesIndexResource) applyOrderingAndPublish(ctx context.Context, pla
 		if err != nil {
 			return err
 		}
-		if errs := pub.GetPolicy().GetApplicationControl().GetPublishPolicyRevision().GetErrors(); len(errs) > 0 {
-			msg := ""
-			for _, e := range errs {
-				if msg != "" {
-					msg += "; "
-				}
-				code, m := "", ""
-				if e.GetErrorCode() != nil {
-					code = *e.GetErrorCode()
-				}
-				if e.GetErrorMessage() != nil {
-					m = *e.GetErrorMessage()
-				}
-				msg += fmt.Sprintf("%s : %s", code, m)
+		msg := ""
+		for _, e := range pub.GetPolicy().GetApplicationControl().GetPublishPolicyRevision().GetErrors() {
+			code, m := "", ""
+			if e.GetErrorCode() != nil {
+				code = *e.GetErrorCode()
 			}
+			// A PolicyRevisionNotFound on publish means there was no draft to
+			// publish -- the reordering was a no-op (rules already in order, or
+			// each rule resource already published its own revision), or another
+			// writer published first. This is benign, treat as success. Mirrors
+			// the dedicated PublishApplicationControlPolicyRevision helper and the
+			// IFW/WF sub-policy publish tolerance; every section/rule publish path
+			// in this provider skips it too.
+			if code == "PolicyRevisionNotFound" {
+				continue
+			}
+			if e.GetErrorMessage() != nil {
+				m = *e.GetErrorMessage()
+			}
+			if msg != "" {
+				msg += "; "
+			}
+			msg += fmt.Sprintf("%s : %s", code, m)
+		}
+		if msg != "" {
 			return fmt.Errorf("application control publishPolicyRevision errors: %s", msg)
 		}
 		return nil

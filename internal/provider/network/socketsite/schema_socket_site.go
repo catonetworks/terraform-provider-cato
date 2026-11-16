@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
@@ -133,7 +132,6 @@ func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { 
 					"it relays mDNS requests and response between all enabled subnets.",
 				Optional:      true,
 				Computed:      true,
-				Default:       booldefault.StaticBool(false),
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"local_ip": schema.StringAttribute{
@@ -169,7 +167,11 @@ func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { 
 			},
 			"interface_dest_type": schema.StringAttribute{
 				Description: "Socket interface destination type for the native interface, " +
-					"example values: LAN, LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP, LAN_AND_HA, VRRP, VRRP_AND_LAN",
+					"example values: LAN, LAN_LAG_MASTER, LAN_LAG_MASTER_AND_VRRP, LAN_AND_HA, VRRP, VRRP_AND_LAN. " +
+					"*_AND_VRRP values cannot be set via the API (the server appends the suffix itself once a " +
+					"second socket connects and the HA pair forms): the interface is configured with the base " +
+					"type (e.g. LAN_LAG_MASTER) while the configured *_AND_VRRP value is kept in state, and the " +
+					"server-side promotion surfaces on refresh once it happens.",
 				Optional:      true,
 				Computed:      true,
 				Validators:    []validator.String{SocketInterfaceDestTypeValidator{}},
@@ -190,8 +192,10 @@ func (r *socketSiteResource) schemaSiteLocation() schema.SingleNestedAttribute {
 				Required:    true,
 			},
 			"state_code": schema.StringAttribute{
-				Description: "Optional site state code(can be retrieve from entityLookup)",
-				Optional:    true,
+				Description:   "Optional site state code(can be retrieve from entityLookup)",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"timezone": schema.StringAttribute{
 				Description: "Site timezone (can be retrieve from entityLookup)",

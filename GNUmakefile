@@ -3,7 +3,8 @@ HOSTNAME=registry.terraform.io
 NAMESPACE=catonetworks
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
-VERSION=1.4.0
+# Keep the local mirror slot overridable for development wrappers.
+VERSION?=1.5.0-prerelease.3
 
 # Mac Intel Chip
 # OS_ARCH=darwin_amd64
@@ -19,12 +20,13 @@ IMPORT_SORT_ORDER := -s standard -s default -s "prefix(github.com/softopus-io)" 
 
 default: install
 
-.PHONY: default build install install-mirror sync-provider clean docs mocks test
+.PHONY: default build install install-mirror sync-provider clean docs docs-validate mocks test
 .PHONY: acctest-clean acctest acctest-flaky lint vul sort-imports
 
 build: ## Build the terraform-provider
 	export GO111MODULE="on"
-	go build -o ${BINARY}
+	# The local SDK replacement is not represented in vendor/modules.txt.
+	go build -mod=mod -o ${BINARY}
 
 install: build ## Install the provider, update config
 	mkdir -p ${PLUGINS_DIR}
@@ -95,18 +97,21 @@ clean: install ## install and clean caches
 docs: ## Generate documentation
 	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-dir . -provider-name terraform-provider-cato
 
+docs-validate: ## Validate generated documentation
+	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 validate --provider-dir . -provider-name terraform-provider-cato
+
 mocks: ## Generate mockery mocks
 	go tool mockery
 
 test: ## Run unit tests
 	@python3 -m unittest discover -s test_data -p '*_test.py'
 	@bash test_data/acctest_retry_test.sh
-	@go test -tags=acctest ./internal/acctests/acc -run '^TestSkipByEnvUsesTestIdentity$$'
+	@go test -tags=acctest ./internal/acctests/acc -run '^Test(SkipByEnvUsesTestIdentity|TerminalServerCleanupSelectsOnlyAcceptanceRules|WanFirewallCleanupSelectsOnlyAcceptanceRules)$$'
 	@unset TF_ACC; go test -json $$(go list ./... | grep -v terraform-provider-cato/internal/acctests) | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 
 acctest-clean: ## Delete stale acctest resources
 	@ACCTEST_CLEANUP=true go test -tags acctest -count=1 --timeout=5m -run TestCleanupAccTestResources ./internal/acctests/acc
-acctest: acctest-clean ## Run acceptance tests (real API calls)
+acctest: acctest-clean ## Run acceptance tests (real API calls) [ auth: CATO_TOKEN+CATO_ACCOUNT_ID+CATO_BASEURL, or CATO_PROFILE=<catocli profile> ]
 	TF_ACC=1 DISABLE_POLICY_RULE_CLEANUP=true go test -tags acctest -count=1 -json --timeout=10m -parallel=1 -p=1 ./internal/acctests/... | go tool tparse -trimpath github.com/catonetworks/terraform-provider-cato/ --all
 acctest-flaky: ## Run acceptance tests - retry on error (real API calls) [ t=<test_dir> ] [ group=<0-9> ] [ coverage=true ]
 	@export TFACC_ENABLE_ACCOUNT_CRUD=$${TFACC_ENABLE_ACCOUNT_CRUD:-false} \

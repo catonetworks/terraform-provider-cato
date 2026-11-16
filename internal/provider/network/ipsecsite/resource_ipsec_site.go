@@ -157,23 +157,36 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request")
-	tunnelData, errIPSec := r.resourceAPI().SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
-	tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
-		"response": utils.InterfaceToJSONString(tunnelData),
-	})
-	if errIPSec != nil {
-		resp.Diagnostics.AddError(
-			"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
-			errIPSec.Error(),
-		)
-		return
-	}
+	// Skip the tunnels mutation entirely for a PLACEHOLDER config -- an empty
+	// `primary {}` (no destination/pop/ip and no tunnels) is schema-valid and
+	// creates just the site shell, but the API rejects a content-free
+	// AddIpsecIkeV2SiteTunnels call ("publicCatoIp is a mandatory field for
+	// IPv4 destination type"). Tunnels are added later via update.
+	var primary []*cato_go_sdk.SiteAddIpsecIkeV2SiteTunnels_Site_AddIpsecIkeV2SiteTunnels_PrimaryAddIpsecIkeV2SiteTunnelsPayload_Tunnels
+	var secondary []*cato_go_sdk.SiteAddIpsecIkeV2SiteTunnels_Site_AddIpsecIkeV2SiteTunnels_SecondaryAddIpsecIkeV2SiteTunnelsPayload_Tunnels
+	if ipsecTunnelsInputHasContent(tunnelInputs.add) {
+		tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.request")
+		tunnelData, errIPSec := r.resourceAPI().SiteAddIpsecIkeV2SiteTunnels(ctx, siteID, tunnelInputs.add, r.client.AccountId)
+		tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.response", map[string]interface{}{
+			"response": utils.InterfaceToJSONString(tunnelData),
+		})
+		if errIPSec != nil {
+			resp.Diagnostics.AddError(
+				"Cato API error in SiteAddIpsecIkeV2SiteTunnels",
+				errIPSec.Error(),
+			)
+			return
+		}
 
-	// create types to support multiple primary and secondary tunnels
-	addTunnels := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels()
-	tunnelsPrimaryData := addTunnels.PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
-	tunnelsSecondaryData := addTunnels.SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
+		// create types to support multiple primary and secondary tunnels
+		addTunnels := tunnelData.Site.GetAddIpsecIkeV2SiteTunnels()
+		primary = addTunnels.PrimaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
+		secondary = addTunnels.SecondaryAddIpsecIkeV2SiteTunnelsPayload.GetTunnels()
+	} else {
+		tflog.Debug(ctx, "Create.SiteAddIpsecIkeV2SiteTunnels.skipped", map[string]interface{}{
+			"reason": "ipsec primary/secondary carry no endpoint or tunnel configuration (placeholder site)",
+		})
+	}
 
 	// Hydrate the state with API data to ensure consistency
 	hydratedState, _, hydrateErr := r.hydrateIpsecSiteState(ctx, plan, siteID)
@@ -193,17 +206,17 @@ func (r *siteIpsecResource) Create(ctx context.Context, req resource.CreateReque
 
 	// supports multiple primary ipsec tunnels
 	if tunnelInputs.add.Primary != nil {
-		for x := 0; x < len(tunnelsPrimaryData); x++ {
+		for x := 0; x < len(primary); x++ {
 			tunnelIDPath := path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
-			resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsPrimaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
+			resp.State.SetAttribute(ctx, tunnelIDPath, primary[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
 		}
 	}
 
 	// supports multiple secondary ipsec tunnels
 	if tunnelInputs.add.Secondary != nil {
-		for x := 0; x < len(tunnelsSecondaryData); x++ {
+		for x := 0; x < len(secondary); x++ {
 			tunnelIDPath := path.Root("ipsec").AtName("secondary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
-			resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsSecondaryData[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
+			resp.State.SetAttribute(ctx, tunnelIDPath, secondary[x].GetTunnelIDAddIpsecIkeV2SiteTunnelPayload().String())
 		}
 	}
 
@@ -376,18 +389,18 @@ func (r *siteIpsecResource) Update(ctx context.Context, req resource.UpdateReque
 		// create types to support multiple primary and secondary tunnels
 		updateTunnels := tunnelData.Site.GetUpdateIpsecIkeV2SiteTunnels()
 		if len(updateTunnels.GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()) > 0 {
-			tunnelsPrimaryData := updateTunnels.GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
-			for x := 0; x < len(tunnelsPrimaryData); x++ {
+			primary := updateTunnels.GetPrimaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
+			for x := 0; x < len(primary); x++ {
 				tunnelIDPath := path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
-				resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsPrimaryData[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
+				resp.State.SetAttribute(ctx, tunnelIDPath, primary[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
 			}
 		}
 
 		if len(updateTunnels.GetSecondaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()) > 0 {
-			tunnelsSecondaryData := updateTunnels.GetSecondaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
-			for x := 0; x < len(tunnelsSecondaryData); x++ {
+			secondary := updateTunnels.GetSecondaryUpdateIpsecIkeV2SiteTunnelsPayload().GetTunnels()
+			for x := 0; x < len(secondary); x++ {
 				tunnelIDPath := path.Root("ipsec").AtName("primary").AtName("tunnels").AtListIndex(x).AtName("tunnel_id")
-				resp.State.SetAttribute(ctx, tunnelIDPath, tunnelsSecondaryData[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
+				resp.State.SetAttribute(ctx, tunnelIDPath, secondary[x].GetTunnelIDUpdateIpsecIkeV2SiteTunnelPayload().String())
 			}
 		}
 	}

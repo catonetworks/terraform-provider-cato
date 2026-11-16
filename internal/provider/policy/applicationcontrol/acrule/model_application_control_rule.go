@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 	applicationcontrol2 "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/applicationcontrol"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/idname"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/policyrule"
@@ -19,7 +18,11 @@ var ApplicationControlAccessMethodAttrTypes = map[string]attr.Type{
 }
 
 var applicationControlActivityAttrTypes = map[string]attr.Type{
-	"activity": idname.RefObjectType,
+	"activity":  idname.RefObjectType,
+	"field":     idname.RefObjectType,
+	"operator":  types.StringType,
+	"value":     types.StringType,
+	"value_set": idname.RefObjectType,
 }
 
 // applicationControlTypedRuleAttrTypes is shared shape for application/data/file nested blocks.
@@ -31,9 +34,11 @@ var applicationControlTypedRuleAttrTypes = map[string]attr.Type{
 	"tracking":                     policyrule.TrackingObjectType,
 	"device":                       types.SetType{ElemType: idname.RefObjectType},
 	"access_method":                types.ListType{ElemType: types.ObjectType{AttrTypes: ApplicationControlAccessMethodAttrTypes}},
-	"application":                  wfrule.WanApplicationObjectType,
+	"application":                  acApplicationObjectType,
 	"application_activity":         types.ListType{ElemType: types.ObjectType{AttrTypes: applicationControlActivityAttrTypes}},
 	"application_activity_satisfy": types.StringType,
+	"application_criteria":         types.ObjectType{AttrTypes: acCriteriaAttrTypes},
+	"application_criteria_satisfy": types.StringType,
 	"action_config":                types.ObjectType{AttrTypes: applicationControlActionConfigAttrTypes},
 	"file_attribute":               types.ListType{ElemType: types.ObjectType{AttrTypes: applicationControlFileAttributeAttrTypes}},
 	"file_attribute_satisfy":       types.StringType,
@@ -50,9 +55,11 @@ var applicationControlDlpProfileAttrTypes = map[string]attr.Type{
 }
 
 var applicationControlFileAttributeAttrTypes = map[string]attr.Type{
-	"file_attribute": types.StringType,
-	"operator":       types.StringType,
-	"value":          types.StringType,
+	"file_attribute":            types.StringType,
+	"operator":                  types.StringType,
+	"value":                     types.StringType,
+	"content_type_values":       types.SetType{ElemType: idname.RefObjectType},
+	"content_type_group_values": types.SetType{ElemType: idname.RefObjectType},
 }
 
 // ApplicationControlRuleRuleAttrTypes defines nested `rule` object.
@@ -105,15 +112,24 @@ type ApplicationControlTypedRulePlan struct {
 	Application                types.Object `tfsdk:"application"`
 	ApplicationActivity        types.List   `tfsdk:"application_activity"`
 	ApplicationActivitySatisfy types.String `tfsdk:"application_activity_satisfy"`
+	ApplicationCriteria        types.Object `tfsdk:"application_criteria"`
+	ApplicationCriteriaSatisfy types.String `tfsdk:"application_criteria_satisfy"`
 	ActionConfig               types.Object `tfsdk:"action_config"`
 	FileAttribute              types.List   `tfsdk:"file_attribute"`
 	FileAttributeSatisfy       types.String `tfsdk:"file_attribute_satisfy"`
 	DlpProfile                 types.Object `tfsdk:"dlp_profile"`
 }
 
-// ApplicationControlActivityPlan is one application_activity element.
+// ApplicationControlActivityPlan is one application_activity element. The
+// optional field/operator/value/value_set carry activity granular conditions
+// (e.g. Full Path URL CONTAINS "x") — several catalog activities REQUIRE a
+// value (the API rejects a bare ref with "activity: <name> must have a value").
 type ApplicationControlActivityPlan struct {
 	Activity types.Object `tfsdk:"activity"`
+	Field    types.Object `tfsdk:"field"`
+	Operator types.String `tfsdk:"operator"`
+	Value    types.String `tfsdk:"value"`
+	ValueSet types.Object `tfsdk:"value_set"`
 }
 
 // ApplicationControlAccessMethodPlan is one access_method element.

@@ -3,7 +3,9 @@ package group
 import (
 	"context"
 	"strings"
+	"time"
 
+	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -204,14 +206,7 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			Sort: &cato_models.GroupMembersListSortInput{},
 		}
 
-		membersResult, err := d.client.Catov2.GroupsMembers(ctx, groupRef, groupMembersListInput, d.client.AccountId)
-		if err != nil {
-			tflog.Warn(ctx, "Failed to fetch members for group", map[string]interface{}{
-				"group_id": groupItem.ID,
-				"error":    err.Error(),
-			})
-			// Continue with empty members
-		}
+		membersResult := d.fetchGroupMembersConsistent(ctx, groupItem, groupRef, groupMembersListInput)
 
 		// Build members set
 		var memberValues []attr.Value
@@ -275,4 +270,57 @@ func (d *groupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	config.Items = itemsList
 	diags = resp.State.Set(ctx, &config)
 	resp.Diagnostics.Append(diags...)
+}
+
+// fetchGroupMembersConsistent fetches a group's members, retrying briefly while the member
+// list is shorter than the membership count the groups list reported. The members view can
+// lag a just-committed groupsUpdateGroup mutation (eventual consistency), which would
+// otherwise under-report members added moments earlier (e.g. by cato_group_members).
+// Returns nil when the fetch fails - the caller renders an empty member set.
+func (d *groupDataSource) fetchGroupMembersConsistent(
+	ctx context.Context,
+	groupItem *cato_go_sdk.GroupsList_Groups_GroupList_Items,
+	groupRef cato_models.GroupRefInput,
+	input cato_models.GroupMembersListInput,
+) *cato_go_sdk.GroupsMembers {
+	const maxAttempts = 8
+	for attempt := 1; ; attempt++ {
+		membersResult, err := d.client.Catov2.GroupsMembers(ctx, groupRef, input, d.client.AccountId)
+		if err != nil {
+			tflog.Warn(ctx, "Failed to fetch members for group", map[string]interface{}{
+				"group_id": groupItem.ID,
+				"error":    err.Error(),
+			})
+			return nil
+		}
+
+		got := 0
+		if membersResult != nil && membersResult.Groups.Group != nil {
+			got = len(membersResult.Groups.Group.Members.Items)
+		}
+		if int64(got) >= groupItem.MembersCount || attempt == maxAttempts {
+			if int64(got) < groupItem.MembersCount {
+				tflog.Warn(ctx, "group members view still behind membersCount after retries", map[string]interface{}{
+					"group_id":      groupItem.ID,
+					"members_count": groupItem.MembersCount,
+					"members_got":   got,
+				})
+			}
+			return membersResult
+		}
+
+		tflog.Warn(ctx, "group members view behind membersCount; retrying", map[string]interface{}{
+			"group_id":      groupItem.ID,
+			"members_count": groupItem.MembersCount,
+			"members_got":   got,
+			"attempt":       attempt,
+		})
+		t := time.NewTimer(time.Duration(attempt) * time.Second)
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return membersResult
+		case <-t.C:
+		}
+	}
 }

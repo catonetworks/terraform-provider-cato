@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eu
+set -euo pipefail
 # shellcheck source=test_data/acctest_retry.sh
 source "$(dirname "$0")/acctest_retry.sh"
 retry_fixture=$(mktemp)
@@ -20,3 +20,14 @@ check_retry 1 '{"Output":"DOWNSTREAM_SERVICE_ERROR: Access denied: Insufficient 
 check_retry 1 '{"Output":"DOWNSTREAM_SERVICE_ERROR: classification=ValidationError"}'
 check_retry 1 '{"Output":"skipping test: Internal server error"}'
 check_retry 1 '{"Output":"ordinary assertion failure"}'
+
+check_retry 1 ''
+check_retry 0 $'{"Output":"skipping test: Internal server error"}\n{"Output":"connection refused"}'
+
+# A matching first line must not close a pipe while the rest of a large log is written.
+printf -v large_log '%100000s' ' '
+check_retry 0 $'connection refused\n'"$large_log"
+
+check_retry 0 'Something went wrong! Please try again later'
+check_retry 0 'request failed: context deadline exceeded'
+check_retry 1 'context deadline exceeded; Access denied: Insufficient privileges'

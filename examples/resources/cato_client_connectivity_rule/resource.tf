@@ -1,45 +1,77 @@
-terraform {
-  required_providers {
-    cato = { source = "catonetworks/cato" }
+
+
+// allow high-confidence client connections
+resource "cato_client_connectivity_rule" "allow_high_confidence" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  rule = {
+    name             = "Allow High Confidence Connections"
+    enabled          = true
+    action           = "ALLOW"
+    confidence_level = "HIGH"
   }
 }
 
-variable "token" {
-  type        = string
-  sensitive   = true
-  description = "API token supplied through TF_VAR_token."
+resource "cato_client_connectivity_section" "cc_section" {
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  section = {
+    name = "Client Connectivity Section"
+  }
 }
 
-variable "account_id" {
-  type        = string
-  description = "Cato account ID supplied through TF_VAR_account_id."
-}
-
-provider "cato" {
-  token      = var.token
-  account_id = var.account_id
-}
-
-# Changes are automatically published. Use a test account when evaluating beta APIs.
-# Explicit empty filters remain empty in state even when omitted by the API.
-resource "cato_client_connectivity_rule" "example" {
-  at = { position = "LAST_IN_POLICY" }
+# cato_client_connectivity_rule.kitchen_sink:
+resource "cato_client_connectivity_rule" "kitchen_sink" {
+  at = {
+    position = "FIRST_IN_SECTION"
+    ref      = cato_client_connectivity_section.cc_section.section.id
+  }
   rule = {
+    name              = "Client Connectivity Kitchen Sink"
+    description       = "test"
+    enabled           = true
     action            = "ALLOW"
     confidence_level  = "HIGH"
-    connection_origin = ["REMOTE"]
-    country           = [{ id = "replace-with-object-id" }]
-    description       = "Managed by Terraform"
-    device            = [{ id = "replace-with-object-id" }]
-    enabled           = true
-    name              = "terraform-client-connectivity-rule"
-    platform          = ["WINDOWS"]
+    connection_origin = ["REMOTE", "REMOTE_EXTENSION"]
+    platform = [
+      "WINDOWS",
+      "MACOS",
+    ]
+    country = [
+      {
+        # id   = "AG"
+        name = "Antigua and Barbuda"
+      },
+    ]
+    device = [
+      {
+        # id   = "4202"
+        name = "Test Device Posture Profile"
+      },
+    ]
     source = {
-      user        = [{ id = "replace-with-object-id" }]
-      users_group = [{ id = "replace-with-object-id" }]
+      user = [
+        {
+          # id   = "0"
+          name = "test user"
+        },
+      ]
+      users_group = [
+        {
+          # id   = "500000000"
+          name = "Test User Group"
+        },
+      ]
     }
-    source_range = [{
-      global_ip_range = { id = "replace-with-object-id" }
-    }]
+    source_range = [
+      {
+        global_ip_range = {
+          # id   = "1757826"
+          name = "global_ip_range"
+        }
+      },
+    ]
   }
 }

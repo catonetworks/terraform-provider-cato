@@ -513,10 +513,16 @@ func convertHydrateIpsecSiteStateValues(
 
 	if description, ok := siteEntity.GetHelperFields()["description"]; ok && description != nil {
 		descStr := description.(string)
-		if descStr != "" {
+		switch {
+		case descStr != "":
 			state.Description = types.StringValue(descStr)
-		} else {
+		case state.Description.IsNull():
 			state.Description = types.StringNull()
+		default:
+			// The API reports an empty description, but the plan/prior state carried
+			// "" (not null). Preserve the empty string so Terraform does not see an
+			// inconsistent result after apply ("was \"\", but now null").
+			state.Description = types.StringValue("")
 		}
 	}
 
@@ -648,4 +654,21 @@ func convertHydrateIpsecSiteStateValues5(
 
 	resultSiteLocationObj, resultDiags = types.ObjectValue(tfmodel.SiteLocationResourceAttrTypes, siteLocationAttrs)
 	return resultSiteLocationObj, resultDiags
+}
+
+// ipsecTunnelsInputHasContent reports whether the hydrated tunnels input
+// carries ANY endpoint or tunnel configuration. A placeholder site declares
+// `ipsec = { primary = {} }` (schema-valid), which hydrates to a Primary with
+// all-nil fields -- sending that to AddIpsecIkeV2SiteTunnels fails
+// ("publicCatoIp is a mandatory field for IPv4 destination type"), so the
+// create path skips the call entirely when nothing is configured.
+func ipsecTunnelsInputHasContent(in cato_models.AddIpsecIkeV2SiteTunnelsInput) bool {
+	side := func(t *cato_models.AddIpsecIkeV2TunnelsInput) bool {
+		if t == nil {
+			return false
+		}
+		return t.DestinationType != nil || t.PopLocationID != nil ||
+			t.PublicCatoIPID != nil || len(t.Tunnels) > 0
+	}
+	return side(in.Primary) || side(in.Secondary)
 }

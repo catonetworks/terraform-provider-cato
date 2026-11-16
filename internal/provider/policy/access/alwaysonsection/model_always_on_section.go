@@ -9,12 +9,14 @@ import (
 
 // Section is the Terraform model for cato_always_on_section.
 type Section struct {
+	ID      types.String `tfsdk:"id"`      // top-level section id (mirrors section.id) for parity with if/wf/lan section resources
 	At      types.Object `tfsdk:"at"`      // policyrule.Position
 	Section types.Object `tfsdk:"section"` // SectionData
 }
 
 // SectionAttrTypes defines the resource's Terraform attribute types.
 var SectionAttrTypes = map[string]attr.Type{
+	"id":      types.StringType,
 	"at":      policyrule.PositionObjectType,
 	"section": SectionDataObjectType,
 }

@@ -653,6 +653,86 @@ func TestClearCriteriaRequestShape(t *testing.T) {
 	require.Equal(t, "", object["description"])
 }
 
+// A rule authored without source/service blocks leaves those nested objects
+// null. addRule's input types SocketBypassSourceInput!/SocketBypassServiceInput!
+// are non-nullable, so the provider must serialize an omitted block as an empty
+// "match any" object, not null -- otherwise the API rejects the create with
+// "got invalid value null at ...rule.source; Expected non-nullable type".
+func TestCreateNullSourceServiceSendsEmptyObjects(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	backend := testBackendData(t)
+	r := testResource(t, backend)
+	model := testModel(t)
+	fields := model.Rule.Attributes()
+	fields["source"] = types.ObjectNull(fields["source"].(types.Object).AttributeTypes(ctx))
+	fields["service"] = types.ObjectNull(fields["service"].(types.Object).AttributeTypes(ctx))
+	model.Rule = types.ObjectValueMust(model.Rule.AttributeTypes(ctx), fields)
+
+	create := resource.CreateResponse{State: tfsdk.State{Schema: testSchema(t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, model)}, &create)
+	require.False(t, create.Diagnostics.HasError(), "%v", create.Diagnostics)
+
+	var input map[string]any
+	for _, variables := range backend.variables {
+		if value, ok := variables["socketBypassAddRuleInput"].(map[string]any); ok {
+			input = value
+		}
+	}
+	require.NotNil(t, input)
+	object := input["rule"].(map[string]any)
+	source, ok := object["source"].(map[string]any)
+	require.True(t, ok, "source must be a non-null object, got %T (%v)", object["source"], object["source"])
+	require.Equal(t, []any{}, source["group"], "source.group")
+	require.Equal(t, []any{}, source["ipRange"], "source.ipRange")
+	require.Equal(t, []any{}, source["vlan"], "source.vlan")
+	service, ok := object["service"].(map[string]any)
+	require.True(t, ok, "service must be a non-null object, got %T (%v)", object["service"], object["service"])
+	require.Equal(t, []any{}, service["simple"], "service.simple")
+	require.Equal(t, []any{}, service["custom"], "service.custom")
+}
+
+// Omitted criteria must round-trip as null, not the empty sets/objects the API
+// echoes back -- source/service/destination/site/exception are Optional-only, so
+// Terraform requires the applied value to equal the (null) configured one.
+// clearCriteria produces the all-empty shape the API returns for a rule that
+// matches on nothing; normalizeOptionalEmpties must collapse it to null.
+func TestNormalizeOptionalEmptiesCollapsesOmittedCriteria(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	cleared := clearCriteria(testModel(t).Rule)
+	var diags diag.Diagnostics
+	normalized := normalizeOptionalEmpties(ctx, cleared, nil, &diags).(types.Object)
+	require.False(t, diags.HasError(), "%v", diags)
+	attrs := normalized.Attributes()
+	for _, key := range []string{"source", "service", "destination", "site", "exception", "description"} {
+		require.True(t, attrs[key].IsNull(), "%s should collapse to null, got %s", key, attrs[key])
+	}
+	// Required/identity fields always carry a value and must survive.
+	for _, key := range []string{"name", "enabled", "action", "id", "index"} {
+		require.False(t, attrs[key].IsNull(), "%s must be preserved", key)
+	}
+}
+
+// The inverse guard: populated criteria (and server-resolved ids) must pass
+// through untouched -- normalization only strips emptiness, never real data.
+func TestNormalizeOptionalEmptiesPreservesPopulatedCriteria(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	populated := testModel(t).Rule
+	var diags diag.Diagnostics
+	normalized := normalizeOptionalEmpties(ctx, populated, populated, &diags).(types.Object)
+	require.False(t, diags.HasError(), "%v", diags)
+	attrs := normalized.Attributes()
+	for _, key := range []string{"source", "service", "destination", "site", "exception", "description"} {
+		require.False(t, attrs[key].IsNull(), "%s must be preserved when populated", key)
+	}
+	// A populated source keeps its non-empty member sets.
+	source := attrs["source"].(types.Object).Attributes()
+	require.False(t, source["group"].(types.Set).IsNull(), "source.group preserved")
+	require.NotEmpty(t, source["group"].(types.Set).Elements(), "source.group elements preserved")
+}
+
 // Port is a JSON number in GraphQL responses and a string alias in SDK inputs.
 func numericPorts(t *testing.T, value any) any {
 	t.Helper()
@@ -695,4 +775,71 @@ func numericPorts(t *testing.T, value any) any {
 		return out
 	}
 	return value
+}
+
+func TestOptionalCriteriaRoundTrip(t *testing.T) {
+	for _, omitted := range []bool{false, true} {
+		t.Run(map[bool]string{false: "explicit empty", true: "omitted"}[omitted], func(t *testing.T) {
+			ctx := context.Background()
+			backend := testBackendData(t)
+			model := testModel(t)
+			fields := model.Rule.Attributes()
+			empty := clearCriteria(model.Rule).Attributes()
+			for _, name := range []string{"source", "destination", "service", "site", "exception", "description"} {
+				fields[name] = empty[name]
+				if omitted {
+					fields[name] = normalizeOptionalEmpties(ctx, fields[name], nil, new(diag.Diagnostics))
+				}
+				backend.object[name] = map[string]any{}
+			}
+			backend.object["exception"] = []any{}
+			backend.object["description"] = ""
+			model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+			r := testResource(t, backend)
+			created := resource.CreateResponse{State: tfsdk.State{Schema: testSchema(t)}}
+			r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, model)}, &created)
+			require.False(t, created.Diagnostics.HasError(), "%v", created.Diagnostics)
+			read := resource.ReadResponse{State: created.State}
+			r.Read(ctx, resource.ReadRequest{State: created.State}, &read)
+			require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
+			updated := resource.UpdateResponse{State: read.State}
+			r.Update(ctx, resource.UpdateRequest{State: read.State, Plan: testPlan(t, model)}, &updated)
+			require.False(t, updated.Diagnostics.HasError(), "%v", updated.Diagnostics)
+			for _, state := range []tfsdk.State{created.State, read.State, updated.State} {
+				var actual resourceModel
+				require.False(t, state.Get(ctx, &actual).HasError())
+				for _, name := range []string{"source", "destination", "service", "site", "exception", "description"} {
+					require.True(t, fields[name].Equal(actual.Rule.Attributes()[name]), name)
+				}
+			}
+		})
+	}
+}
+
+func TestReadImportKeepsComputedSectionShape(t *testing.T) {
+	ctx := context.Background()
+	backend := testBackendData(t)
+	backend.object["section"] = map[string]any{"id": "", "name": ""}
+	r := testResource(t, backend)
+	model := testModel(t)
+	fields := model.Rule.Attributes()
+	fields["section"] = types.ObjectUnknown(fields["section"].(types.Object).AttributeTypes(ctx))
+	model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+	created := resource.CreateResponse{State: tfsdk.State{Schema: testSchema(t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, model)}, &created)
+	require.False(t, created.Diagnostics.HasError(), "%v", created.Diagnostics)
+	var current resourceModel
+	require.False(t, created.State.Get(ctx, &current).HasError())
+	originalSection := current.Rule.Attributes()["section"]
+	var imported tfsdk.State
+	imported.Schema = testSchema(t)
+	fields = current.Rule.Attributes()
+	fields["section"] = types.ObjectNull(fields["section"].(types.Object).AttributeTypes(ctx))
+	current.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+	require.False(t, imported.Set(ctx, current).HasError())
+	read := resource.ReadResponse{State: imported}
+	r.Read(ctx, resource.ReadRequest{State: imported}, &read)
+	require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
+	require.False(t, read.State.Get(ctx, &current).HasError())
+	require.True(t, originalSection.Equal(current.Rule.Attributes()["section"]))
 }

@@ -84,6 +84,7 @@ func (r *alwaysOnSectionResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 	plan.Section = parseSection(ctx, section, &resp.Diagnostics)
+	plan.ID = types.StringValue(section.GetID())
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -116,6 +117,7 @@ func (r *alwaysOnSectionResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 	state.Section = parseSection(ctx, section, &resp.Diagnostics)
+	state.ID = types.StringValue(section.GetID())
 	if !utils.HasValue(state.At) {
 		state.At = parseSectionPosition(ctx, position, &resp.Diagnostics)
 	}
@@ -140,12 +142,13 @@ func (r *alwaysOnSectionResource) Update(ctx context.Context, req resource.Updat
 	plan.Section = r.updateSection(ctx, cato_models.PolicyUpdateSectionInput{
 		ID: id, Section: &cato_models.PolicyUpdateSectionInfoInput{Name: &input.Section.Name},
 	}, &resp.Diagnostics)
+	plan.ID = types.StringValue(id)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	if !plan.At.Equal(state.At) {
 		// Retain the completed rename and old placement if the subsequent move fails.
-		resp.Diagnostics.Append(resp.State.Set(ctx, Section{At: state.At, Section: plan.Section})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, Section{ID: types.StringValue(id), At: state.At, Section: plan.Section})...)
 		if resp.Diagnostics.HasError() {
 			return
 		}

@@ -223,6 +223,12 @@ packages:
         config:
           filename: SubscriptionGroupClient.go
           structname: SubscriptionGroupClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/account/webhook:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: WebhookClient.go
+          structname: WebhookClient
   github.com/catonetworks/terraform-provider-cato/internal/provider/network/cloudinterconnectsite:
     interfaces:
       ResourceClient:
@@ -320,3 +326,9 @@ packages:
         config:
           filename: WanFirewallRuleClient.go
           structname: WanFirewallRuleClient
+  github.com/catonetworks/terraform-provider-cato/internal/provider/network/allocatedip:
+    interfaces:
+      ResourceClient:
+        config:
+          filename: AllocatedIPResourceClient.go
+          structname: AllocatedIPResourceClient

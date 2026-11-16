@@ -12,7 +12,7 @@ The `cato_static_host` resource contains the configuration parameters necessary 
 ## Example Usage
 
 ```terraform
-// static host 
+// static host (parent site referenced by id)
 resource "cato_static_host" "host1" {
   site_id = cato_socket_site.site1.id
   name    = "host"
@@ -25,6 +25,16 @@ resource "cato_static_host" "host2" {
   name        = "host"
   ip          = "192.168.0.2"
   mac_address = "00:00:00:00:00:02"
+}
+
+// static host whose parent site is referenced by NAME instead of id.
+// Exactly one of site_id / site_name may be set; the provider resolves the
+// name to the site id via entityLookup and stores it in state. Useful for
+// tenant-to-tenant replication where site ids differ but names are stable.
+resource "cato_static_host" "host3" {
+  site_name = "My Branch Site"
+  name      = "host"
+  ip        = "192.168.0.3"
 }
 ```
 
@@ -43,11 +53,12 @@ terraform import cato_static_host.example <site-id>/<host-id>
 
 - `ip` (String) Host IP address
 - `name` (String) Host name
-- `site_id` (String) Site ID (Host's parent)
 
 ### Optional
 
 - `mac_address` (String) Host MAC address (for DHCP reservervation)
+- `site_id` (String) Site ID (Host's parent). Exactly one of `site_id` or `site_name` must be set. When `site_name` is used, `site_id` is resolved via entityLookup and written to state (Computed).
+- `site_name` (String) Site name (Host's parent), an alternative to `site_id`. Resolved to the site's ID via entityLookup at apply (site names are unique). Exactly one of `site_id` or `site_name` must be set.
 
 ### Read-Only
 

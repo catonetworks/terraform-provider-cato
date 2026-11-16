@@ -5,7 +5,7 @@ Attributes:
     Mode: "computed"
   - Name: "integration"
     Description: "Integration"
-    Type: "set"
+    Type: "list"
     Mode: "optional_computed"
     ItemType: "nested"
     Attributes:
@@ -22,7 +22,7 @@ Attributes:
       - "modifyPlan"
   - Name: "mailing_list"
     Description: "Mailing list"
-    Type: "set"
+    Type: "list"
     Mode: "optional_computed"
     ItemType: "nested"
     Attributes:
