@@ -117,7 +117,7 @@ func (r *policyResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Invalid API response", "Create did not return a resource ID.")
 		return
 	}
-	plan.Rule = normalizeOptionalEmpties(ctx, parseAdd(ctx, returned, &resp.Diagnostics), &resp.Diagnostics).(types.Object)
+	plan.Rule = normalizeOptionalEmpties(ctx, parseAdd(ctx, returned, &resp.Diagnostics), plan.Rule, &resp.Diagnostics).(types.Object)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -167,7 +167,7 @@ func (r *policyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		resp.State.RemoveResource(ctx)
 		return
 	}
-	state.Rule = normalizeOptionalEmpties(ctx, parseRead(ctx, object, &resp.Diagnostics), &resp.Diagnostics).(types.Object)
+	state.Rule = normalizeOptionalEmpties(ctx, parseRead(ctx, object, &resp.Diagnostics), state.Rule, &resp.Diagnostics).(types.Object)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -200,6 +200,7 @@ func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest,
 			r.discard(ctx, revision, &resp.Diagnostics)
 		}
 	}()
+	priorRule := plan.Rule
 	plan.Rule = r.updateObject(ctx, id.ValueString(), object, revision, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -210,7 +211,7 @@ func (r *policyResource) Update(ctx context.Context, req resource.UpdateRequest,
 			return
 		}
 	}
-	plan.Rule = normalizeOptionalEmpties(ctx, plan.Rule, &resp.Diagnostics).(types.Object)
+	plan.Rule = normalizeOptionalEmpties(ctx, plan.Rule, priorRule, &resp.Diagnostics).(types.Object)
 	if resp.Diagnostics.HasError() {
 		return
 	}

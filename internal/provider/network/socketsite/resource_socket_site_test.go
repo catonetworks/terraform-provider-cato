@@ -835,3 +835,22 @@ func assertTranslatedSubnetPointer(t *testing.T, got *string, wantNil bool, want
 		t.Fatalf("expected translated subnet %q, got %q", wantValue, *got)
 	}
 }
+
+func TestSocketSiteUpdatePreservesExplicitIdentityTranslation(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	subnet := "10.51.0.128/25"
+	plan := newSocketSitePlanWithTranslatedSubnet(ctx, t, types.StringValue(subnet))
+	var diags diag.Diagnostics
+	client := &catoclient.Service{}
+	input := prepareNetworkRangeInput(ctx, client, plan, plan, false, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	assertTranslatedSubnetPointer(t, input.TranslatedSubnet, false, subnet)
+	iface, _ := prepareSocketInterfaceInput(ctx, plan, plan, false, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	assertTranslatedSubnetPointer(t, iface.Lan.TranslatedSubnet, false, subnet)
+}

@@ -184,11 +184,6 @@ func prepareSocketInterfaceInput(
 			Subnet:           planNativeRange.NativeNetworkRange.ValueString(),
 			TranslatedSubnet: convert.TranslatedSubnetForAPIInput(configTranslatedSubnet, planNativeRange.TranslatedSubnet),
 		}
-		// Omit a no-op translated subnet (== subnet): the API rejects it when
-		// Static Range Translation is disabled on the account.
-		if lan.TranslatedSubnet != nil && *lan.TranslatedSubnet == lan.Subnet {
-			lan.TranslatedSubnet = nil
-		}
 		input.Lan = lan
 	}
 
@@ -588,15 +583,9 @@ func convertPrepareNetworkRangeInputValues(
 		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, client, cato_models.SubnetTypeNative, planNativeRange.DhcpSettings, diags),
 		// AzureFloatingIP must remain omitted until Azure HA support is implemented.
 	}
-	// A translated subnet equal to the subnet is a no-op translation. The API
-	// rejects it ("translatedSubnet is not supported when Static Range Translation
-	// is disabled") on accounts without Static Range Translation enabled, so omit
-	// it -- it conveys no real translation. Exports hydrate translated_subnet to
-	// the subnet value when the feature is off, which is how it reaches here.
-	if resultInput.TranslatedSubnet != nil &&
-		*resultInput.TranslatedSubnet == planNativeRange.NativeNetworkRange.ValueString() {
-		resultInput.TranslatedSubnet = nil
-	}
+	// Explicit translation values must accompany subnet resizes. Omitting an
+	// identity translation can retain an old translated range with a different
+	// prefix length. Unconfigured hydrated defaults are already omitted above.
 
 	if !isHA { // for HA scenario, local IP is not allowed to be modified
 		resultInput.LocalIP = convert.KnownStringPointer(planNativeRange.LocalIP)

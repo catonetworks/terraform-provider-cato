@@ -702,7 +702,7 @@ func TestNormalizeOptionalEmptiesCollapsesOmittedCriteria(t *testing.T) {
 	ctx := context.Background()
 	cleared := clearCriteria(testModel(t).Rule)
 	var diags diag.Diagnostics
-	normalized := normalizeOptionalEmpties(ctx, cleared, &diags).(types.Object)
+	normalized := normalizeOptionalEmpties(ctx, cleared, nil, &diags).(types.Object)
 	require.False(t, diags.HasError(), "%v", diags)
 	attrs := normalized.Attributes()
 	for _, key := range []string{"source", "service", "destination", "site", "exception", "description"} {
@@ -721,7 +721,7 @@ func TestNormalizeOptionalEmptiesPreservesPopulatedCriteria(t *testing.T) {
 	ctx := context.Background()
 	populated := testModel(t).Rule
 	var diags diag.Diagnostics
-	normalized := normalizeOptionalEmpties(ctx, populated, &diags).(types.Object)
+	normalized := normalizeOptionalEmpties(ctx, populated, populated, &diags).(types.Object)
 	require.False(t, diags.HasError(), "%v", diags)
 	attrs := normalized.Attributes()
 	for _, key := range []string{"source", "service", "destination", "site", "exception", "description"} {
@@ -775,4 +775,43 @@ func numericPorts(t *testing.T, value any) any {
 		return out
 	}
 	return value
+}
+
+func TestOptionalCriteriaRoundTrip(t *testing.T) {
+	for _, omitted := range []bool{false, true} {
+		t.Run(map[bool]string{false: "explicit empty", true: "omitted"}[omitted], func(t *testing.T) {
+			ctx := context.Background()
+			backend := testBackendData(t)
+			model := testModel(t)
+			fields := model.Rule.Attributes()
+			empty := clearCriteria(model.Rule).Attributes()
+			for _, name := range []string{"source", "destination", "service", "site", "exception", "description"} {
+				fields[name] = empty[name]
+				if omitted {
+					fields[name] = normalizeOptionalEmpties(ctx, fields[name], nil, new(diag.Diagnostics))
+				}
+				backend.object[name] = map[string]any{}
+			}
+			backend.object["exception"] = []any{}
+			backend.object["description"] = ""
+			model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+			r := testResource(t, backend)
+			created := resource.CreateResponse{State: tfsdk.State{Schema: testSchema(t)}}
+			r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, model)}, &created)
+			require.False(t, created.Diagnostics.HasError(), "%v", created.Diagnostics)
+			read := resource.ReadResponse{State: created.State}
+			r.Read(ctx, resource.ReadRequest{State: created.State}, &read)
+			require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
+			updated := resource.UpdateResponse{State: read.State}
+			r.Update(ctx, resource.UpdateRequest{State: read.State, Plan: testPlan(t, model)}, &updated)
+			require.False(t, updated.Diagnostics.HasError(), "%v", updated.Diagnostics)
+			for _, state := range []tfsdk.State{created.State, read.State, updated.State} {
+				var actual resourceModel
+				require.False(t, state.Get(ctx, &actual).HasError())
+				for _, name := range []string{"source", "destination", "service", "site", "exception", "description"} {
+					require.True(t, fields[name].Equal(actual.Rule.Attributes()[name]), name)
+				}
+			}
+		})
+	}
 }

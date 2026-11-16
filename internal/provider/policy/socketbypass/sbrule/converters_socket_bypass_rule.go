@@ -2174,60 +2174,48 @@ func parseReadSourceIPRange(
 
 type add = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule
 
-// normalizeOptionalEmpties rewrites an API-hydrated rule so that criteria the
-// user did not specify round-trip as null rather than as the empty
-// collections/objects the API echoes back. source/service/destination/site/
-// exception (and description) are Optional-only on this resource -- NOT Computed
-// (see schema_socket_bypass_rule.go) -- so Terraform requires the post-apply
-// value to equal the configured one. The bulk config represents an omitted
-// criterion as null, but the API always returns a fully-populated object with
-// empty member lists; without this normalization every omitted block trips
-// "Provider produced inconsistent result after apply: was null, but now
-// cty.SetValEmpty(...)". Empty sets and empty strings collapse to null, and a
-// nested object whose attributes are all null collapses to null -- exactly how an
-// omitted block looks in config. Non-empty values (including server-resolved ids)
-// are preserved untouched, and Required fields (action/enabled/name) never
-// collapse because they always carry a non-null value. Applied uniformly in
-// Create/Update/Read so the three paths agree and no cosmetic drift remains.
-// Known residual: set elements (e.g. populated exceptions) are treated atomically
-// -- empties nested inside a non-empty set are not normalized.
-func normalizeOptionalEmpties(ctx context.Context, value attr.Value, diags *diag.Diagnostics) attr.Value {
-	switch typed := value.(type) {
-	case basetypes.ObjectValue:
-		if typed.IsNull() || typed.IsUnknown() {
-			return value
-		}
-		attrs := typed.Attributes()
-		normalized := make(map[string]attr.Value, len(attrs))
-		allNull := true
-		for key, attrVal := range attrs {
-			normalized[key] = normalizeOptionalEmpties(ctx, attrVal, diags)
-			if !normalized[key].IsNull() {
-				allNull = false
-			}
-		}
-		if allNull {
-			return types.ObjectNull(typed.AttributeTypes(ctx))
-		}
-		result, d := types.ObjectValue(typed.AttributeTypes(ctx), normalized)
-		diags.Append(d...)
-		return result
-	case basetypes.SetValue:
-		if typed.IsNull() || typed.IsUnknown() {
-			return value
-		}
-		if len(typed.Elements()) == 0 {
-			return types.SetNull(typed.ElementType(ctx))
-		}
-		return value
-	case basetypes.StringValue:
-		if !typed.IsNull() && !typed.IsUnknown() && typed.ValueString() == "" {
-			return types.StringNull()
-		}
-		return value
-	default:
+// normalizeOptionalEmpties matches omitted API criteria to the prior plan/state.
+// Explicit empty collections, objects, and strings retain their configured shape;
+// populated API values are never replaced by prior values.
+func normalizeOptionalEmpties(ctx context.Context, value, prior attr.Value, diags *diag.Diagnostics) attr.Value {
+	if value.IsNull() || value.IsUnknown() {
 		return value
 	}
+	omitted := prior == nil || prior.IsNull()
+	switch typed := value.(type) {
+	case basetypes.ObjectValue:
+		return normalizeOptionalObject(ctx, typed, prior, diags)
+	case basetypes.SetValue:
+		if len(typed.Elements()) == 0 && omitted {
+			return types.SetNull(typed.ElementType(ctx))
+		}
+	case basetypes.StringValue:
+		if typed.ValueString() == "" && omitted {
+			return types.StringNull()
+		}
+	}
+	return value
+}
+
+func normalizeOptionalObject(ctx context.Context, value types.Object, prior attr.Value, diags *diag.Diagnostics) types.Object {
+	var priorAttrs map[string]attr.Value
+	if previous, ok := prior.(types.Object); ok && !previous.IsNull() && !previous.IsUnknown() {
+		priorAttrs = previous.Attributes()
+	}
+	normalized := value.Attributes()
+	allNull := true
+	for key, field := range normalized {
+		normalized[key] = normalizeOptionalEmpties(ctx, field, priorAttrs[key], diags)
+		if !normalized[key].IsNull() {
+			allNull = false
+		}
+	}
+	if allNull && (prior == nil || prior.IsNull()) {
+		return types.ObjectNull(value.AttributeTypes(ctx))
+	}
+	result, d := types.ObjectValue(value.AttributeTypes(ctx), normalized)
+	diags.Append(d...)
+	return result
 }
 
 func parseAdd(

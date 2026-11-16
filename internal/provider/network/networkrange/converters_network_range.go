@@ -148,11 +148,8 @@ func hydrateUpdateNetworkRangeAPI(
 		TranslatedSubnet: convert.TranslatedSubnetForAPIInput(cfg.TranslatedSubnet, plan.TranslatedSubnet),
 		Vlan:             convert.KnownInt64Pointer(plan.Vlan),
 	}
-	// Omit a no-op translated subnet (== subnet): the API rejects it when Static
-	// Range Translation is disabled on the account.
-	if input.TranslatedSubnet != nil && *input.TranslatedSubnet == plan.Subnet.ValueString() {
-		input.TranslatedSubnet = nil
-	}
+	// Preserve explicit identity translations on update: the server may still
+	// hold a translated range with the previous subnet's prefix length.
 	return input
 }
 
