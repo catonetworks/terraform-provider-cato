@@ -1,17 +1,42 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 (2026-11-16)
 
-### Known issues (API/SDK side, not fixable in the provider)
-- `cato_socket_lan_firewall_rule`: publishing (and reading) a socket LAN policy that contains a firewall sub-rule fails with a policy-platform serialization error — the API declares `rule.firewall[].access` as non-null `EntityAccess`, but rules created through the public `socketLanFirewallAddRule` mutation have no access value (the input type carries no access field, and the AddRule response deliberately omits the field, which is why creation itself succeeds). Requires an API fix (nullable/defaulted `access`) or a cato-go-sdk regeneration that drops `access` from the `policy.socketLan` query/publish selections.
-- `cato_socket_site` / `cato_app_connector`: the platform's location-resolution service intermittently rejects known cities (`City [Paris] is unknown`, `Cannot resolve location for city 'New York'`, both `DOWNSTREAM_SERVICE_ERROR`) — the same requests succeeded on earlier runs with identical inputs.
+### Breaking changes
+- Provider authentication now honors `CATO_PROFILE`. An existing export can select a different account or conflict with explicit `token`/`account_id` attributes. To retain explicit or environment credentials, unset `CATO_PROFILE`; to use a profile, remove those explicit attributes. Follow the [v2 upgrade guide](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#authentication-selection).
+- `cato_network_range.mdns_reflector` and `cato_socket_site.native_range.mdns_reflector` no longer default to `false`. Set `false` explicitly on supported range types if that is the intended behavior; omit it for Routed network ranges, where the API rejects it. See [mDNS migration guidance](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#mdns-reflector-default).
+- `cato_socket_lan_firewall_rule` sub-rule placement now requires `AFTER_SUB_RULE`/`BEFORE_SUB_RULE` instead of `AFTER_RULE`/`BEFORE_RULE`. Rename the configured values while retaining the referenced sub-rule ID. See [sub-rule placement migration](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#socket-lan-firewall-sub-rule-placement).
+- `cato_tls_rule` no longer accepts `STREAMING_MEDIA` for `tls_inspect_category`. Review the intended match criteria and replace it with supported criteria; `SAFE_TO_INSPECT_DOMAINS` is not an equivalent category. See [TLS category migration](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#tls-inspection-category).
 
-### Fixes
-- `cato_socket_site`: `site_location.state_code` is now Computed with `UseStateForUnknown`, and an omitted `state_code` stays null in state instead of absorbing the API-resolved value — fixes "Provider produced inconsistent result after apply" when the config omits it.
-- `cato_network_range`: an omitted `dhcp_settings` block now stays `ACCOUNT_DEFAULT` in state instead of being overwritten with the API-resolved values — fixes inconsistent `dhcp_type`/`dhcp_microsegmentation` results after apply.
-- `cato_network_range` / `cato_socket_site`: `mdns_reflector` no longer defaults to `false`. An omitted value stays null and is not sent to the API, which previously caused "mDNS reflector is not supported for this network range configuration" on Routed ranges. **Behavior change** for configurations that relied on the implicit `false` default — set `mdns_reflector = false` explicitly to keep the old input.
-- `cato_group`: state now tracks only the members declared in the resource's configuration; members added out-of-band (including via `cato_group_members`) are no longer absorbed into state on refresh.
-- `cato_socket_lan_firewall_rule` / `cato_socket_lan_network_rule`: rule mutations and policy revision publishes now retry when the API reports concurrent policy revisions, rule creation validates the mutation status (not just the error list), and post-mutation policy read-backs retry transient backend errors — mirrors the internet firewall resource's behavior.
+### Features
+- Authenticate the Cato Terraform provider with a named catocli profile using `profile` or `CATO_PROFILE`, with optional `CATO_CREDENTIALS_FILE` selection. Each configured provider reports its resolved account ID.
+- Added rule and section resources for Client Connectivity, Split Tunnel, Terminal Server, Dynamic IP Allocation, SDP Static IP Allocation, Socket Bypass, Remote Port Forwarding, and Anti-Malware File Hash policies, plus Private Access sections and Site Web Proxy rules and sections.
+- Added bulk ordering resources for Anti-Malware File Hash, Application Control, App Tenant Restriction, Client Connectivity, Dynamic IP Allocation, Remote Port Forward, Socket Bypass, SDP Static IP Allocation, Split Tunnel, Site Web Proxy, and Terminal Server policies to order sections and rules and publish changes.
+- Added account-level enable/disable controls for Anti-Malware File Hash, App Tenant Restriction, Client Connectivity, Dynamic IP Allocation, Remote Port Forward, Socket Bypass, SDP Static IP Allocation, Split Tunnel, Site Web Proxy, Terminal Server, and WAN Network policies.
+- Added `cato_cloud_interconnect_site`, `cato_cloud_interconnect_physical_connection`, `cato_secondary_aws_vsocket`, `cato_secondary_azure_vsocket`, `cato_wifi_ssid`, and `cato_allocated_ip` to manage additional connectivity and IP allocation settings.
+- Added `cato_user`, `cato_mailing_list`, `cato_subscription_group`, and `cato_webhook` to manage local users and notification destinations, plus `cato_custom_application`, `cato_fqdn_container`, and `cato_ip_address_range_container` for reusable application, domain, and IP definitions.
+- Added lookup data sources for sites, users, user groups, global IP ranges, custom applications, mailing lists, subscription groups, webhooks, FQDN containers, IP address range containers, private apps, and App Connectors.
+
+### Enhancements
+- `cato_admin.managed_roles` accepts unique role names as an alternative to IDs. Reference handling across firewall, TLS inspection, Application Control, and WAN Network rules now better preserves configured ID/name references; Application Control also supports additional match criteria.
+- `cato_static_host` accepts `site_name` as an alternative to `site_id`, allowing site references by name without replacing an existing host when the resolved site is unchanged.
+- `cato_lf_sub_policy` supports managing its API-created cleanup rule and exposes `cleanup_rule_id`. `cato_wf_sub_policy` supports additional scope and cleanup-rule settings aligned with WAN firewall rules.
+- `cato_always_on_rule_bulk` supports moves between sections and publication through `publish_trigger`; omitting ordering maps preserves live order. Always On policy controls expose publication and draft metadata.
+- Group membership supports `DEVICE` and `VLAN` references; TLS rules support ChromeOS platform matching and `TCP_UDP` custom services.
+
+### Bug fixes
+- Fixed `cato_wf_sub_policy.at` updates so placement changes move the existing scope rule. Policy rule and section content updates preserve ordering when placement is unchanged.
+- Reduced failed applies for Socket LAN rules through retries for concurrent policy revisions and transient reads, and improved mutation error reporting. LAN sub-policy operations recover from the specific unreadable mutation response and retain the tracked cleanup-rule identity across reorders.
+- Fixed inconsistent results when `cato_socket_site.site_location.state_code` or `cato_network_range.dhcp_settings` is omitted. Socket site interface configuration also handles the platform's high-availability destination-type promotion.
+- Fixed `cato_group` refresh so members managed elsewhere are not absorbed into configured membership. Review membership ownership during upgrade, as described in the [upgrade guide](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#group-membership-ownership).
+- Reduced refresh drift for explicitly empty policy criteria, Socket Bypass settings, and omitted BGP passwords. Subnet updates no longer retain a stale translated prefix after resizing an identity-translated range.
+- Private App refresh only forgets a resource after a structured not-found response, preventing unrelated lookup errors from removing it from Terraform state.
+
+### Notes
+- Updated the Cato Terraform provider to the latest public API schema. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches. This release uses Cato Go SDK v1.2.0.
+- API availability depends on account features. Site Web Proxy rule creation has a reported upstream `transportProtocol` rejection. Socket Site and App Connector location resolution can fail intermittently for valid cities. These reported limitations are not claimed fixed by this release.
+- New policy rule and section resources publish changes automatically; sections must be empty before deletion. `cato_user` does not grant remote-access eligibility or manage directory users.
+- The 1.x maintenance scope has not yet been announced, and its end-of-support date has not yet been scheduled. See the [v2 upgrade guide](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0) before upgrading.
 
 ## 1.5.0-prerelease.1 (2026-11-04)
 
