@@ -47,7 +47,7 @@ output "portland_allocation_name" {
 
 ### Optional
 
-- `description` (String) Description of the allocated IP (updatable in place). With pop_location_name, the cross-tenant identity of the allocation -- keep it unique per PoP location.
+- `description` (String) Description of the allocated IP (updatable in place). With pop_location_name, the cross-tenant identity of the allocation -- keep it unique per PoP location. Automatic adoption requires a non-blank description and a unique matching PoP and allocation type. Omitting the description or using a blank description requests a new allocation.
 - `type` (String) Allocation type (SYSTEM is the only supported value today)
 
 ### Read-Only

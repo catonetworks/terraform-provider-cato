@@ -3,6 +3,7 @@ package allocatedip
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	cato "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -115,6 +116,9 @@ func (r *allocatedIPResource) findAllocation(ctx context.Context, ip, id string,
 // description) -- the cross-tenant identity pair -- or nil.
 func (r *allocatedIPResource) findByIdentity(ctx context.Context, popLocation, description, allocationType string,
 ) (*cato.PopLocationsAllocatedIpList_PopLocations_AllocatedIPList_AllocatedIP, error) {
+	if strings.TrimSpace(description) == "" {
+		return nil, nil
+	}
 	result, err := r.resourceAPI().AllocatedIPList(ctx, r.client.AccountId,
 		&cato_models.PopLocationAllocatedIPInput{})
 	if err != nil {
@@ -147,6 +151,10 @@ func (r *allocatedIPResource) Create(ctx context.Context, req resource.CreateReq
 	var plan AllocatedIP
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if plan.Description.IsUnknown() {
+		resp.Diagnostics.AddError("Unknown description", "description must be known before applying an allocated IP change.")
 		return
 	}
 
@@ -243,6 +251,10 @@ func (r *allocatedIPResource) Update(ctx context.Context, req resource.UpdateReq
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if plan.Description.IsUnknown() {
+		resp.Diagnostics.AddError("Unknown description", "description must be known before applying an allocated IP change.")
 		return
 	}
 

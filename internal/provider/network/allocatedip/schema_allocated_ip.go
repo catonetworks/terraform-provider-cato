@@ -34,7 +34,9 @@ func (r *allocatedIPResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"description": schema.StringAttribute{
 				Description: "Description of the allocated IP (updatable in place). With pop_location_name, " +
-					"the cross-tenant identity of the allocation -- keep it unique per PoP location.",
+					"the cross-tenant identity of the allocation -- keep it unique per PoP location. " +
+					"Automatic adoption requires a non-blank description and a unique matching PoP and allocation type. " +
+					"Omitting the description or using a blank description requests a new allocation.",
 				Optional: true,
 			},
 			"type": schema.StringAttribute{

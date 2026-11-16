@@ -58,3 +58,47 @@ func TestAllocationIdentityRequiresUniqueMatchingType(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateWithoutDescriptionSkipsAdoption(t *testing.T) {
+	for _, description := range []types.String{types.StringNull(), types.StringValue(""), types.StringValue(" ")} {
+		t.Run(description.String(), func(t *testing.T) {
+			ctx := context.Background()
+			client := mocks.NewAllocatedIPResourceClient(t)
+			client.EXPECT().PopLocationList(mock.Anything, "12345", mock.Anything).
+				Return(nil, errors.New("new allocation path")).Once()
+			r := &allocatedIPResource{client: &catoclient.Service{AccountId: "12345"}, apiClient: client}
+			schema := &resource.SchemaResponse{}
+			r.Schema(ctx, resource.SchemaRequest{}, schema)
+			plan := tfsdk.Plan{Schema: schema.Schema}
+			require.False(t, plan.Set(ctx, AllocatedIP{
+				PopLocationName: types.StringValue("Paris"), Description: description, Type: types.StringValue("SYSTEM"),
+			}).HasError())
+			resp := &resource.CreateResponse{State: tfsdk.State{Schema: schema.Schema}}
+			r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+			require.True(t, resp.Diagnostics.HasError())
+			require.Contains(t, resp.Diagnostics.Errors()[0].Detail(), "new allocation path")
+			require.True(t, resp.State.Raw.IsNull())
+		})
+	}
+}
+
+func TestUnknownDescriptionStopsMutations(t *testing.T) {
+	ctx := context.Background()
+	client := mocks.NewAllocatedIPResourceClient(t)
+	r := &allocatedIPResource{client: &catoclient.Service{AccountId: "12345"}, apiClient: client}
+	schema := &resource.SchemaResponse{}
+	r.Schema(ctx, resource.SchemaRequest{}, schema)
+	plan := tfsdk.Plan{Schema: schema.Schema}
+	require.False(t, plan.Set(ctx, AllocatedIP{
+		PopLocationName: types.StringValue("Paris"), Description: types.StringUnknown(), Type: types.StringValue("SYSTEM"),
+	}).HasError())
+	created := &resource.CreateResponse{State: tfsdk.State{Schema: schema.Schema}}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, created)
+	require.True(t, created.Diagnostics.HasError())
+	prior := tfsdk.State{Schema: schema.Schema}
+	require.False(t, prior.Set(ctx, AllocatedIP{ID: types.StringValue("ip-1"), IP: types.StringValue("192.0.2.1")}).HasError())
+	updated := &resource.UpdateResponse{State: prior}
+	r.Update(ctx, resource.UpdateRequest{Plan: plan, State: prior}, updated)
+	require.True(t, updated.Diagnostics.HasError())
+	require.Equal(t, prior.Raw, updated.State.Raw)
+}
