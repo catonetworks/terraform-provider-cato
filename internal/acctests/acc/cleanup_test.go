@@ -27,6 +27,7 @@ func TestCleanupAccTestResources(t *testing.T) {
 	var errors []error
 	var helpers = []func(t *testing.T) error{
 		deleteTerminalServerRules,
+		deleteWanFirewallTestRules,
 		deletePrivateAccessRules,
 		deleteAlwaysOnRulesAndSections,
 		deleteSocketLanPolicyResources,
@@ -383,6 +384,65 @@ func TestTerminalServerCleanupSelectsOnlyAcceptanceRules(t *testing.T) {
 		t.Fatalf("unexpected cleanup IDs: %v", ids)
 	}
 	if ids := terminalServerCleanupIDs(nil); len(ids) != 0 {
+		t.Fatalf("nil response selected rules: %v", ids)
+	}
+}
+
+func deleteWanFirewallTestRules(t *testing.T) error {
+	client := GetClient(t)
+	result, err := client.PolicyWanFirewall(ctx, nil, CatoAccountID)
+	if err != nil {
+		return fmt.Errorf("reading WAN firewall policy for cleanup: %w", err)
+	}
+	ids := wanFirewallCleanupIDs(result)
+	for _, id := range ids {
+		response, err := client.PolicyWanFirewallRemoveRule(ctx, cato_models.WanFirewallRemoveRuleInput{ID: id}, CatoAccountID, nil)
+		if err != nil {
+			return fmt.Errorf("removing WAN firewall test rule: %w", err)
+		}
+		payload := response.GetPolicy().GetWanFirewall().GetRemoveRule()
+		if err := sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors()); err != nil {
+			return err
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	response, err := client.PolicyWanFirewallPublishPolicyRevision(ctx, nil, CatoAccountID, nil)
+	if err != nil {
+		return fmt.Errorf("publishing WAN firewall test cleanup: %w", err)
+	}
+	payload := response.GetPolicy().GetWanFirewall().GetPublishPolicyRevision()
+	return sharedpolicy.MutationResult(payload.GetStatus(), payload.GetErrors())
+}
+
+func wanFirewallCleanupIDs(result *cato.Policy) []string {
+	var ids []string
+	for _, entry := range result.GetPolicy().GetWanFirewall().GetPolicy().GetRules() {
+		rule := entry.GetRule()
+		if rule.GetID() != "" && (strings.HasPrefix(rule.GetName(), "acctest_") || strings.HasPrefix(rule.GetName(), "acctest-")) {
+			ids = append(ids, rule.GetID())
+		}
+	}
+	return ids
+}
+
+func TestWanFirewallCleanupSelectsOnlyAcceptanceRules(t *testing.T) {
+	var result cato.Policy
+	if err := json.Unmarshal([]byte(`{"policy":{"wanFirewall":{"policy":{"rules":[
+  {"rule":{"id":"one","name":"acctest_wan_fw_stale"}},
+  {"rule":{"id":"two","name":"acctest-wan-stale"}},
+  {"rule":{"id":"manual","name":"production-rule"}},
+  {"rule":{"id":"other","name":"my-acctest-rule"}},
+  {"rule":{"id":"","name":"acctest_missing_id"}}
+ ]}}}}`), &result); err != nil {
+		t.Fatal(err)
+	}
+	ids := wanFirewallCleanupIDs(&result)
+	if len(ids) != 2 || ids[0] != "one" || ids[1] != "two" {
+		t.Fatalf("unexpected cleanup IDs: %v", ids)
+	}
+	if ids := wanFirewallCleanupIDs(nil); len(ids) != 0 {
 		t.Fatalf("nil response selected rules: %v", ids)
 	}
 }
