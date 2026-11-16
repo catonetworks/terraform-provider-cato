@@ -7,6 +7,7 @@ import (
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -58,6 +59,44 @@ func (r *lfSubPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest
 				},
 			},
 			"scope": r.policyScopeSchema(),
+			"cleanup_rule_id": schema.StringAttribute{
+				Description:   "ID of the API-created cleanup rule, preserved across external reorders after initial discovery.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"cleanup_rule": schema.SingleNestedAttribute{
+				Description: "The API-created cleanup rule, managed as part of the sub-policy. " +
+					"Omit to keep the API defaults.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
+						Description:   "Cleanup rule ID.",
+						Computed:      true,
+						PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					},
+					"name": schema.StringAttribute{
+						Description:   "Cleanup rule name. Defaults to the API-generated \"<sub-policy name> - Cleanup Rule\"; set to rename.",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					},
+					"description": schema.StringAttribute{
+						Description:   "Cleanup rule description.",
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					},
+					"enabled": schema.BoolAttribute{
+						Description: "Whether the cleanup rule is enabled.",
+						Optional:    true,
+						Computed:    true,
+					},
+				},
+			},
 		},
 	}
 }

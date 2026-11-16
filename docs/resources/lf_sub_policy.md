@@ -23,6 +23,12 @@ resource "cato_lf_sub_policy" "example" {
   at = {
     position = "FIRST_IN_POLICY"
   }
+  # Optional: manage the API-created cleanup rule without a separate resource.
+  # cleanup_rule = {
+  #   name        = "example - Cleanup Rule"
+  #   description = "Managed cleanup rule"
+  #   enabled     = true
+  # }
   scope = {
     source = {
       subnet = ["10.1.0.0/16"]
@@ -47,9 +53,11 @@ resource "cato_lf_sub_policy" "example" {
 ### Optional
 
 - `at` (Attributes) Position of the sub-policy scope within the LAN Firewall policy. (see [below for nested schema](#nestedatt--at))
+- `cleanup_rule` (Attributes) The API-created cleanup rule, managed as part of the sub-policy. Omit to keep the API defaults. (see [below for nested schema](#nestedatt--cleanup_rule))
 
 ### Read-Only
 
+- `cleanup_rule_id` (String) ID of the API-created cleanup rule, preserved across external reorders after initial discovery.
 - `id` (String) Sub-policy ID
 - `scope_rule_id` (String) ID of the underlying SUB_POLICY_SCOPE rule.
 
@@ -341,3 +349,17 @@ Required:
 Optional:
 
 - `ref` (String) Identifier of the object relative to which the position is defined.
+
+
+<a id="nestedatt--cleanup_rule"></a>
+### Nested Schema for `cleanup_rule`
+
+Optional:
+
+- `description` (String) Cleanup rule description.
+- `enabled` (Boolean) Whether the cleanup rule is enabled.
+- `name` (String) Cleanup rule name. Defaults to the API-generated "<sub-policy name> - Cleanup Rule"; set to rename.
+
+Read-Only:
+
+- `id` (String) Cleanup rule ID.

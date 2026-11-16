@@ -59,12 +59,10 @@ func newLiveFixture(t *testing.T) *liveFixture {
 	require.NoError(t, err)
 	require.NotNil(t, details.GetSite().GetSiteGeneralDetails())
 	f.siteName = details.Site.SiteGeneralDetails.Site.Name
-	for _, encoded := range f.baseline.collections["dhcp_option"] {
-		var item struct {
-			Tag int `json:"tag"`
-		}
-		require.NoError(t, json.Unmarshal([]byte(encoded), &item))
-		require.NotEqual(t, tag, item.Tag, "Select an unused option code")
+	f.tag, err = unusedDHCPOptionTag(tag, f.baseline.collections["dhcp_option"])
+	require.NoError(t, err)
+	if f.tag != tag {
+		t.Logf("DHCP option tag %d is occupied; using unused private-use tag %d", tag, f.tag)
 	}
 	t.Cleanup(func() {
 		restoreBaseline(t, f.client, f.baseline.dns, f.baseline.dhcp, f.baseline.site, f.siteID)
@@ -434,4 +432,49 @@ func collectionExpected(name, id string, actual *liveSnapshot) (map[string]strin
 		}
 	}
 	return expected, nil
+}
+
+// Keep existing account options intact when a preferred test tag is occupied.
+// IANA reserves 224-254 for private use, making them suitable test fallbacks.
+// https://www.iana.org/assignments/bootp-dhcp-parameters
+func unusedDHCPOptionTag(preferred int, options map[string]string) (int, error) {
+	if preferred < 1 || preferred > 254 {
+		return 0, fmt.Errorf("DHCP test option tag must be between 1 and 254")
+	}
+	used := make(map[int]bool)
+	for _, encoded := range options {
+		var item struct {
+			Tag int `json:"tag"`
+		}
+		if err := json.Unmarshal([]byte(encoded), &item); err != nil {
+			return 0, fmt.Errorf("decode existing DHCP option: %w", err)
+		}
+		used[item.Tag] = true
+	}
+	if !used[preferred] {
+		return preferred, nil
+	}
+	for tag := 254; tag >= 224; tag-- {
+		if !used[tag] {
+			return tag, nil
+		}
+	}
+	return 0, fmt.Errorf("configured DHCP test tag is occupied and no private-use tag is available")
+}
+
+func TestUnusedDHCPOptionTagPreservesExistingOptions(t *testing.T) {
+	options := map[string]string{"existing": `{"tag":250}`, "other": `{"tag":254}`}
+	tag, err := unusedDHCPOptionTag(250, options)
+	require.NoError(t, err)
+	require.Equal(t, 253, tag)
+	tag, err = unusedDHCPOptionTag(249, options)
+	require.NoError(t, err)
+	require.Equal(t, 249, tag)
+	for code := 224; code <= 254; code++ {
+		options[strconv.Itoa(code)] = fmt.Sprintf(`{"tag":%d}`, code)
+	}
+	_, err = unusedDHCPOptionTag(250, options)
+	require.Error(t, err)
+	_, err = unusedDHCPOptionTag(255, nil)
+	require.Error(t, err)
 }

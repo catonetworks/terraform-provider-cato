@@ -1,3 +1,5 @@
+//go:build acctest
+
 package global_ip_ranges
 
 import (

@@ -668,12 +668,13 @@ func convertHydrateLfSubPolicyValues(
 	defer func() { *priorState = state }()
 	apiRule := polRule.Rule
 	state = &LanFirewallSubPolicy{
-		ID:          types.StringValue(subPolicyID),
-		Name:        types.StringValue(apiRule.Name),
-		Description: types.StringValue(apiRule.Description),
-		At:          planOrState.At,
-		ScopeRuleID: types.StringValue(apiRule.ID),
-		Scope:       r.parseRuleScope(ctx, apiRule, diags),
+		ID:            types.StringValue(subPolicyID),
+		Name:          types.StringValue(apiRule.Name),
+		Description:   types.StringValue(apiRule.Description),
+		At:            planOrState.At,
+		ScopeRuleID:   types.StringValue(apiRule.ID),
+		Scope:         r.parseRuleScope(ctx, apiRule, diags),
+		CleanupRuleID: planOrState.CleanupRuleID,
 	}
 }
 

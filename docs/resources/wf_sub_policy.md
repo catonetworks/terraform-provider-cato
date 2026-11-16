@@ -90,7 +90,7 @@ resource "cato_wf_rule" "in_sub_policy" {
 
 ### Required
 
-- `at` (Attributes) Position of the sub-policy scope within the WAN Firewall policy. Input-only placement used at creation; ongoing ordering is managed by cato_bulk_wf_move_rule. (see [below for nested schema](#nestedatt--at))
+- `at` (Attributes) Position of the sub-policy scope within the WAN Firewall policy. Changes move the scope rule without replacing the sub-policy. Refresh preserves the last applied placement. When cato_bulk_wf_move_rule owns ordering, keep at unchanged to avoid conflicting moves. (see [below for nested schema](#nestedatt--at))
 - `description` (String) Sub-policy description. Changing this forces replacement (no updateSubPolicy API).
 - `name` (String) Sub-policy name. Changing this forces replacement (no updateSubPolicy API).
 - `scope` (Attributes) Scope of the sub-policy. This is the SUB_POLICY_SCOPE rule that defines when the sub-policy applies. Uses the same parameters as a cato_wf_rule rule. (see [below for nested schema](#nestedatt--scope))

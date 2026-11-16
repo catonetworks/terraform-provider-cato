@@ -22,6 +22,11 @@
     "always_on_section": {
       "seconds": 6.5
     },
+    "anti_malware_file_hash_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
+    },
     "anti_malware_file_hash_rule": {
       "seconds": 7.15
     },
@@ -30,6 +35,11 @@
     },
     "app_connector": {
       "seconds": 12.99
+    },
+    "app_tenant_restriction_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
     },
     "app_tenant_restriction_rule": {
       "seconds": 10.44
@@ -50,6 +60,16 @@
       "seconds": 14.04,
       "measurement_status": "measured_local"
     },
+    "bulk_amfh_move_rule": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
+    },
+    "bulk_atr_move_rule": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
+    },
     "bulk_policy_families": {
       "seconds": 49.64,
       "tests": {
@@ -67,6 +87,16 @@
         "TestAccBulkPolicyFamilies_SiteWebProxy"
       ],
       "measurement_status": "partial_local_backend_failure"
+    },
+    "bulk_st_move_rule": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
+    },
+    "client_connectivity_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
     },
     "client_connectivity_rule": {
       "seconds": 6.6
@@ -88,6 +118,11 @@
     "dns_dhcp": {
       "seconds": 79.93,
       "measurement_status": "measured_local"
+    },
+    "dynamic_ip_allocation_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
     },
     "dynamic_ip_allocation_rule": {
       "seconds": 13.36
@@ -159,6 +194,11 @@
     "rbac_assignment": {
       "seconds": 5.19
     },
+    "remote_port_forward_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
+    },
     "remote_port_forward_rule": {
       "seconds": 9.87,
       "measurement_status": "measured_local"
@@ -168,6 +208,11 @@
     },
     "role": {
       "seconds": 7.2
+    },
+    "sdp_static_ip_allocation_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
     },
     "sdp_static_ip_allocation_rule": {
       "seconds": 9.37,
@@ -184,9 +229,19 @@
       "seconds": 10.84,
       "measurement_status": "measured_local"
     },
+    "site_web_proxy_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
+    },
     "site_web_proxy_section": {
       "seconds": 7.53,
       "measurement_status": "measured_local"
+    },
+    "socket_bypass_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
     },
     "socket_bypass_rule": {
       "seconds": 7.78
@@ -220,6 +275,11 @@
         "TestAccSocketSite_Location"
       ]
     },
+    "split_tunnel_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
+    },
     "split_tunnel_rule": {
       "seconds": 15.72
     },
@@ -231,6 +291,11 @@
     },
     "subscription_group": {
       "seconds": 8.49
+    },
+    "terminal_server_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
     },
     "terminal_server_rule": {
       "seconds": 15.05,
@@ -254,6 +319,11 @@
     },
     "wan_interface": {
       "seconds": 19.64
+    },
+    "wan_network_policy": {
+      "seconds": 120.0,
+      "measurement_status": "estimated_unmeasured",
+      "estimate_note": "New suite retained when rebasing PR #212 onto main; conservative placeholder pending successful live timing."
     },
     "wan_network_section": {
       "seconds": 5.09
