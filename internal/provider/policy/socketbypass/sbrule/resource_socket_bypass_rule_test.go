@@ -815,3 +815,31 @@ func TestOptionalCriteriaRoundTrip(t *testing.T) {
 		})
 	}
 }
+
+func TestReadImportKeepsComputedSectionShape(t *testing.T) {
+	ctx := context.Background()
+	backend := testBackendData(t)
+	backend.object["section"] = map[string]any{"id": "", "name": ""}
+	r := testResource(t, backend)
+	model := testModel(t)
+	fields := model.Rule.Attributes()
+	fields["section"] = types.ObjectUnknown(fields["section"].(types.Object).AttributeTypes(ctx))
+	model.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+	created := resource.CreateResponse{State: tfsdk.State{Schema: testSchema(t)}}
+	r.Create(ctx, resource.CreateRequest{Plan: testPlan(t, model)}, &created)
+	require.False(t, created.Diagnostics.HasError(), "%v", created.Diagnostics)
+	var current resourceModel
+	require.False(t, created.State.Get(ctx, &current).HasError())
+	originalSection := current.Rule.Attributes()["section"]
+	var imported tfsdk.State
+	imported.Schema = testSchema(t)
+	fields = current.Rule.Attributes()
+	fields["section"] = types.ObjectNull(fields["section"].(types.Object).AttributeTypes(ctx))
+	current.Rule = types.ObjectValueMust(ruleAttrTypes, fields)
+	require.False(t, imported.Set(ctx, current).HasError())
+	read := resource.ReadResponse{State: imported}
+	r.Read(ctx, resource.ReadRequest{State: imported}, &read)
+	require.False(t, read.Diagnostics.HasError(), "%v", read.Diagnostics)
+	require.False(t, read.State.Get(ctx, &current).HasError())
+	require.True(t, originalSection.Equal(current.Rule.Attributes()["section"]))
+}

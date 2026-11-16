@@ -2174,6 +2174,22 @@ func parseReadSourceIPRange(
 
 type add = cato.PolicySocketBypassAddRule_Policy_SocketBypass_AddRule_Rule_Rule
 
+// normalizeRule changes only configurable optional criteria. Computed section,
+// identity, and index fields must retain the API shape even during import.
+func normalizeRule(ctx context.Context, value, prior types.Object, diags *diag.Diagnostics) types.Object {
+	if value.IsNull() || value.IsUnknown() {
+		return value
+	}
+	fields := value.Attributes()
+	previous := prior.Attributes()
+	for _, name := range []string{"description", "destination", "exception", "service", "site", "source"} {
+		fields[name] = normalizeOptionalEmpties(ctx, fields[name], previous[name], diags)
+	}
+	result, d := types.ObjectValue(ruleAttrTypes, fields)
+	diags.Append(d...)
+	return result
+}
+
 // normalizeOptionalEmpties matches omitted API criteria to the prior plan/state.
 // Explicit empty collections, objects, and strings retain their configured shape;
 // populated API values are never replaced by prior values.

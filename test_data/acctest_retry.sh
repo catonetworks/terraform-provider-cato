@@ -7,5 +7,5 @@ should_retry() {
  if grep -Eqi '(Insufficient privileges|Access denied|ValidationError)' <<< "$retry_log"; then
   return 1
  fi
- grep -Eqi '(internal server error|connection (error|refused)|DOWNSTREAM_SERVICE_ERROR|reorderPolicyBlockedByActiveSessions|message\\":\\"Internal server\\n")' <<< "$retry_log"
+ grep -Eqi '(internal server error|context deadline exceeded|Something went wrong! Please try again later|connection (error|refused)|DOWNSTREAM_SERVICE_ERROR|reorderPolicyBlockedByActiveSessions|message\\":\\"Internal server\\n")' <<< "$retry_log"
 }

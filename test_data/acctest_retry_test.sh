@@ -27,3 +27,7 @@ check_retry 0 $'{"Output":"skipping test: Internal server error"}\n{"Output":"co
 # A matching first line must not close a pipe while the rest of a large log is written.
 printf -v large_log '%100000s' ' '
 check_retry 0 $'connection refused\n'"$large_log"
+
+check_retry 0 'Something went wrong! Please try again later'
+check_retry 0 'request failed: context deadline exceeded'
+check_retry 1 'context deadline exceeded; Access denied: Insufficient privileges'
