@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	version string = "1.4.0"
+	version string = "2.0.0"
 )
 
 func main() {
