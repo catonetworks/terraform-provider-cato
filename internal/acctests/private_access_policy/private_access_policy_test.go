@@ -19,6 +19,7 @@ import (
 
 func TestAccPrivAccessPolicy(t *testing.T) {
 	acc.SkipByEnv(t)
+	serializePolicyMutations(t)
 	mockSrv := accmock.NewMockServer(t, "TestAccPrivAccessPolicy")
 	defer mockSrv.Close()
 	mockSrv.Run()
