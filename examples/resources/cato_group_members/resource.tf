@@ -5,27 +5,27 @@ resource "cato_group_members" "members" {
   # Members can be referenced by ID or NAME
   members = [
     {
-      id = "12345"
+      id   = "12345"
       type = "FLOATING_SUBNET"
     },
     {
-      id = "12345"
+      id   = "12345"
       type = "GLOBAL_IP_RANGE"
     },
     {
-      id = "12345"
+      id   = "12345"
       type = "HOST"
     },
     {
-      id = "12345"
+      id   = "12345"
       type = "NETWORK_INTERFACE"
     },
     {
-      id = "12345"
+      id   = "12345"
       type = "SITE"
     },
     {
-      id = "AbCdE12345="
+      id   = "AbCdE12345="
       type = "SITE_NETWORK_SUBNET"
     },
   ]

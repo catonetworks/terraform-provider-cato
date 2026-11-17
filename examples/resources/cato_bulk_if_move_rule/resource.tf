@@ -26,13 +26,13 @@ locals {
   # Read CSV data
   rule_data_list    = csvdecode(file("rules.csv"))
   section_data_list = csvdecode(file("sections.csv"))
-  
+
   # Convert sections list to map keyed by section_name for provider schema compatibility
   section_data = {
     for section in local.section_data_list :
     section.section_name => section
   }
-  
+
   # Convert rules list to map keyed by rule_name for provider schema compatibility
   rule_data = {
     for rule in local.rule_data_list :

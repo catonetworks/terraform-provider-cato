@@ -30,12 +30,12 @@ variable "account_id" {
 
 variable "cato_token" {
   description = "Cato API token"
-  type    = string
+  type        = string
 }
 
 variable "baseurl" {
   description = "Cato API base URL"
-  type    = string
+  type        = string
 }
 
 provider "cato" {

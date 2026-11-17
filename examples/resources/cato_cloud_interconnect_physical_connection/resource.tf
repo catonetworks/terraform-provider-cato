@@ -11,11 +11,11 @@ resource "cato_cloud_interconnect_physical_connection" "example" {
   }
   service_provider_name = "Supported service provider"
   encapsulation_method  = "DOT1Q"
-  subnet                 = "10.20.4.0/30"
-  private_site_ip        = "10.20.4.1"
-  private_cato_ip        = "10.20.4.2"
-  upstream_bw_limit      = "100"
-  downstream_bw_limit    = "100"
+  subnet                = "10.20.4.0/30"
+  private_site_ip       = "10.20.4.1"
+  private_cato_ip       = "10.20.4.2"
+  upstream_bw_limit     = "100"
+  downstream_bw_limit   = "100"
 
   # Omit tags to use API allocation; assigned active tags are returned in state.
   # Custom tags require SUPPORT_INTERCONNECT_VLAN_CONFIGURATION.

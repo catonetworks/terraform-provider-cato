@@ -1,17 +1,17 @@
 # Requires an unused Wi-Fi interface on a compatible Socket site.
 # The API currently supports GUEST SSIDs only.
 resource "cato_wifi_ssid" "example" {
-  name                 = "Guest Wi-Fi"
+  name = "Guest Wi-Fi"
   site = {
     id = "12345"
     # name = "Branch" # Use name instead of id if preferred.
   }
-  network_interface_id = "WBR1"
-  band                 = "BOTH"
-  category             = "GUEST"
-  subnet               = "10.20.3.0/24"
-  local_ip             = "10.20.3.1"
-  mdns_enabled         = false
+  network_interface_id      = "WBR1"
+  band                      = "BOTH"
+  category                  = "GUEST"
+  subnet                    = "10.20.3.0/24"
+  local_ip                  = "10.20.3.1"
+  mdns_enabled              = false
   microsegmentation_enabled = false
   # enabled       = true
   # visible       = true

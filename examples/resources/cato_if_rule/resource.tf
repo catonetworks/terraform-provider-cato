@@ -86,7 +86,7 @@ resource "cato_if_rule" "example_min" {
       #   { id = "suspected_malware" },
       # ]
     }
-    action      = "ALLOW"
+    action = "ALLOW"
     tracking = {
       event = {
         enabled = true
@@ -97,162 +97,162 @@ resource "cato_if_rule" "example_min" {
 
 # cato_tls_rule.kitchen_sink:
 resource "cato_tls_rule" "kitchen_sink" {
-    at   = {
-        position = "LAST_IN_POLICY"
+  at = {
+    position = "LAST_IN_POLICY"
+  }
+  rule = {
+    enabled  = true
+    name     = "Kitchen Sink New"
+    platform = "EMBEDDED"
+    action   = "INSPECT"
+    application = {
+      app_category = [
+        {
+          # id   = "advertisements"
+          name = "Advertisements"
+        },
+      ]
+      application = [
+        {
+          # id   = "buildmyteam"
+          name = "buildmyteam"
+        },
+      ]
+      country = [
+        {
+          # id   = "AF"
+          name = "Afghanistan"
+        },
+      ]
+      custom_app = [
+        {
+          # id   = "CustomApp_11362_34188"
+          name = "Test Custom App"
+        },
+      ]
+      custom_category = [
+        {
+          # id   = "24255"
+          name = "Test Custom Category"
+        },
+      ]
+      domain = [
+        "something.com",
+        "www.something.com",
+      ]
+      fqdn = [
+        "www.something.com",
+      ]
+      global_ip_range = [
+        {
+          # id   = "1757826"
+          name = "global_ip_range"
+        },
+      ]
+      ip = [
+        "1.2.3.4",
+      ]
+      ip_range = [
+        {
+          from = "1.2.3.4"
+          to   = "1.2.3.5"
+        },
+      ]
+      remote_asn = [
+        "1234",
+      ]
+      service = [
+        {
+          # id   = "THREEPC"
+          name = "3PC"
+        },
+      ]
+      subnet = [
+        "1.2.3.0/24",
+      ]
     }
-    rule = {
-        enabled                      = true
-        name                         = "Kitchen Sink New"
-        platform                     = "EMBEDDED"
-        action                       = "INSPECT"
-        application                  = {
-            app_category    = [
-                {
-                    # id   = "advertisements"
-                    name = "Advertisements"
-                },
-            ]
-            application     = [
-                {
-                    # id   = "buildmyteam"
-                    name = "buildmyteam"
-                },
-            ]
-            country         = [
-                {
-                    # id   = "AF"
-                    name = "Afghanistan"
-                },
-            ]
-            custom_app      = [
-                {
-                    # id   = "CustomApp_11362_34188"
-                    name = "Test Custom App"
-                },
-            ]
-            custom_category = [
-                {
-                    # id   = "24255"
-                    name = "Test Custom Category"
-                },
-            ]
-            domain          = [
-                "something.com",
-                "www.something.com",
-            ]
-            fqdn            = [
-                "www.something.com",
-            ]
-            global_ip_range = [
-                {
-                    # id   = "1757826"
-                    name = "global_ip_range"
-                },
-            ]
-            ip              = [
-                "1.2.3.4",
-            ]
-            ip_range        = [
-                {
-                    from = "1.2.3.4"
-                    to   = "1.2.3.5"
-                },
-            ]
-            remote_asn      = [
-                "1234",
-            ]
-            service         = [
-                {
-                    # id   = "THREEPC"
-                    name = "3PC"
-                },
-            ]
-            subnet          = [
-                "1.2.3.0/24",
-            ]
-        }
-        connection_origin            = "REMOTE"
-        description                  = "test"
-        device_posture_profile       = [
-            {
-                id   = "4202"
-                name = "Test Device Posture Profile"
-            },
-        ]
-        source                       = {
-            global_ip_range     = [
-                {
-                    # id   = "1757826"
-                    name = "global_ip_range"
-                },
-                {
-                    # id   = "1910542"
-                    name = "global_ip_range2"
-                },
-            ]
-            group               = [
-                {
-                    # id   = "623603"
-                    name = "test group"
-                },
-            ]
-            host                = [
-                {
-                    # id   = "1778359"
-                    name = "host31"
-                },
-            ]
-            ip                  = [
-                "1.2.3.4",
-            ]
-            ip_range            = [
-                {
-                    from = "1.2.3.4"
-                    to   = "1.2.3.5"
-                },
-            ]
-            network_interface   = [
-                {
-                    id   = "124986"
-                    # name = "ipsec-dev-site \\ Default" 
-                    # API does not like \\ charaacters in name values
-                },
-            ]
-            site                = [
-                {
-                    # id   = "144905"
-                    # name = "1600"
-                },
-            ]
-            site_network_subnet = [
-                {
-                    id   = "UzU4OTI1Mw=="
-                    # name = "1600LTE \\ INT_5 \\ Direct Network Range" 
-                    # API does not like \\ charaacters in name values
-                },
-            ]
-            subnet              = [
-                "1.2.3.0/24",
-            ]
-            system_group        = [
-                {
-                    # id   = "7S"
-                    name = "All Floating Ranges"
-                },
-            ]
-            user                = [
-                {
-                    # id   = "0"
-                    name = "test user"
-                },
-            ]
-            users_group         = [
-                {
-                    # id   = "500000000"
-                    name = "Test User Group"
-                },
-            ]
-        }
-        untrusted_certificate_action = "ALLOW"
+    connection_origin = "REMOTE"
+    description       = "test"
+    device_posture_profile = [
+      {
+        id   = "4202"
+        name = "Test Device Posture Profile"
+      },
+    ]
+    source = {
+      global_ip_range = [
+        {
+          # id   = "1757826"
+          name = "global_ip_range"
+        },
+        {
+          # id   = "1910542"
+          name = "global_ip_range2"
+        },
+      ]
+      group = [
+        {
+          # id   = "623603"
+          name = "test group"
+        },
+      ]
+      host = [
+        {
+          # id   = "1778359"
+          name = "host31"
+        },
+      ]
+      ip = [
+        "1.2.3.4",
+      ]
+      ip_range = [
+        {
+          from = "1.2.3.4"
+          to   = "1.2.3.5"
+        },
+      ]
+      network_interface = [
+        {
+          id = "124986"
+          # name = "ipsec-dev-site \\ Default" 
+          # API does not like \\ charaacters in name values
+        },
+      ]
+      site = [
+        {
+          # id   = "144905"
+          # name = "1600"
+        },
+      ]
+      site_network_subnet = [
+        {
+          id = "UzU4OTI1Mw=="
+          # name = "1600LTE \\ INT_5 \\ Direct Network Range" 
+          # API does not like \\ charaacters in name values
+        },
+      ]
+      subnet = [
+        "1.2.3.0/24",
+      ]
+      system_group = [
+        {
+          # id   = "7S"
+          name = "All Floating Ranges"
+        },
+      ]
+      user = [
+        {
+          # id   = "0"
+          name = "test user"
+        },
+      ]
+      users_group = [
+        {
+          # id   = "500000000"
+          name = "Test User Group"
+        },
+      ]
     }
+    untrusted_certificate_action = "ALLOW"
+  }
 }

@@ -5,8 +5,8 @@ resource "cato_custom_application" "example" {
   # category = [{ id = "category-id" }]
   # Use a category name instead of its ID if preferred.
   criteria = [{
-    protocol = "TCP"
-    port = ["443"]
+    protocol   = "TCP"
+    port       = ["443"]
     port_range = [] # Required; use [] if unused.
     # destination = {
     #   domain = ["example.com"]
