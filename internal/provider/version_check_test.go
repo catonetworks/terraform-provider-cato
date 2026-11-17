@@ -235,8 +235,7 @@ func TestCatoProviderConfigureSkipsVersionCheckWhenDisabledByConfig(t *testing.T
 	p.Configure(ctx, frameworkprovider.ConfigureRequest{Config: config}, resp)
 
 	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
-	require.Len(t, resp.Diagnostics, 1)
-	require.Equal(t, `Cato account ID: "account-123"`, resp.Diagnostics[0].Summary())
+	require.Empty(t, resp.Diagnostics)
 	require.Equal(t, int64(0), requests.Load())
 	require.False(t, p.hasCheckedVersion.Load())
 }
@@ -263,8 +262,7 @@ func TestCatoProviderConfigureSkipsVersionCheckWhenDisabledByEnv(t *testing.T) {
 	p.Configure(ctx, frameworkprovider.ConfigureRequest{Config: config}, resp)
 
 	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
-	require.Len(t, resp.Diagnostics, 1)
-	require.Equal(t, `Cato account ID: "account-123"`, resp.Diagnostics[0].Summary())
+	require.Empty(t, resp.Diagnostics)
 	require.Equal(t, int64(0), requests.Load())
 	require.False(t, p.hasCheckedVersion.Load())
 }
@@ -292,9 +290,8 @@ func TestCatoProviderConfigureRequestsVersionCheckByDefault(t *testing.T) {
 
 	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
 	require.Equal(t, int64(1), requests.Load())
-	require.Len(t, resp.Diagnostics, 2)
-	require.Equal(t, `Cato account ID: "account-123"`, resp.Diagnostics[0].Summary())
-	require.Equal(t, "New Cato Terraform Provider Version Available", resp.Diagnostics[1].Summary())
+	require.Len(t, resp.Diagnostics, 1)
+	require.Equal(t, "New Cato Terraform Provider Version Available", resp.Diagnostics[0].Summary())
 	require.True(t, p.hasCheckedVersion.Load())
 }
 
@@ -321,9 +318,8 @@ func TestCatoProviderConfigureVersionCheckConfigOverridesEnv(t *testing.T) {
 
 	require.False(t, resp.Diagnostics.HasError(), "unexpected diagnostics: %v", resp.Diagnostics)
 	require.Equal(t, int64(1), requests.Load())
-	require.Len(t, resp.Diagnostics, 2)
-	require.Equal(t, `Cato account ID: "account-123"`, resp.Diagnostics[0].Summary())
-	require.Equal(t, "New Cato Terraform Provider Version Available", resp.Diagnostics[1].Summary())
+	require.Len(t, resp.Diagnostics, 1)
+	require.Equal(t, "New Cato Terraform Provider Version Available", resp.Diagnostics[0].Summary())
 	require.True(t, p.hasCheckedVersion.Load())
 }
 

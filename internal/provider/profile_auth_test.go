@@ -398,8 +398,11 @@ func TestConfigureReportsResolvedAccountFirst(t *testing.T) {
 			}
 			resp := configureCatoProvider(context.Background(), t, model)
 			require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
-			require.NotEmpty(t, resp.Diagnostics)
-			require.Equal(t, "Cato account ID: \""+tc.want+"\"", resp.Diagnostics[0].Summary())
+			// The resolved target account is now logged (tflog.Info), not surfaced
+			// as a Warning diagnostic, so assert it from the configured client.
+			svc, ok := resp.ResourceData.(*catoclient.Service)
+			require.True(t, ok, "ResourceData should be *catoclient.Service")
+			require.Equal(t, tc.want, svc.AccountId)
 			for _, d := range resp.Diagnostics {
 				for _, secret := range []string{"test-env-token", "test-profile-token", "test-explicit-token"} {
 					require.NotContains(t, d.Summary()+d.Detail(), secret)

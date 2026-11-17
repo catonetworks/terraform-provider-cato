@@ -89,6 +89,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifwrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifsubpolicy"
@@ -97,6 +98,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lfsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/socketlanfirewallrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/socketlannetworkrule"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/socketlanpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/papolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
@@ -131,11 +133,13 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tssection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlspolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlssection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/data_sources/wfrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/data_sources/wfrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsubpolicy"
@@ -582,12 +586,13 @@ func (p *catoProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	// Keep the resolved target ahead of other Configure diagnostics. Terraform
-	// controls when diagnostics are rendered relative to its own CLI output.
-	resp.Diagnostics.AddWarning(
-		fmt.Sprintf("Cato account ID: %q", accountID),
-		"Provider operations in this configuration target this account.",
-	)
+	// Informational only: log at INFO instead of surfacing a Warning in plan/
+	// apply output. Terraform diagnostics have no Info severity, so a Warning
+	// here reads as a problem for what is just a "which account am I targeting"
+	// confirmation. Visible on demand via TF_LOG=info / TF_LOG_PROVIDER=info.
+	tflog.Info(ctx, "Cato provider: operations target this account", map[string]interface{}{
+		"account_id": accountID,
+	})
 
 	// newer client:
 	headers := map[string]string{}
@@ -842,6 +847,10 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		sbpolicy.NewSocketBypassPolicyResource,
 		atpolicy.NewAppTenantRestrictionPolicyResource,
 		wnwpolicy.NewWanNetworkPolicyResource,
+		ifpolicy.NewInternetFirewallPolicyResource,
+		wfpolicy.NewWanFirewallPolicyResource,
+		tlspolicy.NewTLSInspectPolicyResource,
+		socketlanpolicy.NewSocketLanPolicyResource,
 		pasection.NewPrivateAccessSectionResource,
 		acrule.NewApplicationControlRuleResource,
 		acindex.NewApcRulesIndexResource,
