@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.1 (2026-11-19)
+
+### Breaking changes
+- None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration.
+
+### Bug fixes
+- Fixed `cato_wf_rule` source user-group updates by name so changing the configured group selects the new group instead of retaining the previous group's ID.
+
+### Security
+- Updated the Cato Terraform provider's bundled Go runtime to 1.26.11 to address GO-2026-6859.
+
 ## 1.4.0 (2026-11-04)
 
 ### Breaking changes
