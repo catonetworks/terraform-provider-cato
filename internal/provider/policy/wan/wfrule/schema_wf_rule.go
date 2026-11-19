@@ -466,11 +466,11 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 								},
 							},
 							"users_group": schema.SetNestedAttribute{
-								Description: "Group of users",
+								Description: "Group of users. Specify either a name or an ID for each group.",
 								Required:    false,
 								Optional:    true,
 								PlanModifiers: []planmodifier.Set{
-									setplanmodifier.UseStateForUnknown(), // Avoid drift
+									planmodifiers.IDNameSetPlanModifier(),
 								},
 								Validators: []validator.Set{
 									setvalidator.SizeAtLeast(1),
@@ -486,19 +486,13 @@ func (r *WanFwRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 													path.MatchRelative().AtParent().AtName("id"),
 												}...),
 											},
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
 											Computed: true,
 										},
 										"id": schema.StringAttribute{
 											Description: "User Group ID",
 											Required:    false,
 											Optional:    true,
-											PlanModifiers: []planmodifier.String{
-												stringplanmodifier.UseStateForUnknown(), // Avoid drift
-											},
-											Computed: true,
+											Computed:    true,
 										},
 									},
 								},
