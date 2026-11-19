@@ -6,6 +6,7 @@ import (
 	models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	nc "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/networkconfig"
@@ -40,6 +41,12 @@ func (r *relayGroupResource) Create(ctx context.Context, req resource.CreateRequ
 	result, err := r.resourceAPI().NetworkConfigDhcpCreateRelayGroup(ctx, r.client.AccountId,
 		models.NetworkConfigDhcpCreateRelayGroupInput{RelayGroup: []*models.NetworkConfigDhcpRelayGroupCreateInput{&input}},
 	)
+	if id := createdID(result); id != "" {
+		retained := plan
+		retained.ID = types.StringValue(id)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &retained)...)
+	}
+
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "createRelayGroup", err)
 		return
@@ -135,7 +142,7 @@ func (r *relayGroupResource) Delete(ctx context.Context, req resource.DeleteRequ
 		models.NetworkConfigDhcpDeleteRelayGroupInput{ID: []string{state.ID.ValueString()}},
 	)
 	if err != nil {
-		if !nc.IsNotFound(err, "deleteRelayGroup") {
+		if !nc.IsNotFound(err, "deleteRelayGroup") && !r.confirmDeleted(ctx, state.ID.ValueString(), err) {
 			nc.APIError(&resp.Diagnostics, "deleteRelayGroup", err)
 		}
 		return

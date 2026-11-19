@@ -28,6 +28,16 @@ func IDAttribute() schema.StringAttribute {
 
 // Strings builds an explicit list, including an empty list when the API must clear it.
 func Strings(ctx context.Context, value types.List, diags *diag.Diagnostics) []string {
+	if value.IsUnknown() {
+		diags.AddError("Unknown list", "List values must be known before applying.")
+		return nil
+	}
+	for _, item := range value.Elements() {
+		if item.IsNull() || item.IsUnknown() {
+			diags.AddError("Invalid list element", "List members must be known, non-null strings before applying.")
+			return nil
+		}
+	}
 	result := convert.PrepareStringList[string](ctx, value, diags)
 	if result == nil {
 		return []string{}
@@ -120,4 +130,33 @@ func (v IPValidator) ValidateString(_ context.Context, req validator.StringReque
 	if _, err := netip.ParseAddr(req.ConfigValue.ValueString()); err != nil {
 		resp.Diagnostics.AddAttributeError(req.Path, "Invalid IP address", "Expected an IPv4 or IPv6 address.")
 	}
+}
+
+// IsBackendFailure matches only structured downstream errors on the requested leaf.
+func IsBackendFailure(err error, leaf string) bool {
+	var response *clientv2.ErrorResponse
+	var list *clientv2.GqlErrorList
+	switch {
+	case errors.As(err, &response):
+		if response.NetworkError != nil || response.GqlErrors == nil {
+			return false
+		}
+		list = &clientv2.GqlErrorList{Errors: *response.GqlErrors}
+	case errors.As(err, &list):
+	default:
+		return false
+	}
+	if len(list.Errors) == 0 {
+		return false
+	}
+	for _, item := range list.Errors {
+		if item == nil {
+			return false
+		}
+		code := item.Extensions["code"]
+		if (code != "CC2_ERROR" && code != "DOWNSTREAM_SERVICE_ERROR") || len(item.Path) == 0 || fmt.Sprint(item.Path[len(item.Path)-1]) != leaf {
+			return false
+		}
+	}
+	return true
 }

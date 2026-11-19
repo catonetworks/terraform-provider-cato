@@ -15,7 +15,7 @@ type DHCPClient struct{ *catoclient.ProviderSDKClient }
 
 // NewDHCPClient returns the DHCP-specific SDK adapter.
 func NewDHCPClient(client *catoclient.ProviderSDKClient) *DHCPClient {
-	return &DHCPClient{ProviderSDKClient: client}
+	return &DHCPClient{ProviderSDKClient: partialResponseClient(client)}
 }
 
 func (c *DHCPClient) NetworkConfigDhcpSettings(ctx context.Context, accountID string,

@@ -6,6 +6,7 @@ import (
 	models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/shared/catoclient"
 	nc "github.com/catonetworks/terraform-provider-cato/internal/provider/shared/networkconfig"
@@ -40,6 +41,15 @@ func (r *optionResource) Create(ctx context.Context, req resource.CreateRequest,
 	result, err := r.resourceAPI().NetworkConfigDhcpCreateOption(ctx, r.client.AccountId,
 		models.NetworkConfigDhcpCreateOptionInput{Option: []*models.NetworkConfigDhcpOptionCreateInput{&input}},
 	)
+	if id := createdID(result); id != "" {
+		retained := plan
+		retained.ID = types.StringValue(id)
+		if retained.Description.IsUnknown() {
+			retained.Description = types.StringValue("")
+		}
+		resp.Diagnostics.Append(resp.State.Set(ctx, &retained)...)
+	}
+
 	if err != nil {
 		nc.APIError(&resp.Diagnostics, "createOption", err)
 		return
@@ -133,7 +143,7 @@ func (r *optionResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		models.NetworkConfigDhcpDeleteOptionInput{ID: []string{state.ID.ValueString()}},
 	)
 	if err != nil {
-		if !nc.IsNotFound(err, "deleteOption") {
+		if !nc.IsNotFound(err, "deleteOption") && !r.confirmDeleted(ctx, state.ID.ValueString(), err) {
 			nc.APIError(&resp.Diagnostics, "deleteOption", err)
 		}
 		return
