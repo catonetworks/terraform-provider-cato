@@ -3,10 +3,13 @@
 page_title: "cato_remote_port_fwd_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
+  Deprecated. Use cato_remote_port_forward_rule for new configurations. See the policy resource type migration guide for existing rules.
   Manages a rule in the Cato remote port forwarding policy. Underlying GraphQL is marked @beta; behavior and fields may change.
 ---
 
 # cato_remote_port_fwd_rule (Resource)
+
+**Deprecated.** Use cato_remote_port_forward_rule for new configurations. See the policy resource type migration guide for existing rules.
 
 Manages a rule in the Cato remote port forwarding policy. Underlying GraphQL is marked @beta; behavior and fields may change.
 

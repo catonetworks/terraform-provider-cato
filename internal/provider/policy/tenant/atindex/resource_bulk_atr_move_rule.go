@@ -25,7 +25,7 @@ var (
 	_ resource.ResourceWithConfigure = &atrRulesIndexResource{}
 )
 
-func NewAtrRulesIndexResource() resource.Resource {
+func NewAtrRulesIndexResource() resource.ResourceWithConfigure {
 	return &atrRulesIndexResource{}
 }
 
@@ -63,7 +63,7 @@ func (r *atrRulesIndexResource) Configure(_ context.Context, req resource.Config
 
 func (r *atrRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_bulk_atr_move_rule` resource orders App Tenant Restriction sections and rules and publishes " +
+		Description: "Orders App Tenant Restriction sections and rules and publishes " +
 			"the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within " +
 			"their `section_name`. This resource is not importable; it is created on the first apply.",
 		Attributes: map[string]schema.Attribute{

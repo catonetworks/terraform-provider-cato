@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Enhancements
+
+- Added full names for 11 bulk policy ordering resources. The abbreviated names remain available as deprecated aliases. Terraform 1.8 and later can migrate existing state with a `moved` block. See the [policy resource type migration guide](docs/guides/policy_resource_type_migration.md).
+
+### Deprecations
+
+- Deprecated `cato_pa_section`, `cato_remote_port_fwd_rule`, and `cato_remote_port_fwd_section`. Existing configurations retain their original schemas and behavior. Use the corresponding full-name resources in new configurations.
+
 ### Known issues (API/SDK side, not fixable in the provider)
 - `cato_socket_lan_firewall_rule`: publishing (and reading) a socket LAN policy that contains a firewall sub-rule fails with a policy-platform serialization error — the API declares `rule.firewall[].access` as non-null `EntityAccess`, but rules created through the public `socketLanFirewallAddRule` mutation have no access value (the input type carries no access field, and the AddRule response deliberately omits the field, which is why creation itself succeeds). Requires an API fix (nullable/defaulted `access`) or a cato-go-sdk regeneration that drops `access` from the `policy.socketLan` query/publish selections.
 - `cato_socket_site` / `cato_app_connector`: the platform's location-resolution service intermittently rejects known cities (`City [Paris] is unknown`, `Cannot resolve location for city 'New York'`, both `DOWNSTREAM_SERVICE_ERROR`) — the same requests succeeded on earlier runs with identical inputs.

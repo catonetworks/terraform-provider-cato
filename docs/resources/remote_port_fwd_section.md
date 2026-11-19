@@ -3,10 +3,13 @@
 page_title: "cato_remote_port_fwd_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
+  Deprecated. Use cato_remote_port_forward_section for new configurations. See the policy resource type migration guide for existing sections.
   Manages a custom section in the Cato remote port forwarding (App & Data Inline Protection) policy. Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. Underlying GraphQL is marked @beta.
 ---
 
 # cato_remote_port_fwd_section (Resource)
+
+**Deprecated.** Use cato_remote_port_forward_section for new configurations. See the policy resource type migration guide for existing sections.
 
 Manages a custom section in the Cato remote port forwarding (App & Data Inline Protection) policy. Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. Underlying GraphQL is marked @beta.
 

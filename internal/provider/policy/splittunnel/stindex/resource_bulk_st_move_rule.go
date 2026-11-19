@@ -25,7 +25,7 @@ var (
 	_ resource.ResourceWithConfigure = &stRulesIndexResource{}
 )
 
-func NewStRulesIndexResource() resource.Resource {
+func NewStRulesIndexResource() resource.ResourceWithConfigure {
 	return &stRulesIndexResource{}
 }
 
@@ -63,7 +63,7 @@ func (r *stRulesIndexResource) Configure(_ context.Context, req resource.Configu
 
 func (r *stRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_bulk_st_move_rule` resource orders Split Tunnel sections and rules and publishes " +
+		Description: "Orders Split Tunnel sections and rules and publishes " +
 			"the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within " +
 			"their `section_name`. This resource is not importable; it is created on the first apply.",
 		Attributes: map[string]schema.Attribute{

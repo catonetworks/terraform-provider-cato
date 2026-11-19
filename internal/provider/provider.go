@@ -70,19 +70,15 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/access/alwaysonsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/antimalware/amfhsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/applicationcontrol/acsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/clientconnectivity/ccsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diaindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diapolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diarule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/dynamicip/diasection"
@@ -101,31 +97,24 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/pasection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiaindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiapolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiarule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiasection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swpindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swppolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swprule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sitewebproxy/swpsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/socketbypass/sbsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/strule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/splittunnel/stsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tenant/atsection"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tsindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tspolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tsrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tssection"
@@ -725,7 +714,7 @@ func (p *catoProvider) DataSources(_ context.Context) []func() datasource.DataSo
 
 //nolint:funlen // Keep the declarative resource registry together.
 func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
+	resources := []func() resource.Resource{
 		account.NewAccountResource,
 		dnssettings.NewDNSSettingsResource,
 		dnssitesettings.NewDNSSiteSettingsResource,
@@ -752,22 +741,14 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 
 		sbrule.NewResource,
 		sbsection.NewResource,
+		// Keep the deprecated section and rule types for existing configurations.
+		// Their schemas and publication behavior differ from the full-name types.
 		pasection.NewResource,
-		// MERGE NOTE (v1.5.0-prerelease.1 + feat/bulk-policy-families consolidation):
-		// Remote Port Forward is deliberately registered under BOTH naming families:
-		//   tag side:    secrpfrule/secrpfsection -> cato_remote_port_forward_rule/_section
-		//   branch side: rpfrule/rpfsection       -> cato_remote_port_fwd_rule/_section
-		// Likewise cato_private_access_section (tag) and cato_pa_section (branch) coexist.
-		// One naming must be retired before GA.
-		// For the 13 type names implemented on BOTH sides (client connectivity,
-		// dynamic ip allocation, sdp static ip allocation, split tunnel, terminal
-		// server, anti-malware file hash rule+section,
-		// site web proxy section) the BRANCH implementations are registered.
-		// Socket Bypass retains its established schema and implementation.
-		// The other implementations under policy/access, security and
-		// resource/sitewebproxy remain unregistered pending review.
+		pasection.NewPrivateAccessSectionResource,
 		secrpfrule.NewResource,
 		secrpfsection.NewResource,
+		rpfrule.NewRemotePortFwdRuleResource,
+		rpfsection.NewRemotePortFwdSectionResource,
 		alwaysonindex.NewAlwaysOnRuleBulkResource,
 		alwaysonpolicy.NewAlwaysOnPolicyResource,
 		alwaysonsection.NewAlwaysOnSectionResource,
@@ -803,12 +784,9 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		parule.NewPrivAccessRuleResource,
 		parulebulk.NewPrivAccessRuleBulkResource,
 		atrule.NewAppTenantRestrictionRuleResource,
-		atindex.NewAtrRulesIndexResource,
 		atsection.NewAppTenantRestrictionSectionResource,
 		acpolicy.NewApplicationControlPolicyResource,
-		tsindex.NewTsRulesIndexResource,
 		tspolicy.NewTerminalServerPolicyResource,
-		amfhindex.NewAmfhRulesIndexResource,
 		amfhpolicy.NewAntiMalwareFileHashPolicyResource,
 		amfhrule.NewAntiMalwareFileHashRuleResource,
 		amfhsection.NewAntiMalwareFileHashSectionResource,
@@ -823,28 +801,17 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		stsection.NewSplitTunnelSectionResource,
 		tsrule.NewTerminalServerRuleResource,
 		tssection.NewTerminalServerSectionResource,
-		ssiaindex.NewSsiaRulesIndexResource,
 		ssiapolicy.NewSdpStaticIPAllocationPolicyResource,
-		diaindex.NewDiaRulesIndexResource,
 		diapolicy.NewDynamicIPAllocationPolicyResource,
-		ccindex.NewCcRulesIndexResource,
 		ccpolicy.NewClientConnectivityPolicyResource,
-		stindex.NewStRulesIndexResource,
 		stpolicy.NewSplitTunnelPolicyResource,
-		rpfrule.NewRemotePortFwdRuleResource,
-		rpfsection.NewRemotePortFwdSectionResource,
-		rpfindex.NewRpfRulesIndexResource,
 		rpfpolicy.NewRemotePortFwdPolicyResource,
 		swprule.NewSiteWebProxyRuleResource,
-		swpindex.NewSwpRulesIndexResource,
 		swppolicy.NewSiteWebProxyPolicyResource,
-		sbindex.NewSbRulesIndexResource,
 		sbpolicy.NewSocketBypassPolicyResource,
 		atpolicy.NewAppTenantRestrictionPolicyResource,
 		wnwpolicy.NewWanNetworkPolicyResource,
-		pasection.NewPrivateAccessSectionResource,
 		acrule.NewApplicationControlRuleResource,
-		acindex.NewApcRulesIndexResource,
 		acsection.NewApplicationControlSectionResource,
 		lansection.NewSocketLanSectionResource,
 		socketlannetworkrule.NewSocketLanNetworkRuleResource,
@@ -853,4 +820,5 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		lfsubpolicy.NewLfSubPolicyResource,
 		lanindex.NewLanRulesIndexResource,
 	}
+	return append(resources, bulkMoveResourceRegistrations()...)
 }

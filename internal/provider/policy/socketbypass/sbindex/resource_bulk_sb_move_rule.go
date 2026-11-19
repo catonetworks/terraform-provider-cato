@@ -25,7 +25,7 @@ var (
 	_ resource.ResourceWithConfigure = &sbRulesIndexResource{}
 )
 
-func NewSbRulesIndexResource() resource.Resource {
+func NewSbRulesIndexResource() resource.ResourceWithConfigure {
 	return &sbRulesIndexResource{}
 }
 
@@ -63,7 +63,7 @@ func (r *sbRulesIndexResource) Configure(_ context.Context, req resource.Configu
 
 func (r *sbRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_bulk_sb_move_rule` resource orders Socket Bypass sections and rules and publishes " +
+		Description: "Orders Socket Bypass sections and rules and publishes " +
 			"the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within " +
 			"their `section_name`. This resource is not importable; it is created on the first apply.",
 		Attributes: map[string]schema.Attribute{

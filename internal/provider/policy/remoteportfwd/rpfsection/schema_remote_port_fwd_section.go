@@ -16,6 +16,8 @@ func (r *remotePortFwdSectionResource) Schema(_ context.Context, _ resource.Sche
 		Description: "Manages a custom section in the Cato remote port forwarding (App & Data Inline Protection) policy. " +
 			"Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. " +
 			"Underlying GraphQL is marked @beta.",
+		DeprecationMessage: "Use cato_remote_port_forward_section for new configurations. " +
+			"See the policy resource type migration guide for existing sections.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Section ID",
@@ -63,4 +65,5 @@ func (r *remotePortFwdSectionResource) Schema(_ context.Context, _ resource.Sche
 			},
 		},
 	}
+	resp.Schema.MarkdownDescription = "**Deprecated.** " + resp.Schema.DeprecationMessage + "\n\n" + resp.Schema.Description
 }

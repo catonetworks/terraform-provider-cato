@@ -3,10 +3,13 @@
 page_title: "cato_pa_section Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
+  Deprecated. Use cato_private_access_section for new configurations. See the policy resource type migration guide for existing sections.
   Manages a custom section in the Cato private access (App & Data Inline Protection) policy. Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. Underlying GraphQL is marked @beta.
 ---
 
 # cato_pa_section (Resource)
+
+**Deprecated.** Use cato_private_access_section for new configurations. See the policy resource type migration guide for existing sections.
 
 Manages a custom section in the Cato private access (App & Data Inline Protection) policy. Adding a section can reassign existing rules into that section and create a draft revision; see provider documentation. Underlying GraphQL is marked @beta.
 

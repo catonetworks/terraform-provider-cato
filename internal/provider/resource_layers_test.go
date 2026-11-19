@@ -21,15 +21,26 @@ func TestRegisteredResourceLayers(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	p := &catoProvider{}
+	metadataRequest := resource.MetadataRequest{ProviderTypeName: "cato"}
 	for _, constructor := range p.Resources(ctx) {
 		r := constructor()
 		metadata := &resource.MetadataResponse{}
-		r.Metadata(ctx, resource.MetadataRequest{ProviderTypeName: "cato"}, metadata)
+		r.Metadata(ctx, metadataRequest, metadata)
 		t.Run(metadata.TypeName, func(t *testing.T) {
 			t.Parallel()
-			typ := reflect.TypeOf(r).Elem()
+			// Both names wrap the same implementation, which owns the client and converters.
+			implementation := r
+			switch wrapped := r.(type) {
+			case *bulkMoveResource:
+				implementation = wrapped.ResourceWithConfigure
+			case *deprecatedBulkMoveResource:
+				implementation = wrapped.ResourceWithConfigure
+			}
+			var implementationMetadata resource.MetadataResponse
+			implementation.Metadata(ctx, metadataRequest, &implementationMetadata)
+			typ := reflect.TypeOf(implementation).Elem()
 			packageDir := strings.TrimPrefix(typ.PkgPath(), "github.com/catonetworks/terraform-provider-cato/internal/provider/")
-			name := strings.TrimPrefix(metadata.TypeName, "cato_")
+			name := strings.TrimPrefix(implementationMetadata.TypeName, "cato_")
 			for _, prefix := range []string{"client_", "converters_"} {
 				info, err := os.Stat(filepath.Join(packageDir, prefix+name+".go"))
 				require.NoError(t, err)

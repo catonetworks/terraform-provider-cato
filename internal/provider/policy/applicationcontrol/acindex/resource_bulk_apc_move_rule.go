@@ -25,7 +25,7 @@ var (
 	_ resource.ResourceWithConfigure = &apcRulesIndexResource{}
 )
 
-func NewApcRulesIndexResource() resource.Resource {
+func NewApcRulesIndexResource() resource.ResourceWithConfigure {
 	return &apcRulesIndexResource{}
 }
 
@@ -63,7 +63,7 @@ func (r *apcRulesIndexResource) Configure(_ context.Context, req resource.Config
 
 func (r *apcRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_bulk_apc_move_rule` resource orders Application Control sections and rules and publishes " +
+		Description: "Orders Application Control sections and rules and publishes " +
 			"the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within " +
 			"their `section_name`. This resource is not importable; it is created on the first apply.",
 		Attributes: map[string]schema.Attribute{

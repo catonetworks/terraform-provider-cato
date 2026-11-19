@@ -25,7 +25,7 @@ var (
 	_ resource.ResourceWithConfigure = &ssiaRulesIndexResource{}
 )
 
-func NewSsiaRulesIndexResource() resource.Resource {
+func NewSsiaRulesIndexResource() resource.ResourceWithConfigure {
 	return &ssiaRulesIndexResource{}
 }
 
@@ -63,7 +63,7 @@ func (r *ssiaRulesIndexResource) Configure(_ context.Context, req resource.Confi
 
 func (r *ssiaRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_bulk_ssia_move_rule` resource orders SDP Static IP Allocation sections and rules and publishes " +
+		Description: "Orders SDP Static IP Allocation sections and rules and publishes " +
 			"the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within " +
 			"their `section_name`. This resource is not importable; it is created on the first apply.",
 		Attributes: map[string]schema.Attribute{
