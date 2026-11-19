@@ -55,6 +55,8 @@ func (r *remotePortFwdRuleResource) Schema(_ context.Context, _ resource.SchemaR
 	resp.Schema = schema.Schema{
 		Description: "Manages a rule in the Cato remote port forwarding policy. " +
 			"Underlying GraphQL is marked @beta; behavior and fields may change.",
+		DeprecationMessage: "Use cato_remote_port_forward_rule for new configurations. " +
+			"See the policy resource type migration guide for existing rules.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Rule ID",
@@ -199,4 +201,5 @@ func (r *remotePortFwdRuleResource) Schema(_ context.Context, _ resource.SchemaR
 			},
 		},
 	}
+	resp.Schema.MarkdownDescription = "**Deprecated.** " + resp.Schema.DeprecationMessage + "\n\n" + resp.Schema.Description
 }

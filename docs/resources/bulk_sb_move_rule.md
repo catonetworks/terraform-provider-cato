@@ -3,12 +3,15 @@
 page_title: "cato_bulk_sb_move_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  The cato_bulk_sb_move_rule resource orders Socket Bypass sections and rules and publishes the policy revision. Sections are ordered by section_index; rules by index_in_section within their section_name. This resource is not importable; it is created on the first apply.
+  Deprecated. Use cato_bulk_socket_bypass_move_rule instead. See the policy resource type migration guide.
+  Orders Socket Bypass sections and rules and publishes the policy revision. Sections are ordered by section_index; rules by index_in_section within their section_name. This resource is not importable; it is created on the first apply.
 ---
 
 # cato_bulk_sb_move_rule (Resource)
 
-The `cato_bulk_sb_move_rule` resource orders Socket Bypass sections and rules and publishes the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within their `section_name`. This resource is not importable; it is created on the first apply.
+**Deprecated.** Use cato_bulk_socket_bypass_move_rule instead. See the policy resource type migration guide.
+
+Orders Socket Bypass sections and rules and publishes the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within their `section_name`. This resource is not importable; it is created on the first apply.
 
 
 

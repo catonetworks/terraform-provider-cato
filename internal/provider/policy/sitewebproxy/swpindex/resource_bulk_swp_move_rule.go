@@ -25,7 +25,7 @@ var (
 	_ resource.ResourceWithConfigure = &swpRulesIndexResource{}
 )
 
-func NewSwpRulesIndexResource() resource.Resource {
+func NewSwpRulesIndexResource() resource.ResourceWithConfigure {
 	return &swpRulesIndexResource{}
 }
 
@@ -63,7 +63,7 @@ func (r *swpRulesIndexResource) Configure(_ context.Context, req resource.Config
 
 func (r *swpRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The `cato_bulk_swp_move_rule` resource orders Site Web Proxy sections and rules and publishes " +
+		Description: "Orders Site Web Proxy sections and rules and publishes " +
 			"the policy revision. Sections are ordered by `section_index`; rules by `index_in_section` within " +
 			"their `section_name`. This resource is not importable; it is created on the first apply.",
 		Attributes: map[string]schema.Attribute{
