@@ -368,7 +368,7 @@ Optional:
 - `subnet` (List of String) Subnets and network ranges defined for the LAN interfaces of a site
 - `system_group` (Attributes Set) Predefined Cato groups (see [below for nested schema](#nestedatt--scope--source--system_group))
 - `user` (Attributes Set) Individual users defined for the account (see [below for nested schema](#nestedatt--scope--source--user))
-- `users_group` (Attributes Set) Group of users (see [below for nested schema](#nestedatt--scope--source--users_group))
+- `users_group` (Attributes Set) Group of users. Specify either a name or an ID for each group. (see [below for nested schema](#nestedatt--scope--source--users_group))
 
 <a id="nestedatt--scope--source--floating_subnet"></a>
 ### Nested Schema for `scope.source.floating_subnet`
