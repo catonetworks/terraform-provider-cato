@@ -19,8 +19,8 @@ import (
 )
 
 type policyFamily struct {
-	prefix, mover string
-	rule          func(*testing.T) string
+	prefix string
+	rule   func(*testing.T) string
 }
 
 func TestAccBulkPolicyFamilies_AntiMalwareFileHash(t *testing.T) {
@@ -56,7 +56,7 @@ func TestAccBulkPolicyFamilies_SDPStaticIPAllocation(t *testing.T) {
 }
 
 func TestAccBulkPolicyFamilies_RemotePortForward(t *testing.T) {
-	runBulkPolicyFamily(t, "remote_port_fwd")
+	runBulkPolicyFamily(t, "remote_port_forward")
 }
 
 // runBulkPolicyFamily checks create, refresh, import, update, ordering and
@@ -69,36 +69,36 @@ func runBulkPolicyFamily(t *testing.T, prefix string) {
 	}
 	acc.SkipByEnv(t)
 	families := []policyFamily{
-		{"anti_malware_file_hash", "amfh", func(_ *testing.T) string {
+		{"anti_malware_file_hash", func(_ *testing.T) string {
 			return fmt.Sprintf(`action="BLOCK", expiration_date=%q, file_name="validation.bin", sha256=%q`, time.Now().Add(24*time.Hour).UTC().Format(time.RFC3339), strings.Repeat("a", 64))
 		}},
-		{"client_connectivity", "cc", func(*testing.T) string { return `action="ALLOW", confidence_level="ANY"` }},
-		{"split_tunnel", "st", func(*testing.T) string {
+		{"client_connectivity", func(*testing.T) string { return `action="ALLOW", confidence_level="ANY"` }},
+		{"split_tunnel", func(*testing.T) string {
 			return `action="EXCLUDE", routing_priority="TUNNEL", coverage="ALL", platform=["WINDOWS"], destination={domain=["validation.invalid"]}`
 		}},
-		{"dynamic_ip_allocation", "dia", func(t *testing.T) string {
+		{"dynamic_ip_allocation", func(t *testing.T) string {
 			ranges := acc.GetGlobalIPRanges(t)
 			return fmt.Sprintf(`range={global_ip_range={id=%q}}`, ranges[0].ID)
 		}},
-		{"terminal_server", "ts", func(t *testing.T) string {
+		{"terminal_server", func(t *testing.T) string {
 			return fmt.Sprintf(`allowed_host_ip={id=%q}`, globalIPRangeID(t))
 		}},
-		{"site_web_proxy", "swp", func(_ *testing.T) string {
+		{"site_web_proxy", func(_ *testing.T) string {
 			return `fqdn="validation.invalid", port="8443", allowed_destination_protocol="HTTPS", should_associate_with_all_sites=false, authentication_config={method="NONE"}`
 		}},
-		{"socket_bypass", "sb", func(_ *testing.T) string {
+		{"socket_bypass", func(_ *testing.T) string {
 			// Omit unused site/service blocks: imports cannot distinguish an empty block from omission.
 			return `action={port="AUTOMATIC",event={enabled=false}}, exception=[], source={floating_subnet=[],global_ip_range=[],group=[],host=[],ip=["198.18.0.230"],ip_range=[],network_interface=[],site_network_subnet=[],subnet=[],vlan=[]}, destination={application=[],custom_app=[],domain=[],fqdn=[],global_ip_range=[],ip=["192.0.2.230"],ip_range=[],subnet=[]}`
 		}},
-		{"sdp_static_ip_allocation", "ssia", func(t *testing.T) string {
+		{"sdp_static_ip_allocation", func(t *testing.T) string {
 			ip := os.Getenv("TFACC_SDP_STATIC_IP")
 			if ip == "" {
 				t.Skip("set TFACC_SDP_STATIC_IP to an unused IP in the account static range")
 			}
 			return fmt.Sprintf(`ip=%q, source={user={id=%q}}`, ip, lookupID(t, cato_models.EntityTypeVpnUser))
 		}},
-		{"remote_port_fwd", "rpf", func(t *testing.T) string {
-			return fmt.Sprintf(`external_ip={id=%q}, external_port_range={from="49151", to="49151"}, internal_ip="198.18.0.231", internal_port_range={from="49151", to="49151"}, restriction_type="ALLOW_LIST", remote_ips={subnet=["192.0.2.0/24"]}`, lookupID(t, cato_models.EntityTypeAllocatedIP))
+		{"remote_port_forward", func(t *testing.T) string {
+			return fmt.Sprintf(`external_ip={id=%q}, external_port_range={from="49151", to="49151"}, internal_ip="198.18.0.231", internal_port_range={from="49151", to="49151"}, restriction_type="ALLOW_LIST", forward_icmp=false, remote_ips={global_ip_range=[], ip=[], ip_range=[], subnet=["192.0.2.0/24"]}, tracking={enabled=false, frequency="HOURLY", mailing_list=[], subscription_group=[], webhook=[]}`, lookupID(t, cato_models.EntityTypeAllocatedIP))
 		}},
 	}
 	for _, family := range families {
@@ -120,18 +120,18 @@ resource "cato_%[1]s_section" "test" {
 resource "cato_%[1]s_section" "anchor" {
  depends_on=[cato_%[1]s_section.test]
  at={position="BEFORE_SECTION",ref=cato_%[1]s_section.test.section.id}
- section={name="%[7]s-anchor"}
+ section={name="%[6]s-anchor"}
 }
 resource "cato_%[1]s_rule" "test" {
  at={position="LAST_IN_SECTION", ref=cato_%[1]s_section.test.section.id}
  rule={name=%[3]q, description=%[4]q, enabled=false, %[5]s}
 }
-resource "cato_bulk_%[6]s_move_rule" "test" {
+resource "cato_bulk_%[1]s_move_rule" "test" {
  depends_on=[cato_%[1]s_rule.test,cato_%[1]s_section.anchor]
- section_data={%[2]q={section_index=1}, "%[7]s-anchor"={section_index=2}}
+ section_data={%[2]q={section_index=1}, "%[6]s-anchor"={section_index=2}}
  rule_data={%[3]q={section_name=%[2]q, index_in_section=1}}
 }
-`, family.prefix, name+"-section", name+"-rule", description, extra, family.mover, name)
+`, family.prefix, name+"-section", name+"-rule", description, extra, name)
 			}
 			resource.Test(t, resource.TestCase{
 				ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,
@@ -235,7 +235,7 @@ func readPublishedPolicy(ctx context.Context, t *testing.T, family string) (any,
 		response, err = client.PolicySiteWebProxyPolicy(ctx, acc.CatoAccountID, &cato_models.SiteWebProxyPolicyInput{Revision: published})
 	case "socket_bypass":
 		response, err = client.PolicySocketBypassPolicy(ctx, acc.CatoAccountID, &cato_models.SocketBypassPolicyInput{Revision: published})
-	case "remote_port_fwd":
+	case "remote_port_forward":
 		response, err = client.RemotePortFwdPolicy(ctx, acc.CatoAccountID, &cato_models.RemotePortFwdPolicyInput{Revision: published})
 	default:
 		return nil, fmt.Errorf("no published-policy reader for %s", family)
