@@ -63,7 +63,7 @@ func TestAccBulkAtrMoveRule(t *testing.T) {
  section = { name = "` + sectionName + `" }
 }
 ` + ruleBlock("a", ruleA, true) + serialize(ruleBlock("b", ruleB, false), "cato_app_tenant_restriction_rule") + `
-resource "cato_bulk_atr_move_rule" "all" {
+resource "cato_bulk_app_tenant_restriction_move_rule" "all" {
  depends_on = [cato_app_tenant_restriction_rule.a, cato_app_tenant_restriction_rule.b]
  section_data = { "` + sectionName + `" = { section_index = 1 } }
  rule_data = {

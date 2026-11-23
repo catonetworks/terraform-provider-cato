@@ -1,12 +1,12 @@
 ---
 page_title: "Policy Resource Type Migration"
 description: |-
-  Move bulk ordering resources to full names and identify replacements for deprecated policy types.
+  Migrate removed policy resource types to their full-name replacements.
 ---
 
 # Policy Resource Type Migration
 
-Existing configurations and pinned modules can continue to use the abbreviated resource types. New configurations can use the full names.
+The 14 deprecated resource types listed below have been removed. Update configurations and pinned modules to their full-name replacements before using this provider version. Bulk ordering state can migrate directly with a `moved` block; Private Access and Remote Port Forwarding require the import migration described below.
 
 ## Bulk ordering resources
 
@@ -31,7 +31,7 @@ moved {
 }
 ```
 
-Run `terraform plan` and verify it reports the move and zero resources to add, change, or destroy. Apply that plan to record the new address in state. Changing the resource type without a move can cause Terraform to run the ordering and publication again. On Terraform versions earlier than 1.8, continue using the abbreviated type until you can upgrade.
+Run `terraform plan` and verify it reports the move and zero resources to add, change, or destroy. Apply that plan to record the new address in state. Changing the resource type without a move can cause Terraform to run the ordering and publication again. On Terraform versions earlier than 1.8, keep the provider pinned to a version that supports the abbreviated types until you can upgrade Terraform and perform the migration.
 
 ## Private Access and Remote Port Forwarding
 
@@ -39,6 +39,6 @@ Run `terraform plan` and verify it reports the move and zero resources to add, c
 - `cato_remote_port_fwd_rule` → `cato_remote_port_forward_rule`
 - `cato_remote_port_fwd_section` → `cato_remote_port_forward_section`
 
-The deprecated types remain available for existing configurations. The full-name types have their own schemas and policy publication behavior. These pairs require a configuration and import migration. For example, the full-name Remote Port Forwarding rule requires fields such as `description`, `remote_ips`, and `tracking` that can be omitted on the abbreviated resource.
+The removed types had different schemas and policy publication behavior from their full-name replacements. These pairs require a configuration and import migration. For example, the full-name Remote Port Forwarding rule requires fields such as `description`, `remote_ips`, and `tracking` that could be omitted on the abbreviated resource.
 
-To migrate one of these resources with Terraform 1.7 or later, record the existing Cato rule or section ID and adapt the configuration to the full-name schema. Use a `removed` block with `destroy = false` for the old address and an `import` block with the existing ID for the new address. Confirm that the plan forgets the old address and imports the same Cato object. Review any proposed field or placement changes before applying. See the [Terraform `removed` block reference](https://developer.hashicorp.com/terraform/language/block/removed) and the [Terraform `import` block reference](https://developer.hashicorp.com/terraform/language/block/import).
+Complete this migration while pinned to a provider version that supports both names, before upgrading to this version. With Terraform 1.7 or later, record the existing Cato rule or section ID and adapt the configuration to the full-name schema. Use a `removed` block with `destroy = false` for the old address and an `import` block with the existing ID for the new address. Confirm that the plan forgets the old address and imports the same Cato object. Review any proposed field or placement changes before applying. Once the state contains only the full-name resources, remove the completed `removed` blocks and upgrade the provider. See the [Terraform `removed` block reference](https://developer.hashicorp.com/terraform/language/block/removed) and the [Terraform `import` block reference](https://developer.hashicorp.com/terraform/language/block/import).

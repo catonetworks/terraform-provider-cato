@@ -28,12 +28,9 @@ func TestRegisteredResourceLayers(t *testing.T) {
 		r.Metadata(ctx, metadataRequest, metadata)
 		t.Run(metadata.TypeName, func(t *testing.T) {
 			t.Parallel()
-			// Both names wrap the same implementation, which owns the client and converters.
+			// The full-name bulk wrapper delegates to the implementation that owns the client and converters.
 			implementation := r
-			switch wrapped := r.(type) {
-			case *bulkMoveResource:
-				implementation = wrapped.ResourceWithConfigure
-			case *deprecatedBulkMoveResource:
+			if wrapped, ok := r.(*bulkMoveResource); ok {
 				implementation = wrapped.ResourceWithConfigure
 			}
 			var implementationMetadata resource.MetadataResponse

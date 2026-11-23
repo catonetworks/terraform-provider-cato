@@ -18,7 +18,7 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tsindex"
 )
 
-// Both names use the same bulk ordering resource and preserve its Configure and CRUD methods.
+// Full names wrap the bulk ordering implementations and retain state migration from abbreviated names.
 func bulkMoveResourceRegistrations() []func() resource.Resource {
 	policies := []struct {
 		name        string
@@ -36,15 +36,12 @@ func bulkMoveResourceRegistrations() []func() resource.Resource {
 		{"split_tunnel", stindex.NewStRulesIndexResource},
 		{"terminal_server", tsindex.NewTsRulesIndexResource},
 	}
-	registrations := make([]func() resource.Resource, 0, 2*len(policies))
+	registrations := make([]func() resource.Resource, 0, len(policies))
 	for _, policy := range policies {
 		suffix := "_bulk_" + policy.name + "_move_rule"
 		registrations = append(registrations,
 			func() resource.Resource {
 				return &bulkMoveResource{ResourceWithConfigure: policy.newResource(), suffix: suffix}
-			},
-			func() resource.Resource {
-				return &deprecatedBulkMoveResource{ResourceWithConfigure: policy.newResource(), suffix: suffix}
 			},
 		)
 	}
@@ -84,15 +81,4 @@ func (r *bulkMoveResource) MoveState(ctx context.Context) []resource.StateMover 
 			resp.TargetPrivate = req.SourcePrivate
 		},
 	}}
-}
-
-type deprecatedBulkMoveResource struct {
-	resource.ResourceWithConfigure
-	suffix string
-}
-
-func (r *deprecatedBulkMoveResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	r.ResourceWithConfigure.Schema(ctx, req, resp)
-	resp.Schema.DeprecationMessage = "Use cato" + r.suffix + " instead. See the policy resource type migration guide."
-	resp.Schema.MarkdownDescription = "**Deprecated.** " + resp.Schema.DeprecationMessage + "\n\n" + resp.Schema.Description
 }
