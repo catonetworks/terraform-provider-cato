@@ -6,8 +6,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/require"
 )
@@ -72,14 +70,12 @@ func TestBuildIfwRuleIndexStateDataUsesAPIComputedFields(t *testing.T) {
 		SectionName:    "Section A",
 		RuleName:       "Rule A",
 		Description:    "plan description",
-		Enabled:        types.BoolUnknown(),
 	}
 
 	obj, diags := buildIfwRuleIndexStateData(
 		rule,
 		map[string]string{"Rule A": "rule-id-a"},
 		map[string]string{"Rule A": "api description"},
-		map[string]bool{"Rule A": true},
 	)
 	require.False(t, diags.HasError())
 
@@ -89,10 +85,12 @@ func TestBuildIfwRuleIndexStateDataUsesAPIComputedFields(t *testing.T) {
 
 	require.Equal(t, "rule-id-a", got.ID.ValueString())
 	require.Equal(t, "api description", got.Description.ValueString())
-	require.True(t, got.Enabled.ValueBool())
+	require.Equal(t, rule.IndexInSection, got.IndexInSection.ValueInt64())
+	require.Equal(t, rule.SectionName, got.SectionName.ValueString())
+	require.Equal(t, rule.RuleName, got.RuleName.ValueString())
 }
 
-func TestIfwRulesIndexEnabledIsSettableAndNewValuesRemainUnknown(t *testing.T) {
+func TestIfwRulesIndexSchemaOmitsEnabled(t *testing.T) {
 	t.Parallel()
 
 	var resp resource.SchemaResponse
@@ -106,20 +104,5 @@ func TestIfwRulesIndexEnabledIsSettableAndNewValuesRemainUnknown(t *testing.T) {
 	ruleData, ok := resp.Schema.Attributes["rule_data"].(schema.MapNestedAttribute)
 	require.True(t, ok)
 
-	enabled, ok := ruleData.NestedObject.Attributes["enabled"].(schema.BoolAttribute)
-	require.True(t, ok)
-	require.True(t, enabled.Computed)
-	require.True(t, enabled.Optional)
-	require.False(t, enabled.Required)
-	require.Len(t, enabled.PlanModifiers, 1)
-
-	req := planmodifier.BoolRequest{
-		ConfigValue: types.BoolNull(),
-		PlanValue:   types.BoolUnknown(),
-		StateValue:  types.BoolNull(),
-	}
-	modifierResp := planmodifier.BoolResponse{PlanValue: req.PlanValue}
-	enabled.PlanModifiers[0].PlanModifyBool(context.Background(), req, &modifierResp)
-
-	require.True(t, modifierResp.PlanValue.IsUnknown())
+	require.NotContains(t, ruleData.NestedObject.Attributes, "enabled")
 }

@@ -43,12 +43,16 @@ func TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 				Config: cfg.getTwoRuleReorderTF(0),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleA, ruleB),
+					resource.TestCheckResourceAttr("cato_if_rule.b", "rule.enabled", "false"),
+					resource.TestCheckNoResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled"),
 				),
 			},
 			{
 				Config: cfg.getTwoRuleReorderTF(1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleB, ruleA),
+					resource.TestCheckResourceAttr("cato_if_rule.b", "rule.enabled", "false"),
+					resource.TestCheckNoResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled"),
 				),
 			},
 		},
@@ -97,7 +101,7 @@ var ifTwoRuleReorderTFs = []string{
 		}
 		rule = {
 			name    = "{{.Name}}-b"
-			enabled = true
+			enabled = false
 			action  = "ALLOW"
 			tracking = { event = { enabled = true } }
 			destination = { domain = ["if-reorder-b.example"] }
@@ -117,13 +121,11 @@ var ifTwoRuleReorderTFs = []string{
 				rule_name        = cato_if_rule.a.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 1
-				enabled          = true
 			}
 			"{{.Name}}-b" = {
 				rule_name        = cato_if_rule.b.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 2
-				enabled          = true
 			}
 		}
 	}
@@ -155,7 +157,7 @@ var ifTwoRuleReorderTFs = []string{
 		}
 		rule = {
 			name    = "{{.Name}}-b"
-			enabled = true
+			enabled = false
 			action  = "ALLOW"
 			tracking = { event = { enabled = true } }
 			destination = { domain = ["if-reorder-b.example"] }
@@ -175,13 +177,11 @@ var ifTwoRuleReorderTFs = []string{
 				rule_name        = cato_if_rule.a.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 2
-				enabled          = true
 			}
 			"{{.Name}}-b" = {
 				rule_name        = cato_if_rule.b.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 1
-				enabled          = true
 			}
 		}
 	}

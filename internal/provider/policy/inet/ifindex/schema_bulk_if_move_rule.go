@@ -6,14 +6,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Retrieves index values for Internet Firewall Rules.",
+		MarkdownDescription: "Reorders Internet Firewall rules and sections. " +
+			"If you are upgrading from a version that exposed `rule_data.enabled`, remove it from your bulk rule configuration. " +
+			"Use `cato_if_rule.rule.enabled` to manage whether a rule is enabled.",
 		Attributes: map[string]schema.Attribute{
 			"section_to_start_after_id": schema.StringAttribute{
 				Description: "IFW rule id",
@@ -55,14 +55,6 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Optional:    true,
 							Computed:    true,
 						},
-						"enabled": schema.BoolAttribute{
-							Description: "IFW rule enabled",
-							Optional:    true,
-							Computed:    true,
-							PlanModifiers: []planmodifier.Bool{
-								boolplanmodifier.UseNonNullStateForUnknown(),
-							},
-						},
 					},
 				},
 			},
@@ -103,7 +95,6 @@ var IfwRuleIndexResourceAttrTypes = map[string]attr.Type{
 	"section_name":     types.StringType,
 	"rule_name":        types.StringType,
 	"description":      types.StringType,
-	"enabled":          types.BoolType,
 }
 
 var IfwSectionIndexResourceObjectTypes = types.ObjectType{AttrTypes: IfwSectionIndexResourceAttrTypes}

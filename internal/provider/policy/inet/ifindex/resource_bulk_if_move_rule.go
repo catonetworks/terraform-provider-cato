@@ -87,7 +87,6 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 	sectionIDMap := make(map[string]string)
 	ruleIDMap := make(map[string]string)
 	ruleDescriptionMap := make(map[string]string)
-	ruleEnabledMap := make(map[string]bool)
 
 	// Get current sections from API to get fresh IDs
 	sectionIndexAPIData, err := r.resourceAPI().PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
@@ -115,7 +114,7 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 	}
 
 	// Build maps of rule names to API data
-	convertReadState(ctx, &state, &diags, sectionIDMap, ruleIDMap, ruleDescriptionMap, ruleEnabledMap, ruleIndexAPIData)
+	convertReadState(ctx, &state, &diags, sectionIDMap, ruleIDMap, ruleDescriptionMap, ruleIndexAPIData)
 
 	resp.Diagnostics.Append(diags...)
 	if diags := resp.State.Set(ctx, &state); diags.HasError() {
@@ -355,7 +354,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 
 		ruleNameIDMap := make(map[string]string)
 		ruleNameDescriptionMap := make(map[string]string)
-		ruleNameEnabledMap := make(map[string]bool)
 
 		planned := make([]policy.BulkPlannedRuleIndex, 0, len(ruleListFromPlan))
 		for _, r := range ruleListFromPlan {
@@ -389,7 +387,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 			rules = rules[:0]
 			clear(ruleNameIDMap)
 			clear(ruleNameDescriptionMap)
-			clear(ruleNameEnabledMap)
 			for _, item := range idxData.Policy.InternetFirewall.Policy.Rules {
 				rules = append(rules, policy.BulkPolicyRuleRow{
 					SectionID:   item.Rule.Section.ID,
@@ -401,7 +398,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 				})
 				ruleNameIDMap[item.Rule.Name] = item.Rule.ID
 				ruleNameDescriptionMap[item.Rule.Name] = item.Rule.Description
-				ruleNameEnabledMap[item.Rule.Name] = item.Rule.Enabled
 			}
 
 			sectionIdxAfter, err := r.resourceAPI().PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
@@ -474,7 +470,6 @@ func (r *ifwRulesIndexResource) moveIfwRulesAndSections(
 				ruleFromPlan,
 				ruleNameIDMap,
 				ruleNameDescriptionMap,
-				ruleNameEnabledMap,
 			)
 			diags = append(diags, ruleDiags...)
 			ruleObjectMap[ruleFromPlan.RuleName] = ruleIndexStateData
