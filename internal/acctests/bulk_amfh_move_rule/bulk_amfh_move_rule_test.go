@@ -66,7 +66,7 @@ func TestAccBulkAmfhMoveRule(t *testing.T) {
  section = { name = "` + sectionName + `" }
 }
 ` + ruleBlock("a", ruleA, true) + serialize(ruleBlock("b", ruleB, false), "cato_anti_malware_file_hash_rule") + `
-resource "cato_bulk_amfh_move_rule" "all" {
+resource "cato_bulk_anti_malware_file_hash_move_rule" "all" {
  depends_on = [cato_anti_malware_file_hash_rule.a, cato_anti_malware_file_hash_rule.b]
  section_data = { "` + sectionName + `" = { section_index = 1 } }
  rule_data = {

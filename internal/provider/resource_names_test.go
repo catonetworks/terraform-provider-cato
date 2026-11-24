@@ -37,14 +37,10 @@ func TestBulkMoveResourceNames(t *testing.T) {
 
 			oldType := "cato_bulk_" + shortName + "_move_rule"
 			newType := "cato_bulk_" + fullName + "_move_rule"
-			oldSchema := schemas.ResourceSchemas[oldType]
 			newSchema := schemas.ResourceSchemas[newType]
-			require.NotNil(t, oldSchema)
+			require.NotContains(t, schemas.ResourceSchemas, oldType)
 			require.NotNil(t, newSchema)
-			require.True(t, oldSchema.Block.Deprecated)
 			require.False(t, newSchema.Block.Deprecated)
-			require.Equal(t, oldSchema.Version, newSchema.Version)
-			require.Equal(t, oldSchema.Block.Attributes, newSchema.Block.Attributes)
 
 			state := &tfprotov6.RawState{JSON: []byte(`{
 				"section_data": {"Office": {"section_index": 1}},
@@ -56,6 +52,7 @@ func TestBulkMoveResourceNames(t *testing.T) {
 				SourceSchemaVersion:   0, // State written by v2.0.0-prerelease.1.
 				SourceState:           state,
 				TargetTypeName:        newType,
+				SourcePrivate:         []byte(`{"test":"dHJ1ZQ=="}`), // Framework private values contain base64-encoded JSON (true).
 			}
 			result, err := server.MoveResourceState(t.Context(), req)
 			require.NoError(t, err)
@@ -63,9 +60,10 @@ func TestBulkMoveResourceNames(t *testing.T) {
 			require.NotNil(t, result.TargetState)
 			moved, err := result.TargetState.Unmarshal(newSchema.ValueType())
 			require.NoError(t, err)
-			original, err := state.Unmarshal(oldSchema.ValueType())
+			original, err := state.Unmarshal(newSchema.ValueType())
 			require.NoError(t, err)
 			require.True(t, original.Equal(moved))
+			require.Equal(t, req.SourcePrivate, result.TargetPrivate)
 		})
 	}
 }
@@ -109,7 +107,7 @@ func TestBulkMoveResourceRejectsUnrelatedState(t *testing.T) {
 	}
 }
 
-func TestOverlappingPolicyResourcesAreDeprecated(t *testing.T) {
+func TestDeprecatedPolicyResourcesAreRemoved(t *testing.T) {
 	t.Parallel()
 
 	server := providerserver.NewProtocol6(New("test")())()
@@ -122,11 +120,9 @@ func TestOverlappingPolicyResourcesAreDeprecated(t *testing.T) {
 		"cato_remote_port_fwd_rule":    "cato_remote_port_forward_rule",
 		"cato_remote_port_fwd_section": "cato_remote_port_forward_section",
 	} {
-		oldSchema := schemas.ResourceSchemas[oldType]
 		newSchema := schemas.ResourceSchemas[newType]
-		require.NotNil(t, oldSchema, oldType)
+		require.NotContains(t, schemas.ResourceSchemas, oldType)
 		require.NotNil(t, newSchema, newType)
-		require.True(t, oldSchema.Block.Deprecated, oldType)
 		require.False(t, newSchema.Block.Deprecated, newType)
 	}
 }
