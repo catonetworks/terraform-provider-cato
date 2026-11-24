@@ -8,7 +8,7 @@
 
 ### Breaking changes
 
-- Removed all 14 deprecated resource types: the 11 abbreviated bulk policy ordering aliases, `cato_pa_section`, `cato_remote_port_fwd_rule`, and `cato_remote_port_fwd_section`. Use their full-name replacements. Bulk ordering state migration remains supported; migrate the other three types through configuration and import before upgrading. See the [policy resource type migration guide](docs/guides/policy_resource_type_migration.md).
+- Removed all 14 deprecated resource types: the 11 abbreviated bulk policy ordering aliases, `cato_pa_section`, `cato_remote_port_fwd_rule`, and `cato_remote_port_fwd_section`. These abbreviated types were available only in prerelease versions and were never included in a stable release. Use their full-name replacements. Bulk ordering state migration remains supported; migrate the other three types through configuration and import before upgrading. See the [policy resource type migration guide](docs/guides/policy_resource_type_migration.md).
 
 ### Known issues (API/SDK side, not fixable in the provider)
 - `cato_socket_lan_firewall_rule`: publishing (and reading) a socket LAN policy that contains a firewall sub-rule fails with a policy-platform serialization error — the API declares `rule.firewall[].access` as non-null `EntityAccess`, but rules created through the public `socketLanFirewallAddRule` mutation have no access value (the input type carries no access field, and the AddRule response deliberately omits the field, which is why creation itself succeeds). Requires an API fix (nullable/defaulted `access`) or a cato-go-sdk regeneration that drops `access` from the `policy.socketLan` query/publish selections.

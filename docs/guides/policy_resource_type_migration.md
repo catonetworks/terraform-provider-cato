@@ -6,7 +6,7 @@ description: |-
 
 # Policy Resource Type Migration
 
-The 14 deprecated resource types listed below have been removed. Update configurations and pinned modules to their full-name replacements before using this provider version. Bulk ordering state can migrate directly with a `moved` block; Private Access and Remote Port Forwarding require the import migration described below.
+The 14 deprecated resource types listed below have been removed. These abbreviated types were available only in prerelease versions and were never included in a stable release. If you used them in a prerelease, update configurations and pinned modules to their full-name replacements before using this provider version. Bulk ordering state can migrate directly with a `moved` block; Private Access and Remote Port Forwarding require the import migration described below.
 
 ## Bulk ordering resources
 
