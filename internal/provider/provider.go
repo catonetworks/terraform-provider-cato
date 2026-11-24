@@ -85,10 +85,12 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/data_sources/ifwrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/inet/ifsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lanindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lanpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lansection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/lfsubpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/lan/socketlanfirewallrule"
@@ -118,11 +120,13 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/terminalserver/tssection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/data_sources/tlsrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlspolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlsrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/tls/tlssection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/data_sources/wfrulesections"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/data_sources/wfrulesindex"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wanindex"
+	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfpolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfrule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/wan/wfsubpolicy"
@@ -804,6 +808,10 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 		sbpolicy.NewSocketBypassPolicyResource,
 		atpolicy.NewAppTenantRestrictionPolicyResource,
 		wnwpolicy.NewWanNetworkPolicyResource,
+		ifpolicy.NewInternetFirewallPolicyResource,
+		wfpolicy.NewWanFirewallPolicyResource,
+		tlspolicy.NewTLSInspectPolicyResource,
+		lanpolicy.NewSocketLanPolicyResource,
 		acrule.NewApplicationControlRuleResource,
 		acsection.NewApplicationControlSectionResource,
 		lansection.NewSocketLanSectionResource,
