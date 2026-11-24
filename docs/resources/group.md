@@ -91,7 +91,7 @@ resource "cato_group" "group_by_id" {
 
 ### Required
 
-- `members` (Attributes Set) List of group members. Each member has 'name', 'id', and 'type' fields. You can specify either 'name' or 'id' when creating/updating; both will be populated in state. At least one member is required. (see [below for nested schema](#nestedatt--members))
+- `members` (Attributes Set) List of group members. Each member has 'name', 'id', and 'type' fields. You can specify either 'name' or 'id' when creating/updating; both will be populated in state. May be empty: the API accepts a group with no members (an empty group matches nothing), which is needed to replicate empty groups from another tenant. (see [below for nested schema](#nestedatt--members))
 - `name` (String) Group name
 
 ### Optional
