@@ -1,16 +1,13 @@
 # Changelog
 
-## 2.0.0 (2026-11-19)
+## 2.0.0 (2026-11-24)
 
 ### Breaking changes
 - Provider authentication now honors `CATO_PROFILE`. An existing export can select a different account or conflict with explicit `token`/`account_id` attributes. To retain explicit or environment credentials, unset `CATO_PROFILE`; to use a profile, remove those explicit attributes. Follow the [v2 upgrade guide](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#authentication-selection).
 - `cato_network_range.mdns_reflector` and `cato_socket_site.native_range.mdns_reflector` no longer default to `false`. Set `false` explicitly on supported range types if that is the intended behavior; omit it for Routed network ranges, where the API rejects it. See [mDNS migration guidance](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#mdns-reflector-default).
 - `cato_socket_lan_firewall_rule` sub-rule placement now requires `AFTER_SUB_RULE`/`BEFORE_SUB_RULE` instead of `AFTER_RULE`/`BEFORE_RULE`. Rename the configured values while retaining the referenced sub-rule ID. See [sub-rule placement migration](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#socket-lan-firewall-sub-rule-placement).
 - `cato_tls_rule` no longer accepts `STREAMING_MEDIA` for `tls_inspect_category`. Review the intended match criteria and replace it with supported criteria; `SAFE_TO_INSPECT_DOMAINS` is not an equivalent category. See [TLS category migration](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#tls-inspection-category).
-
-### Deprecations
-- The 11 abbreviated bulk policy ordering types remain supported as deprecated aliases. Terraform 1.8 and later supports optional state migration to the full names using a `moved` block. See the [policy resource type migration guide](docs/guides/policy_resource_type_migration.md).
-- `cato_pa_section`, `cato_remote_port_fwd_rule`, and `cato_remote_port_fwd_section` are deprecated. Use `cato_private_access_section`, `cato_remote_port_forward_rule`, and `cato_remote_port_forward_section` in new configurations. Existing configurations retain their original schemas and behavior. To adopt the full names for existing resources, follow the guide's configuration and import steps.
+- Removed 14 abbreviated policy resource types that were available in prereleases. Rename the 11 bulk ordering types and use Terraform 1.8 or later to migrate them with `moved` blocks. Migrate the legacy Private Access section and Remote Port Forwarding rule and section by importing the existing Cato objects under their full names before upgrading. See [prerelease policy resource migration](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0#removed-prerelease-policy-resource-types).
 
 ### Features
 - Authenticate the Cato Terraform provider with a named catocli profile using `profile` or `CATO_PROFILE`, with optional `CATO_CREDENTIALS_FILE` selection. Each configured provider reports its resolved account ID.
@@ -29,6 +26,7 @@
 - Group membership supports `DEVICE` and `VLAN` references; TLS rules support ChromeOS platform matching and `TCP_UDP` custom services.
 
 ### Bug fixes
+- Retains the v1.4.1 fix for WAN Firewall rules that reference source user groups by name. Changing the configured name selects the new group.
 - Fixed `cato_wf_sub_policy.at` updates so placement changes move the existing scope rule. Policy rule and section content updates preserve ordering when placement is unchanged.
 - Reduced failed applies for Socket LAN rules through retries for concurrent policy revisions and transient reads, and improved mutation error reporting. LAN sub-policy operations recover from the specific unreadable mutation response and retain the tracked cleanup-rule identity across reorders.
 - Fixed inconsistent results when `cato_socket_site.site_location.state_code` or `cato_network_range.dhcp_settings` is omitted. Socket site interface configuration also handles the platform's high-availability destination-type promotion.
@@ -36,12 +34,26 @@
 - Reduced refresh drift for explicitly empty policy criteria, Socket Bypass settings, and omitted BGP passwords. Subnet updates no longer retain a stale translated prefix after resizing an identity-translated range.
 - Private App refresh only forgets a resource after a structured not-found response, preventing unrelated lookup errors from removing it from Terraform state.
 
+### Security
+- Retains Go 1.26.11, which addresses GO-2026-6859 and was already included in v1.4.1.
+
 ### Notes
 - Updated the Cato Terraform provider to the latest public API schema. This is typically a routine update; in rare cases, staying on an older provider version could cause API call errors due to schema mismatches. This release uses Cato Go SDK v1.2.0.
 - API availability depends on account features. Site Web Proxy rule creation has a reported upstream `transportProtocol` rejection. Socket Site and App Connector location resolution can fail intermittently for valid cities. These reported limitations are not claimed fixed by this release.
 - `cato_socket_lan_firewall_rule` can encounter an upstream serialization error when reading or publishing a Socket LAN policy containing a firewall sub-rule.
 - New policy rule and section resources publish changes automatically; sections must be empty before deletion. `cato_user` does not grant remote-access eligibility or manage directory users.
 - The 1.x maintenance scope has not yet been announced, and its end-of-support date has not yet been scheduled. See the [v2 upgrade guide](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/guide_upgrade_to_2_0_0) before upgrading.
+
+## 1.4.1 (2026-11-19)
+
+### Breaking changes
+- None. Existing valid Cato Terraform provider configurations, state, and import identifiers continue to work without migration.
+
+### Bug fixes
+- Fixed `cato_wf_rule` source user-group updates by name so changing the configured group selects the new group instead of retaining the previous group's ID.
+
+### Security
+- Updated the Cato Terraform provider's bundled Go runtime to 1.26.11 to address GO-2026-6859.
 
 ## 1.5.0-prerelease.1 (2026-11-04)
 

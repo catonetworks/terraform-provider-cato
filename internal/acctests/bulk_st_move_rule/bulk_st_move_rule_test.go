@@ -69,7 +69,7 @@ func TestAccBulkStMoveRule(t *testing.T) {
  section = { name = "` + sectionName + `" }
 }
 ` + ruleBlock("a", ruleA, true) + serialize(ruleBlock("b", ruleB, false), "cato_split_tunnel_rule") + `
-resource "cato_bulk_st_move_rule" "all" {
+resource "cato_bulk_split_tunnel_move_rule" "all" {
  depends_on = [cato_split_tunnel_rule.a, cato_split_tunnel_rule.b]
  section_data = { "` + sectionName + `" = { section_index = 1 } }
  rule_data = {

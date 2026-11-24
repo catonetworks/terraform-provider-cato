@@ -7,13 +7,13 @@ description: |-
 
 # Upgrade to Cato Terraform Provider 2.0.0
 
-Version 2.0.0 contains breaking changes to authentication selection, the mDNS reflector default, Socket LAN firewall sub-rule placement, and TLS inspection category validation. Review each applicable change before running Terraform against an existing account. New resources remain subject to the API features enabled for that account.
+Version 2.0.0 contains breaking changes to authentication selection, the mDNS reflector default, Socket LAN firewall sub-rule placement, and TLS inspection category validation. It also removes 14 policy resource types used in prereleases. Review each applicable change before running Terraform against an existing account. New resources remain subject to the API features enabled for that account.
 
 ## Before you upgrade
 
 1. Commit the current configuration and `.terraform.lock.hcl`. Back up state using your normal secure state-backup process; state can contain credentials and other sensitive values.
 2. Record the intended account ID for every configured Cato provider, including aliases, and check the environment used by local shells and CI for `CATO_PROFILE`.
-3. Apply the configuration changes below in a controlled branch and test in a non-production environment.
+3. Apply the configuration changes below in a controlled branch and test in a non-production environment. If a prerelease configuration uses an abbreviated Private Access or Remote Port Forwarding type, complete its import migration before changing the version constraint.
 4. Update the root module's version constraint:
 
 ```hcl
@@ -86,17 +86,22 @@ When `cato_group.members` is configured, refresh tracks those declared members r
 
 Review which resource owns each membership. If Terraform should manage an existing member through `cato_group`, declare it explicitly there. If a separate `cato_group_members` resource owns it, retain that ownership rather than duplicating it. Review the plan before updating a group whose previous state included members that were not declared in configuration.
 
-## State and prerelease users
+## Removed prerelease policy resource types
 
-No blanket state deletion, re-import, or resource replacement is required for these configuration changes. Keep existing resource IDs and import identifiers. Investigate any unexpected replacement before applying; do not remove state to work around a migration error.
+If you used any of the 14 abbreviated policy resource types in a prerelease, update your configuration and any affected modules to use the [full-name replacements](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/policy_resource_type_migration).
 
-Users of `1.5.0-prerelease.*` should also review the final resource schemas and examples. Remote Port Forward resources exist under both `cato_remote_port_forward_rule`/`cato_remote_port_forward_section` and `cato_remote_port_fwd_rule`/`cato_remote_port_fwd_section`; Private Access sections exist as both `cato_private_access_section` and `cato_pa_section`. Keep the resource type already managing each object and do not declare the same remote object under both names. Subscription-group membership collections use lists in the final schema; preserve intended order and review any conversion from prerelease state during planning.
+- For the 11 bulk ordering types, use Terraform 1.8 or later, change the resource types and their references, and add a `moved` block for each affected address. Plan with v2.0.0 and verify Terraform reports the address moves without infrastructure changes.
+- For `cato_pa_section`, `cato_remote_port_fwd_rule`, and `cato_remote_port_fwd_section`, first pin the provider to `= 2.0.0-prerelease.2`, which supports both names. Record the Cato IDs and follow the [configuration and import steps](https://registry.terraform.io/providers/catonetworks/cato/latest/docs/guides/policy_resource_type_migration#private-access-and-remote-port-forwarding) to bring the same objects under the full-name types. Complete the state migration before upgrading to v2.0.0.
+
+## Other state considerations
+
+Keep existing resource IDs and investigate any unexpected replacement before applying. Users of `1.5.0-prerelease.*` should also review the final resource schemas and examples. Subscription-group membership collections use lists in the final schema. Preserve the intended order and review the plan for changes to membership.
 
 ## Roll back
 
 Before applying with v2, you can abandon the upgrade branch and restore the previous configuration and lock file. Run `terraform init -lockfile=readonly` to reinstall the locked provider and review the plan.
 
-After applying with v2, do not assume that v1 can read all resulting state. Resources introduced in v2 have no v1.4.0 implementation, and prerelease schemas can differ. Plan rollback using the saved configuration, state backup, and an inventory of remote changes. Do not overwrite current state with an older snapshot without reconciling infrastructure changes made since that snapshot.
+After applying with v2, do not assume that v1 can read all resulting state. Resources introduced in v2 have no v1.4.1 implementation, and prerelease schemas can differ. Plan rollback using the saved configuration, state backup, and an inventory of remote changes. Do not overwrite current state with an older snapshot without reconciling infrastructure changes made since that snapshot.
 
 ## 1.x maintenance status
 

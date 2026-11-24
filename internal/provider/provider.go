@@ -98,8 +98,6 @@ import (
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/parulebulk"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/privateaccess/pasection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfpolicy"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfrule"
-	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/remoteportfwd/rpfsection"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiapolicy"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiarule"
 	"github.com/catonetworks/terraform-provider-cato/internal/provider/policy/sdpstaticip/ssiasection"
@@ -741,14 +739,9 @@ func (p *catoProvider) Resources(_ context.Context) []func() resource.Resource {
 
 		sbrule.NewResource,
 		sbsection.NewResource,
-		// Keep the deprecated section and rule types for existing configurations.
-		// Their schemas and publication behavior differ from the full-name types.
 		pasection.NewResource,
-		pasection.NewPrivateAccessSectionResource,
 		secrpfrule.NewResource,
 		secrpfsection.NewResource,
-		rpfrule.NewRemotePortFwdRuleResource,
-		rpfsection.NewRemotePortFwdSectionResource,
 		alwaysonindex.NewAlwaysOnRuleBulkResource,
 		alwaysonpolicy.NewAlwaysOnPolicyResource,
 		alwaysonsection.NewAlwaysOnSectionResource,
