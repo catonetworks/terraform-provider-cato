@@ -512,7 +512,7 @@ func TestInternetFwRuleUpdate(t *testing.T) {
 		IfwClient: mockClient,
 	}
 	req := resource.UpdateRequest{
-		Plan:  newInternetFwRulePlan(ctx, t, "rule-123"),
+		Plan:  newInternetFwRulePlanAt(ctx, t, "rule-123", "FIRST_IN_POLICY"),
 		State: resourceState,
 	}
 	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
@@ -524,15 +524,14 @@ func TestInternetFwRuleUpdate(t *testing.T) {
 	}
 }
 
+// An in-place update whose `at` is unchanged must not move the rule: `at` is a
+// create-time hint, and moving on every update threw edited rules to the end
+// of the policy, breaking the order kept by the bulk move resources.
 func TestInternetFwRuleUpdateSuccess(t *testing.T) {
 	ctx := context.Background()
 	mockClient := mocks.NewInternetFirewallPolicyClient(t)
 	resourceState := newInternetFwRuleStateWithID(ctx, t)
 
-	mockClient.EXPECT().
-		PolicyInternetFirewallMoveRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
-		Return(successfulMoveRuleResponse("rule-123"), nil).
-		Once()
 	mockClient.EXPECT().
 		PolicyInternetFirewallUpdateRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
 		Return(SuccessfulUpdateRuleResponse("rule-123"), nil).
@@ -612,6 +611,60 @@ func newInternetFwRulePlan(ctx context.Context, t *testing.T, ruleID string) tfs
 	}
 
 	return plan
+}
+
+func newInternetFwRulePlanAt(ctx context.Context, t *testing.T, ruleID, position string) tfsdk.Plan {
+	t.Helper()
+
+	model := NewMinimalInternetFwRuleModel(ruleID)
+	model.At = types.ObjectValueMust(policyrule.PositionAttrTypes, map[string]attr.Value{
+		"position": types.StringValue(position),
+		"ref":      types.StringNull(),
+	})
+	plan := tfsdk.Plan{Schema: GetInternetFwRuleSchema(ctx, t)}
+	if diags := plan.Set(ctx, model); diags.HasError() {
+		t.Fatalf("unexpected plan diagnostics: %+v", diags)
+	}
+
+	return plan
+}
+
+func TestInternetFwRuleUpdateMovesWhenAtChanges(t *testing.T) {
+	ctx := context.Background()
+	mockClient := mocks.NewInternetFirewallPolicyClient(t)
+
+	mockClient.EXPECT().
+		PolicyInternetFirewallMoveRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
+		Return(successfulMoveRuleResponse("rule-123"), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewallUpdateRule(mock.Anything, mock.Anything, mock.Anything, "account-123").
+		Return(SuccessfulUpdateRuleResponse("rule-123"), nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, "account-123").
+		Return(nil, nil).
+		Once()
+	mockClient.EXPECT().
+		PolicyInternetFirewall(mock.Anything, mock.Anything, "account-123").
+		Return(InternetFirewallPolicyResponseWithRule(MinimalAPIRule("test-ifw-rule", 12)), nil).
+		Once()
+
+	r := &InternetFwRuleResource{
+		Client:    &catoclient.Service{AccountId: "account-123"},
+		IfwClient: mockClient,
+	}
+	req := resource.UpdateRequest{
+		Plan:  newInternetFwRulePlanAt(ctx, t, "rule-123", "FIRST_IN_POLICY"),
+		State: newInternetFwRuleStateWithID(ctx, t),
+	}
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: GetInternetFwRuleSchema(ctx, t)}}
+
+	r.Update(ctx, req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %+v", resp.Diagnostics)
+	}
 }
 
 func newInternetFwRuleStateWithID(ctx context.Context, t *testing.T) tfsdk.State {

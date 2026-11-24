@@ -339,25 +339,35 @@ func (r *WanFwRuleResource) Update(ctx context.Context, req resource.UpdateReque
 	inputMoveRule.ID = *ruleInput.ID.ValueStringPointer()
 	input.Update.ID = *ruleInput.ID.ValueStringPointer()
 
-	// move rule
-	moveRule, err := r.resourceAPI().PolicyWanFirewallMoveRule(ctx, inputMoveRule, r.client.AccountId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API PolicyWanFirewallMoveRule error",
-			err.Error(),
-		)
+	// Move the rule only when its `at` directive actually changed. `at` is a
+	// create-time positioning hint: re-applying it on every in-place update
+	// threw an edited rule to the end of its section or of the policy, and
+	// broke the order kept by the bulk move resources (which ignore `at`).
+	var state Rule
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// check for errors
-	if moveRule.Policy.WanFirewall.MoveRule.Status != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range moveRule.Policy.WanFirewall.MoveRule.GetErrors() {
+	if !plan.At.Equal(state.At) {
+		moveRule, err := r.resourceAPI().PolicyWanFirewallMoveRule(ctx, inputMoveRule, r.client.AccountId)
+		if err != nil {
 			resp.Diagnostics.AddError(
-				"API Error Moving Rule Resource",
-				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
+				"Catov2 API PolicyWanFirewallMoveRule error",
+				err.Error(),
 			)
+			return
 		}
-		return
+
+		// check for errors
+		if moveRule.Policy.WanFirewall.MoveRule.Status != cato_models.PolicyMutationStatusSuccess {
+			for _, item := range moveRule.Policy.WanFirewall.MoveRule.GetErrors() {
+				resp.Diagnostics.AddError(
+					"API Error Moving Rule Resource",
+					fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
+				)
+			}
+			return
+		}
 	}
 
 	tflog.Warn(ctx, "TFLOG_WARN_WAN_input.update", map[string]interface{}{
