@@ -158,7 +158,7 @@ func schemaResourceRuleDestination() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Application"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"custom_app": schema.SetNestedAttribute{
@@ -168,7 +168,7 @@ func schemaResourceRuleDestination() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom app"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"domain": schema.SetAttribute{
@@ -188,7 +188,7 @@ func schemaResourceRuleDestination() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
@@ -261,7 +261,7 @@ func schemaResourceRuleExceptionDestination() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Application"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"custom_app": schema.SetNestedAttribute{
@@ -271,7 +271,7 @@ func schemaResourceRuleExceptionDestination() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Custom app"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"domain": schema.SetAttribute{
@@ -291,7 +291,7 @@ func schemaResourceRuleExceptionDestination() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
@@ -394,7 +394,7 @@ func schemaResourceRuleExceptionSite() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"site": schema.SetNestedAttribute{
@@ -404,7 +404,7 @@ func schemaResourceRuleExceptionSite() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 	}
@@ -419,7 +419,7 @@ func schemaResourceRuleExceptionSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Floating subnet"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"global_ip_range": schema.SetNestedAttribute{
@@ -429,7 +429,7 @@ func schemaResourceRuleExceptionSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"group": schema.SetNestedAttribute{
@@ -439,7 +439,7 @@ func schemaResourceRuleExceptionSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"host": schema.SetNestedAttribute{
@@ -449,7 +449,7 @@ func schemaResourceRuleExceptionSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Host"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
@@ -469,7 +469,7 @@ func schemaResourceRuleExceptionSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Network interface"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"site_network_subnet": schema.SetNestedAttribute{
@@ -479,7 +479,7 @@ func schemaResourceRuleExceptionSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site network subnet"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"subnet": schema.SetAttribute{
@@ -578,7 +578,7 @@ func schemaResourceRuleSite() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"site": schema.SetNestedAttribute{
@@ -588,7 +588,7 @@ func schemaResourceRuleSite() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 	}
@@ -603,7 +603,7 @@ func schemaResourceRuleSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Floating subnet"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"global_ip_range": schema.SetNestedAttribute{
@@ -613,7 +613,7 @@ func schemaResourceRuleSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Global ip range"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"group": schema.SetNestedAttribute{
@@ -623,7 +623,7 @@ func schemaResourceRuleSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Group"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"host": schema.SetNestedAttribute{
@@ -633,7 +633,7 @@ func schemaResourceRuleSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Host"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"ip": schema.SetAttribute{
@@ -653,7 +653,7 @@ func schemaResourceRuleSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Network interface"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"site_network_subnet": schema.SetNestedAttribute{
@@ -663,7 +663,7 @@ func schemaResourceRuleSource() map[string]schema.Attribute {
 			// config does not show the computed id as a change on every plan
 			PlanModifiers: []planmodifier.Set{planmodifiers.IDNameSetPlanModifier()},
 			NestedObject: schema.NestedAttributeObject{Attributes: idname.SchemaNameID("Site network subnet"),
-				PlanModifiers: []planmodifier.Object{planmodifiers.IDNamePlanModifier()},
+				PlanModifiers: []planmodifier.Object{planmodifiers.IDNameSetMemberPlanModifier()},
 			},
 		},
 		"subnet": schema.SetAttribute{
