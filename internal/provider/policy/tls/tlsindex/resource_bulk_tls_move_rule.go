@@ -3,6 +3,7 @@ package tlsindex
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -370,6 +371,35 @@ func (r *tlsRulesIndexResource) moveTLSRulesAndSections(
 					))
 					return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 				}
+			}
+		}
+
+		// Rules outside any section (a flat policy, or rules above the first
+		// section) are never touched by the per-section loop above, so a flat
+		// TLS policy kept whatever order its rules happened to be created in.
+		// Place them at the top of the policy in index order: move each one to
+		// FIRST_IN_POLICY, highest index first.
+		sectionless := make([]RulesRuleDataIndex, 0)
+		for _, ruleItemFromPlan := range ruleListFromPlan {
+			if ruleItemFromPlan.SectionName == "" {
+				sectionless = append(sectionless, ruleItemFromPlan)
+			}
+		}
+		sort.SliceStable(sectionless, func(i, j int) bool {
+			return sectionless[i].IndexInSection > sectionless[j].IndexInSection
+		})
+		for _, ruleItem := range sectionless {
+			ruleID, ok := ruleNameIDMap[ruleItem.RuleName]
+			if !ok {
+				err := fmt.Errorf("rule %q from rule_data not found in the policy", ruleItem.RuleName)
+				diags = append(diags, diag.NewErrorDiagnostic("TLS bulk move", err.Error()))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
+			}
+			pos := cato_models.PolicyRulePositionEnumFirstInPolicy
+			moveIn := cato_models.PolicyMoveRuleInput{ID: ruleID, To: &cato_models.PolicyRulePositionInput{Position: &pos}}
+			if _, err := r.resourceAPI().PolicyTLSInspectMoveRule(ctx, moveIn, r.client.AccountId); err != nil {
+				diags = append(diags, diag.NewErrorDiagnostic("Catov2 API PolicyTLSInspectMoveRule error", err.Error()))
+				return basetypes.MapValue{}, basetypes.MapValue{}, diags, err
 			}
 		}
 

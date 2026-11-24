@@ -170,7 +170,14 @@ func (r *sbRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 			return readErr
 		}
 
+		// Rules with no section (a flat policy) cannot be moved relative to a
+		// section; collect them and place them at the top afterwards.
+		var sectionless []sharedpolicy.FlatMoveOp
 		for _, op := range sharedpolicy.BuildFlatMoveSequence(sectionIndexes, ruleRows) {
+			if !op.IsSection && op.SectionName == "" {
+				sectionless = append(sectionless, op)
+				continue
+			}
 			if op.IsSection {
 				sectionID, ok := sectionIDByName[op.Name]
 				if !ok {
@@ -206,6 +213,27 @@ func (r *sbRulesIndexResource) applyOrderingAndPublish(ctx context.Context, plan
 					Position: &pos,
 					Ref:      &sectionID,
 				},
+			}, r.client.AccountId)
+			if err != nil {
+				return err
+			}
+			mr := moveResp.GetPolicy().GetSocketBypass().GetMoveRule()
+			if err := sharedpolicy.MutationResult(mr.GetStatus(), mr.GetErrors()); err != nil {
+				return err
+			}
+		}
+		// Sequence order is ascending index, so move to FIRST_IN_POLICY in
+		// reverse: the lowest index ends up first.
+		for i := len(sectionless) - 1; i >= 0; i-- {
+			op := sectionless[i]
+			ruleID, ok := ruleIDByName[op.Name]
+			if !ok {
+				return fmt.Errorf("rule %q from rule_data not found in the policy", op.Name)
+			}
+			pos := cato_models.PolicyRulePositionEnumFirstInPolicy
+			moveResp, err := r.resourceAPI().PolicySocketBypassMoveRule(ctx, cato_models.PolicyMoveRuleInput{
+				ID: ruleID,
+				To: &cato_models.PolicyRulePositionInput{Position: &pos},
 			}, r.client.AccountId)
 			if err != nil {
 				return err
