@@ -11,9 +11,7 @@ import (
 
 func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reorders Internet Firewall rules and sections. " +
-			"If you are upgrading from a version that exposed `rule_data.enabled`, remove it from your bulk rule configuration. " +
-			"Use `cato_if_rule.rule.enabled` to manage whether a rule is enabled.",
+		MarkdownDescription: "Reorders Internet Firewall rules and sections.",
 		Attributes: map[string]schema.Attribute{
 			"section_to_start_after_id": schema.StringAttribute{
 				Description: "IFW rule id",
@@ -55,6 +53,14 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Optional:    true,
 							Computed:    true,
 						},
+						"enabled": schema.BoolAttribute{
+							MarkdownDescription: "Use `cato_if_rule.rule.enabled` to manage and read rule enablement. " +
+								"When this field is omitted, it reflects the rule's enablement in Cato. " +
+								"An explicit value is retained in Terraform state for compatibility. This resource only changes rule order.",
+							DeprecationMessage: "Use cato_if_rule.rule.enabled to manage and read rule enablement.",
+							Optional:           true,
+							Computed:           true,
+						},
 					},
 				},
 			},
@@ -95,6 +101,7 @@ var IfwRuleIndexResourceAttrTypes = map[string]attr.Type{
 	"section_name":     types.StringType,
 	"rule_name":        types.StringType,
 	"description":      types.StringType,
+	"enabled":          types.BoolType,
 }
 
 var IfwSectionIndexResourceObjectTypes = types.ObjectType{AttrTypes: IfwSectionIndexResourceAttrTypes}

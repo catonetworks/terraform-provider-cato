@@ -44,7 +44,7 @@ func TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleA, ruleB),
 					resource.TestCheckResourceAttr("cato_if_rule.b", "rule.enabled", "false"),
-					resource.TestCheckNoResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled"),
+					resource.TestCheckResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled", "true"),
 				),
 			},
 			{
@@ -52,7 +52,7 @@ func TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleB, ruleA),
 					resource.TestCheckResourceAttr("cato_if_rule.b", "rule.enabled", "false"),
-					resource.TestCheckNoResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled"),
+					resource.TestCheckResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled", "false"),
 				),
 			},
 		},
@@ -126,6 +126,7 @@ var ifTwoRuleReorderTFs = []string{
 				rule_name        = cato_if_rule.b.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 2
+				enabled          = true # Legacy value deliberately differs from the disabled API rule.
 			}
 		}
 	}

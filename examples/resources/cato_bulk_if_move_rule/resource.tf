@@ -77,7 +77,8 @@ resource "cato_if_rule" "all_if_rules" {
 
 resource "cato_bulk_if_move_rule" "all_if_rules" {
   depends_on = [cato_if_section.all_if_sections, cato_if_rule.all_if_rules]
-  # Configure rule enablement in cato_if_rule above.
+  # Configure rule enablement in cato_if_rule above and omit the deprecated
+  # enabled field from rule_data.
   rule_data    = local.rule_data
   section_data = local.section_data
 }

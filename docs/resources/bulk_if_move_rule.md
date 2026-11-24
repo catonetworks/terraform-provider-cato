@@ -3,12 +3,12 @@
 page_title: "cato_bulk_if_move_rule Resource - terraform-provider-cato"
 subcategory: ""
 description: |-
-  Reorders Internet Firewall rules and sections. If you are upgrading from a version that exposed rule_data.enabled, remove it from your bulk rule configuration. Use cato_if_rule.rule.enabled to manage whether a rule is enabled.
+  Reorders Internet Firewall rules and sections.
 ---
 
 # cato_bulk_if_move_rule (Resource)
 
-Reorders Internet Firewall rules and sections. If you are upgrading from a version that exposed `rule_data.enabled`, remove it from your bulk rule configuration. Use `cato_if_rule.rule.enabled` to manage whether a rule is enabled.
+Reorders Internet Firewall rules and sections.
 
 ## Example Usage
 
@@ -92,7 +92,8 @@ resource "cato_if_rule" "all_if_rules" {
 
 resource "cato_bulk_if_move_rule" "all_if_rules" {
   depends_on = [cato_if_section.all_if_sections, cato_if_rule.all_if_rules]
-  # Configure rule enablement in cato_if_rule above.
+  # Configure rule enablement in cato_if_rule above and omit the deprecated
+  # enabled field from rule_data.
   rule_data    = local.rule_data
   section_data = local.section_data
 }
@@ -121,6 +122,7 @@ output "rule_data" {
 Optional:
 
 - `description` (String) IFW rule description
+- `enabled` (Boolean, Deprecated) Use `cato_if_rule.rule.enabled` to manage and read rule enablement. When this field is omitted, it reflects the rule's enablement in Cato. An explicit value is retained in Terraform state for compatibility. This resource only changes rule order.
 - `id` (String) IFW rule id
 - `index_in_section` (Number) Index value remapped per section
 - `rule_name` (String) IFW rule name housing rule

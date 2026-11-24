@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/require"
 )
@@ -76,6 +77,7 @@ func TestBuildIfwRuleIndexStateDataUsesAPIComputedFields(t *testing.T) {
 		rule,
 		map[string]string{"Rule A": "rule-id-a"},
 		map[string]string{"Rule A": "api description"},
+		map[string]bool{"Rule A": true},
 	)
 	require.False(t, diags.HasError())
 
@@ -85,12 +87,28 @@ func TestBuildIfwRuleIndexStateDataUsesAPIComputedFields(t *testing.T) {
 
 	require.Equal(t, "rule-id-a", got.ID.ValueString())
 	require.Equal(t, "api description", got.Description.ValueString())
+	require.Equal(t, types.BoolValue(true), got.Enabled)
 	require.Equal(t, rule.IndexInSection, got.IndexInSection.ValueInt64())
 	require.Equal(t, rule.SectionName, got.SectionName.ValueString())
 	require.Equal(t, rule.RuleName, got.RuleName.ValueString())
 }
 
-func TestIfwRulesIndexSchemaOmitsEnabled(t *testing.T) {
+func TestBuildIfwRuleIndexStateDataPreservesKnownEnabled(t *testing.T) {
+	t.Parallel()
+
+	for _, planned := range []bool{false, true} {
+		obj, diags := buildIfwRuleIndexStateData(
+			IfwRulesRuleDataIndex{RuleName: "Rule A", Enabled: types.BoolValue(planned)},
+			nil,
+			nil,
+			map[string]bool{"Rule A": !planned},
+		)
+		require.False(t, diags.HasError())
+		require.Equal(t, types.BoolValue(planned), obj.Attributes()["enabled"])
+	}
+}
+
+func TestIfwRulesIndexSchemaDeprecatesEnabled(t *testing.T) {
 	t.Parallel()
 
 	var resp resource.SchemaResponse
@@ -104,5 +122,9 @@ func TestIfwRulesIndexSchemaOmitsEnabled(t *testing.T) {
 	ruleData, ok := resp.Schema.Attributes["rule_data"].(schema.MapNestedAttribute)
 	require.True(t, ok)
 
-	require.NotContains(t, ruleData.NestedObject.Attributes, "enabled")
+	enabled, ok := ruleData.NestedObject.Attributes["enabled"].(schema.BoolAttribute)
+	require.True(t, ok)
+	require.True(t, enabled.Optional)
+	require.True(t, enabled.Computed)
+	require.Contains(t, enabled.DeprecationMessage, "cato_if_rule.rule.enabled")
 }

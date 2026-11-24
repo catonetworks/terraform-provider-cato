@@ -23,6 +23,7 @@ type IfwRulesRuleDataIndex struct {
 	SectionName    string
 	RuleName       string
 	Description    string
+	Enabled        types.Bool
 }
 
 type IfwRulesSectionItemIndex struct {
@@ -37,7 +38,20 @@ type IfwRulesRuleItemIndex struct {
 	SectionName    types.String `tfsdk:"section_name"`
 	RuleName       types.String `tfsdk:"rule_name"`
 	Description    types.String `tfsdk:"description"`
+	Enabled        types.Bool   `tfsdk:"enabled"`
 }
+
+// type IfwRulesIndexRule struct {
+// 	Id             types.String `tfsdk:"id"`
+// 	Index          types.Int64  `tfsdk:"index"`
+// 	IndexInSection types.Int64  `tfsdk:"index_in_section"`
+// 	SectionName    types.String `tfsdk:"section_name"`
+// 	SectionId      types.String `tfsdk:"section_id"`
+// 	Description    types.String `tfsdk:"description"`
+// 	Enabled        types.Bool   `tfsdk:"enabled"`
+// 	Name           types.String `tfsdk:"name"`
+// 	Properties     types.List   `tfsdk:"properties"`
+// }
 
 type ifwSectionMove struct {
 	section   IfwRulesSectionDataIndex

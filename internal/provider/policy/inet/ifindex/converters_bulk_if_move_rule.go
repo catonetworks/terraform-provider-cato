@@ -58,7 +58,13 @@ func buildIfwRuleIndexStateData(
 	ruleFromPlan IfwRulesRuleDataIndex,
 	ruleNameIDMap map[string]string,
 	ruleNameDescriptionMap map[string]string,
+	ruleNameEnabledMap map[string]bool,
 ) (basetypes.ObjectValue, diag.Diagnostics) {
+	enabled := ruleFromPlan.Enabled
+	if enabled.IsNull() || enabled.IsUnknown() {
+		enabled = types.BoolValue(ruleNameEnabledMap[ruleFromPlan.RuleName])
+	}
+
 	return types.ObjectValue(
 		IfwRuleIndexResourceAttrTypes,
 		map[string]attr.Value{
@@ -67,6 +73,7 @@ func buildIfwRuleIndexStateData(
 			"section_name":     types.StringValue(ruleFromPlan.SectionName),
 			"rule_name":        types.StringValue(ruleFromPlan.RuleName),
 			"description":      types.StringValue(ruleNameDescriptionMap[ruleFromPlan.RuleName]),
+			"enabled":          enabled,
 		},
 	)
 }
@@ -80,12 +87,15 @@ func convertReadState(
 	ruleIDMap map[string]string,
 	ruleDescriptionMap map[string]string,
 	ruleIndexAPIData *cato_go_sdk.IfwRulesIndexPolicy,
+	configuredEnabled map[string]struct{},
 ) {
 	diags := *priorDiags
 	defer func() { *priorDiags = diags }()
+	ruleEnabledMap := make(map[string]bool)
 	for _, v := range ruleIndexAPIData.Policy.InternetFirewall.Policy.Rules {
 		ruleIDMap[v.Rule.Name] = v.Rule.ID
 		ruleDescriptionMap[v.Rule.Name] = v.Rule.Description
+		ruleEnabledMap[v.Rule.Name] = v.Rule.Enabled
 	}
 
 	// Update only computed fields in existing state, preserving planned configuration
@@ -127,6 +137,11 @@ func convertReadState(
 			var existingRule IfwRulesRuleItemIndex
 			diags = append(diags, ruleObject.As(ctx, &existingRule, basetypes.ObjectAsOptions{})...)
 
+			enabled := existingRule.Enabled
+			if _, configured := configuredEnabled[ruleName]; !configured {
+				enabled = types.BoolValue(ruleEnabledMap[ruleName])
+			}
+
 			// Preserve planned values, only update computed fields
 			ruleIndexStateData, ruleDiags := types.ObjectValue(
 				IfwRuleIndexResourceAttrTypes,
@@ -136,6 +151,7 @@ func convertReadState(
 					"section_name":     existingRule.SectionName,                        // Preserve planned value
 					"rule_name":        existingRule.RuleName,                           // Preserve planned value
 					"description":      types.StringValue(ruleDescriptionMap[ruleName]), // Update computed value
+					"enabled":          enabled,
 				},
 			)
 			diags = append(diags, ruleDiags...)
@@ -250,6 +266,7 @@ func convertMoveIfwRulesAndSectionsValues5(
 			RuleName:       planSourceRuleIndex.RuleName.ValueString(),
 			SectionName:    planSourceRuleIndex.SectionName.ValueString(),
 			Description:    planSourceRuleIndex.Description.ValueString(),
+			Enabled:        planSourceRuleIndex.Enabled,
 		}
 		resultRuleListFromPlan = append(resultRuleListFromPlan, rulenDataTmp)
 	}
