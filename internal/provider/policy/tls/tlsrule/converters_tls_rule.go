@@ -684,8 +684,64 @@ func hydrateTLSRuleAPI(ctx context.Context, plan InspectionRule) (hydrateTLSAPIT
 				ruleApplicationUpdateInput.Country = make([]*cato_models.CountryRefInput, 0)
 			}
 
-			// TODO: Add custom_service, custom_service_ip, and tls_inspect_category if needed
-			// These fields are in the schema but may require additional implementation
+			// setting application.custom_service (schema: single object, API: list).
+			// Without this the rule was created with no custom service at all,
+			// silently widening what it matches, and Read masked the gap by
+			// copying the planned value back into state.
+			if !applicationInput.CustomService.IsUnknown() && !applicationInput.CustomService.IsNull() {
+				var itemCustomService PolicyPolicyTLSInspectPolicyRulesRuleApplicationCustomService
+				diags = append(diags, applicationInput.CustomService.As(ctx, &itemCustomService, basetypes.ObjectAsOptions{})...)
+
+				customInput := &cato_models.CustomServiceInput{
+					Protocol: cato_models.IPProtocol(itemCustomService.Protocol.ValueString()),
+				}
+				if !itemCustomService.Port.IsUnknown() && !itemCustomService.Port.IsNull() {
+					elementsPort := make([]types.String, 0, len(itemCustomService.Port.Elements()))
+					diags = append(diags, itemCustomService.Port.ElementsAs(ctx, &elementsPort, false)...)
+					for _, p := range elementsPort {
+						customInput.Port = append(customInput.Port, cato_scalars.Port(p.ValueString()))
+					}
+				}
+				if !itemCustomService.PortRange.IsUnknown() && !itemCustomService.PortRange.IsNull() {
+					var itemPortRange iprange.Range // same {from, to} string shape as portrange.PortRange
+					diags = append(diags, itemCustomService.PortRange.As(ctx, &itemPortRange, basetypes.ObjectAsOptions{})...)
+					customInput.PortRange = &cato_models.PortRangeInput{
+						From: cato_scalars.Port(itemPortRange.From.ValueString()),
+						To:   cato_scalars.Port(itemPortRange.To.ValueString()),
+					}
+				}
+				ruleApplicationInput.CustomService = []*cato_models.CustomServiceInput{customInput}
+				ruleApplicationUpdateInput.CustomService = ruleApplicationInput.CustomService
+			} else {
+				ruleApplicationUpdateInput.CustomService = make([]*cato_models.CustomServiceInput, 0)
+			}
+
+			// setting application.custom_service_ip (schema: single object, API: list)
+			if !applicationInput.CustomServiceIP.IsUnknown() && !applicationInput.CustomServiceIP.IsNull() {
+				var itemCustomServiceIP PolicyPolicyTLSInspectPolicyRulesRuleApplicationCustomServiceIP
+				diags = append(diags, applicationInput.CustomServiceIP.As(ctx, &itemCustomServiceIP, basetypes.ObjectAsOptions{})...)
+
+				customIPInput := &cato_models.CustomServiceIPInput{
+					Name: itemCustomServiceIP.Name.ValueString(),
+				}
+				if !itemCustomServiceIP.IP.IsUnknown() && !itemCustomServiceIP.IP.IsNull() {
+					customIPInput.IP = itemCustomServiceIP.IP.ValueStringPointer()
+				}
+				if !itemCustomServiceIP.IPRange.IsUnknown() && !itemCustomServiceIP.IPRange.IsNull() {
+					var itemIPRange iprange.Range
+					diags = append(diags, itemCustomServiceIP.IPRange.As(ctx, &itemIPRange, basetypes.ObjectAsOptions{})...)
+					customIPInput.IPRange = &cato_models.IPAddressRangeInput{
+						From: itemIPRange.From.ValueString(),
+						To:   itemIPRange.To.ValueString(),
+					}
+				}
+				ruleApplicationInput.CustomServiceIP = []*cato_models.CustomServiceIPInput{customIPInput}
+				ruleApplicationUpdateInput.CustomServiceIP = ruleApplicationInput.CustomServiceIP
+			} else {
+				ruleApplicationUpdateInput.CustomServiceIP = make([]*cato_models.CustomServiceIPInput, 0)
+			}
+
+			// TODO: tls_inspect_category is in the schema but not sent yet.
 
 			rootAddRule.Application = ruleApplicationInput
 			rootUpdateRule.Application = ruleApplicationUpdateInput
