@@ -2,6 +2,7 @@ package ifindex
 
 import (
 	"context"
+	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -10,6 +11,44 @@ import (
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
+
+func resolveBulkRuleEnablement(prior, plan types.Map, index *cato_go_sdk.IfwRulesIndexPolicy) (types.Map, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if index == nil || index.Policy == nil || index.Policy.InternetFirewall == nil {
+		diags.AddError("Could not read Internet Firewall rule enablement", "Cato returned an empty Internet Firewall policy.")
+		return prior, diags
+	}
+
+	enabledByName := make(map[string]bool)
+	for _, item := range index.Policy.InternetFirewall.Policy.Rules {
+		enabledByName[item.Rule.Name] = item.Rule.Enabled
+	}
+
+	rules := prior.Elements()
+	for key, planned := range plan.Elements() {
+		if planned.IsNull() || planned.IsUnknown() {
+			continue
+		}
+		enabled := planned.(types.Object).Attributes()["enabled"]
+		attrs := rules[key].(types.Object).Attributes()
+		if enabled.IsUnknown() {
+			name := attrs["rule_name"].(types.String).ValueString()
+			apiEnabled, ok := enabledByName[name]
+			if !ok {
+				diags.AddError("Internet firewall rule not found", fmt.Sprintf("Could not read enablement for rule %q.", name))
+				return prior, diags
+			}
+			enabled = types.BoolValue(apiEnabled)
+		}
+		attrs["enabled"] = enabled
+		rule, ruleDiags := types.ObjectValue(IfwRuleIndexResourceAttrTypes, attrs)
+		diags.Append(ruleDiags...)
+		rules[key] = rule
+	}
+	state, mapDiags := types.MapValue(IfwRuleIndexResourceObjectTypes, rules)
+	diags.Append(mapDiags...)
+	return state, diags
+}
 
 func buildIfwSectionMoves(
 	sections []IfwRulesSectionDataIndex,

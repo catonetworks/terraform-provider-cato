@@ -122,7 +122,7 @@ output "rule_data" {
 Optional:
 
 - `description` (String) IFW rule description
-- `enabled` (Boolean, Deprecated) Use `cato_if_rule.rule.enabled` to manage and read rule enablement. When this field is omitted, it reflects the rule's enablement in Cato. An explicit value is retained in Terraform state for compatibility. This resource only changes rule order.
+- `enabled` (Boolean, Deprecated) Use `cato_if_rule.rule.enabled` to manage and read rule enablement. When this field is omitted, it reflects the rule's enablement in Cato. An explicit value is retained in Terraform state for compatibility. Removing this field by itself refreshes its value without reordering or publishing the policy.
 - `id` (String) IFW rule id
 - `index_in_section` (Number) Index value remapped per section
 - `rule_name` (String) IFW rule name housing rule

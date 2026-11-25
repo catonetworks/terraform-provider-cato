@@ -41,6 +41,67 @@ func (r *ifwRulesIndexResource) ModifyPlan(ctx context.Context, req resource.Mod
 	}
 }
 
+func legacyEnablementOnlyUpdate(prior, plan, config IfwRulesIndex) bool {
+	if !prior.SectionToStartAfterID.Equal(plan.SectionToStartAfterID) {
+		return false
+	}
+	sameSections, _ := compareBulkRows(prior.SectionData, plan.SectionData, config.SectionData)
+	sameRules, enabledChanged := compareBulkRows(prior.RuleData, plan.RuleData, config.RuleData)
+	return sameSections && sameRules && enabledChanged
+}
+
+// compareBulkRows ignores enablement changes and unknown values that Terraform
+// introduced for omitted computed fields. A configured unknown may affect ordering.
+func compareBulkRows(prior, plan, config types.Map) (match, enabledChanged bool) {
+	if prior.Equal(plan) {
+		return true, false
+	}
+	if prior.IsUnknown() || plan.IsUnknown() {
+		return false, false
+	}
+	priorRows, planRows, configRows := prior.Elements(), plan.Elements(), config.Elements()
+	if len(priorRows) != len(planRows) {
+		return false, false
+	}
+	for key, planValue := range planRows {
+		priorRow, ok := priorRows[key].(types.Object)
+		if !ok {
+			return false, false
+		}
+		if planValue.Equal(priorRow) {
+			continue
+		}
+		if planValue.IsUnknown() || planValue.IsNull() || priorRow.IsUnknown() || priorRow.IsNull() {
+			return false, false
+		}
+		planRow := planValue.(types.Object)
+		configRow, _ := configRows[key].(types.Object)
+		sameRow, changed := compareBulkRow(priorRow, planRow, configRow)
+		if !sameRow {
+			return false, false
+		}
+		enabledChanged = enabledChanged || changed
+	}
+	return true, enabledChanged
+}
+
+func compareBulkRow(prior, plan, config types.Object) (match, enabledChanged bool) {
+	priorAttrs, configAttrs := prior.Attributes(), config.Attributes()
+	for name, value := range plan.Attributes() {
+		if value.Equal(priorAttrs[name]) {
+			continue
+		}
+		if name == "enabled" {
+			enabledChanged = true
+			continue
+		}
+		if configured := configAttrs[name]; !value.IsUnknown() || configured == nil || !configured.IsNull() {
+			return false, false
+		}
+	}
+	return true, enabledChanged
+}
+
 func saveConfiguredRuleEnablement(ctx context.Context, config tfsdk.Config, state interface {
 	SetKey(context.Context, string, []byte) diag.Diagnostics
 }) diag.Diagnostics {

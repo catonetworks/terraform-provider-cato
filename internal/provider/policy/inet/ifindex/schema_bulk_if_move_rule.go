@@ -56,7 +56,8 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 						"enabled": schema.BoolAttribute{
 							MarkdownDescription: "Use `cato_if_rule.rule.enabled` to manage and read rule enablement. " +
 								"When this field is omitted, it reflects the rule's enablement in Cato. " +
-								"An explicit value is retained in Terraform state for compatibility. This resource only changes rule order.",
+								"An explicit value is retained in Terraform state for compatibility. " +
+								"Removing this field by itself refreshes its value without reordering or publishing the policy.",
 							DeprecationMessage: "Use cato_if_rule.rule.enabled to manage and read rule enablement.",
 							Optional:           true,
 							Computed:           true,

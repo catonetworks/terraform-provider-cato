@@ -48,11 +48,11 @@ func TestBulkIfRuleEnablementLifecycle(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(`{"policy":{"internetFirewall":{"policy":{"rules":[{"rule":{"id":"r1","name":"Rule A","index":1,"enabled":false,"section":{"id":"s1","name":"Section A"}}}]}}}}`), &rules))
 	var reordered cato_go_sdk.PolicyInternetFirewallReorderPolicy
 	require.NoError(t, json.Unmarshal([]byte(`{"policy":{"internetFirewall":{"reorderPolicy":{"status":"SUCCESS"}}}}`), &reordered))
-	api.EXPECT().PolicyInternetFirewallSectionsIndex(mock.Anything, accountID).Return(&sections, nil).Times(7)
-	api.EXPECT().PolicyInternetFirewallRulesIndex(mock.Anything, accountID).Return(&rules, nil).Times(7)
+	api.EXPECT().PolicyInternetFirewallSectionsIndex(mock.Anything, accountID).Return(&sections, nil).Times(5)
+	api.EXPECT().PolicyInternetFirewallRulesIndex(mock.Anything, accountID).Return(&rules, nil).Times(6)
 	api.EXPECT().PolicyInternetFirewallReorderPolicy(mock.Anything, mock.Anything, mock.Anything, accountID).
-		Return(&reordered, nil).Twice()
-	api.EXPECT().PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, accountID).Return(nil, nil).Twice()
+		Return(&reordered, nil).Once()
+	api.EXPECT().PolicyInternetFirewallPublishPolicyRevision(mock.Anything, mock.Anything, mock.Anything, accountID).Return(nil, nil).Once()
 
 	dynamic := func(raw tftypes.Value) *tfprotov6.DynamicValue {
 		value, err := tfprotov6.NewDynamicValue(tfType, raw)
@@ -116,7 +116,8 @@ func TestBulkIfRuleEnablementLifecycle(t *testing.T) {
 	}
 	refreshed := read(created.NewState, created.Private)
 	checkEnabled(refreshed.NewState, types.BoolValue(true))
-	checkEnabled(read(created.NewState, nil).NewState, types.BoolValue(false)) // v2.0.0 state
+	legacyRefresh := read(created.NewState, nil) // v2.0.0 state
+	checkEnabled(legacyRefresh.NewState, types.BoolValue(false))
 	noChange, err := server.PlanResourceChange(ctx, &tfprotov6.PlanResourceChangeRequest{
 		TypeName: resourceType, Config: explicit, PriorState: refreshed.NewState,
 		PriorPrivate: refreshed.Private, ProposedNewState: refreshed.NewState,
@@ -142,9 +143,60 @@ func TestBulkIfRuleEnablementLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	checkDiagnostics(updated.Diagnostics)
 	checkEnabled(updated.NewState, types.BoolValue(false))
+	require.Equal(t, legacyRefresh.NewState, updated.NewState)
 	require.Empty(t, updated.Private)
 	rules.Policy.InternetFirewall.Policy.Rules[0].Rule.Enabled = true
 	checkEnabled(read(updated.NewState, updated.Private).NewState, types.BoolValue(true))
+}
+
+func TestLegacyEnablementOnlyUpdateKeepsOrderingChanges(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	makeRules := func(rule IfwRulesRuleItemIndex) types.Map {
+		t.Helper()
+		value, diags := types.MapValueFrom(ctx, IfwRuleIndexResourceObjectTypes, map[string]IfwRulesRuleItemIndex{"Rule A": rule})
+		require.False(t, diags.HasError(), "%v", diags)
+		return value
+	}
+	priorRule := IfwRulesRuleItemIndex{
+		ID: types.StringValue("r1"), RuleName: types.StringValue("Rule A"),
+		SectionName: types.StringValue("Section A"), IndexInSection: types.Int64Value(1),
+		Description: types.StringValue("prior API description"), Enabled: types.BoolValue(true),
+	}
+	prior := IfwRulesIndex{RuleData: makeRules(priorRule), SectionData: types.MapNull(IfwSectionIndexResourceObjectTypes)}
+
+	for _, tc := range []struct {
+		name         string
+		planIndex    types.Int64
+		configIndex  types.Int64
+		anchor       types.String
+		wantReadOnly bool
+	}{
+		{name: "computed siblings are unknown", planIndex: types.Int64Value(1), configIndex: types.Int64Value(1), wantReadOnly: true},
+		{name: "omitted computed index", planIndex: types.Int64Unknown(), wantReadOnly: true},
+		{name: "rule moved", planIndex: types.Int64Value(2), configIndex: types.Int64Value(2)},
+		{name: "configured index unresolved", planIndex: types.Int64Unknown(), configIndex: types.Int64Unknown()},
+		{name: "section anchor changed", planIndex: types.Int64Value(1), configIndex: types.Int64Value(1), anchor: types.StringValue("s2")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			plannedRule := priorRule
+			plannedRule.Enabled = types.BoolUnknown()
+			plannedRule.ID = types.StringUnknown()
+			plannedRule.Description = types.StringUnknown()
+			plannedRule.IndexInSection = tc.planIndex
+			configuredRule := plannedRule
+			configuredRule.Enabled = types.BoolNull()
+			configuredRule.ID = types.StringNull()
+			configuredRule.Description = types.StringNull()
+			configuredRule.IndexInSection = tc.configIndex
+
+			plan, config := prior, prior
+			plan.SectionToStartAfterID = tc.anchor
+			plan.RuleData = makeRules(plannedRule)
+			config.RuleData = makeRules(configuredRule)
+			require.Equal(t, tc.wantReadOnly, legacyEnablementOnlyUpdate(prior, plan, config))
+		})
+	}
 }
 
 type bulkIfRuleTestProvider struct {
