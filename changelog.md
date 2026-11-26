@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.1 (2026-11-26)
+
+### Deprecations
+- `cato_bulk_if_move_rule.rule_data[*].enabled` remains available for existing configurations and outputs. Use `cato_if_rule.rule.enabled` to manage and read Internet Firewall rule enablement, and omit `enabled` from the bulk ordering configuration when ready. The earliest eligible removal is v3.0.0.
+
+### Bug fixes
+- `cato_bulk_if_move_rule` preserves explicitly configured `enabled` values across apply and refresh, avoiding inconsistent results when the configured value differs from the live rule. When omitted, the value reflects rule enablement in Cato. Removing only the deprecated field refreshes the value without reordering rules or publishing the policy.
+
 ## 2.0.0 (2026-11-24)
 
 ### Breaking changes
