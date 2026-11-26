@@ -4,7 +4,7 @@ NAMESPACE=catonetworks
 PKG_NAME=cato
 BINARY=terraform-provider-${PKG_NAME}
 # Keep the local mirror slot overridable for development wrappers.
-VERSION?=2.0.0
+VERSION?=2.1.0
 
 # Mac Intel Chip
 # OS_ARCH=darwin_amd64
