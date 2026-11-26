@@ -40,28 +40,40 @@ func TestAccIfRulesIndex_ReorderTwoRules_VerifiesAPIOrder(t *testing.T) {
 		PreCheck:                 acc.CheckCMAVars(t),
 		Steps: []resource.TestStep{
 			{
-				Config: cfg.getTwoRuleReorderTF(0),
+				Config: cfg.getTwoRuleReorderTF(0, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleA, ruleB),
+					resource.TestCheckResourceAttr("cato_if_rule.b", "rule.enabled", "false"),
+					resource.TestCheckResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled", "true"),
 				),
 			},
 			{
-				Config: cfg.getTwoRuleReorderTF(1),
+				Config: cfg.getTwoRuleReorderTF(0, false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleA, ruleB),
+					resource.TestCheckResourceAttr("cato_if_rule.b", "rule.enabled", "false"),
+					resource.TestCheckResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled", "false"),
+				),
+			},
+			{
+				Config: cfg.getTwoRuleReorderTF(1, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					acc.AssertIfwRuleNamesOrderInSection(t, secName, ruleB, ruleA),
+					resource.TestCheckResourceAttr("cato_if_rule.b", "rule.enabled", "false"),
+					resource.TestCheckResourceAttr("cato_bulk_if_move_rule.this", "rule_data."+ruleB+".enabled", "false"),
 				),
 			},
 		},
 	})
 }
 
-func (p ifRulesIndexCfg) getTwoRuleReorderTF(step int) string {
+func (p ifRulesIndexCfg) getTwoRuleReorderTF(step int, legacyEnabled bool) string {
 	tmpl, err := template.New("reorder").Parse(ifTwoRuleReorderTFs[step])
 	if err != nil {
 		p.t.Fatal(err)
 	}
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, map[string]any{"Name": p.name}); err != nil {
+	if err := tmpl.Execute(&buf, map[string]any{"Name": p.name, "LegacyEnabled": legacyEnabled}); err != nil {
 		p.t.Fatal(err)
 	}
 	cfg := acc.ProviderCfg() + buf.String()
@@ -97,7 +109,7 @@ var ifTwoRuleReorderTFs = []string{
 		}
 		rule = {
 			name    = "{{.Name}}-b"
-			enabled = true
+			enabled = false
 			action  = "ALLOW"
 			tracking = { event = { enabled = true } }
 			destination = { domain = ["if-reorder-b.example"] }
@@ -117,13 +129,12 @@ var ifTwoRuleReorderTFs = []string{
 				rule_name        = cato_if_rule.a.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 1
-				enabled          = true
 			}
 			"{{.Name}}-b" = {
 				rule_name        = cato_if_rule.b.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 2
-				enabled          = true
+				{{if .LegacyEnabled}}enabled = true # Legacy value deliberately differs from the disabled API rule.{{end}}
 			}
 		}
 	}
@@ -155,7 +166,7 @@ var ifTwoRuleReorderTFs = []string{
 		}
 		rule = {
 			name    = "{{.Name}}-b"
-			enabled = true
+			enabled = false
 			action  = "ALLOW"
 			tracking = { event = { enabled = true } }
 			destination = { domain = ["if-reorder-b.example"] }
@@ -175,13 +186,11 @@ var ifTwoRuleReorderTFs = []string{
 				rule_name        = cato_if_rule.a.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 2
-				enabled          = true
 			}
 			"{{.Name}}-b" = {
 				rule_name        = cato_if_rule.b.rule.name
 				section_name     = cato_if_section.only.section.name
 				index_in_section = 1
-				enabled          = true
 			}
 		}
 	}
