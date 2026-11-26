@@ -29,8 +29,10 @@ func hydrateLanInterfaceAPI(ctx context.Context, cfg, plan LanInterface) cato_mo
 		Name:     plan.Name.ValueStringPointer(),
 	}
 
-	// For LAN_LAG_MEMBER, only send basic interface info - no LAN, LAG, or VRRP config
-	if destType != socketinterface.LanLagMemberDestType {
+	// For LAN_LAG_MEMBER and INTERFACE_DISABLED, only send basic interface info -
+	// no LAN, LAG, or VRRP config. (A disabled port has no subnet or local IP, and
+	// the API rejects the empty localIp a LAN block would carry.)
+	if destType != socketinterface.LanLagMemberDestType && destType != "INTERFACE_DISABLED" {
 		// Add LAN configuration for non-LAG member interfaces
 		input.Lan = &cato_models.SocketInterfaceLanInput{
 			Subnet:           plan.Subnet.ValueString(),

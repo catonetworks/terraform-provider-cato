@@ -4,7 +4,6 @@ import (
 	"context"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
-	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -40,11 +39,9 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"members": schema.SetNestedAttribute{
 				Description: "List of group members. Each member has 'name', 'id', and 'type' fields. " +
 					"You can specify either 'name' or 'id' when creating/updating; both will be populated in state. " +
-					"At least one member is required.",
+					"May be empty: the API accepts a group with no members (an empty group matches nothing), " +
+					"which is needed to replicate empty groups from another tenant.",
 				Required: true,
-				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
-				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{

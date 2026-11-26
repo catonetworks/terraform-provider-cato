@@ -306,30 +306,40 @@ func (r *InternetFwRuleResource) Update(ctx context.Context, req resource.Update
 	inputMoveRule.ID = *ruleInput.ID.ValueStringPointer()
 	input.Update.ID = *ruleInput.ID.ValueStringPointer()
 
-	// Move rule
-	moveRule, err := r.resourceAPI().PolicyInternetFirewallMoveRule(
-		ctx,
-		&cato_models.InternetFirewallPolicyMutationInput{},
-		inputMoveRule,
-		r.Client.AccountId,
-	)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API PolicyInternetFirewallMoveRule error",
-			err.Error(),
-		)
+	// Move the rule only when its `at` directive actually changed. `at` is a
+	// create-time positioning hint: re-applying it on every in-place update
+	// threw an edited rule to the end of its section or of the policy, and
+	// broke the order kept by the bulk move resources (which ignore `at`).
+	var state InternetFirewallRule
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// check for errors
-	if moveRule.Policy.InternetFirewall.MoveRule.Status != cato_models.PolicyMutationStatusSuccess {
-		for _, item := range moveRule.Policy.InternetFirewall.MoveRule.GetErrors() {
+	if !plan.At.Equal(state.At) {
+		moveRule, err := r.resourceAPI().PolicyInternetFirewallMoveRule(
+			ctx,
+			&cato_models.InternetFirewallPolicyMutationInput{},
+			inputMoveRule,
+			r.Client.AccountId,
+		)
+		if err != nil {
 			resp.Diagnostics.AddError(
-				"API Error Moving Rule Resource",
-				fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
+				"Catov2 API PolicyInternetFirewallMoveRule error",
+				err.Error(),
 			)
+			return
 		}
-		return
+
+		// check for errors
+		if moveRule.Policy.InternetFirewall.MoveRule.Status != cato_models.PolicyMutationStatusSuccess {
+			for _, item := range moveRule.Policy.InternetFirewall.MoveRule.GetErrors() {
+				resp.Diagnostics.AddError(
+					"API Error Moving Rule Resource",
+					fmt.Sprintf("%s : %s", *item.ErrorCode, *item.ErrorMessage),
+				)
+			}
+			return
+		}
 	}
 
 	tflog.Warn(ctx, "TFLOG_WARN_IFW_input.update", map[string]interface{}{

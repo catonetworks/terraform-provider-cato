@@ -170,7 +170,7 @@ func TestInternetFwRuleDuplicateAppCategoriesLifecycle(t *testing.T) {
 					return checkInput(input.Rule.Destination.AppCategory)
 				}), "account-123").Return(SuccessfulAddRuleResponse("rule-123"), nil).Once()
 			case "update":
-				mockClient.EXPECT().PolicyInternetFirewallMoveRule(mock.Anything, mock.Anything, mock.Anything, "account-123").Return(successfulMoveRuleResponse("rule-123"), nil).Once()
+				// plan and state share the same `at`, so no MoveRule call is expected
 				mockClient.EXPECT().PolicyInternetFirewallUpdateRule(mock.Anything, mock.Anything, mock.MatchedBy(func(input cato_models.InternetFirewallUpdateRuleInput) bool {
 					return checkInput(input.Rule.Destination.AppCategory)
 				}), "account-123").Return(SuccessfulUpdateRuleResponse("rule-123"), nil).Once()
