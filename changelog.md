@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.2 (2026-11-26)
+
+### Breaking changes
+- None. Existing configurations and Terraform state require no migration.
+
+### Deprecations
+- Deprecated `cato_bulk_if_move_rule.rule_data[*].enabled`. Use `cato_if_rule.rule.enabled` to manage rule enablement. Existing explicit values remain accepted. Omit the deprecated field to read the current enablement from Cato. Removal would require a future major release.
+
+### Bug fixes
+- Removing only the deprecated `enabled` field from `cato_bulk_if_move_rule` refreshes the value without reordering rules or sections or publishing the Internet Firewall policy.
+
 ## 1.4.1 (2026-11-19)
 
 ### Breaking changes
