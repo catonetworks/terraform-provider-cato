@@ -2,6 +2,7 @@ package ifindex
 
 import (
 	"context"
+	"fmt"
 
 	cato_go_sdk "github.com/catonetworks/cato-go-sdk"
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
@@ -10,6 +11,44 @@ import (
 	types "github.com/hashicorp/terraform-plugin-framework/types"
 	basetypes "github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
+
+func resolveBulkRuleEnablement(prior, plan types.Map, index *cato_go_sdk.IfwRulesIndexPolicy) (types.Map, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if index == nil || index.Policy == nil || index.Policy.InternetFirewall == nil {
+		diags.AddError("Could not read Internet Firewall rule enablement", "Cato returned an empty Internet Firewall policy.")
+		return prior, diags
+	}
+
+	enabledByName := make(map[string]bool)
+	for _, item := range index.Policy.InternetFirewall.Policy.Rules {
+		enabledByName[item.Rule.Name] = item.Rule.Enabled
+	}
+
+	rules := prior.Elements()
+	for key, planned := range plan.Elements() {
+		if planned.IsNull() || planned.IsUnknown() {
+			continue
+		}
+		enabled := planned.(types.Object).Attributes()["enabled"]
+		attrs := rules[key].(types.Object).Attributes()
+		if enabled.IsUnknown() {
+			name := attrs["rule_name"].(types.String).ValueString()
+			apiEnabled, ok := enabledByName[name]
+			if !ok {
+				diags.AddError("Internet firewall rule not found", fmt.Sprintf("Could not read enablement for rule %q.", name))
+				return prior, diags
+			}
+			enabled = types.BoolValue(apiEnabled)
+		}
+		attrs["enabled"] = enabled
+		rule, ruleDiags := types.ObjectValue(IfwRuleIndexResourceAttrTypes, attrs)
+		diags.Append(ruleDiags...)
+		rules[key] = rule
+	}
+	state, mapDiags := types.MapValue(IfwRuleIndexResourceObjectTypes, rules)
+	diags.Append(mapDiags...)
+	return state, diags
+}
 
 func buildIfwSectionMoves(
 	sections []IfwRulesSectionDataIndex,
@@ -60,6 +99,11 @@ func buildIfwRuleIndexStateData(
 	ruleNameDescriptionMap map[string]string,
 	ruleNameEnabledMap map[string]bool,
 ) (basetypes.ObjectValue, diag.Diagnostics) {
+	enabled := ruleFromPlan.Enabled
+	if enabled.IsNull() || enabled.IsUnknown() {
+		enabled = types.BoolValue(ruleNameEnabledMap[ruleFromPlan.RuleName])
+	}
+
 	return types.ObjectValue(
 		IfwRuleIndexResourceAttrTypes,
 		map[string]attr.Value{
@@ -68,7 +112,7 @@ func buildIfwRuleIndexStateData(
 			"section_name":     types.StringValue(ruleFromPlan.SectionName),
 			"rule_name":        types.StringValue(ruleFromPlan.RuleName),
 			"description":      types.StringValue(ruleNameDescriptionMap[ruleFromPlan.RuleName]),
-			"enabled":          types.BoolValue(ruleNameEnabledMap[ruleFromPlan.RuleName]),
+			"enabled":          enabled,
 		},
 	)
 }
@@ -81,11 +125,12 @@ func convertReadState(
 	sectionIDMap map[string]string,
 	ruleIDMap map[string]string,
 	ruleDescriptionMap map[string]string,
-	ruleEnabledMap map[string]bool,
 	ruleIndexAPIData *cato_go_sdk.IfwRulesIndexPolicy,
+	configuredEnabled map[string]struct{},
 ) {
 	diags := *priorDiags
 	defer func() { *priorDiags = diags }()
+	ruleEnabledMap := make(map[string]bool)
 	for _, v := range ruleIndexAPIData.Policy.InternetFirewall.Policy.Rules {
 		ruleIDMap[v.Rule.Name] = v.Rule.ID
 		ruleDescriptionMap[v.Rule.Name] = v.Rule.Description
@@ -131,6 +176,11 @@ func convertReadState(
 			var existingRule IfwRulesRuleItemIndex
 			diags = append(diags, ruleObject.As(ctx, &existingRule, basetypes.ObjectAsOptions{})...)
 
+			enabled := existingRule.Enabled
+			if _, configured := configuredEnabled[ruleName]; !configured {
+				enabled = types.BoolValue(ruleEnabledMap[ruleName])
+			}
+
 			// Preserve planned values, only update computed fields
 			ruleIndexStateData, ruleDiags := types.ObjectValue(
 				IfwRuleIndexResourceAttrTypes,
@@ -140,7 +190,7 @@ func convertReadState(
 					"section_name":     existingRule.SectionName,                        // Preserve planned value
 					"rule_name":        existingRule.RuleName,                           // Preserve planned value
 					"description":      types.StringValue(ruleDescriptionMap[ruleName]), // Update computed value
-					"enabled":          types.BoolValue(ruleEnabledMap[ruleName]),       // Update computed value
+					"enabled":          enabled,
 				},
 			)
 			diags = append(diags, ruleDiags...)

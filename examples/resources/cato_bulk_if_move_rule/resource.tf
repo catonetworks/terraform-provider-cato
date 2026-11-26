@@ -26,13 +26,13 @@ locals {
   # Read CSV data
   rule_data_list    = csvdecode(file("rules.csv"))
   section_data_list = csvdecode(file("sections.csv"))
-  
+
   # Convert sections list to map keyed by section_name for provider schema compatibility
   section_data = {
     for section in local.section_data_list :
     section.section_name => section
   }
-  
+
   # Convert rules list to map keyed by rule_name for provider schema compatibility
   rule_data = {
     for rule in local.rule_data_list :
@@ -76,7 +76,9 @@ resource "cato_if_rule" "all_if_rules" {
 }
 
 resource "cato_bulk_if_move_rule" "all_if_rules" {
-  depends_on   = [cato_if_section.all_if_sections, cato_if_rule.all_if_rules]
+  depends_on = [cato_if_section.all_if_sections, cato_if_rule.all_if_rules]
+  # Configure rule enablement in cato_if_rule above and omit the deprecated
+  # enabled field from rule_data.
   rule_data    = local.rule_data
   section_data = local.section_data
 }
