@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &ifwRulesIndexResource{}
-	_ resource.ResourceWithConfigure = &ifwRulesIndexResource{}
+	_ resource.Resource               = &ifwRulesIndexResource{}
+	_ resource.ResourceWithConfigure  = &ifwRulesIndexResource{}
+	_ resource.ResourceWithModifyPlan = &ifwRulesIndexResource{}
 )
 
 func NewIfwRulesIndexResource() resource.Resource {
@@ -73,12 +74,15 @@ func (r *ifwRulesIndexResource) Create(ctx context.Context, req resource.CreateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	resp.Diagnostics.Append(saveConfiguredRuleEnablement(ctx, req.Config, resp.Private)...)
 }
 
 func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state IfwRulesIndex
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
+	configuredEnabled, privateDiags := loadConfiguredRuleEnablement(ctx, req.Private)
+	resp.Diagnostics.Append(privateDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -87,7 +91,6 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 	sectionIDMap := make(map[string]string)
 	ruleIDMap := make(map[string]string)
 	ruleDescriptionMap := make(map[string]string)
-	ruleEnabledMap := make(map[string]bool)
 
 	// Get current sections from API to get fresh IDs
 	sectionIndexAPIData, err := r.resourceAPI().PolicyInternetFirewallSectionsIndex(ctx, r.client.AccountId)
@@ -115,7 +118,7 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 	}
 
 	// Build maps of rule names to API data
-	convertReadState(ctx, &state, &diags, sectionIDMap, ruleIDMap, ruleDescriptionMap, ruleEnabledMap, ruleIndexAPIData)
+	convertReadState(ctx, &state, &diags, sectionIDMap, ruleIDMap, ruleDescriptionMap, ruleIndexAPIData, configuredEnabled)
 
 	resp.Diagnostics.Append(diags...)
 	if diags := resp.State.Set(ctx, &state); diags.HasError() {
@@ -124,30 +127,49 @@ func (r *ifwRulesIndexResource) Read(ctx context.Context, req resource.ReadReque
 }
 
 func (r *ifwRulesIndexResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan IfwRulesIndex
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
+	var prior, plan, config IfwRulesIndex
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if legacyEnablementOnlyUpdate(prior, plan, config) {
+		rules, diags := r.readLegacyEnablement(ctx, prior.RuleData, plan.RuleData)
+		resp.Diagnostics.Append(diags...)
+		plan.RuleData = rules
+		if len(plan.SectionData.Elements()) > 0 {
+			plan.SectionData = prior.SectionData
+		}
+	} else {
+		sections, rules, diags, err := r.moveIfwRulesAndSections(ctx, plan)
+		if err != nil {
+			resp.Diagnostics.AddError("Catov2 API internet firewall bulk rules index error", err.Error())
+			return
+		}
+		resp.Diagnostics.Append(diags...)
+		plan.SectionData = sections
+		plan.RuleData = rules
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	sectionObjectsList, rulesObjectsList, diags, err := r.moveIfwRulesAndSections(ctx, plan)
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(saveConfiguredRuleEnablement(ctx, req.Config, resp.Private)...)
+}
+
+func (r *ifwRulesIndexResource) readLegacyEnablement(
+	ctx context.Context, prior, plan basetypes.MapValue,
+) (basetypes.MapValue, diag.Diagnostics) {
+	index, err := r.resourceAPI().PolicyInternetFirewallRulesIndex(ctx, r.client.AccountId)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Catov2 API internet firewall bulk rules index error",
-			err.Error(),
-		)
-		return
+		return prior, diag.Diagnostics{diag.NewErrorDiagnostic("Catov2 API PolicyInternetFirewallRulesIndex error", err.Error())}
 	}
-	resp.Diagnostics.Append(diags...)
-	plan.SectionData = sectionObjectsList
-	plan.RuleData = rulesObjectsList
-
-	diags = resp.State.Set(ctx, plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	return resolveBulkRuleEnablement(prior, plan, index)
 }
 
 func (r *ifwRulesIndexResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

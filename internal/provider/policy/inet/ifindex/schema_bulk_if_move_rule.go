@@ -6,14 +6,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Retrieves index values for Internet Firewall Rules.",
+		MarkdownDescription: "Reorders Internet Firewall rules and sections.",
 		Attributes: map[string]schema.Attribute{
 			"section_to_start_after_id": schema.StringAttribute{
 				Description: "IFW rule id",
@@ -56,12 +54,13 @@ func (r *ifwRulesIndexResource) Schema(_ context.Context, _ resource.SchemaReque
 							Computed:    true,
 						},
 						"enabled": schema.BoolAttribute{
-							Description: "IFW rule enabled",
-							Optional:    true,
-							Computed:    true,
-							PlanModifiers: []planmodifier.Bool{
-								boolplanmodifier.UseNonNullStateForUnknown(),
-							},
+							MarkdownDescription: "Use `cato_if_rule.rule.enabled` to manage and read rule enablement. " +
+								"When this field is omitted, it reflects the rule's enablement in Cato. " +
+								"An explicit value is retained in Terraform state for compatibility. " +
+								"Removing this field by itself refreshes its value without reordering or publishing the policy.",
+							DeprecationMessage: "Use cato_if_rule.rule.enabled to manage and read rule enablement.",
+							Optional:           true,
+							Computed:           true,
 						},
 					},
 				},
