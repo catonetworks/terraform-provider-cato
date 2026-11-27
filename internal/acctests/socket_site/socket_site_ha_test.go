@@ -25,8 +25,8 @@ func TestAccSocketSite_InlineVSocketHA(t *testing.T) {
 	}{
 		{"aws", "SOCKET_AWS1500", `
 		secondary_vsocket = {
-			eni_ip_address = "%[1]s.10"
-			eni_ip_subnet  = "%[1]s.0/24"
+			eni_ip_address = "%[1]s.138"
+			eni_ip_subnet  = "%[1]s.128/25"
 			route_table_id = "rtb-acctest"
 		}`},
 		{"azure", "SOCKET_AZ1500", `
@@ -46,6 +46,11 @@ func TestAccSocketSite_InlineVSocketHA(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.cloud, func(t *testing.T) {
 			prefix := acc.GetRandNetworkPrefix()
+			primarySubnet := prefix + ".0/24"
+			if tc.cloud == "aws" {
+				// AWS HA needs two non-overlapping LAN subnets. Use the two halves of this fixture's /24.
+				primarySubnet = prefix + ".0/25"
+			}
 			name := acc.GetRandName("inline-ha-" + tc.cloud)
 			config := acc.ProviderCfg() + fmt.Sprintf(`
 resource "cato_socket_site" "ha" {
@@ -53,7 +58,7 @@ resource "cato_socket_site" "ha" {
 	connection_type = %q
 	site_type       = "BRANCH"
 	native_range = {
-		native_network_range = "%s.0/24"
+		native_network_range = %q
 		local_ip             = "%s.5"
 	}
 	site_location = {
@@ -68,7 +73,7 @@ output "primary_serial" {
 output "secondary_serial" {
 	value = one([for socket in cato_socket_site.ha.sockets : socket.serial_number if !socket.is_primary])
 }
-`, name, tc.connection, prefix, prefix, fmt.Sprintf(tc.config, prefix))
+`, name, tc.connection, primarySubnet, prefix, fmt.Sprintf(tc.config, prefix))
 
 			resource.Test(t, resource.TestCase{
 				ProtoV6ProviderFactories: acc.TestAccProtoV6ProviderFactories,

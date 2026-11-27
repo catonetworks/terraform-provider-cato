@@ -40,8 +40,8 @@ func TestSocketSiteCreateSecondaryVSocket(t *testing.T) {
 		"legacy Cloud Router":  {connection: "SOCKET_GCP1500", model: "GCP", cloudRouter: types.BoolValue(true)},
 		"AWS": {
 			connection: "SOCKET_AWS1500", model: "AWS", cloud: "aws",
-			secondary: map[string]string{"eni_ip_address": "10.51.0.132", "eni_ip_subnet": "10.51.0.128/25", "route_table_id": "rtb-test"},
-			input:     map[string]any{"eniIpAddress": "10.51.0.132", "eniIpSubnet": "10.51.0.128/25", "routeTableId": "rtb-test"},
+			secondary: map[string]string{"eni_ip_address": "10.51.0.10", "eni_ip_subnet": "10.51.0.0/25", "route_table_id": "rtb-test"},
+			input:     map[string]any{"eniIpAddress": "10.51.0.10", "eniIpSubnet": "10.51.0.0/25", "routeTableId": "rtb-test"},
 		},
 		"Azure": {
 			connection: "SOCKET_AZ1500", model: "AZURE", cloud: "azure",
@@ -72,6 +72,16 @@ func TestSocketSiteCreateSecondaryVSocket(t *testing.T) {
 		"AWS ENI outside subnet": {
 			connection: "SOCKET_AWS1500",
 			secondary:  map[string]string{"eni_ip_address": "10.51.0.132", "eni_ip_subnet": "10.51.1.0/24", "route_table_id": "rtb-test"},
+			invalid:    true,
+		},
+		"AWS ENI subnet equals native subnet": {
+			connection: "SOCKET_AWS1500",
+			secondary:  map[string]string{"eni_ip_address": "10.51.0.132", "eni_ip_subnet": "10.51.0.128/25", "route_table_id": "rtb-test"},
+			invalid:    true,
+		},
+		"AWS ENI subnet contains native subnet": {
+			connection: "SOCKET_AWS1500",
+			secondary:  map[string]string{"eni_ip_address": "10.51.0.10", "eni_ip_subnet": "10.51.0.0/24", "route_table_id": "rtb-test"},
 			invalid:    true,
 		},
 	}

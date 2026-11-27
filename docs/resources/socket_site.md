@@ -228,7 +228,7 @@ Optional:
 Optional:
 
 - `eni_ip_address` (String) AWS only. Required IPv4 address for the secondary ENI.
-- `eni_ip_subnet` (String) AWS only. Required canonical IPv4 subnet for the ENI.
+- `eni_ip_subnet` (String) AWS only. Required canonical IPv4 subnet for the secondary ENI. It must not overlap the primary native subnet.
 - `floating_ip` (String) Azure only. Required HA floating IPv4 address.
 - `interface_ip` (String) Azure and GCP only. Required secondary LAN IPv4 address.
 - `load_balancer_ip` (String) GCP only. Required LAN load balancer IPv4 address.

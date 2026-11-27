@@ -77,8 +77,11 @@ func schemaSecondaryVSocket() schema.SingleNestedAttribute {
 		Validators:    []validator.Object{secondaryVSocketValidator{}},
 		PlanModifiers: []planmodifier.Object{objectplanmodifier.RequiresReplace()},
 		Attributes: map[string]schema.Attribute{
-			"eni_ip_address":   schema.StringAttribute{Optional: true, Description: "AWS only. Required IPv4 address for the secondary ENI."},
-			"eni_ip_subnet":    schema.StringAttribute{Optional: true, Description: "AWS only. Required canonical IPv4 subnet for the ENI."},
+			"eni_ip_address": schema.StringAttribute{Optional: true, Description: "AWS only. Required IPv4 address for the secondary ENI."},
+			"eni_ip_subnet": schema.StringAttribute{
+				Optional:    true,
+				Description: "AWS only. Required canonical IPv4 subnet for the secondary ENI. It must not overlap the primary native subnet.",
+			},
 			"route_table_id":   schema.StringAttribute{Optional: true, Description: "AWS only. Required ID of the shared AWS route table."},
 			"interface_ip":     schema.StringAttribute{Optional: true, Description: "Azure and GCP only. Required secondary LAN IPv4 address."},
 			"floating_ip":      schema.StringAttribute{Optional: true, Description: "Azure only. Required HA floating IPv4 address."},

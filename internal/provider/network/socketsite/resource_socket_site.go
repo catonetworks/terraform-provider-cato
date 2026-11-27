@@ -98,6 +98,9 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 	r.validateCloudRouterInput(&plan, &resp.Diagnostics)
 	validateSecondaryVSocket(plan.ConnectionType.ValueString(), plan.SecondaryVSocket, false, &resp.Diagnostics)
+	if !resp.Diagnostics.HasError() && plan.ConnectionType.ValueString() == socketConnectionTypeAWS1500 {
+		checkAWSSecondarySubnetOverlap(plan.NativeRange, plan.SecondaryVSocket, &resp.Diagnostics)
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -271,6 +274,9 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	resp.Diagnostics.Append(diags...)
 	diags = req.Config.Get(ctx, &cfg)
 	resp.Diagnostics.Append(diags...)
+	if !resp.Diagnostics.HasError() && plan.ConnectionType.ValueString() == socketConnectionTypeAWS1500 {
+		checkAWSSecondarySubnetOverlap(plan.NativeRange, plan.SecondaryVSocket, &resp.Diagnostics)
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -311,9 +317,6 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 		siteID,
 		&resp.Diagnostics,
 	)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	if resp.Diagnostics.HasError() {
 		return
 	}

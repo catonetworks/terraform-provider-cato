@@ -124,8 +124,29 @@ func (secondaryVSocketValidator) ValidateObject(ctx context.Context, req validat
 	}
 	var connectionType types.String
 	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("connection_type"), &connectionType)...)
-	if !resp.Diagnostics.HasError() && utils.HasValue(connectionType) {
-		validateSecondaryVSocket(connectionType.ValueString(), req.ConfigValue, true, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() || !utils.HasValue(connectionType) {
+		return
+	}
+	validateSecondaryVSocket(connectionType.ValueString(), req.ConfigValue, true, &resp.Diagnostics)
+	if !resp.Diagnostics.HasError() && connectionType.ValueString() == socketConnectionTypeAWS1500 {
+		var nativeRange types.Object
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("native_range"), &nativeRange)...)
+		checkAWSSecondarySubnetOverlap(nativeRange, req.ConfigValue, &resp.Diagnostics)
+	}
+}
+
+func checkAWSSecondarySubnetOverlap(nativeRange, secondaryVSocket types.Object, diags *diag.Diagnostics) {
+	if !utils.HasValue(nativeRange) || !utils.HasValue(secondaryVSocket) {
+		return
+	}
+	primaryCIDR := nativeRange.Attributes()["native_network_range"].(types.String).ValueString()
+	secondaryCIDR := secondaryVSocket.Attributes()["eni_ip_subnet"].(types.String).ValueString()
+	primary, primaryErr := netip.ParsePrefix(primaryCIDR)
+	secondary, secondaryErr := netip.ParsePrefix(secondaryCIDR)
+	if primaryErr == nil && secondaryErr == nil && primary.Overlaps(secondary) {
+		diags.AddAttributeError(path.Root("secondary_vsocket").AtName("eni_ip_subnet"),
+			"Overlapping AWS vSocket LAN subnets",
+			fmt.Sprintf("The secondary LAN ENI subnet %s must not overlap the primary native subnet %s.", secondary, primary))
 	}
 }
 
