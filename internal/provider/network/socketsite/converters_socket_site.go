@@ -56,6 +56,7 @@ func prepareSocketSiteInput(ctx context.Context, plan *SocketSite, diags *diag.D
 		Description:        convert.KnownStringPointer(plan.Description),
 		Name:               plan.Name.ValueString(),
 		NativeNetworkRange: tfNativeRange.NativeNetworkRange.ValueString(),
+		SecondaryVSocket:   prepareSecondaryVSocketAtCreation(ctx, plan, diags),
 		SiteLocation:       prepareSiteLocation(ctx, plan.SiteLocation, diags),
 		SiteType:           cato_models.SiteType(plan.SiteType.ValueString()),
 		TranslatedSubnet:   convert.StringPointerForOptionalInput(tfNativeRange.TranslatedSubnet),
@@ -68,6 +69,36 @@ func prepareSocketSiteInput(ctx context.Context, plan *SocketSite, diags *diag.D
 		input.TranslatedSubnet = nil
 	}
 	return input
+}
+
+func prepareSecondaryVSocketAtCreation(
+	ctx context.Context, plan *SocketSite, diags *diag.Diagnostics,
+) *cato_models.SecondaryVSocketAtCreationInput {
+	if plan.SecondaryVSocket.IsNull() {
+		return nil
+	}
+	var config secondaryVSocket
+	if utils.CheckErr(diags, plan.SecondaryVSocket.As(ctx, &config, basetypes.ObjectAsOptions{})) {
+		return nil
+	}
+	switch plan.ConnectionType.ValueString() {
+	case socketConnectionTypeAWS1500:
+		return &cato_models.SecondaryVSocketAtCreationInput{AWS: &cato_models.SecondaryAWSVSocketConfigInput{
+			EniIPAddress: config.ENIIPAddress.ValueString(),
+			EniIPSubnet:  config.ENIIPSubnet.ValueString(),
+			RouteTableID: config.RouteTableID.ValueString(),
+		}}
+	case socketConnectionTypeAZ1500:
+		return &cato_models.SecondaryVSocketAtCreationInput{Azure: &cato_models.SecondaryAzureVSocketConfigInput{
+			InterfaceIP: config.InterfaceIP.ValueString(),
+			FloatingIP:  config.FloatingIP.ValueString(),
+		}}
+	default: // The configuration validator permits only AWS, Azure, and GCP.
+		return &cato_models.SecondaryVSocketAtCreationInput{GCP: &cato_models.SecondaryGCPVSocketConfigInput{
+			InterfaceIP:    config.InterfaceIP.ValueString(),
+			LoadBalancerIP: config.LoadBalancerIP.ValueString(),
+		}}
+	}
 }
 
 // vrrpDestTypeSuffix is the suffix the Cato API appends to a socket interface destination
@@ -363,6 +394,24 @@ func appendSocketConfiguration(ctx context.Context, sockets []types.Object, seri
 	return append(sockets, tfSocketObj)
 }
 
+func hasBothVSocketSerials(ctx context.Context, sockets types.Set, diags *diag.Diagnostics) bool {
+	if !utils.HasValue(sockets) {
+		return false
+	}
+	var items []Socket
+	diags.Append(sockets.ElementsAs(ctx, &items, false)...)
+	var primary, secondary string
+	for _, socket := range items {
+		switch socket.IsPrimary {
+		case types.BoolValue(true):
+			primary = socket.SerialNumber.ValueString()
+		case types.BoolValue(false):
+			secondary = socket.SerialNumber.ValueString()
+		}
+	}
+	return primary != "" && secondary != "" && primary != secondary
+}
+
 // isDhcpSettingsExplicit returns true when dhcp_settings was explicitly set in config or state
 // (i.e. the object is non-null), even if the value is ACCOUNT_DEFAULT.
 // Returns false when dhcp_settings is null (user never configured it).
@@ -554,15 +603,34 @@ func convertHydrateSocketSiteStateValues(
 	newState := *priorNewState
 	defer func() { *priorNewState = newState }()
 	newState = SocketSite{
-		ID:             types.StringValue(siteID),
-		Name:           types.StringValue(siteGeneralDetails.GetSite().GetName()),
-		ConnectionType: connectionTypeFromSocketConfiguration(siteSocketConfiguration),
-		SiteType:       types.StringPointerValue((*string)(siteGeneralDetails.GetSiteType())),
-		Description:    convert.StringPointerValue(siteGeneralDetails.GetDescription(), state.Description),
-		IsCloudRouter:  state.IsCloudRouter,
-		NativeRange:    r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
-		SiteLocation:   r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
-		Sockets:        r.parseSockets(ctx, siteSocketConfiguration, diags),
+		ID:               types.StringValue(siteID),
+		Name:             types.StringValue(siteGeneralDetails.GetSite().GetName()),
+		ConnectionType:   connectionTypeFromSocketConfiguration(siteSocketConfiguration),
+		SiteType:         types.StringPointerValue((*string)(siteGeneralDetails.GetSiteType())),
+		Description:      convert.StringPointerValue(siteGeneralDetails.GetDescription(), state.Description),
+		IsCloudRouter:    state.IsCloudRouter,
+		SecondaryVSocket: state.SecondaryVSocket,
+		NativeRange:      r.parseNativeRange(ctx, cfg, networkRange, defaultInterface, state.NativeRange, diags),
+		SiteLocation:     r.parseSiteLocation(ctx, siteDetails, state.SiteLocation, diags),
+		Sockets:          r.parseSockets(ctx, siteSocketConfiguration, diags),
+	}
+	if utils.HasValue(state.SecondaryVSocket) && utils.HasValue(newState.NativeRange) {
+		fields := newState.NativeRange.Attributes()
+		primaryIP := siteSocketConfiguration.GetPrimarySocketConfiguration().GetManagementIP()
+		if primaryIP == nil {
+			primaryIP = networkRange.GetPrimaryManagementIP()
+		}
+		// For inline HA, local_ip configures the primary management IP. The range
+		// itself can report a floating or load balancer IP instead.
+		if primaryIP != nil {
+			fields["local_ip"] = types.StringPointerValue(primaryIP)
+			fields["primary_management_ip"] = types.StringPointerValue(primaryIP)
+		} else if utils.HasValue(state.NativeRange) {
+			fields["local_ip"] = state.NativeRange.Attributes()["local_ip"]
+		}
+		nativeRange, objDiags := types.ObjectValue(SiteNativeRangeResourceAttrTypes, fields)
+		diags.Append(objDiags...)
+		newState.NativeRange = nativeRange
 	}
 }
 
@@ -581,7 +649,7 @@ func convertPrepareNetworkRangeInputValues(
 		MdnsReflector:    convert.KnownBoolPointer(planNativeRange.MdnsReflector),
 		Vlan:             convert.KnownInt64Pointer(planNativeRange.Vlan),
 		DhcpSettings:     dhcp.PrepareDHCPSettings(ctx, client, cato_models.SubnetTypeNative, planNativeRange.DhcpSettings, diags),
-		// AzureFloatingIP must remain omitted until Azure HA support is implemented.
+		// Azure's floating IP is set by the secondary vSocket API.
 	}
 	// Explicit translation values must accompany subnet resizes. Omitting an
 	// identity translation can retain an old translated range with a different

@@ -33,6 +33,7 @@ const (
 	socketConnectionTypeVGXESX   = "VSOCKET_VGX_ESX"
 	socketInterfaceDestTypeLAN   = "LAN"
 	socketCreateHydrationRetries = 6
+	haCreateHydrationRetries     = 15
 )
 
 var (
@@ -86,8 +87,6 @@ func (r *socketSiteResource) ImportState(
 }
 
 // Create cato_socket_site resource
-//
-//nolint:funlen // create flow composes multiple API calls and hydration checks in sequence.
 func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan, cfg SocketSite
 	diags := req.Plan.Get(ctx, &plan)
@@ -98,87 +97,138 @@ func (r *socketSiteResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	r.validateCloudRouterInput(&plan, &resp.Diagnostics)
+	validateSecondaryVSocket(plan.ConnectionType.ValueString(), plan.SecondaryVSocket, false, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Create a socket site - API call
-	siteID := r.createBasicSocketSite(ctx, &plan, &diags)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
-		return
+	manageSecondary := utils.HasValue(plan.SecondaryVSocket)
+	siteID := r.createBasicSocketSite(ctx, &plan, &resp.Diagnostics)
+	if manageSecondary && siteID != "" {
+		defer r.rollbackHASiteCreate(ctx, cfg, siteID, resp)
 	}
-	r.configureCloudRouterAfterCreate(ctx, &plan, siteID, &diags)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Find Network Range ID for the created site and update the NetworkRange details
-	networkRange := r.findNativeRange(ctx, siteID, &diags)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+	if manageSecondary {
+		r.waitForHASerials(ctx, siteID, &resp.Diagnostics)
+	} else {
+		r.configureCloudRouterAfterCreate(ctx, &plan, siteID, &resp.Diagnostics)
+	}
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	r.updateNetworkRange(ctx, &cfg, &plan, networkRange.GetNetworkRangeID(), false, &diags)
+
+	r.configureNewSocketSite(ctx, &cfg, &plan, siteID, manageSecondary, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if manageSecondary {
+		r.updateInlineHA(ctx, &plan, nil, siteID, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	r.finishSocketSiteCreate(ctx, cfg, plan, siteID, manageSecondary, resp)
+}
+
+func (r *socketSiteResource) configureNewSocketSite(
+	ctx context.Context, cfg, plan *SocketSite, siteID string, manageSecondary bool, diags *diag.Diagnostics,
+) {
+	// Find Network Range ID for the created site and update the NetworkRange details
+	networkRange := r.findNativeRange(ctx, siteID, diags)
 	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+		return
+	}
+	r.updateNetworkRange(ctx, cfg, plan, networkRange.GetNetworkRangeID(), manageSecondary, diags)
+	if diags.HasError() {
 		return
 	}
 
 	// Move interface to a non-default index if specified in the plan
 	defaultInterfaceIndex := InterfaceByConnType[cato_models.SiteConnectionTypeEnum(plan.ConnectionType.ValueString())]
-	r.assignInterfaceIndex(ctx, defaultInterfaceIndex, &plan, siteID, &diags)
+	r.assignInterfaceIndex(ctx, defaultInterfaceIndex, plan, siteID, diags)
 	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
 		return
 	}
 	// Update Socket Interface (*_AND_VRRP dest types are reduced to their settable base type for the API)
-	r.updateSocketInterface(ctx, &cfg, &plan, siteID, false, &diags)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
-		return
-	}
+	r.updateSocketInterface(ctx, cfg, plan, siteID, manageSecondary, diags)
+}
 
-	// hydrate the state with API data, retrying briefly for eventual consistency
-	var (
-		hydratedState SocketSite
-		siteExists    bool
-	)
-	for attempt := 0; attempt < socketCreateHydrationRetries; attempt++ {
-		attemptDiags := diag.Diagnostics{}
-		hydratedState, siteExists = r.hydrateSocketSiteState(ctx, &cfg, plan, siteID, &attemptDiags)
-		if attemptDiags.HasError() {
-			if attempt == socketCreateHydrationRetries-1 {
-				resp.Diagnostics.Append(attemptDiags...)
-				return
-			}
-			time.Sleep(2 * time.Second)
-			continue
+func (r *socketSiteResource) waitForHASerials(ctx context.Context, siteID string, diags *diag.Diagnostics) {
+	for attempt := 1; attempt <= haCreateHydrationRetries; attempt++ {
+		var readDiags diag.Diagnostics
+		configuration := r.fetchSocketConfiguration(ctx, siteID, &readDiags)
+		primary := configuration.GetPrimarySocketConfiguration().GetSerial()
+		secondary := configuration.GetSecondarySocketConfiguration().GetSerial()
+		if primary != nil && secondary != nil && *primary != "" && *secondary != "" && *primary != *secondary {
+			return
 		}
-		if siteExists {
+		if attempt == haCreateHydrationRetries {
+			diags.Append(readDiags...)
 			break
 		}
-		time.Sleep(2 * time.Second)
+		select {
+		case <-ctx.Done():
+			diags.AddError("Socket site creation interrupted", ctx.Err().Error())
+			return
+		case <-time.After(2 * time.Second):
+		}
 	}
+	diags.AddError("vSocket serial numbers unavailable", "The Cato API did not return both serial numbers for the new HA site.")
+}
 
-	// if the site is still not visible, keep minimal state to avoid losing created resource
-	if !siteExists {
-		fallbackState := convertCreateValues(cfg, siteID)
-		tflog.Warn(ctx, "site not found after create; preserving minimal state until next refresh")
-		diags = resp.State.Set(ctx, &fallbackState)
-		resp.Diagnostics.Append(diags...)
-		return
+func (r *socketSiteResource) finishSocketSiteCreate(
+	ctx context.Context, cfg, plan SocketSite, siteID string, manageSecondary bool, resp *resource.CreateResponse,
+) {
+	for attempt := 1; attempt <= socketCreateHydrationRetries; attempt++ {
+		var diags diag.Diagnostics
+		hydrated, exists := r.hydrateSocketSiteState(ctx, &cfg, plan, siteID, &diags)
+		if !diags.HasError() && exists && (!manageSecondary || hasBothVSocketSerials(ctx, hydrated.Sockets, &diags)) {
+			resp.Diagnostics.Append(diags...)
+			resp.Diagnostics.Append(resp.State.Set(ctx, &hydrated)...)
+			return
+		}
+		if attempt == socketCreateHydrationRetries {
+			resp.Diagnostics.Append(diags...)
+			break
+		}
+		select {
+		case <-ctx.Done():
+			resp.Diagnostics.AddError("Socket site creation interrupted", ctx.Err().Error())
+			return
+		case <-time.After(2 * time.Second):
+		}
 	}
-
-	diags = resp.State.Set(ctx, &hydratedState)
-	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if manageSecondary {
+		resp.Diagnostics.AddError("vSocket serial numbers unavailable",
+			"The Cato API did not return both vSocket serial numbers after assigning the secondary.")
+		return
+	}
 
-	// overriding state with socket site id
-	resp.State.SetAttribute(ctx, path.Empty().AtName("id"), siteID)
+	// Preserve the existing create behavior for sites without an inline secondary.
+	fallbackState := convertCreateValues(cfg, siteID)
+	tflog.Warn(ctx, "site not found after create; preserving minimal state until next refresh")
+	resp.Diagnostics.Append(resp.State.Set(ctx, &fallbackState)...)
+}
+
+func (r *socketSiteResource) rollbackHASiteCreate(ctx context.Context, cfg SocketSite, siteID string, resp *resource.CreateResponse) {
+	if !resp.Diagnostics.HasError() {
+		return
+	}
+	const cleanupTimeout = 30 * time.Second
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+	defer cancel()
+	if err := removeSocketSiteWithRetry(cleanupCtx, r.resourceAPI(), siteID, r.client.AccountId); err != nil {
+		resp.Diagnostics.AddError("Could not clean up the partially created HA site", fmt.Sprintf("Site %s: %s", siteID, err))
+		fallbackState := convertCreateValues(cfg, siteID)
+		resp.Diagnostics.Append(resp.State.Set(cleanupCtx, &fallbackState)...)
+	}
 }
 
 // Read cato_socket_site resource
@@ -226,7 +276,7 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	siteID := plan.ID.ValueString()
-	isHA := r.isHA(&state)
+	isHA := utils.HasValue(plan.SecondaryVSocket) || r.isHA(&state)
 
 	// Update general socket site details
 	r.updateBasicSocketSite(ctx, &plan, &resp.Diagnostics)
@@ -242,6 +292,12 @@ func (r *socketSiteResource) Update(ctx context.Context, req resource.UpdateRequ
 	r.updateNetworkRange(ctx, &cfg, &plan, networkRangeID, isHA, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+	if utils.HasValue(plan.SecondaryVSocket) {
+		r.updateInlineHA(ctx, &plan, &state, siteID, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	// Move interface to another index if needed
@@ -356,6 +412,13 @@ func (r *socketSiteResource) updateSocketInterface(ctx context.Context, cfg, pla
 ) {
 	if isHA && plan.ConnectionType.ValueString() == string(cato_models.SiteConnectionTypeEnumSocketGCP1500) {
 		return // update does not work on GCP HA
+	}
+	if isHA && utils.HasValue(plan.SecondaryVSocket) {
+		var nativeRange NativeRange
+		if utils.CheckErr(diags, cfg.NativeRange.As(ctx, &nativeRange, basetypes.ObjectAsOptions{})) ||
+			!utils.HasValue(nativeRange.InterfaceDestType) {
+			return // Keep the interface destination selected by the HA creation API.
+		}
 	}
 
 	socketIfaceInput, interfaceID := prepareSocketInterfaceInput(ctx, cfg, plan, isHA, diags)
@@ -544,6 +607,26 @@ func (r *socketSiteResource) updateCloudRouter(
 	}
 
 	input := prepareUpdateHaInput(plan)
+	r.applyHASettings(ctx, siteID, input, diags)
+}
+
+func (r *socketSiteResource) updateInlineHA(
+	ctx context.Context, plan, prior *SocketSite, siteID string, diags *diag.Diagnostics,
+) {
+	var nativeRange NativeRange
+	if utils.CheckErr(diags, plan.NativeRange.As(ctx, &nativeRange, basetypes.ObjectAsOptions{})) {
+		return
+	}
+	input := cato_models.UpdateHaInput{PrimaryManagementIP: nativeRange.LocalIP.ValueStringPointer()}
+	if prior == nil {
+		input.IsCloudRouter = plan.IsCloudRouter.ValueBoolPointer()
+	} else if nativeRange.LocalIP.Equal(prior.NativeRange.Attributes()["local_ip"]) {
+		return
+	}
+	r.applyHASettings(ctx, siteID, input, diags)
+}
+
+func (r *socketSiteResource) applyHASettings(ctx context.Context, siteID string, input cato_models.UpdateHaInput, diags *diag.Diagnostics) {
 	_, err := r.resourceAPI().SiteUpdateHa(ctx, r.client.AccountId, siteID, input)
 	if err != nil {
 		diags.AddError("Catov2 API SiteUpdateHa error", err.Error())
@@ -562,11 +645,15 @@ func (r *socketSiteResource) createBasicSocketSite(
 		return ""
 	}
 	socketSite, err := r.resourceAPI().SiteAddSocketSite(ctx, *socketSiteInput, r.client.AccountId)
+	siteID = socketSite.GetSite().GetAddSocketSite().GetSiteID()
 	if err != nil {
-		diags.AddError("Catov2 API SiteAddSocketSite error", err.Error())
-		return ""
+		detail := err.Error()
+		if socketSiteInput.SecondaryVSocket != nil && siteID == "" {
+			detail += fmt.Sprintf(" The API may have created a primary-only site named %q. Check CMA before retrying.", socketSiteInput.Name)
+		}
+		diags.AddError("Catov2 API SiteAddSocketSite error", detail)
+		return siteID
 	}
-	siteID = socketSite.Site.AddSocketSite.GetSiteID()
 	if siteID == "" {
 		diags.AddError("Catov2 API SiteAddSocketSite error", "empty site ID returned from API")
 		return ""
