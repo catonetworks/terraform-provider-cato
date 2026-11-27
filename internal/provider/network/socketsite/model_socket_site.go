@@ -9,15 +9,34 @@ import (
 )
 
 type SocketSite struct {
-	ID             types.String `tfsdk:"id"`
-	Name           types.String `tfsdk:"name"`
-	ConnectionType types.String `tfsdk:"connection_type"`
-	SiteType       types.String `tfsdk:"site_type"`
-	Description    types.String `tfsdk:"description"`
-	IsCloudRouter  types.Bool   `tfsdk:"is_cloud_router"`
-	NativeRange    types.Object `tfsdk:"native_range"`
-	SiteLocation   types.Object `tfsdk:"site_location"`
-	Sockets        types.Set    `tfsdk:"sockets"` // []Socket
+	ID               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	ConnectionType   types.String `tfsdk:"connection_type"`
+	SiteType         types.String `tfsdk:"site_type"`
+	Description      types.String `tfsdk:"description"`
+	IsCloudRouter    types.Bool   `tfsdk:"is_cloud_router"`
+	SecondaryVSocket types.Object `tfsdk:"secondary_vsocket"`
+	NativeRange      types.Object `tfsdk:"native_range"`
+	SiteLocation     types.Object `tfsdk:"site_location"`
+	Sockets          types.Set    `tfsdk:"sockets"` // []Socket
+}
+
+type secondaryVSocket struct {
+	ENIIPAddress   types.String `tfsdk:"eni_ip_address"`
+	ENIIPSubnet    types.String `tfsdk:"eni_ip_subnet"`
+	RouteTableID   types.String `tfsdk:"route_table_id"`
+	InterfaceIP    types.String `tfsdk:"interface_ip"`
+	FloatingIP     types.String `tfsdk:"floating_ip"`
+	LoadBalancerIP types.String `tfsdk:"load_balancer_ip"`
+}
+
+var secondaryVSocketAttrTypes = map[string]attr.Type{
+	"eni_ip_address":   types.StringType,
+	"eni_ip_subnet":    types.StringType,
+	"route_table_id":   types.StringType,
+	"interface_ip":     types.StringType,
+	"floating_ip":      types.StringType,
+	"load_balancer_ip": types.StringType,
 }
 
 type NativeRange struct {

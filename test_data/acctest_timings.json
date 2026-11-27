@@ -259,9 +259,10 @@
       "seconds": 4.46
     },
     "socket_site": {
-      "seconds": 177.61,
+      "seconds": 237.61,
       "tests": {
         "TestAccSocketSite_ConnType": 65.42,
+        "TestAccSocketSite_InlineVSocketHA": 60.0,
         "TestAccSocketSite_DHCP": 27.7,
         "TestAccSocketSite_DhcpSettingsNull": 22.98,
         "TestAccSocketSite_Basic": 16.98,
@@ -272,6 +273,7 @@
       "measurement_status": "partial_failed",
       "observed_seconds": 170.62,
       "estimated_tests": [
+        "TestAccSocketSite_InlineVSocketHA",
         "TestAccSocketSite_Location"
       ]
     },

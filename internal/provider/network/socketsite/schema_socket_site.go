@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -19,10 +20,10 @@ import (
 func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The `cato_socket_site` resource contains the configuration parameters necessary to add a socket site " +
-			"to the Cato cloud ([virtual socket in AWS/Azure, or physical socket]" +
+			"to the Cato cloud ([virtual socket in AWS, Azure, or GCP, or physical socket]" +
 			"(https://support.catonetworks.com/hc/en-us/articles/4413280502929-Working-with-X1500-X1600-and-X1700-Socket-Sites)). " +
 			"Documentation for the underlying API used in this resource can be found at " +
-			"[mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite). \n\n" +
+			"[mutation.addSocketSite()](https://api.catonetworks.com/documentation/#mutation-site.addSocketSite).\n\n" +
 			"**Note**: For AWS deployments, please accept the [EULA for the Cato Networks AWS Marketplace product]" +
 			"(https://aws.amazon.com/marketplace/pp?sku=dvfhly9fuuu67tw59c7lt5t3c).",
 		Attributes: map[string]schema.Attribute{
@@ -50,15 +51,41 @@ func (r *socketSiteResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Optional:    true,
 			},
 			"is_cloud_router": schema.BoolAttribute{
-				Description: "Enables Cloud Router mode for supported GCP vSocket HA sites. This value is write-only in " +
-					"the Cato API and cannot be read back during refresh or import. Changing it requires replacing the site.",
+				Description: "Enables Cloud Router mode for supported GCP vSocket HA sites. With `secondary_vsocket`, " +
+					"the provider sets this after assigning the secondary. This value is write-only in the Cato API " +
+					"and cannot be read back during refresh or import. Changing it requires replacing the site.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 				Validators:    []validator.Bool{GetCloudRouterValidator()},
 			},
-			"native_range":  r.schemaNativeRange(),
-			"site_location": r.schemaSiteLocation(),
-			"sockets":       r.schemaSockets(),
+			"secondary_vsocket": schemaSecondaryVSocket(),
+			"native_range":      r.schemaNativeRange(),
+			"site_location":     r.schemaSiteLocation(),
+			"sockets":           r.schemaSockets(),
+		},
+	}
+}
+
+func schemaSecondaryVSocket() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Assign both vSocket serial numbers during site creation and expose them in `sockets`. " +
+			"Supported for SOCKET_AWS1500, SOCKET_AZ1500, and SOCKET_GCP1500. " +
+			"The Cato account must support secondary vSocket assignment at site creation. " +
+			"Adding, removing, or changing this block replaces the site. Import does not adopt the secondary into this block. " +
+			"Manage the secondary through this block alone. Provision the cloud VMs separately and register the primary first.",
+		Optional:      true,
+		Validators:    []validator.Object{secondaryVSocketValidator{}},
+		PlanModifiers: []planmodifier.Object{objectplanmodifier.RequiresReplace()},
+		Attributes: map[string]schema.Attribute{
+			"eni_ip_address": schema.StringAttribute{Optional: true, Description: "AWS only. Required IPv4 address for the secondary ENI."},
+			"eni_ip_subnet": schema.StringAttribute{
+				Optional:    true,
+				Description: "AWS only. Required canonical IPv4 subnet for the secondary ENI. It must not overlap the primary native subnet.",
+			},
+			"route_table_id":   schema.StringAttribute{Optional: true, Description: "AWS only. Required ID of the shared AWS route table."},
+			"interface_ip":     schema.StringAttribute{Optional: true, Description: "Azure and GCP only. Required secondary LAN IPv4 address."},
+			"floating_ip":      schema.StringAttribute{Optional: true, Description: "Azure only. Required HA floating IPv4 address."},
+			"load_balancer_ip": schema.StringAttribute{Optional: true, Description: "GCP only. Required LAN load balancer IPv4 address."},
 		},
 	}
 }
@@ -135,13 +162,13 @@ func (r *socketSiteResource) schemaNativeRange() schema.SingleNestedAttribute { 
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"local_ip": schema.StringAttribute{
-				Description: "Site native range local ip",
+				Description: "Site native range local IP. With `secondary_vsocket`, this configures the primary vSocket management IP.",
 				Required:    true,
 			},
 			"primary_management_ip": schema.StringAttribute{
 				Description:   "Site native range primary management IP",
 				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.String{primaryManagementIPPlanModifier{}},
 			},
 			"secondary_management_ip": schema.StringAttribute{
 				Description:   "Site native range secondary management IP",

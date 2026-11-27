@@ -144,7 +144,7 @@ func TestSocketSiteFetchSocketConfiguration(t *testing.T) {
 
 	ctx := context.Background()
 	mockClient := mocks.NewSocketSiteClient(t)
-	configuration := socketConfigurationForTest(cato_models.SocketModelX1700, true)
+	configuration := socketConfigurationForTest(cato_models.SocketModelX1700)
 	apiResponse := &cato_go_sdk.SiteSocketConfiguration{
 		Site: cato_go_sdk.SiteSocketConfiguration_Site{SiteSocketConfiguration: configuration},
 	}
@@ -360,7 +360,7 @@ func TestConnectionTypeFromSocketConfiguration(t *testing.T) {
 		t.Run(string(model), func(t *testing.T) {
 			t.Parallel()
 
-			got := connectionTypeFromSocketConfiguration(socketConfigurationForTest(model, true))
+			got := connectionTypeFromSocketConfiguration(socketConfigurationForTest(model))
 			if got.ValueString() != want {
 				t.Fatalf("expected %q, got %q", want, got.ValueString())
 			}
@@ -378,7 +378,7 @@ func TestSocketSiteParseSockets(t *testing.T) {
 	ctx := context.Background()
 	primarySerial, primaryPlatform := "primary-serial", "X1700"
 	secondarySerial, secondaryPlatform := "secondary-serial", "X1700"
-	configuration := socketConfigurationForTest(cato_models.SocketModelX1700, true)
+	configuration := socketConfigurationForTest(cato_models.SocketModelX1700)
 	configuration.PrimarySocketConfiguration.Serial = &primarySerial
 	configuration.PrimarySocketConfiguration.SocketInfo.Platform = &primaryPlatform
 	configuration.SecondarySocketConfiguration =
@@ -419,12 +419,11 @@ func TestSocketSiteParseSockets(t *testing.T) {
 	}
 }
 
-func socketConfigurationForTest(model cato_models.SocketModel, isPrimary bool,
-) *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration {
+func socketConfigurationForTest(model cato_models.SocketModel) *cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration {
 	return &cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration{
 		PrimarySocketConfiguration: cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_PrimarySocketConfiguration{
 			SocketInfo: cato_go_sdk.SiteSocketConfiguration_Site_SiteSocketConfiguration_PrimarySocketConfiguration_SocketInfo{
-				IsPrimary: isPrimary,
+				IsPrimary: true,
 				Model:     &model,
 			},
 		},

@@ -3,11 +3,15 @@ package socketsite
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"slices"
+	"strings"
 
 	cato_models "github.com/catonetworks/cato-go-sdk/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -70,6 +74,156 @@ func (r *socketSiteResource) validateCloudRouterInput(plan *SocketSite, diags *d
 			"Unsupported Cloud Router configuration",
 			"`is_cloud_router` is supported only for GCP vSocket HA sites.",
 		)
+	}
+}
+
+type secondaryVSocketValidator struct{}
+
+type primaryManagementIPPlanModifier struct{}
+
+func (primaryManagementIPPlanModifier) Description(context.Context) string {
+	return "Preserves the primary management IP except when the configured local IP of an inline HA site is changing."
+}
+
+func (m primaryManagementIPPlanModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (primaryManagementIPPlanModifier) PlanModifyString(
+	ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse,
+) {
+	if !req.State.Raw.IsNull() && !req.Plan.Raw.IsNull() {
+		var secondary types.Object
+		resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("secondary_vsocket"), &secondary)...)
+		if utils.HasValue(secondary) {
+			localIPPath := path.Root("native_range").AtName("local_ip")
+			var prior, planned types.String
+			resp.Diagnostics.Append(req.State.GetAttribute(ctx, localIPPath, &prior)...)
+			resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, localIPPath, &planned)...)
+			if !prior.Equal(planned) {
+				return
+			}
+		}
+	}
+	if !resp.Diagnostics.HasError() {
+		stringplanmodifier.UseStateForUnknown().PlanModifyString(ctx, req, resp)
+	}
+}
+
+func (secondaryVSocketValidator) Description(context.Context) string {
+	return "Requires the secondary vSocket settings for the site's cloud."
+}
+
+func (v secondaryVSocketValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (secondaryVSocketValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
+	if !utils.HasValue(req.ConfigValue) {
+		return
+	}
+	var connectionType types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("connection_type"), &connectionType)...)
+	if resp.Diagnostics.HasError() || !utils.HasValue(connectionType) {
+		return
+	}
+	validateSecondaryVSocket(connectionType.ValueString(), req.ConfigValue, true, &resp.Diagnostics)
+	if !resp.Diagnostics.HasError() && connectionType.ValueString() == socketConnectionTypeAWS1500 {
+		var nativeRange types.Object
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("native_range"), &nativeRange)...)
+		checkAWSSecondarySubnetOverlap(nativeRange, req.ConfigValue, &resp.Diagnostics)
+	}
+}
+
+func checkAWSSecondarySubnetOverlap(nativeRange, secondaryVSocket types.Object, diags *diag.Diagnostics) {
+	if !utils.HasValue(nativeRange) || !utils.HasValue(secondaryVSocket) {
+		return
+	}
+	primaryCIDR := nativeRange.Attributes()["native_network_range"].(types.String).ValueString()
+	secondaryCIDR := secondaryVSocket.Attributes()["eni_ip_subnet"].(types.String).ValueString()
+	primary, primaryErr := netip.ParsePrefix(primaryCIDR)
+	secondary, secondaryErr := netip.ParsePrefix(secondaryCIDR)
+	if primaryErr == nil && secondaryErr == nil && primary.Overlaps(secondary) {
+		diags.AddAttributeError(path.Root("secondary_vsocket").AtName("eni_ip_subnet"),
+			"Overlapping AWS vSocket LAN subnets",
+			fmt.Sprintf("The secondary LAN ENI subnet %s must not overlap the primary native subnet %s.", secondary, primary))
+	}
+}
+
+func validateSecondaryVSocket(connectionType string, value types.Object, allowUnknown bool, diags *diag.Diagnostics) {
+	blockPath := path.Root("secondary_vsocket")
+	if value.IsUnknown() {
+		diags.AddAttributeError(blockPath, "Unknown secondary vSocket", "The secondary vSocket settings must be known before creating the site.")
+		return
+	}
+	if value.IsNull() {
+		return
+	}
+
+	var required []string
+	switch connectionType {
+	case socketConnectionTypeAWS1500:
+		required = []string{"eni_ip_address", "eni_ip_subnet", "route_table_id"}
+	case socketConnectionTypeAZ1500:
+		required = []string{"interface_ip", "floating_ip"}
+	case string(cato_models.SiteConnectionTypeEnumSocketGCP1500):
+		required = []string{"interface_ip", "load_balancer_ip"}
+	default:
+		diags.AddAttributeError(blockPath, "Unsupported secondary vSocket",
+			"Use secondary_vsocket with SOCKET_AWS1500, SOCKET_AZ1500, or SOCKET_GCP1500.")
+		return
+	}
+	fields := value.Attributes()
+	for name, field := range fields {
+		fieldPath := blockPath.AtName(name)
+		if allowUnknown && field.IsUnknown() {
+			continue
+		}
+		if !slices.Contains(required, name) {
+			if !field.IsNull() {
+				diags.AddAttributeError(fieldPath, "Unsupported secondary vSocket field", "Omit this field for the selected connection type.")
+			}
+			continue
+		}
+		if !validSecondaryVSocketField(name, field.(types.String).ValueString()) {
+			diags.AddAttributeError(fieldPath, "Invalid secondary vSocket field", secondaryVSocketFieldRequirement(name))
+		}
+	}
+	if connectionType == socketConnectionTypeAWS1500 && !diags.HasError() {
+		checkSecondaryENISubnet(fields["eni_ip_address"].(types.String), fields["eni_ip_subnet"].(types.String), diags)
+	}
+}
+
+func checkSecondaryENISubnet(address, prefix types.String, diags *diag.Diagnostics) {
+	ip, ipErr := netip.ParseAddr(address.ValueString())
+	subnet, subnetErr := netip.ParsePrefix(prefix.ValueString())
+	if ipErr == nil && subnetErr == nil && !subnet.Contains(ip) {
+		diags.AddAttributeError(path.Root("secondary_vsocket").AtName("eni_ip_address"),
+			"Invalid secondary ENI address", "Use an address within eni_ip_subnet.")
+	}
+}
+
+func validSecondaryVSocketField(name, value string) bool {
+	switch name {
+	case "route_table_id":
+		return value != "" && strings.TrimSpace(value) == value
+	case "eni_ip_subnet":
+		subnet, err := netip.ParsePrefix(value)
+		return err == nil && subnet.Addr().Is4() && subnet == subnet.Masked()
+	default:
+		ip, err := netip.ParseAddr(value)
+		return err == nil && ip.Is4()
+	}
+}
+
+func secondaryVSocketFieldRequirement(name string) string {
+	switch name {
+	case "route_table_id":
+		return "Provide a non-empty AWS route table ID without surrounding whitespace."
+	case "eni_ip_subnet":
+		return "Provide a canonical IPv4 network prefix."
+	default:
+		return "Provide an IPv4 address."
 	}
 }
 
